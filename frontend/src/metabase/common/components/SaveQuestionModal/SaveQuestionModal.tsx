@@ -4,7 +4,6 @@ import {
 } from "metabase/common/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
@@ -14,6 +13,7 @@ export const SaveQuestionModal = ({
   multiStep,
   onCreate,
   onSave,
+  onClose,
   originalQuestion,
   question,
   closeOnSuccess,
@@ -21,7 +21,6 @@ export const SaveQuestionModal = ({
   targetCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
-  useEscapeToCloseModal(modalProps.onClose);
   return (
     <SaveQuestionProvider
       question={question}
@@ -30,31 +29,32 @@ export const SaveQuestionModal = ({
         const newQuestion = await onCreate(question, options);
 
         if (closeOnSuccess) {
-          modalProps.onClose();
+          onClose();
         }
 
         return newQuestion;
       }}
       onSave={onSave}
+      onCancel={onClose}
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
       targetCollection={targetCollection}
     >
-      <Modal.Root padding="2.5rem" {...modalProps} closeOnEscape={false}>
+      <Modal.Root padding="xl" {...modalProps} onClose={onClose}>
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
           <Modal.Header>
             <Modal.Title>
               <SaveQuestionTitle />
             </Modal.Title>
-            <Flex align="center" justify="flex-end" gap="sm">
+            <Flex justify="flex-end">
               <Modal.CloseButton />
             </Flex>
           </Modal.Header>
           <Modal.Body>
             <SaveQuestionForm
-              onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
-              onCancel={modalProps.onClose}
+              onSaveSuccess={() => closeOnSuccess && onClose()}
+              onCancel={onClose}
             />
           </Modal.Body>
         </Modal.Content>

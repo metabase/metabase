@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -125,9 +126,19 @@
     (is (= "Cannot enable database routing for a database with uploads enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {db-id :id} {:write_data_details {:host "other-host"}}]
+    (is (= "Cannot enable database routing for a database with a write connection configured"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
   (mt/with-temp [:model/Database {router-db-id :id} {}
                  :model/Database {db-id :id} {:router_database_id router-db-id}]
     (is (= "Cannot make a destination database a router database"
+           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                 {:user_attribute "db_name"}))))
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Transform _ {:source_database_id db-id
+                                     :name "Test Transform"}]
+    (is (= "Cannot enable database routing for a database with transforms"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"})))))
 
@@ -193,3 +204,57 @@
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/syncable_schemas")))
     (testing "GET /database/:id/schemas"
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/schemas")))))
+
+(deftest destination-databases-excluded-from-permissions-graph
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                 :model/Database {destination-db-id :id} {:router_database_id db-id}]
+    (testing "Permissions graph does not include destination databases"
+      (let [graph (data-perms.graph/data-permissions-graph)]
+        (is (not (some (fn [[_group-id db-perms]]
+                         (contains? db-perms destination-db-id))
+                       graph)))))
+    (testing "API permissions graph does not include destination databases"
+      (let [api-graph (:groups (data-perms.graph/api-graph))]
+        (is (not (some (fn [[_group-id db-perms]]
+                         (contains? db-perms destination-db-id))
+                       api-graph)))))))
+
+(deftest new-group-does-not-get-destination-database-permissions
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                 :model/Database {destination-db-id :id} {:router_database_id db-id}]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group for Routing"}]
+      (testing "New group should have permissions for the router database"
+        (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
+      (testing "New group should NOT have permissions for the destination database"
+        (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+
+(deftest manage-db-user-cannot-delete-destination-database-test
+  (testing "DELETE /api/database/:id is rejected (403) for a non-superuser with manage-database perms on a routed destination"
+    ;; NOTE: `DELETE /api/database/:id` calls `api/check-superuser` unconditionally before it ever looks at the
+    ;; database being deleted (see `metabase.warehouses-rest.api`), so this endpoint is admin-only full stop -- it
+    ;; doesn't have any destination-specific carve-out to disprove. To show that manage-database perms are actually
+    ;; being exercised here (and not just trivially irrelevant), we also enable `:advanced-permissions` -- without it,
+    ;; `current-user-can-write-db?` falls back to the OSS `superuser?` check and the manage-database grant below would
+    ;; be a no-op -- and we assert the *same* grant is refused identically for a regular database, proving there's no
+    ;; accidental carve-out that would let a manage-database non-admin delete regular databases while destinations
+    ;; stay protected (or vice versa).
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                     :model/Database {dest :id} {:router_database_id db-id}
+                     :model/Database {regular-db-id :id} {}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries :query-builder-and-native)
+          (perms/set-database-permission! (perms/all-users-group) regular-db-id :perms/manage-database :yes)
+          (perms/set-database-permission! (perms/all-users-group) regular-db-id :perms/create-queries :query-builder-and-native)
+          (testing "manage-database perms don't allow deleting a regular database either"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :delete 403 (str "database/" regular-db-id)))))
+          (testing "manage-database perms on the router database don't allow deleting its destination database"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :delete 403 (str "database/" dest)))))
+          (is (t2/exists? :model/Database :id regular-db-id))
+          (is (t2/exists? :model/Database :id dest)))))))

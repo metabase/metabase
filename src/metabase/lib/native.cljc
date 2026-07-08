@@ -1,13 +1,17 @@
 (ns metabase.lib.native
   "Functions for working with native queries."
+  (:refer-clojure :exclude [some select-keys mapv every? empty? not-empty])
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.parameters.parse :as lib.params.parse]
+   [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -15,37 +19,20 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
-
-(def ^:private variable-tag-regex
-  #"\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}")
-
-(def ^:private snippet-tag-regex
-  #"\{\{\s*(snippet:\s*[^}]+)\s*\}\}")
-
-(def ^:private card-tag-regex
-  #"\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}")
-
-(def ^:private tag-regexes
-  [variable-tag-regex snippet-tag-regex card-tag-regex])
-
-(defn- tag-name->card-id [tag-name]
-  (when-let [[_ id-str] (re-matches #"^#(\d+)(-[a-z0-9-]*)?$" tag-name)]
-    (parse-long id-str)))
-
-(defn- tag-name->snippet-name [tag-name]
-  (when (str/starts-with? tag-name "snippet:")
-    (str/trim (subs tag-name (count "snippet:")))))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [empty? every? mapv not-empty select-keys some]]))
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
-         (when-let [card-id (tag-name->card-id tag-name)]
+         (when-let [card-id (lib.params.parse/tag-name->card-id tag-name)]
            {:type    :card
             :card-id card-id})
-         (when-let [snippet-name (tag-name->snippet-name tag-name)]
+         (when-let [snippet-name (lib.params.parse/tag-name->snippet-name tag-name)]
            {:type         :snippet
             :snippet-name snippet-name})
          (when-not (:display-name tag)
@@ -63,20 +50,23 @@
   (let [parsed (lib.parse/parse {} query-text)]
     (loop [found            {}
            [current & more] parsed]
-      (match [current]
-        [nil]              found
-        [_ :guard string?] (recur found more)
+      (let [[found more] (match/match-one current
+                           (_ :guard string?) [found more]
 
-        [{:type ::lib.parse/param, :name tag-name}]
-        (let [full-tag         (str "{{" tag-name "}}")
-              [_ matched-name] (some #(re-matches % full-tag) tag-regexes)]
-          (recur (cond-> found
-                   (and matched-name (not (found matched-name))) (assoc matched-name (fresh-tag matched-name)))
-                 more))
+                           {:type ::lib.parse/param, :name tag-name}
+                           (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
+                             [(cond-> found
+                                (and normalized-name (not (found normalized-name)))
+                                (assoc normalized-name (fresh-tag normalized-name)))
+                              more])
 
-        [{:type     ::lib.parse/optional
-          :contents contents}]
-        (recur found (into more contents))))))
+                           {:type ::lib.parse/optional, :contents contents}
+                           [found (into more contents)]
+
+                           _ [found nil])]
+        (if more
+          (recur found more)
+          found)))))
 
 (defn- rename-template-tag
   [existing-tags old-name new-name]
@@ -164,7 +154,7 @@
        ;; Otherwise just an empty map, no tags.
        {}))))
 
-(defn- assert-native-query [stage]
+(defn- assert-native-stage [stage]
   (assert (= (:lib/type stage) :mbql.stage/native) (i18n/tru "Must be a native query")))
 
 (def ^:private all-native-extra-keys
@@ -195,7 +185,7 @@
              stage-without-old-extras (apply dissoc stage extras-to-remove)
              result (merge stage-without-old-extras (select-keys native-extras required-extras))
              missing-keys (set/difference required-extras (set (keys native-extras)))]
-         (assert-native-query (lib.util/query-stage query 0))
+         (assert-native-stage (lib.util/query-stage query 0))
          (assert (empty? missing-keys)
                  (i18n/tru "Missing extra, required keys for native query: {0}"
                            (pr-str missing-keys)))
@@ -204,7 +194,7 @@
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
 
-  Native in this sense means a pMBQL query with a first stage that is a native query."
+  Native in this sense means a MBQL 5 query with a first stage that is a native query."
   ([metadata-providerable     :- ::lib.schema.metadata/metadata-providerable
     sql-or-other-native-query :- ::common/non-blank-string]
    (native-query metadata-providerable sql-or-other-native-query nil nil))
@@ -226,7 +216,7 @@
    Native extras must be provided if the new database requires it."
   [query :- ::lib.schema/query
    metadata-provider :- ::lib.schema.metadata/metadata-providerable]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (let [stages-without-fields (->> (:stages query)
                                    (mapv (fn [stage]
                                            (update stage :template-tags update-vals #(dissoc % :dimension)))))]
@@ -245,27 +235,50 @@
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query stage)
+     (assert-native-stage stage)
      (assoc stage
             :native inner-query
             :template-tags (extract-template-tags query inner-query existing-tags)))))
 
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
-;;; `with-replaced-template-tags`
+;;; `with-replaced-template-tags`. It only replaces tags you specify rather then completely setting a new list
 (mu/defn with-template-tags :- ::lib.schema/query
-  "Updates the native query's template tags."
-  [query :- ::lib.schema/query
-   tags  :- ::lib.schema.template-tag/template-tag-map]
-  (lib.util/update-query-stage
-   query 0
-   (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query stage)
-     (let [valid-tags (keys existing-tags)]
-       (assoc stage :template-tags
-              (merge existing-tags (select-keys tags valid-tags)))))))
+  "Updates the native query's template tags.
 
-(mu/defn raw-native-query :- ::common/non-blank-string
-  "Returns the native query string"
+  Note that this only updates existing tags, and will not blindly set them to `template-tags`; however, initializing a
+  query with [[native-query]] should populate them automatically by way of [[extract-template-tags]]."
+  [query        :- ::lib.schema/query
+   updated-tags :- ::lib.schema.template-tag/template-tag-map]
+  (letfn [(update-template-tags [existing-tags]
+            ;; the way we do this is really weird, but it's important that we use the order of the keys in
+            ;; `updated-tags` See
+            ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759975007383889?thread_ts=1759289751.539169&cid=C0645JP1W81
+            ;;
+            ;; first, filter out the tags in `updated-tags` not in existing tags, preserving the original order.
+            (let [updates (reduce-kv
+                           (fn [m updated-k updated-v]
+                             (let [updated-k (lib.params.parse/match-and-normalize-tag-name updated-k)]
+                               (cond-> m
+                                 (contains? existing-tags updated-k) (assoc updated-k updated-v))))
+                           {}
+                           updated-tags)]
+              ;; merge in old values that weren't in the `updated-tags` map
+              (reduce-kv
+               (fn [updates existing-k existing-v]
+                 (cond-> updates
+                   (not (contains? updates existing-k)) (assoc existing-k existing-v)))
+               updates
+               existing-tags)))
+          (update-stage [stage]
+            (assert-native-stage stage)
+            (-> stage
+                (update :template-tags update-template-tags)
+                (->> (lib.normalize/normalize ::lib.schema/stage.native))))]
+    (lib.util/update-query-stage query 0 update-stage)))
+
+(mu/defn raw-native-query :- some?
+  "Returns the native query. This is a SQL string for SQL-based drivers; for other drivers like MongoDB it might be a
+  Clojure map."
   [query :- ::lib.schema/query]
   (:native (lib.util/query-stage query 0)))
 
@@ -303,11 +316,33 @@
 
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
-   This is only filled in by [[metabase.warehouses.api/add-native-perms-info]]
+   This is only filled in by [[metabase.warehouses-rest.api/add-native-perms-info]]
    and added to metadata when pulling a database from the list of dbs in js."
   [query :- ::lib.schema/query]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
+
+(mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
+  "Validate a single template tag, returning a list of errors."
+  [_query {tag-type :type tag-name :name, :keys [display-name dimension table-id]}]
+  (cond-> []
+    (empty? display-name)
+    (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
+           :tag-name tag-name})
+
+    (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
+    (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
+           :tag-name tag-name})
+
+    (and (#{:table} tag-type) (nil? table-id))
+    (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a table." tag-name)
+           :tag-name tag-name})))
+
+(mu/defn validate-template-tags :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
+  "Given a query, returns a list of errors for each template tag in the query that is not valid."
+  [query]
+  (mapcat #(validate-template-tag query %)
+          (lib.walk.util/all-template-tags query)))
 
 (defmethod lib.query/can-run-method :mbql.stage/native
   [query _card-type]
@@ -315,14 +350,127 @@
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))
-   (every? #(if (#{:dimension :temporal-unit} (:type %))
-              (:dimension %)
-              true)
-           (vals (template-tags query)))))
+   (empty? (validate-template-tags query))))
 
 (mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]
-  (assert-native-query (lib.util/query-stage query 0))
+  (assert-native-stage (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
+
+(defn- get-parameter-value
+  [query tag-name {:keys [id dimension], param-type :type}]
+  ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
+  ;; value so that the query will compile.
+  (case param-type
+    :text          {:id     id,
+                    :type   :string/=,
+                    :value  ["foo"],
+                    :target ["variable" ["template-tag" tag-name]]}
+    :number        {:id     id,
+                    :type   :number/=,
+                    :value  ["0"],
+                    :target ["variable" ["template-tag" tag-name]]}
+    :date          {:id     id,
+                    :type   :date/single,
+                    :value  "1970-01-01",
+                    :target ["variable" ["template-tag" tag-name]]}
+    :boolean       {:id     id,
+                    :type   :boolean/=,
+                    :value  [false],
+                    :target ["variable" ["template-tag" tag-name]]}
+    :dimension     (let [effective-type (->> dimension
+                                             lib.ref/field-ref-id
+                                             (lib.metadata/field query)
+                                             :effective-type)]
+                     (merge {:id     id,
+                             :type   :string/=,
+                             :value  ["foo"],
+                             :target ["dimension" ["template-tag" tag-name]]}
+                            (when (isa? effective-type :type/Number)
+                              {:type   :number/=,
+                               :value  ["0"]})
+                            (when (isa? effective-type :type/HasDate)
+                              {:type  :date/single
+                               :value "2025-01-01"})))
+    :temporal-unit {:id     id,
+                    :type   :temporal-unit,
+                    :value  "week",
+                    :target ["dimension" ["template-tag" tag-name]]}
+    nil))
+
+(defn add-parameters-for-template-tags
+  "Adds dummy values for parameters that don't have one.
+  This is so that the resulting native query can be parsed. It's not expected to be executable."
+  [query]
+  (let [ttags (-> (lib.util/query-stage query 0)
+                  :template-tags)
+        parameters (:parameters query)
+        params-by-id (m/index-by :id parameters)
+        new-parameters (into []
+                             (keep (fn [[tag-name {:keys [id] :as tag}]]
+                                     (or (params-by-id id)
+                                         (get-parameter-value query tag-name tag))))
+                             ttags)]
+    (cond-> query
+      (seq new-parameters) (assoc :parameters new-parameters))))
+
+(mu/defn- fully-parameterized-text?
+  "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
+  described by `template-tags` (usually the template tags of a native query).
+
+  The rules to consider a piece of text fully parameterized is as follows:
+
+  1. All parameters not in an optional block are field-filters or snippets or have a default value.
+  2. All required parameters have a default value.
+
+  The first rule is absolutely necessary, as queries violating it cannot be executed without
+  externally supplied parameter values. The second rule is more controversial, as field-filters
+  outside of optional blocks ([[ ... ]]) don't prevent the query from being executed without
+  external parameter values (neither do parameters in optional blocks). The rule has been added
+  nonetheless, because marking a parameter as required is something the user does intentionally
+  and queries that are technically executable without parameters can be unacceptably slow
+  without the necessary constraints. (Marking parameters in optional blocks as required doesn't
+  seem to be useful any way, but if the user said it is required, we honor this flag.)"
+  [text              :- :string
+   template-tags-map :- ::lib.schema.template-tag/template-tag-map]
+  (try
+    (let [obligatory-params (into #{}
+                                  (comp (filter lib.params.parse.types/param?)
+                                        (map :k))
+                                  (lib.params.parse/parse text))]
+      (and (every? #(or (#{:dimension :snippet :card} (:type %))
+                        (:default %))
+                   (map template-tags-map obligatory-params))
+           (every? #(or (not (:required %))
+                        (:default %))
+                   (vals template-tags-map))))
+    (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
+      ;; true so that we still can try to generate a preview for the query and display an error.
+      false)))
+
+;;; TODO (Cam 10/3/25) -- this needs a much better docstring
+(mu/defn fully-parameterized-query? :- boolean?
+  "Given a query, returns `true` if its query is fully parameterized."
+  [query :- ::lib.schema/query]
+  (let [raw-native-query-string (when (lib.schema/native-only-query? query)
+                                  (let [query (raw-native-query query)]
+                                    (when (string? query)
+                                      query)))
+        template-tags-map       (when raw-native-query-string
+                                  (not-empty (lib.walk.util/all-template-tags-map query)))]
+    (if (and template-tags-map raw-native-query-string)
+      (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
+      true)))
+
+(mu/defn native-query-table-references :- [:set [:map [:table ::lib.schema.id/table]]]
+  "Given a native query, find any table tags and convert them to {:table id} objects"
+  [query]
+  (let [tags (->> (lib.walk.util/all-template-tags query)
+                  (filter #(= (:type %) :table)))]
+    (into #{}
+          (map (fn [{:keys [table-id]}]
+                 {:table table-id}))
+          tags)))

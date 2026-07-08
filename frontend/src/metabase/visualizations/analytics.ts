@@ -1,0 +1,45 @@
+import { match } from "ts-pattern";
+
+import { trackSimpleEvent } from "metabase/analytics";
+
+import type { RegularClickAction } from "./types";
+
+export const trackClickActionPerformed = (action: RegularClickAction) => {
+  trackSimpleEvent({
+    event: "click_action",
+    triggered_from: action.section,
+  });
+
+  if (action.section === "auto-popover") {
+    const event = match(action.name)
+      .with("automatic-insights.compare", () => "compare_to_rest" as const)
+      .with("automatic-insights.xray", () => "x-ray" as const)
+      .otherwise(() => "x-ray" as const);
+
+    trackSimpleEvent({
+      event: "x-ray_automatic_insights_clicked",
+      event_detail: event,
+    });
+  }
+};
+
+export const trackStackedSeriesEnabled = () => {
+  trackSimpleEvent({
+    event: "stack_series_enabled",
+    triggered_from: "viz_settings",
+  });
+};
+
+export const trackTableFreezeColumnsEnabled = () => {
+  trackSimpleEvent({
+    event: "table_freeze_columns_enabled",
+    triggered_from: "viz_settings",
+  });
+};
+
+export const trackTableFreezeRowsEnabled = () => {
+  trackSimpleEvent({
+    event: "table_freeze_rows_enabled",
+    triggered_from: "viz_settings",
+  });
+};

@@ -7,7 +7,7 @@
    [metabase.test :as mt]))
 
 (comment
- ;; to register the :metabase-test channel implementation
+  ;; to register the :metabase-test channel implementation
   notification.tu/keepme)
 
 (deftest channel-api-test
@@ -39,10 +39,8 @@
                   (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                     (testing (format "GET /api/channel/:id with %s user" (mt/user-descriptor user))
                       (is (= include-details? (contains? (mt/user-http-request user :get 200 (str "channel/" id)) :details))))
-
                     (testing (format "GET /api/channel with %s user" (mt/user-descriptor user))
                       (is (every? #(= % include-details?) (map #(contains? % :details) (mt/user-http-request user :get 200 "channel/")))))))]
-
           (testing "if `advanced-permissions` is disabled, require admins"
             (mt/with-premium-features #{}
               (create-channel user 403)
@@ -53,7 +51,6 @@
               (update-channel :crowberto 200)
               (test-channel :crowberto 200)
               (include-details :crowberto true)))
-
           (testing "if `advanced-permissions` is enabled"
             (mt/with-premium-features #{:advanced-permissions}
               (testing "still fail if user's group doesn't have `setting` permission"
@@ -65,7 +62,6 @@
                 (update-channel :crowberto 200)
                 (test-channel :crowberto 200)
                 (include-details :crowberto true))
-
               (testing "succeed if user's group has `setting` permission"
                 (perms/grant-application-permissions! group :setting)
                 (create-channel user 200)

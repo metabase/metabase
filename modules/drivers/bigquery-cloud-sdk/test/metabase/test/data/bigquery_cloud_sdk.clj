@@ -1,21 +1,26 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
+   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms.test-util :as transforms.test-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
+   (com.google.api.client.googleapis.json
+    GoogleJsonResponseException)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
@@ -58,13 +63,19 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
-   :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)})
+  (if tx/*use-routing-details*
+    {:service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)}
+    {:project-id           (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+     :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)}))
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
@@ -89,6 +100,9 @@
          :dataset-filters-type "inclusion"
          :dataset-filters-patterns (test-dataset-id db-def)
          :include-user-id-and-hash true))
+
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
@@ -142,7 +156,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Deleting dataset: " dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-    (.printStackTrace (Exception. "This should not happen")))
+    (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
@@ -310,7 +324,7 @@
             (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
 (defn- tabledef->prepared-rows
-  "Convert `table-definition` to a format approprate for passing to `insert-data!`."
+  "Convert `table-definition` to a format appropriate for passing to `insert-data!`."
   [{:keys [field-definitions rows]}]
   {:pre [(every? map? field-definitions) (sequential? rows) (seq rows)]}
   (let [field-names (map :field-name field-definitions)]
@@ -321,43 +335,143 @@
 (defn- load-tabledef! [dataset-id {:keys [table-name field-definitions], :as tabledef}]
   (let [table-name (normalize-name table-name)]
     (create-table! dataset-id table-name field-definitions)
-    ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
-    ;; unique key it shouldn't result in duplicates.
-    (loop [num-retries 5]
-      (let [^Throwable e (try
-                           (insert-data! dataset-id table-name (tabledef->prepared-rows tabledef))
-                           nil
-                           (catch Throwable e
-                             e))]
-        (when e
-          (if (pos? num-retries)
-            (recur (dec num-retries))
-            (throw e)))))))
+    (when (seq (:rows tabledef))
+      ;; retry the `insert-data!` step up to 5 times because it seems to fail silently a lot. Since each row is given a
+      ;; unique key it shouldn't result in duplicates.
+      (loop [num-retries 5]
+        (let [^Throwable e (try
+                             (insert-data! dataset-id table-name (tabledef->prepared-rows tabledef))
+                             nil
+                             (catch Throwable e
+                               e))]
+          (when e
+            (if (pos? num-retries)
+              (recur (dec num-retries))
+              (throw e))))))))
 
-(defn delete-old-datasets!
-  []
+(defn delete-old-datasets! []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))"
+                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
                            " UNION ALL "
                            "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                              where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))")
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
                       (project-id)
                       (project-id)
                       (project-id))]
     (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
+      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
       (destroy-dataset! outdated))))
+
+;;; ---------------------- Workspace isolation orphan cleanup ----------------------
+;;;
+;;; Split into pure enumerators (`orphan-isolation-*`) and destructive drops
+;;; (`drop-orphan-isolation-*!`). REPL-preview without the destructive side:
+;;;
+;;;     (#'bq-tx/orphan-isolation-datasets)
+;;;     ;; => ("mb__isolation_..." ...)
+;;;     (#'bq-tx/orphan-isolation-service-accounts)
+;;;     ;; => ("mb-ws-..." ...)
+;;;
+;;; The whole-orchestration entry point is the existing
+;;; [[delete-old-datasets-if-needed!]].
+
+(defn- orphan-isolation-datasets
+  "Return iso dataset names (`mb__isolation_*`) older than 3 hours.
+   Pure: queries `INFORMATION_SCHEMA.SCHEMATA`, returns a seq of strings."
+  []
+  (->> (execute!
+        (str "SELECT schema_name FROM `%s`.INFORMATION_SCHEMA.SCHEMATA "
+             ;; Prefix must match driver.u/workspace-isolated-prefix
+             "WHERE schema_name LIKE 'mb__isolation_%%' "
+             "AND creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -3 hour)")
+        (project-id))
+       (map first)))
+
+(defn- orphan-isolation-service-accounts
+  "Return iso SA email addresses (`mb-ws-*@...`) older than 3 hours.
+
+   Age comes from the `created-at:<iso-instant>` marker encoded in the SA
+   `description` field by
+   [[metabase.driver.bigquery-cloud-sdk/ws-sa-description->created-at]].
+   SAs without that marker are NOT returned (we don't know their age).
+
+   Pure: lists SAs via the IAM client and filters in-memory."
+  []
+  (let [details    (test-db-details)
+        iam-client (#'bigquery.ws/ws-database-details->iam-client details)
+        proj-name  (format "projects/%s" (project-id))
+        threshold  (.minus (java.time.Instant/now) 3 java.time.temporal.ChronoUnit/HOURS)]
+    (try
+      (let [request  (-> (com.google.iam.admin.v1.ListServiceAccountsRequest/newBuilder)
+                         (.setName proj-name)
+                         (.build))
+            response (.listServiceAccounts ^com.google.cloud.iam.admin.v1.IAMClient iam-client request)]
+        (->> (.iterateAll response)
+             (keep (fn [^com.google.iam.admin.v1.ServiceAccount sa]
+                     (let [sa-email   (.getEmail sa)
+                           created-at (bigquery.ws/ws-sa-description->created-at (.getDescription sa))]
+                       (when (and (str/starts-with? sa-email "mb-ws-")
+                                  created-at
+                                  (.isBefore ^java.time.Instant created-at threshold))
+                         sa-email))))
+             ;; Realize before the iam-client is closed in `finally`.
+             vec))
+      (finally
+        (.close ^com.google.cloud.iam.admin.v1.IAMClient iam-client)))))
+
+(defn- drop-orphan-isolation-datasets!
+  "Destroy iso datasets returned by [[orphan-isolation-datasets]].
+   Per-entry try/catch: one failure won't block the others."
+  []
+  (doseq [dataset-name (orphan-isolation-datasets)]
+    (log/info (u/format-color 'blue "Deleting orphan workspace isolation dataset older than 3h: %s" dataset-name))
+    (try
+      (destroy-dataset! dataset-name)
+      (catch Throwable e
+        (log/warnf "Failed to drop orphan iso dataset %s: %s" dataset-name (ex-message e))))))
+
+(defn- drop-orphan-isolation-service-accounts!
+  "Delete iso service accounts returned by [[orphan-isolation-service-accounts]].
+   Per-entry try/catch: one failure won't block the others. Opens its own IAM
+   client (separate from the enumerator's) so the lifecycle is local."
+  []
+  (let [details    (test-db-details)
+        iam-client (#'bigquery.ws/ws-database-details->iam-client details)]
+    (try
+      (doseq [sa-email (orphan-isolation-service-accounts)]
+        (log/info (u/format-color 'blue "Deleting orphan workspace isolation SA older than 3h: %s" sa-email))
+        (try
+          (let [del-req (-> (com.google.iam.admin.v1.DeleteServiceAccountRequest/newBuilder)
+                            (.setName (format "projects/%s/serviceAccounts/%s" (project-id) sa-email))
+                            (.build))]
+            (.deleteServiceAccount ^com.google.cloud.iam.admin.v1.IAMClient iam-client del-req))
+          (catch Throwable e
+            (log/warnf "Failed to delete orphan iso SA %s: %s" sa-email (ex-message e)))))
+      (finally
+        (.close ^com.google.cloud.iam.admin.v1.IAMClient iam-client)))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
 (defn- delete-old-datasets-if-needed!
-  "Call [[delete-old-datasets!]], only if we haven't done so already."
+  "Call [[delete-old-datasets!]] (+ workspace-iso sweep), only if we haven't
+  done so already."
   []
   (when (compare-and-set! deleted-old-datasets? false true)
-    (delete-old-datasets!)))
+    (delete-old-datasets!)
+    ;; Sweep orphan workspace-isolation resources. Per-entry try/catch already
+    ;; inside each `drop-orphan-*!`; the outer try/catch here guards against
+    ;; an enumerator-side failure (e.g. transient IAM 5xx) blocking test-data
+    ;; setup.
+    (try (drop-orphan-isolation-datasets!)
+         (catch Throwable e
+           (log/warnf "drop-orphan-isolation-datasets! failed: %s" (ex-message e))))
+    (try (drop-orphan-isolation-service-accounts!)
+         (catch Throwable e
+           (log/warnf "drop-orphan-isolation-service-accounts! failed: %s" (ex-message e))))))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"
@@ -379,7 +493,7 @@
                                              {:field-name "access_note"
                                               :base-type  :type/Text}])
       (catch BigQueryException e
-       ;; Already exists, ignore
+        ;; Already exists, ignore
         (when-not (= (.getCode e) 409)
           (throw e))))))
 
@@ -402,15 +516,20 @@
     [(test-dataset-id db-def)])
    ffirst))
 
+(defn- get-existing-tables [dataset-id]
+  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
+                    (project-id) dataset-id)]
+    (set (map first (execute! sql)))))
+
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  (and
-   (dataset-tracked?! db-def)
-   (database-exists?! db-def)))
+  (and (database-exists?! db-def)
+       (set/subset? (set (map :table-name (:table-definitions db-def)))
+                    (set (get-existing-tables (test-dataset-id db-def))))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
+  (setup-tracking-dataset!)
   ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
   (u/ignore-exceptions
     (execute-params!
@@ -425,23 +544,27 @@
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  (delete-old-datasets-if-needed!)
+  ;; re-enable this again once things are stable; for now let's just completely
+  ;; excise this potential source of unreliability
+  (comment (delete-old-datasets-if-needed!))
   (let [dataset-id (test-dataset-id db-def)]
-    (if (database-exists?! db-def)
-      (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
-      (try
-        (log/infof "Creating dataset %s..." (pr-str dataset-id))
-        (create-dataset! dataset-id)
-        ;; now create tables and load data.
-        (doseq [tabledef table-definitions]
-          (load-tabledef! dataset-id tabledef))
-        (doseq [native-ddl (:native-ddl options)]
-          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-        (catch Throwable e
-          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-          (log/error (u/pprint-to-str 'red (Throwable->map e)))
-          (throw e))))))
+    (when-not (database-exists?! db-def)
+      (create-dataset! dataset-id))
+    ;; now create tables and load data.
+    (let [existing-tables (get-existing-tables dataset-id)]
+      (doseq [tabledef table-definitions
+              :when (not (existing-tables (:table-name tabledef)))]
+        (try
+          (load-tabledef! dataset-id tabledef)
+          (catch BigQueryException e
+            (when-not (= 409 (.getCode e))
+              (throw e)))
+          (catch GoogleJsonResponseException e
+            (when-not (= 409 (.getCode (.getDetails e)))
+              (throw e))))))
+    (doseq [native-ddl (:native-ddl options)]
+      (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
+    (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]
@@ -472,6 +595,9 @@
   [driver database view-name options]
   (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
 
+(defmethod transforms.test-util/delete-schema! :bigquery-cloud-sdk [_driver _db schema]
+  (destroy-dataset! schema))
+
 (comment
   "REPL utilities for static datasets"
   (setup-tracking-dataset!)
@@ -482,3 +608,11 @@
 
   (execute! "select name from `%s`.metabase_test_tracking.datasets order by accessed_at" (project-id))
   (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+
+(defn ^:private get-test-data-name
+  []
+  (test-dataset-id
+   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
+                                  (tx/default-dataset :bigquery-cloud-sdk)))))
+
+(defmethod sql.tx/session-schema :bigquery-cloud-sdk [_driver] (get-test-data-name))

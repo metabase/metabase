@@ -24,7 +24,7 @@ export interface Insight {
   unit: DateTimeAbsoluteUnit;
 
   // Used for trend line on line/area/bar/combo charts.
-  // Will try to use "best-fit" expression if it exsits,
+  // Will try to use "best-fit" expression if it exists,
   // if not the function will be x*slope + offset
   "best-fit"?: InsightExpression;
   offset: number;

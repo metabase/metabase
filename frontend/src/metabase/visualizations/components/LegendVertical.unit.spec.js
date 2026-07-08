@@ -1,5 +1,5 @@
 import { render, screen } from "__support__/ui";
-import LegendVertical from "metabase/visualizations/components/LegendVertical";
+import { LegendVertical } from "metabase/visualizations/components/LegendVertical";
 
 describe("LegendVertical", () => {
   it("should render string titles correctly", () => {

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   getAvatarColumn,
   getRowValue,
@@ -7,18 +8,8 @@ import {
   getTitleColumn,
   renderValue,
 } from "metabase/detail-view/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import {
-  Box,
-  Group,
-  Icon,
-  type IconName,
-  Image,
-  Stack,
-  Text,
-  rem,
-} from "metabase/ui";
-import type { DatasetColumn, RowValues } from "metabase-types/api";
+import { Box, Group, Icon, Image, Stack, Text, rem } from "metabase/ui";
+import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 
 import S from "./Header.module.css";
 
@@ -62,7 +53,7 @@ export const Header = ({ columns, icon, row }: Props) => {
 
           {!avatar && icon && (
             <Group h={IMAGE_SIZE} justify="center" w={IMAGE_SIZE}>
-              <Icon c="brand" name={icon} size={24} />
+              <Icon c="core-brand" name={icon} size={24} />
             </Group>
           )}
         </Box>

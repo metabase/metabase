@@ -1,0 +1,2809 @@
+{
+  "recents": [
+    {
+      "description": "Compares the total number of orders placed for this product this month with the previous period",
+      "can_write": true,
+      "database_id": 1,
+      "name": "Aerodynamic Copper Knife trend",
+      "parent_collection": {
+        "id": 63,
+        "name": "Examplessssss",
+        "authority_level": null
+      },
+      "dashboard": null,
+      "moderated_status": null,
+      "dataset_query": {
+        "lib/type": "mbql/query",
+        "lib/metadata": null,
+        "database": 1,
+        "stages": [
+          {
+            "breakout": [
+              [
+                "field",
+                {
+                  "lib/uuid": "e996da48-2b93-48e7-b9ad-4f2dd6026d9f",
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                  "effective-type": "type/DateTime"
+                },
+                13
+              ]
+            ],
+            "lib/type": "mbql.stage/mbql",
+            "source-table": 2,
+            "aggregation": [
+              [
+                "sum",
+                {
+                  "lib/uuid": "9ffa421f-354e-4aee-9281-b3307d5dd629"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "debeffbc-09c4-41f3-86ca-433610147de8",
+                    "base-type": "type/Integer",
+                    "effective-type": "type/Integer"
+                  },
+                  2
+                ]
+              ]
+            ],
+            "filters": [
+              [
+                "between",
+                {
+                  "lib/uuid": "48fa4f3d-9b35-42ee-ad55-46c49ec87b51"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "d2083538-c367-43f1-83c7-802caec1c719",
+                    "base-type": "type/DateTime",
+                    "effective-type": "type/DateTime"
+                  },
+                  13
+                ],
+                "2021-01-01",
+                "2024-01-23"
+              ],
+              [
+                "=",
+                {
+                  "lib/uuid": "98cd26bd-435e-4b81-936b-7879c4f9dea5"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "16a266f7-7f20-498f-9592-2190c3908b07",
+                    "base-type": "type/Integer",
+                    "effective-type": "type/Integer"
+                  },
+                  14
+                ],
+                165
+              ]
+            ]
+          }
+        ]
+      },
+      "id": 643,
+      "display": "smartscalar",
+      "entity_id": "BQAQ6YNiUIMfmAPLpSKQW",
+      "visualization_settings": {},
+      "timestamp": "2025-10-31T15:46:53.797918Z",
+      "model": "card"
+    },
+    {
+      "id": 10,
+      "name": "Doc for Ed",
+      "description": "",
+      "model": "document",
+      "can_write": true,
+      "timestamp": "2025-10-30T18:07:39.148211Z",
+      "parent_collection": {
+        "id": 63,
+        "name": "Examplessssss",
+        "authority_level": null
+      }
+    },
+    {
+      "id": 9,
+      "name": "this is a doc with a space   ",
+      "description": "",
+      "model": "document",
+      "can_write": true,
+      "timestamp": "2025-10-30T17:08:52.419607Z",
+      "parent_collection": {
+        "id": 6,
+        "name": "Nicholas Fitzpatrick's Personal Collection",
+        "authority_level": null
+      }
+    },
+    {
+      "description": "Cumulative revenue overlaid with number of orders placed each month",
+      "can_write": true,
+      "database_id": 1,
+      "name": "Revenue and orders over time",
+      "parent_collection": {
+        "id": 63,
+        "name": "Examplessssss",
+        "authority_level": null
+      },
+      "dashboard": null,
+      "moderated_status": null,
+      "dataset_query": {
+        "lib/type": "mbql/query",
+        "lib/metadata": null,
+        "database": 1,
+        "stages": [
+          {
+            "breakout": [
+              [
+                "field",
+                {
+                  "lib/uuid": "5664d516-4a4d-4289-a73d-dd40ec2d53af",
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "quarter",
+                  "effective-type": "type/DateTime"
+                },
+                13
+              ],
+              [
+                "field",
+                {
+                  "lib/uuid": "80ab07df-3dd8-4d18-9a9a-84797413ca40",
+                  "base-type": "type/Text",
+                  "source-field": 14,
+                  "effective-type": "type/Text"
+                },
+                18
+              ]
+            ],
+            "lib/type": "mbql.stage/mbql",
+            "source-table": 2,
+            "aggregation": [
+              [
+                "metric",
+                {
+                  "lib/uuid": "95303164-8597-4bd4-ab34-b469f3f33a41"
+                },
+                615
+              ],
+              [
+                "sum",
+                {
+                  "lib/uuid": "38594937-70d2-4481-ae1c-cf640c0dddb7"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "64c79ade-448d-4d14-a2d1-a2f8c469de47",
+                    "base-type": "type/Integer",
+                    "effective-type": "type/Integer"
+                  },
+                  2
+                ]
+              ],
+              [
+                "sum",
+                {
+                  "lib/uuid": "4b555189-a044-4a12-9bd0-49c80e9a59bf"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "646fc38b-9862-4404-a1ff-aae658c61b70",
+                    "base-type": "type/Float",
+                    "effective-type": "type/Float"
+                  },
+                  3
+                ]
+              ],
+              [
+                "count",
+                {
+                  "lib/uuid": "70e367b3-dd8d-4b41-bfd7-3731240413c3"
+                }
+              ]
+            ],
+            "filters": [
+              [
+                "time-interval",
+                {
+                  "include-current": true,
+                  "lib/uuid": "3546b958-1e70-40c3-974e-db5cebe2523a"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "acce2bad-2f5b-4c1b-9a3c-48f6fbdc95d4",
+                    "base-type": "type/DateTime",
+                    "effective-type": "type/DateTime"
+                  },
+                  13
+                ],
+                -2,
+                "year"
+              ]
+            ]
+          }
+        ]
+      },
+      "id": 618,
+      "display": "combo",
+      "entity_id": "VFCGVYPVtLzCtt4teeoW4",
+      "visualization_settings": {
+        "graph.show_trendline": false,
+        "graph.y_axis.title_text": "",
+        "graph.show_values": true,
+        "graph.series_order_dimension": null,
+        "graph.x_axis.title_text": "",
+        "graph.label_value_frequency": "fit",
+        "graph.metrics": ["sum", "sum_2"],
+        "graph.tooltip_columns": [
+          "[\"name\",\"count\"]",
+          "[\"name\",\"sum_3\"]"
+        ],
+        "graph.label_value_formatting": "compact",
+        "graph.series_order": null,
+        "column_settings": {},
+        "series_settings": {
+          "sum": {
+            "color": "#88BF4D",
+            "line.interpolate": "linear",
+            "line.marker_enabled": false,
+            "line.size": "L",
+            "line.style": "solid",
+            "title": "Revenue"
+          },
+          "sum_2": {
+            "color": "#7172AD",
+            "title": "Orders"
+          }
+        },
+        "graph.dimensions": ["CREATED_AT"],
+        "stackable.stack_type": "stacked"
+      },
+      "timestamp": "2025-10-30T15:52:43.018894Z",
+      "model": "card"
+    },
+    {
+      "description": "Shows the distribution of the product categories along the scale of customer ratings",
+      "can_write": true,
+      "database_id": 1,
+      "name": "Customer satisfaction per category",
+      "parent_collection": {
+        "id": 63,
+        "name": "Examplessssss",
+        "authority_level": null
+      },
+      "dashboard": null,
+      "moderated_status": null,
+      "dataset_query": {
+        "lib/type": "mbql/query",
+        "lib/metadata": null,
+        "database": 1,
+        "stages": [
+          {
+            "order-by": [
+              [
+                "desc",
+                {
+                  "lib/uuid": "f7e803ce-72f0-4a0e-83bc-66ad20b1dc1d"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "7d8e1921-085a-45cc-8c41-58cefe91325b",
+                    "base-type": "type/Float",
+                    "source-field": 14,
+                    "binning": {
+                      "strategy": "default"
+                    },
+                    "effective-type": "type/Float"
+                  },
+                  16
+                ]
+              ]
+            ],
+            "lib/type": "mbql.stage/mbql",
+            "source-table": 2,
+            "aggregation": [
+              [
+                "count",
+                {
+                  "lib/uuid": "fc881af7-46b4-4a0a-b957-8825281cc87d"
+                }
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                {
+                  "lib/uuid": "37427860-829f-420a-bcfe-66f54c2ab632",
+                  "base-type": "type/Float",
+                  "source-field": 14,
+                  "effective-type": "type/Float"
+                },
+                16
+              ],
+              [
+                "field",
+                {
+                  "lib/uuid": "4cdaf659-7fef-4adf-a418-b990e7ff6417",
+                  "base-type": "type/Text",
+                  "source-field": 14,
+                  "effective-type": "type/Text"
+                },
+                18
+              ]
+            ],
+            "filters": [
+              [
+                "!=",
+                {
+                  "lib/uuid": "b51da1ae-b42a-4d67-b4bc-9afede4851c6"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "257fd524-d694-4215-830b-aca3ac44c707",
+                    "base-type": "type/Text",
+                    "source-field": 14,
+                    "effective-type": "type/Text"
+                  },
+                  17
+                ],
+                "Incredible Aluminum Knife"
+              ]
+            ]
+          }
+        ]
+      },
+      "id": 609,
+      "display": "bar",
+      "entity_id": "OJ-I03ZsQ7IBrzr29B_8o",
+      "visualization_settings": {
+        "graph.y_axis.title_text": "",
+        "graph.show_values": true,
+        "graph.x_axis.title_text": "",
+        "graph.metrics": ["count"],
+        "graph.label_value_formatting": "compact",
+        "series_settings": {
+          "Doohickey": {
+            "color": "#7172AD"
+          },
+          "Gadget": {
+            "color": "#999AC4"
+          },
+          "Gizmo": {
+            "color": "#227FD2"
+          },
+          "Widget": {
+            "color": "#C7EAEA"
+          }
+        },
+        "graph.x_axis.scale": "histogram",
+        "graph.dimensions": ["RATING", "CATEGORY"],
+        "stackable.stack_type": "stacked"
+      },
+      "timestamp": "2025-10-30T14:25:34.827662Z",
+      "model": "card"
+    },
+    {
+      "description": null,
+      "can_write": true,
+      "database_id": 1,
+      "name": "Orders",
+      "parent_collection": {
+        "id": 6,
+        "name": "Nicholas Fitzpatrick's Personal Collection",
+        "authority_level": null
+      },
+      "dashboard": null,
+      "moderated_status": null,
+      "dataset_query": {
+        "lib/type": "mbql/query",
+        "lib/metadata": null,
+        "database": 1,
+        "stages": [
+          {
+            "lib/type": "mbql.stage/mbql",
+            "source-table": 2
+          }
+        ]
+      },
+      "id": 644,
+      "display": "table",
+      "entity_id": "sm5FJSCKfmKDp5G_liNGa",
+      "visualization_settings": {
+        "table.cell_column": "SUBTOTAL"
+      },
+      "timestamp": "2025-10-30T14:22:52.968121Z",
+      "model": "card"
+    },
+    {
+      "description": null,
+      "can_write": true,
+      "database_id": 5,
+      "name": "Alexes Dataset 2",
+      "parent_collection": {
+        "id": "root",
+        "name": "Our analytics",
+        "authority_level": null
+      },
+      "moderated_status": null,
+      "id": 211,
+      "timestamp": "2025-10-30T14:22:52.853356Z",
+      "model": "dataset"
+    },
+    {
+      "id": 10,
+      "name": "Empty",
+      "description": null,
+      "model": "dashboard",
+      "can_write": true,
+      "timestamp": "2025-10-30T14:22:52.648448Z",
+      "moderated_status": null,
+      "parent_collection": {
+        "id": "root",
+        "name": "Our analytics",
+        "authority_level": null
+      }
+    },
+    {
+      "description": null,
+      "can_write": true,
+      "database_id": 1,
+      "name": "Orders, Count, Grouped by Created At: Month",
+      "parent_collection": {
+        "id": "root",
+        "name": "Our analytics",
+        "authority_level": null
+      },
+      "dashboard": null,
+      "moderated_status": null,
+      "dataset_query": {
+        "lib/type": "mbql/query",
+        "lib/metadata": null,
+        "database": 1,
+        "stages": [
+          {
+            "source-table": 2,
+            "lib/type": "mbql.stage/mbql",
+            "aggregation": [
+              [
+                "count",
+                {
+                  "lib/uuid": "f9198453-a84a-42df-a68c-bdeb2776952f"
+                }
+              ]
+            ],
+            "breakout": [
+              [
+                "field",
+                {
+                  "lib/uuid": "a52a0808-2d8e-4574-be9d-bab8dbf4dcb3",
+                  "effective-type": "type/DateTime",
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                },
+                13
+              ]
+            ]
+          }
+        ]
+      },
+      "id": 231,
+      "display": "line",
+      "entity_id": "8EH26uyG2iGSuw60dRHEf",
+      "visualization_settings": {
+        "graph.x_axis.scale": "timeseries",
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"]
+      },
+      "timestamp": "2025-10-30T13:18:38.915053Z",
+      "model": "card"
+    },
+    {
+      "description": "Confirmed Sample Company orders for a product, from a user.",
+      "can_write": true,
+      "name": "ORDERS",
+      "table_schema": "PUBLIC",
+      "id": 2,
+      "database": {
+        "id": 1,
+        "name": "Sample Database",
+        "initial_sync_status": "complete"
+      },
+      "timestamp": "2025-10-29T20:00:33.685792Z",
+      "display_name": "Orders",
+      "model": "table"
+    }
+  ],
+
+  "search": {
+    "data": [
+      {
+        "description": "Includes a catalog of all the products ever sold by the famed Sample Company.",
+        "archived": null,
+        "table_id": 3,
+        "bookmark": false,
+        "database_id": 1,
+        "last_editor_common_name": null,
+        "database_name": "Sample Database",
+        "pk_ref": null,
+        "name": "Products",
+        "table_schema": "PUBLIC",
+        "creator_common_name": null,
+        "updated_at": "2025-10-27T19:17:04.003263Z",
+        "effective_location": null,
+        "id": 3,
+        "last_edited_at": null,
+        "table_description": "Includes a catalog of all the products ever sold by the famed Sample Company.",
+        "context": null,
+        "scores": [
+          {
+            "score": 0.86535015918634259333,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.86535015918634259333
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 1,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 1,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 5
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0.52608788929012345667,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 2.63043944645061728335
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.7206637,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.6033186316490173
+          },
+          {
+            "score": 0.8,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.6
+          }
+        ],
+        "initial_sync_status": "complete",
+        "table_name": "PRODUCTS",
+        "collection": {
+          "id": null,
+          "name": null,
+          "authority_level": null,
+          "type": null
+        },
+        "created_at": "2025-09-02T13:00:34.777655Z",
+        "model": "table"
+      },
+      {
+        "description": null,
+        "archived": null,
+        "table_id": 15772,
+        "bookmark": false,
+        "database_id": 3,
+        "last_editor_common_name": null,
+        "database_name": "test-data (h2)",
+        "pk_ref": null,
+        "name": "Products",
+        "table_schema": "PUBLIC",
+        "creator_common_name": null,
+        "updated_at": "2025-10-01T13:25:43.390261Z",
+        "effective_location": null,
+        "id": 15772,
+        "last_edited_at": null,
+        "table_description": null,
+        "context": null,
+        "scores": [
+          {
+            "score": 0e-20,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 1,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 1,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 5
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.710937,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.554685115814209
+          },
+          {
+            "score": 0.8,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.6
+          }
+        ],
+        "initial_sync_status": "complete",
+        "table_name": "PRODUCTS",
+        "collection": {
+          "id": null,
+          "name": null,
+          "authority_level": null,
+          "type": null
+        },
+        "created_at": "2025-10-01T13:25:41.501527Z",
+        "model": "table"
+      },
+      {
+        "description": "Confirmed Sample Company orders for a product, from a user.",
+        "archived": null,
+        "table_id": 2,
+        "bookmark": false,
+        "database_id": 1,
+        "last_editor_common_name": null,
+        "database_name": "Sample Database",
+        "pk_ref": null,
+        "name": "Orders",
+        "table_schema": "PUBLIC",
+        "creator_common_name": null,
+        "updated_at": "2025-10-27T19:17:04.003263Z",
+        "effective_location": null,
+        "id": 2,
+        "last_edited_at": null,
+        "table_description": "Confirmed Sample Company orders for a product, from a user.",
+        "context": null,
+        "scores": [
+          {
+            "score": 0.86535015918634259333,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.86535015918634259333
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 1.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 2.0
+          },
+          {
+            "score": 0.93302364781635802333,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 4.66511823908179011665
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.8,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.6
+          }
+        ],
+        "initial_sync_status": "complete",
+        "table_name": "ORDERS",
+        "collection": {
+          "id": null,
+          "name": null,
+          "authority_level": null,
+          "type": null
+        },
+        "created_at": "2025-09-02T13:00:34.777655Z",
+        "model": "table"
+      },
+      {
+        "description": "Compares the total number of orders placed for this product this month with the previous period",
+        "archived": false,
+        "display_type": "smartscalar",
+        "collection_position": 2,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Aerodynamic Copper Knife trend",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-30T13:37:23.457291Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 643,
+        "last_edited_at": "2025-10-29T18:33:34.731853Z",
+        "dashboardcard_count": 0,
+        "context": null,
+        "display": "smartscalar",
+        "scores": [
+          {
+            "score": 0.99363339155169753086,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.99363339155169753086
+          },
+          {
+            "score": 1,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.1300390117035111,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.2600780234070222
+          },
+          {
+            "score": 0.9938184441612654321,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 4.9690922208063271605
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Shows the distribution of the product categories along the scale of customer ratings",
+        "archived": false,
+        "display_type": "bar",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Customer satisfaction per category",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:33.912948Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 609,
+        "last_edited_at": "2025-10-29T18:33:33.912948Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "bar",
+        "scores": [
+          {
+            "score": 0.95860277186304012333,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.95860277186304012333
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.018577001671930157,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.03715400334386031
+          },
+          {
+            "score": 0.95860279205632716,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 4.7930139602816358
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Reviews that Sample Company customers have left on our products.",
+        "archived": null,
+        "table_id": 4,
+        "bookmark": false,
+        "database_id": 1,
+        "last_editor_common_name": null,
+        "database_name": "Sample Database",
+        "pk_ref": null,
+        "name": "Reviews",
+        "table_schema": "PUBLIC",
+        "creator_common_name": null,
+        "updated_at": "2025-10-27T19:17:04.003263Z",
+        "effective_location": null,
+        "id": 4,
+        "last_edited_at": null,
+        "table_description": "Reviews that Sample Company customers have left on our products.",
+        "context": null,
+        "scores": [
+          {
+            "score": 0.86535015918634259333,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.86535015918634259333
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.12368583797155239,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.24737167594310477
+          },
+          {
+            "score": 0.42522260353935185333,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 2.12611301769675926665
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.8,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.6
+          }
+        ],
+        "initial_sync_status": "complete",
+        "table_name": "REVIEWS",
+        "collection": {
+          "id": null,
+          "name": null,
+          "authority_level": null,
+          "type": null
+        },
+        "created_at": "2025-09-02T13:00:34.777655Z",
+        "model": "table"
+      },
+      {
+        "description": "Indicates the average customer review of our products",
+        "archived": false,
+        "display_type": "gauge",
+        "collection_position": 1,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Nicholas Fitzpatrick",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Average product rating",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-30T13:38:03.753781Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 1,
+        "id": 628,
+        "last_edited_at": "2025-10-30T13:38:03.779295Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "gauge",
+        "scores": [
+          {
+            "score": 0.99363339067399691358,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.99363339067399691358
+          },
+          {
+            "score": 1,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.09288500835965079,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.18577001671930157
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.6957388,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.478693962097168
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Orders for each product, grouped by product category",
+        "archived": false,
+        "display_type": "pie",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Product breakdown",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.023894Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 613,
+        "last_edited_at": "2025-10-29T18:33:34.023894Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "pie",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.710937,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.554685115814209
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Breaks down the overall performance of each of the product categories",
+        "archived": false,
+        "display_type": "pie",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Total orders by product category",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.412968Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 626,
+        "last_edited_at": "2025-10-29T18:33:34.412968Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "pie",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.6957388,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.478693962097168
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "An ordered list of our most successful products",
+        "archived": false,
+        "display_type": "row",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Best selling products",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.430234Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 627,
+        "last_edited_at": "2025-10-29T18:33:34.430234Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "row",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.6957388,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.478693962097168
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Shows a distribution of orders broken down by product category across our customers' individual age values",
+        "archived": false,
+        "display_type": "bar",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Product category orders per age",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.346254Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 624,
+        "last_edited_at": "2025-10-29T18:33:34.346254Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "bar",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.6957388,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.478693962097168
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Monthly revenue broken down by products",
+        "archived": false,
+        "display_type": "bar",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Revenue by product category",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.226378Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 619,
+        "last_edited_at": "2025-10-29T18:33:34.226378Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "bar",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.6957388,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.478693962097168
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Shows a distribution of orders broken down by product categories across our customers' age groups",
+        "archived": false,
+        "display_type": "bar",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Product category orders per age group",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:33.944774Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 610,
+        "last_edited_at": "2025-10-29T18:33:33.944774Z",
+        "dashboardcard_count": 0,
+        "context": null,
+        "display": "bar",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.6957388,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.478693962097168
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Compares the orders of each category quarter over quarter",
+        "archived": false,
+        "display_type": "line",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Orders by product category",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.525869Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 630,
+        "last_edited_at": "2025-10-29T18:33:34.525869Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "line",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.66871977,
+            "name": "text",
+            "weight": 5,
+            "contribution": 3.3435988426208496
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Canonical metric for revenue across all product lines",
+        "archived": false,
+        "display_type": "line",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Revenue",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.109625Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 615,
+        "last_edited_at": "2025-10-29T18:33:34.109625Z",
+        "dashboardcard_count": 0,
+        "context": null,
+        "display": "line",
+        "scores": [
+          {
+            "score": 0.96061972074652777667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.96061972074652777667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 1.0,
+            "name": "model",
+            "weight": 2,
+            "contribution": 2.0
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "metric"
+      },
+      {
+        "description": "Sample orders joined with products",
+        "archived": false,
+        "display_type": "table",
+        "collection_position": 3,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Orders + People",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-30T13:37:23.457291Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 607,
+        "last_edited_at": "2025-10-29T18:33:33.834382Z",
+        "dashboardcard_count": 0,
+        "context": null,
+        "display": "table",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 1,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.8,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.6
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "dataset"
+      },
+      {
+        "description": "Compares the total number of orders placed for this product this month with the previous period",
+        "archived": false,
+        "display_type": "smartscalar",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Heavy-Duty Silk Chair trend",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.575008Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 632,
+        "last_edited_at": "2025-10-29T18:33:34.575008Z",
+        "dashboardcard_count": 0,
+        "context": null,
+        "display": "smartscalar",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Total sum of products sold last quarter compared to the previous",
+        "archived": false,
+        "display_type": "smartscalar",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Quantity sold per quarter",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.598191Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 633,
+        "last_edited_at": "2025-10-29T18:33:34.598191Z",
+        "dashboardcard_count": 0,
+        "context": null,
+        "display": "smartscalar",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Compares the total number of orders placed for this product this month with the previous period",
+        "archived": false,
+        "display_type": "smartscalar",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Enormous Wool Car trend",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:34.615186Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 635,
+        "last_edited_at": "2025-10-29T18:33:34.615186Z",
+        "dashboardcard_count": 0,
+        "context": null,
+        "display": "smartscalar",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0e-20,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      },
+      {
+        "description": "Feedback on our products via weekly survey",
+        "archived": false,
+        "display_type": "table",
+        "collection_position": null,
+        "bookmark": false,
+        "can_write": true,
+        "database_id": 1,
+        "last_editor_common_name": "Metabase Internal",
+        "pk_ref": null,
+        "official_collection": null,
+        "name": "Customer survey responses",
+        "creator_common_name": "Metabase Internal",
+        "collection_authority_level": null,
+        "creator_id": 13371338,
+        "updated_at": "2025-10-29T18:33:33.976289Z",
+        "moderated_status": null,
+        "effective_location": null,
+        "last_editor_id": 13371338,
+        "id": 611,
+        "last_edited_at": "2025-10-29T18:33:33.976289Z",
+        "dashboardcard_count": 1,
+        "context": null,
+        "display": "table",
+        "scores": [
+          {
+            "score": 0.92597405497145061667,
+            "name": "recency",
+            "weight": 1,
+            "contribution": 0.92597405497145061667
+          },
+          {
+            "score": 0,
+            "name": "pinned",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "bookmarked",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "official-collection",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.1,
+            "name": "dashboard",
+            "weight": 0,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "prefix",
+            "weight": 0,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "mine",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0,
+            "name": "exact",
+            "weight": 5,
+            "contribution": 0
+          },
+          {
+            "score": 0.0,
+            "name": "view-count",
+            "weight": 2,
+            "contribution": 0.0
+          },
+          {
+            "score": 0e-20,
+            "name": "user-recency",
+            "weight": 5,
+            "contribution": 0e-20
+          },
+          {
+            "score": 0,
+            "name": "verified",
+            "weight": 1,
+            "contribution": 0
+          },
+          {
+            "score": 0.24317084,
+            "name": "text",
+            "weight": 5,
+            "contribution": 1.215854212641716
+          },
+          {
+            "score": 0.5833333333333334,
+            "name": "model",
+            "weight": 2,
+            "contribution": 1.1666666666666667
+          }
+        ],
+        "collection": {
+          "id": 63,
+          "name": "Examplessssss",
+          "authority_level": null,
+          "type": null
+        },
+        "verified": null,
+        "created_at": "2025-10-21T21:31:52.970561Z",
+        "model": "card"
+      }
+    ],
+    "limit": 20,
+    "models": [
+      "dashboard",
+      "table",
+      "dataset",
+      "segment",
+      "collection",
+      "transform",
+      "document",
+      "database",
+      "action",
+      "indexed-entity",
+      "metric",
+      "card"
+    ],
+    "offset": 0,
+    "table_db_id": null,
+    "engine": "search.engine/appdb",
+    "total": 20
+  }
+}

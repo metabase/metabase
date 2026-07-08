@@ -4,14 +4,15 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import {
   focusOutlineStyle,
   inputPadding,
   inputTypography,
 } from "metabase/common/style/input";
-import { color } from "metabase/lib/colors";
-import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
+import type { ColorName } from "metabase/ui/colors/types";
+import { color } from "metabase/ui/utils/colors";
 
 import type { InputSize } from "../../style/types";
 
@@ -23,7 +24,7 @@ interface InputProps {
   hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
   hasClearButton?: boolean;
-  colorScheme: string;
+  colorScheme: ColorName;
 }
 
 interface InputRootProps {
@@ -60,12 +61,12 @@ export const InputField = styled.input<InputProps>`
   ${(props) => inputTypography(props.fieldSize)}
   font-family: inherit;
   color: var(--mb-color-text-primary);
-  border: 1px solid var(--mb-color-border);
-  border-radius: ${space(1)};
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-spacing-sm);
   background-color: ${(props) =>
     props.readOnly
-      ? "var(--mb-color-background-disabled)"
-      : "var(--mb-color-background)"};
+      ? "var(--mb-color-background_surface-disabled)"
+      : "var(--mb-color-background_page-primary)"};
   outline: none;
   text-align: inherit;
 
@@ -77,7 +78,7 @@ export const InputField = styled.input<InputProps>`
 
   &:disabled {
     cursor: default;
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background_page-secondary);
   }
 
   ${(props) => focusOutlineStyle(props.colorScheme)};
@@ -85,7 +86,7 @@ export const InputField = styled.input<InputProps>`
   ${(props) =>
     props.hasError &&
     css`
-      border-color: var(--mb-color-error);
+      border-color: var(--mb-color-feedback-negative);
     `};
 
   ${(props) =>
@@ -124,7 +125,7 @@ type InputButtonProps = {
 const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
   color: ${(props) =>
-    color(props.onClick != null ? "text-dark" : "text-light")};
+    color(props.onClick != null ? "text-primary" : "text-disabled")};
   padding: ${(props) => (props.size === "small" ? "0.5rem" : "0.75rem")};
   border-radius: 50%;
   bottom: ${(props) => (props.size === "large" ? "0.125rem" : 0)};
@@ -154,7 +155,7 @@ export const InputResetButton = styled(InputButton, {
 `;
 
 export const InputSubtitle = styled.div`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   position: absolute;
   top: 1.25em;
   left: 1.25em;

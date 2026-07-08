@@ -1,5 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Undo } from "metabase-types/store/undo";
+import type { Undo } from "metabase/redux/store/undo";
 
 import { UndoListing } from "./UndoListing";
 

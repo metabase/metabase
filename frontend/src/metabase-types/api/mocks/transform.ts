@@ -1,44 +1,115 @@
 import type {
+  DatabaseId,
+  InspectorCard,
+  InspectorSource,
+  ListTransformJobRunsResponse,
+  ListTransformRunsResponse,
+  PythonTransformTableAliases,
   Transform,
   TransformJob,
+  TransformJobRun,
+  TransformOwner,
   TransformRun,
+  TransformRunForJobRun,
   TransformSource,
   TransformTag,
   TransformTarget,
+  UpdateTransformRequest,
 } from "metabase-types/api";
 
-import { createMockStructuredDatasetQuery } from "./query";
+import {
+  createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+} from "./query";
 
-export function createMockTransformSource(
-  opts?: Partial<TransformSource>,
-): TransformSource {
+export function createMockTransformOwner(
+  opts?: Partial<TransformOwner>,
+): TransformOwner {
+  return {
+    id: 1,
+    email: "owner@example.com",
+    first_name: "Test",
+    last_name: "Owner",
+    ...opts,
+  };
+}
+
+export function createMockTransformSource(): TransformSource {
   return {
     type: "query",
     query: createMockStructuredDatasetQuery(),
-    ...opts,
+  };
+}
+
+export function createMockPythonTransformSource({
+  sourceDatabase = 1,
+  sourceTables = [],
+  body = "# Python script\nprint('Hello, world!')",
+}: {
+  sourceDatabase?: DatabaseId;
+  sourceTables?: PythonTransformTableAliases;
+  body?: string;
+}): TransformSource {
+  return {
+    type: "python",
+    body,
+    "source-database": sourceDatabase,
+    "source-tables": sourceTables,
   };
 }
 
 export function createMockTransformTarget(
   opts?: Partial<TransformTarget>,
 ): TransformTarget {
-  return {
-    type: "table",
+  const base = {
+    type: "table" as const,
     name: "Table",
     schema: null,
+    database: 1,
+  };
+
+  if (opts?.type === "table-incremental") {
+    return {
+      ...base,
+      ...opts,
+      type: "table-incremental",
+      "target-incremental-strategy": opts["target-incremental-strategy"] ?? {
+        type: "append",
+      },
+    };
+  }
+
+  return {
+    ...base,
     ...opts,
+    type: "table",
   };
 }
 
 export function createMockTransform(opts?: Partial<Transform>): Transform {
+  const source = opts?.source ?? createMockTransformSource();
+
+  function getSourceType() {
+    if (source.type === "python") {
+      return "python";
+    } else if (source.type === "query" && "query" in source) {
+      return "native";
+    }
+
+    return "mbql";
+  }
+
   return {
     id: 1,
     name: "Transform",
     description: null,
     source: createMockTransformSource(),
-    target: createMockTransformTarget(),
+    source_type: opts?.source_type ?? getSourceType(),
+    target: opts?.target ?? createMockTransformTarget(),
+    collection_id: null,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    source_readable: true,
     ...opts,
   };
 }
@@ -57,6 +128,63 @@ export function createMockTransformRun(
   };
 }
 
+export function createMockListTransformRunsResponse(
+  opts?: Partial<ListTransformRunsResponse>,
+): ListTransformRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
+export function createMockTransformJobRun(
+  opts?: Partial<TransformJobRun>,
+): TransformJobRun {
+  return {
+    id: 1,
+    job_id: 1,
+    status: "succeeded",
+    run_method: "cron",
+    start_time: "2000-01-01T00:00:00Z",
+    end_time: "2000-01-01T00:00:00Z",
+    message: null,
+    is_active: false,
+    created_at: "2000-01-01T00:00:00Z",
+    updated_at: "2000-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockListTransformJobRunsResponse(
+  opts?: Partial<ListTransformJobRunsResponse>,
+): ListTransformJobRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
+export function createMockTransformRunForJobRun(
+  opts?: Partial<TransformRunForJobRun>,
+): TransformRunForJobRun {
+  return {
+    ...createMockTransformRun(),
+    transform_id: 1,
+    job_run_id: 1,
+    transform_name: "Transform",
+    transform_entity_id: null,
+    metered_as: null,
+    user_id: null,
+    ...opts,
+  };
+}
+
 export function createMockTransformTag(
   opts?: Partial<TransformTag>,
 ): TransformTag {
@@ -65,6 +193,7 @@ export function createMockTransformTag(
     name: "Tag",
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    can_run: true,
     ...opts,
   };
 }
@@ -77,8 +206,46 @@ export function createMockTransformJob(
     name: "Job",
     description: null,
     schedule: "0 0 0 * * ? *",
+    ui_display_type: "cron/builder",
+    active: true,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockUpdateTransformRequest(
+  opts?: Partial<UpdateTransformRequest>,
+): UpdateTransformRequest {
+  return {
+    id: 1,
+    ...opts,
+  };
+}
+
+export function createMockTransformInspectSource(
+  opts?: Partial<InspectorSource>,
+): InspectorSource {
+  return {
+    table_name: "Table",
+    column_count: 0,
+    fields: [],
+    ...opts,
+  };
+}
+
+export function createMockInspectorCard(
+  opts?: Partial<InspectorCard>,
+): InspectorCard {
+  return {
+    id: "card-1",
+    title: "Card",
+    display: "scalar",
+    dataset_query: createMockNativeDatasetQuery(),
+    metadata: {
+      card_type: "table_count",
+      dedup_key: ["table-1"],
+    },
     ...opts,
   };
 }

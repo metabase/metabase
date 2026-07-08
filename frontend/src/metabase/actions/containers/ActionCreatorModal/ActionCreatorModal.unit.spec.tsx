@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCardsEndpoints,
@@ -14,7 +13,8 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,

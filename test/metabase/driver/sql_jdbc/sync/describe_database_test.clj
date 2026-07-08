@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-database-test
   {:clj-kondo/config '{:linters
                        ;; allowing this for now since sync doesn't work with Metadata Providers
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc.sync.describe-database-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -12,10 +13,11 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -62,52 +64,57 @@
         :redshift))
 
 (deftest fast-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (sql-jdbc.execute/do-with-connection-with-options
-          (or driver/*driver* :h2)
-          (mt/db)
-          nil
-          (fn [^Connection conn]
-            ;; We have to mock this to make it work with all DBs
-            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
-                   (map :name)
-                   sort)))))))
+  (is (set/subset? #{"CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS"
+                     "REVIEWS" "USERS" "VENUES"}
+                   (sql-jdbc.execute/do-with-connection-with-options
+                    (or driver/*driver* :h2)
+                    (mt/db)
+                    nil
+                    (fn [^Connection conn]
+                      ;; We have to mock this to make it work with all DBs
+                      (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas
+                                                  (constantly #{"PUBLIC"})]
+                        (->> (into [] (sql-jdbc.describe-database/fast-active-tables
+                                       (or driver/*driver* :h2) conn nil nil))
+                             (map :name)
+                             set)))))))
 
 (deftest post-filtered-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (sql-jdbc.execute/do-with-connection-with-options
-          :h2
-          (mt/db)
-          nil
-          (fn [^Connection conn]
-            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
-                 (map :name)
-                 sort))))))
+  (is (set/subset? #{"CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS"
+                     "REVIEWS" "USERS" "VENUES"}
+                   (sql-jdbc.execute/do-with-connection-with-options
+                    :h2
+                    (mt/db)
+                    nil
+                    (fn [^Connection conn]
+                      (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables
+                                     :h2 conn nil nil))
+                           (map :name)
+                           set))))))
 
 (deftest describe-database-test
-  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil, :is_writable true}
-                    {:name "VENUES", :schema "PUBLIC", :description nil, :is_writable true}
-                    {:name "CATEGORIES", :schema "PUBLIC", :description nil, :is_writable true}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil, :is_writable true}
-                    {:name "ORDERS", :schema "PUBLIC", :description nil, :is_writable true}
-                    {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable true}
-                    {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable true}
-                    {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable true}}}
-         (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
+  (is (set/subset? #{{:name "USERS", :schema "PUBLIC", :description nil, :is_writable true}
+                     {:name "VENUES", :schema "PUBLIC", :description nil, :is_writable true}
+                     {:name "CATEGORIES", :schema "PUBLIC", :description nil, :is_writable true}
+                     {:name "CHECKINS", :schema "PUBLIC", :description nil, :is_writable true}
+                     {:name "ORDERS", :schema "PUBLIC", :description nil, :is_writable true}
+                     {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable true}
+                     {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable true}
+                     {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable true}}
+                   (into #{} (:tables (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))))
 
 (defn- describe-database-with-open-resultset-count!
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
   objects the sync process left open. Make sure you wrap ResultSets with `with-open`! Otherwise some JDBC drivers like
   Oracle and Redshift will keep open cursors indefinitely."
   [driver db]
-  (let [orig-result-set-seq jdbc/result-set-seq
+  (let [orig-result-set-seq (mt/original-fn #'jdbc/result-set-seq)
         resultsets          (atom [])]
     ;; swap out `jdbc/result-set-seq` which is what ultimately gets called on result sets with a function that will
     ;; stash the ResultSet object in an atom so we can check whether its closed later
-    (with-redefs [jdbc/result-set-seq (fn [^ResultSet rs & more]
-                                        (swap! resultsets conj rs)
-                                        (apply orig-result-set-seq rs more))]
+    (mt/with-dynamic-fn-redefs [jdbc/result-set-seq (fn [^ResultSet rs & more]
+                                                      (swap! resultsets conj rs)
+                                                      (apply orig-result-set-seq rs more))]
       ;; taking advantage of the fact that `sql-jdbc.describe-database/describe-database` can accept JBDC connections
       ;; instead of databases; by doing this we can keep the connection open and check whether resultsets are still
       ;; open before they would normally get closed
@@ -116,9 +123,10 @@
        db
        nil
        (fn [_conn]
-         (sql-jdbc.describe-database/describe-database driver db)
-         (reduce + (for [^ResultSet rs @resultsets]
-                     (if (.isClosed rs) 0 1))))))))
+         ;; `:tables` is a reducible -- realize it so `active-tables` actually opens (and closes) its ResultSets
+         (let [_ (into [] (:tables (sql-jdbc.describe-database/describe-database driver db)))]
+           (reduce + (for [^ResultSet rs @resultsets]
+                       (if (.isClosed rs) 0 1)))))))))
 
 (defn- count-active-tables-in-db
   [db-id]
@@ -168,12 +176,35 @@
   [_driver _feature _database]
   true)
 
-;;; BigQuery is tested separately in [[metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test]], because
-;;; otherwise this test takes too long and flakes intermittently Redshift is also tested separately because it flakes.
-(doseq [driver [:bigquery-cloud-sdk :redshift]]
+;;; These drivers are tested separately because they take too long and flake in CI
+(doseq [driver [:bigquery-cloud-sdk :redshift :databricks]]
   (defmethod driver/database-supports? [driver ::database-schema-filtering-test]
     [_driver _feature _database]
     false))
+
+(defmulti filtered-db-details
+  "Returns database details for the filtered database tests."
+  {:arglists '([driver filter-type-prop filter-type patterns-type-prop pattern])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod filtered-db-details :default
+  [_driver filter-type-prop filter-type patterns-type-prop pattern]
+  (-> (mt/db)
+      :details
+      (assoc filter-type-prop filter-type
+             patterns-type-prop pattern)))
+
+(defmethod filtered-db-details :snowflake
+  [_driver filter-type-prop filter-type patterns-type-prop pattern]
+  (-> (mt/db)
+      :details
+      (assoc filter-type-prop filter-type
+             patterns-type-prop pattern)
+      (dissoc :private-key-id)
+      (assoc :private-key-options "uploaded"
+             :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
+             :use-password false)))
 
 (deftest database-schema-filtering-test
   (mt/test-drivers (set/intersection (schema-filtering-drivers)
@@ -187,10 +218,8 @@
           (sync-and-assert-filtered-tables
            {:name    (format "Test %s DB with dataset inclusion filters" driver)
             :engine  driver
-            :details (-> (mt/db)
-                         :details
-                         (assoc filter-type-prop "inclusion"
-                                patterns-type-prop "s*,v*,2*"))}
+            :details (filtered-db-details driver filter-type-prop "inclusion"
+                                          patterns-type-prop "public.s*,public.v*,public.2*")}
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (contains? #{\s \v \2} (first schema-name)))))))
@@ -198,10 +227,8 @@
           (sync-and-assert-filtered-tables
            {:name    (format "Test %s DB with dataset exclusion filters" driver)
             :engine  driver
-            :details (-> (mt/db)
-                         :details
-                         (assoc filter-type-prop "exclusion"
-                                patterns-type-prop "v*"))}
+            :details (filtered-db-details driver filter-type-prop "exclusion"
+                                          patterns-type-prop "v*")}
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
@@ -263,15 +290,15 @@
                                                  :+fns [jdbc-describe-database]
                                                  :-features [:table-privileges]})
         (let [closed-first (volatile! false)
-              execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
+              execute-select-probe-query (mt/original-fn #'sql-jdbc.describe-database/execute-select-probe-query)
               all-tables (driver/describe-database driver/*driver* (mt/id))]
-          (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
-                        (fn [driver ^Connection conn query]
-                          (when-not @closed-first
-                            (vreset! closed-first true)
-                            (.close conn))
-                          (execute-select-probe-query driver conn query))]
-            (let [table-names #(->> % :tables (map :name) set)
+          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                                      (fn [driver ^Connection conn query]
+                                        (when-not @closed-first
+                                          (vreset! closed-first true)
+                                          (.close conn))
+                                        (execute-select-probe-query driver conn query))]
+            (let [table-names #(into #{} (map :name) (:tables %))
                   all-tables-sans-one (table-names (driver/describe-database driver/*driver* (mt/id)))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
@@ -283,6 +310,7 @@
      driver/*driver* (mt/db) nil
      (fn [^Connection conn]
        (let [select-probes (atom 0)]
+         ;; query-canceled? is a multimethod, so we can't use with-dynamic-fn-redefs for the pair.
          (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
                        (fn [_driver conn' [sql]]
                          (let [n (swap! select-probes inc)]
@@ -298,7 +326,7 @@
                      :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
                                          (get-method sql-jdbc.sync/have-select-privilege? %))]
                      :-features [:table-privileges]})
-    (letfn [(probe-error-fn [conn sql]
+    (letfn [(probe-error-fn [^Connection conn sql]
               (.close conn)
               (.prepareStatement conn sql))]
       (testing "we will retry syncing a table once if the connection is closed"

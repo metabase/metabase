@@ -1,5 +1,9 @@
 .JoinConditionRoot {
   border-radius: 0.5rem;
   transition: background-color 300ms linear;
-  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 85%);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-core-brand),
+    transparent 85%
+  );
 }

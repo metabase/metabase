@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
-import SelectList from "./SelectList";
+import { SelectList } from "./SelectList";
 
 export default {
   title: "Deprecated/Components/SelectList",

@@ -1,19 +1,24 @@
 import { VisualState, useKBar } from "kbar";
 import { useEffect } from "react";
-import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { getAdminPaths } from "metabase/admin/app/reducers";
 import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route, type WithRouterProps, withRouter } from "metabase/router";
 import type { RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
@@ -22,19 +27,23 @@ import {
   createMockRecentCollectionItem,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import {
-  createMockAdminAppState,
-  createMockAdminState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { PaletteResults } from "../../PaletteResults";
 
 const TestComponent = withRouter(
   ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
-    useCommandPalette({ locationQuery: props.location.query });
+    const {
+      searchRequestId,
+      searchResults,
+      liveSearchTerm,
+      debouncedSearchTerm,
+    } = useCommandPalette({
+      disabled: false,
+      locationQuery: props.location.query,
+    });
 
     const { query } = useKBar();
 
@@ -45,7 +54,15 @@ const TestComponent = withRouter(
       }
     }, [q, query]);
 
-    return <PaletteResults />;
+    return (
+      <PaletteResults
+        locationQuery={props.location.query}
+        searchRequestId={searchRequestId}
+        searchResults={searchResults}
+        liveSearchTerm={liveSearchTerm}
+        debouncedSearchTerm={debouncedSearchTerm}
+      />
+    );
   },
 );
 
@@ -98,7 +115,6 @@ const recents_2 = createMockRecentCollectionItem({
 
 const TOKEN_FEATURES = createMockTokenFeatures({
   content_verification: true,
-  metabot_v3: true,
 });
 
 export interface CommonSetupProps {
@@ -119,10 +135,20 @@ export const commonSetup = ({
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
   setupRecentViewsEndpoints(recents);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
   const adminState = isAdmin
     ? createMockAdminState({
         app: createMockAdminAppState({
-          paths: getAdminPaths(),
+          paths: [
+            {
+              name: "Permissions",
+              path: "/admin/permissions",
+              key: "permissions",
+            },
+            { name: "Settings", path: "/admin/settings", key: "settings" },
+          ],
         }),
       })
     : createMockAdminState();
@@ -132,6 +158,10 @@ export const commonSetup = ({
     settings: mockSettings({ ...settings, "token-features": TOKEN_FEATURES }),
     currentUser: createMockUser({
       is_superuser: isAdmin,
+      permissions: createMockUserPermissions({
+        can_create_queries: true,
+        can_create_native_queries: true,
+      }),
     }),
   });
 

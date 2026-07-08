@@ -6,9 +6,11 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { act, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { renderWithProviders, screen } from "__support__/ui";
+import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
 import {
@@ -17,9 +19,6 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
-
-import { QuestionDownloadWidget } from "./QuestionDownloadWidget";
 
 registerVisualizations();
 
@@ -95,7 +94,7 @@ describe("QuestionDownloadWidget", () => {
 
   it("should trigger download on click", async () => {
     const { onDownload } = setup();
-    await act(async () => await userEvent.click(screen.getByText(/csv/)));
+    await userEvent.click(screen.getByText(/csv/));
     await userEvent.click(await screen.findByTestId("download-results-button"));
     expect(onDownload).toHaveBeenCalledWith({
       type: "csv",

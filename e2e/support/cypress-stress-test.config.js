@@ -1,5 +1,27 @@
 const { defineConfig } = require("cypress");
 
-const { stressTestConfig } = require("./config");
+const { defaultConfig } = require("./config");
+const {
+  component: embeddingSdkComponentTestConfig,
+} = require("./cypress-embedding-sdk-component-test.config");
 
-module.exports = defineConfig({ e2e: stressTestConfig });
+const isFailFastEnabled = process.env.FAIL_FAST === "true";
+
+module.exports = defineConfig({
+  e2e: {
+    ...defaultConfig,
+    expose: {
+      ...defaultConfig.expose,
+      FAIL_FAST: isFailFastEnabled,
+    },
+    retries: 0,
+  },
+  component: {
+    ...embeddingSdkComponentTestConfig,
+    expose: {
+      ...embeddingSdkComponentTestConfig.expose,
+      FAIL_FAST: isFailFastEnabled,
+    },
+    retries: 0,
+  },
+});

@@ -1,3 +1,5 @@
+import { openPopoverFromDefaultBucketSize } from "e2e/support/helpers";
+
 const { H } = cy;
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";
@@ -14,6 +16,8 @@ describe("scenarios > binning > correctness > longitude", () => {
   Object.entries(LONGITUDE_OPTIONS).forEach(
     ([bucketSize, { selected, representativeValues }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
+        // Increase viewport to allow checking x-axis ticks values on dense data
+        cy.viewport(1440, 800);
         H.popover().within(() => {
           cy.findByText("More…").click();
           cy.findByText(bucketSize).click();
@@ -23,7 +27,7 @@ describe("scenarios > binning > correctness > longitude", () => {
           .should("contain", "Longitude")
           .and("contain", selected);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
         getTitle(`Count by Longitude: ${selected}`);
@@ -45,7 +49,7 @@ describe("scenarios > binning > correctness > longitude", () => {
       .should("contain", "Longitude")
       .and("contain", "Unbinned");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
 
     getTitle("Count by Longitude");
@@ -56,19 +60,6 @@ describe("scenarios > binning > correctness > longitude", () => {
       .and("contain", "1");
   });
 });
-
-function openPopoverFromDefaultBucketSize(column, bucket) {
-  cy.findAllByTestId("dimension-list-item")
-    .filter(`:contains("${column}")`)
-    .as("targetListItem")
-    .realHover()
-    .within(() => {
-      cy.findByTestId("dimension-list-item-binning")
-        .as("listItemSelectedBinning")
-        .should("contain", bucket)
-        .click();
-    });
-}
 
 function getTitle(title) {
   cy.findByText(title);

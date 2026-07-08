@@ -1,0 +1,82 @@
+.centerCluster {
+  left: 50%;
+  max-width: 100%;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+
+.centerControlsContent {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--mantine-spacing-sm);
+  position: relative;
+}
+
+.centerControls {
+  background: var(--mb-color-background_page-primary);
+  border-radius: 0.75rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  box-sizing: border-box;
+  height: 2.5rem;
+  overflow: hidden;
+}
+
+.controlSection {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.controlSection + .controlSection {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.controlButton {
+  height: 2rem;
+  padding-inline: 1rem;
+  border-radius: 0.5rem;
+
+  &.controlButton:hover {
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.compactCenterControls {
+  display: none;
+}
+
+.centerControlsPopoverDropdown {
+  border-radius: var(--mantine-radius-lg);
+}
+
+.xAxisButton {
+  background: var(--mb-color-background_page-primary);
+  border-radius: 0.75rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  height: 2.5rem;
+  width: 100%;
+
+  &.xAxisButton:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+@container metric-controls (max-width: 36rem) {
+  .centerCluster:not(.noBreakout) {
+    display: none;
+  }
+
+  .compactCenterControls {
+    display: flex;
+    left: 50%;
+    margin-left: var(--mantine-spacing-sm);
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    width: min(14rem, calc(100% - 5rem));
+  }
+}

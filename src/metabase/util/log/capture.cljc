@@ -86,10 +86,8 @@
    (do
      (s/def ::namespace
        (some-fn symbol? string?))
-
      (s/def ::level
        #{:explode :fatal :error :warn :info :debug :trace :whisper})
-
      (s/def ::with-log-messages-for-level-args
        (s/cat :bindings (s/spec (s/+ (s/cat :messages-fn-binding symbol?
                                             :ns-level            (s/or :ns-level (s/spec (s/cat :ns-str ::namespace
@@ -97,7 +95,6 @@
                                                                        :ns       ::namespace
                                                                        :level    ::level))))
               :body     (s/+ any?)))
-
      (defmacro with-log-messages-for-level
        "Capture log messages at a given level in a given namespace and all 'child' namespaces inside `body`.
 
@@ -143,7 +140,6 @@
               `(do-with-log-messages-for-level ~(str ns-str) ~(level->int level) (fn [~messages-fn-binding] ~form))))
           `(do ~@body)
           bindings)))
-
      (s/fdef with-log-messages-for-level
        :args ::with-log-messages-for-level-args
        :ret  any?)))

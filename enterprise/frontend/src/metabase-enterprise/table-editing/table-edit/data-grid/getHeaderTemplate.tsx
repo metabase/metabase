@@ -1,12 +1,11 @@
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Box, Icon } from "metabase/ui";
-import type { OrderByDirection } from "metabase-lib";
+import { Box, Ellipsified, Icon } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type { DatasetColumn } from "metabase-types/api";
 
 import S from "./EditTableDataGrid.module.css";
 
 type Props = {
-  sortDirection?: OrderByDirection;
+  sortDirection?: Lib.OrderByDirection;
   column: DatasetColumn;
   onColumnSort?: (column: DatasetColumn) => void;
 };

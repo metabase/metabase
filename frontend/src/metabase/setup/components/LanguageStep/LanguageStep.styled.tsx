@@ -1,10 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const StepDescription = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin: 0.875rem 0;
 `;
 
@@ -13,7 +13,7 @@ export const LocaleGroup = styled.ol`
   padding: 0.5rem;
   max-height: 17.5rem;
   overflow-y: scroll;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.25rem;
 `;
 
@@ -35,20 +35,21 @@ interface LocaleContainerProps {
 export const LocaleButton = styled.span<LocaleContainerProps>`
   display: block;
   padding: 0.5rem;
-  color: ${(props) => color(props.checked ? "text-white" : "text-dark")};
+  color: ${(props) =>
+    color(props.checked ? "text-primary-inverse" : "text-primary")};
   border-radius: 0.25rem;
   background-color: ${(props) =>
-    props.checked ? color("brand") : color("bg-white")};
+    props.checked ? color("core-brand") : color("background_page-primary")};
   font-weight: 700;
-  border: 2px solid var(--mb-base-color-white);
+  border: 2px solid var(--mb-color-core-white);
 
   &:hover {
-    color: var(--mb-color-text-white);
-    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid var(--mb-color-brand);
+    outline: 2px solid var(--mb-color-core-brand);
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {

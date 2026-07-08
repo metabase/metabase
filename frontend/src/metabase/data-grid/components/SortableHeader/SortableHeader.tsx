@@ -7,7 +7,7 @@ import { type CSSProperties, memo, useCallback, useMemo, useRef } from "react";
 
 import S from "./SortableHeader.module.css";
 
-// if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
+// if header is dragged fewer than this number of pixels we consider it a click instead of a drag
 const HEADER_DRAG_THRESHOLD = 8;
 
 type DragPosition = { x: number; y: number };
@@ -29,7 +29,6 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   style: styleProp,
   onClick,
 }: SortableHeaderProps<TData, TValue>) {
-  const isPinned = header.column.getIsPinned();
   const canResize = header.column.columnDef.enableResizing;
   const headerClickTargetSelector =
     header.column.columnDef.meta?.headerClickTargetSelector;
@@ -38,13 +37,13 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id,
-      disabled: isColumnReorderingDisabled || !!isPinned,
+      disabled: isColumnReorderingDisabled,
     });
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
   const rootStyle = useMemo<CSSProperties>(() => {
-    if (isPinned) {
+    if (isColumnReorderingDisabled) {
       return styleProp ?? {};
     }
     return {
@@ -57,10 +56,10 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       outline: "none",
       ...styleProp,
     };
-  }, [isDragging, transform, isPinned, styleProp]);
+  }, [isDragging, transform, isColumnReorderingDisabled, styleProp]);
 
   const nodeAttributes = useMemo(() => {
-    if (isPinned) {
+    if (isColumnReorderingDisabled) {
       return {};
     }
 
@@ -68,7 +67,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       ...listeners,
       ...attributes,
     };
-  }, [attributes, isPinned, listeners]);
+  }, [attributes, isColumnReorderingDisabled, listeners]);
 
   const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     dragStartPosition.current = { x: e.clientX, y: e.clientY };

@@ -1,0 +1,13 @@
+.container {
+  .title {
+    font-size: var(--mantine-font-size-md);
+    font-weight: 700;
+    line-height: calc(8 / 7);
+  }
+
+  .body {
+    font-size: var(--mantine-font-size-sm);
+    font-weight: 400;
+    line-height: calc(4 / 3);
+  }
+}

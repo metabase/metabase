@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";
@@ -87,7 +87,7 @@ export function ImageUploadWidget({
         description={descriptionProp ?? description}
       />
       {errorMessage && (
-        <Text size="sm" c="error" mb="sm">
+        <Text size="sm" c="feedback-negative" mb="sm">
           {errorMessage}
         </Text>
       )}
@@ -100,7 +100,9 @@ export function ImageUploadWidget({
               align="center"
               justify="center"
               w="7.5rem"
-              style={{ borderRight: "1px solid var(--mb-color-border)" }}
+              style={{
+                borderRight: "1px solid var(--mb-color-border-neutral)",
+              }}
             >
               {!isDefaultImage && typeof imageSource === "string" && (
                 <PreviewImage src={imageSource} aria-label={t`Image preview`} />
@@ -133,7 +135,7 @@ export function ImageUploadWidget({
                   <Button
                     leftSection={<Icon name="close" />}
                     variant="subtle"
-                    c="text-dark"
+                    c="text-primary"
                     ml="md"
                     size="compact-md"
                     onClick={handleRemove}

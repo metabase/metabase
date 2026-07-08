@@ -24,6 +24,33 @@
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private field-name-max-length
+  "Maximum length of the `metabase_field.name` column in the application DB (a `varchar(254)`). Fields whose name is
+  longer than this can't be stored.
+
+  We skip over-long Fields rather than store them, but an alternative worth considering is widening the column
+  instead so these Fields become usable (e.g. BigQuery allows column names up to 300 characters). `name` is part of
+  the `idx_unique_field` unique constraint and the `idx_field_name_lower` index, so any widening is bounded by
+  MySQL/InnoDB's index key-length limit (~3072 bytes at utf8mb4 = 4 bytes/char) — i.e. up to roughly `varchar(512)`,
+  which would cover every warehouse including BigQuery. Truncating is not an option: `name` is the real warehouse
+  column name used to generate SQL, and truncating would break queries and could collide."
+  254)
+
+(mu/defn- remove-fields-with-too-long-names :- [:set i/TableMetadataField]
+  "Drop any Fields in `db-metadata` whose name is too long to store in the application DB (see
+  `field-name-max-length`), logging a warning. A single over-long column name would otherwise fail the INSERT for the
+  entire chunk of Fields it lands in and prevent the rest of the Table from syncing."
+  [table       :- i/TableInstance
+   db-metadata :- [:set i/TableMetadataField]]
+  (let [{too-long true, ok false} (group-by #(< field-name-max-length (count (:name %))) db-metadata)]
+    (when (seq too-long)
+      (log/warnf "Skipping %d Field(s) in %s whose name exceeds %d characters: %s"
+                 (count too-long)
+                 (sync-util/name-for-logging table)
+                 field-name-max-length
+                 (pr-str (sort (map :name too-long)))))
+    (set ok)))
+
 (mu/defn- matching-inactive-fields :- [:maybe [:sequential i/FieldInstance]]
   "Return inactive Metabase Fields that match any of the Fields described by `new-field-metadatas`, if any such Fields
   exist."
@@ -46,8 +73,9 @@
   (when (seq new-field-metadatas)
     (t2/insert-returning-pks! :model/Field
                               (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                                            database-is-generated database-is-nullable database-default pk?
                                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
-                                     field-name :name :as field} new-field-metadatas
+                                     field-name :name :as field} (sort-by :database-position new-field-metadatas)
                                     :let [semantic-type (common/semantic-type field)
                                           has-field-values (when (sync-util/can-be-list? base-type semantic-type)
                                                              :auto-list)]]
@@ -68,7 +96,7 @@
                                    :display_name               (humanization/name->human-readable-name field-name)
                                    :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
                                    :base_type                  base-type
-           ;; todo test this?
+                                   ;; todo test this?
                                    :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
                                    :coercion_strategy          (when effective-type coercion-strategy)
                                    :semantic_type              semantic-type
@@ -79,6 +107,10 @@
                                    :database_position          database-position
                                    :json_unfolding             (or json-unfolding false)
                                    :database_is_auto_increment (or database-is-auto-increment false)
+                                   :database_is_generated      database-is-generated
+                                   :database_is_nullable       database-is-nullable
+                                   :database_is_pk             pk?
+                                   :database_default           database-default
                                    :database_required          (or database-required false)
                                    :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
                                    :has_field_values           has-field-values
@@ -109,7 +141,7 @@
 
 (def ^:private Updates
   "Schema for the value returned by `sync-active-instances!`. Because we need to know about newly-inserted/reactivated
-  parent Fields when recursively syncing nested Fields, we need to propogate the updates to `our-metadata` made by
+  parent Fields when recursively syncing nested Fields, we need to propagate the updates to `our-metadata` made by
   this function and pass them to other steps of the `sync-instances!` process."
   [:map
    [:num-updates  ms/IntGreaterThanOrEqualToZero]
@@ -219,14 +251,15 @@
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]
     parent-id    :- common/ParentID]
-   ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
-   ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by
-   ;; `sync-active-instances!`
-   (log/tracef "Syncing field instances for %s DB: %s, Existing: %s"
-               (sync-util/name-for-logging table)
-               (pr-str (sort (map common/canonical-name db-metadata)))
-               (pr-str (sort (map common/canonical-name our-metadata))))
-   (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
-     (+ num-updates
-        (retire-fields! table db-metadata our-metadata)
-        (sync-nested-field-instances! table db-metadata our-metadata)))))
+   (let [db-metadata (remove-fields-with-too-long-names table db-metadata)]
+     ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
+     ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by
+     ;; `sync-active-instances!`
+     (log/tracef "Syncing field instances for %s DB: %s, Existing: %s"
+                 (sync-util/name-for-logging table)
+                 (pr-str (sort (map common/canonical-name db-metadata)))
+                 (pr-str (sort (map common/canonical-name our-metadata))))
+     (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
+       (+ num-updates
+          (retire-fields! table db-metadata our-metadata)
+          (sync-nested-field-instances! table db-metadata our-metadata))))))

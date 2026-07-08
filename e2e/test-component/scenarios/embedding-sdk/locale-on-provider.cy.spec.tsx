@@ -49,34 +49,31 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
   });
 
   it("when no locale is set, it should use the instance locale", () => {
-    setup({ locale: undefined, instanceLocale: "de" });
+    setup({ locale: undefined, instanceLocale: "en-ZZ" });
 
-    cy.request("/app/locales/de.json").then((response) => {
+    cy.request("/app/locales/en_ZZ.json").then((response) => {
       expect(response.status).to.eq(200);
     });
 
     getSdkRoot().within(() => {
-      cy.findByText("Zusammenfassen").should("exist");
+      cy.findByText("[zz] Summarize").should("exist");
     });
   });
 
-  it("when locale=de it should display german text", () => {
-    setup({ locale: "de" });
+  it("when locale=en-ZZ it should display pseudo-locale text", () => {
+    setup({ locale: "en-ZZ" });
 
     getSdkRoot().within(() => {
-      cy.findByText("Zusammenfassen").should("exist");
+      cy.findByText("[zz] Summarize").should("exist");
     });
   });
 
-  it("when locale=de-CH it should fallback to `de.json`", () => {
-    setup({ locale: "de-CH" });
-
-    cy.request("/app/locales/de.json").then((response) => {
-      expect(response.status).to.eq(200);
-    });
+  it("when locale=en-XX it should fallback to en", () => {
+    // en-XX is not an available locale, so LocaleProvider falls back to `en`
+    setup({ locale: "en-XX" });
 
     getSdkRoot().within(() => {
-      cy.findByText("Zusammenfassen").should("exist");
+      cy.findByText("Summarize").should("exist");
     });
   });
 
@@ -92,7 +89,8 @@ describe("scenarios > embedding-sdk > locale set on MetabaseProvider", () => {
     });
   });
 
-  it("when locale=zh-TW it use it as it's available", () => {
+  it("when locale=zh-TW, it should be used used since it's available", () => {
+    // Very specific test case, so using en-ZZ isn't as useful
     setup({ locale: "zh-TW" });
 
     cy.request("/app/locales/zh_TW.json").then((response) => {

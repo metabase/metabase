@@ -147,3 +147,10 @@
                                 (pound-sign-is-special-word-char? driver-or-dialect)))]
           (testing (str "driver or dialect " driver-or-dialect)
             (is (str/includes? (sql.u/format-sql-and-fix-params driver-or-dialect q) op))))))))
+
+(deftest ^:parallel format-sql-pipe-operator-test
+  (testing "Should not split pipe operator |> (#70447)"
+    (let [sql "SELECT * FROM UNNEST(['a', 'b', 'c']) as text |> WHERE text = 'a'"
+          formatted (sql.u/format-sql-and-fix-params :standardsql sql)]
+      (is (str/includes? formatted "|>"))
+      (is (not (str/includes? formatted "| >"))))))

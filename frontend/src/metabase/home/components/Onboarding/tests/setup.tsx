@@ -1,47 +1,52 @@
-import { Route } from "react-router";
-
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupBugReportingDetailsEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { ChecklistItemValue } from "metabase/redux/store";
+import {
+  createMockAppState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
+  createMockSettings,
   createMockTokenFeatures,
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockAppState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { Onboarding } from "../Onboarding";
-import type { ChecklistItemValue } from "../types";
 
 export type SetupProps = {
   isAdmin?: boolean;
   applicationName?: string;
   enableXrays?: boolean;
-  hasEnterprisePlugins?: boolean;
   hasExampleDashboard?: boolean;
   isHosted?: boolean;
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export const setup = ({
   isAdmin = true,
   applicationName,
   enableXrays = true,
-  hasEnterprisePlugins = false,
   hasExampleDashboard = true,
   isHosted = false,
   openItem,
   showMetabaseLinks = true,
   tokenFeatures = {},
+  enterprisePlugins = [],
 }: SetupProps = {}) => {
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
-
+  setupPropertiesEndpoints(createMockSettings());
+  setupBugReportingDetailsEndpoint();
   const state = createMockState({
     app: createMockAppState({
       tempStorage: {
@@ -62,9 +67,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(
     <Route path="/getting-started" component={Onboarding} />,

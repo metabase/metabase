@@ -169,7 +169,7 @@ const PartitionContainer = ({
 
   return (
     <Box py="md" className={partitionIndex > 0 ? CS.borderTop : undefined}>
-      <Text c="text-medium">{title}</Text>
+      <Text c="text-secondary">{title}</Text>
 
       <SortableContext
         id={partitionName}
@@ -185,8 +185,8 @@ const PartitionContainer = ({
             <Box
               w="100%"
               p="0.75rem"
-              bg="border"
-              c="text-medium"
+              bg="border-neutral"
+              c="text-secondary"
               className={CS.rounded}
             >
               {t`Drag fields here`}
@@ -237,7 +237,7 @@ const DroppableItem = ({
       ref={setNodeRef}
       mih="2.5rem"
       className={CS.rounded}
-      {...(isDragging && !disabled && { bg: "border" })}
+      {...(isDragging && !disabled && { bg: "border-neutral" })}
     >
       {children}
     </Box>

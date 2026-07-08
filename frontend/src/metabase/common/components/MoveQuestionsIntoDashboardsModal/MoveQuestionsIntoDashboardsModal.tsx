@@ -1,7 +1,6 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
 import type { Location } from "history";
 import { useEffect } from "react";
-import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -11,17 +10,18 @@ import {
   useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { withRouter } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
 
 import { ConfirmMoveDashboardQuestionCandidatesModal } from "./ConfirmMoveDashboardQuestionCandidatesModal";
 import { MoveQuestionsIntoDashboardsInfoModal } from "./MoveQuestionsIntoDashboardsInfoModal";
 
 interface MoveQuestionsIntoDashboardsModalProps {
   onClose: () => void;
-  params: { slug: string };
+  params: { slug?: string };
   location: Location<unknown>;
 }
 

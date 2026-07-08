@@ -1,11 +1,15 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { routerMiddleware, routerReducer as routing } from "react-router-redux";
-import promise from "redux-promise";
 
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
-export function getStore(reducers, history, initialState) {
+export function getStore(
+  reducers,
+  history,
+  initialState,
+  extraMiddlewares = [],
+) {
   const reducer = combineReducers({
     ...reducers,
     routing,
@@ -20,10 +24,10 @@ export function getStore(reducers, history, initialState) {
         immutableCheck: false,
         serializableCheck: false,
       }).concat([
-        promise,
         Api.middleware,
         ...(history ? [routerMiddleware(history)] : []),
         ...PLUGIN_REDUX_MIDDLEWARES,
+        ...extraMiddlewares,
       ]),
   });
 }

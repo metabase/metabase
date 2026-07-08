@@ -1,0 +1,57 @@
+import { useCallback } from "react";
+import { push } from "react-router-redux";
+import { t } from "ttag";
+
+import type { SdkCollectionId } from "embedding-sdk-bundle/types";
+import { useDispatch } from "metabase/redux";
+import { Modal, type ModalProps } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { CollectionId, Dashboard } from "metabase-types/api";
+
+import { CreateDashboardForm } from "./CreateDashboardForm";
+
+export interface CreateDashboardModalProps {
+  opened: boolean;
+  collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
+  targetCollection?: SdkCollectionId | null;
+  onCreate?: (dashboard: Dashboard) => void;
+  onClose: () => void;
+}
+
+export const CreateDashboardModal = ({
+  opened,
+  collectionId,
+  targetCollection,
+  onCreate,
+  onClose,
+}: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
+  const dispatch = useDispatch();
+  const handleCreate = useCallback(
+    (dashboard: Dashboard) => {
+      if (typeof onCreate === "function") {
+        onCreate(dashboard);
+      } else {
+        onClose?.();
+        dispatch(push(Urls.dashboard(dashboard, { editMode: true })));
+      }
+    },
+    [onCreate, onClose, dispatch],
+  );
+
+  return (
+    <Modal
+      title={t`New dashboard`}
+      onClose={() => onClose?.()}
+      data-testid="new-dashboard-modal"
+      size="lg"
+      opened={opened}
+    >
+      <CreateDashboardForm
+        onCreate={handleCreate}
+        onCancel={onClose}
+        collectionId={collectionId}
+        targetCollection={targetCollection}
+      />
+    </Modal>
+  );
+};

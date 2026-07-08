@@ -1,14 +1,14 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 
 export const TextLink = styled(Link)`
   cursor: pointer;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -17,8 +17,8 @@ export const CardLink = styled(TextLink)`
   justify-content: center;
   align-items: center;
   padding: 1.25rem;
-  background-color: var(--mb-color-bg-white);
-  box-shadow: 0 3px 10px var(--mb-color-shadow);
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: 0 3px 10px var(--mb-color-shadow-default);
   border-radius: 6px;
 `;
 

@@ -2,17 +2,23 @@ import type { KeyboardEvent } from "react";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import CollectionDropTarget from "metabase/common/components/dnd/CollectionDropTarget";
+import { getCollectionIcon } from "metabase/common/collections/utils";
+import { CollectionDropTarget } from "metabase/common/components/dnd/CollectionDropTarget";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import type { TreeNodeProps } from "metabase/common/components/tree/types";
-import { getCollectionIcon } from "metabase/entities/collections/utils";
-import * as Urls from "metabase/lib/urls";
+import type {
+  ITreeNodeItem,
+  TreeNodeProps,
+} from "metabase/common/components/tree/types";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { getIsTenantUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
 import {
   CollectionNodeRoot,
   ExpandToggleButton,
+  FullWidthContainer,
   FullWidthLink,
   NameContainer,
   SidebarIcon,
@@ -25,6 +31,7 @@ type DroppableProps = {
 
 type Props = DroppableProps &
   Omit<TreeNodeProps, "item"> & {
+    nonNavigable?: boolean;
     collection: Collection;
   };
 
@@ -34,6 +41,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
     {
       collection,
+      nonNavigable,
       hovered: isHovered,
       depth,
       onSelect,
@@ -41,11 +49,13 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       isSelected,
       hasChildren,
       onToggleExpand,
+      rightSection,
     }: Props,
     ref,
   ) {
     const wasHovered = usePrevious(isHovered);
     const timeoutId = useRef<number>();
+    const isTenantUser = useSelector(getIsTenantUser);
 
     useEffect(() => {
       const justHovered = !wasHovered && isHovered;
@@ -70,19 +80,32 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         }
         switch (event.key) {
           case "ArrowRight":
-            !isExpanded && onToggleExpand();
+            if (!isExpanded) {
+              onToggleExpand();
+            }
             break;
           case "ArrowLeft":
-            isExpanded && onToggleExpand();
+            if (isExpanded) {
+              onToggleExpand();
+            }
             break;
         }
       },
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection);
-    const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
-      collection as unknown as Collection,
+    const icon = getCollectionIcon(collection, { isTenantUser });
+    const isRegularCollection =
+      PLUGIN_COLLECTIONS.isRegularCollection(collection);
+
+    const content = (
+      <>
+        <TreeNode.IconContainer transparent={false}>
+          <SidebarIcon {...icon} isSelected={isSelected} />
+        </TreeNode.IconContainer>
+        <NameContainer>{collection.name}</NameContainer>
+        {rightSection?.(collection as unknown as ITreeNodeItem)}
+      </>
     );
 
     return (
@@ -92,23 +115,26 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         aria-selected={isSelected}
         isSelected={isSelected}
         hovered={isHovered}
-        onClick={onToggleExpand}
+        onClick={isSelected ? onToggleExpand : undefined}
         hasDefaultIconStyle={isRegularCollection}
         ref={ref}
       >
-        <ExpandToggleButton hidden={!hasChildren}>
+        <ExpandToggleButton hidden={!hasChildren} onClick={onToggleExpand}>
           <TreeNode.ExpandToggleIcon
             isExpanded={isExpanded}
             name="chevronright"
             size={12}
           />
         </ExpandToggleButton>
-        <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
-          <TreeNode.IconContainer transparent={false}>
-            <SidebarIcon {...icon} isSelected={isSelected} />
-          </TreeNode.IconContainer>
-          <NameContainer>{collection.name}</NameContainer>
-        </FullWidthLink>
+        {nonNavigable ? (
+          <FullWidthContainer onKeyDown={onKeyDown}>
+            {content}
+          </FullWidthContainer>
+        ) : (
+          <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
+            {content}
+          </FullWidthLink>
+        )}
       </CollectionNodeRoot>
     );
   },
@@ -120,18 +146,27 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
     ref,
   ) {
     const collection = item as unknown as Collection;
+
+    const link = (droppableProps?: DroppableProps) => (
+      <SidebarCollectionLink
+        {...props}
+        hovered={droppableProps?.hovered ?? false}
+        highlighted={droppableProps?.highlighted ?? false}
+        collection={collection}
+        nonNavigable={item.nonNavigable}
+        ref={ref}
+      />
+    );
+
     return (
       <div data-testid="sidebar-collection-link-root">
-        <CollectionDropTarget collection={collection}>
-          {(droppableProps: DroppableProps) => (
-            <SidebarCollectionLink
-              {...props}
-              {...droppableProps}
-              collection={collection}
-              ref={ref}
-            />
-          )}
-        </CollectionDropTarget>
+        {item.nonNavigable ? (
+          link()
+        ) : (
+          <CollectionDropTarget collection={collection}>
+            {(droppableProps: DroppableProps) => link(droppableProps)}
+          </CollectionDropTarget>
+        )}
       </div>
     );
   },

@@ -1,0 +1,221 @@
+import _ from "underscore";
+
+import visualizations from "metabase/visualizations";
+import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
+import {
+  hasLatitudeAndLongitudeColumns,
+  isCountry,
+  isDate,
+  isDimension,
+  isLatitude,
+  isLongitude,
+  isMetric,
+  isState,
+} from "metabase-lib/v1/types/utils/isa";
+import {
+  type CardDisplayType,
+  type Dataset,
+  type DatasetData,
+  type QueryVisualizationDisplayType,
+  isCardDisplayType,
+} from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
+
+import { DEFAULT_VIZ_ORDER } from "./viz-order";
+
+const MAX_RECOMMENDED = 12;
+
+export type VisualizationSensibility =
+  | "recommended"
+  | "sensible"
+  | "nonsensible";
+
+export type SensibilityGroups = Record<
+  VisualizationSensibility,
+  QueryVisualizationDisplayType[]
+>;
+
+export function groupVisualizationsBySensibility({
+  orderedVizTypes,
+  data,
+}: {
+  orderedVizTypes: QueryVisualizationDisplayType[];
+  data: DatasetData;
+}): SensibilityGroups {
+  const groups: SensibilityGroups = {
+    recommended: [],
+    sensible: [],
+    nonsensible: [],
+  };
+
+  for (const vizType of orderedVizTypes) {
+    const viz = visualizations.get(vizType);
+    if (viz?.isSensible?.(data)) {
+      groups.sensible.push(vizType);
+    } else {
+      groups.nonsensible.push(vizType);
+    }
+  }
+
+  const recommended = _.uniq(
+    getRecommendedVisualizations(data, groups.sensible),
+  ); //uniq just in case
+  const sensibleRecommendations = recommended.filter((vizType) =>
+    groups.sensible.includes(vizType),
+  );
+  groups.recommended = sensibleRecommendations;
+  groups.sensible = groups.sensible.filter(
+    (vizType) =>
+      isCardDisplayType(vizType) && !sensibleRecommendations.includes(vizType),
+  );
+
+  while (groups.recommended.length > MAX_RECOMMENDED) {
+    const overflow = groups.recommended.pop()!;
+    groups.sensible.unshift(overflow);
+  }
+
+  return groups;
+}
+
+function getRecommendedVisualizations(
+  data: DatasetData,
+  sensible: QueryVisualizationDisplayType[],
+  // Custom Visualizations are not grouped by sensibility, they will always have their separate group
+): QueryVisualizationDisplayType[] {
+  const { cols, rows } = data;
+  const metricCount = cols.filter(isMetric).length;
+  const dimensionCount = cols.filter(isDimension).length;
+  const hasGeo =
+    hasLatitudeAndLongitudeColumns(cols) ||
+    cols.some(isCountry) ||
+    cols.some(isState);
+  const nonLatLongDimensionCount = cols.filter(
+    (col) => isDimension(col) && !isLatitude(col) && !isLongitude(col),
+  ).length;
+  const hasDateDimension = cols.some((col) => isDimension(col) && isDate(col));
+
+  if (rows.length === 1 && cols.length === 1 && metricCount === 1) {
+    return ["scalar", "gauge", "progress"];
+  }
+  if (rows.length === 1 && cols.length === 1 && metricCount === 0) {
+    return ["table", "object", "scalar"];
+  }
+  if (
+    rows.length === 1 &&
+    cols.length > 1 &&
+    (metricCount === 0 || dimensionCount === 0)
+  ) {
+    return ["table", "object"];
+  }
+  if (cols.length <= 1) {
+    return ["table"];
+  }
+  if (metricCount === 0) {
+    return ["table", "pivot"];
+  }
+  // recommended visualizations for unaggregated tables
+  // for a native query, we don't know if there are aggregations, but we assume that there are
+  // that means we may recommend an e.g. line chart even if the native query is just `select * from tbl`
+  // but that's better than not recommending a relevant viz for a native query like `select c1, sum(c2) from tbl`
+  if (
+    !cols.some((col) => col.source === "aggregation" || col.source === "native")
+  ) {
+    return ["table", "object", "map", "scatter"];
+  }
+  const recommended: CardDisplayType[] = [];
+  if (hasGeo) {
+    recommended.push("map");
+    // table, pivot, and scatter are also recommended for geo
+    // but we'll add them below, because order is important
+    // if we also have a date dimension, we want e.g. line to come before them
+  }
+  if (hasDateDimension) {
+    recommended.push(
+      "line",
+      "area",
+      "bar",
+      "combo",
+      "smartscalar",
+      "row",
+      "waterfall",
+      "scatter",
+      "pie",
+      "table",
+      "pivot",
+    );
+  } else if (nonLatLongDimensionCount > 0) {
+    recommended.push(
+      "bar",
+      "row",
+      "pie",
+      "line",
+      "area",
+      "combo",
+      "waterfall",
+      "scatter",
+      "table",
+      "pivot",
+    );
+  } else if (hasGeo) {
+    recommended.push("table", "pivot", "scatter");
+  }
+  if (sensible.includes("sankey")) {
+    // the sankey sensibility check is quite robust, so we recommend it whenever it's sensible
+    recommended.push("sankey");
+  }
+  if (sensible.includes("treemap") && nonLatLongDimensionCount >= 2) {
+    // treemap best with two-level grouping
+    recommended.push("treemap");
+  }
+  return recommended;
+}
+
+export type GetSensibleVisualizationsProps = {
+  result: Dataset | null;
+};
+
+const isSupportedVisualization = (
+  display: string,
+): display is QueryVisualizationDisplayType =>
+  isCardDisplayType(display) || isCustomVizDisplay(display);
+
+export const getSensibleVisualizations = ({
+  result,
+}: GetSensibleVisualizationsProps) => {
+  const availableVizTypes = Array.from(visualizations.entries()).reduce<
+    QueryVisualizationDisplayType[]
+  >((types, [vizType, config]) => {
+    if (!config.hidden && isSupportedVisualization(vizType)) {
+      types.push(vizType);
+    }
+
+    return types;
+  }, []);
+
+  const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
+
+  if (result?.data) {
+    const sanitizedData = sanitizeResultData(result.data);
+
+    const { recommended, sensible, nonsensible } =
+      groupVisualizationsBySensibility({
+        orderedVizTypes,
+        data: sanitizedData,
+      });
+
+    return {
+      sensibleVisualizations: recommended,
+      nonSensibleVisualizations: [...sensible, ...nonsensible],
+    };
+  }
+
+  const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
+    orderedVizTypes,
+    (vizType) => {
+      const viz = visualizations.get(vizType);
+      return Boolean(viz?.isSensible);
+    },
+  );
+
+  return { sensibleVisualizations, nonSensibleVisualizations };
+};

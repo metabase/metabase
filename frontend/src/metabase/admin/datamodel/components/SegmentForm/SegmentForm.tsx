@@ -1,21 +1,22 @@
 import type { FieldInputProps } from "formik";
 import { useFormik } from "formik";
 import { useEffect } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { FieldSet } from "metabase/common/components/FieldSet";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
 import {
   getSegmentQuery,
   getSegmentQueryDefinition,
-} from "metabase/admin/datamodel/utils/segments";
-import Button from "metabase/common/components/Button/Button";
-import { FieldSet } from "metabase/common/components/FieldSet";
-import { useSelector } from "metabase/lib/redux";
-import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
+} from "metabase/querying/segments/utils";
+import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Alert, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Segment, StructuredQuery, TableId } from "metabase-types/api";
+import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
@@ -28,25 +29,24 @@ import {
   FormFooterContent,
   FormRoot,
   FormSection,
-  FormSubmitButton,
 } from "./SegmentForm.styled";
 
 export interface SegmentFormProps {
   segment?: Segment;
-  previewSummary?: string;
-  updatePreviewSummary: (previewSummary: string) => void;
   onIsDirtyChange: (isDirty: boolean) => void;
   onSubmit: (values: Partial<Segment>) => void;
 }
 
-const SegmentForm = ({
+export const SegmentForm = ({
   segment,
   onIsDirtyChange,
   onSubmit,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
   const metadata = useSelector(getMetadata);
-
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const { isValid, getFieldProps, getFieldMeta, handleSubmit, dirty } =
     useFormik({
       initialValues: segment ?? {},
@@ -54,6 +54,9 @@ const SegmentForm = ({
       validate: (values) => getFormErrors(values, metadata),
       onSubmit,
     });
+  const tableId = isNew ? getFieldProps("table_id")?.value : segment?.table_id;
+  const table = tableId ? metadata.tables[tableId] : undefined;
+  const isReadOnly = isRemoteSyncReadOnly && !!table?.is_published;
 
   useEffect(() => {
     onIsDirtyChange(dirty);
@@ -62,6 +65,17 @@ const SegmentForm = ({
   return (
     <FormRoot onSubmit={handleSubmit}>
       <FormBody>
+        {isReadOnly && (
+          <Alert
+            color="warning"
+            display="inline-flex"
+            mb="md"
+            p="0.75rem"
+            title={t`This segment can't be edited because this table is published and Remote Sync is in read-only mode.`}
+            variant="outline"
+            w="auto"
+          />
+        )}
         <FormLabel
           title={isNew ? t`Create Your Segment` : t`Edit Your Segment`}
           description={
@@ -77,6 +91,7 @@ const SegmentForm = ({
               metadata,
             )}
             isNew={isNew}
+            readOnly={isReadOnly}
           />
         </FormLabel>
         <FormBodyContent>
@@ -90,6 +105,7 @@ const SegmentForm = ({
               {...getFieldMeta("name")}
               id="name"
               placeholder={t`Something descriptive but not too long`}
+              readOnly={isReadOnly}
             />
           </FormLabel>
           <FormLabel
@@ -102,9 +118,10 @@ const SegmentForm = ({
               {...getFieldMeta("description")}
               id="description"
               placeholder={t`This is a good place to be more specific about less obvious segment rules`}
+              readOnly={isReadOnly}
             />
           </FormLabel>
-          {!isNew && (
+          {!isNew && !isReadOnly && (
             <FieldSet legend={t`Reason For Changes`} noPadding={false}>
               <FormLabel
                 htmlFor="revision_message"
@@ -124,7 +141,7 @@ const SegmentForm = ({
           )}
         </FormBodyContent>
       </FormBody>
-      {isNew && (
+      {isNew && !isReadOnly && (
         <FormFooter>
           <FormSection>
             <SegmentFormActions isValid={isValid} />
@@ -144,10 +161,16 @@ const SegmentFormActions = ({
 }: SegmentFormActionsProps): JSX.Element => {
   return (
     <div>
-      <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
+      <Button
+        type="submit"
+        variant="filled"
+        size="sm"
+        disabled={!isValid}
+        mr="md"
+      >
         {t`Save changes`}
-      </FormSubmitButton>
-      <Button as={Link} to="/admin/datamodel/segments">
+      </Button>
+      <Button component={Link} size="sm" to="/admin/datamodel/segments">
         {t`Cancel`}
       </Button>
     </div>
@@ -179,7 +202,7 @@ const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
 };
 
 function getSegmentEditorProps(
-  definitionProps: FieldInputProps<StructuredQuery | undefined>,
+  definitionProps: FieldInputProps<DatasetQuery | undefined>,
   tableIdProps: FieldInputProps<TableId | undefined>,
   metadata: Metadata,
 ) {
@@ -201,6 +224,3 @@ function getSegmentEditorProps(
     },
   };
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SegmentForm;

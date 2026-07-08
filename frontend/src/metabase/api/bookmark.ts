@@ -54,6 +54,32 @@ export const bookmarkApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("bookmark")]),
+      onQueryStarted: async ({ orderings }, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          bookmarkApi.util.updateQueryData(
+            "listBookmarks",
+            undefined,
+            (draft) => {
+              const indexFor = new Map(
+                orderings.map(({ type, item_id }, index) => [
+                  `${type}:${item_id}`,
+                  index,
+                ]),
+              );
+              draft.sort(
+                (a, b) =>
+                  (indexFor.get(`${a.type}:${a.item_id}`) ?? draft.length) -
+                  (indexFor.get(`${b.type}:${b.item_id}`) ?? draft.length),
+              );
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });

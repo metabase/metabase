@@ -430,7 +430,10 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping();
 
-      H.findDashCardAction(H.getDashboardCard(1), "Replace").click();
+      H.getDashboardCard(1)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Replace")
+        .click();
 
       H.modal().findByText("Orders, Count").click();
 
@@ -498,17 +501,22 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping("ID");
 
+      // The two auto-wire suggestion toasts stack and briefly overlap while the
+      // undo list re-measures and animates them into their final positions, so a
+      // sibling toast can transiently cover the precisely-scoped Auto-connect
+      // button. Force the click past that obstruction — the target button is
+      // already uniquely scoped via .contains(...).closest("toast-undo").
       H.undoToastList()
-        .findByText("Auto-connect “Orders Question” to “ID”?")
+        .contains("Auto-connect “Orders Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
-        .click();
+        .click({ force: true });
 
       H.undoToastList()
-        .findByText("Auto-connect “Reviews Question” to “ID”?")
+        .contains("Auto-connect “Reviews Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
-        .click();
+        .click({ force: true });
 
       H.getDashboardCard(0).findByText("Products.ID").should("exist");
       H.getDashboardCard(1).findByText("Product.ID").should("exist");
@@ -798,8 +806,9 @@ function getTableCell(columnName, rowIndex) {
     const columnHeaderIndex = $columnHeaders
       .toArray()
       .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByRole("row")
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByRole("row")
       .eq(rowIndex)
       .findAllByTestId("cell-data")
       .eq(columnHeaderIndex)
@@ -818,11 +827,7 @@ function addQuestionFromQueryBuilder({
   H.openQuestionActions();
   H.popover().findByText("Add to dashboard").click();
 
-  H.entityPickerModal().within(() => {
-    H.modal().findByText("Dashboards").click();
-    H.modal().findByText("36275").click();
-    cy.button("Select").click();
-  });
+  H.pickEntity({ path: ["Our analytics", "36275"], select: true });
 
   H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
   H.undoToast().should("contain", "Undo");

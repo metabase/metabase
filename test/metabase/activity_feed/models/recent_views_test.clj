@@ -6,6 +6,7 @@
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util.log :as log]
@@ -29,14 +30,14 @@
 
 (defn recent-views
   ([user-id] (recent-views user-id [:views]))
-  ([user-id context] (:recents (recent-views/get-recents user-id context))))
+  ([user-id context] (recent-views user-id context {}))
+  ([user-id context options] (:recents (recent-views/get-recents user-id context options))))
 
 (deftest simple-get-list-card-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
      :model/Database   {db-id :id}   {}
      :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
-
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :dashboard nil
@@ -128,6 +129,7 @@
              :id my-coll-id
              :timestamp String
              :authority_level nil
+             :collection_type nil
              :model :collection}]
            (mt/with-test-user :rasta
              (mapv fixup
@@ -148,6 +150,7 @@
              :parent_collection {:id coll-id-c, :name "parent coll", :authority_level :official}
              :timestamp String
              :authority_level nil
+             :collection_type nil
              :model :collection}]
            (mt/with-test-user :rasta
              (mapv fixup
@@ -241,6 +244,7 @@
                    :model :collection,
                    :can_write true,
                    :authority_level nil,
+                   :collection_type nil,
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}}
                   {:id "ID",
                    :name "my dash",
@@ -336,7 +340,6 @@
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id :view)
       ;; can't read? can't see:
       (is (= 0 (count (recent-views (mt/user->id :rasta)))))
-
       (is (= 3 (count
                 (mt/with-test-user :rasta
                   (recent-views (mt/user->id :rasta)))))))))
@@ -347,19 +350,15 @@
                    :model/Dashboard {dash-id-2 :id} {}
                    :model/Dashboard {dash-id-3 :id} {}]
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-2 :view)
       (is (= dash-id-2 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3 :view)
       (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (testing "archived dashboards are not returned (#45223)"
         (t2/update! :model/Dashboard dash-id-3 {:archived true})
         (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
@@ -487,7 +486,7 @@
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
             (is (= 2 (count (filter (comp #{out-model} :model)
                                     (mt/with-test-user :rasta
-                                      (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                      (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                         (recent-views (mt/user->id :rasta))))))))))
         (is
          (= {:card recent-views/*recent-views-stored-per-user-per-model*,
@@ -497,7 +496,7 @@
              :table recent-views/*recent-views-stored-per-user-per-model*}
             (frequencies (map :model
                               (mt/with-test-user :rasta
-                                (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                   (recent-views (mt/user->id :rasta)))))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
@@ -531,13 +530,12 @@
                                    [:model/Dashboard  [dashboard-id dashboard-id-2 dashboard-id-3]]
                                    [:model/Collection [collection-id collection-id-2 collection-id-3]]
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
-
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
         (with-redefs [mi/can-read?                              (constantly true)
                       data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
-                                        (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                        (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                           (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
             (is (= 3 (:card freqs)))
             (is (= 3 (:dataset freqs)))
@@ -569,6 +567,25 @@
               (mt/with-test-user :rasta
                 (:recents (recent-views/get-recents (mt/user->id :rasta) [:selections :views]))))))))
 
+(deftest context-exclusion-test
+  (mt/with-model-cleanup [:model/RecentViews]
+    (mt/with-temp
+      [:model/Card {card-id :id} {:type "question"}]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+      (is (= 0 (count (mt/with-test-user :rasta (recent-views (mt/user->id :rasta) [:selections])))))
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :selection)
+      (is (= 1 (count (mt/with-test-user :rasta (recent-views (mt/user->id :rasta) [:selections]))))))))
+
+(deftest dashboard-can-write-reflects-real-permission-graph-test
+  (mt/with-model-cleanup [:model/RecentViews]
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+        (is (= false
+               (:can_write (first (mt/with-test-user :rasta (recent-views (mt/user->id :rasta)))))))))))
+
 (deftest special-collections-are-treated-specially
   (mt/with-temp
     [:model/Collection {instance-analytics-id :id} {:type collection/instance-analytics-collection-type}
@@ -595,3 +612,56 @@
              (map #(select-keys % [:id])
                   (mt/with-test-user :rasta
                     (recent-views (mt/user->id :rasta) [:selections :views]))))))))
+
+(deftest models-filtering-test
+  (mt/with-test-user :rasta
+    (mt/with-temp
+      [:model/Collection {coll-id :id} {:name "my coll"}
+       :model/Database   {db-id :id}   {}
+       :model/Card       {card-id :id} {:type "question" :name "card" :collection_id coll-id :database_id db-id}
+       :model/Card       {model-id :id} {:type "model" :name "model" :collection_id coll-id :database_id db-id}
+       :model/Dashboard  {dash-id :id} {:name "dash" :collection_id coll-id}
+       :model/Table      {table-id :id} {:name "table" :db_id db-id}]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :view)
+      (testing "no filter returns all model types"
+        (is (= #{:card :dataset :dashboard :table}
+               (->> (recent-views (mt/user->id :rasta))
+                    (map :model)
+                    set))))
+      (testing "filter to only cards"
+        (is (= #{:card}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card]})
+                    (map :model)
+                    set))))
+      (testing "filter to only models (aka datasets)"
+        (is (= #{:dataset}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:dataset]})
+                    (map :model)
+                    set))))
+      (testing "filter to cards and dashboards"
+        (is (= #{:card :dashboard}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card :dashboard]})
+                    (map :model)
+                    set))))
+      (testing "filter to only tables"
+        (is (= #{:table}
+               (->> (recent-views (mt/user->id :rasta) [:views] {:models [:table]})
+                    (map :model)
+                    set)))))))
+
+(deftest include-metadata-test
+  (mt/with-test-user :rasta
+    (mt/with-temp
+      [:model/Collection {coll-id :id} {:name "my coll"}
+       :model/Database   {db-id :id}   {}
+       :model/Card       {card-id :id} {:type "question" :name "card" :collection_id coll-id :database_id db-id}]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+      (testing "by default, result_metadata is not included"
+        (is (not (contains? (first (recent-views (mt/user->id :rasta)))
+                            :result_metadata))))
+      (testing "with include-metadata? true, result_metadata is included"
+        (is (contains? (first (recent-views (mt/user->id :rasta) [:views] {:include-metadata? true}))
+                       :result_metadata))))))

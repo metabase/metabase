@@ -91,10 +91,10 @@ describe("scenarios > metrics > dashboard", () => {
     );
     H.editDashboard();
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.selectDataset(PRODUCTS_SCALAR_METRIC.name);
@@ -142,14 +142,12 @@ describe("scenarios > metrics > dashboard", () => {
   it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC).then(
       ({ body: { id: metricId } }) => {
-        cy.intercept("POST", "/api/dataset").as("dataset");
-        cy.visit(`/metric/${metricId}`);
-        cy.wait("@dataset");
-        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        H.visitMetric(metricId);
+        H.MetricPage.aboutPage().should("be.visible");
 
         cy.log("Add metric to a dashboard via context menu");
-        H.openQuestionActions();
-        H.popover().findByTextEnsureVisible("Add to dashboard").click();
+        H.MetricPage.moreMenu().click();
+        H.popover().findByTextEnsureVisible("Add to a dashboard").click();
         H.modal().within(() => {
           cy.findByRole("heading", {
             name: "Add this metric to a dashboard",
@@ -248,11 +246,10 @@ describe("scenarios > metrics > dashboard", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.editDashboard();
     H.getDashboardCard().realHover().findByLabelText("Replace").click();
-    H.modal().within(() => {
-      cy.findByText("Metrics").click();
+    H.entityPickerModal().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.undoToastList()
       .last()
       .findByText("Question replaced")
@@ -262,12 +259,11 @@ describe("scenarios > metrics > dashboard", () => {
       cy.findByText("18,760").should("be.visible");
     });
     H.getDashboardCard().realHover().findByLabelText("Replace").click();
-    H.modal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("Questions").click();
       cy.findByText("Orders").click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.undoToastList().last().findByText("Metric replaced").should("be.visible");
     H.getDashboardCard().findByText("Orders").should("be.visible");
   });

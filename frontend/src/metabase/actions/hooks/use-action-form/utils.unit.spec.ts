@@ -1,8 +1,9 @@
-import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
-import type { FieldSettingsMap } from "metabase-types/api";
+import type {
+  FieldSettingsMap,
+  InputSettingType,
+  ParameterType,
+} from "metabase-types/api";
 import {
-  createMockField,
   createMockFieldSettings,
   createMockParameter,
 } from "metabase-types/api/mocks";
@@ -20,74 +21,7 @@ const getFirstEntry = (obj: any): any => {
   return Object.entries(obj)[0];
 };
 
-const STRING_FK_FIELD_ID = 1;
-const INT_FK_FIELD_ID = 2;
-const BOOLEAN_FIELD_ID = 3;
-const FLOAT_FIELD_ID = 4;
-const CATEGORY_FIELD_ID = 5;
-const LONG_TEXT_FIELD_ID = 6;
-
-const DATE_FIELD_ID = 100;
-const DATETIME_FIELD_ID = 101;
-const DATETIME_LOCAL_TZ_FIELD_ID = 102;
-const TIME_FIELD_ID = 103;
-const TIME_LOCAL_TZ_FIELD_ID = 104;
-
 describe("actions > containers > ActionParametersInputForm > utils", () => {
-  const dateTimeFields = [
-    { id: DATE_FIELD_ID, base_type: "type/Date" },
-    { id: DATETIME_FIELD_ID, base_type: "type/DateTime" },
-    { id: DATETIME_LOCAL_TZ_FIELD_ID, base_type: "type/DateTimeWithLocalTZ" },
-    { id: TIME_FIELD_ID, base_type: "type/Time" },
-    { id: TIME_LOCAL_TZ_FIELD_ID, base_type: "type/TimeWithLocalTZ" },
-  ].map(({ id, base_type }) =>
-    createMockField({
-      id,
-      base_type,
-      effective_type: base_type,
-    }),
-  );
-
-  const metadata = createMockMetadata({
-    fields: [
-      createMockField({
-        id: STRING_FK_FIELD_ID,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/FK",
-      }),
-      createMockField({
-        id: INT_FK_FIELD_ID,
-        base_type: "type/Integer",
-        effective_type: "type/Integer",
-        semantic_type: "type/FK",
-      }),
-      createMockField({
-        id: BOOLEAN_FIELD_ID,
-        base_type: "type/Boolean",
-        effective_type: "type/Boolean",
-      }),
-      createMockField({
-        id: FLOAT_FIELD_ID,
-        base_type: "type/Float",
-        effective_type: "type/Float",
-      }),
-      createMockField({
-        id: CATEGORY_FIELD_ID,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/Category",
-      }),
-      createMockField({
-        id: LONG_TEXT_FIELD_ID,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        semantic_type: "type/Description",
-      }),
-      ...dateTimeFields,
-    ],
-  });
-
   describe("stripTZInfo", () => {
     it("should strip timezone info from dateTimes", () => {
       const result = stripTZInfo("2020-05-01T03:30:00-02:00");
@@ -155,86 +89,32 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
   });
 
   describe("getInputType", () => {
-    it('should return "number" for numeric parameters', () => {
-      const intParam = createMockParameter({ type: "type/Integer" });
-      expect(getInputType(intParam)).toEqual("number");
-
-      const floatParam = createMockParameter({ type: "type/Float" });
-      expect(getInputType(floatParam)).toEqual("number");
-    });
-
-    it('should return "string" for non-numeric parameters', () => {
-      const textParam = createMockParameter({ type: "type/Text" });
-      expect(getInputType(textParam)).toEqual("string");
-
-      const turtleParam = createMockParameter({ type: "type/Turtle" });
-      expect(getInputType(turtleParam)).toEqual("string");
-    });
-
-    it('should return "number" for numeric foreign keys', () => {
-      const field = checkNotNull(metadata.field(INT_FK_FIELD_ID));
-      expect(getInputType(createMockParameter(), field)).toEqual("number");
-    });
-
-    it('should return "string" for string foreign keys', () => {
-      const field = checkNotNull(metadata.field(STRING_FK_FIELD_ID));
-      expect(getInputType(createMockParameter(), field)).toEqual("string");
-    });
-
-    it('should return "number" for floating point numbers', () => {
-      const field = checkNotNull(metadata.field(FLOAT_FIELD_ID));
-      expect(getInputType(createMockParameter(), field)).toEqual("number");
-    });
-
-    it('should return "boolean" for booleans', () => {
-      const field = checkNotNull(metadata.field(BOOLEAN_FIELD_ID));
-      expect(getInputType(createMockParameter(), field)).toEqual("boolean");
-    });
-
-    it('should return "date" for dates', () => {
-      const field = checkNotNull(metadata.field(DATE_FIELD_ID));
-      expect(getInputType(createMockParameter(), field)).toEqual("date");
-    });
-
-    it('should return "datetime" for datetimes', () => {
-      const parameter = createMockParameter();
-
-      const dateTimeField = checkNotNull(metadata.field(DATETIME_FIELD_ID));
-      const dateTimeLocalTZField = checkNotNull(
-        metadata.field(DATETIME_LOCAL_TZ_FIELD_ID),
-      );
-
-      expect(getInputType(parameter, dateTimeField)).toEqual("datetime");
-      expect(getInputType(parameter, dateTimeLocalTZField)).toEqual("datetime");
-    });
-
-    it('should return "time" for times', () => {
-      const parameter = createMockParameter();
-
-      const timeField = checkNotNull(metadata.field(TIME_FIELD_ID));
-      const timeLocalTZField = checkNotNull(
-        metadata.field(TIME_LOCAL_TZ_FIELD_ID),
-      );
-
-      expect(getInputType(parameter, timeField)).toEqual("time");
-      expect(getInputType(parameter, timeLocalTZField)).toEqual("time");
-    });
-
-    it('should return "string" for categories', () => {
-      const field = checkNotNull(metadata.field(CATEGORY_FIELD_ID));
-      expect(getInputType(createMockParameter(), field)).toEqual("string");
-    });
-
-    it('should return "text" for description', () => {
-      const field = checkNotNull(metadata.field(LONG_TEXT_FIELD_ID));
-      expect(getInputType(createMockParameter(), field)).toEqual("text");
-    });
+    it.each<{
+      parameterType: ParameterType;
+      expectedInputType: InputSettingType;
+    }>([
+      { parameterType: "string", expectedInputType: "string" },
+      { parameterType: "string/=", expectedInputType: "string" },
+      { parameterType: "number", expectedInputType: "number" },
+      { parameterType: "number/=", expectedInputType: "number" },
+      { parameterType: "boolean", expectedInputType: "boolean" },
+      { parameterType: "boolean/=", expectedInputType: "boolean" },
+      { parameterType: "date", expectedInputType: "datetime" },
+      { parameterType: "date/all-options", expectedInputType: "datetime" },
+      { parameterType: "category", expectedInputType: "string" },
+    ])(
+      "should get the input type for $parameterType parameterType",
+      ({ parameterType, expectedInputType }) => {
+        const parameter = createMockParameter({ type: parameterType });
+        expect(getInputType(parameter)).toBe(expectedInputType);
+      },
+    );
   });
 
   describe("generateFieldSettingsFromParameters", () => {
     it("should generate settings for a string field", () => {
       const params = [
-        createMockParameter({ id: "test-field", type: "type/Text" }),
+        createMockParameter({ id: "test-field", type: "string" }),
       ];
       const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params),
@@ -246,7 +126,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
 
     it("should generate settings for an Integer field", () => {
       const params = [
-        createMockParameter({ id: "test-field", type: "type/Integer" }),
+        createMockParameter({ id: "test-field", type: "number" }),
       ];
       const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params),
@@ -258,7 +138,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
 
     it("should generate settings for a float field", () => {
       const params = [
-        createMockParameter({ id: "test-field", type: "type/Float" }),
+        createMockParameter({ id: "test-field", type: "number" }),
       ];
       const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params),
@@ -270,7 +150,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
 
     it("generates field settings for an integer field", () => {
       const params = [
-        createMockParameter({ id: "test-field", type: "type/Integer" }),
+        createMockParameter({ id: "test-field", type: "number" }),
       ];
       const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params),
@@ -281,9 +161,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
     });
 
     it("should generate settings for a dateTime field", () => {
-      const params = [
-        createMockParameter({ id: "test-field", type: "type/DateTime" }),
-      ];
+      const params = [createMockParameter({ id: "test-field", type: "date" })];
       const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params),
       );
@@ -293,27 +171,25 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
     });
 
     it("should generate settings for a date field", () => {
-      const params = [
-        createMockParameter({ id: "test-field", type: "type/Date" }),
-      ];
+      const params = [createMockParameter({ id: "test-field", type: "date" })];
       const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params),
       );
 
       expect(settings.fieldType).toBe("string");
-      expect(settings.inputType).toBe("date");
+      expect(settings.inputType).toBe("datetime");
     });
 
     it("generates field settings for a json field", () => {
       const params = [
-        createMockParameter({ id: "test-field", type: "type/Structured" }),
+        createMockParameter({ id: "test-field", type: "string" }),
       ];
       const [_id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params),
       );
 
       expect(settings.fieldType).toBe("string");
-      expect(settings.inputType).toBe("text");
+      expect(settings.inputType).toBe("string");
     });
 
     it("should set the parameter id as the object key", () => {

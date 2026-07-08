@@ -90,7 +90,10 @@ describe("scenarios > question > settings", () => {
 
       getSidebarColumns().eq("5").as("total").contains("Total");
 
-      H.moveDnDKitElement(cy.get("@total"), { vertical: -100 });
+      H.moveDnDKitElementByAlias("@total", {
+        vertical: -100,
+        useMouseEvents: true,
+      });
 
       getSidebarColumns().eq("3").should("contain.text", "Total");
 
@@ -104,7 +107,10 @@ describe("scenarios > question > settings", () => {
         expect($el.scrollTop).to.eql(0);
       });
 
-      H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
+      H.moveDnDKitElementByAlias("@title", {
+        vertical: 15,
+        useMouseEvents: true,
+      });
 
       cy.findByTestId("chartsettings-list-container").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
@@ -159,11 +165,20 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      H.moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
+      H.moveDnDKitElementByAlias("@prod-category", {
+        vertical: -360,
+        useMouseEvents: true,
+      });
 
       refreshResultsInHeader();
 
       findColumnAtIndex("Products → Category", 5);
+
+      // Let the refreshed results finish rendering (Total visible) before hiding,
+      // so the hide toggle doesn't race the in-flight results render.
+      cy.findByTestId("query-builder-main")
+        .findByText("117.03")
+        .should("exist");
 
       // Remove "Total"
       hideColumn("Total");
@@ -188,7 +203,10 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      H.moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
+      H.moveDnDKitElementByAlias("@user-address", {
+        vertical: -100,
+        useMouseEvents: true,
+      });
 
       findColumnAtIndex("User → Address", -3);
 
@@ -197,7 +215,7 @@ describe("scenarios > question > settings", () => {
        */
 
       function findColumnAtIndex(column_name, index) {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
     });
@@ -249,7 +267,7 @@ describe("scenarios > question > settings", () => {
       });
 
       H.openVizSettingsSidebar(); // open settings sidebar
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
       H.tableHeaderClick("Subtotal"); // open subtotal column header actions
@@ -257,7 +275,7 @@ describe("scenarios > question > settings", () => {
       H.popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.findByTestId("head-crumbs-container").findByText("Orders").click(); //Dismiss popover
@@ -267,7 +285,7 @@ describe("scenarios > question > settings", () => {
       H.popover().within(() => {
         cy.icon("gear").click(); // open created_at column settings
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Date style"); // shows created_at column settings
     });
 
@@ -292,7 +310,7 @@ describe("scenarios > question > settings", () => {
 
       H.visitQuestionAdhoc(questionDetails);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
       H.openVizSettingsSidebar();
@@ -311,19 +329,19 @@ describe("scenarios > question > settings", () => {
         });
 
       cy.findByDisplayValue("Normal").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").click();
 
       cy.findByDisplayValue("US Dollar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Bitcoin").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("In every table cell").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 2.07");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 6.10");
     });
 
@@ -346,7 +364,6 @@ describe("scenarios > question > settings", () => {
         .findByRole("listitem")
         .within(() => {
           cy.findByLabelText("ellipsis icon").should("be.visible");
-          cy.findByLabelText("grabber icon").should("be.visible");
           cy.findByLabelText("eye_outline icon").should("be.visible");
           cy.findByText(longName).should("be.visible");
         });
@@ -545,11 +562,13 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByLabelText(/Where do you want to save this/).click();
       });
-      H.pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
+      H.pickEntity({ path: ["Our analytics"], select: false });
       H.entityPickerModal().findByText("Select this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
-      H.modal().findByText("Yes please!").click();
+      H.checkSavedToCollectionQuestionToast(true);
+
       H.entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders in a dashboard").click();
         cy.findByText("Cancel").click();
       });
@@ -558,9 +577,9 @@ describe("scenarios > question > settings", () => {
       H.openNavigationSidebar();
       H.browseDatabases().click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
       // This next assertion might not catch bugs where the modal displays after
@@ -589,8 +608,10 @@ function getVisibleSidebarColumns() {
 }
 
 function hideColumn(name) {
+  // Click the hide button without force so Cypress waits for actionability and
+  // re-queries on re-render — a force click can land on a stale node and be lost.
   H.sidebar()
     .findByTestId(`draggable-item-${name}`)
-    .icon("eye_outline")
-    .click({ force: true });
+    .findByTestId(`${name}-hide-button`)
+    .click();
 }

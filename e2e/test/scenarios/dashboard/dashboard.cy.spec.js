@@ -1,7 +1,6 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -10,20 +9,20 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 
-import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
-import {
-  adaptiveRadioButton,
-  durationRadioButton,
-  openSidebarCacheStrategyForm,
-} from "../admin/performance/helpers/e2e-strategy-form-helpers";
+const { H } = cy;
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+
+// There's a race condition when saving a dashboard
+// and then immediately editing it again. After saving,
+// we exit the edit mode and that can happen after
+// `H.editDashboard` is called for some reason
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
@@ -32,7 +31,7 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("create", () => {
-    it("new dashboard UI flow", { tags: "@smoke" }, () => {
+    it("new dashboard UI flow", { tags: "@prerelease" }, () => {
       cy.intercept("POST", "/api/dashboard").as("createDashboard");
       cy.intercept("POST", "/api/card").as("createQuestion");
 
@@ -48,7 +47,6 @@ describe("scenarios > dashboard", () => {
         "pressing escape should only close the entity picker modal, not the new dashboard modal",
       );
       H.modal().findByTestId("collection-picker-button").click();
-      H.entityPickerModal().findByText("Select a collection");
       cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
@@ -82,12 +80,10 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("dashboard-empty-state").button("Add a chart").click();
       cy.findByTestId("new-button-bar").findByText("New Question").click();
 
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "Pro",
-        );
-        cy.findByText("Everywhere").click();
+        cy.findByText("Databases").click();
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
@@ -117,62 +113,6 @@ describe("scenarios > dashboard", () => {
         .and("not.contain", newQuestionName);
     });
 
-    it(
-      "should create new dashboard inside a collection created on the go",
-      // Increased height to avoid scrolling when opening a collection picker
-      { viewportHeight: 1000 },
-      () => {
-        cy.intercept("POST", "api/collection").as("createCollection");
-        cy.visit("/");
-        cy.findByTestId("home-page").should(
-          "contain",
-          "Try out these sample x-rays to see what Metabase can do.",
-        );
-        H.closeNavigationSidebar();
-        H.appBar().findByText("New").click();
-        H.popover().findByText("Dashboard").should("be.visible").click();
-        const NEW_DASHBOARD = "Foo";
-        cy.findByTestId("new-dashboard-modal").then((modal) => {
-          cy.findByRole("heading", { name: "New dashboard" });
-          cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
-          cy.findByTestId("collection-picker-button")
-            .should("have.text", "Our analytics")
-            .click();
-        });
-
-        H.entityPickerModal()
-          .findByRole("tab", { name: /Collections/ })
-          .click();
-        H.entityPickerModal()
-          .findByText("New collection")
-          .click({ force: true });
-        const NEW_COLLECTION = "Bar";
-        H.collectionOnTheGoModal().within(() => {
-          cy.findByText("Create a new collection");
-          cy.findByPlaceholderText(/My new collection/)
-            .type(NEW_COLLECTION)
-            .blur();
-          cy.findByText("Create").click();
-          cy.wait("@createCollection");
-        });
-        H.entityPickerModal().within(() => {
-          cy.findByText(NEW_COLLECTION).click();
-          cy.button("Select").click();
-        });
-        H.modal().within(() => {
-          cy.findByText("New dashboard");
-          cy.findByTestId("collection-picker-button").should(
-            "have.text",
-            NEW_COLLECTION,
-          );
-          cy.button("Create").click();
-        });
-
-        H.saveDashboard({ awaitRequest: false });
-        cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
-      },
-    );
-
     it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
       cy.intercept("POST", "/api/card").as("saveQuestion");
 
@@ -184,9 +124,9 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByTestId("dashboard-and-collection-picker-button").click();
       });
-      H.entityPickerModal().within(() => {
-        cy.findByText("First collection").click();
-        cy.findByText("Select this collection").click();
+      H.pickEntity({
+        path: ["Our analytics", "First collection"],
+        select: true,
       });
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save").click();
@@ -194,15 +134,16 @@ describe("scenarios > dashboard", () => {
       cy.wait("@saveQuestion");
 
       cy.log("Add this new question to a dashboard created on the fly");
-      H.modal().within(() => {
-        cy.findByText("Saved! Add this to a dashboard?");
-        cy.button("Yes please!").click();
-      });
 
+      H.checkSavedToCollectionQuestionToast(true);
+
+      // The "New dashboard" button stays disabled until the selected
+      // collection's details (incl. can_write) load; clicking too early is a
+      // no-op, so wait for it to be enabled before clicking.
       H.entityPickerModal()
-        .findByRole("tab", { name: /Dashboards/ })
+        .findByRole("button", { name: "New dashboard" })
+        .should("be.enabled")
         .click();
-      H.entityPickerModal().findByText("New dashboard").click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();
@@ -218,7 +159,7 @@ describe("scenarios > dashboard", () => {
 
       H.commandPaletteButton().click();
       H.commandPalette().within(() => {
-        cy.findByText("Recent items").should("exist");
+        cy.findByText("Recents").should("exist");
         cy.findByRole("option", { name: "Orders in a dashboard" }).click();
       });
 
@@ -307,7 +248,6 @@ describe("scenarios > dashboard", () => {
         H.openDashboardMenu();
         H.popover().findByText("Move").click();
         H.entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -326,7 +266,6 @@ describe("scenarios > dashboard", () => {
         H.openDashboardMenu();
         H.popover().findByText("Move").click();
         H.entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });
@@ -645,6 +584,33 @@ describe("scenarios > dashboard", () => {
         H.getDashboardCard(1).contains("bottom");
       },
     );
+
+    it("should not save the dashboard when the user clicks 'Discard changes'", () => {
+      // Navigate to the dashboard via client-side navigation (to trigger the client-side "Discard changes" prompt)
+      cy.visit("/");
+      cy.findByTestId("main-navbar-root").findByText("Our analytics").click();
+      cy.findByTestId("collection-table")
+        .findByText(originalDashboardName)
+        .click();
+
+      cy.log("Make a change to the dashboard");
+      H.editDashboard();
+      cy.findByTestId("dashboard-empty-state")
+        .findByText("Add a chart")
+        .click();
+      H.sidebar().findByText("Orders, Count").click();
+      H.getDashboardCards().should("have.length", 1);
+
+      cy.log("Navigate back and discard changes");
+      cy.go("back");
+      H.modal().button("Discard changes").click();
+      cy.findByTestId("collection-table")
+        .findByText(originalDashboardName)
+        .click();
+
+      cy.log("Verify changes were not saved");
+      cy.findByTestId("dashboard-empty-state").should("exist");
+    });
   });
 
   describe("iframe cards", () => {
@@ -773,7 +739,7 @@ describe("scenarios > dashboard", () => {
     H.saveDashboard();
 
     cy.log("Assert that the selected filter is present in the dashboard");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Location", { exact: false }).should("be.visible");
   });
 
@@ -804,14 +770,14 @@ describe("scenarios > dashboard", () => {
 
     cy.visit("/collection/root");
     // enter newly created dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("dash:11007").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
     // add previously created question to it
     cy.findByLabelText("Edit dashboard").click();
     H.openQuestionsSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
     H.setFilter("Date picker", "All Options");
@@ -836,9 +802,9 @@ describe("scenarios > dashboard", () => {
     // and connect it to the card
     H.selectDashboardFilter(cy.findByTestId("dashcard-container"), "Category");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 
@@ -942,9 +908,9 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
       cy.icon("click").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("COUNT(*)").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update a dashboard filter").click();
 
     checkOptionsForFilter("ID");
@@ -1067,9 +1033,9 @@ describe("scenarios > dashboard", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.wait("@queryMetadata");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 
@@ -1092,11 +1058,14 @@ describe("scenarios > dashboard", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
     assertScrollBarExists();
 
-    H.openSharingMenu("Embed");
+    H.openLegacyStaticEmbeddingModal({
+      resource: "dashboard",
+      resourceId: ORDERS_DASHBOARD_ID,
+    });
 
     H.modal().within(() => {
       cy.icon("close").click();
@@ -1134,8 +1103,8 @@ describe("scenarios > dashboard", () => {
 
         cy.log("should scroll into view w/ scrollTo hash param");
         cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
-        cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
-        cy.location("hash").should("not.include", "scrollTo"); // scrollTo param should get removed
+        // wait for scroll to complete (hash cleared) then verify visibility
+        cy.location("hash").should("not.include", "scrollTo");
         cy.findByText(TARGET_TEXT).should("be.visible");
       },
     );
@@ -1211,13 +1180,14 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").findByText("Orders");
   });
 
-  describe("warn before leave", { tags: "@flaky" }, () => {
+  describe("warn before leave", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
 
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findByTestId("home-page").should(
         "contain",
@@ -1248,8 +1218,9 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
+    it("should warn a user before leaving after adding, removing, moving, or duplicating a tab", () => {
       cy.visit("/");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       // add tab
       createNewDashboard();
@@ -1287,7 +1258,7 @@ describe("scenarios > dashboard", () => {
       // can be a side effect
       cy.url().should("include", "tab-1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: 100 });
+      H.saveDashboard();
 
       // rename tab
       H.editDashboard();
@@ -1326,7 +1297,7 @@ describe("scenarios > dashboard", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > dashboard", () => {
+describe("scenarios > dashboard", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/activity/recents?*").as("recentViews");
     H.resetSnowplow();
@@ -1481,7 +1452,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     // toggle full-width
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFullWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
@@ -1496,18 +1467,58 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     // toggle back to fixed
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFixedWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
       full_width: false,
     });
   });
+
+  it("should track reverting to an old version", () => {
+    H.createDashboard({ name: "Foo" }).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/dashboard/${id}`, { name: "Bar" });
+      H.visitDashboard(id);
+
+      cy.intercept("GET", "/api/revision*").as("revisionHistory");
+
+      cy.findByTestId("dashboard-header")
+        .findByLabelText("More info")
+        .should("be.visible")
+        .click();
+
+      H.sidesheet().within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
+        cy.wait("@revisionHistory");
+        cy.findByTestId("dashboard-history-list").should("be.visible");
+        cy.findByTestId("question-revert-button").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "revert_version_clicked",
+        event_detail: "dashboard",
+      });
+
+      // Simulate a backend failure on revert and confirm we surface
+      // the error message as a toast (UXW-310).
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing dashboard" },
+      }).as("failedRevert");
+
+      H.sidesheet().within(() => {
+        cy.findAllByTestId("question-revert-button").first().click();
+      });
+      cy.wait("@failedRevert");
+
+      H.undoToast().should("contain.text", "Cannot revert: missing dashboard");
+    });
+  });
 });
 
 function checkOptionsForFilter(filter) {
   cy.findByText("Available filters").parent().contains(filter).click();
-  H.popover()
+  H.selectDropdown()
     .should("contain", "Columns")
     .and("contain", "COUNT(*)")
     .and("not.contain", "Dashboard filters");
@@ -1588,71 +1599,6 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
   );
 });
 
-describe("scenarios > dashboard > caching", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  /**
-   * @note There is a similar test for the cache config form that appears in the question sidebar.
-   * It's in the Cypress describe block labeled "scenarios > question > caching"
-   */
-  it("can configure cache for a dashboard, on an enterprise instance", () => {
-    interceptPerformanceRoutes();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    openSidebarCacheStrategyForm("dashboard");
-
-    H.sidesheet().within(() => {
-      cy.findByText(/Caching settings/).should("be.visible");
-      durationRadioButton().click();
-      cy.findByLabelText("Cache results for this many hours").type("48");
-      cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@putCacheConfig");
-      cy.log(
-        "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
-      );
-      cy.findByLabelText(/When to get new results/).should(
-        "contain",
-        "Duration",
-      );
-      cy.findByLabelText(/When to get new results/).click();
-      adaptiveRadioButton().click();
-      cy.findByLabelText(/Minimum query duration/).type("999");
-      cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@putCacheConfig");
-      cy.findByLabelText(/When to get new results/).should(
-        "contain",
-        "Adaptive",
-      );
-    });
-  });
-
-  it("can click 'Clear cache' for a dashboard", () => {
-    interceptPerformanceRoutes();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    openSidebarCacheStrategyForm("dashboard");
-
-    H.sidesheet().within(() => {
-      cy.findByText(/Caching settings/).should("be.visible");
-      cy.findByRole("button", {
-        name: /Clear cache for this dashboard/,
-      }).click();
-    });
-
-    cy.findByTestId("confirm-modal").within(() => {
-      cy.findByRole("button", { name: /Clear cache/ }).click();
-    });
-    cy.wait("@invalidateCache");
-    H.sidesheet().within(() => {
-      cy.findByText("Cache cleared").should("be.visible");
-    });
-  });
-});
-
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
 
@@ -1727,31 +1673,31 @@ describe("scenarios > dashboard > permissions", () => {
   it("should let admins view all cards in a dashboard", () => {
     H.visitDashboard(dashboardId);
     // Admin can see both questions
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First Question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display dashboards with some cards locked down", () => {
     cy.signIn("nodata");
     H.visitDashboard(dashboardId);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
     cy.signIn("nocollection");
     H.visitDashboard(dashboardId);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
@@ -1872,7 +1818,7 @@ describe("scenarios > dashboard > entity id support", () => {
 });
 
 function validateIFrame(src, index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.getDashboardCards()
     .get("iframe")
     .eq(index)

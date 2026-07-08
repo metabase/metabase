@@ -4,14 +4,13 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
 import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
-import { Tooltip } from "metabase/ui";
-import { Box, type BoxProps, Flex } from "metabase/ui";
+import { ColumnBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/ColumnBucketPickerPopover";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { Box, type BoxProps, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import BreakoutColumnListItemS from "./BreakoutColumnListItem.module.css";
@@ -61,6 +60,7 @@ export function BreakoutColumnListItem({
   onRemoveBreakout,
   onReplaceBreakouts,
 }: BreakoutColumnListItemProps) {
+  const tc = useTranslateContent();
   const isSelected = breakout != null;
 
   const handleAddClick = useCallback(() => {
@@ -81,7 +81,7 @@ export function BreakoutColumnListItem({
     [breakout, onRemoveBreakout],
   );
 
-  const displayName = isPinned ? item.longDisplayName : item.displayName;
+  const displayName = tc(isPinned ? item.longDisplayName : item.displayName);
 
   return (
     <HoverParent
@@ -117,12 +117,12 @@ export function BreakoutColumnListItem({
             {displayName}
           </Box>
         </Flex>
-        <BucketPickerPopover
+        <ColumnBucketPickerPopover
           className={BreakoutColumnListItemS.BucketTriggerButton}
           query={query}
           stageIndex={stageIndex}
           column={item.column}
-          color="summarize"
+          color="core-summarize"
           isEditing={isSelected}
           hasChevronDown
           hasBinning
@@ -136,9 +136,9 @@ export function BreakoutColumnListItem({
         {isSelected && (
           <Button
             className={BreakoutColumnListItemS.RemoveButton}
-            icon="close"
-            onlyIcon
-            borderless
+            variant="subtle"
+            size="xs"
+            leftSection={<Icon name="close" />}
             onClick={handleRemoveColumn}
             aria-label={t`Remove dimension`}
           />
@@ -148,9 +148,9 @@ export function BreakoutColumnListItem({
         <Tooltip label={t`Add grouping`}>
           <Button
             className={BreakoutColumnListItemS.AddButton}
-            icon="add"
-            onlyIcon
-            borderless
+            variant="subtle"
+            size="sm"
+            leftSection={<Icon name="add" />}
             aria-label={t`Add dimension`}
             onClick={handleAddClick}
           />

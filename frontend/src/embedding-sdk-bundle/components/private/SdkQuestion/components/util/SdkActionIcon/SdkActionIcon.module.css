@@ -1,0 +1,23 @@
+.sdkActionIcon:not([data-css-specificity-hack]) {
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+
+  &:hover {
+    background: var(--mb-color-background_surface-hover);
+  }
+
+  &[data-active="true"] {
+    color: var(--mb-color-text-primary-inverse);
+    background: var(--mb-color-core-brand);
+    border-color: var(--mb-color-core-brand);
+
+    &:hover {
+      background: color-mix(
+        in srgb,
+        var(--mb-color-core-brand),
+        transparent 20%
+      );
+    }
+  }
+}

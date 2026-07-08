@@ -18,6 +18,7 @@ describe("getInitialStateForCardDataSource", () => {
     card: createMockCard({
       display: "smartscalar",
       name: "ScalarMcSmartface",
+      description: null,
       visualization_settings: {
         "scalar.compact_primary_number": true,
       },
@@ -72,6 +73,7 @@ describe("getInitialStateForCardDataSource", () => {
     const card = createMockCard({
       display: "table",
       name: "TablyMcTableface",
+      description: null,
       visualization_settings: {},
     });
 
@@ -95,9 +97,81 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "TablyMcTableface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
+    });
+  });
+
+  it("should pick columns from graph.tooltip_columns as well (metabase#64721)", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "CREATED_AT",
+            base_type: "type/DateTime",
+            effective_type: "type/DateTime",
+            semantic_type: null,
+            unit: "month",
+          }),
+          createMockColumn({
+            name: "SOME_METRIC",
+            database_type: "int8",
+            semantic_type: "type/Quantity",
+            base_type: "type/BigInteger",
+          }),
+          createMockColumn({
+            name: "SOME_OTHER_METRIC",
+            database_type: "int8",
+            semantic_type: "type/Quantity",
+            base_type: "type/BigInteger",
+          }),
+        ],
+      }),
+    });
+
+    const card = createMockCard({
+      display: "line",
+      name: "ChartyMcChartface",
+      description: null,
+      visualization_settings: {
+        "graph.metrics": ["SOME_METRIC"],
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.tooltip_columns": [
+          JSON.stringify(["name", "SOME_OTHER_METRIC"]),
+        ],
+      },
+    });
+
+    const state = getInitialStateForCardDataSource(card, dataset);
+
+    expect(state.columnValuesMapping).toEqual({
+      COLUMN_1: [
+        {
+          name: "COLUMN_1",
+          originalName: "CREATED_AT",
+          sourceId: "card:1",
+        },
+      ],
+      COLUMN_2: [
+        {
+          name: "COLUMN_2",
+          originalName: "SOME_METRIC",
+          sourceId: "card:1",
+        },
+      ],
+      COLUMN_3: [
+        {
+          name: "COLUMN_3",
+          originalName: "SOME_OTHER_METRIC",
+          sourceId: "card:1",
+        },
+      ],
+    });
+
+    expect(state.settings).toEqual({
+      "graph.dimensions": ["COLUMN_1"],
+      "graph.metrics": ["COLUMN_2"],
+      "graph.tooltip_columns": [JSON.stringify(["name", "COLUMN_3"])],
     });
   });
 
@@ -137,6 +211,7 @@ describe("getInitialStateForCardDataSource", () => {
     const card = createMockCard({
       display: "combo",
       name: "ComboMcComboface",
+      description: null,
       visualization_settings: {
         "graph.metrics": ["sum", "sum_2"],
         "graph.dimensions": ["CREATED_AT"],
@@ -170,7 +245,6 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "ComboMcComboface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2", "COLUMN_3"],
     });
@@ -217,10 +291,75 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "ScalarMcSmartface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
       "scalar.compact_primary_number": true,
+    });
+  });
+
+  it("should keep remapped display columns and rewrite references (UXW-3359)", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "buyingstatus",
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+            semantic_type: "type/Category",
+            remapped_to: "buyingstatus_display",
+          }),
+          createMockColumn({
+            name: "buyingstatus_display",
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            remapped_from: "buyingstatus",
+          }),
+          createMockColumn({
+            name: "count",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            semantic_type: "type/Quantity",
+          }),
+        ],
+      }),
+    });
+
+    const card = createMockCard({
+      display: "bar",
+      name: "Remapped",
+      description: null,
+      visualization_settings: {
+        "graph.dimensions": ["buyingstatus"],
+        "graph.metrics": ["count"],
+      },
+    });
+
+    const state = getInitialStateForCardDataSource(card, dataset);
+
+    expect(state.columnValuesMapping).toEqual({
+      COLUMN_1: [
+        { name: "COLUMN_1", originalName: "buyingstatus", sourceId: "card:1" },
+      ],
+      COLUMN_2: [
+        {
+          name: "COLUMN_2",
+          originalName: "buyingstatus_display",
+          sourceId: "card:1",
+        },
+      ],
+      COLUMN_3: [
+        { name: "COLUMN_3", originalName: "count", sourceId: "card:1" },
+      ],
+    });
+
+    const baseCol = state.columns.find((c) => c.name === "COLUMN_1");
+    const displayCol = state.columns.find((c) => c.name === "COLUMN_2");
+    expect(baseCol?.remapped_to).toBe("COLUMN_2");
+    expect(displayCol?.remapped_from).toBe("COLUMN_1");
+
+    expect(state.settings).toEqual({
+      "graph.dimensions": ["COLUMN_1"],
+      "graph.metrics": ["COLUMN_3"],
     });
   });
 
@@ -230,6 +369,7 @@ describe("getInitialStateForCardDataSource", () => {
       const card = createMockCard({
         name: `${vizType} card`,
         display: vizType,
+        description: null,
       });
       const initialState = getInitialStateForCardDataSource(card, dataset);
 
@@ -264,11 +404,10 @@ describe("getInitialStateForCardDataSource", () => {
           DIMENSION: ["$_card:1_name"],
         },
         settings: {
-          "card.title": card.name,
           "funnel.metric": "METRIC",
           "funnel.dimension": "DIMENSION",
         },
-        datasetFallbacks: { [card.id]: dataset },
+        preloadedDatasets: { [card.id]: dataset },
       });
     },
   );

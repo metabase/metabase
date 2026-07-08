@@ -1,27 +1,26 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { isEmpty } from "metabase/lib/validate";
+import type { ColorGetter } from "metabase/ui/colors/types";
+import { isNumber } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
+import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import { computeChange } from "metabase/visualizations/lib/numeric";
-import type {
-  ColorGetter,
-  ColumnSettings,
-} from "metabase/visualizations/types";
+import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import {
   formatChange,
   formatPreviousPeriodOptionName,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
-  DatasetQuery,
   DateTimeAbsoluteUnit,
+  LegacyDatasetQuery,
   RowValue,
   RowValues,
   Series,
@@ -43,16 +42,34 @@ export type ComparisonResult = {
   comparisonValue: RowValue | undefined;
   display: {
     percentChange: string;
-    comparisonValue: string | number | JSX.Element | null;
+    comparisonValue: SmartScalarDisplayValue;
   };
   percentChange: number | undefined;
+};
+
+export type SmartScalarDisplayValue = string | number | JSX.Element | null;
+
+export type Trend = {
+  value: RowValue;
+  clicked: ClickObject;
+  formatOptions: ColumnSettings;
+  display: {
+    value: SmartScalarDisplayValue;
+    date: SmartScalarDisplayValue;
+  };
+  comparisons: ComparisonResult[];
+};
+
+export type ComputeTrendResult = {
+  trend?: Trend;
+  error?: Error;
 };
 
 interface DateUnitSettings {
   dateColumn: DatasetColumn;
   dateColumnSettings: ColumnSettings;
   dateUnit?: DateTimeAbsoluteUnit;
-  queryType: DatasetQuery["type"];
+  queryType: LegacyDatasetQuery["type"];
 }
 
 interface MetricData {
@@ -73,7 +90,7 @@ export function computeTrend(
   insights: Insight[] | null | undefined,
   settings: VisualizationSettings,
   { getColor }: { getColor: ColorGetter },
-) {
+): ComputeTrendResult {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
@@ -137,9 +154,10 @@ function buildComparisonObject({
       series,
     }) || {};
 
-  const percentChange = !isEmpty(comparisonValue)
-    ? computeChange(comparisonValue, value)
-    : undefined;
+  const percentChange =
+    isNumber(comparisonValue) && isNumber(value)
+      ? computeChange(comparisonValue, value)
+      : undefined;
 
   const {
     changeType,
@@ -229,9 +247,7 @@ function getCurrentMetricData({
 }): MetricData {
   const [
     {
-      card: {
-        dataset_query: { type: queryType },
-      },
+      card,
       data: { rows, cols },
     },
   ] = series;
@@ -255,12 +271,12 @@ function getCurrentMetricData({
   }
 
   // get latest value and date
-  const latestRowIndex = _.findLastIndex(rows, (row) => {
-    const date = row[dimensionColIndex];
-    const value = row[metricColIndex];
-
-    return !isEmpty(value) && !isEmpty(date);
-  });
+  const latestRowIndex = findPreviousNonEmptyRowIndex(
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    rows.length,
+  );
   if (latestRowIndex === -1) {
     throw Error("No rows contain a valid value.");
   }
@@ -274,15 +290,32 @@ function getCurrentMetricData({
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
+
+  const question = new Question(card);
+  const isNative = question.isNative();
+
   const dateColumnWithUnit = { ...dateColumn };
-  dateColumnWithUnit.unit ??= dateUnit;
+  if (!isNative) {
+    dateColumnWithUnit.unit ??= dateUnit;
+  }
   const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
+
+  const { date_granularity } = dateColumnSettings;
+  const displayUnit = isAbsoluteDateTimeUnit(date_granularity)
+    ? date_granularity
+    : undefined;
+  const displaySettings = displayUnit
+    ? { ...dateColumnSettings, time_enabled: null }
+    : dateColumnSettings;
+  if (displayUnit) {
+    dateColumnWithUnit.unit = displayUnit;
+  }
 
   const dateUnitSettings: DateUnitSettings = {
     dateColumn: dateColumnWithUnit,
-    dateColumnSettings,
-    dateUnit,
-    queryType,
+    dateColumnSettings: displaySettings,
+    dateUnit: displayUnit ?? dateUnit,
+    queryType: isNative ? "native" : "query",
   };
 
   const formatOptions = {
@@ -412,16 +445,12 @@ function computeComparisonPreviousValue({
   nextDate: string | undefined;
   dateUnitSettings: DateUnitSettings;
 }) {
-  const previousRowIndex = _.findLastIndex(rows, (row, i) => {
-    if (i >= nextValueRowIndex) {
-      return false;
-    }
-
-    const date = row[dimensionColIndex];
-    const value = row[metricColIndex];
-
-    return !isEmpty(value) && !isEmpty(date);
-  });
+  const previousRowIndex = findPreviousNonEmptyRowIndex(
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    nextValueRowIndex,
+  );
 
   // if no row exists with non-null date and non-null value
   if (previousRowIndex === -1) {
@@ -673,7 +702,7 @@ function formatDateStr({
 }: {
   date: string;
   dateUnitSettings: DateUnitSettings;
-  options?: OptionsType;
+  options?: ColumnSettings;
 }) {
   const { dateColumn, dateColumnSettings, dateUnit, queryType } =
     dateUnitSettings;
@@ -767,12 +796,12 @@ function getArrowColor(
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-positive"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-negative"),
       }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-negative"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-positive"),
       };
 
   return arrowIconColorNames[changeArrowIconName];

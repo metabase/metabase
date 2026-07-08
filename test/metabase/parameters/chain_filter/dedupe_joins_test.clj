@@ -12,7 +12,7 @@
   ([joins start-id keep-ids]
    (map (juxt (comp :table :lhs) (comp :table :rhs))
         (dedupe/dedupe-joins
-         start-id
+         start-id #{}
          (for [[lhs rhs] joins]
            {:lhs {:table lhs}, :rhs {:table rhs}})
          keep-ids))))
@@ -75,8 +75,8 @@
   (testing "Node 3 is omitted from the above graph."
     (is (= [[0 1]
             [1 2] [2 5] [5 6]
-            [5 4] [4 8] [8 9]
-            [4 7]]
+            [5 4] [4 8] [4 7]
+            [8 9]]
            (dedupe-joins
             [[0 1]
              [1 3] [3 4] [4 7]
@@ -114,7 +114,7 @@
            {:lhs {:table 30, :field 334}, :rhs {:table 38, :field 399}}
            {:lhs {:table 30, :field 333}, :rhs {:table 37, :field 396}}]
           result
-          (dedupe/dedupe-joins 24 in-joins #{32 40 28 38 37})]
+          (dedupe/dedupe-joins 24 #{} in-joins #{32 40 28 38 37})]
       (is (= (first expected)
              (first result)))
       (is (= (-> expected rest set)

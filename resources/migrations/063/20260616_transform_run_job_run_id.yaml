@@ -1,0 +1,97 @@
+## Add job_run_id to transform_run to link each transform execution to its parent job run
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:00
+      author: bronsa
+      comment: Add job_run_id to transform_run to link each transform execution to its parent job run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: job_run_id
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: job_run_id
+                  type: bigint
+                  remarks: FK to transform_job_run; links each transform execution to its parent job run
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform_run
+            columnName: job_run_id
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:01
+      author: bronsa
+      comment: Index transform_run on job_run_id for efficient drill-down queries
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_run
+                indexName: idx_transform_run_job_run_id
+      changes:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_job_run_id
+            columns:
+              - column:
+                  name: job_run_id
+      rollback:
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_job_run_id
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:02
+      author: bronsa
+      comment: >-
+        Backfill job_run_id on transform_run by matching each run to the job run whose time window fully contains it.
+        This is best-effort for historical data. Going forward job_run_id is set directly at execution time.
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH matches AS (
+                SELECT DISTINCT ON (run.id)
+                  run.id AS transform_run_id,
+                  job_run.id AS job_run_id
+                FROM transform_run run
+                INNER JOIN transform_transform_tag tag ON tag.transform_id = run.transform_id
+                INNER JOIN transform_job_transform_tag job_tag ON job_tag.tag_id = tag.tag_id
+                INNER JOIN transform_job_run job_run ON job_run.job_id = job_tag.job_id
+                WHERE run.job_run_id IS NULL
+                  AND job_run.run_method = run.run_method
+                  AND job_run.start_time <= run.start_time
+                  AND (job_run.end_time IS NULL OR job_run.end_time >= COALESCE(run.end_time, run.start_time))
+                ORDER BY run.id, job_run.start_time DESC
+              )
+              UPDATE transform_run
+              SET job_run_id = matches.job_run_id
+              FROM matches
+              WHERE transform_run.id = matches.transform_run_id
+        - sql:
+            dbms: mysql,h2
+            sql: >-
+              UPDATE transform_run
+              SET job_run_id = (
+                SELECT job_run.id
+                FROM transform_job_run job_run
+                INNER JOIN transform_job_transform_tag job_tag ON job_tag.job_id = job_run.job_id
+                INNER JOIN transform_transform_tag tag ON tag.tag_id = job_tag.tag_id
+                WHERE tag.transform_id = transform_run.transform_id
+                  AND job_run.run_method = transform_run.run_method
+                  AND job_run.start_time <= transform_run.start_time
+                  AND (job_run.end_time IS NULL OR job_run.end_time >= COALESCE(transform_run.end_time, transform_run.start_time))
+                ORDER BY job_run.start_time DESC
+                LIMIT 1
+              )
+              WHERE transform_run.job_run_id IS NULL
+      rollback:

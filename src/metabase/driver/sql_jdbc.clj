@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -7,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -18,8 +20,12 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]
+   [next.jdbc])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
 
@@ -69,6 +75,9 @@
   [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
+(defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
+(defmethod driver/database-supports? [:sql-jdbc :jdbc/set-query-timeout] [_driver _feature _db] true)
+
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
   ;; if the driver has a non-default implementation of [[sql-jdbc.sync/db-default-timezone]], use that.
@@ -107,14 +116,11 @@
   [driver database & {:as args}]
   (sql-jdbc.sync/describe-indexes driver database args))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :sql-jdbc
-  [driver database table]
-  (sql-jdbc.sync/describe-table-fks driver database table))
-
-(defmethod driver/describe-fks :sql-jdbc
-  [driver database & {:as args}]
-  (sql-jdbc.sync/describe-fks driver database args))
+(mu/defmethod driver/describe-fks :sql-jdbc :- ::driver/describe-fks.result
+  [driver          :- :keyword
+   database        :- ::lib.schema.metadata/database
+   & {:as options} :- ::driver/describe-fks.options]
+  (sql-jdbc.sync/describe-fks driver database options))
 
 (defmethod driver/describe-table-indexes :sql-jdbc
   [driver database table]
@@ -153,14 +159,60 @@
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (driver-api/execute-write-sql! database-id sql)))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))))
 
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
-    (driver-api/execute-write-sql! db-id sql)))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
+
+(defmulti create-index-sql
+  "Implementing method to produce the SQL (string) that will create the secondary index."
+  {:added "0.58.0", :arglists '([driver schema table-name index-name column-names & opts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-index-sql :default
+  [driver schema table-name index-name column-names & _]
+  (with-quoting driver
+    (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
+                           (map keyword)
+                           column-names)]
+      (first (sql/format {:create-index [(keyword index-name) index-spec]}
+                         :quoted true
+                         :dialect (sql.qp/quote-style driver))))))
+
+(defmethod driver/create-index! :sql-jdbc
+  [driver database-id schema table-name index-name column-names & _]
+  (let [sql (create-index-sql driver schema table-name index-name column-names)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))
+    nil))
+
+(defmulti drop-index-sql
+  "Implementing method to produce the SQL (string) that will drop the index."
+  {:added "0.58.0" :arglists '([driver schema table-name index-name])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-index-sql :default
+  [driver schema _table-name index-name]
+  (first (sql/format {:drop-index [(keyword (if schema
+                                              (str (name schema) "." (name index-name))
+                                              (name index-name)))]}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
+(defmethod driver/drop-index! :sql-jdbc
+  [driver database-id schema table-name index-name & _]
+  (let [sql (drop-index-sql driver schema table-name index-name)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+      (jdbc/execute! conn sql))
+    nil))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
@@ -171,8 +223,7 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
-(defmethod driver/insert-into! :sql-jdbc
-  [driver db-id table-name column-names values]
+(defn- insert-into!-sqls [driver table-name column-names values inline?]
   (let [;; We need to partition the insert into multiple statements for both performance and correctness.
         ;;
         ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
@@ -186,12 +237,21 @@
         sqls       (map #(sql/format {:insert-into (keyword table-name)
                                       :columns     (quote-columns driver column-names)
                                       :values      %}
+                                     :inline inline?
                                      :quoted true
                                      :dialect dialect)
                         chunks)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (doseq [sql sqls]
-        (jdbc/execute! conn sql)))))
+    sqls))
+
+(defmethod driver/insert-into! :sql-jdbc
+  [driver db-id table-name column-names values]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (doseq [sql (insert-into!-sqls driver table-name column-names values false)]
+      (jdbc/execute! conn sql))))
+
+(defmethod driver/insert-from-source! [:sql-jdbc :rows]
+  [driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (driver/insert-into! driver db-id table-name (mapv :name columns) data))
 
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
@@ -209,7 +269,8 @@
                                                                    column-definitions)}
                                                 :quoted true
                                                 :dialect (sql.qp/quote-style driver)))]
-      (driver-api/execute-write-sql! db-id sql))))
+      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+        (jdbc/execute! conn sql)))))
 
 ;; kept for get-method driver compatibility
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -240,11 +301,36 @@
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
        (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
 
+(defmulti set-role-statement
+  "SQL for setting the active role for a Connection, such as USE ROLE or equivalent, for the given driver.
+
+  The currently open `java.sql.Connection` is provided so we can use things like
+
+  ```sql
+  SELECT quote_ident(?)
+  ```
+
+  to quote identifiers as needed.
+
+  This may either return a raw SQL string, or `[sql & args]` to be passed in to a parameterized statement. It is
+  preferable to pass the role separately whenever possible to prevent possible SQL injection issues."
+  {:added "0.61.0" :arglists '([driver ^java.sql.Connection connection ^String role])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod set-role-statement :default
+  [driver _connection role]
+  ;; fall back to implementations of the deprecated `:sql` driver method
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (driver.sql/set-role-statement driver role))
+
 (defmethod driver/set-role! :sql-jdbc
-  [driver conn role]
-  (let [sql (driver.sql/set-role-statement driver role)]
-    (with-open [stmt (.createStatement ^Connection conn)]
-      (.execute stmt sql))))
+  [driver ^Connection conn role]
+  (let [sql-args (set-role-statement driver conn role)
+        sql-args (if (string? sql-args)
+                   [sql-args]
+                   sql-args)]
+    (next.jdbc/execute! conn sql-args)))
 
 (defmethod driver/current-user-table-privileges :sql-jdbc
   [driver database & {:as args}]
@@ -316,3 +402,50 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+
+(defmethod driver/check-isolation-permissions :sql-jdbc
+  [driver database test-table]
+  (let [test-workspace {:id   perm-check-workspace-id
+                        :name "_mb_perm_check_"}]
+    (driver.conn/with-admin-connection
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       {:write? true}
+       (fn [^Connection conn]
+         (.setAutoCommit conn false)
+         (try
+           (let [init-result (try
+                               (driver/init-workspace-isolation! driver database test-workspace)
+                               (catch Exception e
+                                 (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE SCHEMA/USER): {0}"
+                                                      (ex-message e))
+                                                 {:step :init} e))))
+                 workspace-with-details (merge test-workspace init-result)]
+             (when test-table
+               (try
+                 ;; `grant-workspace-read-access!` takes a vector of schema-name
+                 ;; strings; per-table grants no longer exist.
+                 (driver/grant-workspace-read-access! driver database workspace-with-details
+                                                      [(:schema test-table)])
+                 (catch Exception e
+                   (throw (ex-info (tru "Failed to grant read access to schema {0}: {1}"
+                                        (:schema test-table) (ex-message e))
+                                   {:step :grant :table test-table} e)))))
+             (try
+               (driver/destroy-workspace-isolation! driver database workspace-with-details)
+               (catch Exception e
+                 (throw (ex-info (tru "Failed to destroy workspace isolation (DROP SCHEMA/USER): {0}"
+                                      (ex-message e))
+                                 {:step :destroy} e)))))
+           nil
+           (catch Exception e
+             (ex-message e))
+           (finally
+             (.rollback conn))))))))

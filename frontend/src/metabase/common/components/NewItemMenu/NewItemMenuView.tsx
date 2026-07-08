@@ -3,15 +3,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import {
-  PLUGIN_DOCUMENTS,
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-} from "metabase/plugins";
+import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
@@ -26,16 +25,14 @@ export interface NewItemMenuProps {
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
   onCloseNavbar: () => void;
-  isAdmin: boolean;
 }
 
-const NewItemMenuView = ({
+export const NewItemMenuView = ({
   collectionId,
   trigger,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
-  isAdmin,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
 
@@ -43,8 +40,18 @@ const NewItemMenuView = ({
     getSetting(state, "last-used-native-database-id"),
   );
 
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+
+  const { hasNlqAccess } = useUserMetabotPermissions();
+
   const menuItems = useMemo(() => {
     const items = [];
+
+    if (hasDataAccess && hasNlqAccess) {
+      items.push(
+        <NewMenuItemAIExploration key="nlq" collectionId={collectionId} />,
+      );
+    }
 
     if (hasDataAccess) {
       items.push(
@@ -70,11 +77,11 @@ const NewItemMenuView = ({
           key="native"
           component={ForwardRefLink}
           to={Urls.newQuestion({
-            type: "native",
+            DEPRECATED_RAW_MBQL_type: "native",
             creationType: "native_question",
             collectionId,
             cardType: "question",
-            databaseId: lastUsedDatabaseId || undefined,
+            DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
           })}
           leftSection={<Icon name="sql" />}
         >
@@ -82,60 +89,48 @@ const NewItemMenuView = ({
         </Menu.Item>,
       );
     }
+
+    if (canWriteToCollections) {
+      items.push(
+        <Menu.Item
+          key="dashboard"
+          onClick={() => {
+            trackNewMenuItemClicked("dashboard");
+            dispatch(setOpenModal("dashboard"));
+          }}
+          leftSection={<Icon name="dashboard" />}
+        >
+          {t`Dashboard`}
+        </Menu.Item>,
+      );
+    }
+
     items.push(
       <Menu.Item
-        key="dashboard"
-        onClick={() => {
-          trackNewMenuItemClicked("dashboard");
-          dispatch(setOpenModal("dashboard"));
-        }}
-        leftSection={<Icon name="dashboard" />}
+        key="document"
+        component={ForwardRefLink}
+        to="/document/new"
+        leftSection={<Icon name="document" />}
       >
-        {t`Dashboard`}
+        {t`Document`}
       </Menu.Item>,
     );
-
-    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
-      items.push(
-        <Menu.Item
-          key="document"
-          component={ForwardRefLink}
-          to="/document/new"
-          leftSection={<Icon name="document" />}
-        >
-          {t`Document`}
-        </Menu.Item>,
-      );
-    }
-
-    // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
-    // We hide the "Embed" menu item if the user is not an admin
-    if (
-      PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu() &&
-      isAdmin
-    ) {
-      items.push(
-        <Menu.Item
-          key="embed"
-          component={ForwardRefLink}
-          to="/embed-js"
-          leftSection={<Icon name="embed" />}
-        >
-          {t`Embed`}
-        </Menu.Item>,
-      );
-    }
 
     return items;
   }, [
     hasDataAccess,
     hasNativeWrite,
-    isAdmin,
     collectionId,
     lastUsedDatabaseId,
     hasDatabaseWithJsonEngine,
     dispatch,
+    canWriteToCollections,
+    hasNlqAccess,
   ]);
+
+  if (menuItems.length === 0) {
+    return null;
+  }
 
   return (
     <Menu position="bottom-end">
@@ -146,6 +141,3 @@ const NewItemMenuView = ({
     </Menu>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NewItemMenuView;

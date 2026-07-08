@@ -1,48 +1,83 @@
 .root {
   &[data-disabled] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
     pointer-events: all;
   }
 
   &[data-variant="subtle"] {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
 
     &:hover {
       color: var(--mb-color-text-secondary);
-      background-color: var(--mb-color-bg-light);
+      background-color: var(--mb-color-background_page-secondary);
+    }
+  }
+
+  /* To be able to seamlessly support color property across variants we need
+      to implement variantColorResolver. Same thing is pointed out in Button component. */
+  &[data-variant="info"] {
+    color: var(--mb-color-core-brand);
+    background-color: transparent;
+
+    &:hover,
+    &:active,
+    &[data-is-active="true"] {
+      background-color: var(--mb-color-background_surface-brand-subtle);
+    }
+  }
+
+  &[data-variant="warning"] {
+    color: var(--mb-color-feedback-warning);
+    background-color: transparent;
+
+    &:hover,
+    &:active,
+    &[data-is-active="true"] {
+      background-color: var(--mb-color-background_surface-warning);
+    }
+  }
+
+  &[data-variant="error"] {
+    color: var(--mb-color-feedback-negative);
+    background-color: transparent;
+
+    &:hover,
+    &:active,
+    &[data-is-active="true"] {
+      background-color: var(--mb-color-background_surface-error);
     }
   }
 
   &[data-variant="viewHeader"] {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     background-color: transparent;
     border: 1px solid transparent;
     transition: all 300ms linear;
 
     &:hover {
-      color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-medium);
+      color: var(--mb-color-core-brand);
+      background-color: var(--mb-color-background_page-tertiary);
       border: 1px solid transparent;
     }
 
     &:disabled,
     &[data-disabled] {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-disabled);
       background-color: transparent;
     }
   }
 
   &[data-variant="viewFooter"] {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
     background-color: transparent;
 
     &:hover {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     &:disabled,
     &[data-disabled] {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-disabled);
       background-color: transparent;
     }
   }

@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
 
-import _LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { LoadingSpinner as LoadingSpinnerBase } from "metabase/common/components/LoadingSpinner";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
 
@@ -26,19 +26,19 @@ export const NoWrap = styled.div`
   line-height: 1.3em;
 `;
 
-type LoadingSpinnerProps = ComponentProps<typeof _LoadingSpinner>;
+type LoadingSpinnerProps = ComponentProps<typeof LoadingSpinnerBase>;
 
 export const LoadingSpinner = styled((props: LoadingSpinnerProps) => (
-  <_LoadingSpinner {...props} size={props.size ?? 18} />
+  <LoadingSpinnerBase {...props} size={props.size ?? 18} />
 ))`
   display: flex;
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
-export const RelativeContainer = styled.div<{ height?: number }>`
+export const RelativeContainer = styled.div<{ height?: string }>`
   position: relative;
   height: ${({ height }) => height || "1em"};
   line-height: 1em;
@@ -68,7 +68,7 @@ export const Li = styled.li`
   padding: 0.3em 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 
   &:last-child {
     border-bottom: none;

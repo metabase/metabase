@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
-import type { CreateQueryActionParams } from "metabase/entities/actions";
+import type { CreateQueryActionParams } from "metabase/actions/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -27,8 +27,7 @@ import {
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
 
-export interface QueryActionContextProviderProps
-  extends ActionContextProviderProps<WritebackQueryAction> {
+export interface QueryActionContextProviderProps extends ActionContextProviderProps<WritebackQueryAction> {
   metadata: Metadata;
   databaseId?: DatabaseId;
 }

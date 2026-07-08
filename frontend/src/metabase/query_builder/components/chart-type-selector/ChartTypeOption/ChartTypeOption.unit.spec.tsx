@@ -6,9 +6,8 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, IconName } from "metabase-types/api";
 
 import { ChartTypeOption, type ChartTypeOptionProps } from "./ChartTypeOption";
 

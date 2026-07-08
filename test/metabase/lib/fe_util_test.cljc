@@ -17,6 +17,11 @@
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
+(def ^:private all-filter-operators
+  [:= :!= :> :< :>= :<= :between :inside
+   :contains :does-not-contain :starts-with :ends-with
+   :is-null :not-null :is-empty :not-empty])
+
 (deftest ^:parallel basic-filter-parts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
@@ -30,9 +35,8 @@
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))]
     (doseq [col (lib/filterable-columns query)
-            op (lib/filterable-column-operators col)
-            :let [short-op (:short op)
-                  expression-clause (case short-op
+            short-op all-filter-operators
+            :let [expression-clause (case short-op
                                       :between (lib/expression-clause short-op [col col col] {})
                                       (:contains :does-not-contain :starts-with :ends-with) (lib/expression-clause short-op [col "123"] {})
                                       (:is-null :not-null :is-empty :not-empty) (lib/expression-clause short-op [col] {})
@@ -97,12 +101,12 @@
                [{:lib/type :metadata/column
                  :lib/source-uuid string?
                  :effective-type :type/Integer
-                 :metabase.lib.field/binning {:strategy :default}
-                 :operators (comp vector? not-empty)
+                 :lib/binning {:strategy :default}
+
                  :active true
                  :id (:id checkins-user-id-col)
                  :display-name "User ID: Auto binned"
-                 :metabase.lib.join/join-alias "Checkins"}
+                 :lib/join-alias "Checkins"}
                 (assoc (m/filter-vals some? (meta/field-metadata :users :id)) :display-name "ID: Auto binned")]}
               (lib/expression-parts query (lib/= (lib/with-binning checkins-user-id-col {:strategy :default})
                                                  (lib/with-binning user-id-col {:strategy :default}))))))
@@ -113,11 +117,11 @@
                [{:lib/type :metadata/column
                  :lib/source-uuid string?
                  :effective-type :type/Date
-                 :operators (comp vector? not-empty)
+
                  :id (:id checkins-date-col)
-                 :metabase.lib.field/temporal-unit :day
+                 :lib/temporal-unit :day
                  :display-name "Date: Day"
-                 :metabase.lib.join/join-alias "Checkins"}
+                 :lib/join-alias "Checkins"}
                 (assoc (m/filter-vals some? (meta/field-metadata :users :last-login)) :display-name "Last Login: Day")]}
               (lib/expression-parts query (lib/= (lib/with-temporal-bucket checkins-date-col :day)
                                                  (lib/with-temporal-bucket user-last-login-col :day))))))))
@@ -225,7 +229,6 @@
                  :lib/expression-name expression-name
                  :lib/source :source/expressions}
                 (lib/expression-parts query stage-number [:expression {:base-type :type/Integer} expression-name])))))
-
     (testing "nested expression references"
       (mu/disable-enforcement
         (is (=? {:lib/type :metadata/column
@@ -302,7 +305,6 @@
           (is (=? operator (:operator res)))
           (is (=? options  (:options res)))
           (is (=? (map :id args) (map :id (:args res)))))))
-
     (testing "case pairs should be unflattened in expression clause"
       (doseq [[expected-expression parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -311,7 +313,6 @@
               [actual-op _ actual-args] actual-expression]
           (is (=? expected-op actual-op))
           (is (=? (map :id expected-args) (map :id actual-args))))))
-
     (testing "case/if should round-trip through expression-parts and expression-clause"
       (doseq [[clause] test-cases]
         (let [parts                     (lib.fe-util/expression-parts query clause)
@@ -320,7 +321,6 @@
                                          (:args parts)
                                          nil)
               round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
-
           (is (=? (:operator parts) (:operator round-tripped-parts)))
           (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
 
@@ -335,7 +335,6 @@
                       :args [boolean-field
                              string-field
                              "default"]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -350,7 +349,6 @@
                                       :args [boolean-field
                                              string-field
                                              "default"]}]}]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -361,7 +359,6 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field string-field]}]}]}]]
-
         (let [expression (lib.fe-util/expression-clause
                           (:operator parts)
                           (:args parts)
@@ -585,7 +582,8 @@
 
 (deftest ^:parallel specific-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
+        column (-> (m/filter-vals some? (meta/field-metadata :checkins :date))
+                   (assoc :base-type :type/DateTime :effective-type :type/DateTime))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
                               {:operator   :=
@@ -703,6 +701,17 @@
       (are [clause] (nil? (lib.fe-util/relative-date-filter-parts query -1 clause))
         (lib.filter/is-null column)
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
+
+(deftest ^:parallel relative-date-filter-parts-on-temporal-expression-test
+  (testing "QUE-2567 a relative-date filter over a temporal expression column round-trips to date-picker parts"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/expression "Foo" (lib/datetime-add (meta/field-metadata :orders :created-at) 5 :day)))
+          query (lib/filter query (lib/time-interval (lib/expression-ref query "Foo") -12 :month))
+          parts (lib.fe-util/relative-date-filter-parts query -1 (first (lib/filters query)))]
+      (is (some? parts))
+      (is (=? {:value -12
+               :unit  :month}
+              parts)))))
 
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
@@ -971,7 +980,9 @@
                                                :widget-type :text
                                                :display-name "foo"
                                                :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
-               (lib/dependent-metadata nil :question)))))
+               (lib/dependent-metadata nil :question))))))
+
+(deftest ^:parallel dependent-metadata-test-2
   (testing "simple query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -979,7 +990,9 @@
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/venues-query)
-      (lib/append-stage (lib.tu/venues-query))))
+      (lib/append-stage (lib.tu/venues-query)))))
+
+(deftest ^:parallel dependent-metadata-test-3
   (testing "join query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -987,7 +1000,9 @@
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-join)
-      (lib/append-stage (lib.tu/query-with-join))))
+      (lib/append-stage (lib.tu/query-with-join)))))
+
+(deftest ^:parallel dependent-metadata-test-4
   (testing "source card based query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -995,7 +1010,9 @@
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-source-card)
-      (lib/append-stage (lib.tu/query-with-source-card))))
+      (lib/append-stage (lib.tu/query-with-source-card)))))
+
+(deftest ^:parallel dependent-metadata-test-5
   (testing "source card based query with result metadata"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -1003,7 +1020,9 @@
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-source-card-with-result-metadata)
-      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata))))
+      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata)))))
+
+(deftest ^:parallel dependent-metadata-test-6
   (testing "model based query"
     (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-model)]
       (are [query] (=? [{:type :database, :id (meta/id)}
@@ -1012,7 +1031,9 @@
                         {:type :table,    :id (meta/id :users)}]
                        (lib/dependent-metadata query nil :question))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-7
   (testing "metric based query"
     (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-metric)]
       (are [query] (=? [{:type :database, :id (meta/id)}
@@ -1023,7 +1044,9 @@
                         {:type :table,    :id (meta/id :venues)}]
                        (lib/dependent-metadata query nil :question))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-8
   (testing "editing a model"
     (let [metadata-provider lib.tu/metadata-provider-with-model
           query (->> (lib.metadata/card metadata-provider 1)
@@ -1037,7 +1060,9 @@
                         {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :model))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-9
   (testing "editing a metric"
     (let [metadata-provider lib.tu/metadata-provider-with-metric
           query (->> (lib.metadata/card metadata-provider 1)
@@ -1051,7 +1076,9 @@
                         {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :metric))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-10
   (testing "Native query snippets should be included in dependent metadata"
     (let [;; lib/native-query would try to look up the snippets:
           query {:lib/type :mbql/query
@@ -1131,14 +1158,6 @@
                {:type :native-query-snippet :id 40}]
               (lib/dependent-metadata query nil :question))))))
 
-(deftest ^:parallel table-or-card-dependent-metadata-test
-  (testing "start from table"
-    (is (= [{:type :table, :id (meta/id :checkins)}]
-           (lib/table-or-card-dependent-metadata meta/metadata-provider (meta/id :checkins)))))
-  (testing "start from card"
-    (is (= [{:type :table, :id "card__1"}]
-           (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
-
 (deftest ^:parallel expand-temporal-expression-test
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=
@@ -1158,3 +1177,21 @@
                       (= false
                          (#'lib.fe-util/expandable-temporal-expression? expr)))
           :minute :day)))))
+
+(deftest ^:parallel expand-temporal-expression-preserves-local-date-test
+  (testing "values with a timezone offset must produce a range on the offset's local calendar day, not UTC (#72937)"
+    ;; The drill-thru/underlying-records path calls expand-temporal-expression directly for `:day`, and the FE
+    ;; can pass values stamped with the report-timezone offset (e.g. Asia/Shanghai +08:00). Truncating those to
+    ;; a calendar day must keep the original date — converting to UTC first shifts the day backwards.
+    (let [field-with-unit (fn [unit] [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"
+                                              :temporal-unit unit} 111])
+          expr-with       (fn [unit value] [:= {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
+                                            (field-with-unit unit) value])]
+      (are [unit value start end]
+           (=? [:between map? [:field {:temporal-unit unit} int?] start end]
+               (#'lib.fe-util/expand-temporal-expression (expr-with unit value)))
+        :day   "2024-05-13T00:00:00Z"      "2024-05-13" "2024-05-13"
+        :day   "2024-05-13T00:00:00+08:00" "2024-05-13" "2024-05-13"
+        :day   "2024-05-13T00:00:00-08:00" "2024-05-13" "2024-05-13"
+        :week  "2024-05-13T00:00:00+08:00" "2024-05-12" "2024-05-18"
+        :month "2024-05-01T00:00:00+08:00" "2024-05-01" "2024-05-31"))))

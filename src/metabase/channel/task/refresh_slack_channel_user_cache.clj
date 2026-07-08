@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (defn ^:private job []
-  (if (slack/slack-configured?)
+  (if (channel.settings/slack-configured?)
     (let [_        (log/info "Starting Slack user/channel startup cache refresh...")
           timer    (u/start-timer)
           _        (slack/refresh-channels-and-usernames!)]
@@ -45,10 +45,9 @@
                  (triggers/with-schedule
                   (cron/schedule
                    (cron/cron-schedule
-                     ;; run every 4 hours at a random minute:
+                    ;; run every 4 hours at a random minute:
                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
                    (cron/with-misfire-handling-instruction-do-nothing)))
-
                  (triggers/start-now))
         startup-job     (jobs/build
                          (jobs/of-type RefreshCacheOnStartup)

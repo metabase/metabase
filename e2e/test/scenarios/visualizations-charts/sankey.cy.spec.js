@@ -135,7 +135,8 @@ describe("scenarios > visualizations > sankey", () => {
       "My Sankey chart",
     );
     cy.findByTestId("save-question-modal").findByText("Save").click();
-    H.modal().findByText("Saved! Add this to a dashboard?");
+
+    H.checkSavedToCollectionQuestionToast();
   });
 
   [false, true].forEach((devMode) => {

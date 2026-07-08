@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { useListCollectionItemsQuery } from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
@@ -17,15 +18,14 @@ import CollectionEmptyState from "metabase/collections/components/CollectionEmpt
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
-import { isRootTrashCollection } from "metabase/collections/utils";
+} from "metabase/common/collections/types";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import Search from "metabase/entities/search";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -35,9 +35,8 @@ import type {
   CollectionItemModel,
   ListCollectionItemsRequest,
   ListCollectionItemsSortColumn,
+  SortingOptions,
 } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
-import type { State } from "metabase-types/store";
 
 import {
   CollectionEmptyContent,
@@ -50,11 +49,11 @@ const getDefaultSortingOptions = (
   return isRootTrashCollection(collection)
     ? {
         sort_column: "last_edited_at",
-        sort_direction: SortDirection.Desc,
+        sort_direction: "desc",
       }
     : {
         sort_column: "name",
-        sort_direction: SortDirection.Asc,
+        sort_direction: "asc",
       };
 };
 
@@ -122,15 +121,12 @@ export const CollectionItemsTable = ({
     SortingOptions<ListCollectionItemsSortColumn>
   >(() => getDefaultSortingOptions(collection));
 
-  const [total, setTotal] = useState<number>();
-
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
 
   useEffect(() => {
     if (collectionId) {
       resetPage();
-      setTotal(undefined);
     }
   }, [collectionId, resetPage]);
 
@@ -149,6 +145,7 @@ export const CollectionItemsTable = ({
       bookmarks={bookmarks}
       clear={clear}
       collection={collection}
+      collectionId={collectionId}
       createBookmark={createBookmark}
       databases={databases}
       deleteBookmark={deleteBookmark}
@@ -159,13 +156,13 @@ export const CollectionItemsTable = ({
       hasPinnedItems={hasPinnedItems}
       loadingPinnedItems={loadingPinnedItems}
       page={page}
+      pageSize={pageSize}
       selected={selected}
       selectOnlyTheseItems={selectOnlyTheseItems}
       toggleItem={toggleItem}
-      total={total}
       unpinnedItemsSorting={unpinnedItemsSorting}
       unpinnedQuery={{
-        collection: collectionId,
+        id: collectionId,
         models,
         limit: pageSize,
         offset: pageSize * page,
@@ -184,10 +181,7 @@ export const CollectionItemsTable = ({
 };
 
 type CollectionItemsTableContentProps = CollectionItemsTableProps & {
-  list: CollectionItem[] | undefined;
-  loading: boolean;
   page: number;
-  total: number | undefined;
   unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
   unpinnedQuery: ListCollectionItemsRequest;
   onNextPage: () => void;
@@ -195,9 +189,10 @@ type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   onUnpinnedItemsSortingChange: (
     unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
+  visibleColumns: CollectionContentTableColumn[];
 };
 
-const CollectionItemsTableContentInner = ({
+const CollectionItemsTableContent = ({
   bookmarks,
   clear,
   collection,
@@ -209,22 +204,25 @@ const CollectionItemsTableContentInner = ({
   handleCopy,
   handleMove,
   hasPinnedItems,
-  list: unpinnedItems = [],
-  loading: loadingUnpinnedItems,
   loadingPinnedItems,
   page,
   pageSize = COLLECTION_PAGE_SIZE,
   selected,
   selectOnlyTheseItems,
   toggleItem,
-  total,
   unpinnedItemsSorting,
-  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
+  unpinnedQuery,
+  visibleColumns,
   onClick,
   onNextPage,
   onPreviousPage,
   onUnpinnedItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
+  const { data, isLoading: loadingUnpinnedItems } =
+    useListCollectionItemsQuery(unpinnedQuery);
+
+  const unpinnedItems = data?.data ?? [];
+  const total = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
     [visibleColumns],
@@ -271,7 +269,14 @@ const CollectionItemsTableContentInner = ({
         onClick={onClick}
         visibleColumnsMap={visibleColumnsMap}
       />
-      <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+      <div
+        className={cx(
+          CS.flex,
+          CS.justifyEnd,
+          CS.my3,
+          CS.syncStatusAwarePagination,
+        )}
+      >
         {hasPagination && (
           <PaginationControls
             showTotal
@@ -287,11 +292,3 @@ const CollectionItemsTableContentInner = ({
     </CollectionTable>
   );
 };
-
-const CollectionItemsTableContent = Search.loadList({
-  query: (_state: State, props: CollectionItemsTableContentProps) => {
-    return props.unpinnedQuery;
-  },
-  loadingAndErrorWrapper: false,
-  wrapped: true,
-})(CollectionItemsTableContentInner);

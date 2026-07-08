@@ -1,15 +1,18 @@
 (ns metabase.driver.mongo.connection
   "This namespace contains code responsible for connecting to mongo deployment."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (com.mongodb
     ConnectionString
@@ -67,7 +70,7 @@
    `MongoClientSettings$Builder` first. Then credentials are set and ssl context is updated in the `builder` object.
    Afterwards, `MongoClientSettings` are built using `.build`."
   ^MongoClientSettings
-  [{:keys [authdb user pass use-conn-uri ssl] :as db-details}]
+  [{:keys [authdb user pass use-conn-uri ssl additional-options] :as db-details}]
   (let [connection-string (-> db-details
                               db-details->connection-string
                               ConnectionString.)
@@ -80,9 +83,13 @@
       ;;       manually verified that's not necessary.
       (when (seq user)
         (.credential builder
-                     (MongoCredential/createCredential user
-                                                       (or (not-empty authdb) "admin")
-                                                       (char-array pass))))
+                     (if (some-> additional-options
+                                 u/lower-case-en
+                                 (str/index-of "authmechanism=mongodb-x509"))
+                       (MongoCredential/createMongoX509Credential user)
+                       (MongoCredential/createCredential user
+                                                         (or (not-empty authdb) "admin")
+                                                         (char-array pass)))))
       (when ssl
         (maybe-add-ssl-context-to-builder! builder db-details)))
     (.build builder)))
@@ -93,6 +100,7 @@
   (let [db-details (mongo.db/details-normalized database)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
       (let [client (mongo.util/mongo-client (db-details->mongo-client-settings details-with-tunnel))]
+        (driver.conn/track-connection-acquisition! db-details)
         (log/debug (u/format-color 'cyan "Opened new MongoClient."))
         (try
           (binding [*mongo-client* client]

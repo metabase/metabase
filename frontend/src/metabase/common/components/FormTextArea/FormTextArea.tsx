@@ -2,16 +2,15 @@ import { useField } from "formik";
 import type { ChangeEvent, ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/common/components/FormField";
 import type { TextAreaProps } from "metabase/common/components/TextArea";
-import TextArea from "metabase/common/components/TextArea";
+import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
-export interface FormTextAreaProps
-  extends Omit<
-    TextAreaProps,
-    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
-  > {
+export interface FormTextAreaProps extends Omit<
+  TextAreaProps,
+  "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+> {
   name: string;
   title?: string;
   actions?: ReactNode;
@@ -26,7 +25,7 @@ export interface FormTextAreaProps
 /**
  * @deprecated: use FormTextArea from "metabase/forms"
  */
-const FormTextArea = forwardRef(function FormTextArea(
+const FormTextAreaInner = forwardRef(function FormTextArea(
   {
     name,
     className,
@@ -82,7 +81,6 @@ const FormTextArea = forwardRef(function FormTextArea(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(FormTextArea, {
+export const FormTextArea = Object.assign(FormTextAreaInner, {
   Root: TextArea.Root,
 });

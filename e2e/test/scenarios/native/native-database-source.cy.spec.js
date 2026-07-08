@@ -292,7 +292,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.wait("@dataset");
     cy.findByTextEnsureVisible("SUBTOTAL");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
 
     // Save the query
@@ -304,7 +304,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   const MONGO_DB_NAME = "QA Mongo";
   const MONGO_DB_ID = 2;
-  before(() => {
+  beforeEach(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 

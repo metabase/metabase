@@ -1,5 +1,7 @@
+import { Fragment } from "react";
 import { t } from "ttag";
 
+import { Box } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -10,8 +12,6 @@ import type {
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";
-
-import { PopoverRoot } from "./ColumnFormattingAction.styled";
 
 export const POPOVER_TEST_ID = "column-formatting-settings";
 
@@ -54,23 +54,28 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       (widget) => widget.id === "column_settings",
     );
 
-    const extraProps = {
+    const { id, ...extraProps } = {
       ...columnSettingsWidget,
       props: {
-        ...columnSettingsWidget.props,
+        ...columnSettingsWidget?.props,
         initialKey: getColumnKey(column),
       },
     };
 
+    if (!columnSettingsWidget || id == null) {
+      return <Fragment />;
+    }
+
     return (
-      <PopoverRoot>
+      <Box pt="lg" mah={600} style={{ overflowY: "auto" }}>
         <ChartSettingsWidget
           {...extraProps}
-          key={columnSettingsWidget.id}
+          id={id}
+          key={columnSettingsWidget?.id}
           hidden={false}
           dataTestId={POPOVER_TEST_ID}
         />
-      </PopoverRoot>
+      </Box>
     );
   };
 

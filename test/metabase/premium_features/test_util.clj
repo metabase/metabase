@@ -13,14 +13,17 @@
   [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-             ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
-             ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
-             ;; See [[with-premium-features-test]] below.
+      ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
+      ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
+      ;; See [[with-premium-features-test]] below.
       (let [thunk (^:once fn* []
                     (binding [token-check/*token-features* (constantly features)]
                       (thunk)))]
         (if tu.thread-local/*thread-local*
           (thunk)
+          ;; global mode — must use with-redefs so Jetty handler threads (which don't inherit *local-redefs*)
+          ;; see the updated premium features.
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [token-check/*token-features* (constantly features)]
             (thunk)))))))
 
@@ -73,3 +76,9 @@
   [& body]
   (when config/ee-available?
     `(do ~@body)))
+
+(defn random-token
+  "A random token-like string"
+  []
+  (let [alphabet (into [] (concat (range 0 10) (map char (range (int \a) (int \g)))))]
+    (apply str (repeatedly 64 #(rand-nth alphabet)))))

@@ -24,7 +24,7 @@ export const PaginationButton = styled.button<{
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   ${(props) =>

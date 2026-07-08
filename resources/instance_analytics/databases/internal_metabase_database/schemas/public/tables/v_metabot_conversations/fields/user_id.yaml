@@ -1,0 +1,35 @@
+name: user_id
+display_name: User ID
+description: ID of the user who owns the conversation.
+created_at: '2026-04-24T19:39:29.987038Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_conversations
+database_type: int4
+base_type: type/Integer
+effective_type: type/Integer
+semantic_type: type/FK
+fk_target_field_id:
+- Internal Metabase Database
+- public
+- v_users
+- user_id
+dimensions: []
+position: 2
+custom_position: 0
+database_position: 2
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_metabot_conversations
+  model: Table
+- id: user_id
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

@@ -1,15 +1,21 @@
+import { render as testingLibraryRender } from "@testing-library/react";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
+import type { ReactNode } from "react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupApiKeyEndpoints,
   setupDatabasesEndpoints,
   setupEmailEndpoints,
   setupGroupsEndpoint,
+  setupNotificationChannelsEndpoints,
   setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
+  setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
@@ -17,15 +23,16 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
-import type { TokenFeature } from "metabase-types/api";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 type RouteMap = Record<
   string,
@@ -36,7 +43,11 @@ export const ossRoutes: RouteMap = {
   root: { path: "", testPattern: /site name/i },
   general: { path: "/general", testPattern: /site name/i },
   email: { path: "/email", testPattern: /SMTP/i },
-  notifications: { path: "/notifications", testPattern: /Connect to Slack/i },
+  slack: {
+    path: "/slack",
+    testPattern: /Create a Slack app and connect to it/i,
+  },
+  webhooks: { path: "/webhooks", testPattern: /Configure webhooks/i },
   authentication: {
     path: "/authentication",
     testPattern: /Sign in with Google/i,
@@ -48,7 +59,7 @@ export const ossRoutes: RouteMap = {
   ldap: { path: "/authentication/ldap", testPattern: /Server Settings/i },
   apiKeys: {
     path: "/authentication/api-keys",
-    testPattern: /Allow users to use API keys/i,
+    testPattern: /Create API keys to let users authenticate/i,
   },
   maps: { path: "/maps", testPattern: /Map tile server URL/i },
   localization: { path: "/localization", testPattern: /Instance language/i },
@@ -60,24 +71,16 @@ export const ossRoutes: RouteMap = {
     path: "/public-sharing",
     testPattern: /Enable Public Sharing/i,
   },
-  embedding: {
-    path: "/embedding-in-other-applications",
-    testPattern: /Embed dashboards, questions, or the entire Metabase app/i,
-  },
-  staticEmbedding: {
-    path: "/embedding-in-other-applications/standalone",
-    testPattern: /Embedding secret key/i,
-  },
-  embeddingSdk: {
-    path: "/embedding-in-other-applications/sdk",
-    testPattern: /SDK for React/i,
-  },
   license: { path: "/license", testPattern: /Looking for more/i },
   appearance: {
     path: "/appearance",
     testPattern: /Make Metabase look like you/i,
   },
   cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
+  remoteSync: {
+    path: "/remote-sync",
+    testPattern: /Manage your Metabase content in Git/i,
+  },
 };
 
 export const enterpriseRoutes: RouteMap = {
@@ -87,10 +90,6 @@ export const enterpriseRoutes: RouteMap = {
 export const premiumRoutes: RouteMap = {
   saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
-  interactiveEmbedding: {
-    path: "/embedding-in-other-applications/full-app",
-    testPattern: /Enable Interactive embedding/i,
-  },
 };
 
 export const upsellRoutes: RouteMap = {
@@ -112,11 +111,17 @@ export const routeObjtoArray = (map: RouteMap) => {
 };
 
 export const setup = async ({
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   hasTokenFeatures = false,
   isAdmin = true,
   features = {},
   initialRoute = "",
+}: {
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
+  hasTokenFeatures?: boolean;
+  isAdmin?: boolean;
+  features?: Partial<TokenFeatures>;
+  initialRoute?: string;
 }) => {
   const tokenFeatures = createMockTokenFeatures({});
   if (hasTokenFeatures) {
@@ -144,36 +149,71 @@ export const setup = async ({
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
   setupSlackManifestEndpoint();
+  setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-dev_instances",
     value: true,
   });
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: true,
+  });
 
+  setupNotificationChannelsEndpoints({
+    email: { configured: false },
+    slack: { configured: false },
+  });
+  fetchMock.get("path:/api/ee/security-center", {
+    last_checked_at: null,
+    advisories: [],
+  });
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
+  fetchMock.get("path:/api/ee/sso/oidc", []);
+  fetchMock.get("path:/api/ee/remote-sync/dirty", {
+    data: [],
+    metadata: {
+      changed_collections: {},
+      is_dirty: false,
+      has_removed_items: false,
+    },
+  });
 
   const user = createMockUser({
     is_superuser: isAdmin,
   });
 
-  const store = createMockState({
+  const initialState = createMockState({
     currentUser: user,
     settings: mockSettings(settings),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    if (enterprisePlugins === "*") {
+      setupEnterprisePlugins();
+    } else {
+      enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+    }
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
-  renderWithProviders(
-    <Route path="admin/settings">{getSettingsRoutes()}</Route>,
-    {
-      storeInitialState: store,
-      withRouter: true,
-      initialRoute: `/admin/settings${initialRoute}`,
-    },
+  const { wrapper, store } = getTestStoreAndWrapper({
+    storeInitialState: initialState,
+    withRouter: true,
+    initialRoute: `/admin/settings${initialRoute}`,
+  });
+
+  const PassThroughGuard = ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  );
+
+  testingLibraryRender(
+    <Route path="admin/settings">
+      {getSettingsRoutes(store, PassThroughGuard)}
+    </Route>,
+    { wrapper },
   );
 
   await screen.findByTestId("admin-layout-content");

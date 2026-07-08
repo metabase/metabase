@@ -1,12 +1,13 @@
-import type { LocationDescriptor } from "history";
-import { Component } from "react";
-import * as React from "react";
-import { Route } from "react-router";
+import type { Location, LocationDescriptor } from "history";
+import { Component, cloneElement } from "react";
 import { push } from "react-router-redux";
 
-import Modal from "metabase/common/components/Modal";
-import { connect } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { connect } from "metabase/redux";
+import { Route } from "metabase/router";
+import { Modal, type ModalProps } from "metabase/ui";
+import MetabaseSettings from "metabase/utils/settings";
+
+type RouteParams = Record<string, string | undefined>;
 
 type IRoute = {
   path: string;
@@ -37,19 +38,25 @@ export const getParentPath = (route: IRoute, location: Location) => {
   return fullPathSegments.join("/");
 };
 
-type ComposedModalProps = {
+export type ComposedModalProps<
+  P extends RouteParams = RouteParams,
+  Q = unknown,
+> = {
+  params: P;
+  location: Location<Q>;
   onClose: () => void;
 };
 
 interface WrappedModalRouteProps {
   route: IRoute;
+  params: RouteParams;
   location: Location;
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
 const ModalWithRoute = (
   ComposedModal: React.ComponentType<ComposedModalProps>,
-  modalProps = {},
+  modalProps: Partial<ModalProps> = {},
   noWrap = false,
 ) => {
   class ModalRouteComponent extends Component<WrappedModalRouteProps> {
@@ -70,7 +77,14 @@ const ModalWithRoute = (
       }
 
       return (
-        <Modal {...modalProps} onClose={this.onClose}>
+        <Modal
+          opened
+          onClose={this.onClose}
+          withCloseButton={false}
+          padding={0}
+          size="lg"
+          {...modalProps}
+        >
           <ComposedModal {...this.props} onClose={this.onClose} />
         </Modal>
       );
@@ -80,10 +94,19 @@ const ModalWithRoute = (
   return connect(null, { onChangeLocation: push })(ModalRouteComponent);
 };
 
+// Base props that any modal rendered by ModalRoute must accept.
+// Modal components typically narrow `params` to specific keys (e.g., { alertId?: string }),
+// but they must accept the full ComposedModalProps shape.
+export type ModalComponentProps = {
+  params: RouteParams;
+  location: Location;
+  onClose: () => void;
+};
+
 interface ModalRouteProps {
   path: string;
-  modal: React.ComponentType<ComposedModalProps>;
-  modalProps?: unknown;
+  modal: React.ComponentType<ModalComponentProps>;
+  modalProps?: Partial<ModalProps>;
   noWrap?: boolean;
 }
 
@@ -93,7 +116,7 @@ class _ModalRoute extends Route {
     const { modal, modalProps, noWrap } = element.props;
 
     if (modal) {
-      element = React.cloneElement(element, {
+      element = cloneElement(element, {
         component: ModalWithRoute(modal, modalProps, noWrap),
       });
 

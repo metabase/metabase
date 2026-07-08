@@ -2,7 +2,7 @@ import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
 import { builders } from "prettier/doc";
 import { format as pformat } from "prettier/standalone";
 
-import { parseNumber } from "metabase/lib/number";
+import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 import { isa } from "metabase-lib/v1/types/utils/isa";
 
@@ -136,6 +136,8 @@ function print(
     return formatColumn(path, options.extra);
   } else if (check.isMetricMetadata(path)) {
     return formatMetric(path, options.extra);
+  } else if (check.isMeasureMetadata(path)) {
+    return formatMeasure(path, options.extra);
   } else if (check.isSegmentMetadata(path)) {
     return formatSegment(path, options.extra);
   } else if (check.isExpressionOperator(path)) {
@@ -206,6 +208,21 @@ function formatMetric(
   assert(query !== undefined, "Expected query");
   assert(typeof stageIndex === "number", "Expected stageIndex");
   assert(Lib.isMetricMetadata(metric), "Expected metric");
+
+  const displayInfo = Lib.displayInfo(query, stageIndex, metric);
+  return formatMetricName(displayInfo.displayName);
+}
+
+function formatMeasure(
+  path: AstPath<Lib.MeasureMetadata>,
+  options: FormatOptions,
+): Doc {
+  const metric = path.node;
+  const { query, stageIndex } = options;
+
+  assert(query !== undefined, "Expected query");
+  assert(typeof stageIndex === "number", "Expected stageIndex");
+  assert(Lib.isMeasureMetadata(metric), "Expected measure");
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
   return formatMetricName(displayInfo.displayName);

@@ -46,7 +46,7 @@ describe("Pages accessible within one click from the homepage should work in pop
 
 const selectLocale = (localeName: string) => {
   cy.visit("/account/profile");
-  cy.findByTestId("user-locale-select").findByTestId("select-button").click();
+  cy.findByTestId("user-locale-select").findByRole("textbox").click();
   H.popover().within(() => cy.findByText(localeName).click());
 
   cy.get("[type=submit]").click();

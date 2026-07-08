@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { fireEvent, render, screen, waitFor } from "__support__/ui";
 
 import type { EditableTextProps } from "./EditableText";
-import EditableText from "./EditableText";
+import { EditableText } from "./EditableText";
 
 const setup = (props?: Partial<EditableTextProps>) => {
   render(<EditableText {...props} />);

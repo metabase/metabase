@@ -1,16 +1,10 @@
-import React, { type Ref, forwardRef } from "react";
+import React from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { Menu } from "metabase/ui";
 
-export function SharingMenu({
-  children,
-  tooltip,
-}: {
-  children: React.ReactNode;
-  tooltip?: string;
-}) {
+export function SharingMenu({ children }: { children: React.ReactNode }) {
   const hasNoChildren = !children || !React.Children.count(children);
 
   return (
@@ -19,8 +13,8 @@ export function SharingMenu({
         <ToolbarButton
           icon="share"
           data-testid="sharing-menu-button"
-          tooltipLabel={tooltip ?? t`Sharing`}
-          aria-label={tooltip ?? t`Sharing`}
+          tooltipLabel={t`Share`}
+          aria-label={t`Share`}
           disabled={hasNoChildren}
         />
       </Menu.Target>
@@ -29,27 +23,26 @@ export function SharingMenu({
   );
 }
 
-export const SharingButton = forwardRef(function _SharingButton(
-  {
-    tooltip,
-    onClick,
-    disabled,
-  }: {
-    tooltip?: string;
-    onClick?: () => void;
-    disabled?: boolean;
-  },
-  ref: Ref<HTMLButtonElement>,
-) {
+export function SharingButton({
+  tooltip,
+  "aria-label": ariaLabel,
+  onClick,
+}: {
+  tooltip?: React.ReactNode;
+  "aria-label"?: string;
+  onClick?: () => void;
+}) {
   return (
     <ToolbarButton
-      ref={ref}
       icon="share"
       data-testid="sharing-menu-button"
-      tooltipLabel={tooltip ?? t`Sharing`}
-      aria-label={tooltip ?? t`Sharing`}
+      tooltipLabel={tooltip ?? t`Share`}
+      // aria-label must be a string; keep the accessible name stable when the
+      // tooltip is a non-string node (e.g. the copied-confirmation flash)
+      aria-label={
+        ariaLabel ?? (typeof tooltip === "string" ? tooltip : t`Share`)
+      }
       onClick={onClick}
-      disabled={disabled}
     />
   );
-});
+}

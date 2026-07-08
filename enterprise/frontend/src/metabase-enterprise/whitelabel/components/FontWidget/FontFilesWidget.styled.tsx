@@ -20,10 +20,10 @@ export const TableRoot = styled.div`
 `;
 
 export const TableHeader = styled.div`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background_page-secondary);
 `;
 
 export const TableHeaderRow = styled.div`
@@ -33,7 +33,7 @@ export const TableHeaderRow = styled.div`
 
 export const TableHeaderCell = styled.div`
   ${cellStyles};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.6rem;
   letter-spacing: 1px;
   line-height: 0.625rem;
@@ -44,7 +44,7 @@ export const TableHeaderCell = styled.div`
 `;
 
 export const TableBody = styled.div`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-top: none;
   border-radius: 0 0 0.5rem 0.5rem;
 `;
@@ -54,7 +54,7 @@ export const TableBodyRow = styled.div`
   align-items: center;
 
   &:not(:first-of-type) {
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
   }
 `;
 
@@ -64,13 +64,13 @@ interface TableBodyCellProps {
 
 export const TableBodyCell = styled.div<TableBodyCellProps>`
   ${cellStyles};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-top: 1rem;
   padding-bottom: 1rem;
   font-weight: ${(props) => props.fontWeight};
 `;
 
 export const TableBodyCellLabel = styled.span`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   margin-left: 0.25rem;
 `;

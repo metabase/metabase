@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  high_level_summary: false
+  review_status: false
+
+  auto_review:
+    enabled: false
+    drafts: true
+    labels:
+      - "coderabbit"
+
+  path_filters:
+    - "!**/*.snap"
+    - "!**/*.po"
+    - "!**/bun.lock"
+    - "!**/package-lock.json"
+
+  tools:
+    eslint:
+      enabled: false
+
+knowledge_base:
+  code_guidelines:
+    filePatterns:
+      - ".claude/skills/clojure-review/SKILL.md"
+      - ".claude/skills/typescript-review/SKILL.md"
+      - ".claude/skills/e2e-test-review/SKILL.md"
+      - ".claude/skills/docs-review/SKILL.md"

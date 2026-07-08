@@ -1,4 +1,4 @@
-import type { SearchFilterToggle } from "metabase/search/types";
+import type { SearchFilterToggle } from "metabase/common/search/types";
 import { Switch, Text } from "metabase/ui";
 
 export type ToggleSidebarFilterProps = {
@@ -23,7 +23,7 @@ export const ToggleSidebarFilter = ({
       data-testid="toggle-filter-switch"
       size="sm"
       labelPosition="left"
-      label={<Text color="text-dark">{label()}</Text>}
+      label={<Text color="text-primary">{label()}</Text>}
       data-is-checked={value}
       checked={value}
       onChange={(event) => onChange(event.currentTarget.checked)}

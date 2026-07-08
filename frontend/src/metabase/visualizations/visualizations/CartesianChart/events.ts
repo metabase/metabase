@@ -1,15 +1,16 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatChangeWithSign } from "metabase/lib/formatting";
-import { getObjectKeys } from "metabase/lib/objects";
+import { isNative } from "metabase/common/utils/card";
+import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatChangeWithSign } from "metabase/utils/formatting";
+import { getObjectKeys } from "metabase/utils/objects";
 import {
   getDaylightSavingsChangeTolerance,
   parseTimestamp,
-} from "metabase/lib/time-dayjs";
-import { checkNumber, isNotNull } from "metabase/lib/types";
-import { formatPercent } from "metabase/static-viz/lib/numbers";
+} from "metabase/utils/time-dayjs";
+import { checkNumber, isNotNull } from "metabase/utils/types";
 import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
@@ -64,11 +65,12 @@ import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
+  DatasetColumn,
   RawSeries,
   TimelineEvent,
   TimelineEventId,
@@ -136,11 +138,19 @@ export const getEventDimensions = (
       ? dimensionModel.columnByCardId[seriesModel.cardId]
       : dimensionModel.column;
 
-  const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
+  const hasDimensionValue = sameCardDatumColumns.length > 0;
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
-    const dimensionValue = datum[X_AXIS_DATA_KEY];
+    let dimensionValue = datum[X_AXIS_DATA_KEY];
+
+    if (isDate(dimensionColumn) && dimensionValue != null) {
+      const parsed = parseTimestamp(dimensionValue);
+      if (parsed.isValid()) {
+        dimensionValue = parsed.format("YYYY-MM-DDTHH:mm:ss");
+      }
+    }
+
     dimensions.push({
       column: dimensionColumn,
       value: dimensionValue,
@@ -152,6 +162,25 @@ export const getEventDimensions = (
       column: seriesModel.breakoutColumn,
       value: seriesModel.breakoutValue,
     });
+  }
+
+  // Include any other breakout column whose value is present at this data point but isn't yet
+  // captured as a dimension — e.g. a scatterplot whose categorical breakout is not bound to the
+  // series/color in viz settings would otherwise drop that filter from "See these records" (#73803).
+  const alreadyAddedColumns = new Set(
+    dimensions.map((dimension) => dimension.column),
+  );
+  for (const dataKey of sameCardDataKeys) {
+    const column = chartModel.columnByDataKey[dataKey];
+    if (
+      column != null &&
+      column.source === "breakout" &&
+      !alreadyAddedColumns.has(column) &&
+      dataKey in datum
+    ) {
+      dimensions.push({ column, value: datum[dataKey] });
+      alreadyAddedColumns.add(column);
+    }
   }
 
   return dimensions.filter(
@@ -230,7 +259,11 @@ const computeDiffWithPreviousPeriod = (
   const currentDate = getXAxisDataForComparison(datum);
   const previousValue = previousDatum?.[seriesModel.dataKey];
 
-  if (previousValue == null || currentValue == null || currentDate == null) {
+  if (
+    typeof previousValue !== "number" ||
+    typeof currentValue !== "number" ||
+    currentDate == null
+  ) {
     return null;
   }
 
@@ -248,7 +281,7 @@ const computeDiffWithPreviousPeriod = (
     getDaylightSavingsChangeTolerance(xAxisModel.interval.unit);
 
   // Comparing the 2nd and 1st quarter of the year needs to be checked
-  // specially, because there are fewer days in this period due to Feburary
+  // specially, because there are fewer days in this period due to February
   // being shorter than a normal month (89 days in a normal year, 90 days in a
   // leap year).
   if (!isOneIntervalAgo && unit === "quarter") {
@@ -270,16 +303,30 @@ const computeDiffWithPreviousPeriod = (
 export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
+  dimensionColumn: DatasetColumn | undefined,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
+  onBrush?: ((range: { start: number; end: number }) => void) | null,
 ) => {
-  const hasCombinedCards = series.length > 1;
   const hasBrushableDimension =
     settings["graph.x_axis.scale"] != null &&
     !["ordinal", "histogram"].includes(settings["graph.x_axis.scale"]);
 
+  if (!hasBrushableDimension) {
+    return false;
+  }
+
+  if (onBrush) {
+    return true;
+  }
+
+  // Can't filter an aggregation in the stage that produces it (metabase#71073).
+  if (dimensionColumn?.source === "aggregation") {
+    return false;
+  }
+
+  const hasCombinedCards = series.length > 1;
   return (
     !!onChangeCardAndRun &&
-    hasBrushableDimension &&
     !hasCombinedCards &&
     (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&
@@ -821,10 +868,28 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
+const isMouseEventWithXAxis = (
+  event: EChartsSeriesMouseEvent,
+): event is EChartsSeriesMouseEvent<{ xAxis: string }> => {
+  return (
+    typeof event.data === "object" &&
+    event.data !== null &&
+    "xAxis" in event.data &&
+    typeof event.data.xAxis === "string" &&
+    event.data.xAxis.length > 0
+  );
+};
+
 export const getTimelineEventsForEvent = (
   timelineEventsModel: TimelineEventsModel,
   event: EChartsSeriesMouseEvent,
 ) => {
+  if (isMouseEventWithXAxis(event)) {
+    return timelineEventsModel.find(
+      (timelineEvents) => timelineEvents.date === event.data.xAxis,
+    )?.events;
+  }
+
   return timelineEventsModel.find(
     (timelineEvents) => timelineEvents.date === event.value,
   )?.events;

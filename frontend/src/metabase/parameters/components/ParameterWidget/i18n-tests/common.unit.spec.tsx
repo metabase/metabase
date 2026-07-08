@@ -1,7 +1,7 @@
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen } from "__support__/ui";
 
-import { setup } from "./setup";
+import { setup } from "./setup.spec";
 
 describe("ParameterWidget (OSS)", () => {
   describe("content translation", () => {

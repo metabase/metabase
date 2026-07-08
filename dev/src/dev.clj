@@ -51,6 +51,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.core.memoize :as memoize]
    [clojure.main]
    [clojure.string :as str]
    [clojure.test]
@@ -348,7 +349,9 @@
     (do
       ;; prevent things like dereferencing metabase.api.common/*current-user-permissions-set* from triggering the check
       ;; by calling `next-method` *twice*. To reduce the performance impact, just call it with the first instance.
-      (maybe-realize (next-method model strategy k [(first instances)]))
+      ;; we do this for each model because e.g. we may have one `:RootCollection` and several `:Collection`s.
+      (doseq [[_instance-model instances] (group-by t2/model instances)]
+        (maybe-realize (next-method model strategy k [(first instances)])))
       ;; Now we can actually run the hydration with the full set of instances and make sure no more DB calls happened.
       (t2/with-call-count [call-count]
         (let [res (maybe-realize (next-method model strategy k instances))]
@@ -465,3 +468,9 @@
   (mt/initialize-if-needed! :test-users)
   ;; seed test db
   (mt/id))
+
+(defn reset-static!
+  "Reset static and template caches to pick up new js"
+  []
+  ((requiring-resolve 'stencil.loader/invalidate-cache))
+  (memoize/memo-clear! @(requiring-resolve 'metabase.server.routes.index/load-inline-js)))

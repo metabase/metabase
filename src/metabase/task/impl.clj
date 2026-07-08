@@ -26,6 +26,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.task.bootstrap]
    [metabase.task.job-factory :as job-factory]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -158,29 +159,29 @@
 
 (mu/defn- reschedule-task!
   "Assuming that [[job]] is already registered, ensure that [[new-trigger]] is scheduled to trigger it."
-  [job         :- (ms/InstanceOfClass JobDetail)
+  [^Scheduler scheduler   :- (ms/InstanceOfClass Scheduler)
+   job         :- (ms/InstanceOfClass JobDetail)
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
-    (when-let [scheduler (scheduler)]
-      (let [job-key          (.getKey ^JobDetail job)
-            new-trigger-key  (.getKey ^Trigger new-trigger)
-            triggers         (try (qs/get-triggers-of-job scheduler job-key) (catch Exception _))
-            matching-trigger (first (filter (comp #{new-trigger-key} #(.getKey ^Trigger %)) triggers))
-            replaced-trigger (or matching-trigger (first triggers))]
-        (log/debugf "Rescheduling job %s" (.getName job-key))
-        (if-not replaced-trigger
-          (.scheduleJob scheduler new-trigger)
-          (let [replaced-key (.getKey ^Trigger replaced-trigger)]
-            (when-not matching-trigger
-              (log/warnf "Replacing trigger %s with trigger %s%s"
-                         (.getName replaced-key)
-                         (.getName new-trigger-key)
-                         (when (> (count triggers) 1)
-                           ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
-                           ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
-                           ;; The current behavior is especially confounding if replacing N triggers with M ones.
-                           (str " (chosen randomly from " (count triggers) " existing ones)"))))
-            (.rescheduleJob scheduler replaced-key new-trigger)))))
+    (let [job-key          (.getKey ^JobDetail job)
+          new-trigger-key  (.getKey ^Trigger new-trigger)
+          triggers         (try (qs/get-triggers-of-job scheduler job-key) (catch Exception _))
+          matching-trigger (first (filter (comp #{new-trigger-key} #(.getKey ^Trigger %)) triggers))
+          replaced-trigger (or matching-trigger (first triggers))]
+      (log/debugf "Rescheduling job %s" (.getName job-key))
+      (if-not replaced-trigger
+        (.scheduleJob scheduler new-trigger)
+        (let [replaced-key (.getKey ^Trigger replaced-trigger)]
+          (when-not matching-trigger
+            (log/warnf "Replacing trigger %s with trigger %s%s"
+                       (.getName replaced-key)
+                       (.getName new-trigger-key)
+                       (when (> (count triggers) 1)
+                         ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
+                         ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
+                         ;; The current behavior is especially confounding if replacing N triggers with M ones.
+                         (str " (chosen randomly from " (count triggers) " existing ones)"))))
+          (.rescheduleJob scheduler replaced-key new-trigger))))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
 
@@ -194,13 +195,18 @@
 
 (mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
-  [job :- (ms/InstanceOfClass JobDetail) trigger :- (ms/InstanceOfClass Trigger)]
-  (when-let [scheduler (scheduler)]
-    (try
-      (qs/schedule scheduler job trigger)
-      (catch ObjectAlreadyExistsException _
-        (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
-        (reschedule-task! job trigger)))))
+  ([job     :- (ms/InstanceOfClass JobDetail)
+    trigger :- (ms/InstanceOfClass Trigger)]
+   (schedule-task! (scheduler) job trigger))
+  ([scheduler :- [:maybe (ms/InstanceOfClass Scheduler)]
+    job       :- (ms/InstanceOfClass JobDetail)
+    trigger   :- (ms/InstanceOfClass Trigger)]
+   (when scheduler
+     (try
+       (qs/schedule scheduler job trigger)
+       (catch ObjectAlreadyExistsException _
+         (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
+         (reschedule-task! scheduler job trigger))))))
 
 (mu/defn trigger-now!
   "Immediately trigger execution of task"
@@ -278,10 +284,8 @@
    ((get-method trigger->info Trigger) trigger)
    :schedule
    (.getCronExpression trigger)
-
    :timezone
    (.getID (.getTimeZone trigger))
-
    :misfire-instruction
    ;; not 100% sure why `case` doesn't work here...
    (condp = (.getMisfireInstruction trigger)
@@ -352,11 +356,12 @@
 
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmacro defjob
-  "Like `clojurewerkz.quartzite.task/defjob` but with a log context."
+  "Like `clojurewerkz.quartzite.task/defjob` but with a log context and an OpenTelemetry tracing span."
   [jtype args & body]
   `(jobs/defjob ~jtype ~args
      (log/with-context {:quartz-job-type (quote ~jtype)}
-       ~@body)))
+       (tracing/with-span :tasks (str "task." (quote ~jtype)) {:task/name (str (quote ~jtype))}
+         ~@body))))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will

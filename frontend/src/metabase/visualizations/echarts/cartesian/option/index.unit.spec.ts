@@ -10,7 +10,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { getChartMeasurements } from "../chart-measurements";
+import { getChartLayout } from "../layout";
 import { getCartesianChartModel } from "../model";
 
 import { buildAxes } from "./axis";
@@ -79,7 +79,7 @@ describe("ensureRoomForLabels", () => {
       mockRenderingContext,
     );
 
-    const chartMeasurements = getChartMeasurements(
+    const chartLayout = getChartLayout(
       chartModel,
       mockSettings,
       hasTimelineEvents,
@@ -90,8 +90,7 @@ describe("ensureRoomForLabels", () => {
 
     const axes = buildAxes(
       chartModel,
-      chartWidth,
-      chartMeasurements,
+      chartLayout,
       mockSettings,
       hasTimelineEvents,
       mockRenderingContext,
@@ -101,11 +100,11 @@ describe("ensureRoomForLabels", () => {
       chartModel,
       mockSettings,
       chartWidth,
-      chartMeasurements,
+      chartLayout,
       mockRenderingContext,
     );
 
-    return [axes, chartModel, chartMeasurements, dataSeriesOptions] as const;
+    return [axes, chartModel, chartLayout, dataSeriesOptions] as const;
   };
 
   const getBoundaryGap = (axis: YAXisOption | XAXisOption) =>
@@ -139,6 +138,6 @@ describe("ensureRoomForLabels", () => {
     const [originalAxes] = args;
     const axes = ensureRoomForLabels(...args);
     expect(axes.xAxis).toBe(originalAxes.xAxis);
-    expect(axes.yAxis.map(getBoundaryGap)).toEqual([[0.024, 0]]);
+    expect(axes.yAxis.map(getBoundaryGap)).toEqual([[0.026, 0]]);
   });
 });

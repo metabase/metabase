@@ -3,9 +3,8 @@ import styled from "@emotion/styled";
 import type { ComponentPropsWithRef } from "react";
 
 import { inputPadding } from "metabase/common/style/input";
-import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 interface SelectButtonRootProps {
   hasValue: boolean;
   fullWidth: boolean;
@@ -14,9 +13,9 @@ interface SelectButtonRootProps {
 
 const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
-    return highlighted ? color("text-white") : color("text-dark");
+    return highlighted ? color("text-primary-inverse") : color("text-primary");
   } else {
-    return color("text-light");
+    return color("text-disabled");
   }
 };
 
@@ -28,18 +27,23 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   align-items: center;
   border: 1px solid
     ${({ hasValue, highlighted }) =>
-      hasValue && highlighted ? color("brand") : color("border")};
+      hasValue && highlighted ? color("core-brand") : color("border-neutral")};
   background-color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("brand") : color("bg-white")};
-  border-radius: ${space(1)};
+    hasValue && highlighted
+      ? color("core-brand")
+      : color("background_page-primary")};
+  border-radius: var(--mantine-spacing-sm);
   font-weight: 700;
   min-width: 104px;
-  transition: all 200ms;
   color: ${getColor};
 
+  &:hover {
+    border-color: var(--mb-color-core-brand);
+  }
+
   &:focus {
-    border-color: var(--mb-color-brand);
-    outline: 2px solid var(--mb-color-focus);
+    border-color: var(--mb-color-core-brand);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:not(:focus-visible) {
@@ -47,8 +51,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: var(--mb-color-bg-light);
-    color: var(--mb-color-text-medium);
+    background-color: var(--mb-color-background_page-secondary);
+    color: var(--mb-color-text-secondary);
     pointer-events: none;
   }
 `;
@@ -70,7 +74,9 @@ export const SelectButtonIcon = styled(
   display: flex;
   margin-left: auto;
   color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("text-white") : color("text-medium")};
+    hasValue && highlighted
+      ? color("text-primary-inverse")
+      : color("text-secondary")};
 `;
 
 export const SelectButtonContent = styled.span`

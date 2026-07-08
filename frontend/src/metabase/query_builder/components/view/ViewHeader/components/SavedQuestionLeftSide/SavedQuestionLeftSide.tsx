@@ -2,7 +2,7 @@ import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";
+import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
 import { SavedQuestionHeaderButton } from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -10,7 +10,7 @@ import type Question from "metabase-lib/v1/Question";
 import { ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
-import { HeaderCollectionBadge } from "../HeaderCollectionBadge/HeaderCollectionBadge";
+import { HeaderCollectionBreadcrumb } from "../HeaderCollectionBreadcrumb/HeaderCollectionBreadcrumb";
 import { QuestionDataSource } from "../QuestionDataSource";
 
 import SavedQuestionLeftSideS from "./SavedQuestionLeftSide.module.css";
@@ -81,7 +81,7 @@ export function SavedQuestionLeftSide({
               parts={[
                 ...(isAdditionalInfoVisible && isModelOrMetric
                   ? [
-                      <HeaderCollectionBadge
+                      <HeaderCollectionBreadcrumb
                         key="collection"
                         question={question}
                       />,

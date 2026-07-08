@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 
 export const isWithinWeeks = (
   timestamp: string,

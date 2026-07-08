@@ -1,0 +1,197 @@
+name: Orders With Products
+description: Orders joined with products table
+entity_id: orders-with-products
+created_at: '2026-01-01T00:00:00.000000Z'
+creator_id: test@metabase.com
+display: table
+archived: false
+collection_id: null
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Test Database
+table_id:
+- Test Database
+- public
+- orders
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Test Database
+  query:
+    fields:
+    - - field
+      - - Test Database
+        - public
+        - orders
+        - id
+      - base-type: type/BigInteger
+    - - field
+      - - Test Database
+        - public
+        - orders
+        - total
+      - base-type: type/Float
+    - - field
+      - - Test Database
+        - public
+        - products
+        - title
+      - base-type: type/Text
+        join-alias: Products
+    - - field
+      - - Test Database
+        - public
+        - products
+        - price
+      - base-type: type/Float
+        join-alias: Products
+    joins:
+    - alias: Products
+      condition:
+      - =
+      - - field
+        - - Test Database
+          - public
+          - orders
+          - product_id
+        - base-type: type/Integer
+      - - field
+        - - Test Database
+          - public
+          - products
+          - id
+        - base-type: type/BigInteger
+          join-alias: Products
+      fields: all
+      source-table:
+      - Test Database
+      - public
+      - products
+      strategy: left-join
+    source-table:
+    - Test Database
+    - public
+    - orders
+  type: query
+result_metadata:
+- active: true
+  base_type: type/BigInteger
+  database_type: BIGINT
+  display_name: ID
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - - Test Database
+    - public
+    - orders
+    - id
+  - null
+  id:
+  - Test Database
+  - public
+  - orders
+  - id
+  name: id
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id:
+  - Test Database
+  - public
+  - orders
+  visibility_type: normal
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Test Database
+    - public
+    - orders
+    - total
+  - null
+  id:
+  - Test Database
+  - public
+  - orders
+  - total
+  name: total
+  position: 1
+  source: fields
+  table_id:
+  - Test Database
+  - public
+  - orders
+  visibility_type: normal
+- active: true
+  base_type: type/Text
+  database_type: VARCHAR
+  display_name: Products -> Title
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Test Database
+    - public
+    - products
+    - title
+  - join-alias: Products
+  id:
+  - Test Database
+  - public
+  - products
+  - title
+  name: title
+  position: 0
+  semantic_type: type/Title
+  source: fields
+  table_id:
+  - Test Database
+  - public
+  - products
+  visibility_type: normal
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Products -> Price
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Test Database
+    - public
+    - products
+    - price
+  - join-alias: Products
+  id:
+  - Test Database
+  - public
+  - products
+  - price
+  name: price
+  position: 1
+  source: fields
+  table_id:
+  - Test Database
+  - public
+  - products
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: orders-with-products
+  label: orders_with_products
+  model: Card
+archived_directly: false
+dashboard_id: null
+document_id: null
+embedding_type: null
+metabase_version: v0.55.1-SNAPSHOT
+source_card_id: null
+type: question

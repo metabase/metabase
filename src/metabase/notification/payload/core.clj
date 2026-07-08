@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.core
   (:require
+   [clojure.walk :as w]
    [metabase.appearance.core :as appearance]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
@@ -14,11 +15,14 @@
 
 (p/import-vars
  [notification.payload.execute
+  dashcard-link-card->part
   execute-dashboard
-  process-virtual-dashcard]
+  execute-dashboard-subscription-card
+  process-virtual-dashcard
+  virtual-card-of-type?]
  [notification.payload.temp-storage
   cleanup!
-  is-cleanable?])
+  cleanable?])
 
 (mr/def ::Notification
   "Schema for the notification."
@@ -101,15 +105,13 @@
     [:notification/testing   :map]]])
 
 (defn- logo-url
-  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo.
+   For data URIs, returns the raw data URI - the email channel will convert it to an attachment."
   []
   (let [url (appearance/application-logo-url)]
-    (cond
-      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
-      ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.channel.render.image-bundle
-      ;; (data-uri-svg? url)               (themed-image-url url color)
-      :else nil)))
+    (if (= url "app/assets/img/logo.svg")
+      "http://static.metabase.com/email_logo.png"
+      url)))
 
 (defn- button-style
   "Return a CSS style string for a button with the given color."
@@ -146,9 +148,13 @@
 (mu/defn notification-payload :- ::NotificationPayload
   "Realize notification-info with :context and :payload."
   [notification :- ::Notification]
-  (assoc (select-keys notification [:payload_type])
+  (assoc (select-keys notification [:payload_type :creator_id])
          :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
-         :payload (payload notification)
+         :payload (w/prewalk (fn [x]
+                               (if (and (map? x) (:lib/metadata x))
+                                 (dissoc x :lib/metadata)
+                                 x))
+                             (payload notification))
          :context (default-context)))
 
 (defmulti skip-reason

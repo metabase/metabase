@@ -11,39 +11,113 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
   cancel-in-progress: true
 
+# Exposed to the test jobs so they can report failures to ci-conductor
+# (secrets: inherit is already set on the backend call in run-tests.yml).
+# See DEV-2224.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   be-linter-clj-kondo:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'kondo'
       - name: Run clj-kondo
         run: ./bin/mage kondo
 
   be-linter-eastwood:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "eastwood"
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
+  be-linter-eastwood-test:
+    # Master / release safety net: lint every backend test namespace.
+    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    name: Eastwood (tests only)
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+        name: Run Eastwood linter on our backend tests
+
+  be-linter-eastwood-test-changed:
+    # PR / merge queue: lint only the test namespaces touched by the diff.
+    if: ${{ !inputs.skip && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    name: Eastwood (changed tests only)
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Enough history for `git merge-base` on a typical PR.
+          fetch-depth: 200
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compute changed test namespaces
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Diff from the merge-base so changes that landed on the base branch after the PR was
+          # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
+          git fetch --no-tags --depth=200 origin "$BASE_SHA"
+          DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
+          # Test roots we lint: core, EE, and each driver module's test tree.
+          # :eastwood/test derives matching :source-paths from the classpath, so any
+          # namespace we name here is reachable. Include renames (R) so a test that
+          # was just renamed still gets linted under its new name.
+          FILES=$(git diff --name-only --diff-filter=AMR "$DIFF_BASE" "$HEAD_SHA" \
+                    -- 'test/**/*.clj' 'test/**/*.cljc' \
+                       'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
+                       'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
+
+          if [ -z "$FILES" ]; then
+            echo "No backend test files changed; skipping lint."
+            echo "namespaces=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Defence-in-depth: paths flow into a subsequent shell command via $GITHUB_OUTPUT.
+          if grep -Eqv '^[A-Za-z0-9_./-]+$' <<<"$FILES"; then
+            echo "Refusing to lint: unexpected characters in changed file paths:" >&2
+            echo "$FILES" >&2
+            exit 1
+          fi
+
+          NS=$(sed -E 's#^(test/|enterprise/backend/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+                 | sort -u \
+                 | paste -sd' ' -)
+          echo "Changed test namespaces: $NS"
+          echo "namespaces=$NS" >> "$GITHUB_OUTPUT"
+      - name: Run Eastwood on changed test namespaces
+        if: steps.changed.outputs.namespaces != ''
+        env:
+          NAMESPACES: ${{ steps.changed.outputs.namespaces }}
+        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
+
   be-tests:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -51,33 +125,33 @@ jobs:
         job:
           - name: Enterprise Tests
             edition: ee
-            build-static-viz: 'false'
+            test-group-name: ee
             test-args: >-
               :only '"enterprise/backend/test"'
           - name: EE App DB Tests (Part 1)
             edition: ee
-            build-static-viz: 'true'
+            test-group-name: ee-app-db-1
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 0
           - name: EE App DB Tests (Part 2)
             edition: ee
-            build-static-viz: 'true'
+            test-group-name: ee-app-db-2
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 1
           - name: OSS App DB Tests (Part 1)
             edition: oss
-            build-static-viz: 'true'
+            test-group-name: oss-app-db-1
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 0
           - name: OSS App DB Tests (Part 2)
             edition: oss
-            build-static-viz: 'true'
+            test-group-name: oss-app-db-2
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
@@ -92,36 +166,30 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
           ':mb/old-migrations-test'
         }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
-        if: ${{ matrix.job.build-static-viz == 'true' }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: be-tests
           java-version: "${{ matrix.java-version }}"
-      # Depending on which files changed, we might either have to build static-viz
-      # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ${{ matrix.job.edition }}
-      - name: Download Static Viz Bundle Artifact
-        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-        uses: actions/download-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
+
+      - name: Resolve current job id
+        # Resolve JOB_ID before the long test step so the ci-conductor reporter
+        # below can link failures to this exact job. Best-effort.
+        uses: ./.github/actions/resolve-job-id
 
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
@@ -129,6 +197,31 @@ jobs:
           clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           ${{ matrix.job.test-args }}
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
+
+      - name: Report failed tests to ci-conductor
+        # Positioned between the test run and "Upload Test Results" so it reads
+        # pristine JUnit (before Trunk quarantine processing). Gated to non-clean
+        # runs + continue-on-error so it can never change the job outcome — Trunk
+        # Quarantine remains the sole arbiter. See DEV-2224 / DEV-2235.
+        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
+        continue-on-error: true
+        uses: ./.github/actions/report-failures-to-ci-conductor
+        with:
+          test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+          adapter: backend
+
+      - name: Quarantine gate (dry run)
+        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -137,13 +230,13 @@ jobs:
           input-path: ./target/junit/
           output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.run-java-tests.outcome }}
 
       - name: Publish Test Report (JUnit)
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"
@@ -155,9 +248,9 @@ jobs:
 
       - name: Upload Logs on Failure
         if: always() && !success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}
+          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}-${{ matrix.job.test-group-name }}
           path: logs/test-log.json
           retention-days: 1
 
@@ -165,51 +258,49 @@ jobs:
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
       matrix:
         java-version: [21]
     name: "Check Java ${{ matrix.java-version }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: be-check
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
         run: clojure -M:ee:drivers:check
 
   be-cljfmt:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'cljfmt'
       - name: Run cljfmt
         run: ./bin/mage cljfmt-all --force-check
 
   be-tests-result:
     needs:
       - be-linter-eastwood
+      - be-linter-eastwood-test
+      - be-linter-eastwood-test-changed
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
       - be-tests
     if: always() && !cancelled()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}
     steps:
       - name: Check backend job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

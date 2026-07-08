@@ -1,0 +1,246 @@
+name: Most viewed public links
+entity_id: xU_hRFlFpimUOpJTzfnOw
+created_at: '2026-04-22T11:10:00Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_view_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {lib/uuid: fe8f34bc-4880-4da8-b9b4-35ba5f3fe66e}
+    breakout:
+    - - field
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
+      - [Internal Metabase Database, public, v_content, name]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Entity Qualified}
+      - [Internal Metabase Database, public, v_content, entity_id]
+    - - expression
+      - {base-type: type/Text, effective-type: type/Text}
+      - entity_type_path
+    - - expression
+      - {base-type: type/Boolean, effective-type: type/Boolean}
+      - is_published
+    expressions:
+    - - not
+      - {lib/expression-name: is_top_level}
+      - - and
+        - {}
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, entity_type]
+          - card
+        - - not-null
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+          - dashboard
+    - - replace
+      - {lib/expression-name: entity_type_path}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_view_log, entity_type]
+      - card
+      - question
+    - - not-null
+      - {lib/expression-name: is_published}
+      - - field
+        - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Entity Qualified}
+        - [Internal Metabase Database, public, v_content, made_public_by_user]
+    filters:
+    - - =
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_view_log, embedding_client]
+      - embedding-public
+    - - =
+      - {}
+      - - expression
+        - {base-type: type/Boolean, effective-type: type/Boolean}
+        - is_top_level
+      - true
+    - - time-interval
+      - {include-current: true}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, lib/uuid: 5012ece5-f922-4222-b440-a5fdc2518e8f}
+        - timestamp
+      - -30
+      - day
+    joins:
+    - alias: Content - Entity Qualified
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Text, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+        - - field
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
+          - [Internal Metabase Database, public, v_content, entity_qualified_id]
+      stages:
+      - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: ff1a8f80-c186-4224-abbd-02c37bd8c46a}
+      lib/type: mbql/join
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {base-type: type/BigInteger, effective-type: type/BigInteger, lib/source-name: count}
+        - fe8f34bc-4880-4da8-b9b4-35ba5f3fe66e
+    source-card: P6Ityjj7igswKh4NgZZjz
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Content - Entity Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, name]
+  - {join-alias: Content - Entity Qualified}
+  id: [Internal Metabase Database, public, v_content, name]
+  name: name
+  position: 6
+  semantic_type: type/Name
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1018
+  lib/deduplicated-name: name
+  lib/desired-column-alias: Content - Entity Qualified__name
+  lib/from-model?: true
+  lib/join-alias: Content - Entity Qualified
+  lib/original-display-name: Name
+  lib/original-join-alias: Content - Entity Qualified
+  lib/original-name: name
+  lib/source: source/joins
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Content - Entity Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {join-alias: Content - Entity Qualified}
+  id: [Internal Metabase Database, public, v_content, entity_id]
+  name: entity_id
+  position: 0
+  semantic_type: type/PK
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1018
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: Content - Entity Qualified__entity_id
+  lib/from-model?: true
+  lib/join-alias: Content - Entity Qualified
+  lib/original-display-name: Entity ID
+  lib/original-join-alias: Content - Entity Qualified
+  lib/original-name: entity_id
+  lib/source: source/joins
+  lib/source-column-alias: entity_id
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: entity_type_path
+  effective_type: type/Text
+  field_ref: [expression, entity_type_path]
+  name: entity_type_path
+  source: breakout
+  lib/breakout?: true
+  lib/deduplicated-name: entity_type_path
+  lib/desired-column-alias: entity_type_path
+  lib/expression-name: entity_type_path
+  lib/original-name: entity_type_path
+  lib/source: source/expressions
+  lib/source-column-alias: entity_type_path
+- base_type: type/Boolean
+  display_name: is_published
+  effective_type: type/Boolean
+  field_ref: [expression, is_published]
+  name: is_published
+  source: breakout
+  lib/breakout?: true
+  lib/deduplicated-name: is_published
+  lib/desired-column-alias: is_published
+  lib/expression-name: is_published
+  lib/original-name: is_published
+  lib/source: source/expressions
+  lib/source-column-alias: is_published
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings:
+    '["name","count"]': {column_title: Views, show_mini_bar: true}
+    '["name","entity_id"]': {column_title: Entity ID}
+    '["name","is_published"]': {column_title: Published}
+    '["name","name"]': {column_title: Content, link_text: '', link_url: '/{{entity_type_path}}/{{entity_id}}', view_as: link}
+  table.cell_column: count
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, name]
+    - {base-type: type/Text, join-alias: Content - Entity Qualified}
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, entity_id]
+    - {base-type: type/Integer, join-alias: Content - Entity Qualified}
+    name: entity_id
+  - enabled: false
+    fieldRef:
+    - expression
+    - entity_type_path
+    - {base-type: type/Text}
+    name: entity_type_path
+  - enabled: true
+    fieldRef:
+    - expression
+    - is_published
+    - {base-type: type/Boolean}
+    name: is_published
+  - enabled: true
+    fieldRef: [aggregation, 0]
+    name: count
+  table.pivot: false
+card_schema: 23
+serdes/meta:
+- {id: xU_hRFlFpimUOpJTzfnOw, label: most_viewed_public_links, model: Card}
+dashboard_id: 2NWw98hfm_kimGA4xuyMW
+source_card_id: P6Ityjj7igswKh4NgZZjz
+type: question

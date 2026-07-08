@@ -11,7 +11,7 @@ const CATEGORY_FILTER = createMockParameter({
   type: "string/=",
 });
 
-H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
+describe("scenarios > dashboard cards > sections", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -54,6 +54,9 @@ H.describeWithSnowplow("scenarios > dashboard cards > sections", () => {
       event: "dashboard_section_added",
       section_layout: "kpi_grid",
     });
+
+    // Verify placeholder cards can be dragged (metabase#UXW-3387)
+    assertPlaceholderCardCanBeDragged();
 
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 
@@ -109,9 +112,10 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
   beforeEach(() => {
     H.restore();
     cy.signIn("readonly");
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
   });
 
-  it("Should allow you to select entites in collections you have read access to (metabase#50602)", () => {
+  it("Should allow you to select entities in collections you have read access to (metabase#50602)", () => {
     H.createDashboard({ collection_id: READ_ONLY_PERSONAL_COLLECTION_ID }).then(
       ({ body }) => {
         H.visitDashboard(body.id);
@@ -124,11 +128,8 @@ describe("scenarios > dashboard cards > sections > read only collections", () =>
       .findAllByText("Select question")
       .first()
       .click({ force: true });
-    H.entityPickerModal()
-      .findByRole("tab", { name: /Questions/ })
-      .click();
-    H.entityPickerModalItem(0, "Our analytics").click();
-    H.entityPickerModalItem(1, "Orders, Count").click();
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+    H.pickEntity({ path: ["Our analytics", "Orders, Count"] });
     H.dashboardGrid().findByText("Orders, Count").should("exist");
   });
 });
@@ -143,10 +144,7 @@ function selectQuestion(question) {
     .findAllByText("Select question")
     .first()
     .click({ force: true });
-  H.entityPickerModal()
-    .findByRole("tab", { name: /Questions/ })
-    .click();
-  H.entityPickerModal().findByText(question).click();
+  H.pickEntity({ path: ["Our analytics", question] });
   cy.wait("@cardQuery");
   H.dashboardGrid().findByText(question).should("exist");
 }
@@ -167,4 +165,43 @@ function mapDashCardToFilter(dashcardElement, filterName) {
   filterPanel().findByText(filterName).click();
   H.selectDashboardFilter(dashcardElement, filterName);
   H.sidebar().button("Done").click();
+}
+
+function assertPlaceholderCardCanBeDragged() {
+  H.getDashboardCards().then(($cards) => {
+    const initialLeftValues = [...$cards].map(
+      (card) => card.getBoundingClientRect().left,
+    );
+
+    const $target = $cards
+      .filter((_i, card) =>
+        card
+          .querySelector("[data-testid='dashcard']")
+          ?.textContent?.includes("Select question"),
+      )
+      .first();
+
+    const rect = $target[0].getBoundingClientRect();
+
+    cy.wrap($target)
+      .trigger("mousedown", { button: 0, x: 10, y: 50 })
+      .trigger("mousemove", {
+        button: 0,
+        clientX: rect.left + 900,
+        clientY: rect.top + 200,
+      })
+      .wait(100)
+      .trigger("mouseup");
+
+    H.getDashboardCards().then(($afterCards) => {
+      const afterLeftValues = [...$afterCards].map(
+        (card) => card.getBoundingClientRect().left,
+      );
+
+      const someCardMoved = afterLeftValues.some(
+        (left, i) => left !== initialLeftValues[i],
+      );
+      expect(someCardMoved).to.eq(true);
+    });
+  });
 }

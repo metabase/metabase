@@ -1,10 +1,13 @@
 (ns metabase.driver.mysql-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mysql-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mysql-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
    [metabase.driver :as driver]
@@ -12,6 +15,8 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -20,12 +25,15 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.string-extracts-test :as string-extracts-test]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -46,7 +54,7 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (thunk))))
+                        (mt/with-test-user :rasta (thunk)))))
 
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
@@ -71,6 +79,38 @@
                    (mt/rows
                     (mt/run-mbql-query exciting-moments-in-history))))))))))
 
+(deftest sync-fks-test
+  (testing "Make sure we sync table FKs correctly for MySQL (#28060)"
+    (mt/test-driver :mysql
+      (tx/drop-if-exists-and-create-db! driver/*driver* "test_28060")
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "test_28060"})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+        ;; according to #28060 this synced incorrectly (nil column and table names) and triggered an exception; this
+        ;; test is to prove that the issue is fixed
+        (doseq [lines [["CREATE TABLE IF NOT EXISTS foo ("
+                        "    id BIGINT(20) UNSIGNED,"
+                        "    PRIMARY KEY (id)"
+                        ");"]
+                       ["CREATE TABLE IF NOT EXISTS bar ("
+                        "    id BIGINT(20) UNSIGNED,"
+                        "    foo_id BIGINT(20) UNSIGNED,"
+                        "    FOREIGN KEY (foo_id) REFERENCES foo(id)"
+                        ");"]]
+                :let  [sql (str/join "\n" lines)]]
+          (jdbc/execute! spec [sql]))
+        (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (is (= [{:pk-table-schema nil
+                   :pk-table-name   "foo"
+                   :pk-column-name  "id"
+                   :fk-table-schema nil
+                   :fk-table-name   "bar"
+                   :fk-column-name  "foo_id"}]
+                 (into []
+                       (driver/describe-fks driver/*driver*
+                                            (lib-be/instance->metadata database :metadata/database)
+                                            {:table-names #{"foo" "bar"}})))))))))
+
 (deftest multiple-schema-test
   (testing "Make sure that we filter databases (schema) with :db or :dbname (#50072)"
     (mt/test-driver :mysql
@@ -87,9 +127,17 @@
           (is (= #{"dbone_a" "dbone_b" "dbone_c"}
                  (into #{} (map :name) (driver/describe-fields :mysql database)))))))))
 
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use the TIME-only format "
+                "string and not produce a DATETIME-with-date format")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["STR_TO_DATE(DATE_FORMAT(CAST(`test_col` AS datetime), '%H'), '%H')"]
+             (sql.qp/format-honeysql :mysql (sql.qp/date :mysql :hour expr)))))))
+
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
-  ;; See [[metabase.query-processor-test.date-time-zone-functions-test/extract-week-tests]] for something that tests
+  ;; See [[metabase.query-processor.date-time-zone-functions-test/extract-week-tests]] for something that tests
   ;; that this actually returns correct results.
   (testing :week-of-year-instance
     (doseq [[start-of-week expected] {:sunday
@@ -107,10 +155,7 @@
                                         "    ("
                                         "      ("
                                         "        DAYOFYEAR(weeks.d) - ("
-                                        "          8 - COALESCE("
-                                        "            NULLIF((DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 5) % 7, 0),"
-                                        "            7"
-                                        "          )"
+                                        "          8 - (((DAYOFWEEK(MAKEDATE(YEAR(weeks.d), 1)) + 4) % 7) + 1)"
                                         "        )"
                                         "      ) / 7.0"
                                         "    )"
@@ -153,7 +198,6 @@
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                  {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                (db->fields (mt/db)))))
-
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
         (mt/with-temp [:model/Database db {:engine  "mysql"
                                            :details (assoc (:details (mt/db))
@@ -163,6 +207,30 @@
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                  (db->fields db))))))))
+
+(deftest tinyint-1-model-filter-test
+  (mt/test-driver :mysql
+    (mt/dataset tiny-int-ones
+      ;; trigger a full sync on this database so fields are categorized correctly
+      (sync/sync-database! (mt/db))
+      (testing "Can filter on TINYINT(1) boolean columns in models (metabase#65826)"
+        (let [mp (as-> (mt/metadata-provider) $mp
+                   (lib.tu/mock-metadata-provider $mp {:cards
+                                                       [{:id              1
+                                                         :name            "Test Model"
+                                                         :database-id     (mt/id)
+                                                         :type :model
+                                                         :dataset-query   (lib/query $mp (lib.metadata/table $mp (mt/id :number-of-cans)))}]}))
+              field-metadata (lib.card/saved-question-metadata mp 1)
+              boolean-col    (m/find-first #(= (:name %) "number-of-cans")
+                                           field-metadata)]
+          (testing "Model has boolean metadata"
+            (is (= :type/Boolean (:base-type boolean-col))))
+          (testing "Can query model with boolean filter"
+            (let [query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                          (lib/filter $q (lib/= (m/find-first #(= (:name %) "number-of-cans") (lib/fieldable-columns $q))
+                                                true)))]
+              (is (some? (mt/rows (qp/process-query query)))))))))))
 
 (tx/defdataset year-db
   [["years"
@@ -211,7 +279,6 @@
       (testing "Should add a `+` if needed to offset"
         (is (= "+00:00"
                (timezone {:global_tz "PDT", :system_tz "UTC", :offset "00:00"})))))
-
     (testing "real timezone query doesn't fail"
       (is (nil? (try
                   (driver/db-default-timezone driver/*driver* (mt/db))
@@ -242,7 +309,6 @@
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
-
         ;; [August, 2018]
         ;; This tests a similar scenario, but one in which the JVM timezone is in Hong Kong, but the report timezone
         ;; is in Los Angeles. The Joda Time date parsing functions for the most part default to UTC. Our tests all run
@@ -313,7 +379,7 @@
                    (mt/first-row
                     (qp/process-query
                      (assoc (mt/native-query
-                              {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
+                             {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
                             ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
                             ;; our driver is actually doing the right thing
                             :middleware {:format-rows? false})))))))))))
@@ -339,9 +405,9 @@
                         (jdbc/execute! spec [sql]))
                       true
                       (catch java.sql.SQLSyntaxErrorException se
-                       ;; if an error is received with SYSTEM VERSIONING mentioned, the version
-                       ;; of mysql or mariadb being tested against does not support system versioning,
-                       ;; so do not continue
+                        ;; if an error is received with SYSTEM VERSIONING mentioned, the version
+                        ;; of mysql or mariadb being tested against does not support system versioning,
+                        ;; so do not continue
                         (if (re-matches #".*VERSIONING'.*" (.getMessage se))
                           false
                           (throw se))))]
@@ -449,7 +515,6 @@
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))
-
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
       (is (= ["SELECT STR_TO_DATE(DATE_FORMAT(CAST(`field` AS datetime), '%Y'), '%Y')"]
              (sql.qp/format-honeysql :mysql {:select [[(#'mysql/trunc-with-format "%Y" :field)]]})))
@@ -473,16 +538,38 @@
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to mysql query works"
       (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
-        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\""]
+        (is (= ["CONVERT(JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?)), UNSIGNED)" "$.\"meh\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
-        (is (= ["CONVERT(JSON_EXTRACT(`boop`.`bleh`, ?), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
+        (is (= ["CONVERT(JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?)), UNSIGNED)" "$.\"meh\".\"foobar\".\"1234\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier weird-field))))))
     (testing "Doesn't complain when field is boolean"
       (let [boolean-boop-field {:database-type "boolean" :nfc-path [:bleh "boop" :foobar 1234]}]
-        (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+        (is (= ["JSON_UNQUOTE(JSON_EXTRACT(`boop`.`bleh`, ?))" "$.\"boop\".\"foobar\".\"1234\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+
+(tx/defdataset json-unquote-test
+  [["json_test"
+    [{:field-name "data", :base-type :type/JSON}]
+    [["{\"int_val\": 42, \"str_val\": \"hello\"}"]
+     ["{\"int_val\": 123, \"str_val\": \"world\"}"]]]])
+
+(deftest json-unfolding-returns-unquoted-values-test
+  (testing "JSON unfolding should return values without JSON quotes (#61408)"
+    (mt/test-driver :mysql
+      (when-not (mysql/mariadb? (mt/db))
+        (mt/dataset json-unquote-test
+          (let [mp        (mt/metadata-provider)
+                json-table (lib.metadata/table mp (mt/id :json_test))
+                int-field (lib.metadata/field mp (mt/id :json_test "data → int_val"))
+                str-field (lib.metadata/field mp (mt/id :json_test "data → str_val"))]
+            (is (= [[42.0 "hello"]
+                    [123.0 "world"]]
+                   (-> (lib/query mp json-table)
+                       (lib/with-fields [int-field str-field])
+                       (qp/process-query)
+                       (mt/rows))))))))))
 
 ;; MariaDB doesn't have support for explicit JSON columns, it does it in a more SQL Server-ish way
 ;; where LONGTEXT columns are the actual JSON columns and there's JSON functions that just work on them,
@@ -537,14 +624,20 @@
                                   :aggregation  [[:count]]
                                   :breakout     [[:field (u/the-id field) nil]]}))]
               (is (= ["SELECT"
-                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) AS `json_bit → 1234`,"
+                      "  ("
+                      "    JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0"
+                      "  ) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
                       "FROM"
                       "  `json`"
                       "GROUP BY"
-                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0)"
+                      "  ("
+                      "    JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0"
+                      "  )"
                       "ORDER BY"
-                      "  (JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) ASC"]
+                      "  ("
+                      "    JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0"
+                      "  ) ASC"]
                      (str/split-lines (driver/prettify-native-form :mysql (:query compile-res)))))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
 
@@ -564,7 +657,7 @@
                                                               :min-value 0.75,
                                                               :max-value 54.0,
                                                               :bin-width 0.75}}]]
-                  (is (= ["((FLOOR((((JSON_EXTRACT(`json`.`json_bit`, ?) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
+                  (is (= ["((FLOOR((((JSON_UNQUOTE(JSON_EXTRACT(`json`.`json_bit`, ?)) + 0.0) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
 
@@ -589,7 +682,7 @@
 
 ;;; ------------------------------------------------ Actions related ------------------------------------------------
 
-;; API tests are in [[metabase.actions.api-test]]
+;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (=? {:type :metabase.actions.error/violate-not-null-constraint
@@ -601,7 +694,7 @@
 
 (deftest actions-maybe-parse-sql-error-test-2
   (testing "violate unique constraint"
-    (with-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
+    (mt/with-dynamic-fn-redefs [mysql.actions/constraint->column-names (constantly ["PRIMARY"])]
       (is (=? {:type :metabase.actions.error/violate-unique-constraint,
                :message "Primary already exists.",
                :errors {"PRIMARY" "This Primary value already exists."}}
@@ -666,7 +759,7 @@
                          :message     "Some of your values violate the constraint: email_format_check"
                          :status-code 400
                          :type        actions.error/violate-check-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
                                                                   "age"   25}
                                                      :database   (:id database)
@@ -698,7 +791,7 @@
                          :message     "Column1 and Column2 already exist."
                          :errors      {"column1" "This Column1 value already exists." "column2" "This Column2 value already exists."}
                          :status-code 400}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/create (mt/$ids {:create-row {"id"      3
                                                                   "column1" "A"
                                                                   "column2" "A"}
@@ -711,7 +804,7 @@
                          :message     "Column1 and Column2 already exist."
                          :status-code 400
                          :type        actions.error/violate-unique-constraint}
-                        (sql-jdbc.actions-test/perform-action-ex-data
+                        (sql-jdbc.actions-test/perform-action-ex-data!
                          :model.row/update (mt/$ids {:update-row {"column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)
@@ -744,7 +837,10 @@
     (is (= {:type  :roles
             :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
-    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))))
+    (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))
+    (testing "REVOKE grants (emitted under partial_revokes) are ignored rather than throwing"
+      (is (nil? (#'mysql/parse-grant "REVOKE INSERT ON `test-data`.`foo` FROM 'metabase'@'localhost'")))
+      (is (nil? (#'mysql/parse-grant "REVOKE INSERT, DELETE ON `test-data`.* FROM 'metabase'@'localhost'"))))))
 
 (deftest ^:parallel table-name->privileges-test
   (testing "table-names->privileges should work correctly"
@@ -785,7 +881,7 @@
                                                                      :additional-options "trustServerCertificate=true")]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                     [spec [:mysql new-connection-details]]
-                                     (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                     (mt/with-dynamic-fn-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                        (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec {})))))]
           (try
             (doseq [stmt ["CREATE TABLE `bar` (id INTEGER);"
@@ -845,7 +941,7 @@
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
@@ -869,12 +965,10 @@
                           "CREATE TABLE `fullaccess_table` (id INTEGER);"
                           "CREATE USER 'sync_writable_test_user' IDENTIFIED BY 'password';"]]
               (jdbc/execute! spec stmt))
-
             (doseq [stmt ["GRANT SELECT ON sync_writable_test.`readonly_table` TO 'sync_writable_test_user'"
                           "GRANT SELECT, INSERT ON sync_writable_test.`readwrite_table` TO 'sync_writable_test_user'"
                           "GRANT SELECT, INSERT, UPDATE, DELETE ON sync_writable_test.`fullaccess_table` TO 'sync_writable_test_user'"]]
               (jdbc/execute! spec stmt))
-
             (let [user-connection-details (assoc details
                                                  :user "sync_writable_test_user"
                                                  :password "password"
@@ -890,7 +984,6 @@
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
-
                   (sync/sync-database! database)
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
@@ -902,50 +995,103 @@
 (deftest partial-revokes-writable-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
-      (testing "`database-supports :metadata/table-writable-check` returns true normally but false with partial revokes"
+      (testing "a genuinely-writable table stays editable under partial_revokes, even when another table is revoked"
         (tx/drop-if-exists-and-create-db! driver/*driver* "partial_revokes_test")
         (let [details (tx/dbdef->connection-details :mysql :db {:database-name "partial_revokes_test"})
               spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
           (try
-            ;; Create test tables and user
-            (doseq [stmt ["CREATE TABLE `test_table` (id INTEGER);"
+            ;; Two fully-writable tables and a user with full DML on both.
+            (doseq [stmt ["CREATE TABLE `writable_table` (id INTEGER);"
+                          "CREATE TABLE `revoked_table` (id INTEGER);"
                           "CREATE USER 'partial_revokes_test_user' IDENTIFIED BY 'password';"
-                          "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.test_table TO 'partial_revokes_test_user'"]]
+                          "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.writable_table TO 'partial_revokes_test_user'"
+                          "GRANT SELECT, INSERT, UPDATE, DELETE ON partial_revokes_test.revoked_table TO 'partial_revokes_test_user'"]]
               (jdbc/execute! spec stmt))
-
             (let [user-connection-details (assoc details
                                                  :user "partial_revokes_test_user"
                                                  :password "password"
                                                  :ssl true
                                                  :additional-options "trustServerCertificate=true")]
-              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
-                (testing "With partial_revokes OFF (default), metadata/table-writable-check is supported"
+              (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details
+                                                       :dbms_version {:flavor "MySQL"}}]
+                (testing "With partial_revokes OFF (default), both tables sync as writable"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
-                      "Should support metadata/table-writable-check when partial_revokes is OFF"))
-
-                (testing "With partial_revokes ON, metadata/table-writable-check is not supported"
+                      "Should support metadata/table-writable-check when partial_revokes is OFF")
+                  (sync/sync-database! database)
+                  (is (= {"writable_table" true, "revoked_table" true}
+                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
+                (testing "With partial_revokes ON and INSERT revoked on one table, the check stays enabled"
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = ON;")
-                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
-                      "Should not support metadata/table-writable-check when partial_revokes is ON")
-
+                  (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.revoked_table FROM 'partial_revokes_test_user';")
+                  (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
+                      "Should still support metadata/table-writable-check when partial_revokes is ON")
                   (sync/sync-database! database)
-                  (is (= {"test_table" nil}
+                  ;; The bug (metabase#73276): turning partial_revokes ON disabled the writable check for the whole
+                  ;; database, so *every* table became uneditable. The fix removes that blanket gate, so writability is
+                  ;; computed per-table from the GRANT lines again: the untouched table stays writable, and the table
+                  ;; whose INSERT was revoked correctly reports not-writable instead of dragging everything down with it.
+                  ;; (Optimistic handling of schema-level partial-revoke REVOKE lines is covered by `parse-grant-test`.)
+                  (is (= {"writable_table" true, "revoked_table" false}
                          (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
-                      "is_writable should sync to nil when partial_revokes is ON"))
-
-                (testing "Revoke some permissions with partial_revokes ON"
-                  (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.test_table FROM 'partial_revokes_test_user';")
-                  (is (false? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
-                      "Should still not support metadata/table-writable-check after partial revoke")
-
-                  ;; Sync database again and verify is_writable is still nil
-                  (sync/sync-database! database)
-                  (is (= {"test_table" nil}
-                         (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))
-                      "is_writable should still be nil after partial revoke"))))
-
+                      "writable_table stays writable; revoked_table loses writability after its INSERT is revoked"))))
             (finally
               ;; Clean up: Reset partial_revokes to OFF before exiting
               (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
               (jdbc/execute! spec "DROP USER IF EXISTS 'partial_revokes_test_user';"))))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties
+  (mt/test-driver :mysql
+    (let [details (:details (mt/db))]
+      (testing "Reject connection strings with malicious properties"
+        (are [bad-option] (let [details (assoc details :additional-options bad-option)]
+                            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                                  #"Potentially dangerous keys in additional options"
+                                                  (driver/can-connect? :mysql details))))
+          "allowLoadLocalInfile=true"
+          "allowLoadLocalInfileInPath=1"
+          "allowUrlInLocalInfile=1"
+          "autoDeserialize=1"
+          "serverRSAPublicKeyFile=/path/to/file"))
+      (testing "Allow connection strings with non-malicious properties"
+        (are [ok-option] (let [details (assoc details :additional-options ok-option)]
+                           (is (true? (driver/can-connect? :mysql details))))
+          nil
+          ""
+          " "
+          "tinyInt1isBit=1")
+        (is (true? (driver/can-connect? :mysql details)))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (mt/test-driver :mysql
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql (mt/id) nil
+     (fn [conn]
+       (are [role expected] (= expected
+                               (driver.sql-jdbc/set-role-statement :mysql conn role))
+         "role'; SELECT sleep(10); --"
+         "SET ROLE 'role\\'; SELECT sleep(10); --';"
+
+         "webapp@localhost"
+         "SET ROLE 'webapp'@'localhost';")))))
+
+(deftest ^:synchronized cancel-slow-mysql-query-via-query-timeout-test
+  (mt/test-driver :mysql
+    (testing "Slow MySQL query is cancelled server-side when *query-timeout-ms* elapses (GHY-3266)"
+      ;; `SELECT SLEEP(60)` would normally take 60s. With `*query-timeout-ms*` of 2s the canceled-chan timer fires
+      ;; (and `Statement.setQueryTimeout` also fires); both reach the MariaDB Connector/J `.cancel()` path which
+      ;; issues `KILL QUERY` on a side connection. The query should error within a few seconds, not run to
+      ;; completion. Cancellation evidence: the query throws AND finishes far short of 60s. We don't assert on the
+      ;; exception message because QP output-schema middleware wraps the underlying SQLException — the timing is
+      ;; the load-bearing assertion.
+      (binding [driver.settings/*query-timeout-ms* 2000]
+        (let [timer   (u/start-timer)
+              query   (mt/native-query {:query "SELECT SLEEP(60) AS s"})
+              result  (try
+                        (qp/process-query query)
+                        (catch Throwable e e))
+              elapsed (u/since-ms timer)]
+          (is (instance? Throwable result)
+              "query should throw rather than completing normally")
+          (is (< elapsed 30000)
+              (format "query should be cancelled well before SLEEP(60) completes naturally — took %.0f ms" elapsed)))))))

@@ -17,7 +17,7 @@ const setupPremium = (opts?: SetupOpts) => {
       official_collections: true,
       collection_cleanup: true,
     }),
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["collections", "clean_up"],
   });
 };
 

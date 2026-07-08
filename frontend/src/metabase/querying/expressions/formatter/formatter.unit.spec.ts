@@ -3,12 +3,18 @@ import expression from "ts-dedent";
 
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
+import { SAMPLE_DB_ID } from "../../../../../../e2e/support/cypress_data";
 import { compileExpression } from "../compile-expression";
 import {
   expressions,
   fields,
+  measures,
   metrics,
   query,
   segments,
@@ -275,18 +281,27 @@ describe("format", () => {
   });
 
   describe("formats unknown references", () => {
-    const otherQuery = createQuery({
-      metadata: createMockMetadata({
-        databases: [
-          // no database so metadata cannot reference anything
-        ],
-      }),
+    const metadata = createMockMetadata({
+      databases: [
+        // no database so metadata cannot reference anything
+      ],
+    });
+
+    const provider = createMetadataProvider({ metadata });
+
+    const otherQuery = Lib.fromJsQuery(provider, {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+      },
     });
 
     it.each([
       { result: "[Unknown Field]", parts: fields.orders.TOTAL },
       { result: "[Unknown Segment]", parts: segments.EXPENSIVE_THINGS },
       { result: "[Unknown Metric]", parts: metrics.FOO },
+      { result: "[Unknown Measure]", parts: measures.BAR },
     ])("should format an unknown %s as %s", async ({ result, parts }) => {
       const clause = Lib.expressionClause(parts);
 
@@ -644,6 +659,12 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     });
   });
 
+  it("should format measures", async () => {
+    await all({
+      "[Bar Measure]": measures.BAR,
+    });
+  });
+
   it("should format the mode options for datetime functions", async () => {
     await all({
       'datetime(55, "unixSeconds")': opt(
@@ -695,43 +716,41 @@ it("should format escaped regex characters (metabase#56596)", async () => {
 // TODO: unskip when we have a fix for metabase#58371
 // eslint-disable-next-line jest/no-disabled-tests
 it.skip("should format joined columns properly (metabase#58371)", async () => {
-  const query = createQuery({
+  const query = Lib.fromJsQuery(SAMPLE_PROVIDER, {
+    database: SAMPLE_DB_ID,
+    type: "query",
     query: {
-      database: 1,
-      type: "query",
-      query: {
-        joins: [
-          {
-            alias: "Other Table",
-            condition: [
-              "=",
-              [
-                "field",
-                "field_a",
-                {
-                  "base-type": "type/Number",
-                },
-              ],
-              [
-                "field",
-                "field_b",
-                {
-                  "base-type": "type/Number",
-                },
-              ],
+      joins: [
+        {
+          alias: "Other Table",
+          condition: [
+            "=",
+            [
+              "field",
+              "field_a",
+              {
+                "base-type": "type/Number",
+              },
             ],
-          },
-        ],
-        expressions: {
-          foo: [
-            "field",
-            "Fieldname that has a non-removable dash",
-            {
-              "base-type": "type/Integer",
-              "join-alias": "Other Table",
-            },
+            [
+              "field",
+              "field_b",
+              {
+                "base-type": "type/Number",
+              },
+            ],
           ],
         },
+      ],
+      expressions: {
+        foo: [
+          "field",
+          "Fieldname that has a non-removable dash",
+          {
+            "base-type": "type/Integer",
+            "join-alias": "Other Table",
+          },
+        ],
       },
     },
   });
@@ -742,7 +761,5 @@ it.skip("should format joined columns properly (metabase#58371)", async () => {
     stageIndex: -1,
   });
 
-  expect(formatted).toBe(
-    "[Other Table → Fieldname that has a non-removable dash]",
-  );
+  expect(formatted).toBe("[Fieldname That Has A Non Removable Dash]");
 });

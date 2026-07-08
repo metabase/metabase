@@ -3,7 +3,7 @@ import { screen } from "__support__/ui";
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts = {}) {
-  baseSetup({ hasEnterprisePlugins: true, ...opts });
+  baseSetup({ ...opts });
 }
 
 describe("MetricEditorSidebar (EE without a token)", () => {

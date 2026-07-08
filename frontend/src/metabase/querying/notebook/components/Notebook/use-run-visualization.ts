@@ -1,5 +1,6 @@
-import { cleanQuestion } from "metabase/query_builder/utils/question";
 import type Question from "metabase-lib/v1/Question";
+
+import { cleanQuestion } from "../../../common/utils/question";
 
 type UseVisualizationProps = {
   question?: Question;

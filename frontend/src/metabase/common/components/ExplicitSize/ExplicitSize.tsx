@@ -7,15 +7,20 @@ import type {
   MutableRefObject,
   PropsWithoutRef,
 } from "react";
-import React, { Component, createRef } from "react";
+import React, { Component, createContext, createRef } from "react";
+import { flushSync } from "react-dom";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
-import { delay } from "metabase/lib/delay";
-import resizeObserver from "metabase/lib/resize-observer";
+import { delay } from "metabase/utils/delay";
+import resizeObserver from "metabase/utils/resize-observer";
 
 const WAIT_TIME = delay(300);
+
+export const ExplicitSizeRefreshModeContext = createContext<
+  RefreshMode | undefined
+>(undefined);
 
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
@@ -23,6 +28,7 @@ const REFRESH_MODE = {
   debounceLeading: (fn: () => void) =>
     debounce(fn, WAIT_TIME, { leading: true }),
   none: (fn: () => void) => fn,
+  layout: (fn: () => void) => () => flushSync(fn),
 };
 
 export type RefreshMode = keyof typeof REFRESH_MODE;
@@ -50,7 +56,7 @@ type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
 /**
  * @deprecated HOCs are deprecated
  */
-function ExplicitSize<T>({
+export function ExplicitSize<T>({
   selector,
   wrapped = false,
   refreshMode = "throttle",
@@ -60,6 +66,8 @@ function ExplicitSize<T>({
 
     class WrappedComponent extends Component<T & InnerProps> {
       static displayName = `ExplicitSize[${displayName}]`;
+
+      static contextType = ExplicitSizeRefreshModeContext;
 
       state: ExplicitSizeState = {
         width: null,
@@ -134,13 +142,22 @@ function ExplicitSize<T>({
       }
 
       _getRefreshMode = () => {
-        if (isCypressActive || this._printMediaQuery?.matches) {
-          return "none";
-        } else if (typeof refreshMode === "function") {
-          return refreshMode(this.props);
-        } else {
-          return refreshMode;
+        if (this.context) {
+          return this.context as RefreshMode;
         }
+
+        const calculatedRefreshMode =
+          typeof refreshMode === "function"
+            ? refreshMode(this.props)
+            : refreshMode;
+        if (
+          calculatedRefreshMode !== "layout" &&
+          (isCypressActive || this._printMediaQuery?.matches)
+        ) {
+          return "none";
+        }
+
+        return calculatedRefreshMode;
       };
 
       _updateRefreshMode = () => {
@@ -206,24 +223,71 @@ function ExplicitSize<T>({
         );
       }
 
-      __updateSize = () => {
+      __updateSize = (entry?: ResizeObserverEntry) => {
         const element = this._getElement();
-        if (element) {
-          const { width, height } = element.getBoundingClientRect();
+        if (!element) {
+          return;
+        }
 
-          if (!width && !height) {
-            // cypress raises lots of errors in timeline trying to call setState
-            // on the unmounted element, so we're just ignoring
-            return;
-          }
+        let width: number;
+        let height: number;
 
-          if (this.state.width !== width || this.state.height !== height) {
-            this.setState({ width, height }, () =>
-              this.props?.onUpdateSize?.(),
-            );
-          }
+        // ResizeObserver entry's dimensions free to read, prefer it over
+        // getBoundingClientRect() which forces re-layout.
+        if (entry && entry.target === element) {
+          const box = entry.borderBoxSize?.[0];
+          width = box ? box.inlineSize : entry.contentRect.width;
+          height = box ? box.blockSize : entry.contentRect.height;
+        } else {
+          const rect = element.getBoundingClientRect();
+          width = rect.width;
+          height = rect.height;
+        }
+
+        if (!width && !height) {
+          // cypress raises lots of errors in timeline trying to call setState
+          // on the unmounted element, so we're just ignoring
+          return;
+        }
+
+        const { width: prevWidth, height: prevHeight } = this.state;
+
+        // The two measurement sources report sub-pixel sizes with different
+        // precision: @juggle/resize-observer (used in the SDK) rounds box
+        // sizes to three decimals while getBoundingClientRect() does not.
+        // Ignore sub-pixel deltas so alternating sources don't produce
+        // spurious size updates — each one re-renders charts, and an echarts
+        // resize dismisses any open tooltip.
+        const hasChanged =
+          prevWidth === null ||
+          prevHeight === null ||
+          Math.abs(prevWidth - width) >= 1 ||
+          Math.abs(prevHeight - height) >= 1;
+
+        if (hasChanged) {
+          this.setState({ width, height }, () => this.props?.onUpdateSize?.());
         }
       };
+
+      _setElementRef = (el: HTMLDivElement | null) => {
+        const { forwardedRef } = this.props;
+        if (forwardedRef) {
+          if (typeof forwardedRef === "function") {
+            forwardedRef(el);
+          } else {
+            forwardedRef.current = el;
+          }
+        }
+
+        // Measure when the element first appears: it can attach after mount
+        // (e.g. async content swapping out a placeholder)
+        const elementAttached = el != null && this.elementRef.current == null;
+        this.elementRef.current = el;
+        if (elementAttached) {
+          this.timeoutId = setTimeout(this._updateSize, 0);
+        }
+      };
+
       render() {
         const { forwardedRef, ...props } = this.props;
         if (wrapped) {
@@ -246,17 +310,7 @@ function ExplicitSize<T>({
         } else {
           return (
             <ComposedComponent
-              ref={(el: HTMLDivElement) => {
-                if (forwardedRef) {
-                  if (typeof forwardedRef === "function") {
-                    forwardedRef(el);
-                  } else {
-                    forwardedRef.current = el;
-                  }
-                }
-
-                this.elementRef.current = el;
-              }}
+              ref={this._setElementRef}
               {...(props as unknown as T)}
               {...this.state}
             />
@@ -273,6 +327,3 @@ function ExplicitSize<T>({
     ));
   };
 }
-
-// eslint-disable-next-line import/no-default-export
-export default ExplicitSize;

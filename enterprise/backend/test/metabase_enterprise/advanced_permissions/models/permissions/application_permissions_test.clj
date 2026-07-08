@@ -26,7 +26,6 @@
                         :setting      :no
                         :subscription :yes}}
                       (:groups graph)))))
-
     (testing "group has no permissions will not be included in the graph"
       (is (not (contains? (-> (:groups (g-perms/graph)) keys set)
                           group-id))))))
@@ -52,7 +51,6 @@
           (is (partial= (:groups new-graph) (:groups updated-graph)))
           (is (= (inc (:revision current-graph)) (:revision updated-graph)))
           (is (< initial-revision (a-perm-revision/latest-id)))))))
-
   (testing "Revoke successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph
       (let [new-graph     (assoc-in current-graph [:groups group-id :subscription] :no)
@@ -60,14 +58,12 @@
             updated-graph (g-perms/graph)]
         (is (= (dissoc (:groups new-graph) group-id) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
-
   (testing "We can do a no-op and revision won't changes"
     (with-new-group-and-current-graph _group-id current-graph
       (g-perms/update-graph! current-graph)
       (let [updated-graph (g-perms/graph)]
         (is (= (:groups updated-graph) (:groups updated-graph)))
         (is (= (:revision current-graph) (:revision updated-graph))))))
-
   (testing "Failed when try to update permission for admin group"
     (with-new-group-and-current-graph _group-id current-graph
       (let [new-graph (assoc-in current-graph [:groups (:id (perms-group/admin)) :subscription] :no)]
@@ -75,7 +71,6 @@
              clojure.lang.ExceptionInfo
              #"You cannot create or revoke permissions for the 'Admin' group."
              (g-perms/update-graph! new-graph))))))
-
   (testing "Failed when revision is mismatched"
     (with-new-group-and-current-graph _group-id current-graph
       (let [new-graph (assoc current-graph :revision (inc (:revision current-graph)))]
@@ -83,7 +78,6 @@
              clojure.lang.ExceptionInfo
              #"Looks like someone else edited the permissions and your data is out of date. Please fetch new data and try again."
              (g-perms/update-graph! new-graph))))))
-
   (testing "Able to grant for a group that was not in the old graph"
     (with-new-group-and-current-graph group-id _current-graph
       ;; subscription is granted for new group by default, so revoke it

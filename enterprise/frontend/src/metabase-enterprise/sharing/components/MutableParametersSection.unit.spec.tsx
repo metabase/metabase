@@ -3,12 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard, Pulse } from "metabase-types/api";
+import type { Dashboard, DashboardSubscription } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockDashboard,
   createMockDashboardCard,
-  createMockPulse,
+  createMockDashboardSubscription,
 } from "metabase-types/api/mocks";
 
 import { MutableParametersSection } from "./MutableParametersSection";
@@ -16,7 +16,7 @@ import { MutableParametersSection } from "./MutableParametersSection";
 type SetupOpts = {
   parameters: UiParameter[];
   dashboard: Dashboard;
-  pulse: Pulse;
+  pulse: DashboardSubscription;
 };
 
 function setup({ parameters, dashboard, pulse }: SetupOpts) {
@@ -50,7 +50,7 @@ describe("MutableParametersSection", () => {
       const { setPulseParameters } = setup({
         parameters: [parameter],
         dashboard: createMockDashboard(),
-        pulse: createMockPulse({
+        pulse: createMockDashboardSubscription({
           parameters: [parameter],
         }),
       });
@@ -76,7 +76,7 @@ describe("MutableParametersSection", () => {
     const { setPulseParameters } = setup({
       parameters: [parameter],
       dashboard: createMockDashboard(),
-      pulse: createMockPulse({
+      pulse: createMockDashboardSubscription({
         parameters: [parameter],
       }),
     });
@@ -115,7 +115,7 @@ describe("MutableParametersSection", () => {
       setup({
         parameters: [inlineParam, dashboardParam], // Pass inline first
         dashboard,
-        pulse: createMockPulse(),
+        pulse: createMockDashboardSubscription(),
       });
 
       const parameterWidgets = screen.getAllByTestId("parameter-widget");
@@ -178,7 +178,7 @@ describe("MutableParametersSection", () => {
       setup({
         parameters: [param3, param2, param4, param1], // Pass in random order
         dashboard,
-        pulse: createMockPulse(),
+        pulse: createMockDashboardSubscription(),
       });
 
       const parameterWidgets = screen.getAllByTestId("parameter-widget");
@@ -231,7 +231,7 @@ describe("MutableParametersSection", () => {
       setup({
         parameters: [inlineParam2, dashboardParam, inlineParam1],
         dashboard,
-        pulse: createMockPulse(),
+        pulse: createMockDashboardSubscription(),
       });
 
       const parameterWidgets = screen.getAllByTestId("parameter-widget");
@@ -277,7 +277,7 @@ describe("MutableParametersSection", () => {
       setup({
         parameters: [param2, param3, param1], // Pass param2 first to test ordering
         dashboard,
-        pulse: createMockPulse(),
+        pulse: createMockDashboardSubscription(),
       });
 
       const parameterWidgets = screen.getAllByTestId("parameter-widget");
@@ -310,7 +310,7 @@ describe("MutableParametersSection", () => {
       setup({
         parameters: [dashboardParam],
         dashboard,
-        pulse: createMockPulse(),
+        pulse: createMockDashboardSubscription(),
       });
 
       const parameterWidgets = screen.getAllByTestId("parameter-widget");

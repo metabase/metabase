@@ -1,0 +1,63 @@
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
+
+import { LockedTransformsBanner } from "./LockedTransformsBanner";
+
+function setup({
+  isAdmin = false,
+  isStoreUser = false,
+}: {
+  isAdmin?: boolean;
+  isStoreUser?: boolean;
+} = {}) {
+  const currentUser = createMockUser({
+    email: "user@example.com",
+    is_superuser: isAdmin,
+  });
+
+  renderWithProviders(<LockedTransformsBanner />, {
+    storeInitialState: createMockState({
+      currentUser,
+      settings: mockSettings({
+        "token-status": {
+          status: "valid",
+          valid: true,
+          "store-users": [
+            { email: isStoreUser ? currentUser.email : "store@example.com" },
+          ],
+          features: [],
+        },
+      }),
+    }),
+  });
+}
+
+describe("LockedTransformsBanner", () => {
+  it("shows the paid subscription link when the user is an admin", () => {
+    setup({ isAdmin: true, isStoreUser: false });
+
+    expect(
+      screen.getByRole("link", { name: "Start paid subscription" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the paid subscription link when the user is a store user", () => {
+    setup({ isAdmin: false, isStoreUser: true });
+
+    expect(
+      screen.getByRole("link", { name: "Start paid subscription" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the Store Admin message when the user is not an admin or store user", () => {
+    setup({ isAdmin: false, isStoreUser: false });
+
+    expect(
+      screen.getByText(
+        "Please ask a Store Admin (store@example.com) to enable this for you.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

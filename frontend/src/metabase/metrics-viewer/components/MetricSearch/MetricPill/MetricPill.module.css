@@ -1,0 +1,23 @@
+.metricPill {
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.metricPill:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.metricPillText {
+  color: inherit;
+}
+
+.disabled {
+  color: var(--mb-color-text-disabled);
+}
+
+.menuTarget {
+  pointer-events: none;
+}

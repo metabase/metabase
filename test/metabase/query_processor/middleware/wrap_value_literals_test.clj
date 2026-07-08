@@ -10,7 +10,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]))
 
@@ -26,12 +26,13 @@
    (letfn [(f [query]
              (mt/with-results-timezone-id timezone-id
                (qp.wrap-value-literals/wrap-value-literals query)))]
-     (if (:lib/type query)
-       (f query)
-       (let [mp meta/metadata-provider]
-         (-> (lib/query mp query)
-             f
-             lib/->legacy-MBQL))))))
+     (driver/with-driver ::tz-driver
+       (if (:lib/type query)
+         (f query)
+         (let [mp meta/metadata-provider]
+           (-> (lib/query mp query)
+               f
+               lib/->legacy-MBQL)))))))
 
 (deftest ^:parallel wrap-integers-test
   (is (= (lib.tu.macros/mbql-query venues
@@ -43,6 +44,18 @@
          (wrap-value-literals
           (lib.tu.macros/mbql-query venues
             {:filter [:> $id 50]})))))
+
+(deftest ^:parallel wrap-string-literal-on-lhs-test
+  (testing "string literal on LHS of comparison should get wrapped with type info from RHS field (#53598)"
+    (is (= (lib.tu.macros/mbql-query venues
+             {:filter [:=
+                       [:value "foo" {:base_type     :type/Text
+                                      :semantic_type :type/Name
+                                      :database_type "CHARACTER VARYING"}]
+                       $name]})
+           (wrap-value-literals
+            (lib.tu.macros/mbql-query venues
+              {:filter [:= "foo" $name]}))))))
 
 (deftest ^:parallel wrap-integers-test-2
   (is (= (lib.tu.macros/mbql-query venues
@@ -59,20 +72,21 @@
                       [:> $id 50]
                       [:< $price 5]]})))))
 
-(defn- parse-with-timezone! [datetime-str ^String timezone-id]
+(defn- parse-with-timezone [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
-    (mt/with-report-timezone-id! timezone-id
-      (is (= (qp.timezone/results-timezone-id)
-             timezone-id)
-          "Make sure `results-timezone-id` is returning the bound value")
-      (-> (#'qp.wrap-value-literals/add-type-info datetime-str {:unit :day})
-          (nth 2)))))
+    (binding [qp.timezone/*report-timezone-id-override* timezone-id]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= (qp.timezone/results-timezone-id)
+               timezone-id)
+            "Make sure `results-timezone-id` is returning the bound value")
+        (-> (#'qp.wrap-value-literals/add-type-info datetime-str {:unit :day})
+            (nth 2))))))
 
-(deftest parse-datetime-literal-strings-test
+(deftest ^:parallel parse-datetime-literal-strings-test
   (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
     (is (= expected
-           (parse-with-timezone! "2018-10-01" timezone))
+           (parse-with-timezone "2018-10-01" timezone))
         (format "datetime literal string '2018-10-01' parsed with the %s timezone should be %s" timezone expected))))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test
@@ -210,7 +224,7 @@
               {:expressions {"foo" $date}
                :filter      [:>
                              [:expression "foo" {:base-type :type/DateTime}]
-                             [:absolute-datetime #t "2014-01-01T00:00" :default]]})
+                             [:absolute-datetime #t "2014-01-01T00:00" :day]]})
             (wrap-value-literals
              (lib.tu.macros/mbql-query checkins
                {:expressions {"foo" $date}
@@ -227,24 +241,27 @@
 
 (deftest ^:parallel base-type-test
   (testing "Make sure base-type from `:field` w/ name is picked up correctly"
-    (is (= [:not [:starts-with
-                  [:field "A" {:base-type :type/Text}]
-                  [:value "f" {:base_type :type/Text}]]]
-           #_{:clj-kondo/ignore [:deprecated-var]}
-           (qp.wrap-value-literals/wrap-value-literals-in-mbql
-            [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]])))))
+    (is (=? [:not {}
+             [:starts-with {}
+              [:field {:base-type :type/Text} "A"]
+              [:value {:base-type :type/Text} "f"]]]
+            (qp.wrap-value-literals/wrap-value-literals-in-mbql5
+             (lib/not (lib/starts-with (-> (meta/field-metadata :venues :name)
+                                           (assoc :name "A")
+                                           (dissoc :id))
+                                       "f")))))))
 
 (deftest ^:parallel parse-temporal-string-literals-based-on-column-effective-type-test
   (testing "Temporal string literals should be parsed to different things based on the effective type of the target column (#39769)"
     (driver/with-driver :h2
       ;; I'm wrapping the `#t` literals in `(t/...)` functions below to make the types we expect SUPER EXPLICIT.
       (doseq [[column-type expected]
-              {:type/Date               [:absolute-datetime (t/local-date #t "2024-03-20") :default]
-               :type/DateTime           [:absolute-datetime (t/local-date-time #t "2024-03-20T15:24:00") :default]
-               :type/DateTimeWithTZ     [:absolute-datetime (t/offset-date-time #t "2024-03-20T15:24:00-07:00") :default]
-               :type/DateTimeWithZoneID [:absolute-datetime (t/zoned-date-time #t "2024-03-20T15:24:00-07:00[US/Pacific]") :default]
-               :type/Time               [:time (t/local-time #t "15:24:00") :default]
-               :type/TimeWithTZ         [:time (t/offset-time #t "15:24:00-07:00") :default]}]
+              {:type/Date               [:absolute-datetime {} (t/local-date #t "2024-03-20") :default]
+               :type/DateTime           [:absolute-datetime {} (t/local-date-time #t "2024-03-20T15:24:00") :default]
+               :type/DateTimeWithTZ     [:absolute-datetime {} (t/offset-date-time #t "2024-03-20T15:24:00-07:00") :default]
+               :type/DateTimeWithZoneID [:absolute-datetime {} (t/zoned-date-time #t "2024-03-20T15:24:00-07:00[US/Pacific]") :default]
+               :type/Time               [:time {} (t/local-time #t "15:24:00") :default]
+               :type/TimeWithTZ         [:time {} (t/offset-time #t "15:24:00-07:00") :default]}]
         (testing column-type
           (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
                                             meta/metadata-provider
@@ -253,14 +270,14 @@
                                                        :base-type         :type/Text
                                                        :coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                        :effective-type    column-type}]})
-            (is (= [:=
-                    [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
-                    expected]
-                   #_{:clj-kondo/ignore [:deprecated-var]}
-                   (qp.wrap-value-literals/wrap-value-literals-in-mbql
-                    [:=
-                     [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
-                     "2024-03-20T15:24:00-07:00[US/Pacific]"])))))))))
+            (is (=? [:=
+                     {}
+                     [:field {:base-type :type/Text, :effective-type column-type} (meta/id :checkins :date)]
+                     expected]
+                    (qp.wrap-value-literals/wrap-value-literals-in-mbql5
+                     (lib/= (-> (meta/field-metadata :checkins :date)
+                                (assoc :base-type :type/Text, :effective-type column-type))
+                            "2024-03-20T15:24:00-07:00[US/Pacific]"))))))))))
 
 (deftest ^:parallel expression-test
   (testing "Value literals compared to :expression refs should get wrapped. Should give date literal strings :day bucketing (#17807)"
@@ -355,11 +372,13 @@
                 wrap-value-literals)))))
 
 (deftest ^:parallel wrap-value-literals-in-mbql-test
-  (is (= [:!=
-          [:field 1 {:base-type :type/Date, :temporal-unit :month-of-year}]
-          [:absolute-datetime #t "2016-01-01" :month-of-year]]
-         #_{:clj-kondo/ignore [:deprecated-var]}
-         (#'qp.wrap-value-literals/wrap-value-literals-in-mbql
-          [:!=
-           [:field 1 {:base-type :type/Date, :temporal-unit :month-of-year}]
-           "2016-01-01"]))))
+  (driver/with-driver :h2
+    (is (=? [:!=
+             {}
+             [:field {:base-type :type/Date, :temporal-unit :month} pos-int?]
+             [:absolute-datetime {} #t "2016-01-01" :month]]
+            (#'qp.wrap-value-literals/wrap-value-literals-in-mbql5
+             (lib/!= (-> (meta/field-metadata :checkins :date)
+                         (assoc :base-type :type/Date, :effective-type :type/Date)
+                         (lib/with-temporal-bucket :month))
+                     "2016-01-01"))))))

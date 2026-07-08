@@ -1,4 +1,3 @@
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type {
   Card,
   CardQueryMetadata,
@@ -6,7 +5,9 @@ import type {
   ColumnSingleFormattingSetting,
   ModerationReview,
   NativeDatasetQuery,
+  PieRow,
   PublicCard,
+  ScalarSegment,
   SeriesOrderSetting,
   StructuredDatasetQuery,
   TableColumnOrderSetting,
@@ -163,7 +164,7 @@ export const createMockColumnRangeFormattingSetting = (
 });
 
 export const createMockPieRow = (opts?: Partial<PieRow>): PieRow => ({
-  // eslint-disable-next-line no-color-literals
+  // eslint-disable-next-line metabase/no-color-literals
   color: "#7172AD",
   defaultColor: false,
   enabled: true,
@@ -172,5 +173,14 @@ export const createMockPieRow = (opts?: Partial<PieRow>): PieRow => ({
   key: "Doohickey",
   name: "Doohickey",
   originalName: "Doohickey",
+  ...opts,
+});
+
+export const createMockSegmentFormatting = (opts?: Partial<ScalarSegment>) => ({
+  label: "good",
+  min: 0,
+  max: 1,
+  // eslint-disable-next-line metabase/no-color-literals
+  color: "#7172AD",
   ...opts,
 });

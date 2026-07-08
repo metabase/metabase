@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [metabase.analyze.schema :as analyze.schema]
    [metabase.config.core :as config]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -141,7 +140,7 @@
    ::analyze.schema/qp-results-cased-map])
 
 (mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
-  "Classifer that infers the semantic type of a `field` based on its name and base type."
+  "Classifier that infers the semantic type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.
@@ -182,14 +181,11 @@
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (mu/defn infer-entity-type-by-name :- analyze.schema/Table
-  "Classifer that infers the semantic type of a `table` based on its name."
+  "Classifier that infers the semantic type of a `table` based on its name."
   [table :- analyze.schema/Table]
   (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (case (some-> (:db_id table) driver.u/database->driver)
-                                    :druid :entity/EventTable
-                                    nil)
                                   :entity/GenericTable))))

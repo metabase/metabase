@@ -34,7 +34,7 @@ runs:
   steps:
     - name: Determine Docker info
       id: docker-info
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: | # js
           const branch = '${{ inputs.branch }}';

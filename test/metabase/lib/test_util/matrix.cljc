@@ -195,7 +195,7 @@
                   "Matrix - Foreign__TEST_ME"]
                  [(-> (lib/query mp table-meta)
                       (lib/join (lib/join-clause table-meta [(lib/= (lib.metadata/field mp 1) (lib.metadata/field mp 1))])))
-                  "Matrix__TEST_ME"]
+                  "Matrix_2__TEST_ME"]
                  [(lib/query mp (:matrix mock-cards))
                   "TEST_ME"]
                  [(lib/query mp (:matrix/native mock-cards))
@@ -204,11 +204,11 @@
 
 (defn find-first
   "Finds the column with the matching `:lib/desired-column-alias`"
-  [metadata-providerable desired columns]
+  [query desired columns]
   ;; [[lib/visible-columns]] no longer returns desired column alias (since it's a function of which columns get
   ;; returned), however I don't feel like completely reworking this test so I'm just going to add them here.
   (let [columns (into []
-                      (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable)
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
                       columns)]
     (or (m/find-first (comp #(= desired %) :lib/desired-column-alias) columns)
         (throw (ex-info "Failed to find column"

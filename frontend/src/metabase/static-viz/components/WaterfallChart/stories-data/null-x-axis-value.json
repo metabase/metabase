@@ -11,7 +11,7 @@
       "visualization_settings": {
         "graph.y_axis.title_text": "Custom Y label",
         "graph.show_values": true,
-        "graph.y_axis.max": 100,
+        "graph.y_axis.max": 150,
         "graph.series_order_dimension": null,
         "graph.x_axis.axis_enabled": "rotate-45",
         "graph.metrics": ["Y"],

@@ -237,7 +237,7 @@
   the indexes metadata row."
   [pgvector index-metadata index-id]
   (assert index-id)
-  (assert (nat-int? index-id) (format "expected an integer id (hint do not pass the index map!)"))
+  (assert (nat-int? index-id) "expected an integer id (hint do not pass the index map!)")
   (let [{:keys [control-table-name]} index-metadata
         ;; only one row, no traditional WHERE for now
         activation-sql (-> {:update (keyword control-table-name)

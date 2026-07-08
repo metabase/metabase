@@ -1,0 +1,105 @@
+import type {
+  CollectionId,
+  CollectionItem,
+  CollectionType,
+  DatabaseId,
+  MeasureId,
+  SchemaName,
+  TableId,
+} from "metabase-types/api";
+
+export type MiniPickerCollectionItem = Pick<
+  CollectionItem,
+  "name" | "model" | "here" | "below" | "display" | "collection" | "type"
+> & {
+  id: CollectionItem["id"] | CollectionId;
+  sourceCollectionId?: CollectionItem["id"] | CollectionId;
+  /** When set, CollectionItemList only shows children whose type matches */
+  childTypeFilter?: NonNullable<CollectionType>;
+};
+
+export type MiniPickerCollectionFolderItem = MiniPickerCollectionItem & {
+  model: "collection";
+};
+
+export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
+  // maz says this will never happen, but
+  // if this is used outside the data picker, this should be generic
+  model: Omit<
+    CollectionItem["model"],
+    "collection" | "dashboard" | "document" | "snippet" | "indexed-entity"
+  >;
+};
+
+export type MiniPickerSchemaItem = {
+  model: "schema";
+  id: SchemaName;
+  database_id: DatabaseId;
+  name: SchemaName;
+};
+
+export type MiniPickerTableItem = {
+  model: "table";
+  id: TableId;
+  db_id: DatabaseId;
+  database_name?: string;
+  table_schema?: string;
+  name: string;
+};
+
+export const isTableItem = (
+  item: MiniPickerItem,
+): item is MiniPickerTableItem => {
+  return item.model === "table";
+};
+
+export type MiniPickerDatabaseItem = {
+  model: "database";
+  id: DatabaseId;
+  name: string;
+};
+
+export type MiniPickerMeasureItem = {
+  model: "measure";
+  id: MeasureId;
+  name: string;
+  table_name?: string;
+  table_display_name?: string;
+};
+
+export enum MiniPickerFolderModel {
+  Database = "database",
+  Schema = "schema",
+  Collection = "collection",
+}
+
+// this includes all possible item types that can be shown in the mini picker
+export type MiniPickerItem =
+  | MiniPickerCollectionItem
+  | MiniPickerSchemaItem
+  | MiniPickerTableItem
+  | MiniPickerDatabaseItem
+  | MiniPickerMeasureItem;
+
+// this is only the intermediate/folder types that cannot ultimately be picked
+export type MiniPickerFolderItem =
+  | MiniPickerDatabaseItem
+  | MiniPickerSchemaItem
+  | MiniPickerCollectionFolderItem;
+
+// this omits intermediate/folder types that cannot ultimately be picked.
+// `MiniPickerSchemaItem` is included so callers that pass `models: ["schema"]`
+// can terminate selection on a schema (schemas otherwise default to folder
+// behaviour and only update the path).
+export type MiniPickerPickableItem =
+  | MiniPickerPickableCollectionItem
+  | MiniPickerTableItem
+  | MiniPickerMeasureItem
+  | MiniPickerSchemaItem;
+
+// can't get schemas in search results
+export type SearchableMiniPickerItem =
+  | MiniPickerPickableCollectionItem
+  | MiniPickerTableItem
+  | MiniPickerDatabaseItem
+  | MiniPickerMeasureItem;

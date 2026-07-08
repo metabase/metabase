@@ -27,14 +27,15 @@
 
 (def ^:private ^:const complexity->char-type->min
   "Minimum counts of each class of character a password should have for a given password complexity level."
-  {:weak   {:total   6} ; total here effectively means the same thing as a minimum password length
-   :normal {:total   6
-            :digit   1}
-   :strong {:total   8
-            :lower   2
-            :upper   2
-            :digit   1
-            :special 1}})
+  {:weak          {:total 6} ; total here effectively means the same thing as a minimum password length
+   :normal        {:total 6
+                   :digit 1}
+   :strong        {:total 8
+                   :lower   2
+                   :upper   2
+                   :digit   1
+                   :special 1}
+   :strong-enough {:total 15}})
 
 (defn- password-has-char-counts?
   "Check that PASSWORD satisfies the minimum count requirements for each character class.
@@ -46,11 +47,11 @@
   [char-type->min password]
   {:pre [(map? char-type->min)
          (string? password)]}
-  (let [occurences (count-occurrences password)]
+  (let [occurrences (count-occurrences password)]
     (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
                (if-not char-type
                  true
-                 (when (>= (occurences char-type) min-count)
+                 (when (>= (occurrences char-type) min-count)
                    (recur more)))))))
 
 (defn active-password-complexity

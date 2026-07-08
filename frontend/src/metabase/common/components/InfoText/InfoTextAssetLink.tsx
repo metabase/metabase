@@ -1,0 +1,153 @@
+import { t } from "ttag";
+
+import { SearchResultLink } from "metabase/common/components/SearchResultLink";
+import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
+import { Box, Icon, Text } from "metabase/ui";
+import {
+  browseDatabase,
+  browseSchema,
+  tableRowsQuery,
+  table as tableUrl,
+} from "metabase/urls";
+import type Database from "metabase-lib/v1/metadata/Database";
+import { type SearchResult, isConcreteTableId } from "metabase-types/api";
+
+import type { InfoTextData } from "./get-info-text";
+import { getInfoText } from "./get-info-text";
+
+type InfoTextAssetLinkProps = {
+  result: SearchResult;
+  showLinks?: boolean;
+};
+
+const LinkSeparator = (
+  <Box component="span" c="text-secondary">
+    <Icon name="chevronright" size={8} />
+  </Box>
+);
+
+const LoadingText = () => (
+  <Text
+    c="text-primary"
+    span
+    size="sm"
+    truncate
+    data-testid="info-text-asset-link-loading-text"
+  >{t`Loading…`}</Text>
+);
+
+export const InfoTextTableLink = ({
+  result,
+  showLinks,
+}: InfoTextAssetLinkProps) => {
+  const {
+    data: table,
+    isLoading,
+    error,
+  } = useTableQuery({
+    id: result.table_id,
+  });
+
+  if (error) {
+    return null;
+  }
+
+  if (isLoading) {
+    return <LoadingText />;
+  }
+
+  const link = isConcreteTableId(result.table_id)
+    ? tableUrl({ id: result.table_id, name: table?.display_name })
+    : tableRowsQuery(result.database_id, result.table_id);
+  const label = table?.display_name ?? null;
+
+  return (
+    <SearchResultLink href={showLinks ? link : undefined}>
+      {label}
+    </SearchResultLink>
+  );
+};
+
+export const DatabaseLink = ({
+  database,
+  showLinks,
+}: {
+  database: Database;
+  showLinks: InfoTextAssetLinkProps["showLinks"];
+}) => (
+  <SearchResultLink href={showLinks ? browseDatabase(database) : undefined}>
+    {database.name}
+  </SearchResultLink>
+);
+
+export const TableLink = ({ result, showLinks }: InfoTextAssetLinkProps) => {
+  const link = browseSchema({
+    db: { id: result.database_id },
+    schema_name: result.table_schema,
+  });
+
+  return (
+    <SearchResultLink href={showLinks ? link : undefined}>
+      {result.table_schema}
+    </SearchResultLink>
+  );
+};
+
+export const InfoTextTablePath = ({
+  result,
+  showLinks,
+}: InfoTextAssetLinkProps) => {
+  const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useDatabaseQuery({
+    id: result.database_id,
+  });
+
+  if (databaseError) {
+    return null;
+  }
+
+  if (isDatabaseLoading) {
+    return <LoadingText />;
+  }
+
+  const showDatabaseLink = database && database.name !== null;
+  const showTableLink = showDatabaseLink && !!result.table_schema;
+
+  return (
+    <>
+      {showDatabaseLink && (
+        <DatabaseLink showLinks={showLinks} database={database} />
+      )}
+      {showTableLink && (
+        <>
+          {LinkSeparator}
+          <TableLink showLinks={showLinks} result={result} />
+        </>
+      )}
+    </>
+  );
+};
+
+export const InfoTextAssetLink = ({
+  result,
+  showLinks = true,
+}: InfoTextAssetLinkProps) => {
+  if (result.model === "table" && result.collection?.name == null) {
+    return <InfoTextTablePath showLinks={showLinks} result={result} />;
+  }
+
+  if (result.model === "segment") {
+    return <InfoTextTableLink showLinks={showLinks} result={result} />;
+  }
+
+  const { label, link, icon }: InfoTextData = getInfoText(result);
+
+  return label ? (
+    <SearchResultLink href={showLinks ? link : undefined} leftIcon={icon}>
+      {label}
+    </SearchResultLink>
+  ) : null;
+};

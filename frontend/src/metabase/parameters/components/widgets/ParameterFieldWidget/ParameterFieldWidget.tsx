@@ -109,10 +109,12 @@ export function ParameterFieldWidget({
               fields={fields}
               autoFocus={index === 0}
               multi={supportsMultipleValues}
-              formatOptions={
-                operator && getFilterArgumentFormatOptions(operator, index)
-              }
-              color="brand"
+              formatOptions={{
+                ...(operator &&
+                  getFilterArgumentFormatOptions(operator, index)),
+                ...fields?.[0]?.settings,
+              }}
+              color="core-brand"
               minWidth={300}
               maxWidth={400}
             />

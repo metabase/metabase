@@ -33,7 +33,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetStringFilter(value);
 
@@ -50,11 +50,11 @@ describe("scenarios > dashboard > filters > location", () => {
 
   it("should work when set as the default filter", () => {
     H.setFilter("Location", "Is");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("City").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     selectFilterValueFromList("Abbeville");

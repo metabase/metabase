@@ -6,8 +6,8 @@ import { viewMantineSelectOptions } from "./mantineSelect";
 describe("viewMantineSelectOptions", () => {
   it("fetches options from the <Select> component", async () => {
     render(
-      <Select
-        value={"option2" as string}
+      <Select<"option1" | "option2" | "option3">
+        value="option2"
         data={[
           { value: "option1", label: "Option 1" },
           { value: "option2", label: "Option 2" },
@@ -29,8 +29,8 @@ describe("viewMantineSelectOptions", () => {
   it("identifies the <Select> component within a provided element, and returns information about its options", async () => {
     render(
       <>
-        <Select
-          value={"select1-option2" as string}
+        <Select<"select1-option1" | "select1-option2" | "select1-option3">
+          value="select1-option2"
           data={[
             { value: "select1-option1", label: "First Select, option 1" },
             { value: "select1-option2", label: "First Select, option 2" },
@@ -38,8 +38,8 @@ describe("viewMantineSelectOptions", () => {
           ]}
         />
         <div data-testid="second-select-container">
-          <Select
-            value={"select2-option2" as string}
+          <Select<"select2-option1" | "select2-option2" | "select2-option3">
+            value="select2-option2"
             data={[
               {
                 value: "select2-option1",
@@ -76,8 +76,8 @@ describe("viewMantineSelectOptions", () => {
   it("fetches options from the Select component with a given root element", async () => {
     render(
       <>
-        <Select
-          value={"select1-option2" as string}
+        <Select<"select1-option1" | "select1-option2" | "select1-option3">
+          value="select1-option2"
           data={[
             { value: "select1-option1", label: "First Select, option 1" },
             { value: "select1-option2", label: "First Select, option 2" },
@@ -85,19 +85,19 @@ describe("viewMantineSelectOptions", () => {
           ]}
         />
         <div data-testid="second-select-container">
-          <Select
-            value={"select2-option2"}
+          <Select<"select2-option1" | "select2-option2" | "select2-option3">
+            value="select2-option2"
             data={[
               {
-                value: "select2-option1" as string,
+                value: "select2-option1",
                 label: "Second Select, option 1",
               },
               {
-                value: "select2-option2" as string,
+                value: "select2-option2",
                 label: "Second Select, option 2",
               },
               {
-                value: "select2-option3" as string,
+                value: "select2-option3",
                 label: "Second Select, option 3",
               },
             ]}

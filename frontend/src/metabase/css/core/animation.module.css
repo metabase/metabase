@@ -9,14 +9,6 @@
   }
 }
 
-.ProgressBarAnimation {
-  animation: progress-bar 1.5s linear infinite;
-}
-
-.ProgressBarNoAnimation {
-  animation: none;
-}
-
 .SpinOut {
   transform-style: preserve-3d;
   transform-origin: center;
@@ -93,7 +85,6 @@
 
 /* This improves a11y and helps e2e testing */
 @media (prefers-reduced-motion: reduce) {
-  .ProgressBarAnimation,
   .popInFromBottom,
   .slideLeft,
   .popToast,

@@ -1,13 +1,12 @@
 (ns metabase.lib.drill-thru-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
-   [metabase.lib.field :as-alias lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
@@ -17,6 +16,8 @@
    [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (def ^:private orders-query
   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
@@ -74,10 +75,7 @@
   (case (:type drill)
     ;; filter-op value
     :drill-thru/column-filter
-    (concat
-     (when-let [initial-op (:initial-op drill)]
-       [[(:short initial-op) 1]])
-     [["!=" 2]])
+    [["!=" 2]]
 
     :drill-thru/summarize-column
     (for [ag (:aggregations drill)]
@@ -126,8 +124,7 @@
       (let [context (basic-context (meta/field-metadata :orders :id) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :id)
-                  :initial-op {:short := :display-name-variant :default}}
+                  :column     (meta/field-metadata :orders :id)}
                  {:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/sort
                   :column          (meta/field-metadata :orders :id)
@@ -145,8 +142,7 @@
       (let [context (basic-context (meta/field-metadata :orders :user-id) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :user-id)
-                  :initial-op {:short := :display-name-variant :default}}
+                  :column     (meta/field-metadata :orders :user-id)}
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/distribution
                   :column   (meta/field-metadata :orders :user-id)}
@@ -167,8 +163,7 @@
       (let [context (basic-context (meta/field-metadata :orders :subtotal) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :subtotal)
-                  :initial-op {:short := :display-name-variant :equal-to}}
+                  :column     (meta/field-metadata :orders :subtotal)}
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/distribution
                   :column   (meta/field-metadata :orders :subtotal)}
@@ -194,8 +189,7 @@
       (let [context (basic-context (meta/field-metadata :orders :created-at) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
-                  :column     (meta/field-metadata :orders :created-at)
-                  :initial-op nil}
+                  :column     (meta/field-metadata :orders :created-at)}
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/distribution
                   :column   (meta/field-metadata :orders :created-at)}
@@ -220,8 +214,7 @@
     (testing "a sorted column"
       (let [expected [{:lib/type   :metabase.lib.drill-thru/drill-thru
                        :type       :drill-thru/column-filter
-                       :column     (meta/field-metadata :orders :subtotal)
-                       :initial-op {:short := :display-name-variant :equal-to}}
+                       :column     (meta/field-metadata :orders :subtotal)}
                       {:lib/type :metabase.lib.drill-thru/drill-thru
                        :type     :drill-thru/distribution
                        :column   (meta/field-metadata :orders :subtotal)}
@@ -417,7 +410,7 @@
                                                     :type       :drill-thru/automatic-insights
                                                     :column-ref some?
                                                     :dimensions [{:column     {:name                     "CREATED_AT"
-                                                                               ::lib.field/temporal-unit :month}
+                                                                               :lib/temporal-unit :month}
                                                                   :column-ref some?
                                                                   :value      "2018-05-01T00:00:00Z"}]}
                                :quick-filter       {:lib/type  :metabase.lib.drill-thru/drill-thru
@@ -434,7 +427,7 @@
                                                     :display-name "See this month by week"
                                                     :type         :drill-thru/zoom-in.timeseries
                                                     :dimension    {:column     {:name                     "CREATED_AT"
-                                                                                ::lib.field/temporal-unit :month}
+                                                                                :lib/temporal-unit :month}
                                                                    :column-ref some?
                                                                    :value      "2018-05-01T00:00:00Z"}
                                                     :next-unit    :week}
@@ -506,9 +499,7 @@
                        :column-ref (lib/ref count-col)
                        :value      nil}]
           (is (=? [{:type   :drill-thru/column-filter
-                    :column {:name "count"}
-                    :initial-op {:display-name-variant :equal-to
-                                 :short :=}}
+                    :column {:name "count"}}
                    {:type   :drill-thru/sort
                     :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
@@ -522,9 +513,7 @@
                        :column-ref (lib/ref max-of-discount-col)
                        :value      nil}]
           (is (=? [{:type   :drill-thru/column-filter,
-                    :column {:display-name "Max of Discount"}
-                    :initial-op {:display-name-variant :equal-to
-                                 :short :=}}
+                    :column {:display-name "Max of Discount"}}
                    {:type   :drill-thru/sort
                     :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
@@ -683,7 +672,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "ID"
-    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
@@ -694,7 +683,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "PRODUCT_ID"
-    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}
@@ -711,7 +700,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "SUBTOTAL"
-    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct :sum :avg]}
@@ -722,7 +711,7 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "CREATED_AT"
-    :expected    [{:type :drill-thru/column-filter, :initial-op nil}
+    :expected    [{:type :drill-thru/column-filter}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}
@@ -734,37 +723,37 @@
 (deftest ^:parallel available-drill-thrus-test-9
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
                 "fk-details should not get returned for non-fk column (#34441) "
-                "underlying-records should only get shown once for aggregated query (#34439)"))
-  (lib.drill-thru.tu/test-drill-variants-with-merged-args
-   lib.drill-thru.tu/test-available-drill-thrus
-   "aggregated cell click on count column"
-   {:click-type  :cell
-    :query-type  :aggregated
-    :column-name "count"
-    :expected    [{:type :drill-thru/automatic-insights
-                   :dimensions [{:column {:name "PRODUCT_ID"}}
-                                {:column {:name "CREATED_AT"}}]}
-                  {:type      :drill-thru/quick-filter
-                   :operators [{:name "<"}
-                               {:name ">"}
-                               {:name "="}
-                               {:name "≠"}]}
-                  {:type       :drill-thru/underlying-records
-                   :row-count  77
-                   :table-name "Orders"}
-                  {:display-name "See this month by week"
-                   :type         :drill-thru/zoom-in.timeseries}]
-    ;; Underlying records and automatic insights are not supported for native.
-    ;; zoom-in.timeseries can't be because we don't know what unit (if any) it's currently bucketed by.
-    :native-drills #{:drill-thru/quick-filter}}
+                "underlying-records should only get shown once for aggregated query (#34439)")
+    (lib.drill-thru.tu/test-drill-variants-with-merged-args
+     lib.drill-thru.tu/test-available-drill-thrus
+     "aggregated cell click on count column"
+     {:click-type    :cell
+      :query-type    :aggregated
+      :column-name   "count"
+      :expected      [{:type       :drill-thru/automatic-insights
+                       :dimensions [{:column {:name "PRODUCT_ID"}}
+                                    {:column {:name "CREATED_AT"}}]}
+                      {:type      :drill-thru/quick-filter
+                       :operators [{:name "<"}
+                                   {:name ">"}
+                                   {:name "="}
+                                   {:name "≠"}]}
+                      {:type       :drill-thru/underlying-records
+                       :row-count  77
+                       :table-name "Orders"}
+                      {:display-name "See this month by week"
+                       :type         :drill-thru/zoom-in.timeseries}]
+      ;; Underlying records and automatic insights are not supported for native.
+      ;; zoom-in.timeseries can't be because we don't know what unit (if any) it's currently bucketed by.
+      :native-drills #{:drill-thru/quick-filter}}
 
-   "drill thrus are disabled for native queries with template-tag variables"
-   {:custom-native #(lib/with-native-query %
-                      "SELECT COUNT(*) FROM orders GROUP BY product_id HAVING product_id > {{mytag}}")
-    :native-drills #{}}
+     "drill thrus are disabled for native queries with template-tag variables"
+     {:custom-native #(lib/with-native-query %
+                        "SELECT COUNT(*) FROM orders GROUP BY product_id HAVING product_id > {{mytag}}")
+      :native-drills #{}}
 
-   "snippets and card tags are allowed"
-   {:custom-native #(lib/with-native-query % "SELECT COUNT(*) FROM {{#123-mycard}} GROUP BY {{snippet:mysnip}}")}))
+     "snippets and card tags are allowed"
+     {:custom-native #(lib/with-native-query % "SELECT COUNT(*) FROM {{#123-mycard}} GROUP BY {{snippet:mysnip}}")})))
 
 (deftest ^:parallel available-drill-thrus-test-10
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
@@ -805,37 +794,37 @@
                                                                  {:name "≠"}]}
                     {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]}))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-13
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
-       {:click-type  :header
-        :query-type  :aggregated
-        :column-name "count"
-        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
-                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+  (testing "Aggregated columns should get column-filter and sort drills, not distribution and summarize-column (#34223, #34341)"
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type   :header
+      :query-type   :aggregated
+      :column-name  "count"
+      :query-kinds  [:mbql]
+      :expected     [{:type :drill-thru/column-filter}
+                     {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-14
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
-       {:click-type  :header
-        :query-type  :aggregated
-        :column-name "PRODUCT_ID"
-        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
-                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+  (testing "Breakout columns in aggregated query should get column-filter and sort drills (#34223, #34341)"
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type   :header
+      :query-type   :aggregated
+      :column-name  "PRODUCT_ID"
+      :query-kinds  [:mbql]
+      :expected     [{:type :drill-thru/column-filter}
+                     {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-15
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
-       {:click-type  :header
-        :query-type  :aggregated
-        :column-name "CREATED_AT"
-        :expected    [{:type       :drill-thru/column-filter
-                       :initial-op {:short :=}}
-                      {:type            :drill-thru/sort
-                       :sort-directions [:asc :desc]}]})))
+  (testing "Breakout columns in aggregated query should get column-filter and sort drills (#34223, #34341)"
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type   :header
+      :query-type   :aggregated
+      :column-name  "CREATED_AT"
+      :query-kinds  [:mbql]
+      :expected     [{:type            :drill-thru/column-filter}
+                     {:type            :drill-thru/sort
+                      :sort-directions [:asc :desc]}
+                     {:type            :drill-thru/column-extract}]})))
 
 (deftest ^:parallel available-drill-thrus-no-column-drills-for-nil-dimension-values-test
   (testing "column header drills should not be returned when dimensions have nil values (#49740, #51741)"

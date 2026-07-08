@@ -10,17 +10,8 @@ import type { CliStepMethod } from "../types/cli";
 import { printError } from "../utils/print";
 
 export const generateExpressServerFile: CliStepMethod = async (state) => {
-  const { instanceUrl } = state;
-
-  if (!instanceUrl) {
-    const message = "Missing instance URL.";
-
-    return [{ type: "error", message }, state];
-  }
-
   let mockServerDir: string;
 
-  // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
   while (true) {
     mockServerDir = await input({
       message: "Where should we save the example Express mock server folder?",
@@ -47,7 +38,6 @@ export const generateExpressServerFile: CliStepMethod = async (state) => {
   }
 
   const snippet = getExpressServerSnippet({
-    instanceUrl,
     tenantIdsMap: state.tenantIdsMap,
   });
 

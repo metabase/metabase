@@ -5,7 +5,6 @@ import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
-  space,
 } from "metabase/styled-components/theme";
 import { Box, type BoxProps } from "metabase/ui";
 
@@ -23,13 +22,13 @@ export const Sidebar = styled.aside<{
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background_page-primary);
   z-index: 4;
   width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
   ${(props) =>
     props.side === "left"
-      ? "border-inline-end: 1px solid var(--mb-color-border);"
-      : "border-inline-start: 1px solid var(--mb-color-border);"}
+      ? "border-inline-end: 1px solid var(--mb-color-border-neutral);"
+      : "border-inline-start: 1px solid var(--mb-color-border-neutral);"}
 
   ${breakpointMaxSmall} {
     width: 90vw;
@@ -44,14 +43,14 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-top: ${space(1)};
+  padding-top: var(--mantine-spacing-sm);
   height: 100%;
   background-color: transparent;
   overflow-x: hidden;
   overflow-y: auto;
 
   ${breakpointMinSmall} {
-    width: ${(props) => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
+    width: ${(props) => (props.isOpen ? "100%" : 0)};
   }
 
   ${breakpointMaxSmall} {
@@ -67,10 +66,10 @@ export const SidebarContentRoot = styled.div`
 `;
 
 export const SidebarSection = styled(Box)<BoxProps>`
-  margin-top: ${space(1)};
-  margin-bottom: ${space(2)};
-  padding-inline-start: ${space(2)};
-  padding-inline-end: ${space(2)};
+  margin-top: var(--mantine-spacing-sm);
+  margin-bottom: var(--mantine-spacing-md);
+  padding-inline-start: var(--mantine-spacing-md);
+  padding-inline-end: var(--mantine-spacing-md);
 ` as unknown as typeof Box;
 
 export const TrashSidebarSection = styled(SidebarSection)`
@@ -80,12 +79,12 @@ export const TrashSidebarSection = styled(SidebarSection)`
 ` as unknown as typeof Box;
 
 export const SidebarHeading = styled.h4`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.45px;
-  padding-inline-start: ${space(2)};
+  padding-inline-start: var(--mantine-spacing-md);
 `;
 
 export const LoadingAndErrorContainer = styled.div`
@@ -99,7 +98,7 @@ export const LoadingAndErrorContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   text-align: center;
 `;
 

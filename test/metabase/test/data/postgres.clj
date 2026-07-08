@@ -188,3 +188,6 @@
   (sql-jdbc.tx/drop-if-exists-and-create-roles! driver details roles)
   (grant-table-perms-to-roles! driver details roles)
   (sql-jdbc.tx/grant-roles-to-user! driver details roles user-name))
+
+(defmethod sql.tx/generated-column-sql :postgres [_ expr]
+  (format "GENERATED ALWAYS AS (%s) STORED" expr))

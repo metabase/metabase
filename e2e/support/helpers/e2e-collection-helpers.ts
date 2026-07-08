@@ -1,7 +1,6 @@
 import {
   entityPickerModal,
   entityPickerModalLevel,
-  entityPickerModalTab,
   getFullName,
   navigationSidebar,
   popover,
@@ -44,7 +43,7 @@ export function getPersonalCollectionName(
 }
 
 export function openCollectionItemMenu(item: string, index = 0) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findByTestId("collection-table")
     .findAllByText(item)
     .eq(index)
@@ -64,12 +63,16 @@ export const getUnpinnedSection = () => {
 export const openPinnedItemMenu = (name: string) => {
   cy.log(`open pinned item menu: ${name}`);
 
-  getPinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("a")
-      .realHover()
-      .within(() => cy.findByLabelText("Actions").click());
-  });
+  // Hovering a pinned item can trigger an async re-render (e.g. a pinned
+  // metric runs its query), which detaches a chained `.within()` subject. Hover
+  // first, then re-query the actions button so the click acts on a settled
+  // element and Cypress can retry on detach.
+  getPinnedSection().findByText(name).closest("a").realHover();
+  getPinnedSection()
+    .findByText(name)
+    .closest("a")
+    .findByLabelText("Actions")
+    .click();
 };
 
 export const openUnpinnedItemMenu = (name: string) => {
@@ -79,11 +82,12 @@ export const openUnpinnedItemMenu = (name: string) => {
 };
 
 export const moveOpenedCollectionTo = (newParent: string) => {
+  cy.intercept("GET", "/api/collection/*/items**").as("getCollectionItems");
   openCollectionMenu();
   popover().within(() => cy.findByText("Move").click());
 
+  cy.wait(["@getCollectionItems", "@getCollectionItems"]);
   entityPickerModal().within(() => {
-    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByTestId("nested-item-picker").findByText(newParent).click();
     cy.button("Move").click();
   });
@@ -94,16 +98,10 @@ export const moveOpenedCollectionTo = (newParent: string) => {
 export function pickEntity({
   path,
   select,
-  tab,
 }: {
-  path?: string[];
+  path?: (string | RegExp)[];
   select?: boolean;
-  tab?: string;
 }) {
-  if (tab) {
-    entityPickerModalTab(tab).click();
-  }
-
   if (path) {
     cy.findByTestId("nested-item-picker").within(() => {
       for (const [index, name] of path.entries()) {

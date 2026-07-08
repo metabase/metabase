@@ -10,7 +10,8 @@ import { useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUnmount } from "react-use";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { DraggedItem } from "metabase/redux/store/visualizer";
 import { Box } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
@@ -24,8 +25,7 @@ import {
   resetVisualizer,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerVizDefinition } from "metabase-types/api";
-import type { DraggedItem } from "metabase-types/store/visualizer";
+import type { DashboardId, VisualizerVizDefinition } from "metabase-types/api";
 
 import { DataImporter } from "../DataImporter";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
@@ -66,11 +66,23 @@ interface VisualizerProps {
   onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
+  /**
+   * The id of the dashboard the visualizer was opened from, or `undefined` when
+   * it wasn't opened from a dashboard, so the data picker can filter out
+   * dashboard questions that belong to other dashboards.
+   */
+  dashboardId: DashboardId | undefined;
 }
 
 const VisualizerInner = (props: VisualizerProps) => {
-  const { className, onSave, saveLabel, allowSaveWhenPristine, onClose } =
-    props;
+  const {
+    className,
+    onSave,
+    saveLabel,
+    allowSaveWhenPristine,
+    onClose,
+    dashboardId,
+  } = props;
 
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
   const { isDataSidebarOpen, isVizSettingsSidebarOpen } = useVisualizerUi();
@@ -160,7 +172,10 @@ const VisualizerInner = (props: VisualizerProps) => {
       <Box className={classNames}>
         {/* left side bar */}
         <Box className={S.dataSidebar}>
-          <DataImporter className={S.dataSidebarContent} />
+          <DataImporter
+            className={S.dataSidebarContent}
+            dashboardId={dashboardId}
+          />
         </Box>
 
         {/* top header bar */}

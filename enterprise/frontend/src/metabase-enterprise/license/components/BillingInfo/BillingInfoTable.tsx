@@ -3,18 +3,15 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
-import { Icon, Text } from "metabase/ui";
+import { Card, Flex, Icon, Text } from "metabase/ui";
 import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
 
 import { StillNeedHelp } from "../StillNeedHelp";
 
-import {
-  BillingExternalLink,
-  BillingInfoCard,
-  BillingInfoRowContainer,
-  BillingInternalLink,
-} from "./BillingInfo.styled";
+import S from "./BillingInfo.module.css";
 import {
   formatBillingValue,
   getBillingInfoId,
@@ -41,7 +38,8 @@ const BillingInfoValue = ({
 
   if (lineItem.display === "internal-link") {
     return (
-      <BillingInternalLink
+      <Link
+        className={S.link}
         to={internalLinkMap[lineItem.link]}
         href={internalLinkMap[lineItem.link]}
         data-testid="test-link"
@@ -50,18 +48,18 @@ const BillingInfoValue = ({
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
-      </BillingInternalLink>
+      </Link>
     );
   }
 
   if (lineItem.display === "external-link") {
     return (
-      <BillingExternalLink href={lineItem.link} {...props}>
+      <ExternalLink className={S.link} href={lineItem.link} {...props}>
         <Text fw="bold" color="currentColor">
           {formattedValue}
         </Text>
         <Icon ml="sm" size="16" name="external" />
-      </BillingExternalLink>
+      </ExternalLink>
     );
   }
 
@@ -95,15 +93,26 @@ function BillingInfoRow({
   // changes in a way the current application doesn't expect
   return (
     <ErrorBoundary errorComponent={EmptyErrorComponent}>
-      <BillingInfoRowContainer extraPadding={extraPadding} {...props}>
-        <Text c="text-md" maw="15rem" data-testid={`billing-info-key-${id}`}>
+      <Flex
+        className={S.row}
+        align="center"
+        justify="space-between"
+        px="md"
+        py={extraPadding ? "lg" : "sm"}
+        {...props}
+      >
+        <Text
+          c="text-secondary"
+          maw="15rem"
+          data-testid={`billing-info-key-${id}`}
+        >
           {lineItem.name}
         </Text>
         <BillingInfoValue
           lineItem={lineItem}
           data-testid={`billing-info-value-${id}`}
         />
-      </BillingInfoRowContainer>
+      </Flex>
     </ErrorBoundary>
   );
 }
@@ -117,7 +126,7 @@ export const BillingInfoTable = ({
   return (
     <>
       <SettingHeader id="billing" title={t`Billing`} />
-      <BillingInfoCard flat>
+      <Card mt="md" p={0} radius="md" shadow="none" withBorder>
         {billingInfo.content?.map((lineItem, index, arr) => (
           <BillingInfoRow
             key={lineItem.name}
@@ -125,7 +134,7 @@ export const BillingInfoTable = ({
             extraPadding={arr.length === index + 1}
           />
         ))}
-      </BillingInfoCard>
+      </Card>
       {airgap_enabled && <StillNeedHelp />}
     </>
   );

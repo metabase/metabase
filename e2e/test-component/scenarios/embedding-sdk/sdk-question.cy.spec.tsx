@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import {
   InteractiveQuestion,
   type MetabaseQuestion,
@@ -30,7 +29,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button, Modal } from "metabase/ui";
 const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -68,6 +66,34 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should not show the expand button (metabase#68975)", () => {
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+
+      H.popover().within(() => {
+        cy.findByText("Display").click();
+        cy.findByText("Show row index").click();
+      });
+
+      // close the popover
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByText("#").should("be.visible");
+
+      cy.findByTestId("table-body")
+        .find("[data-column-id$='_INDEX']")
+        .eq(0)
+        .realHover({ scrollBehavior: false })
+        .findByTestId("detail-shortcut")
+        .should("not.exist");
+    });
+  });
+
   it("should show a watermark in development mode", () => {
     cy.intercept("/api/session/properties", (req) => {
       req.continue((res) => {
@@ -99,7 +125,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
     cy.on("uncaught:exception", (error) => {
@@ -224,14 +250,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
-      <Box p="lg">
+      <div style={{ padding: "16px" }}>
         <InteractiveQuestion questionId={questionId}>
-          <Box>
+          <div>
             <InteractiveQuestion.FilterDropdown />
             <InteractiveQuestion.QuestionVisualization />
-          </Box>
+          </div>
         </InteractiveQuestion>
-      </Box>
+      </div>
     );
 
     cy.get<string>("@questionId").then((questionId) => {
@@ -260,7 +286,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       onBeforeSave,
       onSave,
     }: InteractiveQuestionProps) => {
-      const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
+      const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+      const toggle = () => setIsSaveModalOpen((v) => !v);
+      const close = () => setIsSaveModalOpen(false);
 
       const handleSave = (
         question: MetabaseQuestion | undefined,
@@ -280,14 +308,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           onBeforeSave={onBeforeSave}
           onSave={handleSave}
         >
-          <Box p="lg">
-            <Button onClick={toggle}>Save</Button>
-          </Box>
+          <div style={{ padding: "16px" }}>
+            <button onClick={toggle}>Save</button>
+          </div>
 
           {isSaveModalOpen && (
-            <Modal opened={isSaveModalOpen} onClose={close}>
+            <div role="dialog" data-testid="modal">
               <InteractiveQuestion.SaveQuestionForm onCancel={close} />
-            </Modal>
+            </div>
           )}
 
           {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
@@ -311,6 +339,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
       questionName: "Sample Orders 4",
+      getModal: () => cy.findByTestId("modal"),
     });
 
     cy.wait("@createCard").then(({ response }) => {
@@ -344,11 +373,163 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should show the last visible stage and fall back to the previous stage when current is cleared", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+
+    cy.log("Pick starting data");
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    cy.log("Stage 0: add Count aggregation");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByRole("option", { name: "Count of rows" }).click();
+
+    cy.log("Stage 0: add Created At grouping");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByRole("heading", { name: "Created At" }).click();
+
+    cy.log("Stage 1: add a second summarize step");
+    cy.button("Summarize").click();
+
+    cy.log("Stage 1: add Max of Count aggregation");
+    H.addSummaryField({ metric: "Maximum of ...", field: "Count", stage: 1 });
+
+    cy.log("Stage 1: add Created At: Month grouping");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Created At: Month").click();
+
+    cy.log("Visualize the 2-stage query");
+    H.visualize();
+
+    getSdkRoot().within(() => {
+      cy.log("Toolbar should show stage 1: 1 summary and 1 grouping");
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("1 grouping").should("be.visible");
+
+      cy.log("Remove the grouping from stage 1");
+      cy.findByText("1 grouping").click();
+    });
+
+    popover().within(() => {
+      cy.findAllByLabelText("close icon").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.log("Stage 1 still has an aggregation, toolbar shows it");
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("Group").should("be.visible");
+
+      cy.log("Remove the aggregation from stage 1");
+      cy.findByText("1 summary").click();
+    });
+
+    popover().within(() => {
+      cy.findAllByLabelText("close icon").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.log(
+        "Stage 1 is now empty — toolbar falls back to stage 0 (Count + Created At)",
+      );
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("1 grouping").should("be.visible");
+    });
+
+    cy.log("Stage switch tooltip should appear on the summary button");
+    cy.findByRole("tooltip").should(
+      "contain.text",
+      "Switched to the previous stage",
+    );
+    getSdkRoot().within(() => {
+      cy.log("Stage 0 (Count + Created At)");
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("1 grouping").should("be.visible");
+
+      cy.log("Add a new summary to stage 0");
+      cy.findByText("1 summary").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Add another summary").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Total").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("2 summaries").should("be.visible");
+
+      cy.log("Add a new grouping to stage 0");
+      cy.findByText("1 grouping").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Add another grouping").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Product ID").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("2 groupings").should("be.visible");
+    });
+  });
+
   it("does not contain known console errors (metabase#48497)", () => {
     cy.get<number>("@questionId").then((questionId) => {
       mountSdkContentAndAssertNoKnownErrors(
         <InteractiveQuestion questionId={questionId} />,
       );
+    });
+  });
+
+  describe("mobile layout", () => {
+    it("should hide Filter, Summarize, Breakout and Download dropdowns when the question's container is narrow", () => {
+      cy.intercept("GET", "/api/card/*").as("getCard");
+
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <div style={{ width: 400 }}>
+            <InteractiveQuestion questionId={questionId} withDownloads />
+          </div>,
+        );
+      });
+
+      cy.wait("@getCard");
+
+      getSdkRoot()
+        .findByTestId("interactive-question-result-toolbar")
+        .within(() => {
+          cy.get(".Icon-filter").should("not.exist");
+          cy.get(".Icon-sum").should("not.exist");
+          cy.get(".Icon-arrow_split").should("not.exist");
+          cy.findByTestId("question-download-widget-button").should(
+            "not.exist",
+          );
+        });
+    });
+
+    it("should show Filter, Summarize, Breakout and Download dropdowns when the question's container is wide", () => {
+      mountInteractiveQuestion({ withDownloads: true });
+
+      getSdkRoot()
+        .findByTestId("interactive-question-result-toolbar")
+        .within(() => {
+          cy.get(".Icon-filter").should("be.visible");
+          cy.get(".Icon-sum").should("be.visible");
+          cy.get(".Icon-arrow_split").should("be.visible");
+          cy.findByTestId("question-download-widget-button").should(
+            "be.visible",
+          );
+        });
     });
   });
 
@@ -521,10 +702,10 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       );
 
       return (
-        <Box>
+        <div>
           <InteractiveQuestion questionId={questionId} />
-          <Button onClick={() => setQuestionId("new")}>New Question</Button>
-        </Box>
+          <button onClick={() => setQuestionId("new")}>New Question</button>
+        </div>
       );
     };
 
@@ -569,7 +750,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
 
       cy.log("back to previous result button should not be visible");
-      cy.findByText("No results!").should("be.visible");
+      cy.findByText("No results").should("be.visible");
       cy.findByText("Back to previous results").should("not.exist");
     });
   });
@@ -582,7 +763,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.findByTestId("sdk-question-save-button").should("not.exist");
 
-      cy.findByRole("menu").within(() => {
+      cy.findByRole("listbox").within(() => {
         cy.findByText("Trend").click();
       });
 
@@ -607,6 +788,133 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByTestId("interactive-question-top-toolbar").within(() => {
         cy.findByText("Save").should("exist");
       });
+    });
+  });
+
+  it("downloads should work when using entity IDs", () => {
+    cy.intercept("POST", "/api/card/*/query/xlsx").as("questionDownload");
+
+    cy.get<string>("@questionEntityId").then((questionEntityId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionEntityId} withDownloads />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("interactive-question-result-toolbar")
+        .findByTestId("question-download-widget-button")
+        .click();
+
+      cy.findByText(".xlsx").click();
+      cy.findByTestId("download-results-button").click();
+    });
+
+    cy.wait("@questionDownload").then((interception) => {
+      expect(interception.response?.statusCode).to.equal(200);
+    });
+  });
+
+  it("should stay in editor mode after adding a filter for the first time for an existing saved question (EMB-1077)", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Previous 7 days").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+    });
+  });
+
+  it("should close the editor after modifying and saving an existing question in-place", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionId} isSaveEnabled />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().findByText("Product ID").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.findByText("Add filter").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText(/Replace original question/).click();
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("not.exist");
+      cy.findByTestId("visualization-root").should("be.visible");
+    });
+  });
+
+  it("should close the editor after modifying and saving an existing question as a new question", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionId} isSaveEnabled />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().findByText("Product ID").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.findByText("Add filter").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Save as new question").click();
+      cy.findByPlaceholderText("What is the name of your question?")
+        .clear()
+        .type("Orders Copy");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("not.exist");
+      cy.findByTestId("visualization-root").should("be.visible");
     });
   });
 });

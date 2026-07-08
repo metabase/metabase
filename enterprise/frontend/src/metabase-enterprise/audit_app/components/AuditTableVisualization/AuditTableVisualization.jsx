@@ -5,23 +5,19 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
-import CheckBox from "metabase/common/components/CheckBox";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
-import { Icon } from "metabase/ui";
+import { Box, Checkbox, Icon } from "metabase/ui";
+import { displayNameForColumn } from "metabase/utils/formatting";
 import { registerVisualization } from "metabase/visualizations/index";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 
 import { getColumnName, getRowValuesByColumns } from "../../lib/mode";
 
-import {
-  HeaderCell,
-  RemoveRowButton,
-  RowCell,
-} from "./AuditTableVisualization.styled";
+import S from "./AuditTableVisualization.module.css";
 
 const propTypes = {
   series: PropTypes.array,
@@ -107,10 +103,8 @@ export class AuditTableVisualization extends Component {
       isSortable,
       isSelectable,
       rowChecked,
-      onRemoveRow,
     } = this.props;
 
-    const canRemoveRows = !!onRemoveRow;
     const columnIndexes = settings["table.columns"]
       .filter(({ enabled }) => enabled)
       .map(({ name }) => _.findIndex(cols, (col) => col.name === name));
@@ -123,13 +117,15 @@ export class AuditTableVisualization extends Component {
         />
       );
     }
+
     return (
       <table className={AdminS.ContentTable}>
         <thead>
           <tr>
             {isSelectable && (
               <th>
-                <CheckBox
+                <Checkbox
+                  size="sm"
                   checked={Object.values(rowChecked).some((elem) => elem)}
                   onChange={(e) => this.handleAllSelectClick(e, rows)}
                 />
@@ -141,11 +137,14 @@ export class AuditTableVisualization extends Component {
                 sorting && sorting.column === getColumnName(column);
 
               return (
-                <HeaderCell
+                <Box
+                  component="th"
                   key={colIndex}
-                  isSortable={isSortable}
-                  isSortedByColumn={isSortedByColumn}
-                  isRightAligned={isColumnRightAligned(column)}
+                  className={cx(S.headerCell, {
+                    [S.sortable]: isSortable,
+                    [S.sortedByColumn]: isSortedByColumn,
+                    [S.rightAligned]: isColumnRightAligned(column),
+                  })}
                   onClick={() => this.handleColumnHeaderClick(column)}
                 >
                   {displayNameForColumn(cols[colIndex])}
@@ -156,7 +155,7 @@ export class AuditTableVisualization extends Component {
                       size={10}
                     />
                   )}
-                </HeaderCell>
+                </Box>
               );
             })}
           </tr>
@@ -166,7 +165,8 @@ export class AuditTableVisualization extends Component {
             <tr key={rowIndex}>
               {isSelectable && (
                 <td>
-                  <CheckBox
+                  <Checkbox
+                    size="sm"
                     checked={rowChecked[row[ROW_ID_IDX]] || false}
                     onChange={(e) =>
                       this.handleRowSelectClick(
@@ -199,10 +199,13 @@ export class AuditTableVisualization extends Component {
                 };
 
                 return (
-                  <RowCell
+                  <Box
+                    component="td"
                     key={colIndex}
-                    isClickable={clickable}
-                    isRightAligned={isColumnRightAligned(column)}
+                    className={cx({
+                      [S.clickable]: clickable,
+                      [S.rightAligned]: isColumnRightAligned(column),
+                    })}
                     onClick={handleClick}
                   >
                     <div
@@ -227,19 +230,9 @@ export class AuditTableVisualization extends Component {
                         local: true,
                       })}
                     </div>
-                  </RowCell>
+                  </Box>
                 );
               })}
-
-              {canRemoveRows && (
-                <td>
-                  <RemoveRowButton
-                    onClick={() => this.handleRemoveRowClick(row, cols)}
-                  >
-                    <Icon name="close" color="text-light" />
-                  </RemoveRowButton>
-                </td>
-              )}
             </tr>
           ))}
         </tbody>

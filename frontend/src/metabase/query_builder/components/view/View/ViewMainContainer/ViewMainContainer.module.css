@@ -25,3 +25,8 @@
     }
   }
 }
+
+.Footer {
+  container-name: query-builder;
+  container-type: inline-size;
+}

@@ -91,8 +91,8 @@
      :cljs ::string.date))
 
 (mr/def ::time
+  "time literal"
   #?(:clj [:or
-           {:doc/title "time literal"}
            ::string.time
            [:time/local-time
             {:error/message    "instance of java.time.LocalTime"
@@ -135,7 +135,7 @@
    u.time.impl-common/year-regex])
 
 ;;; `:effective-type` is required for `:value` clauses. This was not a rule in the legacy MBQL schema, but in actual
-;;; usage they basically always have `:base-type`; in MLv2 we're trying to use `:effective-type` everywhere instead;
+;;; usage they basically always have `:base-type`; in Lib we're trying to use `:effective-type` everywhere instead;
 ;;; These clauses are useless/pointless without type information anyway, so let's enforce this rule going forward.
 ;;; Conversion can take care of `:base-type` <=> `:effective-type` as needed.
 (mr/def ::value.options

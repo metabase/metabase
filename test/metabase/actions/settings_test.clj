@@ -29,7 +29,6 @@
     (mt/with-premium-features #{:table-data-editing}
       (let [enabled-for-db?  (:enabled-for-db? (#'setting/resolve-setting :database-enable-table-editing))
             disabled-reasons (partial extract-disabled-reasons* enabled-for-db?)]
-
         (testing "returns database routing reason for destination databases"
           (mt/with-temp [:model/Database router-db {:initial_sync_status "complete"}
                          :model/Database target-db {:initial_sync_status "complete", :router_database_id (:id router-db)}
@@ -41,30 +40,25 @@
                    (disabled-reasons target-db)))
             (is (false? (can-configure-data-editing-for-db? router-db)))
             (is (false? (can-configure-data-editing-for-db? target-db)))))
-
         (testing "returns sync in progress reason when sync is incomplete"
           (mt/with-temp [:model/Database db {:initial_sync_status "incomplete"}]
             (is (= [:database-metadata/sync-in-progress] (disabled-reasons db)))
             (is (can-configure-data-editing-for-db? db))))
-
         (testing "succeeds when database has writable tables"
           (mt/with-temp [:model/Database db {:initial_sync_status "complete"}
                          :model/Table _table {:db_id (:id db) :is_writable true}]
             (is (= nil (disabled-reasons db)))
             (is (can-configure-data-editing-for-db? db))))
-
         (testing "returns missing permissions reason when tables have unknown write-ability"
           (mt/with-temp [:model/Database db {:initial_sync_status "complete"}
                          :model/Table _table {:db_id (:id db) :is_writable nil}]
             (is (= [:database-metadata/not-populated] (disabled-reasons db)))
             (is (can-configure-data-editing-for-db? db))))
-
         (testing "returns no writable tables reason when all tables are not writable"
           (mt/with-temp [:model/Database db {:initial_sync_status "complete"}
                          :model/Table _table {:db_id (:id db) :is_writable false}]
             (is (= [:permissions/no-writable-table] (disabled-reasons db)))
             (is (false? (can-configure-data-editing-for-db? db)))))
-
         (testing "returns no writable tables reason when database has no tables"
           (mt/with-temp [:model/Database db {:initial_sync_status "complete"}]
             (is (= [:permissions/no-writable-table] (disabled-reasons db)))

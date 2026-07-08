@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
@@ -18,11 +18,15 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { IndexRedirect, Route } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,
@@ -49,10 +53,6 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import ModelActions from "./ModelActions";
 
@@ -196,16 +196,8 @@ async function setup({
     checkNotNull(metadata.question(q.id)),
   );
 
-  const modelUpdateSpy = jest.spyOn(Models.actions, "update");
-
   setupDatabasesEndpoints(databases);
-
-  fetchMock.get({
-    url: "path:/api/card",
-    query: { f: "using_model", model_id: card.id },
-    response: usedBy,
-  });
-
+  setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
@@ -215,7 +207,7 @@ async function setup({
         createMockTable({
           id: `card__${card.id}`,
           name: card.name,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ],
     }),
@@ -235,12 +227,12 @@ async function setup({
           <ModalRoute
             path="new"
             modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
+            modalProps={{ transitionProps: { duration: 0 } }}
           />
           <ModalRoute
             path=":actionId"
             modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
+            modalProps={{ transitionProps: { duration: 0 } }}
           />
         </Route>
       </Route>
@@ -251,7 +243,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
+  return { model, history, baseUrl, metadata, usedByQuestions };
 }
 
 async function setupActions({
@@ -268,6 +260,13 @@ async function openActionMenu(action: WritebackAction) {
   const listItem = screen.getByRole("listitem", { name: action.name });
   const menuButton = within(listItem).getByLabelText("ellipsis icon");
   await userEvent.click(menuButton);
+}
+
+async function openHeaderActionsMenu() {
+  const header = screen.getByTestId("model-actions-header");
+  await userEvent.click(
+    within(header).getByRole("button", { name: "Actions" }),
+  );
 }
 
 describe("ModelActions", () => {
@@ -469,7 +468,7 @@ describe("ModelActions", () => {
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
 
-        await userEvent.click(screen.getByLabelText("Actions menu"));
+        await openHeaderActionsMenu();
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
@@ -585,16 +584,20 @@ describe("ModelActions", () => {
       await setupActions({ model: modelCard, actions: [action] });
       fetchMock.modifyRoute("action-post", { response: {} });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
       await userEvent.click(await screen.findByText("Create basic actions"));
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",
@@ -624,13 +627,18 @@ describe("ModelActions", () => {
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
+
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",
@@ -658,7 +666,7 @@ describe("ModelActions", () => {
         actions: createMockImplicitCUDActions(modelCard.id),
       });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText(/Create basic action/i),
@@ -668,7 +676,7 @@ describe("ModelActions", () => {
     it("doesn't allow to disable implicit actions if they don't exist", async () => {
       await setupActions({ model: modelCard, actions: [] });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText("Disable basic actions"),
@@ -696,7 +704,7 @@ describe("ModelActions", () => {
       });
 
       expect(history?.getCurrentLocation().pathname).toBe(
-        ML_Urls.getUrl(question),
+        Urls.question(question),
       );
     });
 

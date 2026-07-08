@@ -25,22 +25,22 @@ export const SearchUserPickerContent = styled(Stack)`
 `;
 
 export const SearchUserSelectBox = styled(Stack)`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: ${({ theme }) => theme.radius.md};
 `;
 
 export const SelectedUserButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
-  ${({ theme }) => {
-    const primaryColor = theme.fn.themeColor("brand");
-
+  ${() => {
     return css`
-      background-color: color-mix(in srgb, ${primaryColor}, white 88%);
+      background-color: var(
+        --mb-color-background_surface-brand-subtle
+      ) !important;
       border: 0;
 
       &:hover {
-        background-color: color-mix(in srgb, ${primaryColor}, white 60%);
+        background-color: var(--mb-color-background_surface-hover) !important;
       }
     `;
   }}

@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import { Flex, type FlexProps, Title, type TitleProps } from "metabase/ui";
+import { Flex, type FlexProps, Text, type TextProps } from "metabase/ui";
 
 import S from "./SidebarItem.module.css";
 
@@ -49,6 +49,12 @@ export const Content = (props: FlexProps) => {
   return <Flex align="center" w="100%" {...props} />;
 };
 
-export const Name = (props: TitleProps) => (
-  <Title order={4} ta="left" textWrap="wrap" {...props} />
+export const Name = (props: React.PropsWithChildren<TextProps>) => (
+  <Text
+    fw="bold"
+    ta="left"
+    c="inherit"
+    style={{ textWrap: "wrap" }}
+    {...props}
+  />
 );

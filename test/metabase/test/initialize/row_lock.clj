@@ -11,6 +11,6 @@
   []
   (let [lock-name-str (str (namespace app-db.cluster-lock/card-statistics-lock)
                            "/" (name app-db.cluster-lock/card-statistics-lock))]
-      ;; Create cluster lock row before running tests
+    ;; Create cluster lock row before running tests
     (when-not (t2/exists? :metabase_cluster_lock :lock_name lock-name-str)
       (t2/query-one {:insert-into [:metabase_cluster_lock] :columns [:lock_name] :values [[lock-name-str]]}))))

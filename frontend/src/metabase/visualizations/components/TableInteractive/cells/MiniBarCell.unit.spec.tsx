@@ -44,4 +44,26 @@ describe("MiniBarCell", () => {
     const miniBar = screen.getByTestId("mini-bar");
     expect(miniBar).toHaveStyle({ width: "100%" });
   });
+
+  it("should apply backgroundColor to the cell wrapper (#75095)", () => {
+    const columnSettings = {
+      show_mini_bar: true,
+      number_style: "decimal",
+    };
+    render(
+      <MiniBarCell
+        formatter={formatter}
+        value={0.5}
+        extent={[0.5, 0.8]}
+        columnSettings={columnSettings}
+        rowIndex={rowIndex}
+        columnId={columnId}
+        backgroundColor="rgb(237, 110, 110)"
+      />,
+    );
+
+    expect(screen.getByTestId("mini-bar-cell")).toHaveStyle({
+      "--cell-bg-color": "rgb(237, 110, 110)",
+    });
+  });
 });

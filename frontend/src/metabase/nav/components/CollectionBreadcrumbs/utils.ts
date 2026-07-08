@@ -1,4 +1,4 @@
-import { isRootCollection } from "metabase/collections/utils";
+import { isRootCollection } from "metabase/common/collections/utils";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 type GetCollectionListProps = {

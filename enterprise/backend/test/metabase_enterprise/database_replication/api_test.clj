@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest required-features-test
-  ;; checked in metabase-enterprise.api.routes/ee-routes-map
+  ;; checked in [[metabase-enterprise.api-routes.routes/ee-routes-map]]
   (let [required-features [[:attached-dwh "Attached DWH"]
                            [:etl-connections "ETL Connections"]
                            [:etl-connections-pg "ETL Connections PG replication"]]]
@@ -50,41 +50,41 @@
         (is (= "PG replication is only supported for PostgreSQL databases."
                (mt/user-http-request :crowberto :post 400 (str "ee/database-replication/connection/" (:id mysql-db)))))
         (let [url (str "ee/database-replication/connection/" (:id postgres-db))]
-          (with-redefs [hm.client/call (constantly [{:id 123, :type "pg_replication"}])]
+          (mt/with-dynamic-fn-redefs [hm.client/call (constantly [{:id 123, :type "pg_replication"}])]
             (mt/with-temporary-setting-values [database-replication-connections {(:id postgres-db) {:connection-id 123}}]
               (is (= "Database already has an active replication connection." (mt/user-http-request :crowberto :post 400 url)))))
-          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
+          (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
             (is (mt/user-http-request :crowberto :post 500 url))))))))
 
 (deftest delete-fail-test
   (mt/with-premium-features #{:attached-dwh :etl-connections :etl-connections-pg :hosting}
     (mt/with-temporary-setting-values [is-hosted? true, store-api-url "foo", api-key "foo"]
-      (with-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
+      (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
         (is (mt/user-http-request :crowberto :delete 500 "ee/database-replication/connection/99"))))))
 
 (deftest lifecycle-test
   (let [hm-state (atom [])
         db-details {:dbname "dbname", :host "host", :user "user", :password "password"}
-        tables [{:table_schema "public",
-                 :table_name "t1",
-                 :estimated_row_count 9
-                 :has_pkey true,
-                 :has_ownership true}
-                {:table_schema "not_public",
-                 :table_name "no_schema",
-                 :estimated_row_count 11
-                 :has_pkey false,
-                 :has_ownership true}
-                {:table_schema "public",
-                 :table_name "no_pkey",
-                 :estimated_row_count 11
-                 :has_pkey false,
-                 :has_ownership true}
-                {:table_schema "public",
-                 :table_name "no_ownership",
-                 :estimated_row_count 11
-                 :has_pkey true,
-                 :has_ownership false}]]
+        tables [{:table-schema "public",
+                 :table-name "t1",
+                 :estimated-row-count 9
+                 :has-pkey true,
+                 :has-ownership true}
+                {:table-schema "not_public",
+                 :table-name "no_schema",
+                 :estimated-row-count 11
+                 :has-pkey false,
+                 :has-ownership true}
+                {:table-schema "public",
+                 :table-name "no_pkey",
+                 :estimated-row-count 11
+                 :has-pkey false,
+                 :has-ownership true}
+                {:table-schema "public",
+                 :table-name "no_ownership",
+                 :estimated-row-count 11
+                 :has-pkey true,
+                 :has-ownership false}]]
     (with-redefs [token-check/quotas
                   (constantly [{:usage 499990, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}])
 
@@ -142,9 +142,9 @@
 
 (deftest preview-replication-test
   (let [quotas [{:usage 100000, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}]
-        valid-table {:table_schema "public", :table_name "valid_table", :estimated_row_count 1000, :has_pkey true, :has_ownership true}
-        no-pk-table {:table_schema "public", :table_name "no_pk_table", :estimated_row_count 2000, :has_pkey false, :has_ownership true}
-        no-ownership-table {:table_schema "public", :table_name "no_ownership_table", :estimated_row_count 3000, :has_pkey true, :has_ownership false}
+        valid-table {:table-schema "public", :table-name "valid_table", :estimated-row-count 1000, :has-pkey true, :has-ownership true}
+        no-pk-table {:table-schema "public", :table-name "no_pk_table", :estimated-row-count 2000, :has-pkey false, :has-ownership true}
+        no-ownership-table {:table-schema "public", :table-name "no_ownership_table", :estimated-row-count 3000, :has-pkey true, :has-ownership false}
         base-response {:free-quota 400000
                        :total-estimated-row-count 0
                        :errors {:no-tables false, :no-quota false, :invalid-schema-filters-pattern false}
@@ -152,13 +152,11 @@
                        :replicated-tables []
                        :tables-without-pk []
                        :tables-without-owner-match []}]
-
     (testing "successful case with valid tables and quota"
       (is (= (merge base-response
                     {:total-estimated-row-count 1000
                      :replicated-tables [valid-table]})
              (api/preview-replication quotas [valid-table]))))
-
     (testing "no-tables error condition"
       (is (= (merge base-response
                     {:errors {:no-tables true, :no-quota false, :invalid-schema-filters-pattern false}
@@ -166,22 +164,19 @@
                      :tables-without-pk [no-pk-table]
                      :tables-without-owner-match [no-ownership-table]})
              (api/preview-replication quotas [no-pk-table no-ownership-table]))))
-
     (testing "no-quota error condition"
-      (let [high-row-table {:table_schema "public", :table_name "high_row_table", :estimated_row_count 500000, :has_pkey true, :has_ownership true}]
+      (let [high-row-table {:table-schema "public", :table-name "high_row_table", :estimated-row-count 500000, :has-pkey true, :has-ownership true}]
         (is (= (merge base-response
                       {:total-estimated-row-count 500000
                        :errors {:no-tables false, :no-quota true, :invalid-schema-filters-pattern false}
                        :can-set-replication false
                        :replicated-tables [high-row-table]})
                (api/preview-replication quotas [high-row-table])))))
-
     (testing "invalid-schema-filters-pattern error condition"
       (is (= (merge base-response
                     {:errors {:no-tables true, :no-quota false, :invalid-schema-filters-pattern true}
                      :can-set-replication false})
              (api/preview-replication quotas {:error "Invalid schema pattern"}))))
-
     (testing "mixed tables with various conditions"
       (is (= (merge base-response
                     {:total-estimated-row-count 1000
@@ -189,7 +184,6 @@
                      :tables-without-pk [no-pk-table]
                      :tables-without-owner-match [no-ownership-table]})
              (api/preview-replication quotas [valid-table no-pk-table no-ownership-table]))))
-
     (testing "no quota available"
       (let [no-quota-quotas [{:usage 500000, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}]]
         (is (= (merge base-response
@@ -199,7 +193,6 @@
                        :can-set-replication false
                        :replicated-tables [valid-table]})
                (api/preview-replication no-quota-quotas [valid-table])))))
-
     (testing "empty tables list"
       (is (= (merge base-response
                     {:errors {:no-tables true, :no-quota false, :invalid-schema-filters-pattern false}

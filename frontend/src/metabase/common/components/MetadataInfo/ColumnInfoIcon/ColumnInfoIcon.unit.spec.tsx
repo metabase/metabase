@@ -1,11 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 
 import { QueryColumnInfoIcon } from "./ColumnInfoIcon";
 
 function setup(table: string, column: string) {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.visibleColumns(query, 0);
   const findColumn = columnFinder(query, columns);
   const col = findColumn(table, column);

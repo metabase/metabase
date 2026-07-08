@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   HoverParent,
@@ -28,11 +28,7 @@ export function TableInfoIcon({
     <TableInfoPopover {...props} table={table}>
       <span aria-label={t`More info`}>
         <PopoverDefaultIcon name={icon} className={className} size={size} />
-        <PopoverHoverTarget
-          className={className}
-          name="info_filled"
-          size={size}
-        />
+        <PopoverHoverTarget className={className} name="info" size={size} />
       </span>
     </TableInfoPopover>
   );

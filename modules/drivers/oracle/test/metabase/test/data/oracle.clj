@@ -105,6 +105,10 @@
   [_driver _feature _database]
   false)
 
+(defmethod driver/database-supports? [:oracle :test/date-type]
+  [_driver _feature _database]
+  false)
+
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"
                               :type/Date                   "DATE"

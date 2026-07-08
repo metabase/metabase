@@ -1,0 +1,59 @@
+.ViewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-weight: bold;
+  border: none;
+  border-radius: var(--default-button-border-radius);
+  background-color: color-mix(
+    in srgb,
+    var(--view-button-color) 20%,
+    transparent
+  );
+  color: var(--view-button-color);
+  transition:
+    background 300ms linear,
+    border 300ms linear;
+
+  @media screen and (--breakpoint-min-lg) {
+    padding: 0.75rem 1rem;
+  }
+
+  &:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--view-button-color) 35%,
+      transparent
+    );
+  }
+
+  &.medium {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  &.onlyIcon {
+    padding: 0.5rem;
+  }
+
+  &.active {
+    background-color: var(--view-button-color);
+    color: var(--mb-color-text-primary-inverse);
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--view-button-color) 80%,
+        transparent
+      );
+    }
+  }
+}
+
+.label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

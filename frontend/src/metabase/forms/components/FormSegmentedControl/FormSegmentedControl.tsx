@@ -8,8 +8,10 @@ import {
   type SegmentedControlProps,
 } from "metabase/ui";
 
-export interface FormSegmentedControlProps<T extends string>
-  extends Omit<SegmentedControlProps<T>, "value"> {
+export interface FormSegmentedControlProps<T extends string> extends Omit<
+  SegmentedControlProps<T>,
+  "value"
+> {
   name: string;
   label?: ReactNode;
   description?: ReactNode;

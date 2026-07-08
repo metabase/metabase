@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.field :as parameters.field]
+   [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel search-values-test
@@ -83,7 +83,6 @@
       (t2/update! :model/Field (mt/id :users :name) {:semantic_type      :type/FK
                                                      :has_field_values   "search"
                                                      :fk_target_field_id (mt/id :categories :name)})
-
       (is (= [["African"]]
              (parameters.field/search-values (t2/select-one :model/Field (mt/id :users :name))
                                              (t2/select-one :model/Field (mt/id :users :name))

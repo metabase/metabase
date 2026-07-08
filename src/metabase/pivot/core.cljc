@@ -18,7 +18,7 @@
      (js->clj (js/JSON.parse x))))
 
 (defn- ensure-consistent-type
-  "Convert Clojure value that may have ambigous type into canonical type to ensure it can be used as a key.
+  "Convert Clojure value that may have ambiguous type into canonical type to ensure it can be used as a key.
   Does nothing in CLJS."
   [x]
   #?(:cljs x
@@ -51,7 +51,7 @@
 (defn columns-without-pivot-group
   "Removes the pivot-grouping column from a list of columns, identifying it by name."
   [columns]
-  (filter #(not (pivot-group-column? %)) columns))
+  (remove pivot-group-column? columns))
 
 (def ^:private get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.
@@ -147,13 +147,17 @@
             ;; A seq represents a specific path in the tree which is collapsed
             (sequential? collapsed-subtotal)
             (loop [node tree, [c & r] collapsed-subtotal]
-              (let [children (:children node)
-                    idx (perf/map-get (:value->child-pos node) c)
-                    child (perf/list-nth children idx)]
-                (if r
-                  (recur child r)
-                  (do (perf/list-set! children idx (assoc child :isCollapsed true))
-                      tree))))))
+              (if (nil? node)
+                tree
+                (let [children (:children node)
+                      idx (perf/map-get (:value->child-pos node) c)
+                      child (perf/list-nth children idx)]
+                  (if r
+                    (if (nil? child)
+                      tree
+                      (recur child r))
+                    (do (perf/list-set! children idx (assoc child :isCollapsed true))
+                        tree)))))))
         tree
         parsed-collapsed-subtotals))))
 
@@ -315,7 +319,11 @@
     (mapv
      (fn [{:keys [value children] :as node}]
        (assoc node
-              :value (formatter value)
+              :value #?(:clj (formatter value)
+                        ;; if we're in clojurescript these formatting functions are JS-based which means
+                        ;; they cannot handle clojure data types so we need to convert collections into js
+                        ;; types. We do it only for collections so as not to convert unnecessarily
+                        :cljs (formatter (cond-> value (coll? value) perf/clj->js)))
               :children (format-values-in-tree children (rest formatters) (rest cols) (rest col-indexes))
               :rawValue value
               :clicked {:value value
@@ -358,8 +366,12 @@
 (defn- create-subtotal-node
   "Creates a subtotal node for the given row item."
   [row-item]
-  (let [subtotal-val (or (get-in row-item [:value :xlsx-formatted-value])
-                         (:value row-item))]
+  (let [v            (:value row-item)
+        ;; In XLSX exports, :value is the formatter map {:col, :value, :xlsx-formatted-value, :styles}.
+        ;; Elsewhere (CSV, FE) it's the formatted value directly. (#71220)
+        subtotal-val (if (and (map? v) (contains? v :xlsx-formatted-value))
+                       (or (:xlsx-formatted-value v) (:value v) (i18n/tru "(empty)"))
+                       (if (some? v) v (i18n/tru "(empty)")))]
     {:value (i18n/tru "Totals for {0}" subtotal-val)
      :rawValue (:rawValue row-item)
      :span 1
@@ -439,7 +451,7 @@
                row-tree)))))
 
 (defn display-name-for-col
-  "Translated from frontend/src/metabase/lib/formatting/column.ts"
+  "Translated from frontend/src/metabase/utils/formatting/column.ts"
   [column col-settings format-values?]
   (or (if format-values?
         (or
@@ -608,7 +620,7 @@
                           path-with-value (if (or isValueColumn isGrandTotal) nil (conj path rawValue))
                           item-index      (count @result)
                           _               (vswap! result conj! nil) ;; Placeholder for parent item to be filled in
-                                                                    ;; once children are processed.
+                          ;; once children are processed.
                           result-value    (process-tree children (inc depth) current-offset path-with-value)
                           item            (->ResultItem (:value node) rawValue (:clicked node) isCollapsed
                                                         (:hasSubtotal node) isGrandTotal isSubtotal isValueColumn

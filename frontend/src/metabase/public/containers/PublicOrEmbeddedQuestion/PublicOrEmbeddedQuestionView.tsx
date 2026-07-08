@@ -4,12 +4,9 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import type { DisplayTheme } from "metabase/embedding/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import type {
-  DisplayTheme,
-  EmbedResourceDownloadOptions,
-} from "metabase/public/lib/types";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -19,7 +16,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
   Dataset,
-  DatasetQuery,
+  EmbedResourceDownloadOptions,
   ParameterId,
   ParameterValuesMap,
   RawSeries,
@@ -28,11 +25,9 @@ import type {
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
-  card: Card<DatasetQuery> | null;
+  card: Card | null;
   metadata: Metadata;
   result: Dataset | null;
-  uuid: string;
-  token: string;
   getParameters: () => UiParameter[];
   parameterValues: ParameterValuesMap;
   setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;
@@ -41,7 +36,7 @@ export interface PublicOrEmbeddedQuestionViewProps {
   hide_parameters: string | null;
   theme: DisplayTheme | undefined;
   titled: boolean;
-  setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
+  setCard: Dispatch<SetStateAction<Card | null>>;
   downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
@@ -49,8 +44,6 @@ export function PublicOrEmbeddedQuestionView({
   card,
   metadata,
   result,
-  uuid,
-  token,
   getParameters,
   parameterValues,
   setParameterValue,
@@ -78,8 +71,6 @@ export function PublicOrEmbeddedQuestionView({
         )}
         question={question}
         result={result}
-        uuid={uuid}
-        token={token}
         floating={!titled && !isTable}
       />
     ) : null;
@@ -117,7 +108,6 @@ export function PublicOrEmbeddedQuestionView({
       >
         {() => (
           <Visualization
-            isNightMode={theme === "night"}
             error={result?.error?.toString()}
             rawSeries={rawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
@@ -141,8 +131,6 @@ export function PublicOrEmbeddedQuestionView({
             isDashboard
             metadata={metadata}
             onChangeCardAndRun={() => {}}
-            token={token}
-            uuid={uuid}
             tableFooterExtraButtons={
               downloadInFooter ? questionResultDownloadButton : null
             }

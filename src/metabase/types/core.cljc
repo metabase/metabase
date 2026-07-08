@@ -49,9 +49,10 @@
   ### Entity Types -- keys starting with `:entity/`
 
   These are used to record the semantic purpose of a Table."
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
-   #?@(:cljs
-       [[metabase.util :as u]])
+   #?(:clj [metabase.util.performance :refer [for]]
+      :cljs [metabase.util :as u])
    [clojure.set :as set]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
    [metabase.util.malli :as mu]
@@ -182,6 +183,7 @@
 (derive :type/Comment :type/Text)
 
 (derive :type/PostgresEnum :type/TextLike)
+(derive :type/PostgresBitString :type/TextLike)
 
 (derive :type/OracleCLOB :type/Text)
 (derive :type/OracleCLOB :type/Large)
@@ -286,6 +288,9 @@
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
 (derive :type/MongoBinData :type/TextLike)
+;; binData holds arbitrary binary blobs (files, images, encrypted data) that aren't text-truncated by the sampler, so
+;; fingerprinting them (sampling the full values) can use enormous amounts of memory for no useful result.
+(derive :type/MongoBinData :type/fingerprint-unsupported)
 (derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses
@@ -375,7 +380,7 @@
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
 (mr/def ::snake-cased-type-info
-  "E.g. the version coming back from the app DB as opposed to MLv2 metadata. This should eventually be considered
+  "E.g. the version coming back from the app DB as opposed to Lib metadata. This should eventually be considered
   deprecated."
   [:map
    [:base_type :any]])
@@ -389,7 +394,9 @@
   {:deprecated "0.57.0"}
   [tyype                                                  :- :keyword
    {base-type :base_type, effective-type :effective_type} :- ::snake-cased-type-info]
-  (some #(isa? % tyype) [base-type effective-type]))
+  (if (nil? effective-type)
+    (isa? base-type tyype)
+    (isa? effective-type tyype)))
 
 (mu/defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
@@ -524,7 +531,7 @@
                  (select-keys (coercion-hierarchies/non-descending-strategies) [base-type]))
          not-empty)))
 
-(defn ^:export is_coerceable
+(defn ^:export is-coerceable
   "Returns a boolean of whether a field base-type has any coercion strategies available."
   [base-type]
   (boolean (not-empty (coercion-possibilities (keyword base-type)))))
@@ -534,7 +541,7 @@
   [coercion]
   (coercion-hierarchies/effective-type-for-strategy coercion))
 
-(defn ^:export coercions_for_type
+(defn ^:export coercions-for-type
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
   [base-type]

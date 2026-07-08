@@ -1,0 +1,11 @@
+.iconButton {
+  &[data-variant="default"] {
+    border: 1px solid var(--mb-color-border-neutral);
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-background_page-primary);
+
+    &:hover {
+      background-color: var(--mb-color-background_surface-hover);
+    }
+  }
+}

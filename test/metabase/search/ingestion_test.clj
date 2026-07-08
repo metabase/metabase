@@ -1,8 +1,14 @@
 (ns metabase.search.ingestion-test
   (:require
+   [clojure.core.cache :as cache]
    [clojure.test :refer :all]
+   [metabase.lib-be.metadata.jvm :as metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
 
 (deftest extract-model-and-id
@@ -13,6 +19,109 @@
   (is (= ["dataset" "1901"] (#'search.ingestion/extract-model-and-id ["dataset" [:and [:= true true] [:= :this.id 1901] [:= "Card" "Card"]]])))
   (is (= nil (#'search.ingestion/extract-model-and-id ["dataset" [:and [:= true true] [:= :this.model_id 1901] [:= "Card" "Card"]]])))
   (is (= nil (#'search.ingestion/extract-model-and-id ["indexed-entity" [:and [:= 26 :this.model_index_id] [:= 38004300 :this.model_pk]]]))))
+
+(deftest searchable-text-test
+  (testing "searchable-text with vector format (legacy)"
+    (let [spec-fn (constantly {:search-terms [:name :description]})
+          record  {:model       "test"
+                   :name        "Test Name"
+                   :description "Test Description"
+                   :other-field "Other Value"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "Test Name Test Description"
+               (#'search.ingestion/searchable-text record))))))
+  (testing "searchable-text with map format and transforms"
+    (let [spec-fn              (constantly {:search-terms {:name        search.spec/explode-camel-case
+                                                           :description true}})
+          record               {:model       "test"
+                                :name        "CamelCaseTest"
+                                :description "Simple description"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "CamelCaseTest Camel Case Test Simple description"
+               (#'search.ingestion/searchable-text record))))))
+  (testing "searchable-text filters out blank values"
+    (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
+          record  {:model       "test"
+                   :name        "Test Name"
+                   :description "  " ;; whitespace only
+                   :empty-field nil}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "Test Name"
+               (#'search.ingestion/searchable-text record)))))))
+
+(deftest embeddable-text-test
+  (testing "embeddable-text with vector format"
+    (let [spec-fn (constantly {:search-terms [:name :description]})
+          record  {:model       "card"
+                   :name        "Sales Dashboard"
+                   :description "Shows quarterly sales data"
+                   :other-field "Other Value"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
+               (#'search.ingestion/embeddable-text record))))))
+  (testing "embeddable-text with map format"
+    (let [spec-fn (constantly {:search-terms {:name        true
+                                              :description true}})
+          record  {:model       "dashboard"
+                   :name        "Test Dashboard"
+                   :description "A test dashboard"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
+               (#'search.ingestion/embeddable-text record))))))
+  (testing "embeddable-text filters out blank values"
+    (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
+          record  {:model       "card"
+                   :name        "Test Card"
+                   :description "  "
+                   :empty-field nil}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[card]\nname: Test Card"
+               (#'search.ingestion/embeddable-text record))))))
+  (testing "embeddable-text does not apply transform functions"
+    (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
+          record  {:model "table"
+                   :name  "CamelCaseTest"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[table]\nname: CamelCaseTest"
+               (#'search.ingestion/embeddable-text record))
+            "Transformation functions should not be applied to embeddable text for semantic search"))))
+  (testing "embeddable-text omits fields listed in :embedding-exclude"
+    (let [spec-fn (constantly {:search-terms      {:name true :document str}
+                               :embedding-exclude #{:document}})
+          record  {:model    "document"
+                   :name     "Q3 Planning"
+                   :document "the full document body"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[document]\nname: Q3 Planning"
+               (#'search.ingestion/embeddable-text record))
+            "Excluded fields must not appear in the semantic-search embedding text")
+        (is (= "Q3 Planning the full document body"
+               (#'search.ingestion/searchable-text record))
+            "Excluded fields remain in full-text searchable-text")))))
+
+(deftest execute-all-function-attrs-test
+  (testing "function-attr returning a map merges its keys into the document"
+    (let [spec {:attrs {:temporal-info {:fn       (constantly {:has_temporal_dim true :non_temporal_dim_ids "[1 2]"})
+                                        :provides [:has-temporal-dim :non-temporal-dim-ids]}}}]
+      (is (= {:has_temporal_dim true :non_temporal_dim_ids "[1 2]"}
+             (#'search.ingestion/execute-all-function-attrs spec {})))))
+  (testing "function-attr without :provides falls back to writing snake_case attr-key on non-map results"
+    (let [spec {:attrs {:native-query {:fn (constantly "SELECT 1")}}}]
+      (is (= {:native_query "SELECT 1"}
+             (#'search.ingestion/execute-all-function-attrs spec {})))))
+  (testing "function-attr with :provides skips writing when result is not a map"
+    (let [spec {:attrs {:temporal-info {:fn       (fn [_] (throw (ex-info "boom" {})))
+                                        :provides [:has-temporal-dim :non-temporal-dim-ids]}}}]
+      (is (= {} (#'search.ingestion/execute-all-function-attrs spec {}))))))
+
+(deftest search-term-columns-test
+  (testing "search-term-columns with vector format"
+    (is (= #{:name :description}
+           (set (#'search.ingestion/search-term-columns [:name :description])))))
+  (testing "search-term-columns with map format"
+    (is (= #{:name :description}
+           (set (#'search.ingestion/search-term-columns {:name identity
+                                                         :description nil}))))))
 
 (deftest search-items-count-test
   (testing "search-items-count returns correct count with various searchable items"
@@ -25,3 +134,87 @@
                        :model/Dashboard  _    {:name "Test Dashboard 2" :collection_id (:id coll)}]
           (let [n (search.ingestion/search-items-count)]
             (is (= 4 n))))))))
+
+(def ^:private fake-provider
+  (reify lib.metadata.protocols/MetadataProvider
+    (database [_this] nil)
+    (metadatas [_this _metadata-spec] nil)
+    (setting [_this _setting-name] nil)))
+
+(defn- counting-factory
+  "Returns a factory fn that counts calls in `counter-atom` and returns `fake-provider`."
+  [counter-atom]
+  (fn [_db-id]
+    (swap! counter-atom inc)
+    fake-provider))
+
+(defn- simulate-metadata-lookups
+  "Simulates what happens during indexing: the engine function calls
+   `application-database-metadata-provider` several times for the same database-id,
+   as it would when processing multiple cards from the same database."
+  []
+  ;; Three lookups for the same db — mimics processing multiple cards from one database.
+  (metadata.jvm/application-database-metadata-provider 1)
+  (metadata.jvm/application-database-metadata-provider 1)
+  (metadata.jvm/application-database-metadata-provider 1)
+  {"card" 3})
+
+(deftest bulk-ingest!-caches-metadata-providers-test
+  (testing "bulk-ingest! caches metadata providers so the factory is only called once per database-id"
+    (let [factory-calls (atom 0)]
+      (with-redefs [search.engine/active-engines                                (fn []
+                                                                                  (simulate-metadata-lookups)
+                                                                                  nil)
+                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+        (search.ingestion/bulk-ingest! [])
+        (is (= 1 @factory-calls)
+            "Factory should be called once, not once per metadata-provider lookup")))))
+
+(deftest bulk-ingest!-preserves-existing-cache-test
+  (testing "bulk-ingest! reuses an outer cache and does not rebuild providers already in it"
+    (let [factory-calls  (atom 0)
+          existing-cache (atom (cache/basic-cache-factory {}))]
+      (with-redefs [search.engine/active-engines (fn []
+                                                   (simulate-metadata-lookups)
+                                                   nil)
+                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+        (binding [metadata.jvm/*metadata-provider-cache* existing-cache]
+          (metadata.jvm/application-database-metadata-provider 1)
+          (let [pre-calls @factory-calls]
+            (search.ingestion/bulk-ingest! [])
+            (is (= pre-calls @factory-calls)
+                "Factory should not be called again — the provider was already cached")))))))
+
+(deftest multiple-databases-cached-separately-test
+  (testing "Within a single indexing operation, each database-id gets its own cached provider"
+    (let [factory-calls (atom 0)]
+      (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/init!          (fn [_engine _opts]
+                                                   ;; Simulate cards from 3 different databases, 2 lookups each
+                                                   (metadata.jvm/application-database-metadata-provider 1)
+                                                   (metadata.jvm/application-database-metadata-provider 2)
+                                                   (metadata.jvm/application-database-metadata-provider 3)
+                                                   (metadata.jvm/application-database-metadata-provider 1)
+                                                   (metadata.jvm/application-database-metadata-provider 2)
+                                                   (metadata.jvm/application-database-metadata-provider 3)
+                                                   {"card" 6})
+                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+        (search/init-index!)
+        (is (= 3 @factory-calls)
+            "Factory should be called once per unique database-id, not once per lookup")))))
+
+(deftest curation-signals-surfaced-in-results-test
+  (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
+            so Metabot can render them (BOT-1570) — not just stored in the filtering column"
+    (search.tu/with-new-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _ {:db_id          db-id
+                                     :name           "Curatedgoldtbl"
+                                     :active         true
+                                     :data_authority :authoritative
+                                     :data_layer     :final}]
+        (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                          (filter (comp #{"table"} :model))
+                          first)]
+          (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
+                  result)))))))

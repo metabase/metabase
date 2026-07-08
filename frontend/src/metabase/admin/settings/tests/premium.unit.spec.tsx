@@ -14,12 +14,12 @@ const setup = async ({
   initialRoute = "",
   features = {},
 } = {}) => {
-  return baseSetup({
-    hasEnterprisePlugins: true,
+  await baseSetup({
     hasTokenFeatures: true,
     isAdmin,
     features,
     initialRoute,
+    enterprisePlugins: "*", // means all enterprise plugins
   });
 };
 
@@ -29,6 +29,8 @@ const routes = routeObjtoArray({
   ...upsellRoutes,
   ...enterpriseRoutes, // includes the license route
   cloud: { path: "skip", testPattern: /nope/ },
+  // `ossRoutes.remoteSync` expects OSS/Starter upsell copy; this suite enables all features (incl. remote_sync), so assert the real settings UI instead.
+  remoteSync: { path: "/remote-sync", testPattern: /Set up remote sync/i },
 }).filter(({ path }) => path !== "skip");
 
 describe("Admin Settings Routing - Enterprise with all features", () => {

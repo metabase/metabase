@@ -1,0 +1,68 @@
+import { Fragment } from "react";
+import { match } from "ts-pattern";
+
+import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
+import type {
+  SdkBreadcrumbItem,
+  SdkBreadcrumbItemType,
+} from "embedding-sdk-bundle/types/breadcrumb";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { Flex } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
+
+import { PublicComponentStylesWrapper } from "../PublicComponentStylesWrapper";
+
+import S from "./SdkBreadcrumbs.module.css";
+
+export interface SdkBreadcrumbProps {
+  className?: string;
+  style?: React.CSSProperties;
+  onBreadcrumbClick?: (breadcrumb: SdkBreadcrumbItem) => void;
+}
+
+export const SdkBreadcrumbs = ({
+  className,
+  style,
+  onBreadcrumbClick,
+}: SdkBreadcrumbProps) => {
+  const { breadcrumbs, navigateTo, isBreadcrumbEnabled } = useSdkBreadcrumbs();
+  const tc = useTranslateContent();
+
+  if (breadcrumbs.length === 0 || !isBreadcrumbEnabled) {
+    return null;
+  }
+
+  return (
+    <PublicComponentStylesWrapper className={className} style={style}>
+      <Flex align="center" data-testid="sdk-breadcrumbs">
+        {breadcrumbs.map((breadcrumb, index) => (
+          <Fragment key={breadcrumb.id}>
+            <Breadcrumb
+              icon={getBreadcrumbIcon(breadcrumb.type)}
+              onClick={() => {
+                navigateTo(breadcrumb);
+                onBreadcrumbClick?.(breadcrumb);
+              }}
+            >
+              {tc(breadcrumb.name)}
+            </Breadcrumb>
+
+            {index < breadcrumbs.length - 1 && (
+              <div className={S.BreadcrumbsPathSeparator}>/</div>
+            )}
+          </Fragment>
+        ))}
+      </Flex>
+    </PublicComponentStylesWrapper>
+  );
+};
+
+const getBreadcrumbIcon = (type: SdkBreadcrumbItemType): IconName =>
+  match<SdkBreadcrumbItemType, IconName>(type)
+    .with("collection", () => "folder")
+    .with("dashboard", () => "dashboard")
+    .with("question", () => "table2")
+    .with("model", () => "model")
+    .with("metric", () => "metric")
+    .exhaustive();

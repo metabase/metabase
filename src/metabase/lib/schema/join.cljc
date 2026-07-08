@@ -1,11 +1,14 @@
 (ns metabase.lib.schema.join
   "Schemas for things related to joins."
+  (:refer-clojure :exclude [mapv every? empty? not-empty])
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? mapv empty? not-empty]]))
 
 (mr/def ::fields
   "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
@@ -34,7 +37,8 @@
   `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias` in
   the options."
   [:schema
-   {:gen/fmap #(str % "-" (random-uuid))}
+   {:gen/fmap         #(str % "-" (random-uuid))
+    :decode/normalize #(cond-> % (keyword? %) u/qualified-name)}
    ::common/non-blank-string])
 
 (mr/def ::condition
@@ -55,14 +59,18 @@
   "Operators that should be listed as options in join conditions."
   (into [:enum] condition-operators))
 
+(def default-strategy
+  "The default join strategy when `:strategy` is not specified."
+  :left-join)
+
 (mr/def ::strategy
   "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database
   supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left
   joins will support the `:left-join` feature.
 
-  When `:strategy` is not specified, `:left-join` is the default strategy."
+  When `:strategy` is not specified, [[default-strategy]] is used."
   [:enum
-   {:decode/normalize common/normalize-keyword, :default :left-join}
+   {:decode/normalize common/normalize-keyword, :default default-strategy}
    :left-join
    :right-join
    :inner-join
@@ -113,9 +121,6 @@
    [:map
     {:default {}, :decode/normalize normalize-join}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
-    ;; TODO (Cam 7/23/25) -- why would a join need an options map? If we need to add extra keys we can just add them
-    ;; to the join itself.
-    [:lib/options ::common/options]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]
     [:alias       ::alias]
@@ -130,7 +135,8 @@
      :source-query       "join should not have :source-query; use :stages instead"
      :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
      :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
-     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"})
+     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"
+     :ident              ":ident is deprecated and should not be included in joins"})
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

@@ -1,10 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterpriseTest } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+import { act, getIcon, renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { SavedQuestionHeaderButton } from "./SavedQuestionHeaderButton";
@@ -13,11 +18,24 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-function setup({ question }) {
+function setup({ question, tokenFeatures = {}, enterprisePlugins }) {
   const onSave = jest.fn();
+
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+  });
+
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+  }
 
   renderWithProviders(
     <SavedQuestionHeaderButton question={question} onSave={onSave} />,
+    {
+      storeInitialState: state,
+    },
   );
 
   return { onSave };
@@ -44,7 +62,9 @@ describe("SavedQuestionHeaderButton", () => {
 
     const titleInput = screen.getByTestId("saved-question-header-title");
     await userEvent.type(titleInput, "1");
-    titleInput.blur();
+    act(() => {
+      titleInput.blur();
+    });
 
     expect(onSave).toHaveBeenCalled();
   });
@@ -55,7 +75,9 @@ describe("SavedQuestionHeaderButton", () => {
     const titleInput = screen.getByTestId("saved-question-header-title");
     await userEvent.clear(titleInput);
     await userEvent.paste("A".repeat(300));
-    titleInput.blur();
+    act(() => {
+      titleInput.blur();
+    });
 
     expect(onSave).toHaveBeenCalledWith("A".repeat(254));
   });
@@ -78,8 +100,13 @@ describe("SavedQuestionHeaderButton", () => {
     });
 
     it("should have an additional icon to signify the question's moderation status", () => {
-      setupEnterpriseTest();
-      setup({ question });
+      setup({
+        question,
+        tokenFeatures: {
+          content_verification: true,
+        },
+        enterprisePlugins: ["content-verification", "moderation"],
+      });
       expect(getIcon("verified")).toBeInTheDocument();
     });
   });
@@ -97,7 +124,11 @@ describe("SavedQuestionHeaderButton", () => {
     );
 
     it("should have an additional icon to signify the question's collection type", () => {
-      setup({ question });
+      setup({
+        question,
+        tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["collections", "audit-app"],
+      });
       expect(getIcon("audit")).toBeInTheDocument();
     });
   });

@@ -11,6 +11,10 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/settings"
   "Update SAML related settings. You must be a superuser to do this."
   [_route-params

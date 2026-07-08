@@ -2,6 +2,7 @@
   (:require
    [metabase.util :as u]))
 
+;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.util/clause-of-type?]]
 (defn- mbql-clause-type [x]
   (when (and (vector? x)
              (keyword? (first x)))

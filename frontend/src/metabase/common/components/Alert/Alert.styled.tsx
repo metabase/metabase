@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import type { AlertVariant } from "./Alert";
 
@@ -15,19 +15,19 @@ interface AlertRootProps {
 
 const colorsByVariant = {
   border: {
-    info: "var(--mb-color-bg-medium)",
-    error: "var(--mb-color-error)",
-    warning: color("warning"),
+    info: "var(--mb-color-background_page-tertiary)",
+    error: color("feedback-negative"),
+    warning: color("feedback-warning"),
   },
   background: {
-    info: "var(--mb-color-bg-light)",
-    error: "var(--mb-color-bg-error)",
-    warning: lighten("warning", 0.5),
+    info: "var(--mb-color-background_page-secondary)",
+    error: color("background_surface-error"),
+    warning: color("background_surface-warning"),
   },
   icon: {
-    info: color("text-dark"),
-    error: "var(--mb-color-error)",
-    warning: color("warning"),
+    info: color("text-primary"),
+    error: color("feedback-negative"),
+    warning: color("feedback-warning"),
   },
 };
 
@@ -36,7 +36,7 @@ export const AlertRoot = styled.div<AlertRootProps>`
   align-items: center;
   padding: 1.25rem 1rem;
   line-height: 1.4rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   ${(props) =>
     props.hasBorder
       ? css`

@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -24,7 +25,7 @@
   #_(derive :hook/search-index))
 
 (t2/deftransforms :model/DashboardCard
-  {:parameter_mappings     mi/transform-parameters-list
+  {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
@@ -39,7 +40,7 @@
 (t2/define-after-select :model/DashboardCard
   [dashcard]
   (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
     dashcard))
 
 (declare series)
@@ -73,7 +74,7 @@
   [dashboard-card]
   (t2/instance :model/DashboardCard
                (-> dashboard-card
-                   (m/update-existing :parameter_mappings mi/normalize-parameters-list)
+                   (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields :model/DashboardCard
@@ -190,15 +191,6 @@
         (update-dashboard-cards-series! {dashcard-id series}))
       nil)))
 
-(def ParamMapping
-  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
-    [:parameter_id ms/NonBlankString]
-    #_[:target       :any]]])
-
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
@@ -223,7 +215,6 @@
               (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
                               {:status-code 400
                                :in-report-card-ids (map :id in-report-cards)}))))))
-
       (let [dashboard-card-ids (t2/insert-returning-pks!
                                 :model/DashboardCard
                                 (for [dashcard dashboard-cards]
@@ -247,14 +238,12 @@
           orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
           ;; Get dashboard IDs (should all be the same, but let's be safe)
           dashboard-ids (set (map :dashboard_id cards-being-deleted))]
-
       (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
         (let [dashboard-id (first dashboard-ids)
               dashboard (t2/select-one :model/Dashboard :id dashboard-id)
               current-params (:parameters dashboard)
               cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
                                       current-params)]
-
           (when (not= (count current-params) (count cleaned-params))
             (t2/update! :model/Dashboard dashboard-id {:parameters cleaned-params})
             (count orphaned-param-ids)))))))
@@ -266,7 +255,6 @@
   (t2/with-transaction [_conn]
     ;; Clean up inline parameters before deletion (since we need to read the cards first)
     (cleanup-orphaned-inline-parameters! dashboard-card-ids)
-
     ;; Delete the cards
     (t2/delete! :model/PulseCard :dashboard_card_id [:in dashboard-card-ids])
     (t2/delete! :model/DashboardCard :id [:in dashboard-card-ids])))

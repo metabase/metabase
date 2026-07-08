@@ -66,15 +66,14 @@
   [f]
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn              @#'sync-util/log-sync-summary
-        origin-update-th!        @#'task-history/update-task-history!]
-    (with-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
-                                                      (swap! step-info-atom conj operation-metadata)
-                                                      (orig-log-fn operation database operation-metadata))
-
-                  task-history/update-task-history! (fn [th-id startime-ms info]
-                                                      (swap! created-task-history-ids conj th-id)
-                                                      (origin-update-th! th-id startime-ms info))]
+        orig-log-fn              (mt/original-fn #'sync-util/log-sync-summary)
+        origin-update-th!        (mt/original-fn #'task-history/update-task-history!)]
+    (mt/with-dynamic-fn-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
+                                                                    (swap! step-info-atom conj operation-metadata)
+                                                                    (orig-log-fn operation database operation-metadata))
+                                task-history/update-task-history! (fn [th-id startime-ms info]
+                                                                    (swap! created-task-history-ids conj th-id)
+                                                                    (origin-update-th! th-id startime-ms info))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))
@@ -127,14 +126,14 @@
       (is (= [step-1-name step-2-name]
              (map first (:steps results)))))
     (testing "operation history"
-      (is (= (merge default-task-history {:task process-name, :task_details nil})
-             (fetch-task-history-row process-name))))
+      (is (=? (merge default-task-history {:task process-name, :task_details nil})
+              (fetch-task-history-row process-name))))
     (testing "step 1 history"
-      (is (= (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}})
-             (fetch-task-history-row step-1-name))))
+      (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}})
+              (fetch-task-history-row step-1-name))))
     (testing "step 2 history"
-      (is (= (merge default-task-history {:task step-2-name, :task_details nil})
-             (fetch-task-history-row step-2-name))))))
+      (is (=? (merge default-task-history {:task step-2-name, :task_details nil})
+              (fetch-task-history-row step-2-name))))))
 
 (deftest run-sync-operation-record-failed-task-history-test
   (let [process-name (mt/random-name)
@@ -150,8 +149,8 @@
                                                       (throw (ex-info "Sorry" {})))))]]
     (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
     (testing "operation history"
-      (is (= (merge default-task-history {:task process-name, :task_details nil})
-             (fetch-task-history-row process-name))))
+      (is (=? (merge default-task-history {:task process-name, :task_details nil})
+              (fetch-task-history-row process-name))))
     (testing "step history should has status is failed"
       (is (=? (merge default-task-history
                      {:task step-name-1
@@ -272,7 +271,6 @@
                                    (sync-util/create-sync-step "should-continue"
                                                                (fn [_]
                                                                  {}))]))]
-
         ;; make sure we've ran two steps. the first one will have thrown an exception,
         ;; but it wasn't an exception that can cause an abort.
         (is (= 2 (count (:steps actual))))
@@ -291,41 +289,36 @@
             db (t2/select-one :model/Database :id (mt/id))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))))
-
     (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "complete"})
             db (t2/select-one :model/Database :id (mt/id))]
         (sync/sync-database! db)
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))))
-
     (testing "If `initial-sync-status` on a table is `incomplete`, it is marked as `complete` after the sync-fks step
                        has finished"
-      (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id))
+      (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :active true)
             _        (t2/update! :model/Table table-id {:initial_sync_status "incomplete"})
             _table   (t2/select-one :model/Table :id table-id)]
         (sync/sync-database! (mt/db))
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table :id table-id)))))
-
     (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
       (let [_        (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
             db       (t2/select-one :model/Database :id (mt/id))
-            table-id (t2/select-one-fn :id :model/Table :db_id (mt/id))
+            table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :active true)
             _        (t2/update! :model/Table table-id {:initial_sync_status "incomplete"})
             _table   (t2/select-one :model/Table :id table-id)]
         (sync/sync-database! db {:scan :schema})
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db))))
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table :id table-id)))))
-
     (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
             db (t2/select-one :model/Database :id (mt/id))]
-        (with-redefs [sync-metadata/make-sync-steps (fn [_]
-                                                      [(sync-util/create-sync-step
-                                                        "fake-step"
-                                                        (fn [_] (throw (java.net.ConnectException.))))])]
+        (mt/with-dynamic-fn-redefs [sync-metadata/make-sync-steps (fn [_]
+                                                                    [(sync-util/create-sync-step
+                                                                      "fake-step"
+                                                                      (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db)))))))
-
     (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
                        without error"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "complete"})
@@ -338,17 +331,17 @@
   ;; incomplete, but then marked as complete after the sync is finished.
   (mt/dataset test-data
     (testing "If `initial-sync-status` on a DB is already `complete`"
-      (let [[active-table inactive-table] (t2/select :model/Table :db_id (mt/id))
+      (let [[active-table inactive-table] (t2/select :model/Table :db_id (mt/id) :active true)
             get-active-table #(t2/select-one :model/Table :id (:id active-table))
             get-inactive-table #(t2/select-one :model/Table :id (:id inactive-table))]
         (t2/update! :model/Table (:id active-table) {:initial_sync_status "complete" :active true})
         (t2/update! :model/Table (:id inactive-table) {:initial_sync_status "complete" :active false})
         (let [syncing-chan   (a/chan)
               completed-chan (a/chan)]
-          (let [sync-fields! sync-fields/sync-fields!]
-            (with-redefs [sync-fields/sync-fields! (fn [database]
-                                                     (a/>!! syncing-chan ::syncing)
-                                                     (sync-fields! database))]
+          (let [sync-fields! (mt/original-fn #'sync-fields/sync-fields!)]
+            (mt/with-dynamic-fn-redefs [sync-fields/sync-fields! (fn [database]
+                                                                   (a/>!! syncing-chan ::syncing)
+                                                                   (sync-fields! database))]
               (future
                 (sync/sync-database! (mt/db))
                 (a/>!! completed-chan ::sync-completed))
@@ -363,3 +356,13 @@
                 (is (= "complete"   (:initial_sync_status (get-inactive-table)))))))
           (a/close! syncing-chan)
           (a/close! completed-chan))))))
+
+(deftest sync-failure-increments-prometheus-counter-test
+  (testing "When a sync operation fails, the :metabase-sync/failures counter is incremented"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        (let [initial (mt/metric-value system :metabase-sync/failures {:driver "h2"})]
+          (sync-util/do-sync-operation
+           :sync db "test sync failure"
+           (fn [] (throw (Exception. "sync boom"))))
+          (is (< initial (mt/metric-value system :metabase-sync/failures {:driver "h2"}))))))))

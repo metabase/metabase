@@ -1,0 +1,39 @@
+import type {
+  Collection,
+  IconName,
+  Transform,
+  TransformOwner,
+} from "metabase-types/api";
+
+export type TreeNodeType = "folder" | "transform" | "library";
+
+export type TreeNode = {
+  id: string;
+  name: string;
+  nodeType: TreeNodeType;
+  icon: IconName;
+  updated_at?: string;
+  target?: Transform["target"];
+  owner?: TransformOwner | null;
+  owner_email?: string | null;
+  children?: TreeNode[];
+  transformId?: number;
+  collection?: Collection;
+  url?: string;
+  can_read?: boolean;
+  warningTooltip?: string;
+};
+
+export function isCollectionNode(
+  node: TreeNode,
+): node is TreeNode & { collection: Collection } {
+  return node.nodeType === "folder" && typeof node.collection?.id === "number";
+}
+
+export function getCollectionNodeId(collectionId: number): string {
+  return `collection-${collectionId}`;
+}
+
+export function getTransformNodeId(transformId: number): string {
+  return `transform-${transformId}`;
+}

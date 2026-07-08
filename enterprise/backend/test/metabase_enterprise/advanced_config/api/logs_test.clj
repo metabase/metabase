@@ -41,7 +41,6 @@
                           (filter #(#{user-id} (:executor_id %)))
                           (filter #((set (map :id [qe-a qe-b])) (:id %)))
                           (map #(select-keys % [:started_at :id]))))))))))
-
     (testing "permission tests"
       (testing "require admins"
         (mt/with-premium-features #{:audit-app}

@@ -1,0 +1,12 @@
+.sidebar {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.header {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.scrollArea {
+  overflow-y: auto;
+}

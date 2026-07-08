@@ -1,15 +1,16 @@
-import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
-import { setErrorPage } from "metabase/redux/app";
-import { DashboardApi } from "metabase/services";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
+import { dashboardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
-} from "metabase-lib/v1/queries/utils/card";
+} from "metabase/common/utils/card";
+import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { setErrorPage } from "metabase/redux/app";
+import type { Dispatch } from "metabase/redux/store";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Parameter } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 type BlankQueryOptions = {
   db?: string;
@@ -30,7 +31,7 @@ function shouldPropagateDashboardParameters({
 }: {
   cardId?: number;
   deserializedCard: Card;
-  originalCard?: Card;
+  originalCard?: Card | null;
 }): boolean {
   if (cardId && deserializedCard.parameters) {
     return true;
@@ -60,7 +61,11 @@ async function verifyMatchingDashcardAndParameters({
   parameters: Parameter[];
 }) {
   try {
-    const dashboard = await DashboardApi.get({ dashId: dashboardId });
+    const dashboard = await runRtkEndpoint(
+      { id: dashboardId },
+      dispatch,
+      dashboardApi.endpoints.getDashboard,
+    );
     if (
       !hasMatchingParameters({
         dashboard,
@@ -105,7 +110,7 @@ export async function propagateDashboardParameters({
 }: {
   card: Card;
   deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
-  originalCard?: Card;
+  originalCard?: Card | null;
   dispatch: Dispatch;
 }) {
   const cardId = card.id;

@@ -1,13 +1,15 @@
 (ns metabase.query-processor.streaming.json
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
+  (:refer-clojure :exclude [mapv empty? not-empty])
   (:require
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv empty? not-empty]])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -37,7 +39,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
         (let [cols           (streaming.common/column-titles ordered-cols viz-settings format-rows?)
-              pivot-grouping (qp.pivot.postprocess/pivot-grouping-index cols)]
+              pivot-grouping (pivot.postprocess/pivot-grouping-index cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (let [names (cond->> cols
                         pivot-grouping (m/remove-nth pivot-grouping))]
@@ -59,7 +61,7 @@
           ;; when a pivot-grouping col exists, we check its group number. When it's zero,
           ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
           (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                    (= pivot.postprocess/non-pivot-row-group (int group)))
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to

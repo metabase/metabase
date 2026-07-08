@@ -32,8 +32,10 @@ export const cardDisplayTypes = [
   "object",
   "map",
   "scatter",
+  "boxplot",
   "waterfall",
   "sankey",
+  "treemap",
   "list",
 ] as const;
 
@@ -43,4 +45,17 @@ export const isCardDisplayType = (value: unknown): value is CardDisplayType =>
 
 export type CardDisplayType = (typeof cardDisplayTypes)[number];
 
-export type VisualizationDisplay = VirtualCardDisplay | CardDisplayType;
+export type CustomVizDisplayType = `custom:${string}`;
+
+export type QueryVisualizationDisplayType =
+  | CardDisplayType
+  | CustomVizDisplayType;
+
+export type VisualizationDisplay =
+  | VirtualCardDisplay
+  | QueryVisualizationDisplayType;
+
+export type TimeseriesDisplayType = Extract<
+  CardDisplayType,
+  "line" | "area" | "bar"
+>;

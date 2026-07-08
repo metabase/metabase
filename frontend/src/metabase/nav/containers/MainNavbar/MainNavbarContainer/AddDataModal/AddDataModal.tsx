@@ -5,7 +5,8 @@ import { useListDatabasesQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
-import { Box, Icon, type IconName, Modal, Tabs } from "metabase/ui";
+import { Box, Icon, Modal, Tabs } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./AddDataModal.module.css";
 import { CSVPanel } from "./Panels/CSVPanel";
@@ -13,11 +14,18 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataPermissions } from "./use-add-data-permission";
-import { hasMeaningfulUploadableDatabases, isValidTab } from "./utils";
+import {
+  type AddDataTab,
+  hasMeaningfulUploadableDatabases,
+  isValidTab,
+} from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
   onClose: () => void;
+
+  initialTab?: AddDataTab;
+  fromEmbeddingSetupGuide?: boolean;
 }
 
 interface Tabs {
@@ -27,7 +35,12 @@ interface Tabs {
   iconName: IconName;
 }
 
-export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
+export const AddDataModal = ({
+  opened,
+  onClose,
+  initialTab,
+  fromEmbeddingSetupGuide,
+}: AddDataModalProps) => {
   const { areUploadsEnabled, canUploadToDatabase, canManageUploads, isAdmin } =
     useAddDataPermissions();
 
@@ -56,7 +69,7 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
       db: "database_tab_clicked",
       csv: "csv_tab_clicked",
       gsheets: "sheets_tab_clicked",
-    } as const;
+    } as const satisfies Record<AddDataTab, string>;
 
     trackAddDataEvent(eventMapping[tabValue]);
     setActiveTab(tabValue);
@@ -64,13 +77,13 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
 
   const tabs = useMemo(() => {
     return [
+      { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
       {
         name: t`CSV`,
         value: "csv",
         isVisible: shouldShowUploadsPanel,
         iconName: "table2",
       },
-      { name: t`Database`, value: "db", isVisible: true, iconName: "database" },
       {
         name: t`Google Sheets`,
         value: "gsheets",
@@ -81,11 +94,16 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
   }, [shouldShowUploadsPanel, isHosted]);
 
   useEffect(() => {
-    const firstVisibleTab = tabs.find((tab) => tab.isVisible);
-    if (firstVisibleTab) {
-      setActiveTab(firstVisibleTab.value);
+    if (initialTab) {
+      setActiveTab(initialTab);
+    } else {
+      const firstVisibleTab = tabs.find((tab) => tab.isVisible);
+
+      if (firstVisibleTab) {
+        setActiveTab(firstVisibleTab.value);
+      }
     }
-  }, [tabs]);
+  }, [tabs, initialTab]);
 
   return (
     <Modal.Root opened={opened} onClose={onClose} size="auto">
@@ -137,7 +155,10 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
               />
             </Tabs.Panel>
             <Tabs.Panel value="db" className={S.panel}>
-              <DatabasesPanel canSeeContent={isAdmin} />
+              <DatabasesPanel
+                canSeeContent={isAdmin}
+                fromEmbeddingSetupGuide={fromEmbeddingSetupGuide}
+              />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
               <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel

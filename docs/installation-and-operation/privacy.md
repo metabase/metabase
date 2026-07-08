@@ -16,4 +16,8 @@ If you self-host your Metabase instance, we have no access to any of your data, 
 
 If you're a [Metabase Cloud](https://www.metabase.com/pricing/) customer, your [Terms of Service](https://www.metabase.com/license/hosting) include a Data Processing Agreement (DPA).
 
+## Further reading
+
+- [AI privacy](../ai/privacy.md) — what data Metabase's AI features send, and to whom
+
 [information-collection]: information-collection.md

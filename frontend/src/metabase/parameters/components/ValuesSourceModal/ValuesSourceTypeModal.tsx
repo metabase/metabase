@@ -1,25 +1,23 @@
-import type { ChangeEvent } from "react";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+import { useCallback, useLayoutEffect, useMemo } from "react";
+import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
-import Button from "metabase/common/components/Button";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import ModalContent from "metabase/common/components/ModalContent";
-import type { RadioOption } from "metabase/common/components/Radio";
-import Radio from "metabase/common/components/Radio";
-import type { SelectChangeEvent } from "metabase/common/components/Select";
-import Select, { Option } from "metabase/common/components/Select";
-import SelectButton from "metabase/common/components/SelectButton";
-import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
-import Questions from "metabase/entities/questions";
-import Tables from "metabase/entities/tables";
-import { connect, useSelector } from "metabase/lib/redux";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { ModalContent } from "metabase/common/components/ModalContent";
+import { SelectButton } from "metabase/common/components/SelectButton";
+import { connect, useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, Radio, Select, Stack } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
@@ -32,13 +30,13 @@ import {
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  FieldReference,
   Parameter,
   ParameterValue,
   ParameterValues,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
@@ -58,6 +56,7 @@ import {
 } from "./ValuesSourceTypeModalComponents";
 import { getStaticValues, getValuesText } from "./utils";
 
+const STAGE_INDEX = 0;
 interface ModalOwnProps {
   parameter: UiParameter;
   sourceType: ValuesSourceType;
@@ -99,7 +98,7 @@ const ValuesSourceTypeModal = ({
       footer={[
         <Button
           key="submit"
-          primary
+          variant="filled"
           disabled={!isValidSourceConfig(sourceType, sourceConfig)}
           onClick={onSubmit}
         >{t`Done`}</Button>,
@@ -149,6 +148,23 @@ interface SourceTypeOptionsProps {
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
+type SourceTypeOption = {
+  name: string;
+  value: ValuesSourceType;
+};
+
+// Mantine's Radio.Group only handles string values, so the null source type
+// ("From connected fields") is mapped to a sentinel string.
+const CONNECTED_FIELDS_SENTINEL_VALUE = "connected-fields";
+
+const serializeSourceType = (sourceType: ValuesSourceType): string =>
+  sourceType ?? CONNECTED_FIELDS_SENTINEL_VALUE;
+
+const deserializeSourceType = (value: string): ValuesSourceType =>
+  value === CONNECTED_FIELDS_SENTINEL_VALUE
+    ? null
+    : (value as ValuesSourceType);
+
 const SourceTypeOptions = ({
   parameter,
   parameterValues = [],
@@ -174,12 +190,20 @@ const SourceTypeOptions = ({
   );
 
   return (
-    <Radio
-      value={sourceType}
-      options={sourceTypeOptions}
-      vertical
-      onChange={handleSourceTypeChange}
-    />
+    <Radio.Group
+      value={serializeSourceType(sourceType)}
+      onChange={(value) => handleSourceTypeChange(deserializeSourceType(value))}
+    >
+      <Stack gap="sm">
+        {sourceTypeOptions.map((option) => (
+          <Radio
+            key={serializeSourceType(option.value)}
+            value={serializeSourceType(option.value)}
+            label={option.name}
+          />
+        ))}
+      </Stack>
+    </Radio.Group>
   );
 };
 
@@ -237,7 +261,12 @@ const FieldSourceModal = ({
             {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
           </ModalEmptyState>
         ) : (
-          <ModalTextArea value={valuesText} readOnly fullWidth />
+          <ModalTextArea
+            aria-label={t`Values`}
+            value={valuesText}
+            readOnly
+            fullWidth
+          />
         )}
       </ModalMain>
     </ModalBodyWithPane>
@@ -267,13 +296,29 @@ const CardSourceModal = ({
   onChangeSourceType,
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
-  const fields = useMemo(() => {
-    return question ? getSupportedFields(question, parameter) : [];
-  }, [question, parameter]);
+  const query = useMemo(() => {
+    return question != null ? getQuestionBasedQuery(question) : undefined;
+  }, [question]);
+
+  const columns = useMemo(() => {
+    return query != null ? getSupportedColumns(query, parameter) : [];
+  }, [query, parameter]);
+
+  const labelColumns = useMemo(() => {
+    return query != null ? getLabelColumns(query) : [];
+  }, [query]);
 
   const selectedField = useMemo(() => {
-    return getFieldByReference(fields, sourceConfig.value_field);
-  }, [fields, sourceConfig]);
+    return query != null && sourceConfig.value_field != null
+      ? getColumnByReference(query, columns, sourceConfig.value_field)
+      : undefined;
+  }, [query, columns, sourceConfig.value_field]);
+
+  const selectedLabelField = useMemo(() => {
+    return query != null && sourceConfig.label_field != null
+      ? getColumnByReference(query, labelColumns, sourceConfig.label_field)
+      : undefined;
+  }, [query, labelColumns, sourceConfig.label_field]);
 
   const { values, isError } = useParameterValues({
     parameter,
@@ -282,19 +327,35 @@ const CardSourceModal = ({
     onFetchParameterValues,
   });
 
-  const valuesText = useMemo(
-    () => getValuesText(getSourceValues(values)),
-    [values],
-  );
+  const valuesText = useMemo(() => getValuesText(values), [values]);
 
-  const handleFieldChange = useCallback(
-    (event: SelectChangeEvent<Field>) => {
+  const handleValueFieldChange = useCallback(
+    (column: Lib.ColumnMetadata | undefined) => {
+      if (query == null || column == null) {
+        return;
+      }
       onChangeSourceConfig({
         ...sourceConfig,
-        value_field: event.target.value.reference(),
+        value_field: Lib.legacyRef(query, STAGE_INDEX, column),
       });
     },
-    [sourceConfig, onChangeSourceConfig],
+    [query, sourceConfig, onChangeSourceConfig],
+  );
+
+  const handleLabelFieldChange = useCallback(
+    (column: Lib.ColumnMetadata | undefined) => {
+      if (query == null) {
+        return;
+      }
+      onChangeSourceConfig({
+        ...sourceConfig,
+        label_field:
+          column != null
+            ? Lib.legacyRef(query, STAGE_INDEX, column)
+            : undefined,
+      });
+    },
+    [query, sourceConfig, onChangeSourceConfig],
   );
 
   return (
@@ -317,30 +378,34 @@ const CardSourceModal = ({
             {question ? question.displayName() : t`Pick a model or question…`}
           </SelectButton>
         </ModalSection>
-        {question && (
-          <ModalSection>
-            <ModalLabel>{t`Column to supply the values`}</ModalLabel>
-            {fields.length ? (
-              <Select
-                value={selectedField}
+        {question && query != null && (
+          <>
+            <ColumnSelect
+              query={query}
+              columns={columns}
+              selectedColumn={selectedField}
+              label={t`Column to supply the values`}
+              placeholder={t`Pick a column…`}
+              emptyMessage={
+                <>
+                  {getErrorMessage(question, parameter)}{" "}
+                  {t`Please pick a different model or question.`}
+                </>
+              }
+              onChange={handleValueFieldChange}
+            />
+            {selectedField != null && labelColumns.length > 0 && (
+              <ColumnSelect
+                query={query}
+                columns={labelColumns}
+                selectedColumn={selectedLabelField}
+                label={t`Column to supply the labels`}
                 placeholder={t`Pick a column…`}
-                onChange={handleFieldChange}
-              >
-                {fields.map((field, index) => (
-                  <Option
-                    key={index}
-                    name={field.displayName()}
-                    value={field}
-                  />
-                ))}
-              </Select>
-            ) : (
-              <ModalErrorMessage>
-                {getErrorMessage(question, parameter)}{" "}
-                {t`Please pick a different model or question.`}
-              </ModalErrorMessage>
+                withNoneOption
+                onChange={handleLabelFieldChange}
+              />
             )}
-          </ModalSection>
+          </>
         )}
       </ModalPane>
       <ModalMain>
@@ -351,15 +416,81 @@ const CardSourceModal = ({
         ) : isError ? (
           <ModalEmptyState>{t`An error occurred in your query`}</ModalEmptyState>
         ) : (
-          <ModalTextArea value={valuesText} readOnly fullWidth />
+          <ModalTextArea
+            aria-label={t`Values`}
+            value={valuesText}
+            readOnly
+            fullWidth
+          />
         )}
       </ModalMain>
     </ModalBodyWithPane>
   );
 };
 
+interface ColumnSelectProps {
+  query: Lib.Query;
+  columns: Lib.ColumnMetadata[];
+  selectedColumn: Lib.ColumnMetadata | undefined;
+  label: string;
+  placeholder: string;
+  emptyMessage?: ReactNode;
+  withNoneOption?: boolean;
+  onChange: (column: Lib.ColumnMetadata | undefined) => void;
+}
+
+const NONE_VALUE = "none";
+
+const ColumnSelect = ({
+  query,
+  columns,
+  selectedColumn,
+  label,
+  placeholder,
+  emptyMessage,
+  withNoneOption,
+  onChange,
+}: ColumnSelectProps) => {
+  const value = (() => {
+    const selectedIndex =
+      selectedColumn !== undefined ? columns.indexOf(selectedColumn) : -1;
+    if (selectedIndex >= 0) {
+      return String(selectedIndex);
+    }
+    return withNoneOption ? NONE_VALUE : null;
+  })();
+
+  const handleChange = (newValue: string | null) => {
+    const isColumnSelected = newValue !== null && newValue !== NONE_VALUE;
+    onChange(isColumnSelected ? columns[Number(newValue)] : undefined);
+  };
+
+  return (
+    <ModalSection>
+      <ModalLabel>{label}</ModalLabel>
+      {columns.length > 0 ? (
+        <Select
+          value={value}
+          placeholder={placeholder}
+          data={[
+            ...(withNoneOption ? [{ value: NONE_VALUE, label: t`None` }] : []),
+            ...columns.map((column, index) => ({
+              value: String(index),
+              label: Lib.displayInfo(query, STAGE_INDEX, column).displayName,
+            })),
+          ]}
+          onChange={handleChange}
+        />
+      ) : emptyMessage != null ? (
+        <ModalErrorMessage>{emptyMessage}</ModalErrorMessage>
+      ) : null}
+    </ModalSection>
+  );
+};
+
 const getErrorMessage = (question: Question, parameter: Parameter) => {
-  const parameterType = getParameterType(parameter);
+  // avoids using the sectionId to determine the parameter type
+  const parameterType = getParameterType(parameter.type);
   const type = question.type();
 
   if (parameterType === "number") {
@@ -457,7 +588,7 @@ function ModelHint() {
   return (
     <Box mt="lg" p="md" className={S.info}>
       <Flex gap="md" align="center">
-        <Icon name="info_filled" color="text-dark" className={S.icon} />
+        <Icon name="info" c="text-primary" className={S.icon} />
         <div>
           {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
         </div>
@@ -470,32 +601,45 @@ const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
 };
 
-const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
-  return fields.find((field) => _.isEqual(field.reference(), fieldReference));
+const getQuestionBasedQuery = (question: Question) => {
+  const adhocQuestion = question.composeQuestion();
+  return adhocQuestion.query();
 };
 
-const getFieldFilter = (parameter: Parameter) => {
-  const type = getParameterType(parameter);
-  if (type === "number") {
-    return (field: Field) => field.isNumeric();
-  }
-  return (field: Field) => field.isString();
+const getColumnByReference = (
+  query: Lib.Query,
+  columns: Lib.ColumnMetadata[],
+  columnRef: FieldReference,
+) => {
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(query, 0, columns, [
+    columnRef,
+  ]);
+  return columns[columnIndex];
 };
 
-const getSupportedFields = (question: Question, parameter: Parameter) => {
-  const fieldFilter = getFieldFilter(parameter);
-  const fields =
-    question.composeQuestionAdhoc().legacyQueryTable()?.fields ?? [];
-  return fields.filter(fieldFilter);
+const getSupportedColumns = (query: Lib.Query, parameter: Parameter) => {
+  // avoids using the sectionId to determine the parameter type
+  const type = getParameterType(parameter.type);
+  return Lib.fieldableColumns(query, 0).filter((column) => {
+    if (type === "number") {
+      return Lib.isNumeric(column);
+    }
+    return Lib.isStringOrStringLike(column);
+  });
+};
+
+// Labels used for remapping are always text, regardless of the parameter type.
+const getLabelColumns = (query: Lib.Query) => {
+  return Lib.fieldableColumns(query, 0).filter((column) =>
+    Lib.isStringOrStringLike(column),
+  );
 };
 
 /**
  * if !hasFields(parameter) then exclude the option to set the source type to
  * "From connected fields" i.e. values_source_type=null
  */
-const getSourceTypeOptions = (
-  parameter: UiParameter,
-): RadioOption<ValuesSourceType>[] => {
+const getSourceTypeOptions = (parameter: UiParameter): SourceTypeOption[] => {
   return [
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
@@ -508,12 +652,6 @@ const getSourceTypeOptions = (
     { name: t`Custom list`, value: "static-list" },
   ];
 };
-
-interface ParameterValuesState {
-  values: ParameterValue[];
-  isLoading?: boolean;
-  isError?: boolean;
-}
 
 interface UseParameterValuesOpts {
   parameter: Parameter;
@@ -530,8 +668,6 @@ const useParameterValues = ({
   sourceConfig,
   onFetchParameterValues,
 }: UseParameterValuesOpts) => {
-  const [state, setState] = useState<ParameterValuesState>({ values: [] });
-  const handleFetchValues = useSafeAsyncFunction(onFetchParameterValues);
   const isValidSource = isValidSourceConfig(sourceType, sourceConfig);
 
   const parameter = useMemo(
@@ -543,35 +679,63 @@ const useParameterValues = ({
     [initialParameter, sourceType, sourceConfig],
   );
 
+  const [{ loading, error, value }, handleFetchValues] = useAsyncFn(
+    () => onFetchParameterValues({ parameter }),
+    [onFetchParameterValues, parameter],
+  );
+
   useLayoutEffect(() => {
     if (isValidSource) {
-      setState(({ values }) => ({ values, isLoading: true }));
-
-      handleFetchValues({ parameter })
-        .then(({ values }) => setState({ values }))
-        .catch(() => setState({ values: [], isError: true }));
+      handleFetchValues();
     }
-  }, [parameter, isValidSource, handleFetchValues]);
+  }, [isValidSource, handleFetchValues]);
 
-  return state;
+  return {
+    values: value?.values ?? [],
+    isLoading: loading,
+    isError: !!error,
+  };
 };
 
 const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Tables.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
-      card_id ? getQuestionVirtualTableId(card_id) : undefined,
-    fetchType: "fetchMetadataDeprecated",
-    requestType: "fetchMetadataDeprecated",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  Questions.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  connect(null, mapDispatchToProps),
+const ValuesSourceTypeModalConnected = connect(
+  null,
+  mapDispatchToProps,
 )(ValuesSourceTypeModal);
+
+// Loads the source card and its virtual-table query metadata into the store (so
+// the question and its connected fields are available) before rendering,
+// replacing the former Questions.load / Tables.load HOCs.
+function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
+  const { card_id } = props.sourceConfig;
+  const virtualTableId =
+    card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
+  const { isLoading: isMetadataLoading, error: metadataError } =
+    useGetTableQueryMetadataQuery(
+      virtualTableId != null ? { id: virtualTableId } : skipToken,
+    );
+  const { isLoading: isCardLoading, error: cardError } = useGetCardQuery(
+    card_id != null ? { id: card_id } : skipToken,
+  );
+  const question = useSelector((state) =>
+    card_id != null
+      ? (getMetadata(state).question(card_id) ?? undefined)
+      : undefined,
+  );
+
+  return (
+    <ModalLoadingAndErrorWrapper
+      loading={isMetadataLoading || isCardLoading}
+      error={metadataError ?? cardError}
+      noWrapper
+    >
+      <ValuesSourceTypeModalConnected {...props} question={question} />
+    </ModalLoadingAndErrorWrapper>
+  );
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ValuesSourceTypeModalLoader;

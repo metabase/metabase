@@ -1,20 +1,19 @@
 import { screen } from "__support__/ui";
-import { createMockDatabase } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts) {
   baseSetup({
-    hasEnterprisePlugins: true,
     tokenFeatures: { whitelabel: true },
+    enterprisePlugins: ["whitelabel"],
     ...opts,
   });
 }
 
 describe("NewModelOptions (EE with token)", () => {
   it("should render no data access notice when instance have no database access", async () => {
-    setup({ databases: [] });
+    setup({ canCreateQueries: false });
 
     expect(
       await screen.findByText("Metabase is no fun without any data"),
@@ -23,7 +22,7 @@ describe("NewModelOptions (EE with token)", () => {
 
   describe("has data access", () => {
     it("should render options for creating a model", async () => {
-      setup({ databases: [createMockDatabase()] });
+      setup({ canCreateQueries: true, canCreateNativeQueries: true });
 
       expect(
         await screen.findByText("Use the notebook editor"),
@@ -33,7 +32,11 @@ describe("NewModelOptions (EE with token)", () => {
 
     describe("whitelabel feature", () => {
       it("should not render help link when `show-metabase-links: false`", async () => {
-        setup({ databases: [createMockDatabase()], showMetabaseLinks: false });
+        setup({
+          canCreateQueries: true,
+          canCreateNativeQueries: true,
+          showMetabaseLinks: false,
+        });
 
         expect(
           await screen.findByText("Use the notebook editor"),
@@ -42,7 +45,11 @@ describe("NewModelOptions (EE with token)", () => {
       });
 
       it("should render help link when `show-metabase-links: true`", async () => {
-        setup({ databases: [createMockDatabase()], showMetabaseLinks: true });
+        setup({
+          canCreateQueries: true,
+          canCreateNativeQueries: true,
+          showMetabaseLinks: true,
+        });
 
         expect(await screen.findByText("What's a model?")).toBeInTheDocument();
       });

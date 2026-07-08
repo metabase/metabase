@@ -1,11 +1,13 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useToast } from "metabase/common/hooks";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettingValue,
   EnterpriseSettings,
+  SettingDefinition,
 } from "metabase-types/api";
 
 import { useGetSettingsQuery } from "../session";
@@ -26,10 +28,14 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   const {
     data: settings,
     isLoading: settingsLoading,
+    isFetching: settingsFetching,
     ...apiProps
   } = useGetSettingsQuery();
-  const { data: settingsDetails, isLoading: detailsLoading } =
-    useGetAdminSettingsDetailsQuery();
+  const {
+    data: settingsDetails,
+    isLoading: detailsLoading,
+    isFetching: detailsFetching,
+  } = useGetAdminSettingsDetailsQuery();
   const [updateSetting, updateSettingResult] = useUpdateSettingMutation();
   const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
 
@@ -56,7 +62,11 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       if (response.error) {
         const message = getErrorMessage(response.error, t`Error saving ${key}`);
 
-        sendToast({ message, icon: "warning", toastColor: "danger" });
+        sendToast({
+          message,
+          icon: "warning",
+          toastColor: "feedback-negative",
+        });
       } else {
         sendToast({ message: t`Changes saved` });
       }
@@ -83,7 +93,11 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
           (response.error as { data?: { message: string } })?.data?.message ||
           t`Error saving settings`;
 
-        sendToast({ message, icon: "warning", toastColor: "danger" });
+        sendToast({
+          message,
+          icon: "warning",
+          toastColor: "feedback-negative",
+        });
       } else {
         sendToast({ message: t`Changes saved`, icon: "check_filled" });
       }
@@ -92,7 +106,9 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     [updateSettings, sendToast],
   );
 
-  const settingValue = settings?.[settingName];
+  const settingValue = settings?.[
+    settingName
+  ] as EnterpriseSettingValue<SettingName>;
 
   return {
     value: settingValue,
@@ -101,6 +117,76 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     updateSetting: handleUpdateSetting,
     updateSettings: handleUpdateSettings,
     updateSettingResult,
+    updateSettingsResult,
+    isLoading: settingsLoading || detailsLoading,
+    isFetching: settingsFetching || detailsFetching,
+    ...apiProps,
+  };
+};
+
+/**
+ * Hook to get setting values and mutators for multiple settings
+ */
+export const useAdminSettings = <
+  SettingNames extends readonly EnterpriseSettingKey[],
+>(
+  settingNames: SettingNames,
+) => {
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    ...apiProps
+  } = useGetSettingsQuery();
+  const { data: settingsDetails, isLoading: detailsLoading } =
+    useGetAdminSettingsDetailsQuery();
+  const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
+
+  const [sendToast] = useToast();
+
+  const handleUpdateSettings = useCallback(
+    async ({
+      toast = true,
+      ...settings
+    }: { toast?: boolean } & Partial<EnterpriseSettings>) => {
+      const response = await updateSettings(settings);
+
+      if (toast) {
+        if (response.error) {
+          const message =
+            (response.error as { data?: { message: string } })?.data?.message ||
+            t`Error saving settings`;
+
+          sendToast({
+            message,
+            icon: "warning",
+            toastColor: "feedback-negative",
+          });
+        } else {
+          sendToast({ message: t`Changes saved`, icon: "check_filled" });
+        }
+      }
+
+      return response;
+    },
+    [updateSettings, sendToast],
+  );
+
+  type Values = { [K in SettingNames[number]]: EnterpriseSettings[K] };
+  const values = useMemo(() => {
+    return (settings ? _.pick(settings, ...settingNames) : {}) as Values;
+  }, [settings, settingNames]);
+
+  type Details = { [K in SettingNames[number]]: SettingDefinition<K> };
+  const details = useMemo(() => {
+    return (
+      settingsDetails ? _.pick(settingsDetails, ...settingNames) : {}
+    ) as Details;
+  }, [settingsDetails, settingNames]);
+
+  return {
+    values,
+    details,
+    updateSettings: handleUpdateSettings,
     updateSettingsResult,
     isLoading: settingsLoading || detailsLoading,
     ...apiProps,

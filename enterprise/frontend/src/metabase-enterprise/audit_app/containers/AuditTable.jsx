@@ -9,13 +9,14 @@ import _ from "underscore";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Flex } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
 import { AuditMode } from "../lib/mode";
 
-import { PaginationControlsContainer } from "./AuditTable.styled";
+import S from "./AuditTable.module.css";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
 
 const mapStateToProps = (state) => ({
@@ -80,8 +81,9 @@ function AuditTable({
         dispatch={dispatch}
         {...rest}
       />
-      <PaginationControlsContainer>
-        {shouldShowPagination && (
+
+      {shouldShowPagination && (
+        <Flex justify="flex-end" pt="md" className={S.paginationControls}>
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -89,11 +91,13 @@ function AuditTable({
             onNextPage={loadedCount === pageSize ? handleNextPage : null}
             onPreviousPage={handlePreviousPage}
           />
-        )}
-      </PaginationControlsContainer>
+        </Flex>
+      )}
+
       {children}
     </div>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps))(AuditTable);

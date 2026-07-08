@@ -1,5 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -23,6 +24,14 @@
   (update timeline :icon (fn [icon]
                            (if (= icon "balloons") timeline-event/default-icon icon))))
 
+(t2/define-before-insert :model/Timeline [model]
+  (collection/check-allowed-content :model/Timeline (:collection_id model))
+  model)
+
+(t2/define-before-update :model/Timeline [model]
+  (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
+  model)
+
 ;;;; functions
 
 (defn timelines-for-collection
@@ -43,8 +52,13 @@
   [_timeline]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
-(defmethod serdes/dependencies "Timeline" [{:keys [collection_id]}]
+(defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
+
+(defmethod serdes/serialization-dependencies "Timeline" [_model-name {:keys [collection_id]}]
+  ;; A Timeline only references its containing Collection, which a selective export may legitimately omit.
+  (when collection_id
+    #{[{:model "Collection" :id collection_id}]}))
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
@@ -52,4 +66,5 @@
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               :events        (serdes/nested :model/TimelineEvent :timeline_id opts)}})
+               :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :created_at)} opts))}
+   :defaults  {:archived false :default false}})

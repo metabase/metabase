@@ -1,6 +1,7 @@
 const { H } = cy;
 import { StaticDashboard } from "@metabase/embedding-sdk-react";
 
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
@@ -10,6 +11,8 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+
+const { WEB_PORT } = WEBMAIL_CONFIG;
 
 describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
@@ -134,6 +137,33 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
           cy.findByText("Orders").should("not.exist");
           H.tableInteractiveBody().should("not.exist");
           cy.findByText("Test text card").should("not.exist");
+        });
+      });
+    });
+  });
+
+  describe("subscriptions", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.setupSMTP();
+      cy.signOut();
+    });
+
+    it("should not include links to Metabase", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <StaticDashboard dashboardId={dashboardId} withSubscriptions />,
+        );
+
+        cy.button("Subscriptions").click();
+        H.clickSend();
+        const emailUrl = `http://localhost:${WEB_PORT}/email`;
+        cy.request("GET", emailUrl).then(({ body }) => {
+          const latest = body.slice(-1)[0];
+          cy.request(`${emailUrl}/${latest.id}/html`).then(({ body }) => {
+            expect(body).to.include("Embedding SDK Test Dashboard");
+            expect(body).not.to.include("href=");
+          });
         });
       });
     });

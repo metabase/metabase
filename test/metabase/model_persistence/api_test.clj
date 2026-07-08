@@ -103,6 +103,7 @@
                                        (.setProperty "org.quartz.threadPool.threadCount" "6")
                                        (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
     ;; a binding won't work since we need to cross thread boundaries
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
     (with-redefs [task/scheduler (constantly sched)]
       (try
         (qs/standby sched)
@@ -214,12 +215,10 @@
           (testing "requires persist setting to be enabled"
             (is (= "Persisting models is not enabled."
                    (mt/user-http-request :crowberto :post 400 (str "persist/database/" db-id "/persist"))))))
-
         (mt/with-temporary-setting-values [persisted-models-enabled true]
           (testing "only users with permissions can persist a database"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 (str "persist/database/" db-id "/persist")))))
-
           (testing "should be able to persit an database"
             (mt/user-http-request :crowberto :post 204 (str "persist/database/" db-id "/persist"))
             (is (= "creating" (t2/select-one-fn :state 'PersistedInfo

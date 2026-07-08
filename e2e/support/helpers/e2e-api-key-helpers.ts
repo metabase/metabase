@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-direct-helper-import
+// eslint-disable-next-line metabase/no-direct-helper-import
 import { H } from "e2e/support";
 
 export const tryToCreateApiKeyViaModal = ({
@@ -9,11 +9,11 @@ export const tryToCreateApiKeyViaModal = ({
   group: string | RegExp;
 }) => {
   cy.findByTestId("api-keys-settings-header")
-    .button(/create api key/i)
+    .button(/create an api key/i)
     .click();
   H.modal().within(() => {
     cy.findByLabelText(/Key name/).type(name);
-    cy.findByLabelText(/group/).click();
+    cy.findByLabelText(/group/i).click();
   });
 
   H.selectDropdown()

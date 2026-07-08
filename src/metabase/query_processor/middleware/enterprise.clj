@@ -26,7 +26,7 @@
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [query]
   query)
 
@@ -41,6 +41,26 @@
   metabase-enterprise.impersonation.middleware
   [query]
   query)
+
+(defenterprise currently-impersonated?
+  "True when a connection-impersonation role is bound for the current query. Read from the enterprise
+  impersonation dynamic var. OSS: always false."
+  metabase-enterprise.impersonation.middleware
+  []
+  false)
+
+(defenterprise currently-db-routed?
+  "True when DB routing has swapped in a destination DB for the current query. Read from the enterprise
+  database-routing dynamic var. OSS: always false."
+  metabase-enterprise.database-routing.middleware
+  []
+  false)
+
+(defenterprise currently-destination-database-id
+  "Destination DB id when DB routing has swapped one in for the current query, else nil. OSS: always nil."
+  metabase-enterprise.database-routing.middleware
+  []
+  nil)
 
 (defn apply-impersonation-postprocessing-middleware
   "Helper middleware wrapper for [[apply-impersonation-postprocessing]] to make sure we do [[defenterprise]] dispatch
@@ -57,7 +77,40 @@
   [query]
   query)
 
+(defenterprise apply-workspace-remapping
+  "**Workspace remapping, Phase 1 — preprocess.** Mutates cached MBQL table metadata so
+   downstream middleware and HoneySQL compilation see workspace identifiers.
+
+   Phase 1 is for pipeline coherence; Phase 2 ([[apply-workspace-sql-remapping]]) is the
+   authoritative security boundary. Native SQL is intentionally untouched here. See the EE
+   impl namespace docstring for the full design rationale."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [query]
+  query)
+
 ;;;; Execution middleware
+
+(defenterprise apply-workspace-sql-remapping
+  "**Workspace remapping, Phase 2 — execute (post-compilation).** Authoritative SQL rewriter
+   and the security boundary for workspace isolation.
+
+   Runs after all preprocess work — snippets, card refs, params, and MBQL compilation are
+   complete — so the query is reduced to one canonical SQL string. Parses it, rewrites every
+   `from` table ref to its `to` counterpart, re-emits.
+
+   **Fails closed:** on parse failure throws `ex-info` with `:type qp.error-type/qp`. There
+   is no fallback to the original SQL — a silent pass-through would breach workspace
+   isolation."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [qp]
+  qp)
+
+(defn apply-workspace-sql-remapping-middleware
+  "Helper middleware wrapper for [[apply-workspace-sql-remapping]] to make sure we do [[defenterprise]] dispatch
+  correctly on each QP run rather than just once when we combine all of the QP middleware."
+  [qp]
+  (fn [query rff]
+    ((apply-workspace-sql-remapping qp) query rff)))
 
 ;;; (f qp) => qp
 
@@ -91,19 +144,6 @@
   (fn [query rff]
     ((check-download-permissions qp) query rff)))
 
-(defenterprise maybe-apply-column-level-perms-check
-  "Execution middleware. Check column-level permissions if applicable."
-  metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check
-  [qp]
-  qp)
-
-(defn maybe-apply-column-level-perms-check-middleware
-  "Helper middleware wrapper for [[maybe-apply-column-level-perms-check]] to make sure we do [[defenterprise]] dispatch
-  correctly on each QP run rather than just once when we combine all of the QP middleware."
-  [qp]
-  (fn [query rff]
-    ((maybe-apply-column-level-perms-check qp) query rff)))
-
 ;;;; Post-processing middleware
 
 ;;; (f query rff) => rff
@@ -118,7 +158,7 @@
 
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [_query rff]
   rff)
 

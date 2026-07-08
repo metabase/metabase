@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { fetchWithTimeout } from "metabase/lib/fetchWithTimeout";
+import { fetchWithTimeout } from "metabase/utils/fetchWithTimeout";
 
 import { AdminSettingInput } from "./AdminSettingInput";
 
@@ -25,7 +25,11 @@ export function HttpsOnlyWidget() {
     setStatus(Status.CHECKING);
     fetchWithTimeout(siteUrl + "/api/health", { timeout: 10000 })
       .then((response) => {
-        response.ok ? setStatus(Status.VERIFIED) : setStatus(Status.FAILED);
+        if (response.ok) {
+          setStatus(Status.VERIFIED);
+        } else {
+          setStatus(Status.FAILED);
+        }
       })
       .catch(() => {
         setStatus(Status.FAILED);

@@ -35,7 +35,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 In this example, we’ll secure our `Orders` table so that anyone in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the person's `user_id` attribute.
 
-1. **Go to the Admin settings > Permissions > data**. Click on the "Customers" group.
+1. **Go to the Admin > Permissions > data**. Click on the "Customers" group.
 
 2. **Set View data to Granular**. For the Sample Database, set the Customer group's [View data](./data.md#view-data-permissions) to "Granular". Setting to "Granular" will allow us to set up permissions on individual tables for the Customer group.
 
@@ -95,7 +95,7 @@ Here are the results:
 
 We'll call this question "Filtered people table". Save it to the "Admins collection" you created in the setup (or any collection that only Admins have access to).
 
-2. **Use a SQL question to create a custom view for this table**: We'll go to the Permissions section and grant this group row and column secuity to this table. This time we'll select the second option, "Use a saved question to create a custom view for this table", and select the question we just created ("Filtered people table"), like so:
+2. **Use a SQL question to create a custom view for this table**: We'll go to the Permissions section and grant this group row and column security to this table. This time we'll select the second option, "Use a saved question to create a custom view for this table", and select the question we just created ("Filtered people table"), like so:
 
 ![Using a question to create a custom view](images/question-modal.png)
 

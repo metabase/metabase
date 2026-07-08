@@ -1,0 +1,19 @@
+.segmentsLink {
+  border-radius: 8px;
+  cursor: pointer;
+
+  &:hover,
+  &.active {
+    background-color: var(--mb-color-background_surface-hover);
+    color: var(--mb-color-core-brand);
+
+    .segmentsIcon {
+      opacity: 1;
+    }
+  }
+}
+
+.segmentsIcon {
+  opacity: 0.5;
+  flex-shrink: 0;
+}

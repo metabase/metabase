@@ -1,4 +1,4 @@
-import * as Errors from "metabase/lib/errors";
+import * as Errors from "metabase/utils/errors";
 
 import { LICENSE_TOKEN_SCHEMA } from "./constants";
 

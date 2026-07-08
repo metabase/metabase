@@ -24,7 +24,7 @@ WHERE
 {% endraw %}
 ```
 
-These basic variabless simply plug in the values set by the widget into the placeholder in the code. Basic variables have a different syntax than [field filters](./sql-parameters.md).
+These basic variables simply plug in the values set by the widget into the placeholder in the code. Basic variables have a different syntax than [field filters](./sql-parameters.md).
 
 Here's the [field filter](./field-filters.md) syntax:
 

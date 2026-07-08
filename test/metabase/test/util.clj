@@ -20,8 +20,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.lib.core :as lib]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions-group-membership :as pgm]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -35,6 +37,7 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
@@ -53,7 +56,12 @@
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
    (org.eclipse.jetty.server Server)
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    Scheduler
+    Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -132,6 +140,12 @@
             {:name (u.random/random-name)
              :channel_type "channel/metabase-test"}))
 
+   :model/Comment
+   (fn [_] (default-timestamped
+            {:target_type "document"
+             :creator_id  (rasta-id)
+             :content     {:text (u.random/random-name)}}))
+
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -168,6 +182,21 @@
             {:name (u.random/random-name)
              :type "internal"}))
 
+   :model/Document
+   (fn [_] (default-timestamped
+            {:name (u.random/random-name)
+             :document {:type "doc"
+                        :content [{:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "Hello"}]}
+                                  {:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "World"}]}]}
+             :content_type "application/json+vnd.prose-mirror"
+             :creator_id (rasta-id)}))
+
    :model/Field
    (fn [_] (default-timestamped
             {:database_type "VARCHAR"
@@ -181,6 +210,31 @@
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
             :ip_address "0:0:0:0:0:0:0:1"
             :timestamp (t/zoned-date-time)})
+
+   :model/Measure
+   (fn [_] (default-timestamped
+            {:creator_id (rasta-id)
+             :definition {}
+             :name "Mock Measure"
+             :table_id (data/id :checkins)}))
+
+   :model/MetabotConversation
+   (fn [_] {:id      (str (random-uuid))
+            :user_id (rasta-id)})
+
+   :model/MetabotMessage
+   ;; `:conversation_id` is required and has no sensible default — callers must provide one.
+   (fn [_] {:role         "assistant"
+            :profile_id   "gpt-5"
+            :total_tokens 0
+            :data         []})
+
+   :model/AiUsageLog
+   (fn [_] {:source            "test"
+            :model             "test/model"
+            :prompt_tokens     0
+            :completion_tokens 0
+            :total_tokens      0})
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
@@ -248,19 +302,6 @@
              :schedule_type :daily
              :schedule_hour 15}))
 
-   :model/Document
-   (fn [_] (default-timestamped
-            {:name (u.random/random-name)
-             :document {:type "doc"
-                        :content [{:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "Hello"}]}
-                                  {:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "World"}]}]}
-             :content_type "application/json+vnd.prose-mirror"
-             :creator_id (rasta-id)}))
-
    :model/Revision
    (fn [_] {:user_id (rasta-id)
             :is_creation false
@@ -317,18 +358,17 @@
    (fn [_]
      {:name (str "Test Transform " (u/generate-nano-id))
       :source {:type  "query"
-               :query {:database (data/id)
-                       :type     "native"
-                       :native   {:query         "SELECT 1 as num"
-                                  :template-tags {}}}}
+               :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
-               :name (str "test_table_" (u/generate-nano-id))}})
+               :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
+               :database (data/id)}})
 
    :model/TransformJob
    (fn [_]
      (default-timestamped
-      {:name (str "Test Transform Job " (u/generate-nano-id))
-       :schedule "0 0 * * * ?"}))
+      {:name            (str "Test Transform Job " (u/generate-nano-id))
+       :schedule        "0 0 * * * ?"
+       :ui_display_type :cron/raw}))
 
    :model/TransformRun
    (fn [_]
@@ -342,13 +382,38 @@
      (default-timestamped
       {:name (str "test-tag-" (u/generate-nano-id))}))
 
+   :model/Tenant
+   (fn [_]
+     {:slug (u/lower-case-en (u.random/random-name))
+      :name (u.random/random-name)})
+
    :model/User
    (fn [_] {:first_name (u.random/random-name)
             :last_name (u.random/random-name)
             :email (u.random/random-email)
             :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
-            :updated_at (t/zoned-date-time)})})
+            :updated_at (t/zoned-date-time)})
+
+   :model/Workspace
+   (fn [_] (default-timestamped
+            {:name       (u.random/random-name)
+             :creator_id (rasta-id)}))
+
+   :model/WorkspaceDatabase
+   (fn [_] (default-timestamped
+            {:database_id      (data/id)
+             :database_details {}
+             :input_schemas    []
+             :output_namespace ""
+             :status           :unprovisioned}))})
+
+;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
+;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
+  [model explicit-attributes f]
+  (binding [pgm/*allow-direct-deletion* true]
+    (next-method model explicit-attributes f)))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -432,7 +497,6 @@
     (testing "Setting value"
       (is (= "abc"
              (with-temp-env-var-value-test-setting)))))
-
   (testing "override multiple env vars"
     (with-temp-env-var-value! [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
       (testing "Should convert values to strings"
@@ -441,7 +505,6 @@
       (testing "should handle CAPITALS/SNAKE_CASE"
         (is (= "def"
                (:another-fake-env-var env/env))))))
-
   (testing "validation"
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
@@ -451,9 +514,12 @@
 
 (defn- upsert-raw-setting!
   [original-value setting-k value]
-  (if original-value
-    (t2/update! :model/Setting setting-k {:value value})
-    (t2/insert! :model/Setting :key setting-k :value value))
+  (if (some? value)
+    (if original-value
+      (t2/update! :model/Setting setting-k {:value value})
+      (t2/insert! :model/Setting :key setting-k :value value))
+    (when original-value
+      (t2/delete! :model/Setting :key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
@@ -498,7 +564,7 @@
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
-              (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
+              (dynamic-redefs/with-dynamic-fn-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                 (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
@@ -513,7 +579,7 @@
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
-                (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
+                (dynamic-redefs/with-dynamic-fn-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                   (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
@@ -564,8 +630,8 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (let [value (setting/read-setting setting-k)]
-          (do-with-temporary-setting-value! setting-k value thunk :skip-init? true))))
+        (let [value (setting/get setting-k)]
+          (do-with-temporary-setting-value! setting-k value thunk))))
     thunk
     settings)))
 
@@ -580,6 +646,24 @@
   {:style/indent 1}
   [settings & body]
   `(do-with-discarded-setting-changes! ~(mapv keyword settings) (fn [] ~@body)))
+
+(defmacro with-random-premium-token!
+  "Temporarily sets a premium embedding token to a random value and stubs token check to avoid
+  triggering premium token status checks. Use like:
+
+  (mt/with-random-premium-token [token-value]
+    (some-call))
+
+  The token-value binding will contain the random token that was set."
+  [[token-value] & body]
+  `(let [~token-value (premium-features.test-util/random-token)]
+     (with-redefs [metabase.premium-features.token-check/check-token
+                   (constantly {:valid    true
+                                :status   "fake"
+                                :features ["test" "fixture"]
+                                :trial    false})]
+       (with-temporary-raw-setting-values [:premium-embedding-token ~token-value]
+         ~@body))))
 
 (defn- maybe-merge-original-values
   "For some map columns like `Database.settings` or `User.settings`, merge the original values with the temp ones to
@@ -700,10 +784,10 @@
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
         (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
-          (with-redefs [qs/initialize (constantly temp-scheduler)
-                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                        ;; after it's done, but we need the scheduler for testing
-                        qs/shutdown (constantly nil)]
+          (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
+                                                  ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                                                  ;; after it's done, but we need the scheduler for testing
+                                                  qs/shutdown (constantly nil)]
             (thunk)))
         (finally
           (qs/shutdown temp-scheduler))))))
@@ -829,16 +913,18 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let [old-max-id (get model->old-max-id model)
                       max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)]]
+                      additional-conditions (with-model-cleanup-additional-conditions model)
+                      where-clause [:and max-id-condition additional-conditions]]]
           (t2/query-one
            {:delete-from (t2/table-name model)
-            :where [:and max-id-condition additional-conditions]}))
+            :where where-clause}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
-  "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
-  defined any `pre-delete` behavior, that will be preserved.
+  "Execute `body`, then delete any *new* rows created for each model in `models`.
+
+   Uses raw SQL DELETE for performance. Does not trigger `before-delete`/`after-delete` hooks.
 
   It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
   situation (e.g. when creating objects via the API).
@@ -851,7 +937,16 @@
       (created-query-cache!)
       (is cached?))
 
-  Only works for models that have a numeric primary key e.g. `:id`."
+  Only works for models that have a numeric primary key e.g. `:id`.
+
+  # TODO (Cam 9/29/25)
+
+  I'm planning on deprecating and removing this in near future. Instead of using this you can do
+
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      ...)
+
+  which is thread-safe."
   [models & body]
   `(do-with-model-cleanup ~models (fn [] ~@body)))
 
@@ -875,30 +970,29 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
 
-(defn do-with-verified-cards!
-  "Impl for [[with-verified-cards!]]."
-  [card-or-ids thunk]
+(defn do-with-verified!
+  "Impl for [[with-verified!]]."
+  [cards-or-dashes thunk]
   (with-model-cleanup [:model/ModerationReview]
-    (doseq [card-or-id card-or-ids]
+    (doseq [[item-type model-or-ids] cards-or-dashes
+            model-or-id              model-or-ids]
       (doseq [status ["verified" nil "verified"]]
         ;; create multiple moderation review for a card, but the end result is it's still verified
         (moderation-review/create-review!
-         {:moderated_item_id (u/the-id card-or-id)
-          :moderated_item_type "card"
-          :moderator_id ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status status})))
+         {:moderated_item_id   (u/the-id model-or-id)
+          :moderated_item_type (name item-type)
+          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+          :status              status})))
     (thunk)))
 
-(defmacro with-verified-cards!
+(defmacro with-verified!
   "Execute the body with all `card-or-ids` verified."
-  [card-or-ids & body]
-  `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
+  [cards-or-dashes & body]
+  `(do-with-verified! ~cards-or-dashes (fn [] ~@body)))
 
-(deftest with-verified-cards-test
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (t2.with-temp/with-temp
-    [:model/Card {card-id :id} {}]
-    (with-verified-cards! [card-id]
+(deftest with-verified-test
+  (t2.with-temp/with-temp [:model/Card {card-id :id} {}]
+    (with-verified! {:card [card-id]}
       (is (=? #{{:moderated_item_id card-id
                  :moderated_item_type :card
                  :most_recent true
@@ -939,6 +1033,7 @@
         called-query? (promise)
         pause-query (promise)
         query-thunk (fn []
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       (data/run-mbql-query checkins
                         {:aggregation [[:count]]}))
         ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
@@ -1029,31 +1124,25 @@
     [:model/Card {card-id :id :as card} {:name "A Card"}
      :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
-
       (testing "with single model"
         (with-discard-model-updates! [:model/Card]
           (t2/update! :model/Card card-id {:name "New Card name"})
           (testing "the changes takes affect inside the macro"
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
-
         (testing "outside macro, the changes should be reverted"
           (is (= card (t2/select-one :model/Card card-id)))))
-
       (testing "with multiple models"
         (with-discard-model-updates! [:model/Card :model/Dashboard]
           (testing "the changes takes affect inside the macro"
             (t2/update! :model/Card card-id {:name "New Card name"})
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
-
             (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
             (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
-
         (testing "outside macro, the changes should be reverted"
           (is (= (dissoc card :updated_at)
                  (dissoc (t2/select-one :model/Card card-id) :updated_at)))
           (is (= (dissoc dash :updated_at)
                  (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
-
       (testing "make sure that we cleaned up the aux methods after"
         (is (= count-aux-method-before
                (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
@@ -1075,7 +1164,9 @@
     (finally
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup
+                                            :id [:not= (u/the-id (perms/admin-group))]
+                                            :is_tenant_group false)]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -1233,6 +1324,7 @@
          (= (first x) 'values-of))
     (let [[_ table+field] x
           [table field] (str/split (str table+field) #"\.")]
+      #_{:clj-kondo/ignore [:deprecated-var]}
       `(into {} (get-in (data/run-mbql-query ~(symbol table)
                           {:fields [~'$id ~(symbol (str \$ field))]})
                         [:data :rows])))
@@ -1363,7 +1455,6 @@
         (reset! temp-filename filename))
       (testing "File should be deleted at end of macro form"
         (is (not (.exists (io/file @temp-filename)))))))
-
   (testing "explicit filename"
     (with-temp-file [filename "parrot-list.txt"]
       (is (string? filename))
@@ -1373,7 +1464,6 @@
       (testing "should delete existing file"
         (with-temp-file [filename "parrot-list.txt"]
           (is (not (.exists (io/file filename))))))))
-
   (testing "multiple bindings"
     (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
       (is (string? filename))
@@ -1382,13 +1472,11 @@
       (is (not (.exists (io/file filename-2))))
       (is (not (str/ends-with? filename "parrot-list.txt")))
       (is (str/ends-with? filename-2 "parrot-list.txt"))))
-
   (testing "should delete existing file"
     (with-temp-file [filename "parrot-list.txt"]
       (spit filename "wow")
       (with-temp-file [filename "parrot-list.txt"]
         (is (not (.exists (io/file filename)))))))
-
   (testing "validation"
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
@@ -1489,7 +1577,7 @@
                      actual)
 
         (map? expected)
-    ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
+        ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
         (select-keys actual (keys expected))
 
         :else
@@ -1514,6 +1602,16 @@
   [^bytes bs]
   (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
 
+(defn format-env-key ^String [env-key]
+  (let [[_ header body footer]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+|\\n" "\n") footer)))
+
+(defn priv-key->base64-uri [priv-key]
+  (-> (format-env-key priv-key)
+      u/string-to-bytes
+      bytes->base64-data-uri))
+
 (defn works-after
   "Returns a function which works as `f` except that on the first `n` calls an
   exception is thrown instead.
@@ -1537,6 +1635,19 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
+
+(defn all-entries-for
+  "Return all audit log entries for a particular object. If you omit the topic, will get all audit logs. You must
+  provide a model so we can disambiguate dash 4 from card 4."
+  [topic model model-id]
+  (assert (int? model-id) "Must provide an integer id for the model")
+  (assert (isa? model :metabase/model))
+  (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
+             {:order-by [[:id :desc]]
+              :where [:and
+                      [:= :model (name model)]
+                      [:= :model_id model-id]
+                      (when topic [:= :topic (name topic)])]}))
 
 (defn repeat-concurrently
   "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."

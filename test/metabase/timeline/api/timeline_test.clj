@@ -66,6 +66,18 @@
         (is (= '()
                (->> (collection-timelines-request coll-c true) first :events)))))))
 
+(deftest collection-archived-timelines-test
+  (testing "GET /api/timeline/collection/:id?archived=true returns only archived timelines"
+    (mt/with-temp [:model/Collection coll-b {:name "Collection B"}
+                   :model/Timeline _tl-b     {:name          "Timeline B"
+                                              :collection_id (u/the-id coll-b)}
+                   :model/Timeline _tl-b-old {:name          "Timeline B-old"
+                                              :collection_id (u/the-id coll-b)
+                                              :archived      true}]
+      (is (= #{"Timeline B-old"}
+             (timeline-names (mt/user-http-request :rasta :get 200
+                                                   (str "timeline/collection/" (u/the-id coll-b)) :archived true)))))))
+
 (deftest collection-timelines-permissions-test
   (testing "GET /api/timeline/collection/:id"
     (mt/with-temp [:model/Collection coll-a {:name "Collection A"}

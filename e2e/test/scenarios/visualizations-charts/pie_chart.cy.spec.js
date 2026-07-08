@@ -117,7 +117,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     // flakiness prevention
-    cy.findByTestId("chart-container").findByText("TOTAL").should("be.visible");
+    cy.findByTestId("chart-container").findByText("Total").should("be.visible");
     cy.findByTestId("view-footer")
       .findByText("Showing 4 rows")
       .should("be.visible");
@@ -172,7 +172,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL").should("not.exist");
+      cy.findByText("Total").should("not.exist");
     });
 
     H.leftSidebar().within(() => {
@@ -180,44 +180,9 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText("Total").should("be.visible");
     });
   });
-
-  // Skipping since the mousemove trigger flakes too often, and there's already a loki
-  // test to cover truncation
-  it(
-    "should truncate the center dimension label if it overflows",
-    { tags: "@skip" },
-    () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            expressions: {
-              category_foo: [
-                "concat",
-                ["field", PRODUCTS.CATEGORY, null],
-                " the quick brown fox jumps over the lazy dog",
-              ],
-            },
-            aggregation: [["count"]],
-            breakout: [["expression", "category_foo"]],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "pie",
-      });
-
-      H.chartPathWithFillColor("#A989C5").as("slice");
-      cy.get("@slice").trigger("mousemove");
-
-      cy.findByTestId("query-visualization-root")
-        .findByText("WIDGET THE QUICK BROWN FOX JUMP…")
-        .should("be.visible");
-    },
-  );
 
   it("should add new slices to the chart if they appear in the query result", () => {
     H.visitQuestionAdhoc({
@@ -254,8 +219,10 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
 
-    H.moveDnDKitElement(H.getDraggableElements().contains("Woooget"), {
+    H.getDraggableElements().contains("Woooget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 100,
+      useMouseEvents: true,
     });
 
     ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
@@ -276,8 +243,10 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByTestId("Gadget-settings-button").click();
     cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
-    H.moveDnDKitElement(H.getDraggableElements().contains("Katget"), {
+    H.getDraggableElements().contains("Katget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 30,
+      useMouseEvents: true,
     });
 
     changeRowLimit(2, 4);
@@ -322,14 +291,14 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
     H.openVizSettingsSidebar();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -337,11 +306,11 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -351,7 +320,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("Product → Category").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
     );
 
@@ -361,7 +330,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.popover().findByText("User → Source").click();
 
     ensurePieChartRendered(
-      ["2022", "2023", "2024", "2025", "2026"],
+      ["2025", "2026", "2027", "2028", "2029"],
       ["Doohickey", "Gadget", "Gizmo", "Widget"],
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
@@ -400,50 +369,51 @@ describe("scenarios > visualizations > pie chart", () => {
         cy.findByText("Saturday").as("saturdaySlice").trigger("mousemove");
       });
 
+      // All the assertions after this point are fragile and susceptible to breaking when we shift years in the Sample Database
       H.assertEChartsTooltip({
         header: "Created At: Day of week",
         rows: [
           {
             color: "#51528D",
             name: "Saturday",
-            value: "2,747",
-            secondaryValue: "14.64 %",
+            value: "2,661",
+            secondaryValue: "14.18 %",
           },
           {
             color: "#ED8535",
             name: "Thursday",
-            value: "2,698",
-            secondaryValue: "14.38 %",
+            value: "2,646",
+            secondaryValue: "14.10 %",
           },
           {
             color: "#E75454",
             name: "Tuesday",
-            value: "2,695",
-            secondaryValue: "14.37 %",
+            value: "2,590",
+            secondaryValue: "13.81 %",
           },
           {
             color: "#689636",
             name: "Sunday",
-            value: "2,671",
-            secondaryValue: "14.24 %",
+            value: "2,678",
+            secondaryValue: "14.28 %",
           },
           {
             color: "#8A5EB0",
             name: "Monday",
-            value: "2,664",
-            secondaryValue: "14.20 %",
+            value: "2,719",
+            secondaryValue: "14.49 %",
           },
           {
             color: "#69C8C8",
             name: "Friday",
-            value: "2,662",
-            secondaryValue: "14.19 %",
+            value: "2,690",
+            secondaryValue: "14.34 %",
           },
           {
             color: "#F7C41F",
             name: "Wednesday",
-            value: "2,623",
-            secondaryValue: "13.98 %",
+            value: "2,776",
+            secondaryValue: "14.80 %",
           },
         ],
       });
@@ -455,7 +425,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
       cy.findByTestId("qb-filters-panel").within(() => {
-        cy.findByText("Count is equal to 2747").should("be.visible");
+        cy.findByText("Count is equal to 2661").should("be.visible");
       });
 
       cy.go("back");
@@ -481,27 +451,27 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
       H.assertEChartsTooltip({
-        header: "Saturday",
+        header: "Wednesday",
         rows: [
           {
             name: "Doohickey",
-            value: "606",
-            secondaryValue: "22.06 %",
+            value: "603",
+            secondaryValue: "21.72 %",
           },
           {
             name: "Gadget",
-            value: "740",
-            secondaryValue: "26.94 %",
+            value: "745",
+            secondaryValue: "26.84 %",
           },
           {
             name: "Gizmo",
-            value: "640",
-            secondaryValue: "23.30 %",
+            value: "666",
+            secondaryValue: "23.99 %",
           },
           {
             name: "Widget",
-            value: "761",
-            secondaryValue: "27.70 %",
+            value: "762",
+            secondaryValue: "27.45 %",
           },
         ],
       });
@@ -513,7 +483,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
 
       cy.findByTestId("qb-filters-panel").within(() => {
-        cy.findByText("Count is equal to 606").should("be.visible");
+        cy.findByText("Count is equal to 603").should("be.visible");
       });
     });
   });
@@ -572,11 +542,11 @@ describe("scenarios > visualizations > pie chart", () => {
       H.visitDashboard(dashboard_id);
     });
 
-    confirmSliceClickBehavior("2025", 6578);
+    confirmSliceClickBehavior("2028", 6578);
     confirmSliceClickBehavior("Affiliate", 1270, 0);
     confirmSliceClickBehavior("Doohickey", 282, 0);
 
-    confirmSliceClickBehavior("2024", 5834);
+    confirmSliceClickBehavior("2027", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
   });
@@ -604,7 +574,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.echartsContainer().findByText("79%").realHover();
 
     H.assertEChartsTooltip({
-      header: "2024",
+      header: "2027",
       rows: [
         {
           name: "Affiliate",
@@ -703,7 +673,7 @@ function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
     if (totalValue != null) {
-      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText("Total").should("be.visible");
       cy.findByText(totalValue).should("be.visible");
     }
 
@@ -759,7 +729,7 @@ function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
     if (elementIndex == null) {
       cy.findByText(sliceLabel).click({ force: true });
     } else {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
     }
   });

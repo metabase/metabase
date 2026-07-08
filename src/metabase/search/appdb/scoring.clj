@@ -41,8 +41,8 @@
 
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [{:keys [search-string limit-int] :as search-ctx}]
-  (if (and limit-int (zero? limit-int))
+  [{:keys [search-string] :as search-ctx}]
+  (if (search.scoring/no-scoring-required? search-ctx)
     {:model       [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
@@ -56,13 +56,17 @@
      :model        (search.scoring/model-rank-expr search-ctx)
      :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
      :exact        (if search-string
-                     ;; perform the lower casing within the database, in case it behaves differently to our helper
-                     (search.scoring/equal [:lower :search_index.name] [:lower search-string])
+                     ;; normalize both sides in the database, in case it behaves differently to our helper
+                     (search.scoring/equal (search.scoring/normalize-text-expr :search_index.name)
+                                           (search.scoring/normalize-text-expr search-string))
                      [:inline 0])
      :prefix       (if search-string
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                     (search.scoring/prefix [:lower :search_index.name] (u/lower-case-en search-string))
-                     [:inline 0])}))
+                     (search.scoring/prefix (search.scoring/normalize-text-expr :search_index.name)
+                                            (search.scoring/normalize-text search-string))
+                     [:inline 0])
+     :library      (search.scoring/library-score-expr)
+     :data-layer   (search.scoring/data-layer-score-expr search-ctx)}))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

@@ -6,8 +6,9 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -15,9 +16,8 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
-import QuestionDownloadPopover from "./QuestionDownloadPopover";
+import { QuestionDownloadPopover } from "./QuestionDownloadPopover";
 
 const TEST_CARD = createMockCard({
   dataset_query: createMockStructuredDatasetQuery({

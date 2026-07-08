@@ -1,0 +1,109 @@
+import cx from "classnames";
+import type { Location } from "history";
+import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
+import { FilteredToUrlTable } from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
+import { useListSegmentsQuery } from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
+import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { getShallowTables } from "metabase/selectors/metadata";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Button } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { Segment } from "metabase-types/api";
+
+interface Props {
+  segments: Segment[];
+  tableSelector: ReactNode;
+}
+
+function SegmentListAppInner({ segments, tableSelector }: Props) {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
+  const tables = useSelector(getShallowTables);
+  const archive = useSetArchive();
+  const trackSegmentCreateClick = () => {
+    trackSegmentCreateStarted("admin_datamodel_segments");
+  };
+
+  return (
+    <div
+      className={cx(CS.px3, CS.pb2, CS.wrapper, CS.scrollY, CS.bgWhite)}
+      data-testid="segment-list-app"
+    >
+      <div className={cx(CS.flex, CS.py2)}>
+        {tableSelector}
+        {isAdmin && (
+          <Link
+            className={CS.mlAuto}
+            onAuxClick={trackSegmentCreateClick}
+            onClickCapture={trackSegmentCreateClick}
+            to={Urls.newDataModelSegment()}
+          >
+            <Button variant="filled">{t`New segment`}</Button>
+          </Link>
+        )}
+      </div>
+
+      <table className={AdminS.AdminTable}>
+        <thead className={CS.textBold}>
+          <tr>
+            <th style={{ minWidth: "320px" }}>{t`Name`}</th>
+            <th>{t`Table`}</th>
+            <th className={CS.full}>{t`Definition`}</th>
+            {isAdmin && <th>{t`Actions`}</th>}
+          </tr>
+        </thead>
+
+        <tbody>
+          {segments.map((segment) => (
+            <SegmentItem
+              key={segment.id}
+              segment={segment}
+              readOnly={
+                tables[segment.table_id]?.is_published && isRemoteSyncReadOnly
+              }
+              onRetire={
+                isAdmin
+                  ? () => archive({ id: segment.id, model: "segment" }, true)
+                  : undefined
+              }
+            />
+          ))}
+        </tbody>
+      </table>
+
+      {segments.length === 0 && (
+        <div className={cx(CS.flex, CS.layoutCentered, CS.m4, CS.textMedium)}>
+          {t`Create segments to add them to the Filter dropdown in the query builder`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
+
+type SegmentListAppProps = {
+  location: Location<{ table?: string }>;
+};
+
+export function SegmentListApp({ location }: SegmentListAppProps) {
+  const { data: segments, isLoading, error } = useListSegmentsQuery();
+
+  if (isLoading || error || !segments) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <FilteredSegmentList location={location} segments={segments} />;
+}

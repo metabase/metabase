@@ -1,12 +1,12 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 
-import TableLabel from "../TableLabel/TableLabel";
+import { TableLabel } from "../TableLabel/TableLabel";
 
 export const InteractiveTableLabel = styled(TableLabel)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
 `;
 
 export const LabelButton = styled.button`
@@ -16,7 +16,7 @@ export const LabelButton = styled.button`
   &:hover,
   &:focus {
     ${InteractiveTableLabel} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 `;
@@ -25,7 +25,7 @@ export const LabelLink = styled(Link)`
   &:hover,
   &:focus {
     ${InteractiveTableLabel} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 `;

@@ -65,9 +65,9 @@ export const CloudSMTPConnectionCard = () => {
               <Radio
                 key={"metabase"}
                 value={"metabase"}
-                // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
                 label={t`Managed by Metabase`}
-                // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
                 description={t`Emails come from Metabase Cloud email server`}
                 classNames={{
                   label: S.label,
@@ -76,13 +76,13 @@ export const CloudSMTPConnectionCard = () => {
               />
             ) : (
               <Flex gap={"md"}>
-                <Icon name="check" c="success" size={20} />
+                <Icon name="check" c="feedback-positive" size={20} />
                 <Stack gap={0}>
                   <Text
                     className={S.cardTitle}
-                    // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
                   >{t`Managed by Metabase`}</Text>
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
                   <Text>{t`Emails come from Metabase Cloud email server`}</Text>
                 </Stack>
               </Flex>

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListColumns } from "metabase/list-view/components/ListView";
 import {
   Button,
   type FlexProps,
@@ -13,6 +12,7 @@ import {
 } from "metabase/ui";
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { useListColumns } from "metabase/visualizations/visualizations/List/components/ListView";
 import type { DatasetColumn } from "metabase-types/api";
 
 import styles from "./ListViewColumnsSidebar.module.css";
@@ -37,7 +37,7 @@ export function ListViewColumnsSidebar({
   onDone,
 }: ListViewColumnsSidebarProps) {
   const [query, setQuery] = useState("");
-  const { titleColumn, subtitleColumn, rightColumns } = useListColumns(
+  const { titleColumn, rightColumns } = useListColumns(
     cols,
     settings?.["list.columns"],
   );
@@ -50,7 +50,6 @@ export function ListViewColumnsSidebar({
     const used = new Set<string | undefined>(
       [
         ...(titleColumn ? [titleColumn.name] : []),
-        ...(subtitleColumn ? [subtitleColumn.name] : []),
         ...rightColumns.map((col) => col?.name),
       ].filter(Boolean),
     );
@@ -58,7 +57,7 @@ export function ListViewColumnsSidebar({
     const unusedOptions = allOptions.filter((opt) => !used.has(opt.value));
 
     return { unusedOptions };
-  }, [cols, titleColumn, subtitleColumn, rightColumns]);
+  }, [cols, titleColumn, rightColumns]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -81,7 +80,7 @@ export function ListViewColumnsSidebar({
       <Stack gap="md">
         <TextInput
           placeholder={t`Find a column...`}
-          leftSection={<Icon name="search" size={14} c="text-light" />}
+          leftSection={<Icon name="search" size={14} c="text-disabled" />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />
@@ -99,7 +98,7 @@ export function ListViewColumnsSidebar({
             />
           ))}
           {filtered.length === 0 ? (
-            <Text size="sm" c="text-light">{t`No available columns`}</Text>
+            <Text size="sm" c="text-disabled">{t`No available columns`}</Text>
           ) : null}
         </Stack>
       </Stack>{" "}

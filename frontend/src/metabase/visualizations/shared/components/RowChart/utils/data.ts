@@ -3,7 +3,7 @@ import * as d3 from "d3";
 import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3";
 import _ from "underscore";
 
-import { formatNullable } from "metabase/lib/formatting/nullable";
+import { formatNullable } from "metabase/utils/formatting/nullable";
 import type { SeriesInfo } from "metabase/visualizations/shared/types/data";
 import type { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 

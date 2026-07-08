@@ -19,8 +19,7 @@ export interface ModalContentProps extends CommonModalProps {
   className?: string;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class ModalContent extends Component<ModalContentProps> {
+export class ModalContent extends Component<ModalContentProps> {
   static defaultProps = {
     formModal: true,
   };

@@ -1,0 +1,190 @@
+import cx from "classnames";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "ttag";
+
+import { EditableText } from "metabase/common/components/EditableText";
+import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import type { ExpressionDefinitionEntry } from "metabase/metrics-viewer/types";
+import { Badge, Flex, Icon, Menu, Pill } from "metabase/ui";
+
+import {
+  type MetricNameMap,
+  buildExpressionForPill,
+  buildExpressionText,
+} from "../utils";
+
+import S from "./MetricExpressionPill.module.css";
+
+type MetricExpressionPillProps = {
+  expressionEntry: ExpressionDefinitionEntry;
+  metricNames: MetricNameMap;
+  colors?: string[];
+  isDisabled?: boolean;
+  onNameChange: (name: string) => void;
+  onRemove: () => void;
+  onEdit: () => void;
+};
+
+export function MetricExpressionPill({
+  expressionEntry,
+  metricNames,
+  colors,
+  isDisabled,
+  onNameChange,
+  onRemove,
+  onEdit,
+}: MetricExpressionPillProps) {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [menuOpened, setMenuOpened] = useState(false);
+  const editableRef = useRef<HTMLDivElement>(null);
+
+  const expressionText = useMemo(
+    () => buildExpressionText(expressionEntry.tokens, metricNames),
+    [expressionEntry.tokens, metricNames],
+  );
+
+  const expressionForPill = useMemo(
+    () => buildExpressionForPill(expressionEntry.tokens, metricNames),
+    [expressionEntry.tokens, metricNames],
+  );
+
+  useEffect(() => {
+    if (isRenaming) {
+      const textarea = editableRef.current?.querySelector("textarea");
+      if (textarea) {
+        textarea.focus();
+        const len = textarea.value.length;
+        textarea.setSelectionRange(0, len);
+      }
+    }
+  }, [isRenaming]);
+
+  const handleRename = useCallback(() => {
+    setMenuOpened(false);
+    setIsRenaming(true);
+  }, []);
+
+  const handleEdit = useCallback(() => {
+    setMenuOpened(false);
+    onEdit?.();
+  }, [onEdit]);
+
+  const handleBlur = useCallback(() => {
+    if (isRenaming) {
+      setMenuOpened(false);
+      setIsRenaming(false);
+    }
+  }, [isRenaming]);
+
+  const handleNameChange = useCallback(
+    (value: string) => {
+      // Empty name → revert to the formula-derived default so chart series
+      // and legend labels always have a non-empty display name.
+      onNameChange(value || expressionText);
+      setMenuOpened(false);
+      setIsRenaming(false);
+    },
+    [onNameChange, expressionText],
+  );
+
+  return (
+    <Menu
+      opened={menuOpened}
+      onChange={setMenuOpened}
+      position="bottom-start"
+      withinPortal
+      disabled={isRenaming}
+    >
+      <Menu.Target>
+        <Pill
+          className={S.metricExpressionPill}
+          c="text-primary"
+          h="2rem"
+          px="sm"
+          py="xs"
+          fw={600}
+          withRemoveButton
+          onRemove={onRemove}
+          removeButtonProps={{
+            mr: 0,
+            ml: 0,
+            "aria-label": t`Remove expression`,
+          }}
+          data-testid="metrics-viewer-expression-pill"
+        >
+          <Flex align="center" gap="xs">
+            <SourceColorIndicator
+              colors={isDisabled ? ["var(--mb-color-icon-secondary)"] : colors}
+            />
+            {isRenaming ? (
+              <EditableText
+                ref={editableRef}
+                className={S.editableName}
+                initialValue={expressionEntry.name}
+                placeholder={expressionText}
+                isEditing
+                isOptional
+                onChange={handleNameChange}
+                onBlur={handleBlur}
+                data-testid="expression-name-input"
+              />
+            ) : (
+              <Flex align="center" gap={0}>
+                {expressionEntry.name &&
+                expressionEntry.name !== expressionText ? (
+                  <span
+                    className={cx(
+                      S.expressionText,
+                      isDisabled && S.disabledText,
+                    )}
+                  >
+                    {expressionEntry.name}
+                  </span>
+                ) : (
+                  expressionForPill.map((segment, i) => {
+                    if (typeof segment === "number") {
+                      return (
+                        <Badge
+                          key={i}
+                          circle
+                          c="text-brand-hover"
+                          style={{ marginInlineStart: "0.2em" }}
+                        >
+                          {segment}
+                        </Badge>
+                      );
+                    }
+                    return (
+                      <span
+                        key={i}
+                        className={cx(
+                          S.expressionText,
+                          isDisabled && S.disabledText,
+                        )}
+                      >
+                        {segment}
+                      </span>
+                    );
+                  })
+                )}
+                <span
+                  className={cx(S.expressionText, isDisabled && S.disabledText)}
+                >
+                  {"\u00a0"}
+                </span>
+              </Flex>
+            )}
+          </Flex>
+        </Pill>
+      </Menu.Target>
+      <Menu.Dropdown mt="-0.15rem">
+        <Menu.Item leftSection={<Icon name="pencil" />} onClick={handleEdit}>
+          {t`Edit`}
+        </Menu.Item>
+        <Menu.Item leftSection={<Icon name="rename" />} onClick={handleRename}>
+          {t`Rename`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}

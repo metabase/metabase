@@ -3,22 +3,26 @@ import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import { publicReducers } from "metabase/reducers-public";
+} from "metabase/dashboard/context/mock-context";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { stableStringify } from "metabase/utils/objects";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -37,11 +41,6 @@ import {
   createProductsCreatedAtField,
   createProductsRatingField,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
@@ -120,16 +119,21 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     }),
     parameters: {
       parameterValuesCache: {
-        [`{"paramId":"${CATEGORY_DROPDOWN_FILTER.id}","dashId":${DASHBOARD_ID}}`]:
-          {
-            values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
-        [`{"paramId":"${CATEGORY_DROPDOWN_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
-          {
-            values: [["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
+        [stableStringify({
+          paramId: CATEGORY_DROPDOWN_FILTER.id,
+          dashId: DASHBOARD_ID,
+        })]: {
+          values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: parameterType === "search" ? true : false,
+        },
+        [stableStringify({
+          paramId: CATEGORY_DROPDOWN_FILTER.id,
+          dashId: DASHBOARD_ID,
+          query: "g",
+        })]: {
+          values: [["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: parameterType === "search" ? true : false,
+        },
       },
     },
     entities: createMockEntitiesState({
@@ -141,7 +145,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     }),
   });
 
-  const store = getStore(publicReducers, initialState, [Api.middleware]);
+  const store = getPublicStore(initialState);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -540,9 +544,9 @@ export const LightThemeParameterListWithValue = {
     const popover = getLastPopover();
     await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
     await userEvent.click(popover.getByText("Widget"));
-    const gizmo = popover.getByRole("checkbox", {
+    const gizmo = popover.getByRole<HTMLInputElement>("checkbox", {
       name: "Gizmo",
-    }) as HTMLInputElement;
+    });
     gizmo.disabled = true;
   },
 };

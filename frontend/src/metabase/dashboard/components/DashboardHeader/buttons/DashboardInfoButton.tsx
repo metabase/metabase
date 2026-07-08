@@ -5,8 +5,8 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useSelector } from "metabase/redux";
 import type { ActionIconProps } from "metabase/ui";
 
 export const DashboardInfoButton = (
@@ -18,9 +18,11 @@ export const DashboardInfoButton = (
   );
 
   const handleClick = () => {
-    isShowingDashboardInfoSidebar
-      ? closeSidebar()
-      : setSidebar({ name: SIDEBAR_NAME.info });
+    if (isShowingDashboardInfoSidebar) {
+      closeSidebar();
+    } else {
+      setSidebar({ name: SIDEBAR_NAME.info });
+    }
   };
 
   useRegisterShortcut(

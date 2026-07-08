@@ -2,8 +2,8 @@ import { type FormEvent, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { BooleanPicker } from "metabase/querying/filters/components/BooleanPicker";
-import type { BooleanFilterValue } from "metabase/querying/filters/types";
+import { BooleanPicker } from "metabase/querying/common/components/BooleanPicker";
+import type { BooleanFilterValue } from "metabase/querying/common/types";
 import { deserializeBooleanParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Box } from "metabase/ui";
 import type { ParameterValueOrArray } from "metabase-types/api";

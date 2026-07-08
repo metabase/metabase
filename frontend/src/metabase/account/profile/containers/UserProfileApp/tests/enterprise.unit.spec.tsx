@@ -4,7 +4,7 @@ import { setup } from "./setup";
 
 describe("UserProfileApp (EE)", () => {
   it("should show all form fields, even when password login is disabled", () => {
-    setup({ isPasswordLoginEnabled: false, hasEnterprisePlugins: true });
+    setup({ isPasswordLoginEnabled: false, enterprisePlugins: ["auth"] });
 
     expect(screen.getByText(/first name/i)).toBeInTheDocument();
     expect(screen.getByText(/last name/i)).toBeInTheDocument();

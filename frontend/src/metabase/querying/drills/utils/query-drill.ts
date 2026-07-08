@@ -1,10 +1,26 @@
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { ClickAction } from "metabase/visualizations/types";
 import type { DrillThruDisplayInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { DRILLS } from "./constants";
+
+export function isGroupedDimensionClick(clicked: Lib.ClickObject) {
+  return (
+    clicked.dimensions?.some((dimension) => Array.isArray(dimension.value)) ??
+    false
+  );
+}
+
+export function shouldHideDrill(
+  drillInfo: DrillThruDisplayInfo,
+  clicked: Lib.ClickObject,
+) {
+  return isGroupedDimensionClick(clicked)
+    ? drillInfo.type !== "drill-thru/underlying-records"
+    : false;
+}
 
 export function queryDrill(
   question: Question,
@@ -39,7 +55,11 @@ export function queryDrill(
       const drillInfo = Lib.displayInfo(query, stageIndex, drill);
       const drillHandler = DRILLS[drillInfo.type];
 
-      if (!isDrillEnabled(drillInfo) || !drillHandler) {
+      if (
+        !isDrillEnabled(drillInfo) ||
+        !drillHandler ||
+        shouldHideDrill(drillInfo, clicked)
+      ) {
         return null;
       }
 

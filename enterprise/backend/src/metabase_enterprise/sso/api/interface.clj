@@ -1,7 +1,13 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
-   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.util.i18n :refer [tru]]))
+
+(defn request-jwt
+  "JWT from the request `:params` (which includes both query string and form body) or JSON body (`:body`), in that order."
+  [req]
+  (or (get-in req [:params :jwt])
+      (get-in req [:body :jwt])))
 
 (defn- select-sso-backend
   [req]
@@ -13,18 +19,27 @@
                          (throw (ex-info "Invalid auth method"
                                          {:preferred-method preferred-method
                                           :available        [:jwt :saml]})))
-      (contains? (:params req) :jwt) :jwt
+      (some? (request-jwt req)) :jwt
       :else :saml)))
 
 (defn- sso-backend
   "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more
-  complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
+  complex logic around this, but now it's just a simple priority. If multiple SSO methods are enabled, uses
+  preferred_method parameter if provided."
   [req]
-  (cond
-    (and (sso-settings/saml-enabled) (sso-settings/jwt-enabled)) (select-sso-backend req)
-    (sso-settings/saml-enabled) :saml
-    (sso-settings/jwt-enabled)  :jwt
-    :else                       nil))
+  (let [enabled-count (count (filter identity
+                                     [(ee-sso-settings/saml-enabled)
+                                      (ee-sso-settings/jwt-enabled-and-configured)]))]
+    (cond
+      ;; Multiple SSO methods enabled - use preferred_method or selection logic
+      (> enabled-count 1) (select-sso-backend req)
+
+      ;; Single SSO method enabled
+      (ee-sso-settings/saml-enabled) :saml
+      (ee-sso-settings/jwt-enabled-and-configured)  :jwt
+
+      ;; No SSO method enabled
+      :else nil)))
 
 (defmulti sso-get
   "Multi-method for supporting the first part of an SSO signin request. An implementation of this method will usually

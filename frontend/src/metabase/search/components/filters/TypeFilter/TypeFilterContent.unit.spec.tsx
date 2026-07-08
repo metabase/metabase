@@ -23,10 +23,12 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
+  measure: "Measure",
   metric: "Metric",
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  transform: "Transform",
 };
 
 const TEST_TYPES: Array<EnabledSearchModel> = [
@@ -102,9 +104,9 @@ const setup = async ({
 };
 
 const getCheckboxes = () => {
-  return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
-    "checkbox",
-  ) as HTMLInputElement[];
+  return within(
+    screen.getByTestId("type-filter-checkbox-group"),
+  ).getAllByRole<HTMLInputElement>("checkbox");
 };
 
 describe("TypeFilterContent", () => {

@@ -14,20 +14,21 @@ import { TableColumnPanel } from "./TableColumnPanel";
 import type { EditWidgetData } from "./types";
 import { canEditQuery } from "./utils";
 
-interface ChartSettingTableColumnsProps {
+export type ChartSettingTableColumnsProps = {
   value: TableColumnOrderSetting[];
   columns: DatasetColumn[];
   question?: Question;
-  isDashboard?: boolean;
+  isShowingDetailsOnlyColumns: boolean;
   getColumnName: (column: DatasetColumn) => string;
   onChange: (value: TableColumnOrderSetting[], question?: Question) => void;
   onShowWidget: (config: EditWidgetData, targetElement: HTMLElement) => void;
-}
+};
 
 export const ChartSettingTableColumns = ({
   value,
   columns,
   question,
+  isShowingDetailsOnlyColumns,
   getColumnName,
   onChange,
   onShowWidget,
@@ -62,6 +63,7 @@ export const ChartSettingTableColumns = ({
         <TableColumnPanel
           columns={columns}
           columnSettings={value}
+          isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
           getColumnName={getColumnName}
           onChange={onChange}
           onShowWidget={onShowWidget}

@@ -1,14 +1,14 @@
 import { Fragment, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import type { InputProps } from "metabase/common/components/Input";
-import Input from "metabase/common/components/Input";
+import { Input } from "metabase/common/components/Input";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import type { IconName } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import type { IconName } from "metabase-types/api";
 
 import {
   AdminTreeNode,
@@ -62,7 +62,7 @@ export const FilterableTree = ({
           placeholder={placeholder}
           value={filter}
           leftIcon="search"
-          colorScheme="filter"
+          colorScheme="core-filter"
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}
         />

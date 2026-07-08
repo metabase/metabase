@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
@@ -69,7 +70,6 @@
            (-> query
                (lib/remove-clause (first conditions))
                (lib/remove-clause (second conditions)))))))
-
   (testing "a cascading delete that removes the final join condition should remove the whole join (#36690)"
     (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                      (lib/join (lib/join-clause (meta/table-metadata :products)
@@ -262,7 +262,7 @@
 (defn- by-desired-alias
   [columns desired-alias]
   (let [columns (into []
-                      (lib.field.util/add-source-and-desired-aliases-xform meta/metadata-provider)
+                      (lib.field.util/add-source-and-desired-aliases-xform (lib/query meta/metadata-provider (meta/table-metadata :venues)))
                       columns)]
     (m/find-first (comp #{desired-alias} :lib/desired-column-alias) columns)))
 
@@ -570,13 +570,15 @@
               (lib/replace-clause
                query
                (second (lib/aggregations query))
-               (first (lib/available-metrics query)))))
+               (or (first (lib/available-metrics query))
+                   (throw (ex-info "lib/available-metrics is unexpectedly empty" {:query query}))))))
       (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]
                                        [:metric {:lib/uuid string?} 100]]}]}
               (-> query
                   (lib/replace-clause
                    (second (lib/aggregations query))
-                   (first (lib/available-metrics query)))
+                   (or (first (lib/available-metrics query))
+                       (throw (ex-info "lib/available-metrics is unexpectedly empty" {:query query}))))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-segment-test
@@ -762,16 +764,31 @@
             breakout-col (->> (lib/breakoutable-columns query)
                               (m/find-first (comp #{"LAST_LOGIN"} :name)))
             month (lib/with-temporal-bucket breakout-col :month)
-            day (assoc (lib/with-temporal-bucket breakout-col :day)
-                       :metabase.lib.field/original-temporal-unit :month)
+            day (lib/with-temporal-bucket breakout-col :day)
             q2 (-> query
                    (lib/breakout month))
             cols (lib/orderable-columns q2)
             q3 (-> q2
                    (lib/order-by (first cols))
                    (lib/replace-clause (first (lib/breakouts q2)) day))]
-        (is (= (get-in q3 [:stages 0 :breakout 0 1 :metabase.lib.field/original-temporal-unit])
-               (get-in q3 [:stages 0 :order-by 0 2 1 :metabase.lib.field/original-temporal-unit])))))))
+        (is (= (get-in q3 [:stages 0 :breakout 0 1 :temporal-unit])
+               (get-in q3 [:stages 0 :order-by 0 2 1 :temporal-unit])
+               :day))))))
+
+(deftest ^:parallel empty-first-stage-gets-merged-test
+  (testing "issue #45041"
+    (testing "Emptying a stage via remove-replace should merge that stage into the next stage"
+      (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))
+            q2 (-> query
+                   (lib/aggregate (lib/count))
+                   lib/append-stage
+                   (lib/aggregate (lib/count)))
+            to-remove (-> (lib/query-stage q2 0)
+                          :aggregation
+                          first)
+            q3 (lib/remove-clause q2 0 to-remove)]
+        (is (=? {:aggregation [[:count {}]]}
+                (lib/query-stage q3 0)))))))
 
 (deftest ^:parallel rename-join-test
   (let [joined-column (-> (meta/field-metadata :venues :id)
@@ -1039,6 +1056,8 @@
         expected-original {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
         [original-join]   (lib/joins query)
         new-join          (lib/with-join-fields original-join :none)]
+    (assert (some? original-join))
+    (assert (some? new-join))
     (is (=? expected-original
             query))
     (testing "dangling join-spec leads to no change"
@@ -1205,7 +1224,6 @@
           agg    (first (lib/aggregations query))
           brk    (first (lib/breakouts query))]
       (is (= :all (-> base :stages first :joins first :fields)))
-
       (testing "no change to join"
         (testing "when removing just the aggregation"
           (is (= (m/dissoc-in query [:stages 0 :aggregation])
@@ -1781,3 +1799,101 @@
                   (update-in [:stages 0 :aggregation] (comp vec rest))
                   (update-in [:stages 1] dissoc :filters))
               (lib/remove-clause query 0 cnt0))))))
+
+(deftest ^:parallel removing-previous-stage-filter-keeps-next-stage-expression-test
+  (testing "#14193 removing a stage-0 filter does not drop an unrelated stage-1 expression"
+    (let [q0    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/filter (lib/> (meta/field-metadata :orders :subtotal) 0))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                    lib/append-stage)
+          sum   (first (lib/filterable-columns q0))
+          query (lib/expression q0 "Double the fun" (lib/* sum 2))
+          fltr  (first (lib/filters query -2))
+          after (lib/remove-clause query -2 fltr)]
+      (is (= 1 (count (lib/expressions after -1))))
+      (is (empty? (lib/filters after -2))))))
+
+(deftest ^:parallel remove-last-expression-unwraps-wrapping-stage-test
+  (testing "#19745 removing the only expression in a wrapping stage collapses it back to a single stage"
+    (let [query (-> (lib.tu/query-with-source-card)
+                    lib/append-stage
+                    (lib/expression "CC" (lib/+ 1 1)))
+          expr  (first (lib/expressions query -1))
+          after (lib/remove-clause query -1 expr)]
+      (is (= 2 (lib/stage-count query)))
+      (is (= 1 (lib/stage-count after))))))
+
+(deftest ^:parallel remove-one-of-two-same-field-self-join-columns-test
+  (testing "#41785 #46756 removing one of two columns that map to the same field but differ by join alias"
+    (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                     (lib/join (-> (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (meta/field-metadata :products :id)
+                                                            (meta/field-metadata :products :id))])
+                                   (lib/with-join-alias "Products_2")
+                                   (lib/with-join-fields :all))))
+          ean-2  (m/find-first #(and (= (:id %) (meta/id :products :ean))
+                                     (= "Products_2" (:lib/join-alias %)))
+                               (lib/returned-columns query))
+          query' (lib/remove-field query -1 ean-2)]
+      (is (some? ean-2))
+      (is (= (dec (count (lib/returned-columns query)))
+             (count (lib/returned-columns query'))))
+      (is (some (comp #{"Ean"} :display-name) (lib/returned-columns query'))))))
+
+(deftest ^:parallel remove-join-drops-orphaned-field-refs-test
+  (testing "#17514 removing a join drops references to its columns, leaving a valid query"
+    (let [base    (lib.tu/query-with-join)
+          cat-col (m/find-first (comp #{"Cat"} :lib/join-alias) (lib/returned-columns base))
+          query   (lib/order-by base cat-col)
+          removed (lib/remove-clause query (first (lib/joins query)))]
+      (is (empty? (lib/joins removed)))
+      (is (not-any? (comp #{"Cat"} :lib/join-alias) (lib/returned-columns removed)))
+      (is (empty? (lib/order-bys removed))))))
+
+(deftest ^:parallel remove-expression-used-in-breakout-cascades-test
+  (testing "#32625 #31635 removing an expression removes a dependent breakout but keeps the aggregation"
+    (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/expression "promo" (lib/case [[(lib/> (meta/field-metadata :orders :discount) 0) 1]] 0))
+                     (as-> q (lib/breakout q (lib/expression-ref q "promo")))
+                     (lib/aggregate (lib/distinct (meta/field-metadata :orders :product-id))))
+          query' (lib/remove-clause query (first (lib/expressions query)))]
+      (is (empty? (lib/expressions query')))
+      (is (empty? (lib/breakouts query')))
+      (is (= 1 (count (lib/aggregations query')))))))
+
+(deftest ^:parallel remove-clause-referencing-missing-field-test
+  (testing "#33835 an aggregation/breakout on a field absent from the metadata provider can still be removed"
+    ;; The query's own metadata provider deliberately omits Orders.total, but the aggregation/breakout is
+    ;; built (via lib) over Orders.total from the full metadata provider, so the ref points at a field the
+    ;; query itself cannot resolve.
+    (let [mp    (lib.tu/mock-metadata-provider
+                 {:database meta/database
+                  :tables   [(meta/table-metadata :orders)]
+                  :fields   (mapv #(meta/field-metadata :orders %) [:id :tax :quantity])})
+          total (meta/field-metadata :orders :total)]
+      (testing "aggregation"
+        (let [query (lib/aggregate (lib/query mp (meta/table-metadata :orders)) (lib/avg total))]
+          (is (= 1 (count (lib/aggregations query))))
+          (is (empty? (lib/aggregations (lib/remove-clause query (first (lib/aggregations query))))))))
+      (testing "binned breakout"
+        (let [query (lib/breakout (lib/query mp (meta/table-metadata :orders))
+                                  (lib/with-binning total {:strategy :num-bins :num-bins 10}))]
+          (is (= 1 (count (lib/breakouts query))))
+          (is (empty? (lib/breakouts (lib/remove-clause query (first (lib/breakouts query)))))))))))
+
+(deftest ^:parallel remove-first-of-three-sums-keeps-downstream-filter-ref-test
+  (testing "#48752 removing the first of three same-op aggregations keeps a downstream filter pointing at the right one"
+    (let [q            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :tax)))
+                           (lib/breakout (meta/field-metadata :orders :user-id))
+                           lib/append-stage)
+          subtotal-col (m/find-first (comp #{"Sum of Subtotal"} :display-name) (lib/filterable-columns q))
+          q            (lib/filter q (lib/>= subtotal-col 10))
+          q'           (lib/remove-clause q 0 (first (lib/aggregations q 0)))
+          filter-col   (->> (lib/filters q' 1)
+                            first
+                            (lib.fe-util/number-filter-parts q' 1)
+                            :column)]
+      (is (= "Sum of Subtotal" (:display-name (lib/display-info q' 1 filter-col)))))))

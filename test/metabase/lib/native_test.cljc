@@ -23,12 +23,9 @@
 
 (deftest ^:parallel snippet-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
-    #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
-    #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
-    ;; TODO: This logic should trim the whitespace and unify these two snippet names.
-    ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
-    ;; Tech debt issue: #39378
-    #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
+    #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
+    #{"snippet: foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
+    #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
   (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
@@ -42,31 +39,25 @@
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
-    (let [snippet {:type         :snippet
-                   :name         "foo"
-                   :id           1}
+    (let [snippet           {:type :snippet
+                             :name "foo"
+                             :id   1}
           metadata-provider (lib.tu/mock-metadata-provider
                              {:native-query-snippets [snippet]})]
-      (is (=? {"snippet:foo" {:type         :snippet
-                              :name         "snippet:foo"
-                              :snippet-name "foo"
-                              :snippet-id   1
-                              :id           string?}}
-              (lib.native/extract-template-tags metadata-provider "SELECT * FROM table WHERE {{snippet:foo}}")))
-      (is (=? {"snippet:foo"  {:type         :snippet
-                               :name         "snippet:foo"
-                               :snippet-name "foo"
-                               :snippet-id   1
-                               :id           string?}
-               "snippet: foo" {:type         :snippet
+      (is (=? {"snippet: foo" {:type         :snippet
                                :name         "snippet: foo"
                                :snippet-name "foo"
                                :snippet-id   1
                                :id           string?}}
-              ;; TODO: This should probably be considered a bug - whitespace matters for the name.
-              ;; Tech debt issue: #39378
-              (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}")))))
+              (lib.native/extract-template-tags metadata-provider "SELECT * FROM table WHERE {{snippet:foo}}")))
+      (is (=? {"snippet: foo" {:type         :snippet
+                               :name         "snippet: foo"
+                               :snippet-name "foo"
+                               :snippet-id   1
+                               :id           string?}}
+              (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))))
 
+(deftest ^:parallel template-tags-test-2
   (testing "renaming a variable"
     (let [old-tag {:type         :text
                    :name         "foo"
@@ -86,7 +77,6 @@
                         :id           (:id old-tag)}}
                 (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
                                                   {"foo" (assoc old-tag :display-name "Custom Name")}))))
-
       (testing "works with other variables present, if they don't change"
         (let [other {:type         :text
                      :name         "other"
@@ -99,22 +89,23 @@
                             :id           (:id old-tag)}}
                   (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}} AND field = {{other}}"
                                                     {"foo"   old-tag
-                                                     "other" other})))))))
+                                                     "other" other}))))))))
 
+(deftest ^:parallel template-tags-test-3
   (testing "general case, add and remove"
     (let [mktag (fn [base]
-                  (merge {:type    :text
+                  (merge {:type         :text
                           :display-name (u.humanization/name->human-readable-name :simple (:name base))
                           :id           string?}
                          base))
           v1    (mktag {:name "foo"})
           v2    (mktag {:name "bar"})
           v3    (mktag {:name "baz"})
-          s1    (mktag {:name         "snippet:first snippet"
+          s1    (mktag {:name         "snippet: first snippet"
                         :snippet-name "first snippet"
                         :snippet-id   123
                         :type         :snippet})
-          s2    (mktag {:name         "snippet:another snippet"
+          s2    (mktag {:name         "snippet: another snippet"
                         :snippet-name "another snippet"
                         :snippet-id   124
                         :type         :snippet})
@@ -130,28 +121,121 @@
                                                        :id   123}
                                                       {:name "another snippet"
                                                        :id   124}]})]
-      (is (=? {"foo"                   v1
-               "#123-card-1"           c1
-               "snippet:first snippet" s1}
+      (is (=? {"foo"                    v1
+               "#123-card-1"            c1
+               "snippet: first snippet" s1}
               (lib.native/extract-template-tags
                metadata-provider
                "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
-      (is (=? {"bar"                     v2
-               "baz"                     v3
-               "snippet:another snippet" s2
-               "#321"                    c2}
+      (is (=? {"bar"                      v2
+               "baz"                      v3
+               "snippet: another snippet" s2
+               "#321"                     c2}
               (lib.native/extract-template-tags
                metadata-provider
                "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-               {"foo"                   (assoc v1 :id (str (random-uuid)))
-                "#123-card-1"           (assoc c1 :id (str (random-uuid)))
-                "snippet:first snippet" (assoc s1 :id (str (random-uuid)))})))
+               {"foo"                    (assoc v1 :id (str (random-uuid)))
+                "#123-card-1"            (assoc c1 :id (str (random-uuid)))
+                "snippet: first snippet" (assoc s1 :id (str (random-uuid)))})))
       (let [s1-uuid (str (random-uuid))]
-        (is (= {"snippet:another snippet" (assoc s2 :id s1-uuid)}
+        (is (= {"snippet: another snippet" (assoc s2 :id s1-uuid)}
                (lib.native/extract-template-tags
                 metadata-provider
                 "SELECT * FROM {{snippet:another snippet}}"
-                {"snippet:first snippet" (assoc s1 :id s1-uuid)})))))))
+                {"snippet: first snippet" (assoc s1 :id s1-uuid)})))))))
+
+(deftest ^:parallel variable-tag-with-dots-and-underscores-test
+  (testing "dots and underscores are legal in variable names (metabase#15029)"
+    (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
+      #{"number.of.stars"} "select * from products where rating = {{number.of.stars}}"
+      #{"a_b" "c.d"}       "select {{a_b}}, {{c.d}}")))
+
+(deftest ^:parallel snippet-inner-tags-surfaced-test
+  (testing "a snippet's own inner template tags are surfaced onto the outer query"
+    (doseq [[description snippets query expected]
+            [["inner variable tag"
+              [{:id            1
+                :name          "cat-filter"
+                :content       "category = {{category}}"
+                :template-tags {"category" {:name         "category"
+                                            :type         :text
+                                            :display-name "Category"}}}]
+              "select * from products where {{snippet: cat-filter}}"
+              "category"]
+             ["inner card tag"
+              [{:id            1
+                :name          "card-ref"
+                :content       "id in ({{#123}})"
+                :template-tags {"#123" {:name         "#123"
+                                        :type         :card
+                                        :display-name "#123"
+                                        :card-id      123}}}]
+              "select * from products where {{snippet: card-ref}}"
+              "#123"]
+             ["inner table tag"
+              [{:id            1
+                :name          "table-ref"
+                :content       "{{orders}}"
+                :template-tags {"orders" {:name         "orders"
+                                          :type         :table
+                                          :display-name "Orders"
+                                          :table-id     (meta/id :orders)}}}]
+              "select * from {{snippet: table-ref}}"
+              "orders"]
+             ["nested snippet's inner tags"
+              [{:id            1
+                :name          "outer"
+                :content       "{{snippet: inner}}"
+                :template-tags {"snippet: inner" {:name         "snippet: inner"
+                                                  :type         :snippet
+                                                  :display-name "Inner"
+                                                  :snippet-name "inner"}}}
+               {:id            2
+                :name          "inner"
+                :content       "category = {{category}}"
+                :template-tags {"category" {:name         "category"
+                                            :type         :text
+                                            :display-name "Category"}}}]
+              "select * from products where {{snippet: outer}}"
+              "category"]]]
+      (testing description
+        (let [mp (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:native-query-snippets snippets})]
+          (is (contains? (lib.native/extract-template-tags mp query) expected)))))))
+
+(deftest ^:parallel snippet-inner-tag-dedup-test
+  (doseq [[description snippets query expected]
+          [["a local tag and a snippet's surfaced inner tag of the same name collapse to one parameter"
+            [{:id            1
+              :name          "s"
+              :content       "category = {{filter}}"
+              :template-tags {"filter" {:name         "filter"
+                                        :type         :text
+                                        :display-name "Filter"}}}]
+            "select * from products where {{snippet: s}} and x = {{filter}}"
+            "filter"]
+           ["two snippets sharing an inner tag name dedup to a single entry"
+            [{:id            1
+              :name          "s1"
+              :content       "a = {{category2}}"
+              :template-tags {"category2" {:name         "category2"
+                                           :type         :text
+                                           :display-name "Category2"}}}
+             {:id            2
+              :name          "s2"
+              :content       "b = {{category2}}"
+              :template-tags {"category2" {:name         "category2"
+                                           :type         :text
+                                           :display-name "Category2"}}}]
+            "select * from products where {{snippet: s1}} and {{snippet: s2}}"
+            "category2"]]]
+    (testing description
+      (let [mp   (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:native-query-snippets snippets})
+            tags (lib.native/extract-template-tags mp query)]
+        (is (= 1 (count (filter #(= expected %) (keys tags)))))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -183,8 +267,8 @@
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")]
     (testing "Updating query keeps template tags in sync"
       (is (=? ["select * from venues where id = {{myid}}"
-               {"myid" {:type :text,
-                        :name "myid",
+               {"myid" {:type :text
+                        :name "myid"
                         :id string?
                         :display-name "Myid"}}]
               ((juxt lib/raw-native-query lib/template-tags) query)))
@@ -248,6 +332,22 @@
          #"Must be a native query"
          (-> (lib.tu/venues-query)
              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
+
+(deftest ^:parallel with-template-tags-update-map-order-test
+  ;; yes, I know template tags are sorted as a map, but for small maps we should preserve the order passed in by the
+  ;; FE. See
+  ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759974826834279?thread_ts=1759289751.539169&cid=C0645JP1W81
+  (testing "it should be possible to reorder template tags with with-template-tags"
+    (let [query         (lib/native-query meta/metadata-provider "{{x}} {{y}} {{z}}")
+          original-tags (lib/template-tags query)]
+      (is (=? {"x" {}, "y" {}, "z" {}}
+              original-tags))
+      (is (= ["x" "y" "z"]
+             (keys original-tags)))
+      (let [updated-tags {"y" (get original-tags "y"), "x" (get original-tags "x")}
+            query'       (lib/with-template-tags query updated-tags)]
+        (is (= ["y" "x" "z"]
+               (keys (lib/template-tags query'))))))))
 
 (defn ^:private metadata-provider-requiring-collection []
   (meta/updated-metadata-provider update :features conj :native-requires-specified-collection))
@@ -458,3 +558,216 @@
               :display-name "Price"
               :lib/source   :source/card}]
             (lib/returned-columns query)))))
+
+(deftest ^:parallel add-parameters-text-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :string/=
+           :value  ["foo"]
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag" {:type :text
+                                               :name "mytag"
+                                               :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                               :display-name "My Tag"}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-number-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :number/=
+           :value  ["0"]
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :number}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-date-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :date/single
+           :value  "1970-01-01"
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :date}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-boolean-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :boolean/=
+           :value  [false]
+           :target ["variable" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :boolean}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-string-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :string/=
+           :value  ["foo"]
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :products :category)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-number-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :number/=
+           :value  ["0"]
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :total)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-date-dimension-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :date/single
+           :value  "2025-01-01"
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :created-at)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :dimension
+                                       :widget-type :date/range}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel add-parameters-temporal-unit-tag-test
+  (is (= [{:id     "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+           :type   :temporal-unit
+           :value  "week"
+           :target ["dimension" ["template-tag" "mytag"]]}]
+         (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+             (lib/with-template-tags {"mytag"
+                                      {:dimension [:field
+                                                   {:lib/uuid "a9e2b665-cadd-4d25-b1c1-09ca8f1736cf"}
+                                                   (meta/id :orders :created-at)]
+                                       :display-name "My Tag"
+                                       :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                       :name "mytag"
+                                       :type :temporal-unit}})
+             lib/add-parameters-for-template-tags
+             :parameters))))
+
+(deftest ^:parallel validate-template-tags-test
+  (testing "valid template tags should return no errors"
+    (are
+     [template-tags]
+     (= [] (lib.native/validate-template-tags
+            (lib/query (lib.tu/metadata-provider-with-mock-cards)
+                       {:database (meta/id)
+                        :type     :native
+                        :native   {:query         {}
+                                   :template-tags template-tags}})))
+      {}
+
+      {"mytag" {:type :number
+                :name "mytag"
+                :display-name "My Tag"
+                :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}))
+  (testing "invalid template tags should return the correct errors"
+    (mu/disable-enforcement
+      (are
+       [errors template-tags]
+       (= errors (lib.native/validate-template-tags
+                  (lib/query (lib.tu/metadata-provider-with-mock-cards)
+                             {:database (meta/id)
+                              :type     :native
+                              :native   {:query         {}
+                                         :template-tags template-tags}})))
+        [{:tag-name "mytag"
+          :error/message "The variable \"mytag\" needs to be mapped to a field."}]
+        {"mytag" {:type :dimension
+                  :name "mytag"
+                  :display-name "My Tag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}
+
+        [{:tag-name "mytag"
+          :error/message "The variable \"mytag\" needs to be mapped to a field."}]
+        {"mytag" {:type :temporal-unit
+                  :name "mytag"
+                  :display-name "My Tag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}
+
+        [{:tag-name "mytag"
+          :error/message "Missing widget label: mytag"}]
+        {"mytag" {:type :number
+                  :name "mytag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}
+
+        [{:tag-name "mytag"
+          :error/message "Missing widget label: mytag"}
+         {:tag-name "mytag"
+          :error/message "The variable \"mytag\" needs to be mapped to a field."}]
+        {"mytag" {:type :dimension
+                  :name "mytag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}))))
+
+(defn- table-tag-query [mp template-tag-overrides]
+  (let [base-query (lib.native/native-query mp "select * from {{table}}")
+        template-tag (get (lib.native/template-tags base-query) "table")]
+    (lib.native/with-template-tags base-query
+      {"table" (merge template-tag {:type :table} template-tag-overrides)})))
+
+(deftest ^:parallel with-template-tags-normalize-template-tag-names-test
+  (testing "`with-template-tags` should normalize tag names"
+    ;; `snippet:expensive_venues` should be normalized to `snippet: expensive_venues`
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:native-query-snippets [{:id      1
+                                        :name    "expensive_venues"
+                                        :content "venues WHERE price = 4"}]})]
+      (is (=? {:stages [{:native        "SELECT * FROM {{snippet:expensive_venues}}"
+                         :template-tags {"snippet: expensive_venues" {:name         "snippet: expensive_venues"
+                                                                      :snippet-id   1
+                                                                      :snippet-name "expensive_venues"
+                                                                      :type         :snippet
+                                                                      :display-name "(New display name)"}}}]}
+              (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive_venues}}")
+                  (lib/with-template-tags {"snippet:expensive_venues" {:type         :snippet
+                                                                       :name         "snippet:expensive_venues"
+                                                                       :display-name "(New display name)"
+                                                                       :snippet-name "expensive_venues"
+                                                                       :snippet-id   1}})))))))
+
+(deftest ^:parallel basic-native-query-table-references-test
+  (testing "should find id-based native query table references"
+    (is (= #{{:table (meta/id :orders)}}
+           (lib.native/native-query-table-references
+            (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)}))))))

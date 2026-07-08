@@ -1,0 +1,12 @@
+.radioCard {
+  cursor: pointer;
+  border: 1px solid var(--mb-color-border-neutral);
+}
+
+.radioCard[data-checked] {
+  border-color: var(--mb-color-core-brand);
+}
+
+.radioCard[data-checked] .radioCardTitle {
+  color: var(--mb-color-core-brand);
+}

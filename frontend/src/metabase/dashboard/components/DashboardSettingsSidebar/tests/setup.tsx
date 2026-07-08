@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDashboardEndpoints,
   setupPerformanceEndpoints,
@@ -8,8 +8,10 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import type { Dashboard, Settings } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockSettings,
@@ -17,20 +19,19 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DashboardSettingsSidebar } from "../DashboardSettingsSidebar";
 
 export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
   settings = createMockSettings(),
-  hasEnterprisePlugins,
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
   const onClose = jest.fn();
@@ -55,15 +56,20 @@ export async function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
-  renderWithProviders(
+  const TestDashboardSettingsSidebar = () => (
     <MockDashboardContext dashboard={dashboard} closeSidebar={onClose}>
       <DashboardSettingsSidebar />
-    </MockDashboardContext>,
-    { storeInitialState: state },
+    </MockDashboardContext>
+  );
+
+  renderWithProviders(
+    <Route path="*" component={TestDashboardSettingsSidebar} />,
+
+    { storeInitialState: state, withRouter: true },
   );
   await waitForLoaderToBeRemoved();
 
@@ -72,19 +78,3 @@ export async function setup({
     onClose,
   };
 }
-
-export const setupEnterprise = (
-  opts: SetupOpts = {},
-  tokenFeatures: Partial<TokenFeatures> = {},
-) => {
-  return setup({
-    ...opts,
-    settings: createMockSettings({
-      ...opts.settings,
-      "token-features": createMockTokenFeatures({
-        ...tokenFeatures,
-      }),
-    }),
-    hasEnterprisePlugins: true,
-  });
-};

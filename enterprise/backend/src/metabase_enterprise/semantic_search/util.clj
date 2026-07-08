@@ -1,5 +1,7 @@
 (ns metabase-enterprise.semantic-search.util
   (:require
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase.premium-features.core :as premium-features]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
@@ -11,3 +13,18 @@
                           table-name]
                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})
       (:table_exists false)))
+
+(defn index-exists?
+  "Does an index named `index-name` exist in the pgvector DB's pg_indexes?"
+  [pgvector index-name]
+  (-> (jdbc/execute-one! pgvector
+                         ["SELECT exists (select 1 FROM pg_indexes WHERE indexname = ?) index_exists"
+                          index-name]
+                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+      (:index_exists false)))
+
+(defn semantic-search-available?
+  "Predicate to check whether semantic search is available on the instance."
+  []
+  (and (string? (not-empty semantic.db.datasource/db-url))
+       (premium-features/has-feature? :semantic-search)))

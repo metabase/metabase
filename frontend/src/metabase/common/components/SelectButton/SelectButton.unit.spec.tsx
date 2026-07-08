@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import SelectButton from "./SelectButton";
+import { SelectButton } from "./SelectButton";
 
 describe("SelectButton", () => {
   const title = "Select an option";

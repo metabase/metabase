@@ -1,20 +1,28 @@
 (ns ^:mb/driver-tests metabase.driver.redshift-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.redshift-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-   [metabase.query-processor :as qp]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.test :as mt]
+   [metabase.test.data.impl.get-or-create :as test.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.tx]
    [metabase.test.data.sql :as sql.tx]
@@ -134,37 +142,41 @@
 ;; stored as textfile
 ;; location 's3://mb-rs-test/tickit/spectrum/sales/'
 ;; table properties ('numRows'='172000');
-;;
+
 (deftest ^:parallel test-external-table
-  (mt/test-driver :redshift
-    (testing "expects spectrum schema to exist"
-      (is (=? [{:table_id        (mt/id :extsales)
-                :name            "buyerid"
-                :source          :fields
-                :field_ref       [:field (mt/id :extsales :buyerid) nil]
-                :id              (mt/id :extsales :buyerid)
-                :visibility_type :normal
-                :display_name    "Buyerid"
-                :base_type       :type/Integer
-                :effective_type  :type/Integer}
-               {:table_id        (mt/id :extsales)
-                :name            "salesid"
-                :source          :fields
-                :field_ref       [:field (mt/id :extsales :salesid) nil]
-                :id              (mt/id :extsales :salesid)
-                :visibility_type :normal
-                :display_name    "Salesid"
-                :base_type       :type/Integer
-                :effective_type  :type/Integer}]
-              ;; in different Redshift instances, the fingerprint on these columns is different.
-              (map #(dissoc % :fingerprint)
-                   (get-in (qp/process-query (mt/mbql-query extsales
-                                               {:limit    1
-                                                :fields   [$buyerid $salesid]
-                                                :order-by [[:asc $buyerid]
-                                                           [:asc $salesid]]
-                                                :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
-                           [:data :cols])))))))
+  ;; The extsales table is an AWS Redshift Spectrum external table that only exists in the real
+  ;; Redshift database - it's not part of our test data definitions. Skip this test when using
+  ;; fake sync since the table won't be synced.
+  (when (tx/on-master-or-release-branch?)
+    (mt/test-driver :redshift
+      (testing "expects spectrum schema to exist"
+        (is (=? [{:table_id        (mt/id :extsales)
+                  :name            "buyerid"
+                  :source          :fields
+                  :field_ref       [:field (mt/id :extsales :buyerid) nil]
+                  :id              (mt/id :extsales :buyerid)
+                  :visibility_type :normal
+                  :display_name    "Buyerid"
+                  :base_type       :type/Integer
+                  :effective_type  :type/Integer}
+                 {:table_id        (mt/id :extsales)
+                  :name            "salesid"
+                  :source          :fields
+                  :field_ref       [:field (mt/id :extsales :salesid) nil]
+                  :id              (mt/id :extsales :salesid)
+                  :visibility_type :normal
+                  :display_name    "Salesid"
+                  :base_type       :type/Integer
+                  :effective_type  :type/Integer}]
+                ;; in different Redshift instances, the fingerprint on these columns is different.
+                (map #(dissoc % :fingerprint)
+                     (get-in (qp/process-query (mt/mbql-query extsales
+                                                 {:limit    1
+                                                  :fields   [$buyerid $salesid]
+                                                  :order-by [[:asc $buyerid]
+                                                             [:asc $salesid]]
+                                                  :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
+                             [:data :cols]))))))))
 
 (deftest parameters-test
   (mt/test-driver :redshift
@@ -316,7 +328,7 @@
                            :model/Database db {:engine :redshift, :details details}]
               (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
                 (persist-models!)
-                (let [synced-schemas (set (map :schema (:tables (driver/describe-database :redshift db))))]
+                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
                     (is (some #(re-matches #"20(.*)" %) synced-schemas)))
                   (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -344,12 +356,18 @@
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
-            (is (some #(= mview-nm (:name %))
-                      (:tables (sql-jdbc.describe-database/describe-database :redshift database))))))))))
+            (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
+              (u/auto-retry 3
+                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                  (when-not (contains? table-names mview-nm)
+                    (Thread/sleep 1000)
+                    (throw (ex-info "Materialized view not yet visible in describe-database results"
+                                    {:expected mview-nm :actual table-names})))
+                  (is (contains? table-names mview-nm)))))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"
-    [{:field-name "timestamp", :base-type {:native "numeric"}}]
+    [{:field-name "timestamp", :base-type {:native "numeric"}, :effective-type :type/Decimal}]
     [[1642704550656]]]])
 
 (deftest unix-timestamp-test
@@ -362,12 +380,19 @@
               (is (= [1 1642704550656M]
                      (mt/first-row (qp/process-query query)))))))
         (testing "WITH coercion strategy"
-          (mt/with-temp-vals-in-db :model/Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                                                :effective_type    :type/Instant}
-            (let [query (mt/mbql-query timestamps)]
-              (mt/with-native-query-testing-context query
-                (is (= [1 "2022-01-20T18:49:10.656Z"]
-                       (mt/first-row (qp/process-query query))))))))))))
+          ;; Use merged-mock-metadata-provider to set coercion strategy, avoiding
+          ;; caching issues with with-temp-vals-in-db (see coercion_test.clj for pattern)
+          (let [mp    (lib.tu/merged-mock-metadata-provider
+                       (mt/metadata-provider)
+                       {:fields [{:id                (mt/id :timestamps :timestamp)
+                                  :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                  :effective-type    :type/Instant}]})
+                query (lib/query mp (lib.metadata/table mp (mt/id :timestamps)))]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 "2022-01-20T18:49:10.656Z"]]
+                     (mt/formatted-rows [int str]
+                                        (qp.store/with-metadata-provider mp
+                                          (qp/process-query query))))))))))))
 
 (deftest interval-test
   (mt/test-drivers #{:postgres :redshift}
@@ -399,9 +424,9 @@
                 conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
                 get-privileges               (fn []
                                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                                [spec [:redshift (assoc (:details database) :user username)]]
+                                                [spec [:redshift (assoc (:details database) :user username)]
                                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))]))]
             (try
               (execute! (format
                          (str
@@ -514,8 +539,381 @@
                                          ["float(10)" :type/Float]
                                          ["datetime" :type/DateTime]
                                          ["year" :type/Integer]
+                                         ;; Iceberg table types https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+                                         ["string" :type/Text]
+                                         [:string :type/Text]
+                                         [:STRING :type/Text]
+                                         ["boolean" :type/Boolean]
+                                         ["int" :type/Integer]
+                                         ["long" :type/BigInteger]
+                                         ["double" :type/Float]
+                                         ["decimal(2, 10)" :type/Decimal]
+                                         ["binary" :type/*]
+                                         ["date" :type/Date]
+                                         ["time" nil]
+                                         ["timestamp" :type/DateTime]
+                                         ["timestamptz" :type/DateTimeWithTZ]
+                                         ;; MySQL federated table enum types
+                                         ["enum('A','B')" :type/Text]
+                                         ["enum('open','closed')" :type/Text]
+                                         ["enum('active','inactive')" :type/Text]
                                          ;; nonsense
                                          ["fadlsjfldskajfl" nil]]]
     (testing (format "database-type %s" (pr-str database-type))
       (is (= exp-base-type
              (sql-jdbc.sync/database-type->base-type :redshift database-type))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct Redshift types"
+    (are [base-type expected] (= expected (driver/type->database-type :redshift base-type))
+      :type/TextLike           [[:varchar 65535]]
+      :type/Text               [[:varchar 65535]]
+      :type/Integer            [:integer]
+      :type/Float              [(keyword "double precision")]
+      :type/Number             [:bigint]
+      :type/Boolean            [:boolean]
+      :type/Date               [:date]
+      :type/DateTime           [:timestamp]
+      :type/DateTimeWithTZ     [:timestamp-with-time-zone]
+      :type/Time               [:time])))
+
+(deftest ^:parallel describe-fields-pre-process-xf-removes-all-duplicates-test
+  (testing "describe-fields-pre-process-xf removes ALL fields that have duplicate (table-schema, table-name, name)"
+    (is (= [{:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+            {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}]
+           (into []
+                 (sql-jdbc.describe-table/describe-fields-pre-process-xf :redshift nil)
+                 [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "id" :database-type "bigint"}
+                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}])))))
+
+(deftest ^:parallel alternate-config-options-test
+  (testing "Can configure with either db or dbname"
+    (let [options {:host "test.example.com"}]
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :db "test-db"))))
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-db"))))
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))
+          ":db should take precedence"))))
+
+;;; ------------------------------------------------ Real Sync Test ------------------------------------------------
+;; This test uses real sync (not fake sync) to validate that fake sync produces equivalent metadata.
+;; It uses a minimal dataset to keep sync time reasonable (~30s instead of ~6min for test-data).
+
+(deftest real-sync-validation-test
+  (mt/test-driver :redshift
+    (testing "Forces a real sync for a minimal dataset to test real sync logic"
+      ;; Disable fake sync for this test to force a real sync
+      (tx/with-driver-supports-feature! [:redshift :test/use-fake-sync false]
+        (mt/dataset (mt/dataset-definition "real-sync-validation"
+                                           [["sync_test_table"
+                                             [{:field-name "text_col" :base-type :type/Text}
+                                              {:field-name "int_col" :base-type :type/Integer}]
+                                             [["hello" 1]
+                                              ["world" 2]]]])
+          (testing "Table was synced with correct schema"
+            (let [table (t2/select-one :model/Table :db_id (mt/id) :name "real_sync_validation_sync_test_table")]
+              (is (some? table) "Table should exist")
+              (is (= (redshift.tx/unique-session-schema) (:schema table)) "Schema should match session schema")))
+          (testing "Fields were synced with correct types"
+            (let [fields (t2/select [:model/Field :name :base_type :semantic_type]
+                                    :table_id (mt/id :sync_test_table)
+                                    :active true
+                                    {:order-by [:database_position]})]
+              (is (= 3 (count fields)) "Should have 3 fields (id + 2 defined)")
+              (is (= "id" (:name (first fields))) "First field should be auto-generated PK")
+              (is (= :type/PK (:semantic_type (first fields))) "PK should have :type/PK semantic type")
+              (is (= :type/Text (:base_type (second fields))) "text_col should be :type/Text")
+              (is (= :type/Integer (:base_type (nth fields 2))) "int_col should be :type/Integer"))))))))
+
+;;; ---------------------------------------- Fake Sync Transformation Test ----------------------------------------
+;; Tests the pure transformation functions that convert dbdefs to Table/Field row maps.
+;; These are the "debuggable" pure functions separated from the stateful insertion code.
+
+(deftest ^:parallel fake-sync-transformation-test
+  (mt/test-driver :redshift
+    (testing "dbdef->fake-sync-rows produces correct Table and Field row maps"
+      (let [dbdef {:database-name "transform-test"
+                   :table-definitions
+                   [{:table-name "users"
+                     :table-comment "User accounts"
+                     :field-definitions
+                     [{:field-name "name" :base-type :type/Text :field-comment "User name"}
+                      {:field-name "age" :base-type :type/Integer}
+                      {:field-name "org_id" :base-type :type/Integer :fk :organizations}]}
+                    {:table-name "organizations"
+                     :field-definitions
+                     [{:field-name "org_name" :base-type :type/Text}]}]}
+            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 123 dbdef)]
+        (testing "returns one entry per table"
+          (is (= 2 (count rows)))
+          (is (= ["users" "organizations"] (mapv :table-name rows))))
+        (testing "table rows have correct structure"
+          (let [users-table (:table-row (first rows))]
+            (is (= 123 (:db_id users-table)))
+            (is (= "transform_test_users" (:name users-table)))
+            (is (= (redshift.tx/unique-session-schema) (:schema users-table)))
+            (is (= "Users" (:display_name users-table)))
+            (is (= "User accounts" (:description users-table)))
+            (is (= "complete" (:initial_sync_status users-table)))))
+        (testing "auto PK field is injected at position 0"
+          (let [users-fields (:field-rows (first rows))
+                pk-field     (first users-fields)]
+            (is (= 4 (count users-fields)) "Should have 4 fields: auto PK + 3 defined")
+            (is (= "id" (:name pk-field)))
+            (is (= :type/PK (:semantic_type pk-field)))
+            (is (= 0 (:position pk-field)))))
+        (testing "user-defined fields have correct positions and types"
+          (let [users-fields (:field-rows (first rows))
+                name-field   (second users-fields)
+                age-field    (nth users-fields 2)
+                fk-field     (nth users-fields 3)]
+            (is (= "name" (:name name-field)))
+            (is (= 1 (:position name-field)))
+            (is (= :type/Text (:base_type name-field)))
+            (is (= "User name" (:description name-field)))
+            (is (= "age" (:name age-field)))
+            (is (= 2 (:position age-field)))
+            (is (= :type/Integer (:base_type age-field)))
+            (is (= "org_id" (:name fk-field)))
+            (is (= 3 (:position fk-field)))
+            (is (= :type/FK (:semantic_type fk-field)) "FK fields get :type/FK semantic type"))))))
+  (testing "native type maps are handled correctly"
+    (let [dbdef {:database-name "native-types"
+                 :table-definitions
+                 [{:table-name "binary_data"
+                   :field-definitions
+                   [{:field-name "raw_bytes"
+                     :base-type {:native "VARBYTE"}
+                     :effective-type :type/Text}
+                    {:field-name "multi_driver"
+                     :base-type {:natives {:redshift "SUPER" :postgres "JSONB"}}
+                     :effective-type :type/JSON}]}]}
+          rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 456 dbdef)
+          fields (:field-rows (first rows))]
+      (testing "{:native ...} form"
+        (let [raw-field (second fields)] ; first is auto PK
+          (is (= "VARBYTE" (:database_type raw-field)))
+          (is (= :type/Text (:effective_type raw-field)))
+          ;; When effective-type is provided, base_type uses it; otherwise would be :type/*
+          (is (= :type/Text (:base_type raw-field)))))
+      (testing "{:natives ...} form picks driver-specific type"
+        (let [multi-field (nth fields 2)]
+          (is (= "SUPER" (:database_type multi-field)))
+          (is (= :type/JSON (:effective_type multi-field))))))))
+
+(deftest ^:parallel set-role-statement-test
+  (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
+    (mt/test-driver :redshift
+      (sql-jdbc.execute/do-with-connection-with-options
+       :redshift (mt/id) nil
+       (fn [conn]
+         (are [role expected] (= expected
+                                 (driver.sql-jdbc/set-role-statement :redshift conn role))
+           "MY_ROLE"                      "SET SESSION AUTHORIZATION MY_ROLE;"
+           "ROLE123"                      "SET SESSION AUTHORIZATION ROLE123;"
+           "lowercase_role"               "SET SESSION AUTHORIZATION lowercase_role;"
+           "Role.123"                     "SET SESSION AUTHORIZATION \"Role.123\";"
+           "$role"                        "SET SESSION AUTHORIZATION \"$role\";"
+           "role\"; SELECT sleep(10); --" "SET SESSION AUTHORIZATION \"role\"\"; SELECT sleep(10); --\";"
+           ;; None (special role in Postgres to revert back to login role; should not be quoted)
+           "none"                         "SET SESSION AUTHORIZATION none;"
+           "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))
+
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defn- try-execute!
+  "Run `sql` against `spec`, logging exceptions at warn level. For cleanup
+   paths where the object may not exist *or* where a residual catalog row
+   (the very class of bug GHY-3709 covers) might prevent a successful drop.
+   Logging instead of swallowing surfaces orphan-role accumulation on CI."
+  [spec sql]
+  (try (jdbc/execute! spec [sql])
+       (catch Throwable t
+         (log/warnf t "Test cleanup failed: %s" sql))))
+
+(deftest ^:synchronized workspace-precondition-alter-default-privileges-test
+  ;; Redshift mirror of `metabase.driver.postgres-test/workspace-precondition-alter-default-privileges-test`,
+  ;; covering GHY-3709. We simulate the prod failure mode by:
+  ;;   - creating a non-superuser "tenant" role,
+  ;;   - seeding a schema with a table whose owner is a different role,
+  ;;   - connecting as the tenant role and running the pre-flight assert.
+  ;;
+  ;; The assert must throw with status 412, since the tenant role can neither
+  ;; impersonate the foreign owner nor flip to superuser at runtime. Once admin
+  ;; reassigns the table to the tenant role, the assert must pass.
+  ;;
+  ;; Note: Redshift's impersonation graph collapses to "current_user == owner
+  ;; OR current_user is superuser" -- there is no working `pg_has_role(...)`
+  ;; on RA3 clusters. The PG mirror grants role membership instead; here we
+  ;; ALTER OWNER to dodge the missing-overload problem.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          tenant     (str "ws_pre_adp_tenant_" suffix)
+          owner      (str "ws_pre_adp_owner_" suffix)
+          schema     (str "ws_pre_adp_schema_" suffix)
+          table      (str "ws_pre_adp_t_" suffix)
+          password   "Pwd_ws_pre_adp_1!"]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  tenant password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  owner password)
+                   (format "CREATE SCHEMA \"%s\";%n"                   schema)
+                   (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";%n" schema tenant)
+                   (format "CREATE TABLE \"%s\".\"%s\" (id INTEGER);%n" schema table)
+                   ;; Reassign the table to a different role so tenant doesn't own it.
+                   (format "ALTER TABLE \"%s\".\"%s\" OWNER TO \"%s\";%n" schema table owner)))
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [tenant-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                        :user tenant
+                                        :password password)]]
+          (testing "throws when a relation in the input schema is owned by an unmemberable role"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"not a member of \d+ role"
+                 (redshift/assert-can-alter-default-privileges! tenant-spec schema))))
+          (testing "passes once the foreign-owned object is reassigned to the tenant"
+            (jdbc/execute! admin-spec
+                           [(format "ALTER TABLE \"%s\".\"%s\" OWNER TO \"%s\""
+                                    schema table tenant)])
+            (is (nil? (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 owner))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           owner)))))))
+
+(deftest ^:synchronized workspace-precondition-foreign-default-acl-grantor-test
+  ;; The other half of GHY-3709: a `pg_default_acl` row owned by a role the
+  ;; tenant cannot impersonate must be caught at grant time. If we let
+  ;; provisioning through, destroy-time REVOKE has no way to drop that row
+  ;; and `DROP USER` fails -- which is exactly the production error reported
+  ;; on workspace 69.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          tenant     (str "ws_pre_facl_tenant_" suffix)
+          grantor    (str "ws_pre_facl_grantor_" suffix)
+          schema     (str "ws_pre_facl_schema_" suffix)
+          dummy      (str "ws_pre_facl_dummy_" suffix)
+          password   "Pwd_ws_pre_facl_1!"]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  tenant password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s';%n"  dummy password)
+                   (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n" schema grantor)
+                   (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";%n" schema tenant)))
+        ;; Connect as the foreign grantor to seed a pg_default_acl row owned by them.
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                         :user grantor
+                                         :password password)]]
+          (jdbc/execute! grantor-spec
+                         [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT SELECT ON TABLES TO \"%s\""
+                                  schema dummy)]))
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [tenant-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                        :user tenant
+                                        :password password)]]
+          (testing "throws when the schema carries a pre-existing default-priv row from a foreign grantor"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"not a member of \d+ role"
+                 (redshift/assert-can-alter-default-privileges! tenant-spec schema)))))
+        (finally
+          ;; Revoke the seeded default-priv as the grantor (only they can).
+          (sql-jdbc.conn/with-connection-spec-for-testing-connection
+           [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                           :user grantor
+                                           :password password)]]
+            (try-execute! grantor-spec
+                          (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                  schema dummy)))
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          ;; Flush any residual catalog rows referencing these test roles -- the
+          ;; whole point of this test is the case where DROP USER would fail on
+          ;; lingering default-priv entries, so cleanup must be belt-and-
+          ;; suspenders to keep CI re-runs from accumulating orphan roles.
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 grantor))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                 dummy))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           tenant))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           grantor))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""           dummy)))))))
+
+(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
+  ;; GHY-3709 destroy-path integration test (Redshift counterpart to the PG test
+  ;; of the same name). PG sidesteps this via `DROP OWNED BY <iso-user>`, which
+  ;; removes default-priv ACL entries where the iso-user is grantee regardless
+  ;; of grantor. Redshift has no equivalent, so destroy has to enumerate
+  ;; `pg_default_acl` and issue `ALTER DEFAULT PRIVILEGES FOR USER <grantor>
+  ;; REVOKE` per discovered (grantor, schema) pair before `DROP USER`.
+  ;;
+  ;; Repro shape:
+  ;;   1. Provision an iso-user via `init-workspace-isolation!`.
+  ;;   2. Connect as a foreign role (not the current connection user) and
+  ;;      `ALTER DEFAULT PRIVILEGES IN SCHEMA <s> GRANT SELECT ON TABLES TO
+  ;;      <iso-user>` -- catalog row is owned by that foreign grantor.
+  ;;   3. Run `destroy-workspace-isolation!`. Without the fix, `DROP USER`
+  ;;      fails with "user cannot be dropped because some objects depend on
+  ;;      it / privileges for default privileges on new relations belonging
+  ;;      to user <grantor> in schema <s>". With the fix, destroy enumerates
+  ;;      the row, REVOKEs it FOR USER the grantor, and DROP USER succeeds.
+  (mt/test-driver :redshift
+    (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
+          suffix     (u/lower-case-en (mt/random-name))
+          grantor    (str "ws_dest_grantor_" suffix)
+          schema     (str "ws_dest_schema_" suffix)
+          password   "Pwd_ws_dest_1!"
+          workspace  {:id   (rand-int Integer/MAX_VALUE)
+                      :name (str "wsd-dest-foreign-" suffix)}]
+      (try
+        (execute! (str
+                   (format "CREATE USER \"%s\" WITH PASSWORD '%s' CREATEUSER;%n" grantor password)
+                   (format "CREATE SCHEMA \"%s\" AUTHORIZATION \"%s\";%n"        schema grantor)))
+        (let [init-result    (driver/init-workspace-isolation! :redshift (mt/db) workspace)
+              iso-user       (-> init-result :database_details :user)
+              workspace+det  (merge workspace init-result)]
+          (try
+            ;; Seed the foreign-grantor default-priv: connect as the foreign role
+            ;; and issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
+            ;; row's grantor (defacluser) is the foreign role, not current_user.
+            ;; This is the exact production shape that reproduced GHY-3709.
+            (sql-jdbc.conn/with-connection-spec-for-testing-connection
+             [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                             :user grantor
+                                             :password password)]]
+              (jdbc/execute! grantor-spec
+                             [(format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT SELECT ON TABLES TO \"%s\""
+                                      schema iso-user)]))
+            (testing "destroy completes without error despite foreign-grantor default-priv row"
+              (is (some? (driver/destroy-workspace-isolation! :redshift (mt/db) workspace+det))))
+            (testing "iso-user is gone from pg_user after destroy"
+              (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_user WHERE usename = ?" iso-user]))))
+            (finally
+              ;; Belt-and-suspenders: if destroy raised, the iso-user may still
+              ;; exist with the foreign-grantor row still pinned to it. Revoke
+              ;; as the grantor (only they can drop their own default-priv) and
+              ;; force-drop the iso-user so CI re-runs don't accumulate orphans.
+              (try
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [grantor-spec [:redshift (assoc (tx/dbdef->connection-details :redshift)
+                                                 :user grantor
+                                                 :password password)]]
+                  (try-execute! grantor-spec
+                                (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                        schema iso-user)))
+                (catch Throwable t
+                  (log/warn t "Test cleanup: connecting as foreign grantor failed")))
+              (try-execute! admin-spec (format "DROP OWNED BY \"%s\""       iso-user))
+              (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\"" iso-user)))))
+        (finally
+          (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema))
+          (try-execute! admin-spec (format "DROP OWNED BY \"%s\""                  grantor))
+          (try-execute! admin-spec (format "DROP USER IF EXISTS \"%s\""            grantor)))))))

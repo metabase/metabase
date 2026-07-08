@@ -1,8 +1,10 @@
 import {
   setupDatabasesEndpoints,
+  setupListTransformsEndpoint,
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -11,17 +13,19 @@ import {
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 
-const setup = (database: Partial<Database>) => {
-  const db = createMockDatabase(database);
+interface SetupOpts {
+  database?: Database;
+}
 
+const setup = ({ database = createMockDatabase() }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
-  setupDatabasesEndpoints([db]);
+  setupDatabasesEndpoints([database]);
+  setupListTransformsEndpoint([]);
 
-  renderWithProviders(<DatabaseRoutingSection database={db} />, {
+  renderWithProviders(<DatabaseRoutingSection database={database} />, {
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: true }),
       settings: createMockSettingsState(
@@ -44,7 +48,12 @@ const setup = (database: Partial<Database>) => {
 
 describe("DatabaseRoutingSection", () => {
   it("should render DatabaseRoutingSection", () => {
-    setup({ engine: "postgres", features: ["database-routing"] });
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+      }),
+    });
 
     expect(screen.getByText("Database routing")).toBeInTheDocument();
     expect(
@@ -58,8 +67,10 @@ describe("DatabaseRoutingSection", () => {
 
   it("should render DatabaseRoutingSection with custom db_routing_info", () => {
     setup({
-      engine: "bigquery-cloud-sdk",
-      features: ["database-routing"],
+      database: createMockDatabase({
+        engine: "bigquery-cloud-sdk",
+        features: ["database-routing"],
+      }),
     });
 
     expect(screen.getByText("Database routing")).toBeInTheDocument();
@@ -70,9 +81,11 @@ describe("DatabaseRoutingSection", () => {
 
   it("should hide section if database is attached DWH", () => {
     setup({
-      engine: "postgres",
-      is_attached_dwh: true,
-      features: ["database-routing"],
+      database: createMockDatabase({
+        engine: "postgres",
+        is_attached_dwh: true,
+        features: ["database-routing"],
+      }),
     });
 
     expect(screen.queryByText("Database routing")).not.toBeInTheDocument();
@@ -80,16 +93,36 @@ describe("DatabaseRoutingSection", () => {
 
   it("should hide section if database is sample", () => {
     setup({
-      engine: "postgres",
-      is_sample: true,
-      features: ["database-routing"],
+      database: createMockDatabase({
+        engine: "postgres",
+        is_sample: true,
+        features: ["database-routing"],
+      }),
     });
 
     expect(screen.queryByText("Database routing")).not.toBeInTheDocument();
   });
 
   it("should hide section if database routing is not supported by the db engine", async () => {
-    setup({ engine: "clickhouse", features: [] });
+    setup({
+      database: createMockDatabase({ engine: "clickhouse", features: [] }),
+    });
     expect(screen.queryByText("Database routing")).not.toBeInTheDocument();
+  });
+
+  it("should show a warning when writable connection is enabled", () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        write_data_details: { host: "localhost" },
+      }),
+    });
+
+    expect(
+      screen.getByText(
+        "Database routing can't be enabled when a Writable Connection is enabled.",
+      ),
+    ).toBeInTheDocument();
   });
 });

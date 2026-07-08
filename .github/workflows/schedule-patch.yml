@@ -1,0 +1,37 @@
+name: Schedule Release - Auto Patch
+
+on:
+  schedule:
+    - cron: "0 21 * * 1-5" # every weekday at 21:00 UTC (4 pm EST / 5 pm EDT)
+
+permissions:
+  actions: write
+
+jobs:
+  trigger-auto-patch:
+    # Never run on a fork's inherited cron; honor the kill switch.
+    if: ${{ github.repository == 'metabase/metabase' && vars.ENABLE_AUTO_PATCH == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch patch release for the current and previous major
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            // Nightly patches cover the current supported major and the one
+            // before it. release-auto.yml releases one major per dispatch.
+            const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
+            const majors = [currentRelease - 1, currentRelease];
+
+            await Promise.all(majors.map(version =>
+              github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release-auto.yml',
+                ref: 'refs/heads/master',
+                inputs: {
+                  version: String(version),
+                  kind: 'patch',
+                },
+              }).catch(console.error)
+            ));

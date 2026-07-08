@@ -21,7 +21,7 @@ export const ResizableBoxHandle = forwardRef(function ResizableBoxHandle(
       bottom={rem(-4)}
       {..._.omit(props, "handleAxis")}
     >
-      <Box w="6.25rem" h="xs" bg="border" />
+      <Box w="6.25rem" h="xs" bg="border-neutral" />
     </Flex>
   );
 });

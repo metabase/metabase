@@ -1,8 +1,7 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 import _ from "underscore";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
@@ -13,6 +12,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { TokenFeatures } from "metabase-types/api";
@@ -21,16 +22,15 @@ import {
   createMockPublicCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
 
-const VisualizationMock = ({
+function VisualizationMock({
   onUpdateVisualizationSettings,
   rawSeries,
-}: VisualizationProps) => {
+}: VisualizationProps) {
   const [
     {
       card,
@@ -55,7 +55,7 @@ const VisualizationMock = ({
       </button>
     </div>
   );
-};
+}
 
 jest.mock(
   "metabase/visualizations/components/Visualization",
@@ -64,28 +64,28 @@ jest.mock(
 
 export type SetupOpts = {
   hash?: Record<string, string>;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: TokenFeatures;
   questionName: string;
   uuid: string;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export async function setup(
   {
     hash = {},
-    hasEnterprisePlugins,
     tokenFeatures = createMockTokenFeatures(),
     questionName,
     uuid,
+    enterprisePlugins = [],
   }: SetupOpts = { questionName: "", uuid: "" },
 ) {
   const settings = mockSettings({
     "token-features": tokenFeatures,
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   setupPublicQuestionEndpoints(
     uuid,

@@ -61,3 +61,7 @@
   {:select   [:search_index.model [[:* [:inline (math/pow p-value 10)] [:max :view_count]] :vcp]]
    :from     [[index-table :search_index]]
    :group-by [:search_index.model]})
+
+(defmethod specialization/index-size-estimate :h2
+  [table-name]
+  (t2/count table-name))

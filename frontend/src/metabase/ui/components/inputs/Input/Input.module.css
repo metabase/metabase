@@ -10,14 +10,14 @@
   display: block;
   color: var(--mb-color-text-primary);
   border-radius: var(--mantine-radius-xs);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background_page-primary);
 
   &::placeholder {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-disabled);
   }
 
   &:disabled {
-    background-color: var(--mb-color-background-disabled);
+    background-color: var(--mb-color-background_surface-disabled);
     color: var(--mb-color-text-disabled);
   }
 
@@ -32,33 +32,37 @@
   }
 
   &[data-variant="default"] {
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
+
+    &:hover:not(:disabled) {
+      border-color: var(--mb-color-core-brand);
+    }
 
     &:focus {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
 
     &[data-error] {
-      border-color: var(--mb-color-error);
+      border-color: var(--mb-color-feedback-negative);
     }
   }
 
   &[data-error] {
-    color: var(--mb-color-error);
-    border-color: var(--mb-color-error);
+    color: var(--mb-color-feedback-negative);
+    border-color: var(--mb-color-feedback-negative);
 
     &::placeholder {
-      color: var(--mb-color-error);
+      color: var(--mb-color-feedback-negative);
     }
   }
 }
 
 .section {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .label {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   font-weight: bold;
   line-height: var(--mantine-line-height-md);
@@ -66,14 +70,14 @@
 }
 
 .description {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
   margin-bottom: var(--mantine-spacing-sm);
 }
 
 .error {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
   margin-top: var(--mantine-spacing-sm);
@@ -84,5 +88,5 @@
 }
 
 .required {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }

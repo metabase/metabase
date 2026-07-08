@@ -32,7 +32,7 @@ const MODEL_NAME = "Test Action Model";
         );
       });
 
-      H.describeWithSnowplow("adding and executing actions", () => {
+      describe("adding and executing actions", () => {
         beforeEach(() => {
           H.resetSnowplow();
           H.restore(`${dialect}-writable`);
@@ -99,7 +99,10 @@ const MODEL_NAME = "Test Action Model";
           });
 
           // can't have this in the .within() because it needs access to document.body
-          reorderFields();
+          H.moveDnDKitListElement("drag-handle", {
+            startIndex: 1,
+            dropIndex: 0,
+          });
 
           cy.findByRole("dialog").within(() => {
             cy.findAllByText("Number").each((el) => {
@@ -124,7 +127,6 @@ const MODEL_NAME = "Test Action Model";
           addWidgetStringFilter("1");
 
           cy.findByRole("button", { name: "Update Score" }).click();
-
           cy.findByRole("dialog").within(() => {
             cy.findByLabelText("New Score").type("55");
             cy.button(ACTION_NAME).click();
@@ -352,16 +354,24 @@ const MODEL_NAME = "Test Action Model";
                   });
                   cy.visit(`/dashboard/${dashboard.id}`);
                   cy.wrap(dashboard.id).as("dashboardId");
+
+                  cy.log("The action should be visible in the dashboard");
+                  cy.findByRole("button", { name: "Create" }).should(
+                    "be.visible",
+                  );
+
+                  cy.log("Visit static embed dashboard");
+
+                  H.openLegacyStaticEmbeddingModal({
+                    resource: "dashboard",
+                    resourceId: dashboard.id,
+                    activeTab: "parameters",
+                    unpublishBeforeOpen: false,
+                  });
                 },
               );
             });
 
-          cy.log("The action should be visible in the dashboard");
-          cy.findByRole("button", { name: "Create" }).should("be.visible");
-
-          cy.log("Visit static embed dashboard");
-
-          H.openStaticEmbeddingModal({ activeTab: "parameters" });
           H.visitIframe();
 
           cy.log("Assert static embed dashboard");
@@ -440,7 +450,10 @@ const MODEL_NAME = "Test Action Model";
               );
             });
 
-            reorderFields();
+            H.moveDnDKitListElement("drag-handle", {
+              startIndex: 1,
+              dropIndex: 0,
+            });
 
             cy.findByRole("dialog").within(() => {
               cy.findAllByText("Number").each((el) => {
@@ -460,7 +473,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").uncheck();
             });
 
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Save").click();
             });
 
@@ -519,9 +532,14 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").check();
             });
 
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Update").click();
             });
+
+            cy.wait("@updateAction");
+            // The action editor closes after the update; wait until it is gone
+            // before navigating to the dashboard.
+            cy.findByTestId("action-creator").should("not.exist");
 
             H.visitDashboard("@dashboardId");
 
@@ -859,9 +877,8 @@ const MODEL_NAME = "Test Action Model";
             expect(row.date).to.include(newTime.slice(0, 10));
             expect(row.time).to.equal(newTime.slice(-8));
 
-            // metabase is smart and localizes these, so all of these are +8 hours
-            const newTimeAdjusted = newTime.replace("T01", "T09");
-            // we need to use .include because the driver adds milliseconds to the timestamp
+            // metabase uses UTC timestamps, so compare the date only
+            const newTimeAdjusted = newTime.slice(0, 10);
             expect(row.datetime).to.include(newTimeAdjusted);
             expect(row.timestamp).to.include(newTimeAdjusted);
             expect(row.datetimeTZ).to.include(newTimeAdjusted);
@@ -974,6 +991,9 @@ const MODEL_NAME = "Test Action Model";
             cy.button("Update").click();
           });
 
+          cy.wait("@updateAction");
+          cy.findByTestId("action-editor-modal").should("not.exist");
+
           getActionParametersInputModal().within(() => {
             cy.findByTestId("modal-header").findByText("New action name");
 
@@ -1017,6 +1037,9 @@ const MODEL_NAME = "Test Action Model";
           actionEditorModal().within(() => {
             cy.button("Update").click();
           });
+
+          cy.wait("@updateAction");
+          cy.findByTestId("action-editor-modal").should("not.exist");
 
           getActionParametersInputModal().within(() => {
             cy.findByLabelText("Timestamp").type("2020-01-01");
@@ -1248,6 +1271,10 @@ describe(
 
         cy.wait("@updateAction");
 
+        // The action editor closes after the update; wait until only the
+        // parameter mapping dialog remains.
+        cy.findByTestId("action-creator").should("not.exist");
+
         cy.findByRole("dialog").within(() => {
           cy.findByText("New Score: required");
           cy.findByRole("button", { name: "Done" }).should("be.disabled");
@@ -1310,19 +1337,19 @@ function createDashboardWithActionButton({
 
         cy.wait("@updateAction");
       });
+
+    cy.findByTestId("action-creator").should("not.exist");
   }
 
   if (idFilter) {
     cy.findByRole("dialog").within(() => {
       cy.findByText(/has no parameters to map/i).should("not.exist");
       cy.findByText(/Where should the values/i);
-      cy.findAllByText(/ask the user/i)
+      cy.findAllByDisplayValue(/ask the user/i)
         .first()
         .click();
     });
-    H.popover().within(() => {
-      cy.findByText("ID").click();
-    });
+    H.selectDropdown().findByText("ID").click();
   }
 
   cy.findByRole("dialog").within(() => {
@@ -1352,10 +1379,6 @@ function openFieldSettings() {
 
 function toggleFieldVisibility() {
   cy.findByText("Show field").click();
-}
-
-function reorderFields() {
-  H.dragField(1, 0);
 }
 
 const clickHelper = (buttonName) => {

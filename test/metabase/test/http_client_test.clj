@@ -1,18 +1,17 @@
 (ns metabase.test.http-client-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config.core :as config]
    [metabase.test.http-client :as client]))
 
 (deftest ^:parallel build-url-test
   (binding [client/*url-prefix* "/api"]
     (testing "correctly encode all data types"
-      (is (= (format "http://localhost:%s/api/database/1?int=1&float=1.23&string=a&keyword=b&seq=1&seq=2&seq=3" (config/config-str :mb-jetty-port))
-             (client/build-url "database/1" {:int     1
-                                             :float   1.23
-                                             :string  "a"
-                                             :keyword :b
-                                             :seq     [1 2 3]}))))))
+      (is (re-matches #"http://localhost:\d+/api/database/1\?int=1&float=1\.23&string=a&keyword=b&seq=1&seq=2&seq=3"
+                      (client/build-url "database/1" {:int     1
+                                                      :float   1.23
+                                                      :string  "a"
+                                                      :keyword :b
+                                                      :seq     [1 2 3]}))))))
 
 (deftest ^:parallel parse-http-client-args-test
   (testing "parse correctly"

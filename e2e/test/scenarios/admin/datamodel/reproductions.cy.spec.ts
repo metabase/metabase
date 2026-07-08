@@ -34,7 +34,7 @@ describe("issue 17768", () => {
     H.openReviewsTable({ mode: "notebook" });
 
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
     H.popover().within(() => {
@@ -106,7 +106,7 @@ describe("issue 21984", () => {
 
     H.commandPaletteButton().click();
     H.commandPalette().within(() => {
-      cy.findByText("Recent items").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
     });
   });
 });
@@ -133,8 +133,7 @@ describe("issue 15542", () => {
 
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
-    H.appBar().icon("gear").click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
 
     H.appBar().findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").click();
@@ -161,7 +160,7 @@ describe("issue 15542", () => {
 
     cy.wait("@fieldDimensionUpdate");
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -177,7 +176,7 @@ describe("issue 15542", () => {
     H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use original value").click();
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -356,12 +355,12 @@ describe("issues 55617, 55618", () => {
 
     cy.log("field list view (metabase#55617)");
     cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(8)
+      .eq(6)
       .should("have.value", "Discount")
       .click();
     H.popover().findByText("No semantic type").click();
     cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(8)
+      .eq(6)
       .should("have.value", "No semantic type");
 
     cy.log("field detail view");
@@ -441,11 +440,12 @@ describe("issue 55619", () => {
       cy.findByLabelText("Create a new model").click();
       cy.findByText("Use the notebook editor").click();
     });
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.runButtonOverlay().click();
+    H.tableInteractive().should("contain", "37.65");
     cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("Discount");
     cy.findByTestId("sidebar-content")
@@ -457,6 +457,9 @@ describe("issue 55619", () => {
       .should("be.visible");
     H.datasetEditBar().button("Save").click();
     H.modal().button("Save").click();
+    H.modal().should("not.exist"); // wait for modal to disappear
+    H.queryBuilderHeader().findByText("Orders").should("be.visible"); // wait for qb to turn into view-mode
+    cy.findByTestId("loading-indicator").should("not.exist"); // wait for query to complete
     H.tableHeaderColumn("Discount (€)").should("be.visible");
   });
 });

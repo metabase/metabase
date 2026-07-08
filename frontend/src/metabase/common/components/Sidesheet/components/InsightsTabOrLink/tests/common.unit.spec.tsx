@@ -9,6 +9,7 @@ describe("InsightsTabOrLink (OSS)", () => {
     });
     const tab = await screen.findByRole("tab");
     expect(tab).toBeInTheDocument();
+    expect(screen.getByTestId("upsell-gem")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 

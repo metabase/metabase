@@ -418,8 +418,8 @@ export class AccordionList<
 
     return Boolean(
       alwaysExpanded ||
-        openSection === sectionIndex ||
-        (globalSearch && this.state.searchText.length > 0),
+      openSection === sectionIndex ||
+      (globalSearch && this.state.searchText.length > 0),
     );
   };
 

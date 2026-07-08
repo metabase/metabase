@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 
+import type { Plan } from "metabase/common/utils/plan";
 import type {
   CloudMigration,
   CloudMigrationState,
@@ -14,7 +15,6 @@ export type InProgressCloudMigration = Omit<CloudMigration, "state"> & {
 export const getStartedVisibleStates = new Set<InternalCloudMigrationState>([
   "uninitialized",
   "cancelled",
-  "error",
 ]);
 
 export const progressStates = new Set<InternalCloudMigrationState>([
@@ -71,12 +71,17 @@ export const getMigrationEventTime = (isoString: string) =>
 
 export const openCheckoutInNewTab = (
   storeUrl: string,
+  plan: Plan,
   migration: CloudMigration,
 ) => {
-  window
-    .open(
-      `${storeUrl}/checkout?migration-id=${migration.external_id}`,
-      "_blank",
-    )
-    ?.focus();
+  const migrationUrl = getMigrationUrl(storeUrl, plan, migration);
+  window.open(migrationUrl, "_blank")?.focus();
 };
+
+export function getMigrationUrl(
+  storeUrl: string,
+  plan: Plan,
+  migration: CloudMigration,
+) {
+  return `${storeUrl}?migration-source-plan=${plan}&migration-id=${migration.external_id}`;
+}

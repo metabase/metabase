@@ -1,0 +1,112 @@
+name: Series and Parameter Mappings
+entity_id: 8xFV0XmZs2olbGKXWenfS
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+collection_id: cOlDaShBoArDs0ExAmPlx
+parameters:
+- id: c0000001-0000-0000-0000-000000000001
+  name: Category
+  position: 0
+  sectionId: string
+  slug: category
+  type: string/=
+- id: c0000002-0000-0000-0000-000000000002
+  name: Date Range
+  position: 1
+  sectionId: date
+  slug: date_range
+  type: date/range
+serdes/meta:
+- id: 8xFV0XmZs2olbGKXWenfS
+  label: series_and_parameter_mappings
+  model: Dashboard
+dashcards:
+- entity_id: WNjyHH5uA36yKp9D7X7bw
+  card_id: dShCrdMnthlyOrdrs0001
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 6
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: dShCrdMnthlyOrdrs0001
+    parameter_id: c0000001-0000-0000-0000-000000000001
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - null
+  - card_id: dShCrdMnthlyOrdrs0001
+    parameter_id: c0000002-0000-0000-0000-000000000002
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  series:
+  - card_id: dShCrdMnthlyRevnu0002
+    position: 0
+  - card_id: dShCrdMnthlyAvgOr0003
+    position: 1
+  - card_id: dShCrdMnthlyCumul0004
+    position: 2
+  visualization_settings:
+    column_settings: null
+    graph.show_values: true
+    graph.x_axis.title_text: Month
+    graph.y_axis.title_text: Revenue
+  serdes/meta:
+  - id: 8xFV0XmZs2olbGKXWenfS
+    model: Dashboard
+  - id: WNjyHH5uA36yKp9D7X7bw
+    model: DashboardCard
+- entity_id: MyNhSS9N9C8B373tSlfaX
+  card_id: dShCrdNatveOrders0005
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 0
+  col: 12
+  size_x: 6
+  size_y: 3
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: dShCrdNatveOrders0005
+    parameter_id: c0000001-0000-0000-0000-000000000001
+    target:
+    - variable
+    - - template-tag
+      - min_total
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 8xFV0XmZs2olbGKXWenfS
+    model: Dashboard
+  - id: MyNhSS9N9C8B373tSlfaX
+    model: DashboardCard
+- entity_id: f9pAJKJNxCtrS93uIN7F4
+  card_id: dShCrdTtlRevScalr0006
+  created_at: '2026-04-02T02:59:02.778668Z'
+  row: 6
+  col: 0
+  size_x: 6
+  size_y: 3
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    scalar.field: Total Revenue
+  serdes/meta:
+  - id: 8xFV0XmZs2olbGKXWenfS
+    model: Dashboard
+  - id: f9pAJKJNxCtrS93uIN7F4
+    model: DashboardCard
+tabs: []
+width: fixed

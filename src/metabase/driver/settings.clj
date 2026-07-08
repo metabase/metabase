@@ -72,12 +72,12 @@
   :visibility :internal
   :export?    false
   :type       :integer
-  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
+  ;; for TESTS use a timeout time of 5 seconds. This is because we have some tests that check whether
   ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
   ;;
   ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
-                3000
+                5000
                 10000)
   :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
   In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the
@@ -95,10 +95,23 @@
   :default    (if config/is-prod?
                 20
                 3)
-  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
+  :doc "Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
+  If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
+
+  This setting does not apply to queries executed within transforms; those are governed by MB_TRANSFORM_TIMEOUT instead.
+
   Please be aware that other services (like Nginx) may still drop long-running queries.")
+
+;; This is normally set via the env var `MB_JDBC_NETWORK_TIMEOUT_MS`
+(defsetting jdbc-network-timeout-ms
+  "By default, this is 30 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    (max (if config/is-prod? 1800000 600000) (* 1000 60 (+ (db-query-timeout-minutes) 5)))
+  :doc "Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-")
 
 (defsetting jdbc-data-warehouse-max-connection-pool-size
   "Maximum size of the c3p0 connection pool."
@@ -114,9 +127,45 @@
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
+(defsetting jdbc-data-warehouse-connection-pool-checkout-timeout-ms
+  "Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  [[jdbc-data-warehouse-max-connection-pool-size]] before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a \"service unavailable\" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.")
+
+(defsetting jdbc-data-warehouse-connection-pool-max-pending-checkouts
+  "Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit [[jdbc-data-warehouse-max-connection-pool-size]]. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements [[jdbc-data-warehouse-connection-pool-checkout-timeout-ms]], which bounds how long each query
+  waits; this bounds how many can wait at the same time."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  \"service unavailable\" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.")
+
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
+
+(def ^:dynamic ^Long *network-timeout-ms*
+  "Maximum amount of time to wait for a response from the database, in ms."
+  (jdbc-network-timeout-ms))
 
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
@@ -128,14 +177,23 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+(def ^:dynamic *allow-testing-sqlite-connections*
+  "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
+  users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
+  Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
+  false)
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
 
 (defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
-  terminates JDBC driver queries that run too long. This should be the same as the query timeout in
-  [[metabase.query-processor.context/query-timeout-ms]] and should not be overridden without a very good reason."
+  "Kill data-warehouse connections that have been checked out but not returned to the pool after this many seconds.
+  Acts as a leak-detector safety net — per-query timeouts are enforced separately via `Statement.setQueryTimeout`.
+  Defaults to the current `*query-timeout-ms*` in seconds, which is `MB_DB_QUERY_TIMEOUT_MINUTES` outside transforms
+  and `MB_TRANSFORM_TIMEOUT` inside [[metabase.driver.connection/with-transform-connection]] — so the transform pool
+  (a separate c3p0 pool keyed on `:transform`) gets a leak-detector tuned to transform-length runtimes without
+  weakening the leak-detector on the default pool used by ad-hoc queries."
   :visibility :internal
   :type       :integer
   :getter     #'-jdbc-data-warehouse-unreturned-connection-timeout-seconds
@@ -145,7 +203,7 @@
   "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
   [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
 
-  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  Note: You also need to update the com.mchange log level to INFO or higher in the Log4j configs in order to see the
   stack traces in the logs."
   :visibility :internal
   :type       :boolean
@@ -187,3 +245,12 @@
   :export? true
   :type :integer
   :default 1000)
+
+(defsetting sync-max-fields-per-table
+  "Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)

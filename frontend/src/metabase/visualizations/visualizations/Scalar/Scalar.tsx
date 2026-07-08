@@ -1,20 +1,23 @@
-import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { Stack, Text, Tooltip } from "metabase/ui";
 import {
-  ScalarTitle,
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
+import {
+  compactifyValue,
+  getColor,
+  getTooltipContent,
+} from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -27,10 +30,10 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
 
-import { LabelIcon, ScalarContainer } from "./Scalar.styled";
-import { TITLE_ICON_SIZE } from "./constants";
+import { ScalarValueContainer } from "./ScalarValueContainer";
 import { scalarToBarTransform } from "./scalars-bar-transform";
-import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
+
+const PADDING = 32;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -54,8 +57,6 @@ export class Scalar extends Component<
   static iconName = "number";
   static canSavePng = false;
 
-  static noHeader = true;
-
   static minSize = getMinSize("scalar");
   static defaultSize = getDefaultSize("scalar");
 
@@ -69,6 +70,7 @@ export class Scalar extends Component<
 
   static settings = {
     ...fieldSetting("scalar.field", {
+      getSection: () => t`Formatting`,
       get title() {
         return t`Field to show`;
       },
@@ -76,13 +78,28 @@ export class Scalar extends Component<
         {
           data: { cols },
         },
-      ]) => cols[0].name,
+      ]) => cols[0]?.name,
       getHidden: ([
         {
           data: { cols },
         },
       ]) => cols.length < 2,
     }),
+    "scalar.segments": {
+      getSection: () => t`Conditional colors`,
+      getDefault() {
+        return [];
+      },
+      widget: ChartSettingSegmentsEditor,
+      persistDefault: true,
+      getWrapperStyle: () => ({
+        marginLeft: 0,
+        marginRight: 0,
+      }),
+      getProps: () => ({
+        canRemoveAll: true,
+      }),
+    },
     ...columnSettings({
       getColumns: (
         [
@@ -96,19 +113,29 @@ export class Scalar extends Component<
       ],
       readDependencies: ["scalar.field"],
     }),
+    // used by metrics viewer
+    "scalar.label": {
+      getHidden: () => true,
+      getDefault: () => undefined,
+    },
+    // used by metrics viewer
+    "scalar.sublabel": {
+      getHidden: () => true,
+      getDefault: () => undefined,
+    },
     // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
       // title: t`Separator style`,
       // widget: "select",
-      // props: {
+      // getProps: () => ({
       //   options: [
       //     { name: "100000.00", value: null },
       //     { name: "100,000.00", value: "en" },
       //     { name: "100 000,00", value: "fr" },
       //     { name: "100.000,00", value: "de" },
       //   ],
-      // },
-      // default: "en",
+      // }),
+      // getDefault:() => "en",
     },
     "scalar.decimals": {
       // title: t`Number of decimal places`,
@@ -144,15 +171,11 @@ export class Scalar extends Component<
 
   render() {
     const {
-      actionButtons,
       series: [
         {
-          card,
           data: { cols, rows },
         },
       ],
-      isDashboard,
-      onChangeCardAndRun,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
@@ -162,7 +185,6 @@ export class Scalar extends Component<
       totalNumGridCols,
       fontFamily,
       rawSeries,
-      showTitle = true,
     } = this.props;
 
     if (rawSeries.length > 1) {
@@ -185,100 +207,97 @@ export class Scalar extends Component<
       jsx: true,
     };
 
+    const segments = settings["scalar.segments"]?.filter((segment) =>
+      segmentIsValid(segment, { allowOpenEnded: true }),
+    );
+
+    const color = getColor(value, segments);
+    const tooltipContent = getTooltipContent(segments);
+
     const { displayValue, fullScalarValue } = compactifyValue(
       value,
       width,
       formatOptions,
     );
 
-    const clicked = {
-      value,
-      column,
-      data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
-      settings,
-    };
-    const isClickable = onVisualizationClick != null;
+    const label = settings["scalar.label"];
+    const sublabel = settings["scalar.sublabel"];
+    const isMetricsViewer = label !== undefined;
 
-    const showSmallTitle =
-      !!settings["card.title"] &&
-      isDashboard &&
-      Boolean(
-        (gridSize?.width != null && gridSize.width < 2) ||
-          (gridSize?.height != null && gridSize.height < 2),
-      );
-
-    const titleLinesCount = getTitleLinesCount(height);
+    const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
     const handleClick = () => {
+      if (this._scalar == null) {
+        return;
+      }
+
+      const clickData = {
+        value,
+        column,
+        data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
+        settings,
+        element: this._scalar,
+      };
+
       if (
         this._scalar &&
         onVisualizationClick &&
-        visualizationIsClickable(clicked)
+        visualizationIsClickable(clickData)
       ) {
-        onVisualizationClick({ ...clicked, element: this._scalar });
+        onVisualizationClick(clickData);
       }
     };
 
     return (
       <ScalarWrapper>
-        <div
-          className={cx(
-            DashboardS.CardTitle,
-            CS.textDefault,
-            CS.textSmaller,
-            CS.absolute,
-            CS.top,
-            CS.right,
-            CS.p1,
-            CS.px2,
-          )}
-        >
-          {actionButtons}
-        </div>
-        <ScalarContainer
-          className={cx(
-            DashboardS.fullscreenNormalText,
-            DashboardS.fullscreenNightText,
-            EmbedFrameS.fullscreenNightText,
-          )}
-          data-testid="scalar-container"
+        <ScalarValueContainer
+          className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
         >
-          <span onClick={handleClick} ref={(scalar) => (this._scalar = scalar)}>
-            <ScalarValue
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={getValueHeight(height, { isDashboard, showSmallTitle })}
-              totalNumGridCols={totalNumGridCols}
-              value={displayValue as string}
-              width={getValueWidth(width)}
-            />
-          </span>
-        </ScalarContainer>
-
-        {isDashboard &&
-          showTitle &&
-          (showSmallTitle ? (
-            <LabelIcon
-              data-testid="scalar-title-icon"
-              name="ellipsis"
-              tooltip={settings["card.title"]}
-              size={TITLE_ICON_SIZE}
-            />
-          ) : (
-            <ScalarTitle
-              lines={titleLinesCount}
-              title={settings["card.title"]}
-              description={settings["card.description"]}
-              onClick={
-                onChangeCardAndRun
-                  ? () => onChangeCardAndRun({ nextCard: card })
-                  : undefined
-              }
-            />
-          ))}
+          <Tooltip
+            label={tooltipContent}
+            position="bottom"
+            px="0.375rem"
+            py="xs"
+            disabled={!tooltipContent}
+          >
+            <Stack
+              onClick={handleClick}
+              ref={(scalar) => (this._scalar = scalar)}
+              align="center"
+              gap={0}
+            >
+              <ScalarValue
+                color={color}
+                disableHover={isMetricsViewer}
+                fontFamily={fontFamily}
+                gridSize={gridSize}
+                height={Math.max(height - PADDING * 2, 0)}
+                totalNumGridCols={totalNumGridCols}
+                value={displayValue as string}
+                width={Math.max(width - PADDING, 0)}
+              />
+              {label && (
+                <Text fz="14px" lh="16px" c="text-primary" mt="md" ta="center">
+                  {label}
+                </Text>
+              )}
+              {sublabel && (
+                <Text
+                  fz="12px"
+                  lh="16px"
+                  c="text-secondary"
+                  mt="xs"
+                  ta="center"
+                >
+                  {sublabel}
+                </Text>
+              )}
+            </Stack>
+          </Tooltip>
+        </ScalarValueContainer>
       </ScalarWrapper>
     );
   }

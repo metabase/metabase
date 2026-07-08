@@ -1,0 +1,80 @@
+{
+    "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+    "self": {
+      "vendor": "com.metabase",
+      "name": "token_usage",
+      "format": "jsonschema",
+      "version": "1-0-1"
+    },
+    "type": "object",
+    "description": "Event to capture the token usage of individual LLM invocations. Created for billing purposes.",
+    "properties": {
+      "hashed_metabase_license_token": {
+        "type": "string",
+        "description": "The hashed value of the Metabase license token",
+        "maxLength": 255
+      },
+      "user_id": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "description": "The ID of the user that send the request",
+        "minimum": 0,
+        "maximum": 2147483647
+      },
+      "request_id": {
+        "type": "string",
+        "description": "Unique ID that is assigned to each incoming request. Can be used to aggregate usage for a single request.",
+        "maxLength": 255
+      },
+      "model_id": {
+        "type": "string",
+        "description": "The ID of the model that was used to generate the tokens",
+        "maxLength": 255
+      },
+      "total_tokens": {
+        "type": "integer",
+        "description": "The total number of tokens",
+        "minimum": 0,
+        "maximum": 2147483647
+      },
+      "prompt_tokens": {
+        "type": "integer",
+        "description": "The number of prompt tokens",
+        "minimum": 0,
+        "maximum": 2147483647
+      },
+      "completion_tokens": {
+        "type": "integer",
+        "description": "The number of completion tokens",
+        "minimum": 0,
+        "maximum": 2147483647
+      },
+      "estimated_costs_usd": {
+        "type": "number",
+        "description": "The estimated cost of for the tokens in USD",
+        "minimum": 0,
+        "maximum": 2147483647
+      },
+      "duration_ms": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "description": "The time it took to (in milliseconds) to receive an answer from the LLM.",
+        "minimum": 0,
+        "maximum": 2147483647
+      }
+    },
+    "required": [
+      "hashed_metabase_license_token",
+      "request_id",
+      "model_id",
+      "total_tokens",
+      "prompt_tokens",
+      "completion_tokens",
+      "estimated_costs_usd"
+    ],
+    "additionalProperties": false
+  }

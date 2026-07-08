@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockCard,
@@ -18,11 +18,13 @@ describe("ValuesSourceModal", () => {
       createMockField({
         id: 1,
         base_type: "type/Text",
+        effective_type: "type/Text",
         semantic_type: "type/Category",
       }),
       createMockField({
         id: 2,
         base_type: "type/Text",
+        effective_type: "type/Text",
         semantic_type: "type/Category",
       }),
     ],
@@ -173,14 +175,18 @@ describe("ValuesSourceModal", () => {
             result_metadata: [
               createMockField({
                 id: 1,
+                name: "id",
                 display_name: "ID",
                 base_type: "type/BigInteger",
+                effective_type: "type/BigInteger",
                 semantic_type: "type/PK",
               }),
               createMockField({
                 id: 2,
+                name: "category",
                 display_name: "Category",
                 base_type: "type/Text",
+                effective_type: "type/Text",
                 semantic_type: "type/Category",
               }),
             ],
@@ -188,18 +194,16 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: /Pick a column/ }),
-      );
+      await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
       expect(
-        screen.queryByRole("heading", { name: "ID" }),
+        screen.queryByRole("option", { name: "ID" }),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("heading", { name: "Category" }));
+      await userEvent.click(screen.getByRole("option", { name: "Category" }));
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
-        value_field: ["field", 2, null],
+        value_field: ["field", "category", { "base-type": "type/Text" }],
       });
     });
 
@@ -231,7 +235,9 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+        "A\nB\nC",
+      );
     });
 
     it("should display a message when the user has no access to the card", async () => {
@@ -329,7 +335,9 @@ describe("ValuesSourceModal", () => {
           }),
         ],
       });
-      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+        "A\nB\nC",
+      );
 
       await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();

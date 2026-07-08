@@ -1,7 +1,7 @@
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:refer-clojure :exclude [group-by])
+  (:refer-clojure :exclude [group-by last #?(:clj for)])
   (:require
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
@@ -26,13 +26,14 @@
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [#?(:clj for)]]
    [metabase.util.polyfills]
-   [nano-id.core :as nano-id]
    [net.cgrand.macrovich :as macros]
+   [taoensso.encore :as encore]
    [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.core.protocols CollReduce)
@@ -56,6 +57,7 @@
   format-nanoseconds
   format-seconds
   format-plural
+  qualified-key
   qualified-name])
 
 #?(:clj (p/import-vars [u.jvm
@@ -121,6 +123,19 @@
                                    not-empty)]
                  (str " " (pr-str data)))))
         (str/join "\n"))))
+
+(defn last
+  "Like `clojure.core/last`, but tries to be O(1)."
+  [v]
+  (cond
+    (or (list? v) (map? v)) (clojure.core/last v)
+    (zero? (count v))       nil
+    :else                   (nth v (dec (count v)))))
+
+(defn keepv
+  "Like `keep`, but returns a vector."
+  [f coll]
+  (into [] (keep f) coll))
 
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
@@ -213,10 +228,58 @@
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
 
+(def ^String utf8-bom
+  "The UTF-8 byte-order mark"
+  "\ufeff")
+
+(defn strip-bom
+  "Strip a leading UTF-8 BOM from string `s`, if present. `clojure.data.csv` and many other parsers do not strip it
+  automatically, so it can leak into the first cell. Returns `s` unchanged when there is no BOM (or `s` is nil)."
+  ^String [^String s]
+  (if (and s (str/starts-with? s utf8-bom))
+    (subs s 1)
+    s))
+
 (defn truncate
   "Truncate a string to `n` characters."
   [s n]
   (subs s 0 (min (count s) n)))
+
+#?(:clj
+   (defn https?
+     "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
+
+     In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
+     request handled by Jetty will be over HTTP."
+     [{{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https origin]} :headers
+       :keys                                                                                                [scheme]}]
+     (let [;; Take the first hop of a comma-separated chain (`https, http`), trim, and drop blanks, mirroring
+           ;; `misc/forwarded-scheme`. Branching on the normalized value (not raw presence) lets a blank proto header
+           ;; (e.g. `X-Forwarded-Proto: ""`) fall through to the boolean-style HTTPS indicators below.
+           proto (some-> (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
+                         (str/split #",") first str/trim not-empty lower-case-en)
+           ssl   (or x-forwarded-ssl front-end-https)]
+       (cond
+         ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
+         ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
+         proto
+         (= "https" proto)
+
+         ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Front-End-Https`, which
+         ;; will be set to `on` if the original request was over HTTPS.
+         ssl
+         (= "on" (lower-case-en ssl))
+
+         ;; If none of the above are present, we are most likely not being accessed over a reverse proxy. Still, there's a
+         ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
+         ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
+         origin
+         (str/starts-with? (lower-case-en origin) "https")
+
+         ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
+         ;; front of us), we can look directly at the scheme of the request sent to Jetty.
+         scheme
+         (= scheme :https)))))
 
 (defn regex->str
   "Returns the contents of a regex as a string.
@@ -308,6 +371,11 @@
   [m]
   (recursive-map-keys ->snake_case_en m))
 
+(defn deep-kebab-keys
+  "Recursively convert the keys in a map to `kebab_case`."
+  [m]
+  (recursive-map-keys ->kebab-case-en m))
+
 (defn deep-kebab->snake-keys
   "Recursively convert kebab-case keys in a map to snake_case by replacing hyphens.
   Preserves camelCase and other formatting."
@@ -389,7 +457,7 @@
 
 (defn maybe?
   "Returns `true` if X is `nil`, otherwise calls (F X).
-   This can be used to see something is either `nil` or statisfies a predicate function:
+   This can be used to see something is either `nil` or satisfies a predicate function:
 
      (string? nil)          -> false
      (string? \"A\")        -> true
@@ -432,9 +500,12 @@
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
   [x]
-  (and (number? x)
-       (not (NaN? x))
-       (not (infinite? x))))
+  ;; Check for BigDec explicitly. BigDec cannot be nan or infinite, but using those predicates on bigdec with higher
+  ;; precision may allocate.
+  (or #?(:clj (decimal? x) :default false)
+      (and (number? x)
+           (not (NaN? x))
+           (not (infinite? x)))))
 
 (defn remove-diacritical-marks
   "Return a version of `s` with diacritical marks removed."
@@ -474,7 +545,7 @@
          :cljs (js/encodeURIComponent c))
       c)))
 
-(defn slugify
+(mu/defn slugify
   "Return a version of String `s` appropriate for use as a URL slug.
   Downcase the name and remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores.
 
@@ -486,13 +557,32 @@
   Optionally specify `:max-length` which will truncate the slug after that many characters."
   (^String [^String s]
    (slugify s {}))
-  (^String [s {:keys [max-length unicode?]}]
+  (^String [s :- [:maybe :string]
+            {:keys [max-length unicode?]} :- [:maybe
+                                              [:map
+                                               {:closed true}
+                                               [:max-length {:optional true} pos-int?]
+                                               [:unicode?   {:optional true} [:maybe boolean?]]]]]
    (when (seq s)
-     (let [slug (str/join (for [c (remove-diacritical-marks (lower-case-en s))]
-                            (slugify-char c (not unicode?))))]
-       (if max-length
-         (str/join (take max-length slug))
-         slug)))))
+     (cond->> (remove-diacritical-marks (lower-case-en s))
+       true (map #(slugify-char % (not unicode?)))
+       max-length (reduce (fn [cur-slug next-slug]
+                            (if (<= (+ (count cur-slug)
+                                       (if (char? next-slug)
+                                         1
+                                         (count next-slug)))
+                                    max-length)
+                              (str cur-slug next-slug)
+                              (reduced cur-slug)))
+                          "")
+       true str/join))))
+
+(defn valid-slug?
+  "Check that a given string is a valid slug."
+  [slug]
+  (and (string? slug)
+       (not (str/blank? slug))
+       (re-matches #"^[a-z0-9][a-z0-9\-]*$" slug)))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -627,7 +717,7 @@
     m))
 
 (defn index-of
-  "Return index of the first element in `coll` for which `pred` reutrns true."
+  "Return index of the first element in `coll` for which `pred` returns true."
   [pred coll]
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
@@ -700,7 +790,6 @@
       (with-out-str
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
-
       :cljs-dev
       ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
       ;; default value wastes too much space, 120 is a little easier to read actually.
@@ -708,7 +797,6 @@
         (with-out-str
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
-
       :default
       ;; For CLJS release, we don't pull cljs.pprint to reduce bundle size.
       (str x)))
@@ -742,7 +830,7 @@
                2 :magenta
                3 :yellow) "%s%s took %s"
              (if (pos? *profile-level*)
-               (str (str/join (repeat (dec *profile-level*) "  ")) " ⮦ ")
+               (str "┌" (str/join (repeat (dec *profile-level*) "─")) "─> ")
                "")
              (message-thunk)
              (u.format/format-nanoseconds (- #?(:cljs (* 1000000 (js/performance.now))
@@ -959,13 +1047,16 @@
   [nodes traverse-fn]
   (loop [to-traverse (zipmap nodes (repeat nil))
          traversed   {}]
-    (let [item        (first to-traverse)
-          found       (traverse-fn (key item))
-          traversed   (conj traversed item)
-          to-traverse (into (dissoc to-traverse (key item))
-                            (apply dissoc found (keys traversed)))]
-      (if (empty? to-traverse)
-        traversed
+    (if (empty? to-traverse)
+      traversed
+      (let [item (first to-traverse)
+            found (traverse-fn (key item))
+            traversed (conj traversed item)
+            ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+            ;; locations
+            to-traverse (merge-with into
+                                    (dissoc to-traverse (key item))
+                                    (apply dissoc found (keys traversed)))]
         (recur to-traverse traversed)))))
 
 (defn reverse-compare
@@ -1106,7 +1197,6 @@
                                                            (long (+
                                                                   cumulative-byte-count
                                                                   (string-byte-count (string-character-at s i)))))))
-
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
@@ -1183,21 +1273,21 @@
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
   ([kf]
-   (map (fn [x]
-          [(kf x) x])))
+   (map (juxt kf identity)))
   ([kf coll]
    (into {} (index-by kf) coll))
   ([kf vf coll]
-   (into {}
-         (comp (index-by kf)
-               (map (fn [[k v]]
-                      [k (vf v)])))
-         coll)))
+   (into {} (map (juxt kf vf)) coll)))
 
 (defn rfirst
   "Return first item from Reducible"
   [reducible]
   (reduce (fn [_ fst] (reduced fst)) nil reducible))
+
+(defn rlast
+  "Return last item from Reducible."
+  [reducible]
+  (reduce (fn [_ x] x) nil reducible))
 
 (defn rconcat
   "Concatenate two Reducibles"
@@ -1212,7 +1302,11 @@
        (coll-reduce [_ f init]
          (let [acc1 (reduce f init r1)
                acc2 (reduce f acc1 r2)]
-           acc2)))
+           acc2))
+
+       ;; The only reason to implement Seqable is to make it properly renderable by CIDER (and other IDEs, probably).
+       clojure.lang.Seqable
+       (seq [_] (concat (seq r1) (seq r2))))
      :cljs
      (reify IReduce
        (-reduce [_ f]
@@ -1237,17 +1331,15 @@
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
-  ([] (nano-id/nano-id))
+  ([]
+   (encore/nanoid false 21))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)
-                  gen  (nano-id/custom
-                        "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                        21
-                        (fn [len]
-                          (let [ba (byte-array len)]
-                            (.nextBytes rnd ba)
-                            ba)))]
+                  gen  (encore/rand-id-fn {:rand-bytes-fn (fn [len]
+                                                            (let [ba (byte-array len)]
+                                                              (.nextBytes rnd ba)
+                                                              ba))})]
               (gen))
       :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))
 
@@ -1301,3 +1393,8 @@
   "Finds the first map in `maps` that contains the value at the given key path."
   [maps ks value]
   (second (find-first-map-indexed maps ks value)))
+
+(defn tee-xf
+  "Transducer that collects items into an atom while passing them through unchanged."
+  [atom]
+  (map (fn [x] (swap! atom conj x) x)))

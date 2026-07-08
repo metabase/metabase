@@ -1,10 +1,9 @@
 import { TextareaBlurChange, type TextareaBlurChangeProps } from "metabase/ui";
 
-interface Props
-  extends Omit<
-    TextareaBlurChangeProps,
-    "normalize" | "value" | "onBlurChange" | "onChange"
-  > {
+interface Props extends Omit<
+  TextareaBlurChangeProps,
+  "normalize" | "value" | "onBlurChange" | "onChange"
+> {
   normalize?: (
     value: string | number | readonly string[] | undefined,
   ) => string;

@@ -1,0 +1,9 @@
+name: Library
+entity_id: LiBrArYrOoT000000001
+slug: library
+type: library
+created_at: '2026-04-02T00:00:00Z'
+serdes/meta:
+- id: LiBrArYrOoT000000001
+  label: library
+  model: Collection

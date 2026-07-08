@@ -1,11 +1,10 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import type { OptionsType } from "metabase/lib/formatting/types";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import type { DatasetColumn } from "metabase-types/api";
+import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
 export const formatValueForTooltip = ({
   value,
@@ -18,7 +17,7 @@ export const formatValueForTooltip = ({
   settings?: ComputedVisualizationSettings;
   isAlreadyScaled?: boolean;
 }) => {
-  const options: OptionsType = {
+  const options: ColumnSettings = {
     ...(settings && settings.column && column
       ? settings.column(column)
       : { column }),

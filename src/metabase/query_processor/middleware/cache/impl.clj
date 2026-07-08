@@ -29,7 +29,6 @@
            (do
              (check-total (swap! byte-count + (alength ^bytes x)))
              (.write os ^bytes x))))
-
         ([^bytes ba ^Integer off ^Integer len]
          (check-total (swap! byte-count + len))
          (.write os ba off len))))))

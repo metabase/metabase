@@ -1,11 +1,9 @@
 import {
   DataPermission,
   DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import type {
-  DatabasePermissions,
-  GroupsPermissions,
-  Table,
+  type DatabasePermissions,
+  type GroupsPermissions,
+  type Table,
 } from "metabase-types/api";
 
 type Options = {

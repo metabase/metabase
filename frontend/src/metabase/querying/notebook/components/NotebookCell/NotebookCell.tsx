@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type CSSProperties, forwardRef, isValidElement } from "react";
+import { forwardRef, isValidElement } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Flex, type FlexProps, Icon, rem } from "metabase/ui";
@@ -12,13 +12,10 @@ const _NotebookCell = ({ className, color, ...props }: FlexProps) => {
     <Flex
       className={cx(S.NotebookCell, className)}
       p={props.p ?? rem("14px")}
-      c={color}
       {...props}
-      style={
-        {
-          "--notebook-cell-color": color,
-        } as CSSProperties
-      }
+      style={{
+        "--notebook-cell-color": `var(--mb-color-${color})`,
+      }}
     />
   );
 };
@@ -79,11 +76,9 @@ export const NotebookCellItem = forwardRef<
         },
         className,
       )}
-      style={
-        {
-          "--notebook-cell-item-container-color": color,
-        } as CSSProperties
-      }
+      style={{
+        "--notebook-cell-item-container-color": `var(--mb-color-${color})`,
+      }}
       {...restProps}
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
       ref={ref}
@@ -98,13 +93,11 @@ export const NotebookCellItem = forwardRef<
             [S.canHover]: !inactive && !readOnly && !disabled,
           },
         )}
-        style={
-          {
-            padding: CONTAINER_PADDING,
-            ...containerStyle,
-            "--notebook-cell-item-content-container-color": color,
-          } as CSSProperties
-        }
+        style={{
+          padding: CONTAINER_PADDING,
+          ...containerStyle,
+          "--notebook-cell-item-content-container-color": `var(--mb-color-${color})`,
+        }}
       >
         {children}
       </Flex>
@@ -119,13 +112,11 @@ export const NotebookCellItem = forwardRef<
               [S.canHover]: !inactive && !readOnly && !disabled,
             },
           )}
-          style={
-            {
-              padding: CONTAINER_PADDING,
-              ...rightContainerStyle,
-              "--notebook-cell-item-content-container-color": color,
-            } as CSSProperties
-          }
+          style={{
+            padding: CONTAINER_PADDING,
+            ...rightContainerStyle,
+            "--notebook-cell-item-content-container-color": `var(--mb-color-${color})`,
+          }}
         >
           {right}
         </Flex>

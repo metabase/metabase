@@ -1,8 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { getScrollIntoViewMock, screen, within } from "__support__/ui";
-
-import type { ChecklistItemValue } from "../types";
+import type { ChecklistItemValue } from "metabase/redux/store";
 
 import { setup } from "./setup";
 
@@ -111,13 +110,13 @@ describe("Onboarding", () => {
     expect(getItem("sql")).toHaveAttribute("data-active", "true");
   });
 
-  it("should scroll the last remembered item into view on page load", () => {
+  it("should scroll the last remembered item into view on page load", async () => {
     setup({ openItem: "sql" });
 
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
 
     // closing the item should not trigger `scrollIntoView` again
-    userEvent.click(getItemControl("Query with SQL"));
+    await userEvent.click(getItemControl("Query with SQL"));
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
   });
 
@@ -343,7 +342,7 @@ describe("Onboarding", () => {
       ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/notifications");
+      ).toHaveAttribute("href", "/admin/settings/slack");
 
       const cta = screen.getByTestId("subscription-cta");
       expect(within(cta).getByRole("link")).toHaveAttribute(
@@ -387,7 +386,7 @@ describe("Onboarding", () => {
       ).toHaveAttribute("href", "/admin/settings/email");
       expect(
         within(commsSetup).getByRole("link", { name: "Slack" }),
-      ).toHaveAttribute("href", "/admin/settings/notifications");
+      ).toHaveAttribute("href", "/admin/settings/slack");
 
       const cta = screen.getByTestId("alert-cta");
       expect(within(cta).getByRole("link")).toHaveAttribute(

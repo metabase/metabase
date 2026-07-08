@@ -4,7 +4,7 @@ import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useActionButtonLabel } from "metabase/common/hooks/use-action-button-label";
 import {
   Form,
@@ -13,8 +13,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import {
   Alert,
@@ -28,6 +27,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import {
   type NotificationAuthMethods,
   type NotificationAuthType,
@@ -133,10 +133,10 @@ const renderAuthSection = (type: string) => {
             label={t`Add to`}
             groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
           >
-            <Chip value="header" variant="brand">
+            <Chip value="header" variant="filled">
               {t`Header`}
             </Chip>
-            <Chip value="query-param" variant="brand">
+            <Chip value="query-param" variant="filled">
               {t`Query param`}
             </Chip>
           </FormChipGroup>
@@ -227,7 +227,9 @@ export const WebhookForm = ({
           <Alert
             variant="light"
             mb="1.5rem"
-            style={{ backgroundColor: "var(--mb-color-bg-light)" }}
+            style={{
+              backgroundColor: "var(--mb-color-background_page-secondary)",
+            }}
             px="1.5rem"
             py="1rem"
             radius="0.5rem"
@@ -264,7 +266,7 @@ export const WebhookForm = ({
                 <Box
                   py="0.5rem"
                   px="1.5rem"
-                  bg="bg-light"
+                  bg="background_page-secondary"
                   style={{ borderRadius: "0.5rem" }}
                   data-testid="notification-test-response"
                 >
@@ -311,16 +313,16 @@ export const WebhookForm = ({
               }
             }}
           >
-            <Chip value="none" variant="brand">
+            <Chip value="none" variant="filled">
               {t`None`}
             </Chip>
-            <Chip value="basic" variant="brand">
+            <Chip value="basic" variant="filled">
               {t`Basic`}
             </Chip>
-            <Chip value="bearer" variant="brand">
+            <Chip value="bearer" variant="filled">
               {t`Bearer`}
             </Chip>
-            <Chip value="api-key" variant="brand">
+            <Chip value="api-key" variant="filled">
               {t`API Key`}
             </Chip>
           </FormChipGroup>
@@ -335,7 +337,7 @@ export const WebhookForm = ({
             {onDelete && (
               <Button
                 variant="subtle"
-                c="text-medium"
+                c="text-secondary"
                 size="compact-md"
                 pl="0"
                 leftSection={<Icon name="trash" />}
@@ -347,7 +349,7 @@ export const WebhookForm = ({
               <FormSubmitButton
                 disabled={!dirty}
                 label={submitLabel}
-                variant="filled"
+                variant="brand"
               />
             </Group>
           </Flex>

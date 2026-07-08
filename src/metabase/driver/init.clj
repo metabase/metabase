@@ -13,4 +13,5 @@
    [metabase.driver.postgres]
    [metabase.driver.settings]
    ;; for the `:sql-jdbc` implementation of [[metabase.driver/incorporate-ssh-tunnel-details]]
-   [metabase.driver.sql-jdbc.connection.ssh-tunnel]))
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel]
+   [metabase.driver.sqlite]))

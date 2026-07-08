@@ -2,7 +2,11 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.search.config :as search.config]))
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.search.config :as search.config]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -21,6 +25,28 @@
   [column value]
   [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
 
+(defn normalize-text-expr
+  "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
+  lower-case, replace commas with spaces, collapse whitespace runs to one space, trim.
+  `db-type` picks the regexp_replace dialect -- Postgres needs the 'g' flag; H2 replaces all by default and
+  rejects 'g'.
+  Only :postgres and :h2 can reach this: the appdb engine is gated to those (see
+  [[metabase.search.appdb.core/supported-db?]]) and semantic search passes :postgres explicitly."
+  ([expr] (normalize-text-expr (mdb/db-type) expr))
+  ([db-type expr]
+   ;; Replace commas with a space, not nothing, so `a,b` doesn't collapse into `ab`.
+   (let [stripped [:replace [:lower expr] [:inline ","] [:inline " "]]
+         collapsed (case db-type
+                     :postgres [:regexp_replace stripped [:inline "\\s+"] [:inline " "] [:inline "g"]]
+                     :h2       [:regexp_replace stripped [:inline "\\s+"] [:inline " "]])]
+     [:trim collapsed])))
+
+(defn normalize-text
+  "Clojure analogue of `normalize-text-expr`, for callers that must normalize a search string in code (the
+  :prefix scorer builds a LIKE pattern). Keep in lock-step with the SQL version."
+  [s]
+  (-> (u/lower-case-en s) (str/replace "," " ") (str/replace #"\s+" " ") str/trim))
+
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
   [column ceiling]
@@ -37,41 +63,82 @@
 
 (defn inverse-duration
   "Score an item based on the duration between two dates, where less is better."
-  [from-column to-column ceiling-in-days]
-  (let [ceiling [:inline ceiling-in-days]]
-    [:/
-     [:greatest
-      [:- ceiling
-       [:/
-        ;; Use seconds for granularity in the fraction.
-        ;; TODO will probably need to specialize this based on (mdb/db-type)
-        [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
-        [:inline (double seconds-in-a-day)]]]
-      [:inline 0]]
-     ceiling]))
+  ([from-column to-column ceiling-in-days]
+   (inverse-duration (mdb/db-type) from-column to-column ceiling-in-days))
+  ([db-type from-column to-column ceiling-in-days]
+   (let [ceiling [:inline ceiling-in-days]]
+     [:/
+      [:greatest
+       [:- ceiling
+        [:/
+         ;; Use seconds for granularity in the fraction.
+         (if (= :mysql db-type)
+           [:coalesce
+            [[:timestampdiff [:raw "SECOND"] from-column to-column]]
+            [:* ceiling (double seconds-in-a-day)]]
+           [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]])
+         [:inline (double seconds-in-a-day)]]]
+       [:inline 0]]
+      ceiling])))
+
+(defn- cast-to-text
+  [column]
+  [:cast column (if (= :mysql (mdb/db-type))
+                  :char
+                  :text)])
 
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
-   :from   [:recent_views]
-   :where  [:and
-            [:= :recent_views.user_id current-user-id]
-            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
-            [:= :recent_views.model
-             [:case
-              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
-              [:= :search_index.model [:inline "metric"]] [:inline "card"]
-              :else :search_index.model]]]})
+  (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+    {:select [[[:case
+                ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them
+                [:= :search_index.model [:inline "transform"]]
+                one-day-ago
+                :else
+                [:max :recent_views.timestamp]]
+               :last_viewed_at]]
+     :from   [:recent_views]
+     :where  [:and
+              [:= :recent_views.user_id current-user-id]
+              [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
+              [:= :recent_views.model
+               [:case
+                [:= :search_index.model [:inline "dataset"]] [:inline "card"]
+                [:= :search_index.model [:inline "metric"]] [:inline "card"]
+                :else :search_index.model]]]}))
+
+(defn library-score-expr
+  "Score expression: 1 when `:root_collection_type` is one of the library collection types, else 0."
+  []
+  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-type` (walks the
+  ;; materialized path), so deeply nested items in a library tree still match.
+  [:case
+   (into [:or]
+         (for [t (sort collection/library-collection-types)]
+           [:= :root_collection_type [:inline t]]))
+   [:inline 1]
+   :else [:inline 0]])
+
+(defn data-layer-score-expr
+  "Score expression: per-tier weight when `:data_layer` is `final`/`internal`/`hidden`, else 0.
+  Per-tier weights are read from `:data-layer/*` keys via [[search.config/scorer-param]]."
+  [search-ctx]
+  (let [tier-weight #(or (search.config/scorer-param search-ctx :data-layer %) 0)]
+    [:case
+     [:= :data_layer [:inline "final"]]    [:inline (tier-weight :final)]
+     [:= :data_layer [:inline "internal"]] [:inline (tier-weight :internal)]
+     [:= :data_layer [:inline "hidden"]]   [:inline (tier-weight :hidden)]
+     :else                                 [:inline 0]]))
 
 (defn model-rank-expr
   "Score an item based on its :model type."
-  [{:keys [context]}]
+  [search-ctx]
   (let [search-order search.config/models-search-order
         n            (double (count search-order))
         cases        (map-indexed (fn [i sm]
                                     [[:= :search_index.model sm]
-                                     (or (search.config/scorer-param context :model sm)
+                                     (or (search.config/scorer-param search-ctx :model sm)
                                          [:inline (/ (- n i) n)])])
                                   search-order)]
     (-> (into [:case] cat (concat cases))
@@ -106,7 +173,7 @@
         [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
         [:= :search_index.model [:inline model-name]])
       [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
+      [:= :search_index.model_id (cast-to-text (keyword (str table-name "." model-name "_id")))]]]))
 
 (defn join-bookmarks
   "Add join clause to bookmark tables for :bookmarked scorer."
@@ -124,22 +191,22 @@
 
 (defn weighted-score
   "Multiply a score by its weight."
-  [context [column-alias expr]]
-  [:* [:inline (search.config/weight context column-alias)] expr])
+  [search-ctx [column-alias expr]]
+  [:* [:inline (search.config/weight search-ctx column-alias)] expr])
 
 (defn select-items
   "Select expressions for each scorer, plus a :total_score that is the weighted sum of the `scorers`."
-  [context scorers]
+  [search-ctx scorers]
   (concat
    (for [[column-alias expr] scorers]
      [expr column-alias])
-   [[(sum-columns (map (partial weighted-score context) scorers))
+   [[(sum-columns (map (partial weighted-score search-ctx) scorers))
      :total_score]]))
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores."
   [search-ctx scorers qry]
-  (apply sql.helpers/select qry (select-items (:context search-ctx) scorers)))
+  (apply sql.helpers/select qry (select-items search-ctx scorers)))
 
 (defn all-scores
   "Scoring stats for each `index-row`."
@@ -152,3 +219,8 @@
              :weight       weight
              :contribution (* weight score)}))
         scorers))
+
+(defn no-scoring-required?
+  "Scoring is unnecessary when we are not returning any results, e.g. counting potential results"
+  [{:keys [limit-int]}]
+  (and limit-int (zero? limit-int)))

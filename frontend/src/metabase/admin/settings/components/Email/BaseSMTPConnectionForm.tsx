@@ -17,8 +17,8 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
 
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
@@ -124,7 +124,7 @@ export const BaseSMTPConnectionForm = ({
     if (result.error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: isErrorWithMessage(result.error)
           ? result.error.data.message
           : t`Error clearing email settings`,
@@ -151,7 +151,7 @@ export const BaseSMTPConnectionForm = ({
       } catch (error) {
         sendToast({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message: getErrorMessage(error, t`Error updating email settings`),
         });
 
@@ -235,13 +235,13 @@ export const BaseSMTPConnectionForm = ({
                       label={t`SMTP Port`}
                       groupProps={{ mt: "0.5rem" }}
                     >
-                      <Chip value={"465"} variant="brand">
+                      <Chip value={"465"} variant="filled">
                         465
                       </Chip>
-                      <Chip value={"587"} variant="brand">
+                      <Chip value={"587"} variant="filled">
                         587
                       </Chip>
-                      <Chip value={"2525"} variant="brand">
+                      <Chip value={"2525"} variant="filled">
                         2525
                       </Chip>
                     </FormChipGroup>
@@ -264,7 +264,7 @@ export const BaseSMTPConnectionForm = ({
                     groupProps={{ mt: "0.5rem" }}
                   >
                     {securityOptions.map(({ value, label }) => (
-                      <Chip key={value} value={value} variant="brand">
+                      <Chip key={value} value={value} variant="filled">
                         {label}
                       </Chip>
                     ))}
@@ -305,7 +305,7 @@ export const BaseSMTPConnectionForm = ({
                     label={t`Save changes`}
                     disabled={!dirty || !isValid || isSubmitting}
                     loading={isSubmitting}
-                    variant="filled"
+                    variant="brand"
                   />
                 </Flex>
               </Stack>

@@ -1,3 +1,4 @@
+import { clone } from "metabase/utils/clone";
 const { H } = cy;
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -16,7 +17,7 @@ describe("scenarios > embedding > native questions", () => {
 
   context("UI", () => {
     function createAndVisitQuestion({ requiredTagName, defaultValue } = {}) {
-      const details = structuredClone(questionDetails);
+      const details = clone(questionDetails);
 
       if (requiredTagName) {
         details.native["template-tags"][requiredTagName].default = defaultValue;
@@ -28,23 +29,36 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      cy.get("@questionId").then((questionId) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "parameters",
+        });
+      });
     }
 
     it("should not display disabled parameters", () => {
       createAndVisitQuestion();
 
       H.publishChanges("card", ({ request }) => {
-        assert.deepEqual(request.body.embedding_params, {});
+        assert.deepEqual(request.body.embedding_params, {
+          id: "disabled",
+          state: "disabled",
+          created_at: "disabled",
+          total: "disabled",
+          source: "disabled",
+          product_id: "disabled",
+        });
       });
 
       H.visitIframe();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Lora Cronin");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("39.58");
 
       H.filterWidget().should("not.exist");
@@ -68,6 +82,7 @@ describe("scenarios > embedding > native questions", () => {
           total: "locked",
           state: "enabled",
           product_id: "enabled",
+          source: "disabled",
         };
 
         assert.deepEqual(actual, expected);
@@ -82,18 +97,18 @@ describe("scenarios > embedding > native questions", () => {
         H.visitEmbeddedPage(payload);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2 2023
+      // Created At: Q2 2026
       H.filterWidget().contains("Created At").click();
       H.popover().within(() => {
         cy.findByText(/20\d+/).click();
-        cy.contains("2023").click();
+        cy.contains("2026").click();
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 
       // State: is not KS
@@ -103,36 +118,37 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByLabelText("KS").should("be.visible").click();
       cy.button("Add filter").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Logan Weber").should("not.exist");
 
       // Product ID is 10
       cy.findByPlaceholderText("Product ID").type("10{enter}");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Affiliate").should("not.exist");
 
       // Let's try to remove one filter
-      H.filterWidget({ name: "Q2 2023" }).icon("close").click();
+      H.filterWidget({ name: "Q2 2026" }).icon("close").click();
 
       // Order ID is 926 - there should be only one result after this
       H.filterWidget().contains("Order ID").click();
       cy.findByPlaceholderText("Enter an ID").type("926");
       cy.button("Add filter").click();
 
-      cy.findAllByRole("row").should("have.length", 1);
+      H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("December 29, 2024, 4:54 AM");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("December 29, 2027, 4:54 AM");
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");
 
-      cy.location("search").should(
-        "eq",
-        "?id=926&created_at=&state=KS&product_id=10",
-      );
+      cy.location("search")
+        .should("include", "product_id=10")
+        .and("include", "created_at=")
+        .and("include", "id=926")
+        .and("include", "state=KS");
     });
 
     it("should handle required parameters", () => {
@@ -147,7 +163,12 @@ describe("scenarios > embedding > native questions", () => {
         // weren't touched and therefore aren't changed, whereas
         // "enabled" must be set by default for required params.
         const expected = {
+          id: "disabled",
+          state: "disabled",
+          created_at: "disabled",
           total: "enabled",
+          source: "disabled",
+          product_id: "disabled",
         };
 
         assert.deepEqual(actual, expected);
@@ -225,7 +246,7 @@ describe("scenarios > embedding > native questions", () => {
           },
         });
 
-        cy.findAllByRole("row").should("have.length", 1);
+        H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
         cy.findByText("92");
 
         H.filterWidget().should("not.exist");
@@ -250,13 +271,13 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         H.visitEmbeddedPage(payload, {
-          setFilters: { created_at: "Q2-2025", source: "Organic", state: "OR" },
+          setFilters: { created_at: "Q2-2028", source: "Organic", state: "OR" },
         });
 
         H.filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2 2025");
+          .and("contain", "Q2 2028");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 
@@ -297,7 +318,7 @@ describe("scenarios > embedding > native questions", () => {
             id: [92, 96, 102, 104],
             product_id: [140],
             state: ["AK", "TX"],
-            created_at: "Q3-2024",
+            created_at: "Q3-2027",
             total: [10],
             source: ["Organic"],
           },
@@ -305,7 +326,7 @@ describe("scenarios > embedding > native questions", () => {
 
         H.visitEmbeddedPage(payload);
 
-        cy.findAllByRole("row").should("have.length", 1);
+        H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
         cy.findByText("66.8");
 
         H.filterWidget().should("not.exist");
@@ -344,17 +365,22 @@ describe("scenarios > embedding > native questions", () => {
         H.visitEmbeddedPage(payload);
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You must specify a value for :source in the JWT.").should(
         "be.visible",
       );
     });
 
     it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
-      H.visitQuestion("@questionId");
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
+      H.visitQuestion("@questionId").then((id) => {
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: id,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
       });
+
       H.visitIframe();
 
       cy.log("should show card results by default");
@@ -376,15 +402,23 @@ describe("scenarios > embedding > native questions with default parameters", () 
       wrapId: true,
     });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@questionId").then((questionId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: questionId,
+        activeTab: "parameters",
+      });
+    });
 
     // Note: ID is disabled
     H.setEmbeddingParameter("Source", "Locked");
     H.setEmbeddingParameter("Name", "Editable");
     H.publishChanges("card", ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
+        id: "disabled",
         source: "locked",
         name: "enabled",
+        user_id: "disabled",
       });
     });
   });

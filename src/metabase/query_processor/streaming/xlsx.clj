@@ -1,23 +1,24 @@
 (ns metabase.query-processor.streaming.xlsx
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
-   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [dk.ative.docjure.spreadsheet :as spreadsheet] ; codespell:ignore ative
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv some]])
   (:import
    (java.io OutputStream)
    (java.time
@@ -76,6 +77,11 @@
         (str "[$" currency-identifier "]" base-string)
         (str "[$" currency-identifier "] " base-string))
 
+      "narrowSymbol"
+      (if (currency/supports-symbol? currency-code)
+        (str "[$" currency-identifier "]" base-string)
+        (str "[$" currency-identifier "] " base-string))
+
       "code"
       (str "[$" currency-identifier "] " base-string)
 
@@ -106,14 +112,14 @@
   [{::mb.viz/keys [prefix suffix number-style number-separators currency-in-header decimals] :as format-settings}]
   (let [format-strings
         (let [base-string     (if (= number-separators ".")
-                                ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
+                                ;; Omit thousands separator if omitted in the format settings. Otherwise ignore
                                 ;; number separator settings, since custom separators are not supported in XLSX.
                                 "###0"
                                 "#,##0")
               decimals        (or decimals 2)
               base-strings    (if (unformatted-number? format-settings)
                                 ;; [int-format, float-format]
-                                [base-string (str base-string ".##")]
+                                [base-string (str base-string ".##########")]
                                 (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
           (condp = number-style
             "percent"
@@ -162,8 +168,8 @@
                            "milliseconds"
                            "h:mm:ss.000"
 
-                               ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
-                               ;; defaulting to "minutes"
+                           ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
+                           ;; defaulting to "minutes"
                            nil
                            nil)]
     (when base-time-format
@@ -293,15 +299,17 @@
    ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
    :time     "h:mm am/pm"
    :integer  "#,##0"
-   :float    "#,##0.##"})
+   :float    "#,##0.##########"})
 
 (defn- compute-typed-cell-styles
-  "Compute default cell styles based on column types"
-  ;; These are tested, but does this happen IRL?
-  [^Workbook workbook ^DataFormat data-format]
-  (update-vals
-   (default-format-strings)
-   (partial cell-string-format-style workbook data-format)))
+  "Compute default cell styles based on column types. When `format-rows?` is false, omit numeric
+  formats so that Excel's General format is used, preserving full decimal precision."
+  [^Workbook workbook ^DataFormat data-format format-rows?]
+  (let [format-strings (cond-> (default-format-strings)
+                         (not format-rows?) (dissoc :integer :float))]
+    (update-vals
+     format-strings
+     (partial cell-string-format-style workbook data-format))))
 
 (defn- rounds-to-int?
   "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
@@ -373,10 +381,12 @@
     (.setCellValue cell v)
     ;; Do not set formatting for ##NaN, ##Inf, or ##-Inf
     (when (u/real-number? v)
-      (let [[int-style float-style] styles]
-        (if (rounds-to-int? v)
-          (.setCellStyle cell (or int-style (typed-styles :integer)))
-          (.setCellStyle cell (or float-style (typed-styles :float))))))))
+      (let [[int-style float-style] styles
+            style (if (rounds-to-int? v)
+                    (or int-style (typed-styles :integer))
+                    (or float-style (typed-styles :float)))]
+        (when style
+          (.setCellStyle cell style))))))
 
 (defmethod set-cell! Boolean
   [^Cell cell value _styles _typed-styles]
@@ -415,7 +425,7 @@
   "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
   To gain the formatting back, we parse the temporal strings back into their java.time objects.
 
-  TODO: find a way to avoid this java.time -> string -> java.time conversion by making sure the format-rows middlware
+  TODO: find a way to avoid this java.time -> string -> java.time conversion by making sure the format-rows middleware
         works effectively with the streaming-results-writer implementations for CSV, JSON, and XLSX.
         A hint towards a better solution is to add into the format-rows middleware the use of
         viz-settings/column-formatting that is used inside `metabase.formatter/create-formatter`."
@@ -605,9 +615,9 @@
         agg-fns (mapv col->aggregation-fn cols)]
     (-> pivot-opts
         (assoc :column-titles titles)
-        qp.pivot.postprocess/add-pivot-measures
+        pivot.postprocess/add-pivot-measures
         (assoc :aggregation-functions agg-fns)
-        (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index titles)))))
+        (assoc :pivot-grouping-key (pivot.postprocess/pivot-grouping-index titles)))))
 
 (defn- track-n-cols-for-autosizing!
   [n sheet]
@@ -624,18 +634,11 @@
       (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or viz-settings {})  format-rows?)))
     sheet))
 
-(defn get-formatter
-  "Returns a memoized formatter for a column"
-  [timezone settings format-rows?]
-  (memoize
-   (fn [column]
-     (formatter/create-formatter timezone column settings format-rows?))))
-
 (defn- create-formatters
   [cell-styles cols indexes timezone settings format-rows?]
   (let [cell-styles  (vec cell-styles)
         cols         (vec cols)
-        formatter-fn (get-formatter timezone settings format-rows?)]
+        formatter-fn (formatter/get-formatter timezone settings format-rows?)]
     (mapv (fn [idx]
             (let [col (nth cols idx)
                   formatter (formatter-fn col)]
@@ -656,7 +659,7 @@
   [workbook viz-settings non-pivot-cols format-rows?]
   (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
     {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?)
-     :typed-cell-styles (compute-typed-cell-styles workbook data-format)}))
+     :typed-cell-styles (compute-typed-cell-styles workbook data-format format-rows?)}))
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
@@ -673,10 +676,9 @@
         (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
-                                                                pivot-export-options) ordered-cols))
+                                                                (m/filter-vals some? pivot-export-options)) ordered-cols))
               non-pivot-cols (pivot/columns-without-pivot-group ordered-cols)]
-          (vreset! pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
-          (def pivot-spec pivot-spec)
+          (vreset! pivot-grouping-index (pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
           (if pivot-spec
             ;; If we're generating a pivot table, just initialize the `pivot-data` volatile but not the workbook, yet
             (vreset! pivot-data
@@ -710,7 +712,7 @@
           (if @pivot-data
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (when (or (not group)
-                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                      (= pivot.postprocess/non-pivot-row-group (int group)))
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
                 (add-row! @workbook-sheet (inc row-num) row' ordered-cols' viz-settings cell-styles typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)
@@ -734,7 +736,7 @@
                                             settings
                                             timezone
                                             format-rows?)
-                output (qp.pivot.postprocess/build-pivot-output
+                output (pivot.postprocess/build-pivot-output
                         (update-in @pivot-data [:data :rows] persistent!)
                         formatters)
                 sheet (init-workbook {:workbook     workbook

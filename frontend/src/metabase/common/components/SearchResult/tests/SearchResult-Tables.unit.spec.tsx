@@ -1,0 +1,100 @@
+import userEvent from "@testing-library/user-event";
+
+import {
+  setupDatabaseEndpoints,
+  setupTableEndpoints,
+  setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import { SearchResult } from "metabase/common/components/SearchResult";
+import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
+import type { InitialSyncStatus } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockTable,
+  createMockUser,
+} from "metabase-types/api/mocks";
+
+interface SetupOpts {
+  name: string;
+  initial_sync_status: InitialSyncStatus;
+}
+
+const USER = createMockUser();
+
+const setup = (setupOpts: SetupOpts) => {
+  const TEST_TABLE = createMockTable(setupOpts);
+  const TEST_DATABASE = createMockDatabase();
+  setupTableEndpoints(TEST_TABLE);
+  setupDatabaseEndpoints(TEST_DATABASE);
+  setupUsersEndpoints([USER]);
+  setupUserRecipientsEndpoint({ users: [USER] });
+  const result = createWrappedSearchResult({
+    model: "table",
+    table_id: TEST_TABLE.id,
+    database_id: TEST_DATABASE.id,
+    ...setupOpts,
+  });
+
+  const onClick = jest.fn();
+  renderWithProviders(
+    <SearchResult result={result} onClick={onClick} index={0} />,
+  );
+  const link = screen.getByText(result.name);
+  return { link, onClick };
+};
+
+describe("SearchResult > Tables", () => {
+  it("tables with initial_sync_status='complete' are clickable", async () => {
+    const { link, onClick } = setup({
+      name: "Complete Table",
+      initial_sync_status: "complete",
+    });
+    await userEvent.click(link);
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  it("tables with initial_sync_status='incomplete' are not clickable", async () => {
+    const { link, onClick } = setup({
+      name: "Incomplete Table",
+      initial_sync_status: "incomplete",
+    });
+    await userEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("tables with initial_sync_status='aborted' are not clickable", async () => {
+    const { link, onClick } = setup({
+      name: "Aborted Table",
+      initial_sync_status: "aborted",
+    });
+    await userEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("does not turn a still-syncing table into a link (no middle/ctrl-click navigation)", () => {
+    const TEST_TABLE = createMockTable({
+      name: "Syncing Table",
+      initial_sync_status: "incomplete",
+    });
+    const TEST_DATABASE = createMockDatabase();
+    setupTableEndpoints(TEST_TABLE);
+    setupDatabaseEndpoints(TEST_DATABASE);
+    setupUsersEndpoints([USER]);
+    setupUserRecipientsEndpoint({ users: [USER] });
+    const result = createWrappedSearchResult({
+      model: "table",
+      table_id: TEST_TABLE.id,
+      database_id: TEST_DATABASE.id,
+      name: "Syncing Table",
+      initial_sync_status: "incomplete",
+    });
+
+    renderWithProviders(<SearchResult result={result} index={0} />);
+
+    expect(screen.getByTestId("search-result-item-name")).not.toHaveAttribute(
+      "href",
+    );
+  });
+});

@@ -63,10 +63,6 @@ const setup = ({
 };
 
 describe("ChartSkeleton", () => {
-  beforeAll(() => {
-    jest.unmock("metabase/common/components/Popover");
-  });
-
   displayTestData.forEach(({ name, display }) => {
     const displayDescription = `${name} description`;
 
@@ -90,7 +86,7 @@ describe("ChartSkeleton", () => {
         actionMenu: MockActionMenu,
         display,
       });
-      userEvent.hover(screen.getByLabelText("info icon"));
+      await userEvent.hover(screen.getByLabelText("info icon"));
       expect(screen.getByText(name)).toBeInTheDocument();
       expect(await screen.findByText(displayDescription)).toBeInTheDocument();
       expect(screen.getByText("Action Menu")).toBeInTheDocument();

@@ -9,14 +9,13 @@ import {
   forwardRef,
 } from "react";
 
-import EntityItem from "metabase/common/components/EntityItem";
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import Link from "metabase/common/components/Link";
+import { EntityItem } from "metabase/common/components/EntityItem";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { Link } from "metabase/common/components/Link";
+import { RawMaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
 import AdminS from "metabase/css/admin.module.css";
 import type { IconProps, TextProps } from "metabase/ui";
 import { FixedSizeIcon, Text } from "metabase/ui";
-
-import { RawMaybeLink } from "../Badge/Badge.styled";
 
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
@@ -33,7 +32,7 @@ export const Table = styled(
     shouldForwardProp: (prop) => prop !== "isInDragLayer",
   },
 )`
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background_page-primary);
   table-layout: fixed;
   border-collapse: unset;
   border-radius: 0.5rem;
@@ -41,16 +40,16 @@ export const Table = styled(
 
   thead {
     th {
-      border-top: 1px solid var(--mb-color-border);
+      border-top: 1px solid var(--mb-color-border-neutral);
 
       &:first-of-type {
         border-start-start-radius: 8px;
-        border-inline-start: 1px solid var(--mb-color-border);
+        border-inline-start: 1px solid var(--mb-color-border-neutral);
       }
 
       &:last-child {
         border-start-end-radius: 8px;
-        border-inline-end: 1px solid var(--mb-color-border);
+        border-inline-end: 1px solid var(--mb-color-border-neutral);
       }
     }
   }
@@ -74,7 +73,7 @@ export const ColumnHeader = styled.th<ResponsiveProps>`
   }
 
   font-weight: bold;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   ${hideResponsively}
 `;
 
@@ -103,7 +102,7 @@ const itemLinkStyle = css`
   align-items: center;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -124,7 +123,7 @@ export const ItemNameCell = styled.td`
 
   &:hover {
     ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     cursor: pointer;
@@ -140,7 +139,7 @@ export const SortingIcon = styled(
 `;
 
 export const DescriptionIcon = styled(FixedSizeIcon)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const SortingControlContainer = styled.div<{
@@ -149,7 +148,7 @@ export const SortingControlContainer = styled.div<{
 }>`
   display: flex;
   align-items: center;
-  color: ${({ isActive }) => isActive && "var(--mb-color-text-dark)"};
+  color: ${({ isActive }) => isActive && "var(--mb-color-text-primary)"};
 
   ${({ isSortable = true }) =>
     isSortable ? `cursor: pointer; user-select: none;` : ""}
@@ -159,7 +158,7 @@ export const SortingControlContainer = styled.div<{
   }
 
   &:hover {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
 
     .Icon {
       visibility: visible;
@@ -182,14 +181,14 @@ export const TBody = styled.tbody`
   td {
     border: none;
     background-color: transparent;
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
 
     &:first-of-type {
-      border-inline-start: 1px solid var(--mb-color-border);
+      border-inline-start: 1px solid var(--mb-color-border-neutral);
     }
 
     &:last-child {
-      border-inline-end: 1px solid var(--mb-color-border);
+      border-inline-end: 1px solid var(--mb-color-border-neutral);
     }
   }
 
@@ -199,7 +198,7 @@ export const TBody = styled.tbody`
 
   tr:last-child {
     td {
-      border-bottom: 1px solid var(--mb-color-border);
+      border-bottom: 1px solid var(--mb-color-border-neutral);
 
       &:last-child {
         border-end-end-radius: 8px;

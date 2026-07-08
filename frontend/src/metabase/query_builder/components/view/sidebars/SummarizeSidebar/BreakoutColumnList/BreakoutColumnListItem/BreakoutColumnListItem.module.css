@@ -12,19 +12,21 @@
 .AddButton {
   width: 34px;
   margin-left: 0.5rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .RemoveButton {
-  color: var(--mb-color-text-white);
-  background-color: transparent;
-  opacity: 0.6;
-  transition: all 100ms;
-
-  &:hover {
-    color: var(--mb-color-text-white);
+  &[data-variant="subtle"] {
+    color: var(--mb-color-text-primary-inverse);
     background-color: transparent;
-    opacity: 1;
+    opacity: 0.6;
+    transition: all 100ms;
+
+    &:hover {
+      color: var(--mb-color-text-primary-inverse);
+      background-color: transparent;
+      opacity: 1;
+    }
   }
 }
 
@@ -55,17 +57,21 @@
   &.isSelected {
     .Content,
     .ColumnTypeIcon {
-      background-color: var(--mb-color-summarize);
-      color: var(--mb-color-text-white);
+      background-color: var(--mb-color-core-summarize);
+      color: var(--mb-color-text-primary-inverse);
     }
 
     .BucketTriggerButton {
       visibility: visible;
       opacity: 1;
-      color: color-mix(in srgb, var(--mb-color-text-white), transparent 35%);
+      color: color-mix(
+        in srgb,
+        var(--mb-color-text-primary-inverse),
+        transparent 35%
+      );
 
       &:hover {
-        color: var(--mb-color-text-white);
+        color: var(--mb-color-text-primary-inverse);
         opacity: 1;
       }
     }
@@ -73,28 +79,28 @@
 
   &.isNotSelected {
     .ColumnTypeIcon {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-disabled);
     }
 
     &:hover {
       .AddButton,
       .Content,
       .ColumnTypeIcon {
-        color: var(--mb-color-summarize);
-        background-color: var(--mb-color-bg-light);
+        color: var(--mb-color-core-summarize);
+        background-color: var(--mb-color-background_page-secondary);
       }
 
       .AddButton:hover {
-        background-color: var(--mb-color-bg-medium);
+        background-color: var(--mb-color-background_page-tertiary);
       }
 
       .BucketTriggerButton {
         visibility: visible;
         opacity: 1;
-        color: var(--mb-color-text-light);
+        color: var(--mb-color-text-disabled);
 
         &:hover {
-          color: var(--mb-color-text-medium);
+          color: var(--mb-color-text-secondary);
         }
       }
     }
@@ -102,5 +108,5 @@
 }
 
 .ColumnTypeIcon {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }

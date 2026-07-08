@@ -2,13 +2,12 @@ import dayjs from "dayjs";
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
-import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Markdown from "metabase/common/components/Markdown";
-import { useDispatch } from "metabase/lib/redux";
-import { getUserName } from "metabase/lib/user";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Markdown } from "metabase/common/components/Markdown";
+import { useDispatch } from "metabase/redux";
+import { reloadSettings } from "metabase/redux/settings";
 import {
   Box,
   Button,
@@ -20,6 +19,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { getUserName } from "metabase/utils/user";
 import {
   useGetGsheetsFolderQuery,
   useGetServiceAccountQuery,
@@ -137,11 +137,11 @@ function GoogleSheetsConnectModal({
 
   return (
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
-      <SegmentedControl
+      <SegmentedControl<UploadType>
         fullWidth
         autoContrast
-        color="brand"
-        c="var(--mb-color-text-white)"
+        color="core-brand"
+        c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
@@ -152,7 +152,7 @@ function GoogleSheetsConnectModal({
         }
       />
       <Flex
-        bg="bg-light"
+        bg="background_page-secondary"
         style={{ borderRadius: "0.5rem" }}
         p="md"
         direction="column"
@@ -165,7 +165,7 @@ function GoogleSheetsConnectModal({
           <Text>
             2.{" "}
             {c("{0} is an email address")
-              .jt`Enter: ${(<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
+              .jt`Enter: ${<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
@@ -194,12 +194,12 @@ function GoogleSheetsConnectModal({
                 : "https://docs.google.com/spreadsheets/d/abc123-xyz456"
             }
           />
-          <Text size="sm" color="secondary">
+          <Text size="sm" c="text-secondary">
             {copyInstruction}
           </Text>
         </Box>
         <Flex justify="space-between" align="center" mt="sm" gap="md">
-          <Text c="error" lh="1.2rem">
+          <Text c="feedback-negative" lh="1.2rem">
             {errorMessage}
           </Text>
           <Button
@@ -240,11 +240,11 @@ function GoogleSheetsDisconnectModal({
     <ModalWrapper onClose={onClose} title={title}>
       <Stack gap="md">
         <DriveConnectionDisplay />
-        <Text c="text-medium" pb="md">
+        <Text c="text-secondary" pb="md">
           {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
-          <Text c="error" ta="start">
+          <Text c="feedback-negative" ta="start">
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="md">
@@ -257,7 +257,7 @@ function GoogleSheetsDisconnectModal({
             </Button>
             <Button
               variant="filled"
-              color="danger"
+              color="feedback-negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >
@@ -303,7 +303,7 @@ export const DriveConnectionDisplay = () => {
   return (
     <MaybeLink href={folderUrl ?? ""}>
       <Flex
-        bg="bg-light"
+        bg="background_page-secondary"
         w="100%"
         gap="sm"
         p="md"
@@ -313,7 +313,7 @@ export const DriveConnectionDisplay = () => {
         <Box>
           <Text fw="bold">{t`Google Drive connected`}</Text>
           {!!userName && (
-            <Text c="text-medium" fz="sm" lh="140%">
+            <Text c="text-secondary" fz="sm" lh="140%">
               {t`Connected by ${userName} ${relativeConnectionTime}`}
             </Text>
           )}

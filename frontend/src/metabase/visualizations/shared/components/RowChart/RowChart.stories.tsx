@@ -1,10 +1,10 @@
 import type { StoryFn } from "@storybook/react";
 
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import { color } from "metabase/lib/colors";
-import { measureTextWidth } from "metabase/lib/measure-text";
 import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
 import { Box } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 
 import { RowChart, type RowChartProps } from "./RowChart";
@@ -16,7 +16,7 @@ export default {
 
 const Template: StoryFn<RowChartProps<any>> = (args) => {
   return (
-    <Box h={600} bg="white" p="8px">
+    <Box h={600} bg="core-white" p="8px">
       <RowChart {...args} />
     </Box>
   );
@@ -87,10 +87,10 @@ export const Default = {
 };
 
 const ThemedRowChart = () => {
-  const theme = useRowChartTheme("Lato", false, false);
+  const theme = useRowChartTheme("Lato", false);
 
   return (
-    <Box h={600} bg="white" p="8px">
+    <Box h={600} bg="core-white" p="8px">
       <RowChart {...DEFAULT_ROW_CHART_ARGS} theme={theme} stackOffset={null} />
     </Box>
   );

@@ -1,21 +1,23 @@
 (ns metabase.query-processor.middleware.metrics
+  (:refer-clojure :exclude [select-keys some empty? not-empty])
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
+   [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
+   [metabase.util.performance :as perf :refer [select-keys some empty? not-empty]]))
 
 (defn- filters->condition
   [filters]
   (when (seq filters)
-    (lib.util/fresh-uuids
+    (lib/fresh-uuids
      (if (next filters)
        (apply lib/and filters)
        (first filters)))))
@@ -47,7 +49,7 @@
         c2-maybe-unwrapped (cond-> c2
                              (= :and c2-operator) (subvec 2))
         c1-operator (first c1)]
-    (lib.util/fresh-uuids
+    (lib/fresh-uuids
      (if (= :and c1-operator)
        (if (= :and c2-operator)
          (into c1 c2-maybe-unwrapped)
@@ -95,7 +97,7 @@
   [aggregation condition]
   (cond->> aggregation
     (seq condition)
-    (walk/postwalk
+    (perf/postwalk
      (fn [form]
        (if-not (and (vector? form)
                     (not (map-entry? form)))
@@ -136,30 +138,33 @@
   (if-let [aggregations (lib/aggregations query stage-number)]
     (let [columns (lib/visible-columns query stage-number)]
       (assoc-in query [:stages stage-number :aggregation]
-                (lib.util.match/replace aggregations
+                (match/replace aggregations
                   [:metric _ metric-id]
-                  (if-let [{replacement :aggregation} (get lookup metric-id)]
+                  (if-let [{replacement :aggregation, metric-name :name} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
-                    (let [replacement (lib.util.match/replace replacement
-                                        [(tag :guard #{:expression :field :aggregation}) _ _]
+                    (let [replacement (match/replace replacement
+                                        [#{:expression :field :aggregation} _ _]
                                         (if-let [col (lib/find-matching-column &match columns)]
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
                                           &match))]
-                      (update (lib.util/fresh-uuids replacement)
+                      (update (lib/fresh-uuids replacement)
                               1
                               #(merge
                                 %
                                 {:name (lib/column-name query stage-number replacement)}
                                 (select-keys % [:name :display-name])
+                                ;; The metric card's name is the column's display-name externally,
+                                ;; overriding the inner aggregation's display-name (#58307).
+                                (when metric-name {:display-name metric-name})
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
 (defn- find-metric-ids
   [x]
-  (lib.util.match/match x
+  (match/match-many x
     [:metric _ (id :guard pos-int?)]
     id))
 
@@ -173,17 +178,22 @@
        (lib.metadata/bulk-metadata-or-throw query :metadata/card)
        (into {}
              (map (fn [card-metadata]
-                    (let [metric-query (->> (:dataset-query card-metadata)
-                                            (lib/query query)
-                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                            (lib/query query)
-                                            metric-query-filters->aggregation)
+                    ;; Preprocess the metric query as admin so user-context middleware (sandboxing,
+                    ;; impersonation) leaves it untouched. The outer query still goes through those passes
+                    ;; normally, and will sandbox the spliced result. This matches how the sandboxing
+                    ;; middleware preprocesses its own source query (#76044).
+                    (let [metric-query (request/as-admin
+                                         (->> (:dataset-query card-metadata)
+                                              (lib/query query)
+                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                                              (lib/query query)
+                                              metric-query-filters->aggregation))
                           metric-name (:name card-metadata)]
                       (if-let [aggregation (first (lib/aggregations metric-query))]
                         [(:id card-metadata)
                          {:query metric-query
-                              ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
-                              ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
+                          ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
+                          ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
                           :aggregation aggregation
                           :name metric-name}]
                         (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
@@ -227,8 +237,8 @@
 
 (defn- add-join-aliases
   [x source-field->join-alias]
-  (lib.util.match/replace x
-    [:field (opts :guard (every-pred (comp source-field->join-alias :source-field) (complement :join-alias))) _]
+  (match/replace x
+    [:field (opts :guard (and (source-field->join-alias (:source-field opts)) (not (:join-alias opts)))) _]
     (assoc-in &match [1 :join-alias] (-> opts :source-field source-field->join-alias))))
 
 (defn- include-implicit-joins
@@ -242,7 +252,7 @@
         query-with-joins (reduce #(lib/join %1 agg-stage-index %2)
                                  query
                                  new-joins)]
-    (lib.util/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
+    (lib/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
 
 (defn- splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
@@ -254,13 +264,13 @@
                          :aggregation
                          (fetch-referenced-metrics query))]
       (let [temp-query (temp-query-at-stage-path query path)
-            unique-name-fn (lib.util/unique-name-generator
+            unique-name-fn (lib/unique-name-generator
                             (map
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))
             new-query (reduce
                        (fn [query [metric-id {metric-query :query}]]
-                         (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
+                         (if (and (= (lib/primary-source-table-id query) (lib/primary-source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
                                          (:qp/stage-had-source-card (lib/query-stage query agg-stage-index)))))
@@ -290,9 +300,9 @@
                    stage-a-source
                    (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
                    (= (:type metric-metadata) :metric)
-                    ;; This indicates this stage has not been processed
-                    ;; because metrics must have aggregations
-                    ;; if it is missing, then it has been removed in this process
+                   ;; This indicates this stage has not been processed
+                   ;; because metrics must have aggregations
+                   ;; if it is missing, then it has been removed in this process
                    (:aggregation stage-a))
               [idx-a metric-metadata])))
         (partition-all 2 1 (m/indexed expanded-stages))))
@@ -307,7 +317,7 @@
      :order-by
    ```
 
-   `:fields` are added explictly to pass previous-stage fields onto the following-stage
+   `:fields` are added explicitly to pass previous-stage fields onto the following-stage
 
    The following stages will have `[:metric {} id]` clauses
    replaced with the actual aggregation of the metric."

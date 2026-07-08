@@ -32,15 +32,12 @@
                     entry))
                 (logger/messages))
           "In memory ring buffer did not receive log message")))
-
   (testing "set isAdditive = false if parent logger is root to prevent logging to console (#26468)"
     (testing "make sure it's true to starts with"
       (is (.isAdditive (logger 'metabase))))
-
     (testing "set to false if parent logger is root"
       (mt/with-log-level :warn
         (is (not (.isAdditive (logger 'metabase))))))
-
     (testing "still true if the parent logger is not root"
       (mt/with-log-level [metabase.logger.core :warn]
         (is (.isAdditive (logger 'metabase.logger.core)))))))

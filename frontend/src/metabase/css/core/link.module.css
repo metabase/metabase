@@ -5,7 +5,7 @@
 .link {
   cursor: pointer;
   text-decoration: none;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .link:hover {
@@ -13,7 +13,7 @@
 }
 
 .link:focus {
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
 }
 
 .link:focus:not(:focus-visible) {

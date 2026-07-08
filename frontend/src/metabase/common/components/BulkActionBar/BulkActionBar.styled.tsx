@@ -1,9 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Card from "metabase/common/components/Card";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-import { space } from "metabase/styled-components/theme";
+import { Card } from "metabase/ui";
 
 export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   position: fixed;
@@ -11,15 +10,18 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   left: 50%;
   margin-left: ${(props) =>
     props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
-  margin-bottom: ${space(2)};
+  margin-bottom: var(--mantine-spacing-md);
   transform: translateX(-50%);
+  z-index: 150;
 `;
 
 export const ToastCard = styled(Card)`
-  color: var(--mb-color-text-white);
-  padding: 0.75rem ${space(2)};
+  background-color: var(--mb-color-background_page-primary-inverse);
+  color: var(--mb-color-text-primary-inverse);
+  padding: 0.75rem var(--mantine-spacing-md);
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 2.5rem;
-`;
+` as unknown as typeof Card;

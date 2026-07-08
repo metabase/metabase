@@ -14,3 +14,8 @@ certificates needed for the backend tests are copied into the this directory.
 Although the source of truth is the docker image, the client certificates are
 checked in because there are tests like the SSL connection factory tests which
 need valid certificates and keys.
+
+## To test against the server with TLS
+
+    MB_MONGO_TEST_USER=metabase MB_MONGO_TEST_PASSWORD=metasample123 MB_TEST_MONGO_REQUIRES_SSL=1 DRIVERS=mongo clj -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
+

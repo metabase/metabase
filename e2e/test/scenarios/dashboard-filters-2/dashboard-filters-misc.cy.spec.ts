@@ -33,9 +33,9 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        H.entityPickerModalItem(2, "Orders").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
       });
 
       H.getNotebookStep("filter")
@@ -68,7 +68,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
         .findByLabelText("Temporal bucket")
         .realHover()
         .click();
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover().last().findByText("Week").click();
       H.getNotebookStep("summarize")
         .findByTestId("breakout-step")
@@ -80,7 +80,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
         cy.findByText("Category").click();
       });
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("action-buttons").last().button("Summarize").click();
       H.popover().findByText("Count of rows").click();
       H.getNotebookStep("summarize", { stage: 1 })
@@ -112,7 +112,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
       H.filterWidget().eq(1).click();
       H.popover().findByText("Quarter").click();
 
-      H.getDashboardCard().findByText("Q1 2023").should("be.visible");
+      H.getDashboardCard().findByText("Q1 2026").should("be.visible");
       H.getDashboardCard().findByTestId("legend-caption-title").click();
       cy.wait("@dataset");
 
@@ -126,7 +126,7 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
       // assert that temporal unit parameter was applied
       cy.findByTestId("chart-container")
-        .findByText("Q1 2023")
+        .findByText("Q1 2026")
         .should("be.visible");
     });
   });
@@ -200,14 +200,37 @@ describe("pivot tables", () => {
     QSHelpers.getFilter("Number").click();
     verifyNumberMappingOptions();
 
-    cy.button("Save").click();
+    // This test only inspects parameter mapping options without changing any
+    // mappings, so saving issues no dashboard PUT. Use awaitRequest: false so we
+    // deterministically exit to view mode (edit bar gone) without waiting on a
+    // saveDashboardCards request that never fires — while still guaranteeing the
+    // subsequent legend-caption drill lands in view mode, where it triggers the
+    // pivot query.
+    H.saveDashboard({ awaitRequest: false });
 
     cy.log("filter picker");
+
+    // After exiting edit mode the pivot dashcard re-renders and re-runs its
+    // query. Until that finishes the dashcard title isn't wired to open the
+    // question — its click handler is only attached once the card series has
+    // loaded — so clicking it too early navigates nowhere and the pivot query
+    // never fires. Wait for the card to finish loading before clicking.
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("legend-caption-title")
+      .should("be.visible");
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("loading-indicator")
+      .should("not.exist");
 
     H.getDashboardCard(QUESTION_PIVOT_INDEX)
       .findByTestId("legend-caption-title")
       .click();
-    cy.wait("@datasetPivot");
+    // Clicking the title navigates to an ad-hoc QB, which must boot the route,
+    // load table metadata, and only then issue /api/dataset/pivot. Under network
+    // throttling that whole chain can exceed cy.wait's default 5s timeout (the
+    // request does fire — just late), so give the alias a throttle-tolerant
+    // window instead of asserting on the default.
+    cy.wait("@datasetPivot", { timeout: 30000 });
     cy.findByTestId("qb-header")
       .button(/Filter/)
       .click();

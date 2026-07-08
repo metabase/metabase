@@ -1,11 +1,11 @@
-import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import { measureText } from "metabase/lib/measure-text";
+import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/utils/dashboard_grid";
+import { measureText } from "metabase/utils/measure-text";
 
 interface FindSizeInput {
   text: string;
   targetHeight: number;
   targetWidth: number;
-  unit: string;
+  unit: "rem";
   fontFamily: string;
   fontWeight: string | number;
   step: number;
@@ -50,13 +50,23 @@ export const findSize = ({
 const MAX_SIZE_SMALL = 2.2;
 const MAX_SIZE_LARGE = 7;
 
-export const getMaxFontSize = (cardColWidth: number, totalCols?: number) => {
+const NARROW_CARD_WIDTH = 240;
+const NARROW_CARD_MAX_SIZE = 2.5;
+
+export const getMaxFontSize = (
+  cardColWidth: number,
+  totalCols: number | undefined,
+  cardWidth: number | undefined,
+) => {
   if (totalCols != null && totalCols < DEFAULT_CARD_SIZE.width) {
     return MAX_SIZE_SMALL;
   }
 
-  return (
+  const size =
     (cardColWidth / GRID_WIDTH) * (MAX_SIZE_LARGE - MAX_SIZE_SMALL) +
-    MAX_SIZE_SMALL
-  );
+    MAX_SIZE_SMALL;
+  if (cardWidth != null && cardWidth < NARROW_CARD_WIDTH) {
+    return NARROW_CARD_MAX_SIZE;
+  }
+  return size;
 };

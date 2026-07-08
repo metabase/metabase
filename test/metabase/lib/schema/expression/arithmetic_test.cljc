@@ -105,7 +105,6 @@
     [:interval {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1 :year]
     [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
     :type/Temporal)
-
   (testing "special case: subtracting two :type/Dates yields :type/Interval (#37263)"
     (is (= :type/Interval
            (expression/type-of

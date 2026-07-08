@@ -1,11 +1,13 @@
 (ns metabase-enterprise.sandbox.api.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.card-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.queries.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
+   [metabase.permissions.schema :as permissions.schema]
+   [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -18,8 +20,8 @@
                        :model/Table                      table {:db_id (u/the-id db)}
                        :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
-                       :model/GroupTableAccessPolicy     _ {:group_id (u/the-id group)
-                                                            :table_id (u/the-id table)}]
+                       :model/Sandbox     _ {:group_id (u/the-id group)
+                                             :table_id (u/the-id table)}]
           (perms/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
@@ -40,8 +42,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -64,8 +66,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -86,8 +88,8 @@
                      :model/Table                      other-table {:db_id (u/the-id db)}
                      :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                      :model/PermissionsGroup           group {}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -108,7 +110,6 @@
                                                                                                       :type :query,
                                                                                                       :query {:source-table (mt/id :venues)
                                                                                                               :limit 1}}}]
-
       (perms/add-user-to-group! user-id group)
       (let [cases [[:unrestricted           :query-builder-and-native true]
                    [:unrestricted           :query-builder            true]
@@ -121,8 +122,8 @@
                            [:blocked :query-builder-and-native]
                            [:blocked :query-builder]]]
         (is (= (count cases)
-               (- (* (-> data-perms/Permissions :perms/view-data :values count)
-                     (-> data-perms/Permissions :perms/create-queries :values count))
+               (- (* (-> permissions.schema/data-permissions :perms/view-data :values count)
+                     (-> permissions.schema/data-permissions :perms/create-queries :values count))
                   (count invalid-cases)))
             "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
         (mt/with-no-data-perms-for-all-users!
@@ -130,10 +131,11 @@
             (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
             (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
             (testing (str "view-data: " view-perm ", create-queries: " create-perm)
-              (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
-                (if should-succeed?
-                  (is (= 1 (count (mt/rows response))))
-                  (is (thrown? clojure.lang.ExceptionInfo (mt/rows response))))))))))))
+              (if should-succeed?
+                (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
+                  (is (= 1 (count (mt/rows response)))))
+                (let [response (mt/user-http-request user-id :post 403 (str "card/" (u/the-id card) "/query"))]
+                  (is (partial= {:error_type "missing-required-permissions"} response)))))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"
@@ -155,7 +157,6 @@
             (mt/user-http-request :rasta :post 403 "card"
                                   (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
                                          :collection_id (u/the-id collection))))
-
           (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products)}]
             (let [query (mt/mbql-query orders
                           {:limit 5
@@ -185,7 +186,6 @@
                                                                :values_source_config {:card_id     source-card-id
                                                                                       :value_field (mt/$ids $categories.name)}}]
                                             :table_id        (mt/id :venues)}]
-
         (testing "when getting values"
           (let [get-values (fn [user]
                              (mt/user-http-request user :get 200 (api.card-test/param-values-url card-id "abc")))]
@@ -194,7 +194,6 @@
             (is (=? {:values          [["African"] ["American"] ["Artisan"]]
                      :has_more_values false}
                     (get-values :rasta)))))
-
         (testing "when searching values"
           ;; return BBQ if not sandboxed
           (let [search (fn [user]
@@ -202,7 +201,6 @@
             (is (=? {:values          [["BBQ"]]
                      :has_more_values false}
                     (search :crowberto)))
-
             (is (=? {:values          []
                      :has_more_values false}
                     (search :rasta)))))))))

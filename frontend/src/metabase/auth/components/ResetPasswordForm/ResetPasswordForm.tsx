@@ -3,12 +3,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
-import FormInput from "metabase/common/components/FormInput";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import MetabaseSettings from "metabase/lib/settings";
+import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
+import { FormInput } from "metabase/common/components/FormInput";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import * as Errors from "metabase/utils/errors";
+import { passwordComplexityDescription } from "metabase/utils/password";
 
 import type { ResetPasswordData } from "../../types";
 
@@ -46,7 +45,7 @@ export const ResetPasswordForm = ({
   }, []);
 
   const passwordDescription = useMemo(() => {
-    return MetabaseSettings.passwordComplexityDescription();
+    return passwordComplexityDescription();
   }, []);
 
   const validationContext = useMemo(
@@ -82,7 +81,11 @@ export const ResetPasswordForm = ({
             placeholder={t`Shhh... but one more time so we get it right`}
             autoComplete="new-password"
           />
-          <FormSubmitButton title={t`Save new password`} primary fullWidth />
+          <FormSubmitButton
+            label={t`Save new password`}
+            variant="filled"
+            fullWidth
+          />
           <FormErrorMessage />
         </Form>
       </FormProvider>

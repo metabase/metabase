@@ -2,15 +2,15 @@ name: Auto-update documentation (master)
 
 on:
   schedule:
-    - cron: "0 1 * * 1-5" # Every Monday through Friday at 1 AM UTC
+    - cron: "0 21 * * 1-5" # Every Monday through Friday at 9 PM UTC
   workflow_dispatch:
 
 jobs:
   update-master-docs:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Call documentation update for master
     uses: ./.github/workflows/docs-generate-base.yml
     with:
       target_branch: "master"
-      m2_cache_key_suffix: "master"
     secrets:
       automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

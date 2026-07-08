@@ -15,12 +15,14 @@ import {
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockLocation } from "metabase/redux/store/mocks";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { checkNotNull } from "metabase/utils/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
+  createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
   createMockDatabase,
@@ -31,7 +33,6 @@ import {
   createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
-import { createMockLocation } from "metabase-types/store/mocks";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,
@@ -75,7 +76,8 @@ describe("Dashboard utils", () => {
       const failedFetch = Promise.reject(error);
 
       const result = await fetchDataOrError(failedFetch);
-      expect(result.error).toEqual(error);
+      expect(result).toBeTruthy();
+      expect((result as { error: unknown }).error).toEqual(error);
     });
 
     it("should return true if a database has model actions enabled", () => {
@@ -196,6 +198,8 @@ describe("Dashboard utils", () => {
   });
 
   describe("getDashcardResultsError", () => {
+    const isGuestEmbed = false;
+
     const expectedPermissionError = {
       icon: "key",
       message: "Sorry, you don't have permission to see this card.",
@@ -207,48 +211,60 @@ describe("Dashboard utils", () => {
     };
 
     it("should return the access restricted error when the error type is missing-required-permissions", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({
-          error_type: SERVER_ERROR_TYPES.missingPermissions,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({
+            error_type: SERVER_ERROR_TYPES.missingPermissions,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toStrictEqual(expectedPermissionError);
     });
 
     it("should return the access restricted error when the status code is 403", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({
-          error: {
-            status: 403,
-          },
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({
+            error: {
+              status: 403,
+            },
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toStrictEqual(expectedPermissionError);
     });
 
     it("should return a generic error if a dataset has an error", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({}),
-        createMockDataset({
-          error: {
-            status: 401,
-          },
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({}),
+          createMockDataset({
+            error: {
+              status: 401,
+            },
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toStrictEqual(expectedGenericError);
     });
 
     it("should return a curated error in case it is set in the response", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({}),
-        createMockDataset({
-          error: "Wrong query",
-          error_is_curated: true,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({}),
+          createMockDataset({
+            error: "Wrong query",
+            error_is_curated: true,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toEqual({
         icon: "warning",
@@ -257,30 +273,39 @@ describe("Dashboard utils", () => {
     });
 
     it("should return a generic error in case the error is curated but is not a string", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({}),
-        createMockDataset({
-          error: { status: 500 },
-          error_is_curated: true,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({}),
+          createMockDataset({
+            error: { status: 500 },
+            error_is_curated: true,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toEqual(expectedGenericError);
     });
 
     it("should not return any errors if there are no any errors", () => {
-      const error = getDashcardResultsError([createMockDataset({})]);
+      const error = getDashcardResultsError(
+        [createMockDataset({})],
+        isGuestEmbed,
+      );
 
       expect(error).toBeUndefined();
     });
 
     it("should not return any errors if the error is curated but there is no error message or object set", () => {
-      const error = getDashcardResultsError([
-        createMockDataset({
-          error: undefined,
-          error_is_curated: true,
-        }),
-      ]);
+      const error = getDashcardResultsError(
+        [
+          createMockDataset({
+            error: undefined,
+            error_is_curated: true,
+          }),
+        ],
+        isGuestEmbed,
+      );
 
       expect(error).toBeUndefined();
     });
@@ -402,6 +427,32 @@ describe("Dashboard utils", () => {
           hidingWhenEmptyCardId,
           visualizerCardId,
         ]),
+      );
+    });
+
+    // A pivot query with no matching data still returns a single grand-total
+    // row, so "hide when empty" pivot cards must be hidden based on detail rows
+    // (pivot-grouping === 0), not raw row count. (metabase#74387)
+    it("hides a hide-when-empty pivot card whose only row is the grand total", () => {
+      const pivotTotalsOnlyData = createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "CATEGORY", source: "breakout" }),
+          createMockColumn({ name: "VENDOR", source: "breakout" }),
+          createMockColumn({ name: "pivot-grouping", source: "breakout" }),
+          createMockColumn({ name: "max", source: "aggregation" }),
+        ],
+        rows: [[null, null, 3, null]],
+      });
+      const loadedWithPivotTotalsOnly = {
+        ...loadedWithData,
+        [hidingWhenEmptyCardId]: {
+          200: createMockDataset({ data: pivotTotalsOnlyData }),
+        },
+      };
+
+      const visibleIds = getVisibleCardIds(cards, loadedWithPivotTotalsOnly);
+      expect(visibleIds).toStrictEqual(
+        new Set([virtualCardId, normalCardId, visualizerCardId]),
       );
     });
   });

@@ -3,7 +3,12 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.server.settings :as server.settings]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql SQLException)
@@ -15,12 +20,14 @@
 
 (defmulti api-exception-response
   "Convert an uncaught exception from an API endpoint into an appropriate format to be returned by the REST API (e.g. a
-  map, which eventually gets serialized to JSON, or a plain string message)."
-  {:arglists '([e])}
-  class)
+  map, which eventually gets serialized to JSON, or a plain string message). `request` is the Ring request that
+  triggered the exception, for methods that want to include request info in their logging."
+  {:arglists '([e request])}
+  (fn [e _request]
+    (class e)))
 
 (defmethod api-exception-response Throwable
-  [^Throwable e]
+  [^Throwable e _request]
   (let [{:keys [status-code], :as info} (ex-data e)
         other-info                      (dissoc info :status-code :schema :type :toucan2/context-trace ::log/context)
         body                            (cond
@@ -36,6 +43,11 @@
                                           (and status-code (:errors other-info))
                                           other-info
 
+                                          ;; allow administrators to configure their instances to suppress stacktraces
+                                          ;; returns 500 with a generic message
+                                          (server.settings/hide-stacktraces)
+                                          {:message (tru "Something went wrong")}
+
                                           ;; Otherwise return the full `Throwable->map` representation with Stacktrace
                                           ;; and ex-data
                                           :else
@@ -43,19 +55,24 @@
                                            (Throwable->map e)
                                            {:message (.getMessage e)}
                                            other-info))]
+    (when (nil? status-code)
+      (analytics/inc! :metabase-api/unhandled-errors))
     {:status  (or status-code 500)
      :headers (mw.security/security-headers)
      :body    body}))
 
 (defmethod api-exception-response SQLException
-  [e]
-  (-> ((get-method api-exception-response (.getSuperclass SQLException)) e)
+  [e request]
+  (-> ((get-method api-exception-response (.getSuperclass SQLException)) e request)
       (assoc-in [:body :sql-exception-chain] (str/split (with-out-str (jdbc/print-sql-exception-chain e))
                                                         #"\s*\n\s*"))))
 
 (defmethod api-exception-response EofException
-  [_e]
-  (log/info "Request canceled before finishing.")
+  [_e {:keys [request-method uri], :as request}]
+  (log/infof "Request canceled before finishing: %s %s from client %s"
+             (or (some-> request-method name u/upper-case-en) "?")
+             uri
+             (or (request/ip-address request) "unknown"))
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
 (defn catch-api-exceptions
@@ -66,7 +83,7 @@
     (handler
      request
      respond
-     (comp respond api-exception-response))))
+     #(respond (api-exception-response % request)))))
 
 (defn catch-uncaught-exceptions
   "Middleware (with `[request respond raise]`) that catches any unexpected Exceptions and reroutes them through `raise`

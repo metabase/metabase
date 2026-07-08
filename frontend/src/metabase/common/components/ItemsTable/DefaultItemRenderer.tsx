@@ -1,10 +1,11 @@
 import { useCallback } from "react";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import type { OnToggleSelectedWithItem } from "metabase/collections/types";
+import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { color } from "metabase/lib/colors";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -37,12 +38,12 @@ export const DefaultItemRenderer = ({
   onClick,
   visibleColumnsMap,
 }: ItemRendererProps) => {
-  const canSelect =
-    collection?.can_write && typeof onToggleSelected === "function";
+  const getIcon = useGetIcon();
+  const canSelect = canSelectItems(collection, onToggleSelected);
 
-  const icon = item.getIcon();
+  const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
-    icon.color = color("text-light");
+    icon.color = "text-disabled";
   }
 
   const handleSelectionToggled = useCallback(() => {
@@ -72,7 +73,11 @@ export const DefaultItemRenderer = ({
           item={item}
           testIdPrefix={testIdPrefix}
           onClick={onClick}
+          includeDescription={!visibleColumnsMap["description"]}
         />
+      )}
+      {visibleColumnsMap["description"] && (
+        <Columns.Description.Cell item={item} testIdPrefix={testIdPrefix} />
       )}
       {visibleColumnsMap["lastEditedBy"] && (
         <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
@@ -92,6 +97,7 @@ export const DefaultItemRenderer = ({
           deleteBookmark={deleteBookmark}
         />
       )}
+      {visibleColumnsMap["archive"] && <Columns.Archive.Cell item={item} />}
       <Columns.RightEdge.Cell />
     </>
   );

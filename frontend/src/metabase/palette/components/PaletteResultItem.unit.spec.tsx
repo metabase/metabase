@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   fireEvent,
   render,
@@ -7,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import type { PaletteActionImpl } from "../types";
 
@@ -35,36 +34,6 @@ const setup = ({
 };
 
 describe("PaletteResultItem", () => {
-  it("icons should default to brand color", async () => {
-    setup({ item: { icon: "model" } });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
-      "color",
-      "var(--mb-color-brand)",
-    );
-  });
-
-  it("icons should use provided colors when available", async () => {
-    setup({ item: { icon: "model", extra: { iconColor: "green" } } });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
-      "color",
-      "green",
-    );
-  });
-
-  it("if active, icon color should always be white", async () => {
-    setup({
-      item: { icon: "model", extra: { iconColor: "green" } },
-      active: true,
-    });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
-      "color",
-      "var(--mb-color-text-white)",
-    );
-  });
-
   it("should not render an icon if none is provided", async () => {
     setup({});
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
@@ -81,7 +50,10 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
         component={() => (
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
-            onRender={({
+            maxHeight={580}
+            minHeight={220}
+            liveSearchTerm=""
+            renderItem={({
               item,
               active,
             }: {
@@ -110,10 +82,10 @@ describe("Mouse/keyboard interactions", () => {
     pathname: "/",
   };
 
-  describe("The 'Search documentation for...' command palette item", () => {
+  describe("The 'Search Metabase's docs for...' command palette item", () => {
     const searchDocs: Partial<PaletteActionImpl> = {
       id: "search_docs",
-      name: 'Search documentation for "hedgehogs"',
+      name: 'Search Metabase\'s docs for "hedgehogs"',
       section: "docs",
       keywords: "hedgehogs",
       icon: "document",

@@ -33,7 +33,7 @@ export function DeleteBulkRowConfirmationModal({
         </Button>
         <Button
           variant="filled"
-          color="danger"
+          color="feedback-negative"
           onClick={onConfirm}
           loading={isLoading}
         >

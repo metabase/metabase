@@ -1,0 +1,63 @@
+name: Release Milestone Management
+run-name: Manage milestones for ${{ inputs.version }}
+
+# Closes the milestone we're about to ship and opens the next one.
+# Reusable so the release workflows can run it before building/tagging, and
+# exposed via workflow_dispatch so it can be run by hand if a release misses it.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  manage-milestones:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
+    - name: Update milestones
+      uses: actions/github-script@v9
+      with:
+        script: | # js
+          const { closeMilestone, openNextMilestones, isPreReleaseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          if (isPreReleaseVersion(version)) {
+            console.log("This is a prerelease version, skipping milestone management");
+            return;
+          }
+
+          await closeMilestone({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          }).catch(console.error);
+
+          await openNextMilestones({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          }).catch(console.error);

@@ -48,6 +48,5 @@
              (if (= ~'current-version ~'desired-version)
                ::identity
                [~'current-version ~'desired-version]))))
-
        (defmethod ^:private ~name* ::identity [~'column-value ~'_]
          ~'column-value))))

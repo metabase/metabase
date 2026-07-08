@@ -1,4 +1,4 @@
-import { AdminNavLink, AdminNavListItem } from "./AdminNavItem.styled";
+import { AdminNavLink, AdminNavListItem } from "./AdminNavLink";
 
 interface AdminNavItemProps {
   name: string;

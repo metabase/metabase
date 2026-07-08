@@ -212,6 +212,7 @@ export const SettingsLdapForm = () => {
                   <FormTextInput
                     name="ldap-group-base"
                     label={t`Group search base`}
+                    placeholder="ou=groups,dc=example,dc=org"
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["ldap-group-base"],

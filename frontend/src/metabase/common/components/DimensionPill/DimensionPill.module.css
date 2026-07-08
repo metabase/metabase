@@ -1,0 +1,23 @@
+.pill {
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--border-radius-xl);
+  padding: 0.25rem 0.5rem;
+  user-select: none;
+
+  &.interactive {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--mb-color-background_surface-hover);
+    }
+  }
+}
+
+.dropdown {
+  overflow-y: auto;
+}
+
+.dimensionList {
+  color: var(--mb-color-core-brand);
+}

@@ -6,12 +6,12 @@
   line-height: 24px;
   border-radius: var(--mantine-radius-xs);
 
-  &:hover {
-    background-color: var(--mb-color-bg-light);
+  [data-mantine-color-scheme] &:hover {
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-disabled] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-weekend] {
@@ -19,16 +19,16 @@
   }
 
   &[data-outside] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-in-range] {
     color: var(--mb-color-text-brand);
     border-radius: 0;
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
 
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 
@@ -43,11 +43,11 @@
   }
 
   &[data-selected] {
-    color: var(--mb-color-text-white);
-    background-color: var(--mb-color-background-brand);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
 
     &:hover {
-      background-color: var(--mb-color-background-brand);
+      background-color: var(--mb-color-core-brand);
     }
   }
 }
@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;
@@ -72,35 +72,35 @@
   border-radius: var(--mantine-radius-xs);
 
   &:hover {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-disabled] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &:where([data-weekend]) {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 
   &[data-outside] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-in-range] {
     color: var(--mb-color-text-selected);
     border-radius: 0;
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
 
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 
   &[data-selected] {
-    color: var(--mb-color-text-selected);
-    background-color: var(--mb-color-background-selected);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
   }
 }
 
@@ -175,14 +175,14 @@
   line-height: var(--mantine-line-height-lg);
 
   &[data-selected] {
-    color: var(--mb-color-text-selected);
-    background-color: var(--mb-color-background-selected);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -193,14 +193,14 @@
   color: var(--mb-color-text-primary);
 
   &[data-selected] {
-    color: var(--mb-color-text-selected);
-    background-color: var(--mb-color-background-selected);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -210,7 +210,7 @@
 
 .input {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .error {
@@ -225,12 +225,12 @@
   width: 5rem;
 
   &[data-selected] {
-    color: var(--mb-color-text-selected);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
   }
 
-  &:hover:not([data-selected]),
-  &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+  &:hover:not([data-selected], :disabled) {
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }

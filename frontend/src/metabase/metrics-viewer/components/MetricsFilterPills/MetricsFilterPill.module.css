@@ -1,0 +1,13 @@
+.root {
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-filter);
+  border-radius: 0.75rem;
+}
+
+.root:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.clickable {
+  cursor: pointer;
+}

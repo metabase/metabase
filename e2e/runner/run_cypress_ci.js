@@ -1,14 +1,15 @@
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
+const runCypress = require("./cypress-node-js-runner");
 const CypressBackend = require("./cypress-runner-backend");
-const runCypress = require("./cypress-runner-run-tests");
-const { printBold } = require("./cypress-runner-utils");
+const { parseArguments, printBold } = require("./cypress-runner-utils");
+const { resolveSdkE2EConfig } = require("./resolve-sdk-e2e-config");
 
-const modeOrTestSuite = process.argv?.[2]?.trim();
+const command = process.argv?.[2]?.trim();
+const cliArguments = process.argv.slice(3);
 
 const availableModes = ["start", "snapshot"];
-const availableTestSuites = [
-  "e2e",
-  "component",
+const availableTestingTypes = ["e2e", "component"];
+const availableSDKTestSuites = [
   "metabase-nodejs-react-sdk-embedding-sample-e2e",
   "metabase-nextjs-sdk-embedding-sample-e2e",
   "shoppy-e2e",
@@ -18,26 +19,56 @@ const availableTestSuites = [
   "angular-20-host-app-e2e",
 ];
 
-if (
-  !availableModes.includes(modeOrTestSuite) &&
-  !availableTestSuites.includes(modeOrTestSuite)
-) {
-  console.error(`Invalid mode or test suite: ${modeOrTestSuite}`);
+const permittedCommands = [
+  ...availableModes,
+  ...availableTestingTypes,
+  ...availableSDKTestSuites,
+];
+
+if (!permittedCommands.includes(command)) {
+  console.error(`Invalid command: ${command}`);
   process.exit(FAILURE_EXIT_CODE);
 }
 
 const startServer = async () => {
   printBold("Starting backend");
-  await CypressBackend.start();
+  await CypressBackend.runFromJar();
 };
 
-const runTests = async (testSuite) => {
-  printBold(`Running ${testSuite} Cypress Tests`);
-  await runCypress(testSuite, process.exit);
+const runTests = async (config, cliArguments = []) => {
+  const userOverrides = await parseArguments(cliArguments);
+  await runCypress({ ...config, ...userOverrides });
 };
 
-if (modeOrTestSuite === "start") {
+// Custom "modes"
+if (command === "start") {
   startServer();
-} else {
-  runTests(modeOrTestSuite);
+}
+
+if (command === "snapshot") {
+  runTests(
+    { configFile: "e2e/support/cypress-snapshots.config.js" },
+    cliArguments,
+  );
+}
+
+// Metabase component or e2e tests
+if (command === "component") {
+  runTests(
+    {
+      configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
+      testingType: "component",
+    },
+    cliArguments,
+  );
+}
+
+if (command === "e2e") {
+  runTests({ configFile: "e2e/support/cypress.config.js" }, cliArguments);
+}
+
+// Custom SDK Host/Sample App e2e tests
+if (availableSDKTestSuites.includes(command)) {
+  const config = resolveSdkE2EConfig(command);
+  runTests(config);
 }

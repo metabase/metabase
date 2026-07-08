@@ -9,7 +9,7 @@ import {
 const { H } = cy;
 
 describe("Snowplow tracking", () => {
-  H.describeWithSnowplow("add database card", () => {
+  describe("add database card", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.restore();

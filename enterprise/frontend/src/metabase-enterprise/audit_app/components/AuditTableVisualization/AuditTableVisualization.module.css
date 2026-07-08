@@ -1,0 +1,24 @@
+.headerCell {
+  white-space: nowrap;
+}
+
+.sortable {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.sortedByColumn {
+  color: var(--mb-color-core-brand);
+}
+
+.rightAligned {
+  text-align: right;
+}
+
+.clickable {
+  color: var(--mb-color-core-brand);
+  cursor: pointer;
+}

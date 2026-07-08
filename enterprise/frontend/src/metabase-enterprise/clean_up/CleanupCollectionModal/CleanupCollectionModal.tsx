@@ -1,5 +1,5 @@
+import type { Location } from "history";
 import { useEffect, useMemo, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -7,12 +7,10 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUserSetting } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import Search from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api/sorting";
 
 import { trackStaleItemsArchived } from "../analytics";
 import type {
@@ -36,15 +34,15 @@ import {
 
 interface CleanupCollectionModalProps {
   onClose: () => void;
-  params: { slug: string };
+  params: { slug?: string };
+  location: Location;
 }
 
-const _CleanupCollectionModal = ({
+export const CleanupCollectionModal = ({
   onClose: handleClose,
-  params: { slug },
+  params,
 }: CleanupCollectionModalProps) => {
-  const dispatch = useDispatch();
-  const collectionId = Urls.extractCollectionId(slug);
+  const collectionId = Urls.extractCollectionId(params.slug ?? "");
 
   // selection
   const selection = useListSelect(itemKeyFn);
@@ -57,7 +55,7 @@ const _CleanupCollectionModal = ({
     SortingOptions<ListStaleCollectionItemsSortColumn>
   >({
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   });
 
   const handleSortingChange = (
@@ -103,11 +101,11 @@ const _CleanupCollectionModal = ({
     { refetchOnMountOrArgChange: true },
   );
 
-  const itemsData = staleItemsData?.data;
   const total = staleItemsData?.total ?? 0;
-  const items: StaleCollectionItem[] = useMemo(() => {
-    return (itemsData ?? []).map((item) => Search.wrapEntity(item, dispatch));
-  }, [itemsData, dispatch]);
+  const items: StaleCollectionItem[] = useMemo(
+    () => staleItemsData?.data ?? [],
+    [staleItemsData?.data],
+  );
 
   // selection cont.
   const { getIsSelected } = selection;
@@ -223,5 +221,3 @@ const _CleanupCollectionModal = ({
     </Modal.Root>
   );
 };
-
-export const CleanupCollectionModal = withRouter(_CleanupCollectionModal);

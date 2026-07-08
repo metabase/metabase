@@ -6,7 +6,7 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 export const useSlowCardNotification = () => {
@@ -53,10 +53,10 @@ export const useSlowCardNotification = () => {
       dispatch(
         addUndo({
           id: slowToastId,
-          timeout: false,
-          message: t`Would you like to be notified when this dashboard is done loading?`,
+          timeout: null,
+          message: t`Want to get notified when this dashboard loads?`,
           action: onConfirmToast,
-          actionLabel: t`Turn on`,
+          actionLabel: t`Notify me`,
         }),
       );
     }

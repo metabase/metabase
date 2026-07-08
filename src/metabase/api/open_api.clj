@@ -18,7 +18,7 @@
   (open-api-spec [this prefix]
     "Get the OpenAPI spec base object (as a Clojure data structure) associated with a Ring handler. `prefix` is the
     route prefix in the Compojure `context` sense, e.g. `/api/` for [[metabase.api-routes.core/routes]], or
-    `/api/user/` by the time we get to [[metabase.users.api]], etc."))
+    `/api/user/` by the time we get to [[metabase.users-rest.api]], etc."))
 
 (extend-protocol OpenAPISpec
   nil
@@ -60,10 +60,16 @@
   (pretty [_this]
     (list `handler-with-open-api-spec handler spec-fn)))
 
+(mr/def ::spec.info.license
+  [:map
+   [:name :string]
+   [:url  {:optional true} :string]])
+
 (mr/def ::spec.info
   [:map
    [:title   [:= "Metabase API"]]
-   [:version [:= (:tag config/mb-version-info)]]])
+   [:version :string]
+   [:license {:optional true} ::spec.info.license]])
 
 (mr/def ::path
   :string)
@@ -87,7 +93,6 @@
   [:merge
    ::parameter.schema.common
    [:map
-
     [:type ::parameter.type]
     ;; TODO -- I don't think `:null` can have `:enum`
     [:enum {:optional true} [:sequential :any]]]])
@@ -96,9 +101,8 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :string]]
-    [:format    {:optional true} [:enum :binary "binary" :byte "byte"]]
+    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid" :date-time "date-time"]]
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
@@ -107,7 +111,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :number]]
     [:minimum {:optional true} number?]
     [:maximum {:optional true} number?]]])
@@ -116,7 +119,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :integer]]
     [:minimum {:optional true} integer?]
     [:maximum {:optional true} integer?]]])
@@ -125,14 +127,12 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :boolean]]]])
 
 (mr/def ::parameter.schema.null
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type [:= :null]]]])
 
 (mr/def ::parameter.schema.object
@@ -152,7 +152,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type        [:= :array]]
     [:items           {:optional true} [:multi
                                         {:dispatch map?}
@@ -183,7 +182,6 @@
   [:merge
    ::parameter.schema.common
    [:map
-
     [:$ref [:re
             {:description "string starting with '#/components/schemas/'"}
             #"^#/components/schemas/[^/]+$"]]
@@ -200,34 +198,29 @@
     [:merge
      ::parameter.schema.common
      [:map
-
       [:anyOf [:sequential [:ref ::parameter.schema]]]]]]
    [:oneOf
     [:merge
      ::parameter.schema.common
      [:map
-
       [:oneOf [:sequential [:ref ::parameter.schema]]]]]]])
 
 (mr/def ::parameter.schema.and
   [:merge
    ::parameter.schema.common
    [:map
-
     [:allOf [:sequential [:ref ::parameter.schema]]]]])
 
 (mr/def ::parameter.schema.const
   [:merge
    ::parameter.schema.common
    [:map
-
     [:const :any]]])
 
 (mr/def ::parameter.schema.untyped-enum
   [:merge
    ::parameter.schema.common
    [:map
-
     [:enum [:sequential :any]]]])
 
 (mr/def ::parameter.schema.empty
@@ -288,16 +281,29 @@
 
 (mr/def ::path-item
   [:map
+   [:operationId :string]
    [:summary     :string]
    [:description :string]
    [:parameters  [:sequential ::parameter]]
    [:requestBody {:optional true} ::path-item.request-body]
    [:tags        {:optional true} [:sequential :string]]
+   [:deprecated  {:optional true} :boolean]
    [:responses   ::path-item.responses]])
+
+(mr/def ::security-scheme
+  [:map
+   [:type :string]
+   [:in {:optional true} :string]
+   [:name {:optional true} :string]
+   [:description {:optional true} :string]])
 
 (mr/def ::components
   [:map
-   [:schemas [:map-of :string ::parameter.schema]]])
+   [:schemas [:map-of :string ::parameter.schema]]
+   [:securitySchemes {:optional true} [:map-of :string ::security-scheme]]])
+
+(mr/def ::security-requirement
+  [:map-of :string [:sequential :string]])
 
 (mr/def ::spec
   "Based on https://swagger.io/specification/."
@@ -305,7 +311,8 @@
    [:openapi    {:optional true} :string]
    [:info       {:optional true} ::spec.info]
    [:paths      [:map-of ::path [:map-of ::method ::path-item]]]
-   [:components ::components]])
+   [:components ::components]
+   [:security   {:optional true} [:sequential ::security-requirement]]])
 
 (defn handler-with-open-api-spec
   "Attach `spec-fn`, which has the signature
@@ -322,11 +329,20 @@
   https://spec.openapis.org/oas/latest.html#openapi-object"
   [handler :- [:=> [:cat :map fn? fn?] any?]]
   {:closed true}
-  (merge
-   {:openapi "3.1.0"
-    :info    {:title   "Metabase API"
-              :version (:tag config/mb-version-info)}}
-   (open-api-spec handler "/api")))
+  (let [base-spec (open-api-spec handler "/api")]
+    (-> base-spec
+        (assoc :openapi "3.1.0"
+               :info    {:title   "Metabase API"
+                         :version (:tag config/mb-version-info)
+                         :license {:name "AGPL-3.0"
+                                   :url  "https://www.gnu.org/licenses/agpl-3.0.html"}}
+               ;; Apply API key authentication to all endpoints by default
+               :security [{"ApiKeyAuth" []}])
+        (assoc-in [:components :securitySchemes]
+                  {"ApiKeyAuth" {:type        "apiKey"
+                                 :in          "header"
+                                 :name        "X-API-Key"
+                                 :description "API key for authentication"}}))))
 
 #_:clj-kondo/ignore
 (comment

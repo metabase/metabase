@@ -1,26 +1,28 @@
 import type { HTMLAttributes, PropsWithChildren } from "react";
 import { useMemo } from "react";
 
-import type { CollectionContentTableColumnsMap } from "metabase/collections/components/CollectionContent";
+import type { CollectionContentTableColumnsMap } from "metabase/common/collections/columns";
 import type {
   CreateBookmark,
   DeleteBookmark,
   OnCopy,
   OnMove,
   OnToggleSelectedWithItem,
-} from "metabase/collections/types";
-import { isTrashedCollection } from "metabase/collections/utils";
+} from "metabase/common/collections/types";
+import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionItem,
   ListCollectionItemsSortColumn,
+  SortDirection,
+  SortingOptions,
 } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
   ColumnHeader,
@@ -54,17 +56,14 @@ export const SortableColumnHeader = <SortColumn extends string>({
   const isSortingThisColumn = sortingOptions?.sort_column === name;
   const direction = isSortingThisColumn
     ? sortingOptions?.sort_direction
-    : SortDirection.Desc;
+    : "desc";
 
   const onSortingControlClick = useMemo(() => {
     if (!isSortable) {
       return undefined;
     }
     const handler = () => {
-      const nextDirection =
-        direction === SortDirection.Asc
-          ? SortDirection.Desc
-          : SortDirection.Asc;
+      const nextDirection: SortDirection = direction === "asc" ? "desc" : "asc";
       const newSortingOptions = {
         sort_column: name,
         sort_direction: nextDirection,
@@ -90,7 +89,7 @@ export const SortableColumnHeader = <SortColumn extends string>({
         {children}
         {isSortable && (
           <SortingIcon
-            name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
+            name={direction === "asc" ? "chevronup" : "chevrondown"}
           />
         )}
       </SortingControlContainer>
@@ -155,8 +154,7 @@ export const BaseItemsTable = ({
   onClick,
   ...props
 }: BaseItemsTableProps) => {
-  const canSelect =
-    collection?.can_write && typeof onToggleSelected === "function";
+  const canSelect = canSelectItems(collection, onToggleSelected);
   const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
@@ -168,9 +166,11 @@ export const BaseItemsTable = ({
           {visibleColumnsMap["name"] && (
             <Columns.Name.Col isInDragLayer={isInDragLayer} />
           )}
+          {visibleColumnsMap["description"] && <Columns.Description.Col />}
           {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
           {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
           {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
+          {visibleColumnsMap["archive"] && <Columns.Archive.Col />}
           <Columns.RightEdge.Col />
         </colgroup>
       )}
@@ -201,6 +201,12 @@ export const BaseItemsTable = ({
                 onSortingOptionsChange={onSortingOptionsChange}
               />
             )}
+            {visibleColumnsMap["description"] && (
+              <Columns.Description.Header
+                sortingOptions={sortingOptions}
+                onSortingOptionsChange={onSortingOptionsChange}
+              />
+            )}
             {visibleColumnsMap["lastEditedBy"] && (
               <Columns.LastEditedBy.Header
                 sortingOptions={sortingOptions}
@@ -216,6 +222,7 @@ export const BaseItemsTable = ({
               />
             )}
             {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Header />}
+            {visibleColumnsMap["archive"] && <Columns.Archive.Header />}
             <Columns.RightEdge.Header />
           </tr>
         </thead>

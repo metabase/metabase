@@ -97,7 +97,7 @@ describe("SessionTimeoutSetting", () => {
 
       await userEvent.clear(textbox);
       await userEvent.type(textbox, String(value.amount));
-      await fireEvent.blur(textbox);
+      fireEvent.blur(textbox);
 
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(0);

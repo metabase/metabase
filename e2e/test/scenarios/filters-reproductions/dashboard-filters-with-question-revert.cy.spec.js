@@ -96,15 +96,17 @@ describe("issue 35954", () => {
 
           cy.log("Revert the question to its original (GUI) version");
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
+          cy.intercept("POST", "/api/card/*/query").as("cardQuery");
           H.questionInfoButton().click();
           cy.findByRole("tab", { name: "History" }).click();
 
           cy.findByTestId("saved-question-history-list")
-            .find("li")
+            .findAllByTestId("revision-history-event")
             .filter(":contains(You created this)")
             .findByTestId("question-revert-button")
             .click();
           cy.wait("@revertQuestion");
+          cy.wait("@cardQuery");
           // Mid-test assertions to root out the flakiness
           cy.findByRole("tab", { name: "History" }).click();
           cy.findByTestId("saved-question-history-list").should(
@@ -171,7 +173,7 @@ describe("issue 35954", () => {
         H.questionInfoButton().click();
         cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
-          .find("li")
+          .findAllByTestId("revision-history-event")
           .filter(":contains(You edited this)")
           .findByTestId("question-revert-button")
           .click();
@@ -209,9 +211,10 @@ describe("issue 35954", () => {
         H.updateSetting("show-static-embed-terms", false);
 
         H.visitDashboard(id);
-        H.openSharingMenu("Embed");
-
-        H.modal().findByText("Static embedding").click();
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: id,
+        });
 
         cy.findByTestId("embedding-preview").within(() => {
           cy.intercept("GET", "api/preview_embed/dashboard/**").as(
@@ -290,7 +293,7 @@ function connectFilterToColumn(column, index = 0) {
   });
 
   H.popover().within(() => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByText(column).eq(index).click();
   });
 }

@@ -13,13 +13,33 @@ const setup = (props: CommonSetupProps = {}) => {
 };
 
 describe("PaletteResults", () => {
-  it("should show default actions", async () => {
+  it("should not show actions when there is no search query", async () => {
     setup();
+    expect(await screen.findByText("Recents")).toBeInTheDocument();
+    expect(screen.queryByText("New question")).not.toBeInTheDocument();
+    expect(screen.queryByText("New SQL query")).not.toBeInTheDocument();
+    expect(screen.queryByText("New dashboard")).not.toBeInTheDocument();
+
+    expect(screen.queryByText("Results")).not.toBeInTheDocument();
+  });
+
+  it("should show actions when there is a search query", async () => {
+    setup({ query: "new" });
+    expect(await screen.findByText("New question")).toBeInTheDocument();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
     expect(await screen.findByText("New collection")).toBeInTheDocument();
-    expect(await screen.findByText("New model")).toBeInTheDocument();
 
-    expect(screen.queryByText("Search results")).not.toBeInTheDocument();
+    expect(await screen.findByText("Results")).toBeInTheDocument();
+  });
+
+  it("should surface static actions before the remote search debounce fires", async () => {
+    setup({ query: "new" });
+
+    expect(await screen.findByText("New question")).toBeInTheDocument();
+
+    // useCommandPaletteBasicActions makes one baseline /api/search call; any
+    // additional call means the debounced remote search has already run.
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness
@@ -30,7 +50,7 @@ describe("PaletteResults", () => {
 
   it("should show you recent items", async () => {
     setup();
-    expect(await screen.findByText("Recent items")).toBeInTheDocument();
+    expect(await screen.findByText("Recents")).toBeInTheDocument();
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("lame collection");
@@ -65,7 +85,7 @@ describe("PaletteResults", () => {
       ],
     });
 
-    expect(await screen.findByText("Recent items")).toBeInTheDocument();
+    expect(await screen.findByText("Recents")).toBeInTheDocument();
 
     expect(
       await screen.findAllByRole("option", { name: "My Awesome Data" }),
@@ -76,7 +96,7 @@ describe("PaletteResults", () => {
     setup({ query: "Bar" });
 
     await waitFor(async () => {
-      expect(await screen.findByText("Search results")).toBeInTheDocument();
+      expect(await screen.findByText("Results")).toBeInTheDocument();
     });
 
     expect(
@@ -95,7 +115,7 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
-      await screen.findByText('Search documentation for "Bar"'),
+      await screen.findByText('Search Metabase\'s docs for "Bar"'),
     ).toBeInTheDocument();
   });
 
@@ -131,7 +151,7 @@ describe("PaletteResults", () => {
   it("should not provide links to settings pages for non-admins", async () => {
     setup({ query: "setu", isAdmin: false });
     expect(
-      await screen.findByText(`Search documentation for "setu"`),
+      await screen.findByText(`Search Metabase's docs for "setu"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Settings - Setup")).not.toBeInTheDocument();
@@ -146,13 +166,13 @@ describe("PaletteResults", () => {
   it("should not provide links to admin pages for non-admins", async () => {
     setup({ query: "permi", isAdmin: false });
     expect(
-      await screen.findByText(`Search documentation for "permi"`),
+      await screen.findByText(`Search Metabase's docs for "permi"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
   });
 
-  it("should not compute search results if 'search-typeahead-enabled' is diabled", async () => {
+  it("should not compute search results if 'search-typeahead-enabled' is disabled", async () => {
     setup({ query: "ques", settings: { "search-typeahead-enabled": false } });
     expect(
       await screen.findByRole("option", { name: /View search results/ }),
@@ -164,9 +184,21 @@ describe("PaletteResults", () => {
 
   it("should provide a link to docs with the proper url param", async () => {
     setup({ query: "model" });
-    expect(
-      await screen.findByRole("link", { name: /Search documentation/ }),
-    ).toHaveAttribute("href", expect.stringContaining("?query=model"));
+    const docsLink = await screen.findByRole("link", {
+      name: /Search Metabase's docs/,
+    });
+    expect(docsLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("query=model"),
+    );
+    expect(docsLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("utm_medium=command-palette"),
+    );
+    expect(docsLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("utm_campaign=docs-search"),
+    );
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
     expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
@@ -179,7 +211,7 @@ describe("PaletteResults", () => {
       "true",
     );
     expect(
-      await screen.findByLabelText(/Search documentation/),
+      await screen.findByLabelText(/Search Metabase's docs/),
     ).toHaveAttribute("aria-disabled", "false");
   });
 });

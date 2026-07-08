@@ -16,7 +16,7 @@ Folder permissions should not be considered a security feature, but instead a fe
 
 Folders work similarly to a file system. You can add snippets to folders, and put folders inside of other folders. You can nest as many folders as your Metabase instance can handle or the laws of physics allow (whichever yields first).
 
-The **Top folder** is the snippet sidebar's default folder. It is the root folder that contains all folders and snippets.
+**SQL snippets** is the snippet sidebar's default folder. It is the root folder that contains all folders and snippets.
 
 ### Creating a new Snippet folder
 
@@ -36,7 +36,7 @@ On [some plans](https://www.metabase.com/pricing/), when creating a Snippet, you
 
 ![Add a snippet enterprise modal](./images/enterprise-add-snippet.png)
 
-The default location is the **Top folder**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Edit permission to both folders).
+The default location is **SQL snippets**, which is the root folder for all snippets and folders. You can add a snippet to a folder at any time (or relocate a snippet to another folder, provided you have Edit permission to both folders).
 
 Note that snippet names must be unique; folders do not affect this requirement.
 
@@ -48,7 +48,7 @@ Administrators (and only administrators) can set snippet visibility and editabil
 
 Administrators can set the permissions on a folder by clicking on the ellipsis (**...**) next to a folder, and selecting **Change permissions**.
 
-You can additionally change the currently selected folder by mousing over to the top of the Snippets sidebar, clicking on the ellipsis (**...**) to the left of the **+**, and selecting **Change permissions**. When at the **Top folder**, selecting the **...** at the top of the sidebar will give Administrators the option to set permissions for all snippets, folders, and sub-folders.
+You can additionally change the currently selected folder by mousing over to the top of the Snippets sidebar, clicking on the ellipsis (**...**) to the left of the **+**, and selecting **Change permissions**. When at the **SQL snippets** root, selecting the **...** at the top of the sidebar will give Administrators the option to set permissions for all snippets, folders, and sub-folders.
 
 When changing permissions on a folder that has sub-folders, you have an option to extend those permissions to that folder's sub-folders by toggling the **Also change sub-folders** setting.
 

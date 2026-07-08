@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import Button from "metabase/common/components/Button";
-import QuestionResultLoader from "metabase/common/components/QuestionResultLoader";
+import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+
+import S from "./NotebookStepPreview.module.css";
 
 const PREVIEW_ROWS_LIMIT = 10;
 
@@ -22,8 +23,7 @@ const getPreviewQuestion = (step) => {
     ? previewQuery
     : Lib.limit(previewQuery, stageIndex, PREVIEW_ROWS_LIMIT);
 
-  return Question.create()
-    .setQuery(queryWithLimit)
+  return Question.create({ dataset_query: Lib.toJsQuery(queryWithLimit) })
     .setDisplay("table")
     .setSettings({ "table.pivot": false });
 };
@@ -98,9 +98,16 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
       rawSeries={rawSeries}
       error={err}
       queryBuilderMode="notebook"
-      className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
-        [CS.p2]: err,
-      })}
+      className={cx(
+        S.PreviewVisualization,
+        CS.bordered,
+        CS.shadowed,
+        CS.rounded,
+        CS.bgWhite,
+        {
+          [CS.p2]: err,
+        },
+      )}
       style={{
         height: err ? "auto" : getPreviewHeightForResult(result),
       }}

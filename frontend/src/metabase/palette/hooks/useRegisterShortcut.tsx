@@ -1,15 +1,38 @@
 import { type ActionImpl, KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
 
-import { trackSimpleEvent } from "metabase/lib/analytics";
-
 import { type KeyboardShortcutId, shortcuts } from "../shortcuts";
 import type { ShortcutAction } from "../types";
+
+import { trackKeyboardShortcutPerformed } from "./analytics";
 
 export type RegisterShortcutProps = {
   id: KeyboardShortcutId;
   perform: (action: ActionImpl, event?: KeyboardEvent) => void;
 } & Partial<ShortcutAction>;
+
+/**
+ * Combines `keywords` from the shortcut definition and the registration site,
+ * and — when the registration overrides `name` — also includes the original
+ * shortcut def name.
+ */
+export const composeKeywords = (
+  shortcutDef: { name?: string; keywords?: string } | undefined,
+  rest: { name?: string; keywords?: string },
+): string => {
+  const isNameOverridden =
+    shortcutDef?.name !== undefined &&
+    rest.name !== undefined &&
+    rest.name !== shortcutDef.name;
+
+  return [
+    shortcutDef?.keywords,
+    rest.keywords,
+    isNameOverridden ? shortcutDef?.name : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+};
 
 export const useRegisterShortcut = (
   shortcutsToRegister: RegisterShortcutProps[],
@@ -31,19 +54,19 @@ export const useRegisterShortcut = (
           throw Error(`Unrecognized shortcut id ${id}`);
         }
 
+        const keywords = composeKeywords(shortcutDef, rest);
+
         return {
           ...shortcutDef,
           id,
           perform: (action: ActionImpl, event?: KeyboardEvent) => {
             perform(action, event);
             if (event) {
-              trackSimpleEvent({
-                event: "keyboard_shortcut_performed",
-                event_detail: id,
-              });
+              trackKeyboardShortcutPerformed(id);
             }
           },
           ...rest,
+          ...(keywords ? { keywords } : {}),
         };
       })
     : [];

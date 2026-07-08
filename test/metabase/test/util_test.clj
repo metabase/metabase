@@ -22,7 +22,6 @@
                (position))))
       (is (= 5
              (position)))))
-
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
       (mt/with-temp-vals-in-db :model/Field (data/id :venues :price) {:position -1}
@@ -42,7 +41,6 @@
     (mt/with-temporary-setting-values [test-util-test-setting ["D" "E" "F"]]
       (is (= ["D" "E" "F"]
              (test-util-test-setting)))))
-
   (testing "`with-temporary-setting-values` shouldn't stomp over default values"
     (mt/with-temporary-setting-values [test-util-test-setting ["D" "E" "F"]]
       (test-util-test-setting))
@@ -68,17 +66,14 @@
                                                          {:active-count (.getActiveCount executor)
                                                           :pool-size    (.getPoolSize executor)
                                                           :task-count   (.getTaskCount executor)})}))))]
-
       (testing "The original definition"
         (is (= "original" (clump "o" "riginal"))))
-
       (future
         (testing "A thread that minds its own business"
           (log/debug "Starting no-op thread, thread-id:" (thread-id))
           (is (= "123" (clump 12 3)))
           (take-latch)
           (is (= "321" (clump 3 21)))))
-
       (future
         (testing "A thread that redefines it in reverse"
           (log/debug "Starting reverse thread, thread-id:" (thread-id))
@@ -86,7 +81,6 @@
             (is (= "ok" (clump "k" "o")))
             (take-latch)
             (is (= "ko" (clump "o" "k"))))))
-
       (future
         (testing "A thread that redefines it twice"
           (log/debug "Starting double-redefining thread, thread-id:" (thread-id))
@@ -97,7 +91,6 @@
               (take-latch)
               (is (= "mm" (clump "m" "l"))))
             (is (= "bb" (clump "a" "b"))))))
-
       (log/debug "Taking latch on main thread, thread-id:" (thread-id))
       (take-latch)
       (testing "The original definition survives"
@@ -109,24 +102,33 @@
 
 (def also-accidentally-a-function [:wut-up])
 
-(deftest ^:parallel with-dynamic-fn-redefs-non-function
-  (testing "It is an error to redefine a non-function"
+(deftest ^:parallel with-dynamic-fn-redefs-non-ifn-test
+  (testing "Redefining a non-IFn value (e.g. a number) is an error — the proxy can't apply it"
     (is (thrown-with-msg?
-         AssertionError
-         #"Cannot proxy non-functions"
+         clojure.lang.ExceptionInfo
+         #"Cannot proxy non-IFn values"
          (mt/with-dynamic-fn-redefs [not-a-function 5]
-           (is (= 5 not-a-function))))))
-  (testing "Redefining keywords or collections is likely to surprise you, so we don't allow it"
+           (is (= 5 not-a-function)))))))
+
+(deftest ^:parallel with-dynamic-fn-redefs-keyword-and-coll-test
+  (testing "Keyword-valued vars are IFn and can be redefined"
+    (mt/with-dynamic-fn-redefs [accidentally-a-function :other]
+      (is (= 2 (accidentally-a-function {:other 2})))))
+  (testing "Collection-valued vars are IFn and can be redefined"
+    (mt/with-dynamic-fn-redefs [also-accidentally-a-function [:other]]
+      (is (= :other (also-accidentally-a-function 0))))))
+
+(defmulti a-multimethod {:arglists '([x])} class)
+(defmethod a-multimethod String [_] :string)
+(defmethod a-multimethod Long [_] :long)
+
+(deftest ^:parallel with-dynamic-fn-redefs-multimethod-test
+  (testing "Cannot proxy a multimethod — patching its root would pollute dispatch for other threads"
     (is (thrown-with-msg?
-         AssertionError
-         #"Cannot proxy keywords"
-         (mt/with-dynamic-fn-redefs [accidentally-a-function :not-much]
-           (is (= :not-much accidentally-a-function)))))
-    (is (thrown-with-msg?
-         AssertionError
-         #"Cannot proxy collections"
-         (mt/with-dynamic-fn-redefs [also-accidentally-a-function #{:butter-cup}]
-           (is (= [:butter-cup] also-accidentally-a-function)))))))
+         clojure.lang.ExceptionInfo
+         #"Cannot proxy multimethods"
+         (mt/with-dynamic-fn-redefs [a-multimethod (constantly :redefined)]
+           (a-multimethod "hi"))))))
 
 (defn mock-me-inner []
   :mock/original)
@@ -143,6 +145,29 @@
                                       (orig))))]
       (mock-me-outer)))
   (is (= :mock/redefined (z))))
+
+(defn capture-bug-target [x] (inc x))
+
+(defn counting-target [x]
+  (if (pos? x) (counting-target (dec x)) :done))
+
+(deftest ^:parallel with-dynamic-fn-redefs-capture-bug-test
+  (testing "A replacement that delegates through the var itself is caught as runaway recursion"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"runaway recursion through proxy"
+         (mt/with-dynamic-fn-redefs [capture-bug-target (fn [x] (capture-bug-target (inc x)))]
+           (capture-bug-target 0)))))
+  (testing "The suggested fix — capture via original-fn — works"
+    (let [orig (mt/original-fn #'capture-bug-target)]
+      (mt/with-dynamic-fn-redefs [capture-bug-target (fn [x] (orig (inc x)))]
+        (is (= 3 (capture-bug-target 1)))))))
+
+(deftest ^:parallel with-dynamic-fn-redefs-deliberate-recursion-test
+  (testing "Deliberate recursion through the redefined var works up to the depth threshold"
+    (mt/with-dynamic-fn-redefs [counting-target (fn [x]
+                                                  (if (pos? x) (counting-target (dec x)) :recursed))]
+      (is (= :recursed (counting-target 50))))))
 
 (deftest ^:parallel ordered-subset?-test
   (is (mt/ordered-subset? [1 2 3] [1 2 3]))

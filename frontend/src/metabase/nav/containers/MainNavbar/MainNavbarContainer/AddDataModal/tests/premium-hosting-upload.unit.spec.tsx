@@ -91,7 +91,7 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
     setupProUpload({
       isAdmin: true,
       enableGoogleSheets: true,
-      status: "syncing",
+      status: "initializing",
     });
     await assertSheetsOpened();
 
@@ -196,9 +196,11 @@ async function assertSheetsOpened({
 } = {}) {
   await userEvent.click(screen.getByRole("tab", { name: /Google Sheets$/ }));
 
-  isAdmin
-    ? expect(await screen.findByText("Manage imports")).toBeInTheDocument()
-    : expect(screen.queryByText("Manage imports")).not.toBeInTheDocument();
+  if (isAdmin) {
+    expect(await screen.findByText("Manage imports")).toBeInTheDocument();
+  } else {
+    expect(screen.queryByText("Manage imports")).not.toBeInTheDocument();
+  }
 
   expect(
     await screen.findByRole("heading", { name: title }),

@@ -25,14 +25,19 @@
     [_driver _feature _database]
     false))
 
-(doseq [[base-type database-type] {:type/BigInteger "BIGINT"
-                                   :type/Boolean    "BOOLEAN"
-                                   :type/Date       "DATE"
-                                   :type/DateTime   "TIMESTAMP"
-                                   :type/Decimal    "DECIMAL"
-                                   :type/Float      "DOUBLE"
-                                   :type/Integer    "INTEGER"
-                                   :type/Text       "STRING"}]
+(doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
+                                   :type/Boolean        "BOOLEAN"
+                                   :type/Date           "DATE"
+                                   ;; TODO (Cam 9/25/25) -- in Spark SQL 3.4+ (which we don't test against yet)
+                                   ;; there's the new `TIMESTAMP_NTZ` type that stores timestamps as wall-clock time
+                                   ;; without timezone adjustment.
+                                   :type/DateTime       "TIMESTAMP"
+                                   ;; stores timestamps as UTC but displays them in session timezone
+                                   :type/DateTimeWithTZ "TIMESTAMP"
+                                   :type/Decimal        "DECIMAL"
+                                   :type/Float          "DOUBLE"
+                                   :type/Integer        "INTEGER"
+                                   :type/Text           "STRING"}]
   (defmethod sql.tx/field-base-type->sql-type [:sparksql base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with SparkSQL give them a heads up that SparkSQL does not support it

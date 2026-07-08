@@ -1,0 +1,8 @@
+.descriptionSection {
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-left: none;
+  border-top-right-radius: var(--default-border-radius);
+  border-bottom-right-radius: var(--default-border-radius);
+  overflow: auto;
+}

@@ -6,8 +6,8 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-      ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -26,8 +26,13 @@
     "v_fields"
     "v_query_log"
     "v_tables"
+    "v_tenants"
     "v_tasks"
-    "v_view_log"})
+    "v_task_runs"
+    "v_view_log"
+    "v_metabot_conversations"
+    "v_metabot_messages"
+    "v_ai_usage_log"})
 
 (defenterprise check-audit-db-permissions
   "Performs a number of permission checks to ensure that a query on the Audit database can be run.
@@ -57,18 +62,19 @@
                           outer-query)))))))
 
 (defenterprise update-audit-collection-permissions!
-  "Will remove or grant audit db (AppDB) permissions, if the instance analytics collection permissions changes. This
-  technically isn't necessary, because we block all audit DB queries if a user doesn't have collection permissions.
-  But it's cleaner to keep the audit DB permission paths in the database consistent."
+  "Updates audit db (AppDB) permissions when the instance analytics collection permissions change, and downgrades
+  :write to :read for the audit collection (it must never be writable). Returns the (possibly modified) changes map."
   :feature :audit-app
   [group-id changes]
-  (let [[change-id tyype] (first (filter #(= (first %) (:id (audit/default-audit-collection))) changes))]
-    (when change-id
+  (let [audit-collection-id (:id (audit/default-audit-collection))
+        [change-id tyype] (first (filter #(= (first %) audit-collection-id) changes))]
+    (if change-id
       (let [create-queries-value (case tyype
-                                   :read  :query-builder
-                                   :none  :no
-                                   :write (throw (ex-info (tru "Unable to make audit collections writable.")
-                                                          {:status-code 400})))
+                                   (:read :write) :query-builder
+                                   :none  :no)
             view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
         (doseq [table view-tables]
-          (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))
+          (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))
+        (cond-> changes
+          (= tyype :write) (assoc audit-collection-id :read)))
+      changes)))

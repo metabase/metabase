@@ -4,7 +4,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
-import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
   Card,
   Parameter,
@@ -22,8 +22,7 @@ function getParameterType(tag: TemplateTag) {
   if (type === "date") {
     return "date/single";
   }
-  // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string" || type === "text") {
+  if (type === "text") {
     return "string/=";
   }
   if (type === "number") {
@@ -36,7 +35,7 @@ function getParameterType(tag: TemplateTag) {
     return "temporal-unit";
   }
 
-  return "category";
+  return "string/=";
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
@@ -79,6 +78,7 @@ export function getTemplateTagParameters(
       (tag) =>
         tag.type != null &&
         tag.type !== "card" &&
+        tag.type !== "table" &&
         tag.type !== "snippet" &&
         ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
           tag.dimension != null ||
@@ -89,6 +89,10 @@ export function getTemplateTagParameters(
 
 export function getTemplateTags(card: Card, metadata: Metadata): TemplateTag[] {
   const question = new Question(card, metadata);
+  // this code path is used by the last audit v1 query, `bad_table`
+  if (InternalQuery.isDatasetQueryType(question.datasetQuery())) {
+    return [];
+  }
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
   return isNative ? Object.values(Lib.templateTags(question.query())) : [];
@@ -115,35 +119,4 @@ export function getTemplateTagParametersFromCard(
 ) {
   const tags = getTemplateTags(card, metadata);
   return getTemplateTagParameters(tags, card.parameters);
-}
-
-// when navigating from dashboard --> saved native question,
-// we are given dashboard parameters and a map of dashboard parameter ids to parameter values
-// we need to transform this into a map of template tag ids to parameter values
-// so that we populate the template tags in the native editor
-export function remapParameterValuesToTemplateTags(
-  templateTags: TemplateTag[],
-  dashboardParameters: ParameterWithTarget[],
-  parameterValuesByDashboardParameterId: {
-    [key: string]: any;
-  },
-) {
-  const parameterValues: {
-    [key: string]: any;
-  } = {};
-  const templateTagParametersByName = _.indexBy(templateTags, "name");
-
-  dashboardParameters.forEach((dashboardParameter) => {
-    const { target } = dashboardParameter;
-    const tag = getTemplateTagFromTarget(target);
-
-    if (tag != null && templateTagParametersByName[tag]) {
-      const templateTagParameter = templateTagParametersByName[tag];
-      const parameterValue =
-        parameterValuesByDashboardParameterId[dashboardParameter.id];
-      parameterValues[templateTagParameter.name] = parameterValue;
-    }
-  });
-
-  return parameterValues;
 }

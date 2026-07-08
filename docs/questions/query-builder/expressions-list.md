@@ -126,7 +126,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the query builder.
+Aggregation expressions consider all values in a field. They can only be used in the **Summarize** section of the query builder.
 
 ### Average
 
@@ -879,7 +879,7 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 ### [now](./expressions/now.md)
 
-Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+Returns the current date and time using your Metabase [instance default report timezone](../../configuring-metabase/localization.md#set-default-instance-report-timezone).
 
 Syntax: `now()`
 
@@ -1046,7 +1046,7 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 ## Database limitations
 
-Limitations are noted for each aggregation and function above, and here there are in summary:
+Limitations are noted for each aggregation and function above, and here they are in summary:
 
 **H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone`, `regexExtract`, `datetime`, `float`, `splitPart`.
 

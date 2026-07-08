@@ -8,4 +8,5 @@
 (p/import-vars
  [metabase.sample-data.impl
   extract-and-sync-sample-database!
+  sample-database-name
   update-sample-database-if-needed!])

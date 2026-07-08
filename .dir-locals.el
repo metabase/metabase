@@ -41,11 +41,6 @@
   (eval . (put-clojure-indent 'c/step                          1))
   (eval . (put-clojure-indent 'impl/test-migrations            2))
   (eval . (put-clojure-indent 'let-404                         0))
-  (eval . (put-clojure-indent 'lib.schema.match/match          '(:defn)))
-  (eval . (put-clojure-indent 'lib.schema.match/match-one      '(:defn)))
-  (eval . (put-clojure-indent 'lib.schema.match/replace        '(:defn)))
-  (eval . (put-clojure-indent 'lib.schema.match/replace-in     '(:defn)))
-  (eval . (put-clojure-indent 'lib.util.match/replace          '(:defn)))
   (eval . (put-clojure-indent 'macros/case                     0))
   (eval . (put-clojure-indent 'match                           1))
   (eval . (put-clojure-indent 'mt/dataset                      1))
@@ -61,6 +56,7 @@
   (eval . (put-clojure-indent 'u/prog1                         1))
   (eval . (put-clojure-indent 'u/select-keys-when              '(:form)))
   (eval . (put-clojure-indent 'with-meta                       '(:form)))
+  (eval . (put-clojure-indent 'ws.log/track!                   2))
   ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
   ;; https://github.com/clojure-emacs/clojure-mode/issues/600 once that's resolved we should use `put-clojure-indent'
   ;; instead. Please don't add new entries unless they don't work with `put-clojure-indent'
@@ -85,6 +81,8 @@
   (cider-preferred-build-tool . clojure-cli)
   (cider-default-cljs-repl . shadow-select)
   (cider-shadow-default-options . "app"))
+
+ (makefile-mode (indent-tabs-mode . t))
 
  ("bin"
   (clojure-mode

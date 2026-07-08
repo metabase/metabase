@@ -1,0 +1,120 @@
+[
+  {
+    "id": "chatcmpl-tool456",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "index": 0,
+              "id": "call_abc123",
+              "type": "function",
+              "function": {
+                "name": "get-time",
+                "arguments": ""
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-tool456",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "tool_calls": [
+            {
+              "index": 0,
+              "function": {
+                "arguments": "{\"tz"
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-tool456",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "tool_calls": [
+            {
+              "index": 0,
+              "function": {
+                "arguments": "\":\"Europe"
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-tool456",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "tool_calls": [
+            {
+              "index": 0,
+              "function": {
+                "arguments": "/Kyiv\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-tool456",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {},
+        "finish_reason": "tool_calls"
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-tool456",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [],
+    "usage": {
+      "prompt_tokens": 50,
+      "completion_tokens": 20,
+      "total_tokens": 70
+    }
+  }
+]

@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 interface FormInputRootProps {
   touched?: boolean;
@@ -12,6 +12,7 @@ export const FormInputRoot = styled.input<FormInputRootProps>`
   width: 100%;
 
   &:not(:focus) {
-    border-color: ${(props) => props.touched && props.error && color("error")};
+    border-color: ${(props) =>
+      props.touched && props.error && color("feedback-negative")};
   }
 `;

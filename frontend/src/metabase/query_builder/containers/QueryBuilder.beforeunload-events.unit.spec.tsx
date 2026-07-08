@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { callMockEvent } from "__support__/events";
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -14,7 +15,6 @@ import {
   TEST_UNSAVED_NATIVE_CARD,
   TEST_UNSAVED_STRUCTURED_CARD,
   setup,
-  startNewNotebookModel,
   triggerMetadataChange,
   triggerNativeQueryChange,
   triggerNotebookQueryChange,
@@ -26,37 +26,18 @@ registerVisualizations();
 
 describe("QueryBuilder - beforeunload events", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  mockGetBoundingClientRect();
 
   beforeEach(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
-    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    HTMLElement.prototype.getBoundingClientRect = jest
-      .fn()
-      .mockReturnValue({ height: 1, width: 1 });
     setupLastDownloadFormatEndpoints();
   });
 
   afterEach(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
-  });
-
-  describe("creating models", () => {
-    it("shows custom warning modal when leaving via SPA navigation", async () => {
-      const { mockEventListener } = await setup({
-        card: null,
-        initialRoute: "/model/new",
-      });
-
-      await startNewNotebookModel();
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
   });
 
   describe("editing models", () => {

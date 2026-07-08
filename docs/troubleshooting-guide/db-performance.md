@@ -32,7 +32,7 @@ To fix problems with your Metabase [application database](../installation-and-op
 
 ## Resetting a database connection
 
-1. Go to **Settings** > **Admin settings** > **Databases** > your database.
+1. Go to **Admin** > **Databases** > your database.
 2. Click **Save changes** (without making changes) to reset Metabase's connections to your database.
 3. Alternatively: kill the connection(s) directly from your database.
 
@@ -58,7 +58,7 @@ If someone or something creates 100 queries at the same time, this stampede of q
 
 **Explanation**
 
-By default, Metabase makes regular sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a very large database, you can choose to trigger these queries manually instead of on a schedule.
+By default, Metabase makes regular sync and scan queries against your database to keep your tables up to date, get fresh values for filter dropdowns, and make helpful suggestions. If you've got a large database, you can choose to trigger these queries manually instead of on a schedule.
 
 ## Questions that use number, date, or timestamp columns
 

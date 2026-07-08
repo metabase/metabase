@@ -8,12 +8,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- generate-saml-html-popup
-  [key ^Instant exp ^Instant iat origin continue-url]
+  [key ^Instant exp ^Instant iat origin continue-url nonce]
   (str "<!DOCTYPE html>
 <html>
 <head>
   <title>Authentication Complete</title>
-  <script>
+  <script nonce=\"" nonce "\">
     const authData = {
       id: \"" key "\",
       exp: " (.getEpochSecond exp) ",
@@ -49,9 +49,9 @@
 
 (defn create-token-response
   "Create a token response with HTML and JavaScript to post the auth message"
-  [session origin continue-url]
+  [session origin continue-url nonce]
   (let [current-time (t/instant)
         expiration-time (t/plus current-time (t/seconds 86400))]
     {:status 200
      :headers {"Content-Type" "text/html"}
-     :body (generate-saml-html-popup (:key session) expiration-time current-time origin continue-url)}))
+     :body (generate-saml-html-popup (:key session) expiration-time current-time origin continue-url nonce)}))

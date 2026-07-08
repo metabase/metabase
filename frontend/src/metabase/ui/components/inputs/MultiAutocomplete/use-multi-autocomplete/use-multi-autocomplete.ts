@@ -231,17 +231,24 @@ export function useMultiAutocomplete({
       newFieldValues,
       fieldSelection,
     );
+    const newFieldSelection = {
+      index: fieldSelection.index + newFieldValues.length,
+      length: 0,
+    };
+    const newFilteredOptions = getOptionsWithoutDuplicates(
+      newValues,
+      options,
+      newFieldSelection,
+    );
+
+    setFieldSelection(newFieldSelection);
+    if (newFilteredOptions.length === 0) {
+      setFieldValue("");
+      combobox.closeDropdown();
+      combobox.resetSelectedOption();
+    }
     onChange(newValues);
-    setFieldState({
-      fieldValue: "",
-      fieldSelection: {
-        index: fieldSelection.index + newFieldValues.length,
-        length: 0,
-      },
-    });
     onOptionSubmit?.(value);
-    combobox.closeDropdown();
-    combobox.resetSelectedOption();
   };
 
   const handleWindowKeydownCapture = (event: KeyboardEvent) => {
@@ -393,7 +400,7 @@ function getFieldStateAfterChange(
 // When pasting, we want to combine the values from the clipboard with the
 // existing input value, taking the current selection into account. For example,
 // if the input value is "ab<caret>c" and the user pastes "d,e,f", the
-// new values should be "abd,e,fc".
+// new values should be "abd,e,fc". | codespell:ignore
 function getParsedValuesCombinedWithFieldValue(
   fieldValue: string,
   parsedValues: string[],

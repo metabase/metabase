@@ -7,11 +7,10 @@ import type { TableFieldOrder } from "metabase-types/api";
 import S from "./FieldOrderPicker.module.css";
 import { Label } from "./Label";
 
-interface Props
-  extends Omit<
-    SegmentedControlProps<TableFieldOrder>,
-    "data" | "value" | "onChange"
-  > {
+interface Props extends Omit<
+  SegmentedControlProps<TableFieldOrder>,
+  "data" | "value" | "onChange"
+> {
   value: TableFieldOrder;
   onChange: (value: TableFieldOrder) => void;
 }

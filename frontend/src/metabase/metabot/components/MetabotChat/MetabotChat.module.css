@@ -1,0 +1,166 @@
+/* TODO: rtl support */
+
+.container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  /* top padding is set to visually align w/ the dashboard action buttons */
+  padding: 1.25rem 1.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.inputContainer {
+  padding: 0 0.75rem 0 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 3px 6px 0 #0000000d;
+  min-height: 3rem;
+  border: 1px solid var(--mb-color-border-neutral);
+
+  &:focus-within {
+    border-color: var(--mb-color-core-brand);
+  }
+}
+
+.inputContainerLoading {
+  background: var(--mb-color-background_page-secondary);
+}
+
+.messagesScrollArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.messagesContainer {
+  padding: var(--metabot-chat-messages-padding-top, 1rem) 0 1.5rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.messageContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.messageContainerUser {
+  align-items: flex-end;
+  align-self: flex-end;
+  max-width: min(100%, 46.5rem);
+  min-width: 6rem;
+  width: fit-content;
+}
+
+.messageContainerUser :global(.smart-link) {
+  border: 1px solid var(--mb-color-border-brand);
+  position: relative;
+  bottom: -2px;
+}
+
+.message {
+  font-size: 0.875rem;
+  line-height: 1.4 !important;
+  min-width: 0;
+}
+
+.messageUser {
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  background: var(--mb-color-background_page-secondary);
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.messageActions {
+  opacity: 0;
+  transition: all 150ms linear;
+  min-height: 1rem;
+}
+
+.messageContainer:hover .messageActions,
+.messageContainer:last-child.messageContainerAgent .messageActions {
+  opacity: 1;
+}
+
+.agentPartCard {
+  transition: background 150ms ease;
+}
+
+.agentPartClickable {
+  cursor: pointer;
+}
+
+.agentPartClickable:hover {
+  background: var(--mb-color-background_page-secondary);
+}
+
+.agentPartActions {
+  opacity: 0;
+  transition: opacity 150ms linear;
+}
+
+.agentPartActionIcon:hover {
+  background-color: var(--mb-color-background_page-tertiary) !important;
+}
+
+.agentPartCard:hover .agentPartActions,
+.agentPartCard:focus-within .agentPartActions {
+  opacity: 1;
+}
+
+.messageContainerAgent + .messageContainerAgent {
+  margin-top: var(--mantine-spacing-md);
+}
+
+.promptSuggestionsContainer {
+  /* height if there's 3 single-line suggestions
+   * this prevents a jump once suggestions have loaded in most cases */
+  min-height: 106px;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.promptSuggestionButton {
+  display: block;
+  height: auto;
+  text-align: start;
+  line-height: 1.4;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+
+  span {
+    text-wrap-mode: wrap;
+  }
+}
+
+.textInputContainer {
+  padding: 0 1rem 1rem;
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+}

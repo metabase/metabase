@@ -4,11 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  BasicAdminSettingInput,
-  SetByEnvVar,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
+import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type {
@@ -18,11 +17,7 @@ import type {
 
 import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
-import {
-  LighthouseImage,
-  PreviewImage,
-  SailboatImage,
-} from "./IllustrationWidget.styled";
+import { PreviewImage, SailboatImage } from "./IllustrationWidget.styled";
 export interface StringSetting {
   value: IllustrationSettingValue | null;
   default: IllustrationSettingValue;
@@ -187,7 +182,7 @@ export function IllustrationWidget({
     <Box data-testid={`${name}-setting`}>
       <SettingHeader id={name} title={title} description={description} />
       {errorMessage && (
-        <Text size="sm" c="error" mb="sm">
+        <Text size="sm" c="feedback-negative" mb="sm">
           {errorMessage}
         </Text>
       )}
@@ -198,7 +193,8 @@ export function IllustrationWidget({
             align="center"
             justify="center"
             w="7.5rem"
-            style={{ borderRight: "1px solid var(--mb-color-border)" }}
+            pos="relative"
+            style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
           >
             {getPreviewImage({
               value: localValue,
@@ -254,7 +250,7 @@ export function IllustrationWidget({
                     <Button
                       leftSection={<Icon name="close" />}
                       variant="subtle"
-                      c="text-dark"
+                      c="text-primary"
                       ml="md"
                       size="compact-md"
                       onClick={handleRemoveCustomIllustration}
@@ -280,7 +276,7 @@ async function isFileIntact(dataUri: string) {
 }
 
 const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
-  background: <LighthouseImage />,
+  background: <LighthouseIllustrationThumbnail />,
   icon: <SailboatImage />,
 };
 

@@ -22,7 +22,7 @@ export const DASHBOARD_TEXT_FILTERS = [
     operator: "Contains",
     single: true,
     value: '"oo,aa"',
-    representativeResult: "No results!",
+    representativeResult: "No results",
     negativeAssertion: "148.23",
   },
   {
@@ -48,7 +48,7 @@ export const DASHBOARD_TEXT_FILTERS = [
     operator: "Starts with",
     single: true,
     value: '"A,b"',
-    representativeResult: "No results!",
+    representativeResult: "No results",
     negativeASsertion: "85.72",
   },
   {
@@ -61,7 +61,7 @@ export const DASHBOARD_TEXT_FILTERS = [
     operator: "Ends with",
     single: true,
     value: '"e,s"',
-    representativeResult: "No results!",
+    representativeResult: "No results",
     negativeASsertion: "47.68",
   },
 ];

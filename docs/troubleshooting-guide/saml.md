@@ -14,7 +14,7 @@ Verify that the application you created in your IdP supports SAML. Sometimes oth
 
 ## Is the issuer or Entity ID correct?
 
-After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Tools** > **Logs**. You'll see an error that says something like **Incorrect response <issuer\>**.
+After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin** > **Tools** > **Logs**. You'll see an error that says something like **Incorrect response <issuer\>**.
 
 **Root cause**: Your issuer or Entity ID is incorrect.
 
@@ -25,17 +25,17 @@ After filling out the authentication form with your identity provider, you're ta
    https://www.example.com/141xkex604w0Q5PN724v
    ```
 2. Copy the issuer or Entity ID from the XML file.
-3. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Enter the issuer or Entity ID into the **SAML Identity Provider Issuer** field.
+3. Go to Metabase and select **Admin** > **Settings** > **Authentication** > **SAML**. Enter the issuer or Entity ID into the **SAML Identity Provider Issuer** field.
 
 ## Is the SAML identity provider certificate value correct?
 
-After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Tools** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**.
+After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin** > **Tools** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer\>**.
 
 **Root cause**: The certificate value you entered is incorrect.
 
 **Steps to take**:
 
-1. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider.
+1. Go to Metabase and select **Admin** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider.
 
    - Depending on your provider, you might need to download the XML file, open it in a text editor, then copy and paste the certificate's contents into the **SAML Identity Provider Certificate** field in Metabase.
 
@@ -47,7 +47,7 @@ Verify that the Single Sign On URL (or equivalent) that you enter on your SAML p
 
 ## Searching for private key and found a null
 
-This error will only occur if you're using **Signed SSO requests**. That is, in Metabase, you've filled out the fields in the configuration section in **Admin settings** > **Settings** > **Authentication** > **SAML** > **Signed SSO requests**. Those fields are:
+This error will only occur if you're using **Signed SSO requests**. That is, in Metabase, you've filled out the fields in the configuration section in **Admin** > **Settings** > **Authentication** > **SAML** > **Signed SSO requests**. Those fields are:
 
 - **SAML Keystore Path**: the absolute path to the Keystore file to use for signing SAML requests.
 - **SAML Keystore Password**: the password for opening the keystore.

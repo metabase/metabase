@@ -8,7 +8,7 @@
   }
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
@@ -19,5 +19,19 @@
   @media screen and (min-width: 40em) {
     margin-bottom: 1rem;
     padding-bottom: 1rem;
+  }
+}
+
+.StepRoot .StepHeader {
+  visibility: hidden;
+}
+
+.StepRoot:hover .StepHeader {
+  visibility: visible;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .StepRoot .StepHeader {
+    visibility: visible;
   }
 }

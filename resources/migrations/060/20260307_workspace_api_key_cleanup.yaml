@@ -1,0 +1,48 @@
+## Clean up workspace API keys and drop the api_key_id column from workspace table
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-03-07T00:00:00
+      author: christruter
+      comment: Delete orphaned API keys that were created for workspace service users
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: workspace
+            columnName: api_key_id
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM api_key WHERE id IN (SELECT api_key_id FROM workspace WHERE api_key_id IS NOT NULL);
+      rollback:
+
+  - changeSet:
+      id: v60.2026-03-07T00:00:01
+      author: christruter
+      comment: Drop index on workspace.api_key_id
+      preConditions:
+        - onFail: MARK_RAN
+        - indexExists:
+            tableName: workspace
+            indexName: idx_workspace_api_key_id
+      changes:
+        - dropIndex:
+            tableName: workspace
+            indexName: idx_workspace_api_key_id
+      rollback:
+
+  - changeSet:
+      id: v60.2026-03-07T00:00:02
+      author: christruter
+      comment: Drop unused api_key_id column from workspace table
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: workspace
+            columnName: api_key_id
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: api_key_id
+      rollback:

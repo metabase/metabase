@@ -1,7 +1,8 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
+import { isNotNull } from "metabase/utils/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -21,7 +22,6 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 

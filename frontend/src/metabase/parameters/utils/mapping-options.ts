@@ -3,13 +3,13 @@ import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import {
   isActionDashCard,
   isQuestionDashCard,
   isVirtualDashCard,
-} from "metabase/dashboard/utils";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
+} from "metabase/utils/dashboard";
+import { getAllowedIframeAttributes } from "metabase/visualizations/lib/iframe";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
@@ -31,22 +31,36 @@ import type {
   BaseDashboardCard,
   Card,
   DimensionReference,
+  IconName,
   NativeParameterDimensionTarget,
   Parameter,
   ParameterTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  TemplateTagType,
   VirtualCard,
   WritebackParameter,
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
+
+const VARIABLE_ICONS: Record<TemplateTagType, IconName | null> = {
+  text: "string",
+  number: "int",
+  date: "calendar",
+  boolean: "io",
+  dimension: null,
+  "temporal-unit": "clock",
+  card: null,
+  snippet: null,
+  table: null,
+};
 
 export type StructuredQuerySectionOption = {
   sectionName: string;
   name: string;
   icon: string;
   target: StructuredParameterDimensionTarget;
-  isForeign: boolean;
+  isForeign?: boolean;
 };
 
 function buildStructuredQuerySectionOptions(
@@ -89,9 +103,10 @@ function buildNativeQuerySectionOptions(
 function buildVariableOption(
   variable: TemplateTagVariable,
 ): NativeParameterMappingOption {
+  const tag = variable.tag();
   return {
     name: variable.displayName() ?? "",
-    icon: variable.icon() ?? "",
+    icon: (tag && VARIABLE_ICONS[tag.type]) ?? "",
     isForeign: false,
     target: buildTemplateTagVariableTarget(variable),
   };
@@ -131,12 +146,17 @@ export type ParameterMappingOption =
   | StructuredQuerySectionOption
   | NativeParameterMappingOption;
 
+export type GetParameterMappingOptionsOpts = {
+  includeSensitiveFields?: boolean;
+};
+
 export function getParameterMappingOptions(
   question: Question | undefined,
   parameter: Parameter | null | undefined = null,
   card: Card | VirtualCard,
   dashcard: BaseDashboardCard | null | undefined = null,
   parameterDashcard: BaseDashboardCard | null | undefined = null,
+  opts?: GetParameterMappingOptionsOpts,
 ): ParameterMappingOption[] {
   const isInlineParameterOnCardFromOtherTab =
     parameterDashcard != null &&
@@ -206,6 +226,7 @@ export function getParameterMappingOptions(
     const { query, columns } = getParameterColumns(
       question,
       parameter ?? undefined,
+      opts,
     );
 
     const columnsByStageIndex = _.groupBy(columns, "stageIndex");

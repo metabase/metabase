@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -23,7 +24,6 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
@@ -194,7 +194,6 @@ export function addColumnToFunnel(
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,

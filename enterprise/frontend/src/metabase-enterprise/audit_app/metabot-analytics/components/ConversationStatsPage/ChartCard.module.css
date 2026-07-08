@@ -1,0 +1,10 @@
+.visualization {
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+}
+
+.nonClickable,
+.nonClickable * {
+  cursor: default !important;
+}

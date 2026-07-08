@@ -5,12 +5,12 @@ import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import Tables from "metabase/entities/tables";
-import { useDispatch, useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { TableBreadcrumbs } from "metabase/metadata/components";
+import { useDispatch, useStore } from "metabase/redux";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -41,9 +41,7 @@ export function DataStep({
   const dispatch = useDispatch();
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(
-      Tables.actions.fetchMetadataAndForeignTables({ id: tableId }),
-    );
+    await dispatch(fetchTableMetadataAndForeignKeys({ id: tableId }));
     const metadata = getMetadata(store.getState());
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
@@ -62,7 +60,7 @@ export function DataStep({
       <Box>
         {tableId && (
           <Flex maw={300} wrap="nowrap">
-            <Text c="text-medium" size="sm" w="100%">
+            <Text c="text-secondary" size="sm" w="100%">
               <TableBreadcrumbs hideTableName tableId={tableId} />
             </Text>
           </Flex>
@@ -72,14 +70,14 @@ export function DataStep({
           <Button
             variant="subtle"
             p={0}
-            c="text-dark"
+            c="text-primary"
             rightSection={<Icon name="chevrondown" />}
             onClick={() => setIsOpened(true)}
           >
             {tableInfo ? tableInfo.displayName : t`Select a table`}
           </Button>
         ) : (
-          <Text c="text-dark" fw="bold">
+          <Text c="text-primary" fw="bold">
             {tableInfo?.displayName}
           </Text>
         )}
@@ -92,6 +90,11 @@ export function DataStep({
           value={tableValue}
           onChange={handleChange}
           onClose={() => setIsOpened(false)}
+          options={{
+            hasLibrary: false,
+            hasRootCollection: false,
+            hasPersonalCollections: false,
+          }}
         />
       )}
     </ClauseStep>

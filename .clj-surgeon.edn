@@ -1,0 +1,27 @@
+{:aliases
+ {;; defendpoint shape: (api.macros/defendpoint METHOD URL DOCSTRING? [args] body)
+  ;; No name slot — synthesize :route [METHOD "path"] from first 2 args.
+  "defendpoint"
+  {:fields {:method (fn [z] (some-> z z/down z/right z/sexpr name str/upper-case))
+            :path   (fn [z] (-> z z/down z/right z/right z/sexpr))}}
+
+  ;; defenterprise shape:
+  ;;   (defenterprise NAME DOCSTRING? EE-NAMESPACE [args] body)
+  "defenterprise"
+  {:fields {:name         ->defn-name
+            :ee-namespace (fn [z]
+                            ;; Skip name + optional docstring; the next
+                            ;; symbol is the EE namespace.
+                            (let [name-z (-> z z/down z/right)
+                                  after-doc (z/right name-z)
+                                  candidate (if (string? (try (z/sexpr after-doc)
+                                                              (catch Exception _ nil)))
+                                              (z/right after-doc)
+                                              after-doc)]
+                              (try (let [v (z/sexpr candidate)]
+                                     (when (symbol? v) v))
+                                   (catch Exception _ nil))))
+            :arglist      ->defn-arg-list}}
+
+  "defsetting"
+  {:fields {:name ->defn-name}}}}

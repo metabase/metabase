@@ -1,4 +1,5 @@
 (ns metabase.revisions.impl.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.revisions.impl.card-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -35,6 +36,25 @@
     {:name        "Diff Test changed"
      :description "New description"}
     "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
+
+;; Regression test for https://github.com/metabase/metabase/issues/73681
+(deftest diff-cards-str-deleted-collection-test
+  (mt/initialize-if-needed! :db)
+  (testing "When a collection referenced in a revision has been deleted, the description should not show 'null'"
+    (let [deleted-coll-id 99999]
+      (are [x y expected] (= expected
+                             (u/build-sentence (revision/diff-strings :model/Card x y)))
+        ;; moved from nil (root) to a now-deleted collection
+        {:name "Apple"}
+        {:name          "Apple"
+         :collection_id deleted-coll-id}
+        (str "moved this Card to #" deleted-coll-id ".")
+
+        ;; moved from a now-deleted collection back to root: should show ID, not "null"
+        {:name          "Apple"
+         :collection_id deleted-coll-id}
+        {:name "Apple"}
+        (str "moved this Card from #" deleted-coll-id " to Our analytics.")))))
 
 (deftest ^:parallel diff-cards-str-update-collection--test
   (mt/with-temp
@@ -100,6 +120,7 @@
                             (= col :display)           :pie
                             (= col :made_public_by_id) (mt/user->id :crowberto)
                             (= col :embedding_params)  {:category_name "locked"}
+                            (= col :embedding_type)    "static-legacy"
                             (= col :public_uuid)       (str (random-uuid))
                             (= col :table_id)          (mt/id :venues)
                             (= col :source_card_id)    (:id base-card)
@@ -137,7 +158,8 @@
                          :card_schema
                          ;; we don't expect a description for this column because it should never change
                          ;; once created by the migration
-                         :dataset_query_metrics_v2_migration_backup} col)
+                         :dataset_query_metrics_v2_migration_backup}
+                       col)
               (testing (format "we should have a revision description for %s" col)
                 (let [diff-strings (revision/diff-strings
                                     ;; TODO -- huh? Shouldn't this be testing against `:model/Card` here???
@@ -157,10 +179,8 @@
             changes (update before :result_metadata drop-last)]
         (t2/update! :model/Card (:id card) changes)
         (create-card-revision! (:id card) false)
-
         (testing "we should track when :result_metadata changes on model"
           (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
-
         (testing "we should have a revision description for :result_metadata on model"
           (is (some? (u/build-sentence
                       (revision/diff-strings
@@ -178,7 +198,6 @@
             serialized-card (revision/serialize-instance :model/Card card-id full-card)
             ;; Remove card_schema to simulate pre-v0.55 revision
             old-card-data   (dissoc serialized-card :card_schema)]
-
         ;; Manually create a revision without :card_schema to simulate pre-v0.55 data
         (t2/insert! :model/Revision
                     {:model    "Card"
@@ -186,13 +205,11 @@
                      :user_id  (mt/user->id :rasta)
                      :object   old-card-data
                      :message  "Test revision without card_schema"})
-
         (testing "Can fetch revisions without error through API"
           (let [revisions (revision/revisions+details :model/Card card-id)]
             (is (seq revisions))
             (is (= "Test revision without card_schema"
                    (-> revisions first :message)))))
-
         (testing "Revision object has card_schema added with legacy default after after-select"
           (let [revision     (t2/select-one :model/Revision
                                             :model "Card"
@@ -201,7 +218,6 @@
                 ;; The after-select should have added `:card_schema`
                 revision-obj (:object revision)]
             (is (= queries/starting-card-schema-version (:card_schema revision-obj)))))
-
         (testing "Card object from revision can go through upgrade-card-schema-to-latest"
           ;; Actual regression test; this used to throw:
           ;; "Cannot SELECT a Card without including :card_schema"

@@ -1,17 +1,16 @@
 import { useMemo } from "react";
 
 import { useGetCardQuery } from "metabase/api";
-import QuestionResultLoader from "metabase/common/components/QuestionResultLoader";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
+import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { IconName } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { RawSeries } from "metabase-types/api";
+import type { IconName, RawSeries } from "metabase-types/api";
 
 export interface PinnedQuestionLoaderProps {
   id: number;
@@ -24,14 +23,6 @@ export interface PinnedQuestionChildrenProps {
   rawSeries?: RawSeries;
   error?: string;
   errorIcon?: IconName;
-}
-
-export interface QuestionResultLoaderProps {
-  loading: boolean;
-  error?: any;
-  result?: any;
-  results?: any;
-  rawSeries?: RawSeries;
 }
 
 const PinnedQuestionLoader = ({
@@ -68,13 +59,7 @@ const PinnedQuestionLoader = ({
 
   return (
     <QuestionResultLoader question={question} collectionPreview>
-      {({
-        loading,
-        error,
-        result,
-        results,
-        rawSeries,
-      }: QuestionResultLoaderProps) =>
+      {({ loading, error, result, results, rawSeries }) =>
         children({
           question,
           loading: loading || results == null,
@@ -87,7 +72,7 @@ const PinnedQuestionLoader = ({
   );
 };
 
-const getRawSeries = (rawSeries?: any[]) => {
+const getRawSeries = (rawSeries: RawSeries | null | undefined) => {
   return rawSeries?.map((series) => ({
     ...series,
     card: {

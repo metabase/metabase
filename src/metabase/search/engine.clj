@@ -3,9 +3,10 @@
   (:require
    [metabase.search.settings :as settings]))
 
-(def fallback-engine-priority
-  "Search engines in order of preference for fallback scenarios."
-  [:search.engine/appdb
+(def ^:private default-engine-precedence
+  "In the absence of explicit configuration, these are the engines to try using, in decreasing order of preference."
+  [:search.engine/semantic
+   :search.engine/appdb
    :search.engine/in-place])
 
 (defmulti supported-engine?
@@ -26,6 +27,22 @@
   "Return a set of the models which have at least one result for the given query."
   {:arglists '([search-context])}
   :search-engine)
+
+(defmulti diagnose
+  "Explain why `(expected-model, expected-id)` does not appear in the index/query stages this engine owns.
+  Returns `{:type ..., :details ...}` for the first engine-owned stage that drops it
+  (`:missing-from-index`, `:filtered`, or `:not-matching`), or `{:type :candidate, :details ...}` if it passes
+  every engine-owned stage.
+  Engine-independent stages (`:not-searchable`, terminal `:matched`/`:ranked-out`) are handled by the caller in
+  [[metabase.search.debug]].
+
+  The `:filtered` `:details` `:excluded-by` value names the filter that dropped the row; shared keys (e.g. `:models`,
+  `:created-by`, `:archived?`) are consistent across engines. Access-control exclusions are also reported under
+  `:filtered` here — `:collection-permissions`/`:table-permissions`/`:permissions` (appdb) or `:permissions`
+  (semantic) — and [[metabase.search.debug]] promotes those to `:not-permitted`; engines should check them before
+  structural filters so access denial wins."
+  {:arglists '([search-context expected-model expected-id])}
+  (fn [{engine :search-engine} _ _] engine))
 
 (defmulti score "For legacy search: perform the in-memory ranking"
   {:arglists '([search-context result])}
@@ -67,21 +84,52 @@
   {:arglists '([engine])}
   identity)
 
+(defmulti sync-from-restored-db!
+  "Reconcile in-memory search state with what's currently in the database.
+   Used after snapshot restore where the DB already contains valid index data.
+   Engines that store their index in the appdb can skip reindexing."
+  {:arglists '([engine])}
+  identity)
+
 (defn known-engines
   "List the possible search engines defined for this version, whether this instance supports them or not."
   []
   ;; If we end up with more "abstract" nodes, we may want a better way to filter them out.
   (keys (dissoc (methods supported-engine?) :default)))
 
-(defn active-engines
-  "List the search engines that are supported. Does not mention the legacy in-place engine.
-   Default engine comes first."
+(defn supported-engines
+  "List the search engines that are supported, in order of usage preference.
+   The configured engine comes first, if it is supported."
   []
-  (->> (for [[k p] (dissoc (methods supported-engine?) :default :search.engine/in-place) :when (p k)] k)
-       (sort-by #(if (= (name %) (name (settings/search-engine))) 0 1))))
+  (let [configured-engine (some->> (settings/search-engine) name (keyword "search.engine"))
+        potential-engines (cond->> default-engine-precedence configured-engine (cons configured-engine))]
+    (distinct (filter supported-engine? potential-engines))))
+
+(defn active-engines
+  "A list of supported search engines for which we will maintain an index, in order of usage preference.
+   Excludes :search.engine/in-place, which does not use an index."
+  []
+  (remove #{:search.engine/in-place} (supported-engines)))
 
 (defn known-engine?
   "Is the given engine recognized?"
   [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
     (some registered? (cons engine (ancestors engine)))))
+
+(defmulti disjunction
+  "Given multiple terms to search for, reduce this to a search expression that matches any of them in a single search.
+   If this is not possible, return a list of terms to be searched for separately."
+  {:arglists '([search-engine terms])}
+  (fn [search-engine _terms] search-engine))
+
+(defn default-engine
+  "In the absence of an explicit engine argument in a request, which engine should be used?"
+  []
+  ;; TODO (Chris 2025-11-07) It would be good to have a warning on start up whenever this is *not* what's configured.
+  (first (supported-engines)))
+
+(defmethod disjunction :default [_ terms] terms)
+
+(defmethod disjunction nil [_ terms]
+  (disjunction (default-engine) terms))

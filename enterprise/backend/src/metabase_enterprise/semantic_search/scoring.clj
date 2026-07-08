@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.scoring
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -68,30 +69,51 @@
      [:* [:cast keyword-weight :float]
       [:coalesce [:/ 1.0 [:+ k :keyword_rank]] 0]]]))
 
+(def ^:private cosine-distance-ceiling
+  "Largest possible pgvector cosine distance (`<=>`): `1 - cos(theta)` tops out at 2 for opposed vectors."
+  2.0)
+
+(defn- semantic-distance-score-expr
+  "Map a cosine `distance` (pgvector `<=>`, range [0, 2]) to a [0, 1] score.
+  Linear for now: distance 0 scores 1, the maximum distance of 2 scores 0."
+  [distance]
+  ;; TODO (Chris 2026-06-22) -- a non-linear curve might rank better than this straight-line map. Keeping it
+  ;; linear for now so the score stays as transparent as possible.
+  [:- [:inline 1] [:/ distance [:inline cosine-distance-ceiling]]])
+
 (defn base-scorers
   "The default constituents of the search ranking scores."
-  [index-table {:keys [search-string limit-int] :as search-ctx}]
-  (if (and limit-int (zero? limit-int))
+  [index-table {:keys [search-string] :as search-ctx}]
+  (if (search.scoring/no-scoring-required? search-ctx)
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf        rrf-rank-exp
+     ;; Keyword-only hits have no vector distance; score them 0 directly rather than feeding the ceiling
+     ;; distance through the linear map.
+     :semantic-distance [:coalesce (semantic-distance-score-expr :semantic_distance) [:inline 0]]
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
-     :recency    (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at]
-                                                  [:now]
-                                                  search.config/stale-time-in-days)
+     :recency    (search.scoring/inverse-duration
+                  :postgres
+                  [:coalesce :last_viewed_at :model_updated_at]
+                  [:now]
+                  search.config/stale-time-in-days)
      :dashboard  (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
      :model      (search.scoring/model-rank-expr search-ctx)
      :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))
      :exact      (if search-string
-                   ;; perform the lower casing within the database, in case it behaves differently to our helper
-                   (search.scoring/equal [:lower :name] [:lower search-string])
+                   ;; normalize both sides in the database, in case it behaves differently to our helper
+                   (search.scoring/equal (search.scoring/normalize-text-expr :postgres :name)
+                                         (search.scoring/normalize-text-expr :postgres search-string))
                    [:inline 0])
      :prefix     (if search-string
                    ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                   (search.scoring/prefix [:lower :name] (u/lower-case-en search-string))
-                   [:inline 0])}))
+                   (search.scoring/prefix (search.scoring/normalize-text-expr :postgres :name)
+                                          (search.scoring/normalize-text search-string))
+                   [:inline 0])
+     :library    (search.scoring/library-score-expr)
+     :data-layer (search.scoring/data-layer-score-expr search-ctx)}))
 
 (def ^:private enterprise-scorers
   {:official-collection {:expr (search.scoring/truthy :official_collection)
@@ -134,15 +156,21 @@
 ;; appdb-based scorers: these scorers rely on tables in the appdb
 ;;
 
-(defn- search-doc->values
+(defn- search-doc->select
   [{:keys [id model]}]
-  [[:cast [:inline id] :text] [:inline model]])
+  {:select [[[:inline (str id)]] [[:inline model]]]})
 
 (defn- search-index-query
   [search-results]
   {:with     [[[:search_index {:columns [:model_id :model]}]
-               {:values (map search-doc->values search-results)}]]
-   :select   [[[:cast :search_index.model_id :int] :id]
+               ;; We could use :values here, except MySQL uses a slightly different syntax and I can't seem to get
+               ;; honeysql to generate a valid WITH ... VALUES statement for MySQL, so fallback to UNION + SELECT
+               ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
+               {:union (map search-doc->select search-results)}]]
+   :select   [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type))
+                                               :unsigned
+                                               :int)]
+               :id]
               [:search_index.model :model]]
    :from     [:search_index]})
 
@@ -167,23 +195,23 @@
   (into #{} (map name activity-feed/rv-models)))
 
 (def ^:private appdb-scorer-models
-  (into recent-views-models (map name search.scoring/bookmarked-models-and-sub-models)))
+  (-> recent-views-models
+      ;; Add "transform" here because it's not a recent-views model, but should still be scored
+      (conj "transform")
+      (into (map name) search.scoring/bookmarked-models-and-sub-models)))
 
 (comment
-  (require '[clojure.set :as set]
-           '[metabase.search.spec :as search.spec])
+  (require '[metabase.search.spec :as search.spec])
   ;; #{"segment" "database" "action" "indexed-entity"}
-  (set/difference search.spec/search-models appdb-scorer-models))
+  (set/difference (set search.spec/search-models) appdb-scorer-models))
 
 (defn appdb-scorers
   "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
-  [{:keys [limit-int] :as search-ctx}]
-  (when-not (and limit-int (zero? limit-int))
-    (when-not (= :mysql (mdb/db-type))
-      ;; The appdb scorers need to be modified to work with mysql / mariadb (BOT-360)
-      {:bookmarked search.scoring/bookmark-score-expr
-       :user-recency (search.scoring/inverse-duration
-                      (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)})))
+  [search-ctx]
+  (when-not (search.scoring/no-scoring-required? search-ctx)
+    {:bookmarked search.scoring/bookmark-score-expr
+     :user-recency (search.scoring/inverse-duration
+                    (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
 
 (defn with-appdb-scores
   "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
@@ -222,6 +250,6 @@
                          {:id 4 :model "indexed-entity"}
                          {:id 7 :model "card"}])
                        vec))
-  (def weights (search.config/weights (:context search-ctx)))
+  (def weights (search.config/weights search-ctx))
   (def app-db-scorers (appdb-scorers search-ctx))
   (with-appdb-scores search-ctx (appdb-scorers search-ctx) weights search-docs))

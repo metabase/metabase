@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import type { VisualizerState } from "metabase/redux/store/visualizer";
 import {
   extractRemappings,
   getVisualization,
@@ -9,13 +10,7 @@ import {
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type {
-  Card,
-  DatasetData,
-  RawSeries,
-  SingleSeries,
-} from "metabase-types/api";
-import type { VisualizerState } from "metabase-types/store/visualizer";
+import type { Card, DatasetData, RawSeries } from "metabase-types/api";
 
 import {
   createDataSource,
@@ -52,7 +47,8 @@ export const getVisualizerRawSettings = (state: State) =>
 export const getCards = (state: State) => getCurrentHistoryItem(state).cards;
 
 export function getVisualizationTitle(state: State) {
-  const settings = getVisualizerRawSettings(state);
+  // Using computed settings to capture computed default "card.title" value if was not explicitly saved
+  const settings = getVisualizerComputedSettings(state);
   return settings["card.title"];
 }
 
@@ -145,8 +141,14 @@ export const getVisualizerDatasetColumns = createSelector(
 );
 
 const getVisualizerFlatRawSeries = createSelector(
-  [getVisualizationType, getVisualizerRawSettings, getVisualizerDatasetData],
-  (display, settings, data): RawSeries => {
+  [
+    getVisualizationType,
+    getVisualizerRawSettings,
+    getVisualizerDatasetData,
+    getCards,
+    getVisualizerColumnValuesMapping,
+  ],
+  (display, settings, data, cards, columnValuesMapping): RawSeries => {
     if (!display) {
       return [];
     }
@@ -156,15 +158,19 @@ const getVisualizerFlatRawSeries = createSelector(
         card: {
           display,
           dataset_query: {},
+          name: cards[0].name,
+          description: cards[0].description,
           visualization_settings: settings,
         } as Card,
 
         data,
 
+        columnValuesMapping,
+
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
         started_at: new Date().toISOString(),
-      } as SingleSeries,
+      },
     ];
 
     return series;
@@ -195,10 +201,7 @@ export const getVisualizerRawSeries = createSelector(
         )
       : flatSeries;
 
-    return series.map((s) => ({
-      ...s,
-      columnValuesMapping,
-    }));
+    return series;
   },
 );
 
@@ -229,28 +232,6 @@ export const getVisualizerComputedSettingsForFlatSeries = createSelector(
   [getVisualizerFlatRawSeries],
   (series): ComputedVisualizationSettings =>
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
-);
-
-export const getVisualizerPrimaryColumn = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerComputedSettings,
-    getVisualizerDatasetColumns,
-  ],
-  (display, settings, columns) => {
-    if (!display) {
-      return undefined;
-    }
-
-    if (isCartesianChart(display)) {
-      const dimensionName = settings["graph.dimensions"]?.[0];
-      if (dimensionName) {
-        return columns.find((column) => column.name === dimensionName);
-      }
-    }
-
-    return undefined;
-  },
 );
 
 export const getTabularPreviewSeries = createSelector(

@@ -1,10 +1,6 @@
 :where(:global(.mb-wrapper)) {
-  --transition-theme-change: background-color 1s linear, border-color 1s linear,
-    color 1s linear;
-}
-
-.transitionColor {
-  transition: color 0.3s linear;
+  --transition-theme-change:
+    background-color 1s linear, border-color 1s linear, color 1s linear;
 }
 
 .transitionThemeChange {

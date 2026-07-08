@@ -55,17 +55,25 @@
   [collection-namespace]
   (m/assoc-some root-collection
                 :name (case (keyword collection-namespace)
-                        :snippets (tru "Top folder")
+                        :shared-tenant-collections (tru "Shared collections")
+                        :snippets (tru "SQL snippets")
+                        :transforms (tru "Transforms")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :is_personal false
-                :id   "root"))
+                :id "root"
+                ;; Root collection itself is not remote-synced; individual top-level collections
+                ;; within the shared-tenant-collection namespace can be toggled individually.
+                :is_remote_synced false))
 
 (defn hydrated-root-collection
-  "Return the root collection entity."
-  []
-  (-> (root-collection-with-ui-details nil)
-      (hydrate :can_write)))
+  "Return the root collection entity for the given namespace.
+  By default, returns the root collection for the non-namespaced collection subtree."
+  ([]
+   (hydrated-root-collection nil))
+  ([collection-namespace]
+   (-> (root-collection-with-ui-details collection-namespace)
+       (hydrate :can_write))))
 
 (defn hydrate-root-collection
   "Hydrate `:collection` onto entity when the id is `nil`."

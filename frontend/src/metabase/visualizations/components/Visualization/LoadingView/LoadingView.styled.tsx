@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 
 export const Root = styled.div`
   display: flex;
@@ -11,11 +11,11 @@ export const Root = styled.div`
   justify-content: center;
   text-align: center;
   padding: 0.5rem;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const SlowQueryMessageContainer = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const ShortMessage = styled.span`
@@ -29,5 +29,5 @@ export const Duration = styled.span`
 `;
 
 export const StyledLoadingSpinner = styled(LoadingSpinner)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

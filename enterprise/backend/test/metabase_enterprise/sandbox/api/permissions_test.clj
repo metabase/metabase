@@ -1,9 +1,11 @@
 (ns metabase-enterprise.sandbox.api.permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.permissions-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -50,17 +52,17 @@
                               [:table_id             [:= (mt/id :venues)]]
                               [:card_id              nil?]
                               [:attribute_remappings nil?]]]
-                            (t2/select :model/GroupTableAccessPolicy :group_id (u/the-id &group))))))
+                            (t2/select :model/Sandbox :group_id (u/the-id &group))))))
             (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                   graph'   (assoc-in graph (db-graph-keypath &group) (updated-db-perms))
                   response (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')]
               (mt/with-temp [:model/Database               db-2 {}
                              :model/Table                  db-2-table {:db_id (u/the-id db-2)}
-                             :model/GroupTableAccessPolicy _ {:group_id (u/the-id &group)
-                                                              :table_id (u/the-id db-2-table)}
+                             :model/Sandbox _ {:group_id (u/the-id &group)
+                                               :table_id (u/the-id db-2-table)}
                              :model/PermissionsGroup       other-group {}
-                             :model/GroupTableAccessPolicy _ {:group_id (u/the-id other-group)
-                                                              :table_id (mt/id :venues)}]
+                             :model/Sandbox _ {:group_id (u/the-id other-group)
+                                               :table_id (mt/id :venues)}]
                 (testing "perms graph should be updated"
                   (testing "in API request response"
                     (is (= (expected-perms)
@@ -71,7 +73,7 @@
                                    (db-graph-keypath &group))))))
                 (testing "GTAP should be deleted from application DB"
                   (is (= []
-                         (t2/select :model/GroupTableAccessPolicy
+                         (t2/select :model/Sandbox
                                     :group_id (u/the-id &group)
                                     :table_id (mt/id :venues)))))
                 (testing "GTAP for same group, other database should not be affected"
@@ -82,7 +84,7 @@
                                 [:table_id             [:= (u/the-id db-2-table)]]
                                 [:card_id              nil?]
                                 [:attribute_remappings nil?]]]
-                              (t2/select :model/GroupTableAccessPolicy
+                              (t2/select :model/Sandbox
                                          :group_id (u/the-id &group)
                                          :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
@@ -93,20 +95,20 @@
                                 [:table_id             [:= (mt/id :venues)]]
                                 [:card_id              nil?]
                                 [:attribute_remappings nil?]]]
-                              (t2/select :model/GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
+                              (t2/select :model/Sandbox :group_id (u/the-id other-group)))))))))))))
 
 (deftest grant-sandbox-perms-dont-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
     (testing "granting sandboxed permissions for a group should *not* delete an associated GTAP (#16190)"
       (mt/with-temp-copy-of-db
-        (mt/with-temp [:model/GroupTableAccessPolicy _ {:group_id (u/the-id (perms-group/all-users))
-                                                        :table_id (mt/id :venues)}]
+        (mt/with-temp [:model/Sandbox _ {:group_id (u/the-id (perms-group/all-users))
+                                         :table_id (mt/id :venues)}]
           (let [graph  (mt/user-http-request :crowberto :get 200 "permissions/graph")
                 graph' (assoc-in graph (db-graph-keypath (perms-group/all-users))
                                  {"PUBLIC" {(mt/id :venues) "sandboxed"}})]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
-              (is (t2/exists? :model/GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
+              (is (t2/exists? :model/Sandbox :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
 
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
@@ -151,3 +153,33 @@
                               :query {:source-table (str "card__" (u/the-id card))}
                               :type :query}))
                     "metabase_cache"))))))))
+
+(deftest oss-preserves-sandboxed-view-data-test
+  (testing "PUT /api/permissions/graph in OSS preserves stored EE sandbox config on rows it never surfaces"
+    (mt/with-model-cleanup [:model/Sandbox]
+      (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                     :model/Card {cid1 :id} {}
+                     :model/Card {cid2 :id} {}]
+        (mt/with-premium-features #{:advanced-permissions :sandboxes}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups gid (mt/id) :view-data]
+                         {"PUBLIC" {(mt/id :orders) :sandboxed (mt/id :people) :sandboxed}})
+               (assoc :sandboxes [{:table_id (mt/id :orders) :group_id gid :card_id cid1 :attribute_remappings {"foo" 1}}
+                                  {:table_id (mt/id :people) :group_id gid :card_id cid2 :attribute_remappings {"foo" 1}}]))))
+        (mt/with-premium-features #{}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (data-perms.graph/api-graph)
+                     [:groups gid (mt/id) :create-queries]
+                     {"PUBLIC" {(mt/id :orders) :query-builder}})))
+        (testing "both sandbox rows survive the OSS create-queries edit"
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :orders) :group_id gid))
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :people) :group_id gid)))
+        (testing "the graph still surfaces :sandboxed view-data under EE"
+          (mt/with-premium-features #{:advanced-permissions :sandboxes}
+            (is (=? {(mt/id :orders) :sandboxed
+                     (mt/id :people) :sandboxed}
+                    (get-in (data-perms.graph/api-graph)
+                            [:groups gid (mt/id) :view-data "PUBLIC"])))))))))

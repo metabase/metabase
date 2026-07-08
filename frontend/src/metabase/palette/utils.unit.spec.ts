@@ -9,17 +9,19 @@ import {
 } from "./utils";
 
 interface mockAction {
+  id?: string;
   name: string;
   section?: string;
   disabled?: boolean;
 }
 
 const createMockAction = ({
+  id,
   name,
   section = "basic",
   disabled,
 }: mockAction): PaletteActionImpl =>
-  ({ name, section, disabled }) as PaletteActionImpl;
+  ({ id, name, section, disabled }) as PaletteActionImpl;
 
 describe("command palette utils", () => {
   describe("processSection", () => {
@@ -71,39 +73,42 @@ describe("command palette utils", () => {
     const testDoc = [createMockAction({ name: "doc action", section: "docs" })];
 
     it("should limit to 6 actions including header", () => {
-      const result = processResults(testActions);
+      const result = processResults(testActions, true);
       expect(result).toHaveLength(6);
       expect(result[0]).toBe("Actions");
     });
 
     it("should not limit the other action types", () => {
-      expect(processResults([...testActions, ...testSearch])).toHaveLength(12);
-      expect(processResults([...testActions, ...testRecent])).toHaveLength(12);
       expect(
-        processResults([...testRecent, ...testAdmin, ...testDoc]),
+        processResults([...testActions, ...testSearch], true),
+      ).toHaveLength(12);
+      expect(
+        processResults([...testActions, ...testRecent], true),
+      ).toHaveLength(12);
+      expect(
+        processResults([...testRecent, ...testAdmin, ...testDoc], true),
       ).toHaveLength(19);
     });
 
     it("should add a header to doc", () => {
-      expect(processResults([...testDoc])).toHaveLength(2);
+      expect(processResults([...testDoc], true)).toHaveLength(2);
     });
 
     it("should enforce a specific order", () => {
-      const results = processResults([
-        ...testSearch,
-        ...testDoc,
-        ...testAdmin,
-        ...testActions,
-        ...testRecent,
-      ]);
+      const results = processResults(
+        [
+          ...testSearch,
+          ...testDoc,
+          ...testAdmin,
+          ...testActions,
+          ...testRecent,
+        ],
+        true,
+      );
 
       const actionsIndex = results.findIndex((action) => action === "Actions");
-      const searchIndex = results.findIndex(
-        (action) => action === "Search results",
-      );
-      const recentsIndex = results.findIndex(
-        (action) => action === "Recent items",
-      );
+      const searchIndex = results.findIndex((action) => action === "Results");
+      const recentsIndex = results.findIndex((action) => action === "Recents");
       const adminIndex = results.findIndex((action) => action === "Admin");
 
       [recentsIndex, actionsIndex, adminIndex, searchIndex].forEach(
@@ -113,6 +118,33 @@ describe("command palette utils", () => {
           expect(val).toBeLessThan(next);
         },
       );
+    });
+
+    it("should not show actions if there is no search query", () => {
+      const result = processResults(testActions, false);
+      expect(result).toHaveLength(0);
+    });
+
+    it("should preserve the relevance order kbar computed for basic actions", () => {
+      // kbar returns basic actions already sorted by search relevance. For a
+      // query like "New c", "New collection" should rank first, so we must not
+      // re-sort by a static registration order (metabase#76055).
+      const relevanceOrderedIds = [
+        "create-new-collection",
+        "create-new-native-query",
+        "create-new-document",
+        "create-new-model",
+      ];
+
+      const actionsList = relevanceOrderedIds.map((id) =>
+        createMockAction({ id, name: id }),
+      );
+
+      const result = processResults(actionsList, true);
+      expect(result).toEqual([
+        "Actions",
+        ...relevanceOrderedIds.map((id) => createMockAction({ id, name: id })),
+      ]);
     });
   });
 
@@ -161,7 +193,7 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 2, -1)).toBe(0);
     });
 
-    it("should handle disabled items and strings near boundries", () => {
+    it("should handle disabled items and strings near boundaries", () => {
       const short = [DISABLED, NORMAL, NORMAL, NORMAL, "foo"];
       expect(navigateActionIndex(short, 3, 1)).toBe(3);
       expect(navigateActionIndex(short, 1, -1)).toBe(1);

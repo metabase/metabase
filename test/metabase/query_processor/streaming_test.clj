@@ -1,20 +1,21 @@
 (ns metabase.query-processor.streaming-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
+   [metabase.query-processor.test :as qp]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -177,6 +178,7 @@
                                                           ([byytes offset length]
                                                            (.write os ^bytes byytes offset length))))))
                                    :async-context (reify AsyncContext
+                                                    (addListener [_ _])
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
         (is (true?
@@ -317,9 +319,10 @@
 
 (defn do-test!
   "Test helper to enable writing API-level export tests across multiple export endpoints and formats."
-  [message {:keys [query viz-settings assertions endpoints user]}]
+  [message {:keys [query viz-settings assertions endpoints user expected-status]}]
   (testing message
-    (let [query-json        (json/encode query)
+    (let [expected-status   (or expected-status 200)
+          query-json        (json/encode query)
           viz-settings-json (some-> viz-settings json/encode)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
@@ -339,7 +342,7 @@
               (testing endpoint
                 (case endpoint
                   :dataset
-                  (let [results (mt/user-http-request user :post 200
+                  (let [results (mt/user-http-request user :post expected-status
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
                                                       {:format_rows            true
@@ -348,14 +351,14 @@
                     ((-> assertions export-format) results))
 
                   :card
-                  (let [results (mt/user-http-request user :post 200
+                  (let [results (mt/user-http-request user :post expected-status
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
                                                       {:format_rows true})]
                     ((-> assertions export-format) results))
 
                   :dashboard
-                  (let [results (mt/user-http-request user :post 200
+                  (let [results (mt/user-http-request user :post expected-status
                                                       (format "dashboard/%d/dashcard/%d/card/%d/query/%s"
                                                               (u/the-id dashboard)
                                                               (u/the-id dashcard)
@@ -367,13 +370,13 @@
 
                   ;; TODO -- what about the public dashcard endpoint???
                   :public
-                  (let [results (mt/user-http-request user :get 200
+                  (let [results (mt/user-http-request user :get expected-status
                                                       (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
                   :embed
-                  (let [results (mt/user-http-request user :get 200
+                  (let [results (mt/user-http-request user :get expected-status
                                                       (embed-test/card-query-url card (str "/" (name export-format)))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results)))))))))))
@@ -390,7 +393,7 @@
   [results]
   (if (map? results)
     (throw (ex-info "Error in CSV export" results))
-    (csv/read-csv results)))
+    (csv/read-csv (u/strip-bom results))))
 
 (deftest basic-export-test
   (do-test!
@@ -401,7 +404,7 @@
                             :limit        2}}
     :assertions {:csv  (fn [results]
                          (is (string? results))
-                          ;; CSVs round decimals to 2 digits without viz-settings
+                         ;; CSVs round decimals to 2 digits without viz-settings
                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                  ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
                                  ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
@@ -427,7 +430,6 @@
             :type     :query
             :query    {:source-table (mt/id :venues)
                        :limit 1}}
-
     :viz-settings {:column_settings {},
                    :table.columns
                    [{:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
@@ -436,17 +438,14 @@
                     {:name "LATITUDE", :fieldRef [:field (mt/id :venues :latitude) nil], :enabled false}
                     {:name "LONGITUDE", :fieldRef [:field (mt/id :venues :longitude) nil], :enabled false}
                     {:name "PRICE", :fieldRef [:field (mt/id :venues :price) nil], :enabled true}]}
-
     :assertions {:csv (fn [results]
                         (is (= [["Name" "ID" "Category ID" "Price"]
                                 ["Red Medicine" "1" "4" "3"]]
                                (parse-csv-results results))))
-
                  :json (fn [results]
                          (is (= [["Name" "ID" "Category ID" "Price"]
                                  ["Red Medicine" "1" "4" "3"]]
                                 (parse-json-results results))))
-
                  :xlsx (fn [results]
                          (is (= [["Name" "ID" "Category ID" "Price"]
                                  ["Red Medicine" 1.0 4.0 3.0]]
@@ -479,12 +478,12 @@
                                              [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
                                             (xlsx-test/parse-xlsx-results results))))}})))]
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (mt/id :categories :name))
       (testfn :external))
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (mapv first (mt/rows (qp/process-query
                                                             (mt/mbql-query categories
@@ -757,7 +756,6 @@
           _ (a/>!! canceled-chan ::cancel)
           query (mt/mbql-query venues {:limit 1})
           mock-rff (constantly identity)]
-
       (binding [qp.pipeline/*canceled-chan* canceled-chan]
         (let [result (qp.pipeline/*run* query mock-rff)]
           (is (nil? result) "Cancelled query returns nil")
@@ -766,10 +764,9 @@
 (deftest streaming-response-handles-cancellation-test
   (testing "Streaming response handles cancellation gracefully without assertion errors"
     (let [mock-qp-fn (fn [rff]
-                      ;; Simulate immediate cancellation
-                       (with-redefs [qp.pipeline/canceled? (constantly true)]
+                       ;; Simulate immediate cancellation
+                       (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly true)]
                          (qp.pipeline/*run* (mt/mbql-query venues {:limit 1}) rff)))]
-
       ;; Should not throw "QP unexpectedly returned nil" assertion error
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))
@@ -778,9 +775,8 @@
   (testing "Streaming response handles nil + canceled? gracefully"
     (let [mock-qp-fn (fn [_rff]
                        ;; Return nil and set up canceled? to return truthy
-                       (with-redefs [qp.pipeline/canceled? (constantly ::cancel)]
+                       (mt/with-dynamic-fn-redefs [qp.pipeline/canceled? (constantly ::cancel)]
                          nil))]
-
       ;; Should not throw any assertion errors
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))

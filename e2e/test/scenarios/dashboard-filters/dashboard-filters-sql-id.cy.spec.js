@@ -28,7 +28,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
@@ -57,7 +57,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 

@@ -1,14 +1,9 @@
-import type { ColorPalette } from "metabase/lib/colors/types";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import Gauge from "metabase/static-viz/components/Gauge";
-import ProgressBar from "metabase/static-viz/components/ProgressBar";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorPalette } from "metabase/ui/colors/types";
 
-export type LegacyStaticChartType =
-  | "progress"
-  | "waterfall"
-  | "gauge"
-  | "funnel";
+export type LegacyStaticChartType = "gauge" | "funnel";
 
 export interface LegacyStaticChartProps {
   type: LegacyStaticChartType;
@@ -18,7 +13,7 @@ export interface LegacyStaticChartProps {
 }
 
 /**
- * @deprecated use StaticChart instead
+ * @deprecated use RenderChart instead
  */
 export const LegacyStaticChart = ({
   type,
@@ -31,8 +26,6 @@ export const LegacyStaticChart = ({
   switch (type) {
     case "gauge":
       return <Gauge {...chartProps} />;
-    case "progress":
-      return <ProgressBar {...chartProps} />;
     case "funnel":
       return <Funnel {...chartProps} />;
   }

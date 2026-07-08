@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -75,7 +74,7 @@
                      :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
           (lib/query
            meta/metadata-provider
-           (lib.convert/->pMBQL {:type :query
+           (lib.convert/->mbql5 {:type :query
                                  :database (meta/id)
                                  :query {:source-table (meta/id :venues)
                                          :expressions {"math" [:+ 1 1]}
@@ -87,7 +86,7 @@
                                                (lib/expression-ref $q "CC"))]))
           query (lib/join (lib.tu/venues-query) clause)
           ;; Make a legacy query but don't put types in :field and :expression
-          converted-query (lib.convert/->pMBQL
+          converted-query (lib.convert/->mbql5
                            (walk/postwalk
                             (fn [node]
                               (if (map? node)
@@ -102,33 +101,7 @@
                                                  ;; tech debt issue: #39376
                                                  #_{:base-type :type/Integer}
                                                  "CC"]]]}]}]}
-
               (lib/query meta/metadata-provider converted-query))))))
-
-(deftest ^:parallel converted-query-leaves-stage-metadata-refs-alone
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
-                  (lib/expression "BirthMonth" (lib/+ 1 1))
-                  (as-> $q (lib/breakout $q (m/find-first #(= (:name %) "BirthMonth") (lib/breakoutable-columns $q))))
-                  (lib/aggregate (lib/count))
-                  (lib/append-stage)
-                  (lib/aggregate (lib/count)))]
-    (is (=? {:stages [{:lib/stage-metadata {:columns [{:field-ref [:expression "BirthMonth" {:base-type :type/Integer}]} {}]}} {}]}
-            (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
-                                                        [:stages 0 :lib/stage-metadata]
-                                                        {:columns [{:base-type :type/Float,
-                                                                    :display-name "BirthMonth",
-                                                                    :field-ref [:expression
-                                                                                "BirthMonth"
-                                                                                {:base-type :type/Integer}],
-                                                                    :name "BirthMonth",
-                                                                    :lib/type :metadata/column}
-                                                                   {:base-type :type/Integer,
-                                                                    :display-name "Count",
-                                                                    :field-ref [:aggregation 0],
-                                                                    :name "count",
-                                                                    :semantic-type :type/Quantity,
-                                                                    :lib/type :metadata/column}],
-                                                         :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
   (is (= 1 (lib/stage-count (lib.tu/venues-query))))
@@ -178,7 +151,7 @@
           false (mock-db-native-perms nil))))))      ; native-permissions not found on the database
 
 (deftest ^:parallel convert-from-legacy-preserve-info-test
-  (testing ":info key should be converted when converting from legacy to pMBQL"
+  (testing ":info key should be converted when converting from legacy to MBQL 5"
     (is (=? {:lib/type     :mbql/query
              :lib/metadata lib.metadata.protocols/cached-metadata-provider?
              :database     (meta/id)
@@ -209,7 +182,6 @@
              :lib/type               :mbql/query
              :lib/metadata           lib.metadata.protocols/cached-metadata-provider?
              :stages                 [{:lib/type :mbql.stage/native
-                                       :template-tags {}
                                        :native "select * from products limit 3;"}]
              :lib.convert/converted? true
              :type                   (symbol "nil #_\"key is not present.\"")
@@ -249,7 +221,7 @@
                           (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :year)))
       true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
-                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :hour-of-day)))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :month-of-year)))
       false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :created-at))
@@ -262,11 +234,11 @@
                           (lib/append-stage)
                           (lib/aggregate (lib/count))))))
 
-(deftest ^:parallel can-save-test
+(deftest ^:parallel can-save?-test
   (mu/disable-enforcement
     #_{:clj-kondo/ignore [:equals-true]}
     (are [can-save? card-type query]
-         (= can-save? (lib.query/can-save query card-type))
+         (= can-save? (lib.query/can-save? query card-type))
       true  :question (lib.tu/venues-query)
       false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
@@ -285,7 +257,7 @@
                           (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :year)))
       true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
-                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :hour-of-day)))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :month-of-year)))
       false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
                           (lib/breakout (meta/field-metadata :people :created-at))
@@ -615,3 +587,47 @@
       (is (lib.metadata.protocols/cached-metadata-provider? mp))
       (is (lib.metadata.protocols/cached-metadata-provider-with-cache? mp))
       (is (identical? mp (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+
+(deftest ^:parallel preserve-database-id-with-invalid-metadata-provider-test
+  (mu/disable-enforcement
+    (is (=? {:database 1
+             :stages   [{:source-table 2, :lib/type :mbql.stage/mbql}]
+             :lib/type :mbql/query}
+            (lib.query/query (lib.tu/mock-metadata-provider {})
+                             {"database" 1, "type" "query", "query" {"source-table" 2}})))))
+
+(deftest ^:parallel discard-invalid-clauses-on-conversion-from-mbql-4-test
+  (testing "Invalid expressions that do not get normalized correctly (e.g. :sum inside :expressions) should get dropped"
+    (mu/disable-enforcement
+      (let [query {"database" 1
+                   "type"     "query"
+                   "query"    {"source-table" 2
+                               "expressions"  {"booking" ["sum" ["field" 3 {"base-type" "type/BigInteger"}]]}}}
+            mp    (lib.tu/mock-metadata-provider {})]
+        (is (= {:lib/type               :mbql/query
+                :stages                 [{:lib/type :mbql.stage/mbql, :source-table 2}]
+                :database               1
+                :lib.convert/converted? true
+                :lib/metadata           (lib.metadata.cached-provider/cached-metadata-provider mp)}
+               (lib.query/query mp query)))))))
+
+(deftest ^:parallel query-from-legacy-inner-query-test
+  (is (=? {:lib/type :mbql/query
+           :database 1
+           :stages   [{:lib/type      :mbql.stage/native
+                       :native        "SELECT * FROM table WHERE {{checkin_date}};"
+                       :template-tags {"checkin_date"
+                                       {:dimension    [:field {} 2]
+                                        :display-name "Checkin Date"
+                                        :name         "checkin_date"
+                                        :type         :dimension
+                                        :widget-type  :date/all-options}}}]}
+          (lib.query/query-from-legacy-inner-query
+           meta/metadata-provider
+           1
+           {:native        "SELECT * FROM table WHERE {{checkin_date}};"
+            :template-tags {"checkin_date" {:name         "checkin_date"
+                                            :display-name "Checkin Date"
+                                            :type         :dimension
+                                            :widget-type  :date/all-options
+                                            :dimension    [:field 2 nil]}}}))))

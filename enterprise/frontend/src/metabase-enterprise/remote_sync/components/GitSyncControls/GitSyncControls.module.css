@@ -1,0 +1,7 @@
+.chevronIcon {
+  transition: transform 200ms ease;
+
+  &.opened {
+    transform: rotate(180deg);
+  }
+}

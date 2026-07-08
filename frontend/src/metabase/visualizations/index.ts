@@ -4,6 +4,7 @@ import _ from "underscore";
 import { isStorybookActive } from "metabase/env";
 import type {
   DatasetData,
+  IconName,
   RawSeries,
   Series,
   TransformedSeries,
@@ -77,7 +78,9 @@ export function getVisualization(display: VisualizationDisplay | null) {
   return display ? visualizations.get(display) : defaultVisualization;
 }
 
-export function getVisualizationRaw(series: SeriesLike) {
+export function getVisualizationRaw(
+  series: SeriesLike,
+): Visualization | undefined {
   return visualizations.get(series[0].card.display);
 }
 
@@ -114,9 +117,15 @@ export function getVisualizationTransformed(
   return { series, visualization };
 }
 
-export function getIconForVisualizationType(display: VisualizationDisplay) {
+export function getIconForVisualizationType(display: VisualizationDisplay): {
+  name: IconName;
+  iconUrl?: string;
+} {
   const viz = visualizations.get(display);
-  return viz?.iconName ?? "unknown";
+  return {
+    name: viz?.iconName ?? "unknown",
+    iconUrl: viz?.iconUrl,
+  };
 }
 
 export const extractRemappings = (series: Series) => {

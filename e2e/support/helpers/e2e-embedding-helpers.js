@@ -1,5 +1,16 @@
+import * as jose from "jose";
+
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
-import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  embedModalContent,
+  embedModalEnableEmbedding,
+  legacyStaticEmbeddingButton,
+} from "e2e/support/helpers/e2e-embedding-iframe-sdk-setup-helpers";
+import {
+  modal,
+  selectDropdown,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 
 import { openSharingMenu } from "./e2e-sharing-helpers";
 
@@ -77,7 +88,7 @@ export function getEmbeddedPageUrl(
   payload,
   {
     setFilters = {},
-    additionalHashOptions: { hideFilters = [], locale, font } = {},
+    additionalHashOptions: { hideFilters = [], locale, font, theme } = {},
     pageStyle = {},
     onBeforeLoad,
     qs,
@@ -102,6 +113,7 @@ export function getEmbeddedPageUrl(
         ...pageStyle,
         ...(locale && { locale }),
         ...(font && { font }),
+        ...(theme && { theme }),
       },
       hiddenFilters,
     );
@@ -178,13 +190,9 @@ function getIframeUrl() {
  * @param {string} [selector]
  */
 export function getIframeBody(selector = "iframe") {
-  return cy
-    .get(selector)
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.undefined")
-    .then(cy.wrap);
+  cy.frameLoaded(selector);
+  cy.wait(1); // unclear why, but the tests are flaky without this
+  return cy.iframe(selector);
 }
 
 export function getEmbedModalSharingPane() {
@@ -192,49 +200,72 @@ export function getEmbedModalSharingPane() {
 }
 
 /**
- * Open Static Embedding setup modal
+ * Open Legacy Static Embedding setup modal
  * @param {object} params
+ * @param {("question"|"dashboard")} [params.resource] - resource type
+ * @param {(string|number)} [params.resourceId] - resource id
  * @param {("overview"|"parameters"|"lookAndFeel")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
- * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
+ * @param {boolean} [params.unpublishBeforeOpen] - either unpublish entity before legacy modal is opened or not
  */
-export function openStaticEmbeddingModal({
+export function openLegacyStaticEmbeddingModal({
+  resource,
+  resourceId,
   activeTab,
   previewMode,
-  acceptTerms = true,
-  confirmSave,
+  unpublishBeforeOpen = true,
 } = {}) {
+  const apiPath = resource === "question" ? "card" : "dashboard";
+
+  cy.request("PUT", `/api/${apiPath}/${resourceId}`, {
+    enable_embedding: true,
+    embedding_type: "static-legacy",
+  });
+
   openSharingMenu("Embed");
 
-  if (confirmSave) {
-    cy.findByRole("button", { name: "Save" }).click();
-  }
+  embedModalContent().should("exist");
 
-  cy.findByText("Static embedding").click();
+  cy.get("body").then(($body) => {
+    const isEmbeddingDisabled =
+      $body.find('[data-testid="enable-embedding-card"]').length > 0;
 
-  if (acceptTerms) {
-    cy.findByTestId("accept-legalese-terms-button").click();
-  }
-
-  modal().within(() => {
-    if (activeTab) {
-      const tabKeyToNameMap = {
-        overview: "Overview",
-        parameters: "Parameters",
-        lookAndFeel: "Look and Feel",
-      };
-
-      cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
+    if (isEmbeddingDisabled) {
+      embedModalEnableEmbedding();
     }
 
-    if (previewMode) {
-      const previewModeToKeyMap = {
-        code: "Code",
-        preview: "Preview",
-      };
+    embedModalContent().within(() => {
+      legacyStaticEmbeddingButton().click();
+    });
 
-      cy.findByText(previewModeToKeyMap[previewMode]).click();
-    }
+    modal().within(() => {
+      cy.findByText("Static embedding").should("be.visible");
+
+      // Some tests after a modal is opened expect the entity to be unpublished;
+      // Other tests want to keep it published.
+      if (unpublishBeforeOpen) {
+        unpublishChanges(apiPath);
+      }
+
+      if (activeTab) {
+        const tabKeyToNameMap = {
+          overview: "Overview",
+          parameters: "Parameters",
+          lookAndFeel: "Look and Feel",
+        };
+
+        cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
+      }
+
+      if (previewMode) {
+        const previewModeToKeyMap = {
+          code: "Code",
+          preview: "Preview",
+        };
+
+        cy.findByText(previewModeToKeyMap[previewMode]).click();
+      }
+    });
   });
 }
 
@@ -243,9 +274,9 @@ export function closeStaticEmbeddingModal() {
 }
 
 /**
- * Open Static Embedding setup modal
+ * Publish a static dashboard or question
  * @param {"card" | "dashboard"} apiPath
- * @param callback
+ * @param [callback]
  */
 export function publishChanges(apiPath, callback) {
   cy.intercept("PUT", `/api/${apiPath}/*`).as("publishChanges");
@@ -263,17 +294,38 @@ export function publishChanges(apiPath, callback) {
   });
 }
 
+/**
+ * Unpublish a static dashboard or question
+ * @param {"card" | "dashboard"} apiPath
+ * @param [callback]
+ */
+export function unpublishChanges(apiPath, callback) {
+  cy.intercept("PUT", `/api/${apiPath}/*`, (req) => {
+    const body = req.body;
+
+    if (body?.enable_embedding === false) {
+      req.alias = "unpublishChanges";
+    }
+  });
+
+  cy.button("Unpublish").click();
+
+  cy.wait("@unpublishChanges").then((xhr) => {
+    callback?.(xhr);
+  });
+}
+
 export function getParametersContainer() {
-  return cy.findByLabelText("Configuring parameters");
+  return cy.findByTestId("parameters-container");
 }
 
 export function setEmbeddingParameter(name, value) {
   getParametersContainer().findByLabelText(name).click();
-  popover().contains(value).click();
+  selectDropdown().contains(value).click();
 }
 
 export function assertEmbeddingParameter(name, value) {
-  getParametersContainer().findByLabelText(name).should("have.text", value);
+  getParametersContainer().findByLabelText(name).should("have.value", value);
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
@@ -303,10 +355,33 @@ export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
 
+export function createPublicDocumentLink(documentId) {
+  return cy.request("POST", `/api/document/${documentId}/public-link`, {});
+}
+
+/**
+ * Create a public link for a document, sign out, and visit it as anonymous.
+ * Accepts a numeric id or a Cypress alias string (e.g. "@documentId").
+ */
+export function visitPublicDocument(documentIdOrAlias) {
+  if (typeof documentIdOrAlias === "number") {
+    visitPublicDocumentById(documentIdOrAlias);
+    return;
+  }
+  cy.get(documentIdOrAlias).then((id) => visitPublicDocumentById(Number(id)));
+}
+
+function visitPublicDocumentById(documentId) {
+  createPublicDocumentLink(documentId).then(({ body: { uuid } }) => {
+    cy.signOut();
+    cy.visit(`/public/document/${uuid}`);
+  });
+}
+
 /**
  * @param {Object} options
  * @param {string} options.url
- * @param {import("metabase-types/store").InteractiveEmbeddingOptions} options.qs
+ * @param {Partial<import("metabase/redux/store").InteractiveEmbeddingOptions>} options.qs
  * @param {Function} [options.onBeforeLoad]
  */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {
@@ -320,4 +395,35 @@ export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {
       onBeforeLoad?.(window);
     },
   });
+};
+
+/**
+ * @param {Object} options
+ * @param {number} options.resourceId
+ * @param {'question' | 'dashboard'} options.resourceType
+ * @param [options.params]
+ * @param [options.expirationMinutes]
+ * @return {Promise<string>}
+ */
+export const getSignedJwtForResource = async ({
+  resourceId,
+  resourceType,
+  params = {},
+  expirationMinutes = 10,
+}) => {
+  const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
+
+  const iat = Math.round(new Date().getTime() / 1000);
+  const exp = iat + 60 * expirationMinutes;
+
+  const payload = {
+    resource: { [resourceType]: resourceId },
+    params,
+    iat,
+    exp,
+  };
+
+  return new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
 };

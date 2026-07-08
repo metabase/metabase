@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
@@ -9,26 +10,24 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   alertIsValid,
   getAlertTriggerOptions,
-} from "metabase/lib/notifications";
+  getDefaultQuestionAlertRequest,
+} from "metabase/notifications/utils";
 import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailOrSlackChannel,
-} from "metabase/lib/pulse";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
-import { updateUrl } from "metabase/query_builder/actions/url";
-import {
-  getQuestion,
-  getVisualizationSettings,
-} from "metabase/query_builder/selectors";
+} from "metabase/pulse";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { canAccessSettings, getUser } from "metabase/selectors/user";
+import {
+  canAccessSettings,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -40,7 +39,10 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
+import type Question from "metabase-lib/v1/Question";
 import type {
+  AdminNotification,
   CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
@@ -48,6 +50,8 @@ import type {
   NotificationHandler,
   ScheduleType,
   UpdateAlertNotificationRequest,
+  UserId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
@@ -55,32 +59,31 @@ import { NotificationChannelsPicker } from "../components/NotificationChannelsPi
 
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
 import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { NotificationOwner } from "./components/NotificationOwner/NotificationOwner";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
-const ALERT_TRIGGER_OPTIONS_MAP: Record<
-  NotificationCardSendCondition,
-  NotificationTriggerOption
-> = {
-  has_result: {
-    value: "has_result" as const,
-    get label() {
-      return t`When this question has results`;
+function getAlertTriggerOptionsMap(
+  question: Question | undefined,
+): Record<NotificationCardSendCondition, NotificationTriggerOption> {
+  const isMetric = question?.type() === "metric";
+  return {
+    has_result: {
+      value: "has_result" as const,
+      label: isMetric
+        ? t`When this metric has results`
+        : t`When this question has results`,
     },
-  },
-  goal_above: {
-    value: "goal_above" as const,
-    get label() {
-      return t`When results go above the goal line`;
+    goal_above: {
+      value: "goal_above" as const,
+      label: t`When results go above the goal`,
     },
-  },
-  goal_below: {
-    value: "goal_below" as const,
-    get label() {
-      return t`When results go below the goal line`;
+    goal_below: {
+      value: "goal_below" as const,
+      label: t`When results go below the goal`,
     },
-  },
-};
+  };
+}
 
 const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "every_n_minutes",
@@ -93,6 +96,14 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
 
 type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
+  question: Question;
+  /**
+   * The question's effective visualization settings, when the host has them
+   * (e.g. the query builder, where they may include unsaved changes). When
+   * omitted, goal-based trigger detection falls back to the question's saved
+   * settings (see getAlertType).
+   */
+  visualizationSettings?: VisualizationSettings;
 } & (
   | {
       editingNotification?: undefined;
@@ -100,7 +111,7 @@ type CreateOrEditQuestionAlertModalProps = {
       onAlertUpdated?: () => void;
     }
   | {
-      editingNotification: Notification;
+      editingNotification: Notification | AdminNotification;
       onAlertUpdated: () => void;
       onAlertCreated?: () => void;
     }
@@ -111,18 +122,19 @@ export const CreateOrEditQuestionAlertModal = ({
   onAlertCreated,
   onAlertUpdated,
   onClose,
+  question,
+  visualizationSettings,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
-  const question = useSelector(getQuestion);
-  const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
 
-  const questionId = question?.id();
+  const questionId = question.id();
   const isEditMode = !!editingNotification;
   const subscription = notification?.subscriptions[0];
 
@@ -130,8 +142,10 @@ export const CreateOrEditQuestionAlertModal = ({
     useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
-  const [createNotification] = useCreateNotificationMutation();
-  const [updateNotification] = useUpdateNotificationMutation();
+  const [createNotification, { isLoading: isCreating, error: errorCreating }] =
+    useCreateNotificationMutation();
+  const [updateNotification, { isLoading: isUpdating, error: errorUpdating }] =
+    useUpdateNotificationMutation();
   const [sendUnsavedNotification, { isLoading }] =
     useSendUnsavedNotificationMutation();
 
@@ -139,14 +153,13 @@ export const CreateOrEditQuestionAlertModal = ({
   const hasConfiguredEmailOrSlackChannel =
     getHasConfiguredEmailOrSlackChannel(channelSpec);
 
-  const triggerOptions = useMemo(
-    () =>
-      getAlertTriggerOptions({
-        question,
-        visualizationSettings,
-      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
-    [question, visualizationSettings],
-  );
+  const triggerOptions = useMemo(() => {
+    const optionsMap = getAlertTriggerOptionsMap(question);
+    return getAlertTriggerOptions({
+      question,
+      visualizationSettings,
+    }).map((trigger) => optionsMap[trigger]);
+  }, [question, visualizationSettings]);
 
   const hasSingleTriggerOption = triggerOptions.length === 1;
 
@@ -177,6 +190,12 @@ export const CreateOrEditQuestionAlertModal = ({
     userCanAccessSettings,
   ]);
 
+  const handleOwnerChange = (creatorId: UserId) => {
+    if (notification) {
+      setNotification({ ...notification, creator_id: creatorId });
+    }
+  };
+
   const onCreateOrEditAlert = async () => {
     if (notification) {
       let result;
@@ -196,13 +215,12 @@ export const CreateOrEditQuestionAlertModal = ({
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: t`Failed save alert. ${errorText}`,
           }),
         );
 
-        // need to throw to show error in ActionButton
-        throw result.error;
+        return;
       }
 
       dispatch(
@@ -218,8 +236,6 @@ export const CreateOrEditQuestionAlertModal = ({
       } else {
         onAlertCreated();
       }
-
-      await dispatch(updateUrl(question, { dirty: false }));
     }
   };
 
@@ -231,7 +247,7 @@ export const CreateOrEditQuestionAlertModal = ({
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
@@ -272,6 +288,16 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const isValid = alertIsValid(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
+  const hasError = errorCreating || errorUpdating;
+
+  const submitButtonLabel = match({
+    hasError,
+    isEditMode,
+    hasChanges,
+  })
+    .with({ hasError: P.nonNullable }, () => t`Save failed`)
+    .with({ isEditMode: true, hasChanges: true }, () => t`Save changes`)
+    .otherwise(() => t`Done`);
 
   return (
     <Modal
@@ -285,6 +311,7 @@ export const CreateOrEditQuestionAlertModal = ({
         body: {
           paddingLeft: 0,
           paddingRight: 0,
+          paddingBottom: "1.5rem",
         },
       }}
     >
@@ -309,17 +336,19 @@ export const CreateOrEditQuestionAlertModal = ({
               <Select
                 data-testid="alert-goal-select"
                 data={triggerOptions}
-                value={notification.payload.send_condition}
+                value={notification.payload?.send_condition}
                 w={276}
-                onChange={(value) =>
+                onChange={(value) => {
                   setNotification({
                     ...notification,
                     payload: {
                       ...notification.payload,
-                      send_condition: value as NotificationCardSendCondition,
+                      card_id: notification.payload?.card_id ?? questionId,
+                      send_condition: value,
+                      send_once: false,
                     },
-                  })
-                }
+                  });
+                }}
               />
             )}
           </Flex>
@@ -336,26 +365,38 @@ export const CreateOrEditQuestionAlertModal = ({
             onScheduleChange={handleScheduleChange}
           />
         </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock
-          title={t`Where do you want to send the results?`}
-        >
-          <NotificationChannelsPicker
-            notificationHandlers={notification.handlers}
-            channels={channelSpec ? channelSpec.channels : undefined}
-            onChange={(newHandlers: NotificationHandler[]) => {
-              setNotification({
-                ...notification,
-                handlers: newHandlers,
-              });
-            }}
-            emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={(domains) =>
-              userCanAccessSettings
-                ? t`You're only allowed to email alerts to addresses ending in ${domains}`
-                : t`You're only allowed to email alerts to allowed domains`
-            }
-          />
-        </AlertModalSettingsBlock>
+        {!isEmbeddingSdk() && (
+          <AlertModalSettingsBlock
+            title={t`Where do you want to send the results?`}
+          >
+            <NotificationChannelsPicker
+              notificationHandlers={notification.handlers}
+              channels={channelSpec ? channelSpec.channels : undefined}
+              onChange={(newHandlers: NotificationHandler[]) => {
+                setNotification({
+                  ...notification,
+                  handlers: newHandlers,
+                });
+              }}
+              emailRecipientText={t`Email alerts to:`}
+              getInvalidRecipientText={(domains) =>
+                userCanAccessSettings
+                  ? t`You're only allowed to email alerts to addresses ending in ${domains}`
+                  : t`You're only allowed to email alerts to allowed domains`
+              }
+            />
+          </AlertModalSettingsBlock>
+        )}
+
+        {isEditMode && isAdmin && editingNotification && (
+          <AlertModalSettingsBlock title={t`Who owns this alert?`}>
+            <NotificationOwner
+              editingNotification={editingNotification}
+              onChange={handleOwnerChange}
+            />
+          </AlertModalSettingsBlock>
+        )}
+
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}
@@ -366,43 +407,50 @@ export const CreateOrEditQuestionAlertModal = ({
             }}
             labelPosition="right"
             size="sm"
-            checked={notification.payload.send_once}
-            onChange={(e) =>
+            checked={notification.payload?.send_once}
+            onChange={(event) => {
               setNotification({
                 ...notification,
                 payload: {
                   ...notification.payload,
-                  send_once: e.target.checked,
+                  card_id: notification.payload?.card_id ?? questionId,
+                  send_condition:
+                    notification.payload?.send_condition ??
+                    triggerOptions[0].value,
+                  send_once: event.target.checked,
                 },
-              })
-            }
+              });
+            }}
           />
         </AlertModalSettingsBlock>
       </Stack>
       <Flex
         justify="space-between"
+        align="center"
         px="2.5rem"
         pt="lg"
         className={CS.borderTop}
       >
         <Button
           variant="outline"
-          color="brand"
+          color="core-brand"
           loading={isLoading}
           onClick={onSendNow}
         >
           {isLoading ? t`Sending…` : t`Send now`}
         </Button>
-        <div>
-          <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
-          <ActionButton
-            primary
-            disabled={!isValid}
-            actionFn={onCreateOrEditAlert}
+        <Flex align="center" gap="sm">
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            variant="filled"
+            bg={hasError ? "feedback-negative" : "core-brand"}
+            disabled={!isValid || isCreating || isUpdating}
+            loading={isCreating || isUpdating}
+            onClick={onCreateOrEditAlert}
           >
-            {isEditMode && hasChanges ? t`Save changes` : t`Done`}
-          </ActionButton>
-        </div>
+            {submitButtonLabel}
+          </Button>
+        </Flex>
       </Flex>
     </Modal>
   );

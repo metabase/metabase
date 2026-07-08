@@ -3,7 +3,7 @@ const { IS_DEV_MODE } = require("../constants");
 module.exports.CSS_CONFIG = {
   modules: {
     auto: (filename) =>
-      ["node_modules", "vendor.css", "vendor.module.css"].every(
+      ["node_modules"].every(
         (excludedPattern) => !filename.includes(excludedPattern),
       ),
     localIdentName: IS_DEV_MODE

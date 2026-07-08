@@ -1,10 +1,19 @@
 import { t } from "ttag";
 
-import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import CS from "metabase/css/core/index.css";
-import { Button, Flex, Group, Icon, Modal, Stack, Text } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
-const { fontFamilyMonospace } = getThemeOverrides();
+import {
+  ActionIcon,
+  Button,
+  CopyButton,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
+
+import S from "./SecretKeyModal.module.css";
 
 export const SecretKeyModal = ({
   secretKey,
@@ -14,38 +23,36 @@ export const SecretKeyModal = ({
   onClose: () => void;
 }) => (
   <Modal
-    size="30rem"
+    size="40rem"
     opened
     onClose={onClose}
-    title={t`Copy and save the API key`}
+    title={t`Copy and save this API key`}
     data-testid="secret-key-modal"
   >
-    <Stack gap="xl" data-testid="secret-key-modal">
-      <CopyTextInput
-        label={t`The API key`}
-        size="sm"
+    <Stack gap="lg">
+      <Text c="text-secondary">{t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}</Text>
+      <TextInput
+        aria-label={t`The API key`}
         value={secretKey}
         readOnly
-        disabled
-        styles={{
-          input: {
-            color: `black`,
-            fontFamily: fontFamilyMonospace as string,
-          },
-        }}
+        classNames={{ input: S.keyInput }}
+        rightSectionPointerEvents="all"
+        rightSection={
+          <CopyButton value={secretKey} timeout={2000}>
+            {({ copied, copy }) => (
+              <Tooltip label={t`Copied!`} opened={copied}>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={t`Copy`}
+                  onClick={copy}
+                >
+                  <Icon name="copy" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        }
       />
-      <Flex direction="row" gap="md">
-        <Icon
-          name="info_filled"
-          size={22}
-          className={CS.textMedium}
-          style={{ marginTop: "-4px" }}
-        />
-        <Text
-          size="sm"
-          color="text-medium"
-        >{t`Please copy this key and save it somewhere safe. For security reasons, we can't show it to you again.`}</Text>
-      </Flex>
       <Group justify="flex-end">
         <Button onClick={onClose} variant="filled">{t`Done`}</Button>
       </Group>

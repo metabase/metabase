@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import {
   type PropsWithChildren,
   createContext,
@@ -7,14 +8,20 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePrevious } from "react-use";
+import { isEqual } from "underscore";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import {
+  canPlaceEntityInCollection,
+  getEntityTypeFromCardType,
+  isInstanceAnalyticsCollection,
+} from "metabase/common/collections/utils";
 import { FormProvider } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
+import { isNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
@@ -55,6 +62,7 @@ export const SaveQuestionContext =
  *
  * Thanks for coming to my TED talk.
  * */
+
 export const SaveQuestionProvider = ({
   question,
   originalQuestion: latestOriginalQuestion,
@@ -62,6 +70,7 @@ export const SaveQuestionProvider = ({
   onSave,
   multiStep = false,
   targetCollection: userTargetCollection,
+  initialCollectionId: userInitialCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -70,26 +79,16 @@ export const SaveQuestionProvider = ({
     originalQuestion?.collectionId(),
   );
 
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
 
   const targetCollection =
     userTargetCollection === "personal" && currentUser
       ? currentUser.personal_collection_id
       : userTargetCollection;
 
-  const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
-  const { data: recentItems, isLoading } = useListRecentsQuery(
-    { context: ["selections"] },
-    { skip: hasLoadedRecentItems },
-  );
-  // We need to stop refetching recent items as the user makes selections in the ui that could cause a refetch
-  // This causes new initial values getting calculated, which combined with Formik's `enableReinitialize`
-  // prop, results in a dirty form getting values replaced within initial state.
-  useEffect(() => {
-    if (!isLoading) {
-      setHasLoadedRecentItems(true);
-    }
-  }, [isLoading]);
+  const { data: recentItems } = useListRecentsQuery({
+    context: ["selections"],
+  });
 
   const lastSelectedEntityModel = useMemo(() => {
     return recentItems?.find(
@@ -111,20 +110,36 @@ export const SaveQuestionProvider = ({
   // analytics questions should not default to saving in dashboard
   const isAnalytics = isInstanceAnalyticsCollection(question.collection());
 
+  const entityType = getEntityTypeFromCardType(question.type());
+
+  const isValidLastSelectedCollection =
+    lastSelectedCollection &&
+    canPlaceEntityInCollection(
+      entityType,
+      lastSelectedCollection.collection_type,
+    );
+
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    // `userTargetCollection` comes from the `targetCollection` sdk prop and should take precedence over the recent dashboards
+    // `userTargetCollection` and `userInitialCollectionId` come from the
+    // `targetCollection` / `initialCollection` sdk props and should take
+    // precedence over the recent dashboards.
     userTargetCollection === undefined &&
+    userInitialCollectionId === undefined &&
     lastSelectedDashboard?.can_write
       ? lastSelectedDashboard?.id
       : undefined;
 
+  // When a caller passes `initialCollectionId` explicitly, it takes precedence
+  // over the recent-items logic. Used by the SDK so the picker opens on the
+  // collection the user is browsing.
   const initialCollectionId =
+    userInitialCollectionId ??
     (!isAnalytics
       ? lastSelectedDashboard?.parent_collection.id
       : defaultCollectionId) ??
-    lastSelectedCollection?.id ??
+    (isValidLastSelectedCollection ? lastSelectedCollection?.id : undefined) ??
     defaultCollectionId;
 
   const initialValues: FormValues = useMemo(
@@ -164,39 +179,40 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
-  const saveToDashboard = originalQuestion
-    ? undefined
-    : (question.dashboardId() ?? undefined);
+  const saveToDashboard =
+    originalQuestion || !question.creationType()
+      ? undefined
+      : (question.dashboardId() ?? undefined);
 
   return (
     <FormProvider
       initialValues={initialValues}
       onSubmit={handleSubmit}
       validationSchema={SAVE_QUESTION_SCHEMA}
-      enableReinitialize
     >
       {({ values, setValues }) => (
-        <SaveQuestionContext.Provider
-          value={{
-            question,
-            originalQuestion,
-            initialValues,
-            handleSubmit,
-            values,
-            setValues,
-            showSaveType,
-            multiStep,
-            targetCollection,
-            saveToDashboard,
-          }}
-        >
-          {children}
-        </SaveQuestionContext.Provider>
+        <FormValuesPatcher nextValues={initialValues}>
+          <SaveQuestionContext.Provider
+            value={{
+              question,
+              originalQuestion,
+              initialValues,
+              handleSubmit,
+              values,
+              setValues,
+              showSaveType,
+              multiStep,
+              targetCollection,
+              saveToDashboard,
+            }}
+          >
+            {children}
+          </SaveQuestionContext.Provider>
+        </FormValuesPatcher>
       )}
     </FormProvider>
   );
 };
-
 export const useSaveQuestionContext = () => {
   const context = useContext(SaveQuestionContext);
   if (!context) {
@@ -205,4 +221,49 @@ export const useSaveQuestionContext = () => {
     );
   }
   return context;
+};
+
+/**
+ * Patches form values when `nextValues` change asynchronously (e.g., after API calls).
+ *
+ * Terminology:
+ * - "changed": nextValues differs from prevValues (new data arrived)
+ * - "untouched": formValues[key] === prevValues[key] (user hasn't edited this field)
+ * - "modified": formValues[key] !== prevValues[key] (user has edited this field)
+ *
+ * For each changed field:
+ * - If untouched → apply the new value (safe to update)
+ * - If modified → preserve user's input (don't overwrite)
+ *
+ * Uses deep comparison to correctly handle nested object values.
+ */
+export const FormValuesPatcher = <T extends object>({
+  nextValues,
+  children,
+}: PropsWithChildren<{ nextValues: T }>) => {
+  const { values: formValues, setValues } = useFormikContext<T>();
+  const prevValues = usePrevious(nextValues);
+
+  useEffect(() => {
+    if (!prevValues || isEqual(nextValues, prevValues)) {
+      return;
+    }
+    const patches: Partial<T> = {};
+    for (const key of Object.keys(nextValues) as (keyof T)[]) {
+      if (isEqual(formValues[key], prevValues[key])) {
+        /**
+         * While comparison is deep, patching is shallow.
+         * This works for SaveQuestionForm since all fields are primitives. If reused with nested
+         * objects, consider implementing deep/recursive patching to preserve user edits
+         * within nested structures.
+         */
+        patches[key] = nextValues[key];
+      }
+    }
+    if (Object.keys(patches).length > 0) {
+      setValues({ ...formValues, ...patches });
+    }
+  }, [nextValues, prevValues, formValues, setValues]);
+
+  return children;
 };

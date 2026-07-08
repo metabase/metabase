@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { msgid, ngettext } from "ttag";
 
-import { inflect } from "metabase/lib/formatting/strings";
+import { inflect } from "metabase/utils/formatting/strings";
 import type {
   Drill,
   QuestionChangeClickAction,
@@ -33,7 +33,7 @@ export const underlyingRecordsDrill: Drill<
       name: "underlying-records",
       title: actionTitle,
       section: "records",
-      icon: "table_spaced",
+      icon: "table",
       buttonType: "horizontal",
       question: () =>
         applyDrill(drill)

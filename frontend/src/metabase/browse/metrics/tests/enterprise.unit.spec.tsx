@@ -1,13 +1,6 @@
 import { screen } from "__support__/ui";
 
-import { type SetupOpts, setup as baseSetup } from "./setup";
-
-function setup(opts: SetupOpts) {
-  baseSetup({
-    hasEnterprisePlugins: true,
-    ...opts,
-  });
-}
+import { setup } from "./setup";
 
 describe("BrowseMetrics (EE without token)", () => {
   it("displays a link to the metrics docs when show-metabase-links = true", async () => {

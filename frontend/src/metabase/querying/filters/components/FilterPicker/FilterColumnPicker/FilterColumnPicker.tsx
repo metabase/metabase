@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,15 +10,18 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import { isNotNull } from "metabase/lib/types";
+import { modelIconMap } from "metabase/common/utils/icon";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { WIDTH } from "../constants";
@@ -50,7 +53,7 @@ export interface FilterColumnPickerProps {
   checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: (clause?: DefinedClauseName) => void;
+  onExpressionSelect?: (clause?: Lib.DefinedClauseName) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
@@ -83,6 +86,8 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText !== "";
 
@@ -94,6 +99,7 @@ export function FilterColumnPicker({
         withColumnGroupIcon,
         withCustomExpression,
         isSearching,
+        tc,
       }),
     [
       query,
@@ -101,7 +107,21 @@ export function FilterColumnPicker({
       withColumnGroupIcon,
       withCustomExpression,
       isSearching,
+      tc,
     ],
+  );
+
+  const renderItemName = useCallback(
+    (item: Item) =>
+      searchText
+        ? // When searching, show the untranslated display name to match the search text
+          item.displayName
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
+            tc,
+            locale,
+          }),
+    [tc, locale, searchText],
   );
 
   const handleSectionChange = (section: Section) => {
@@ -165,12 +185,14 @@ function getSections({
   withColumnGroupIcon,
   withCustomExpression,
   isSearching,
+  tc,
 }: {
   query: Lib.Query;
   stageIndexes: number[];
   withColumnGroupIcon: boolean;
   withCustomExpression: boolean;
   isSearching: boolean;
+  tc: (content: string | null | undefined) => string | null | undefined;
 }): Section[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
@@ -206,9 +228,11 @@ function getSections({
       });
 
       return {
-        name: withMultipleStages
-          ? getGroupName(groupInfo, stageIndex)
-          : groupInfo.displayName,
+        name: tc(
+          withMultipleStages
+            ? getGroupName(groupInfo, stageIndex)
+            : groupInfo.displayName,
+        ),
         icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
         items: [...segmentItems, ...columnItems],
       };
@@ -242,13 +266,9 @@ function getSections({
   ].filter(isNotNull);
 }
 
-function renderItemName(item: Item) {
-  return item.displayName;
-}
-
 function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
-    return <Icon name="star" size={18} />;
+    return <Icon name={modelIconMap["segment"]} size={18} />;
   } else if (isExpressionClauseItem(item)) {
     return <Icon name="function" size={18} />;
   } else {

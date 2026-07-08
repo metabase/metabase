@@ -8,6 +8,9 @@
   (:import
    (java.io BufferedReader InputStreamReader PrintWriter)
    (java.net InetSocketAddress ServerSocket Socket)
+   (java.security KeyPair PublicKey)
+   (org.apache.sshd.common.config.keys PublicKeyEntry)
+   (org.apache.sshd.common.keyprovider KeyPairProvider)
    (org.apache.sshd.server SshServer)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
 
@@ -218,3 +221,50 @@
           (u/deref-with-timeout server-thread 12000)
           (with-open [in-client (BufferedReader. (InputStreamReader. (.getInputStream socket)))]
             (is (= "hello from the ssh tunnel" (.readLine in-client)))))))))
+
+;;--------------
+;; host key verification tests
+;;--------------
+
+(defn- server-known-hosts-line
+  "Extract the server's host key and format it as a known_hosts line for the given host and port."
+  ^String [^SshServer server ^String host ^Integer port]
+  (let [^KeyPairProvider kpp (.getKeyPairProvider server)
+        ^KeyPair kp          (first (.loadKeys kpp nil))
+        ^PublicKey pub       (.getPublic kp)
+        key-str              (PublicKeyEntry/toString pub)]
+    (format "[%s]:%d %s" host port key-str)))
+
+(defn- get-server-by-port
+  "Find a running mock server by its port."
+  ^SshServer [port]
+  (some (fn [^SshServer s] (when (= (.getPort s) port) s)) @servers*))
+
+(deftest connects-with-correct-known-hosts
+  (testing "SSH tunnel connects when known_hosts matches the server's host key"
+    (let [server      (get-server-by-port ssh-mock-server-with-password-port)
+          known-hosts (server-known-hosts-line server "127.0.0.1" ssh-mock-server-with-password-port)]
+      (is (some?
+           (#'ssh/start-ssh-tunnel!
+            {:tunnel-user        ssh-username
+             :tunnel-host        "127.0.0.1"
+             :tunnel-port        ssh-mock-server-with-password-port
+             :tunnel-pass        ssh-password
+             :tunnel-known-hosts known-hosts
+             :host               "127.0.0.1"
+             :port               1234}))))))
+
+(deftest rejects-mismatched-known-hosts
+  (testing "SSH tunnel is rejected when known_hosts does not match the server's host key"
+    (let [wrong-known-hosts (format "[127.0.0.1]:%d ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIIuaEsaxnzVIkyMvjrCMJmavCqdHOoG7GCmGJ0Il5CW"
+                                    ssh-mock-server-with-password-port)]
+      (is (thrown?
+           Exception
+           (#'ssh/start-ssh-tunnel!
+            {:tunnel-user        ssh-username
+             :tunnel-host        "127.0.0.1"
+             :tunnel-port        ssh-mock-server-with-password-port
+             :tunnel-pass        ssh-password
+             :tunnel-known-hosts wrong-known-hosts
+             :host               "127.0.0.1"
+             :port               1234}))))))

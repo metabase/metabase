@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.fk-filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -9,6 +9,8 @@
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel fk-filter-availability-test
   (testing "fk-filter is available for cell clicks on FKs with any value including NULL"
@@ -171,7 +173,6 @@
         :expected-native {:stages [{:filters [[:= {} [:field {} "PRODUCT_ID"]
                                                (get-in lib.drill-thru.tu/test-queries
                                                        ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}})))
-
   (testing "adds an is-null filter for NULL FK values"
     (let [row (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])]
       (lib.drill-thru.tu/test-drill-application

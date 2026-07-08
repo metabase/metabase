@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   useDeleteGsheetsFolderLinkMutation,
@@ -90,7 +90,7 @@ export const useDeleteGdriveFolderLink = (options?: {
       .catch((response: unknown) => {
         const error = getErrorMessage(
           response,
-          // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only ui
           t`Please check that the folder is shared with the Metabase Service Account.`,
         );
         setErrorMessage(error);

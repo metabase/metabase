@@ -79,11 +79,12 @@
 
 (register-customizer! MetabaseConnectionCustomizer)
 
-(def ^:private application-db-connection-pool-props
+(defn- application-db-connection-pool-props
   "Options for c3p0 connection pool for the application DB. These are set in code instead of the `c3p0.properties` file
   because we use separate options for data warehouse DBs, and setting them in the properties file would affect both.
   See https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
   below (jump to the 'Simple advice on Connection testing' section.)"
+  []
   {;;
    ;; If this is a number greater than 0, c3p0 will test all idle, pooled but unchecked-out connections, every this
    ;; number of seconds
@@ -91,9 +92,10 @@
    ;; https://www.mchange.com/projects/c3p0/#idleConnectionTestPeriod
    ;;
    "idleConnectionTestPeriod"
-   60
+   (or (config/config-int :mb-application-db-idle-connection-test-period-seconds)
+       60)
    ;;
-   ;; The fully qualified class-name of an implememtation of the ConnectionCustomizer interface, which users can
+   ;; The fully qualified class-name of an implementation of the ConnectionCustomizer interface, which users can
    ;; implement to set up Connections when they are acquired from the database, or on check-out, and potentially to
    ;; clean things up on check-in and Connection destruction. If standard Connection properties (holdability, readOnly,
    ;; or transactionIsolation) are set in the ConnectionCustomizer's onAcquire() method, these will override the
@@ -116,7 +118,8 @@
    ;; https://metaboat.slack.com/archives/C05MPF0TM3L/p1748538357522569?thread_ts=1748507464.051999&cid=C05MPF0TM3L
    ;;
    "maxIdleTimeExcessConnections"
-   (* 10 60) ; 10 minutes
+   (or (config/config-int :mb-application-db-max-idle-time-excess-connections-seconds)
+       (* 10 60)) ; 10 minutes
    ;;
    ;; Seconds, effectively a time to live. A Connection older than maxConnectionAge will be destroyed and purged from
    ;; the pool. This differs from maxIdleTime in that it refers to absolute age. Even a Connection which has not been
@@ -125,8 +128,22 @@
    ;;
    ;; https://www.mchange.com/projects/c3p0/#maxConnectionAge
    ;;
+   ;; The default of one hour can be overridden (e.g. to 0, disabling forced recycling) when using a dynamic credential
+   ;; mechanism that establishes new physical connections under tokens that would have expired by the time recycling
+   ;; happens. See https://github.com/metabase/metabase/issues/72705.
+   ;;
    "maxConnectionAge"
-   (* 60 60) ; one hour
+   (or (config/config-int :mb-application-db-max-connection-age-seconds)
+       (* 60 60)) ; one hour
+   ;;
+   ;; If true, an operation will be performed at every connection checkout to verify that the connection is valid. This
+   ;; adds latency to every checkout but is useful with credential schemes that may invalidate physical connections
+   ;; behind c3p0's back. Defaults to false to preserve historical behavior.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#testConnectionOnCheckout
+   ;;
+   "testConnectionOnCheckout"
+   (boolean (config/config-bool :mb-application-db-test-connection-on-checkout))
    ;;
    ;; Maximum number of Connections a pool will maintain at any given time.
    ;;
@@ -135,7 +152,35 @@
    "maxPoolSize"
    (or (config/config-int :mb-application-db-max-connection-pool-size)
        ;; 15 is the c3p0 default but it's always nice to be explicit in case that changes
-       15)})
+       15)
+   ;;
+   ;; Milliseconds a thread will wait for a c3p0 Connection to become available when the pool is fully checked out before
+   ;; giving up and throwing.
+   ;; We default to 30s so a stuck checkout fails loudly with a
+   ;; stack trace break cycle deadlocks. Operators who
+   ;; truly want the legacy wait-forever behavior can set the env var to 0.
+   ;;
+   ;; https://www.mchange.com/projects/c3p0/#checkoutTimeout
+   ;;
+   "checkoutTimeout"
+   (or (config/config-int :mb-application-db-checkout-timeout-ms)
+       30000)
+
+   "unreturnedConnectionTimeout"
+   ;; `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT` is the legacy unsuffixed name (its value has always been
+   ;; seconds); keep it working as a fallback alongside the new `_SECONDS` name.
+   (or (config/config-int :mb-application-db-unreturned-connection-timeout-seconds)
+       (config/config-int :mb-application-db-unreturned-connection-timeout)
+       ;; we set an unreturnedConnectionTimeout for data warehouses, via
+       ;; `(driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)`, which defaults to the same
+       ;; 5 minute value as the query timeout. But for the application DB this is not nearly so safe, as we don't
+       ;; have a fixed maximum possible time a query could take, and e.g. `copy-to-h2` can easily take more than this.
+       ;;
+       ;; Let's default to 1 hour. Note that as discussed at
+       ;; https://www.mchange.com/projects/c3p0/#unreturnedConnectionTimeout
+       ;; this is a *backstop*; as it says there, "it's better to be neurotic about closing your Connections in
+       ;; the first place."
+       3600)})
 
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
@@ -145,7 +190,7 @@
   (if (instance? PoolBackedDataSource data-source)
     data-source
     (let [ds-name    (format "metabase-%s-app-db" (name db-type))
-          pool-props (assoc application-db-connection-pool-props "dataSourceName" ds-name)]
+          pool-props (assoc (application-db-connection-pool-props) "dataSourceName" ds-name)]
       (com.mchange.v2.c3p0.DataSources/pooledDataSource
        data-source
        (connection-pool/map->properties pool-props)))))

@@ -1,4 +1,4 @@
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
+import type { EmbedResourceDownloadOptions } from "metabase-types/api";
 
 type EmbedFlowParams = {
   locked?: number;
@@ -38,7 +38,7 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof EmbedFlowEventSchema>, never>,
 > = T;
 
-type EmbedFlowArtifact = "dashboard" | "question";
+type EmbedFlowArtifact = "dashboard" | "question" | "document";
 
 export type StaticEmbedDiscardedEvent = ValidateEvent<{
   event: "static_embed_discarded";

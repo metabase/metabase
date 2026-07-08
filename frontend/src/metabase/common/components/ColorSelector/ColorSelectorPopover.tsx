@@ -5,15 +5,17 @@ import { ColorPill } from "metabase/common/components/ColorPill";
 
 import { PopoverRoot } from "./ColorSelectorPopover.styled";
 
-export interface ColorSelectorPopoverProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface ColorSelectorPopoverProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   value?: string;
   colors: string[];
   onChange?: (newValue: string) => void;
   onClose?: () => void;
 }
 
-const ColorSelectorPopover = forwardRef(function ColorSelector(
+export const ColorSelectorPopover = forwardRef(function ColorSelector(
   { value, colors, onChange, onClose, ...props }: ColorSelectorPopoverProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -38,6 +40,3 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
     </PopoverRoot>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorSelectorPopover;

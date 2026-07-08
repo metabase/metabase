@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import EventSandbox from "metabase/common/components/EventSandbox";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Group, Icon } from "metabase/ui";
 
@@ -13,8 +13,8 @@ export const DropdownFieldSet = styled(FieldSet)<{
   border: 2px solid
     ${({ fieldHasValueOrFocus }) =>
       fieldHasValueOrFocus
-        ? "var(--mb-color-brand)"
-        : "var(--mb-color-border)"};
+        ? "var(--mb-color-core-brand)"
+        : "var(--mb-color-border-neutral)"};
   margin: 0;
   padding: 0.5rem 0.75rem;
   cursor: pointer;
@@ -35,7 +35,7 @@ export const DropdownFieldSet = styled(FieldSet)<{
   &,
   legend {
     color: ${({ fieldHasValueOrFocus }) =>
-      fieldHasValueOrFocus && "var(--mb-color-brand)"};
+      fieldHasValueOrFocus && "var(--mb-color-core-brand)"};
   }
 `;
 

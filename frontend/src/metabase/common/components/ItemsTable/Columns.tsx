@@ -1,26 +1,27 @@
 import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import ActionMenu from "metabase/collections/components/ActionMenu";
-import CheckBox from "metabase/common/components/CheckBox";
-import DateTime from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EntityItem from "metabase/common/components/EntityItem";
-import Markdown from "metabase/common/components/Markdown";
+import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
+import ActionMenu from "metabase/common/collections/components/ActionMenu";
+import { DateTime } from "metabase/common/components/DateTime";
+import { EntityItem } from "metabase/common/components/EntityItem";
+import { Markdown } from "metabase/common/components/Markdown";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import type { IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Checkbox, Ellipsified, type IconProps, Tooltip } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
+import { isTouchDevice } from "metabase/utils/browser";
+import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,
   SearchResult,
 } from "metabase-types/api";
 
-import type { SortableColumnHeaderProps } from "./BaseItemsTable";
-import { SortableColumnHeader } from "./BaseItemsTable";
+import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
 import {
   BulkSelectWrapper,
   ColumnHeader,
@@ -50,8 +51,9 @@ const ItemLinkComponent = ({
   if (isEmbeddingSdk()) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
+
   return (
-    <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
+    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
       {children}
     </ItemLink>
   );
@@ -73,7 +75,8 @@ export const Columns = {
     }) => (
       <ColumnHeader>
         <BulkSelectWrapper>
-          <CheckBox
+          <Checkbox
+            size="sm"
             checked={!!selectedItems?.length}
             indeterminate={!!selectedItems?.length && !!hasUnselected}
             onChange={hasUnselected ? onSelectAll : onSelectNone}
@@ -162,10 +165,12 @@ export const Columns = {
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => {
+      const tc = useTranslateContent();
+
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={item.name} variant="list" />
+            <EntityItem.Name name={tc(item.name)} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
               status={item.moderated_status}
@@ -176,13 +181,54 @@ export const Columns = {
                 size={16}
                 tooltip={
                   <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                    {item.description}
+                    {tc(item.description)}
                   </Markdown>
                 }
+                onClick={(event) => {
+                  // On mobile devices we allow clicking on the icon to show the description
+                  if (isTouchDevice()) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                  }
+                }}
               />
             )}
           </ItemLinkComponent>
         </ItemNameCell>
+      );
+    },
+  },
+  Description: {
+    Col: () => (
+      <TableColumn
+        hideAtContainerBreakpoint="sm"
+        containerName="ItemsTableContainer"
+      />
+    ),
+    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+      <SortableColumnHeader
+        name="description"
+        sortingOptions={sortingOptions}
+        hideAtContainerBreakpoint="sm"
+        onSortingOptionsChange={onSortingOptionsChange}
+      >
+        {t`Description`}
+      </SortableColumnHeader>
+    ),
+    Cell: ({
+      item,
+      testIdPrefix = "table",
+    }: {
+      item: CollectionItem;
+      testIdPrefix?: string;
+      onClick?: (item: CollectionItem) => void;
+    }) => {
+      const tc = useTranslateContent();
+
+      return (
+        <ItemCell data-testid={`${testIdPrefix}-description`}>
+          <Ellipsified>{tc(item.description) ?? ""}</Ellipsified>
+        </ItemCell>
       );
     },
   },
@@ -311,6 +357,19 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
+          </RowActionsContainer>
+        </ItemCell>
+      );
+    },
+  },
+  Archive: {
+    Header: () => <th></th>,
+    Col: () => <col style={{ width: "100px" }} />,
+    Cell: ({ item }: { item: CollectionItem }) => {
+      return (
+        <ItemCell>
+          <RowActionsContainer>
+            <ArchiveButton item={item} />
           </RowActionsContainer>
         </ItemCell>
       );

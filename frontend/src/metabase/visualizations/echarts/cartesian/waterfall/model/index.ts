@@ -15,6 +15,7 @@ import {
 import type { WaterfallChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -106,21 +107,27 @@ export const getWaterfallChartModel = (
   const leftAxisModel = getYAxisModel(
     [WATERFALL_END_KEY],
     [],
-    [],
     transformedDataset,
     settings,
     { [WATERFALL_END_KEY]: seriesModel.column },
-    null,
     {
-      compact:
-        settings["graph.label_value_formatting"] === "compact" || isCompact,
+      formattingOptions: {
+        compact:
+          settings["graph.label_value_formatting"] === "compact" || isCompact,
+      },
     },
   );
 
-  // Extending the original dataset with total datum for tooltips
+  // Extending the original dataset with total datum for tooltips. Sum from the
+  // untransformed scaledDataset so the tooltip shows the raw total, not the
+  // y-axis-transformed value (e.g. with log/power scale).
+  const untransformedTotal = scaledDataset.reduce(
+    (sum, datum) => sum + getNumberOr(datum[seriesModel.dataKey], 0),
+    0,
+  );
   const originalDatasetWithTotal = extendOriginalDatasetWithTotalDatum(
     scaledDataset,
-    transformedDataset[transformedDataset.length - 1],
+    untransformedTotal,
     seriesModel.dataKey,
     settings,
   );

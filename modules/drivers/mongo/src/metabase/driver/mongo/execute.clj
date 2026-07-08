@@ -1,4 +1,5 @@
 (ns metabase.driver.mongo.execute
+  (:refer-clojure :exclude [every? mapv])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -12,7 +13,8 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? mapv]])
   (:import
    (com.mongodb.client
     AggregateIterable
@@ -213,9 +215,10 @@
         db-name (mongo.db/db-name database)
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
-      (a/go
-        (when (a/<! (driver-api/canceled-chan))
-          (mongo.util/kill-session! client-database session)))
+      (when-let [cancel-chan (driver-api/canceled-chan)]
+        (a/go
+          (when (a/<! cancel-chan)
+            (mongo.util/kill-session! client-database session))))
       (let [aggregate ^AggregateIterable (*aggregate* client-database
                                                       collection-name
                                                       session

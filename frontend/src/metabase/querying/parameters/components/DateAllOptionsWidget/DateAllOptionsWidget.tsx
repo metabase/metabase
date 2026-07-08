@@ -2,12 +2,13 @@ import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { DatePicker } from "metabase/querying/filters/components/DatePicker";
+import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerValue,
-} from "metabase/querying/filters/types";
+  RelativeIntervalDirection,
+} from "metabase/querying/common/types";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,
@@ -19,6 +20,9 @@ type DateAllOptionsWidgetProps = {
   value: ParameterValueOrArray | null | undefined;
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
+  availableDirections?: RelativeIntervalDirection[];
+  minDate?: Date;
+  maxDate?: Date;
   submitButtonLabel?: string;
   onChange: (value: string) => void;
 };
@@ -26,6 +30,9 @@ type DateAllOptionsWidgetProps = {
 export function DateAllOptionsWidget({
   value,
   availableOperators,
+  availableDirections,
+  minDate,
+  maxDate,
   submitButtonLabel = t`Apply`,
   onChange,
   availableShortcuts,
@@ -41,6 +48,9 @@ export function DateAllOptionsWidget({
       value={pickerValue}
       availableOperators={availableOperators}
       availableShortcuts={availableShortcuts}
+      availableDirections={availableDirections}
+      minDate={minDate}
+      maxDate={maxDate}
       renderSubmitButton={({ isDisabled }) => (
         <Button type="submit" variant="filled" disabled={isDisabled}>
           {submitButtonLabel}

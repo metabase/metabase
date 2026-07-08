@@ -1,10 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor.parameters.temporal-units-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.parameters.temporal-units-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.query-processor :as qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (defn- ->local-date-time [t]
@@ -35,11 +38,11 @@
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             native-query (mt/native-query
-                           (assoc base-query
-                                  :template-tags {"time-unit" {:name         "id"
-                                                               :display-name "id"
-                                                               :type         :temporal-unit
-                                                               :dimension    [:field (mt/id :orders :created_at)]}}))
+                          (assoc base-query
+                                 :template-tags {"time-unit" {:name         "time-unit"
+                                                              :display-name "id"
+                                                              :type         :temporal-unit
+                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
                                                      :name   "time-unit"
@@ -83,12 +86,12 @@
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             native-query (mt/native-query
-                           (assoc base-query
-                                  :template-tags {"time-unit" {:name         "id"
-                                                               :display-name "id"
-                                                               :type         :temporal-unit
-                                                               :dimension    [:field (mt/id :orders :created_at)]
-                                                               :alias        (mt/make-alias driver/*driver* "created_at")}}))
+                          (assoc base-query
+                                 :template-tags {"time-unit" {:name         "time-unit"
+                                                              :display-name "id"
+                                                              :type         :temporal-unit
+                                                              :dimension    [:field (mt/id :orders :created_at) nil]
+                                                              :alias        (mt/make-alias driver/*driver* "created_at")}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
                                                      :name   "time-unit"
@@ -127,16 +130,40 @@
                      (subvec 0 2)))
               (str "Unexpected results for aliased grouping " grouping)))))))
 
+(deftest ^:parallel temporal-unit-in-optional-clause-test
+  ;; Unlike the sibling tests, this one relies on a hand-written H2 query (LIMIT + an optional `[[…]]` clause) that the
+  ;; portable `mt/arbitrary-select-query` helper can't express, so it is gated to :h2 rather than the full driver set.
+  (mt/test-driver :h2
+    (testing "a :temporal-unit template tag inside an optional [[…]] clause"
+      (let [mp   (mt/metadata-provider)
+            make (fn [default]
+                   (let [q0       (lib/native-query mp "SELECT ID [[, {{unit}} AS unit]] FROM PEOPLE ORDER BY ID LIMIT 2")
+                         existing (get (lib/template-tags q0) "unit")]
+                     (lib/with-template-tags
+                       q0 {"unit" (merge existing
+                                         {:display-name "Unit"
+                                          :type         :temporal-unit
+                                          :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :created_at)))
+                                          :default      default})})))]
+        (testing "the clause is included and bucketed when a default value is present"
+          (let [rows (mt/rows (qp/process-query (make "year")))]
+            (is (= 2 (count rows)))
+            (is (= 2 (count (first rows))))))
+        (testing "the clause is dropped entirely when the tag is unset"
+          (let [rows (mt/rows (qp/process-query (make nil)))]
+            (is (= 2 (count rows)))
+            (is (= 1 (count (first rows))))))))))
+
 (deftest ^:parallel bad-field-reference-throws-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-units-test)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query
-                           (assoc base-query
-                                  :template-tags {"time-unit" {:name         "id"
-                                                               :display-name "id"
-                                                               :type         :temporal-unit
-                                                               :dimension    [:field 1000000000]}}))
+                          (assoc base-query
+                                 :template-tags {"time-unit" {:name         "time-unit"
+                                                              :display-name "id"
+                                                              :type         :temporal-unit
+                                                              :dimension    [:field 1000000000 nil]}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:variable [:template-tag "time-unit"]]
@@ -151,11 +178,11 @@
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders "{{time-unit}}")
             query (assoc (mt/native-query
-                           (assoc base-query
-                                  :template-tags {"time-unit" {:name         "id"
-                                                               :display-name "id"
-                                                               :type         :temporal-unit
-                                                               :dimension    [:field (mt/id :orders :created_at)]}}))
+                          (assoc base-query
+                                 :template-tags {"time-unit" {:name         "time-unit"
+                                                              :display-name "id"
+                                                              :type         :temporal-unit
+                                                              :dimension    [:field (mt/id :orders :created_at) nil]}}))
                          :parameters [{:type   :temporal-unit
                                        :name   "time-unit"
                                        :target [:dimension [:template-tag "time-unit"]]

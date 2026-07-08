@@ -1,25 +1,24 @@
-import { useCallback, useMemo } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import EntityMenu from "metabase/common/components/EntityMenu";
-import Link from "metabase/common/components/Link";
-import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Icon } from "metabase/ui";
+import { RouterLink } from "metabase/router";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import {
   ActionCardContainer,
   ActionHeader,
-  ActionRunButton,
   ActionRunButtonContainer,
   ActionSubtitle,
   ActionSubtitlePart,
   ActionTitle,
   CodeBlock,
   ImplicitActionCardContentRoot,
-  MenuIcon,
 } from "./ModelActionListItem.styled";
 
 interface Props {
@@ -31,20 +30,20 @@ interface Props {
   onArchive: (action: WritebackAction) => void;
 }
 
-interface ModalProps {
-  onClose?: () => void;
-}
-
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
-  if (!action.dataset_query?.native?.query) {
+  const question = Question.create({ dataset_query: action.dataset_query });
+  if (!question.isNative()) {
     return (
       <CodeBlock>
-        <Icon name="warning" size={16} tooltip={t`No query found`} />
+        <Icon name="warning" tooltip={t`No query found`} />
       </CodeBlock>
     );
   }
 
-  return <CodeBlock>{action.dataset_query.native.query}</CodeBlock>;
+  const query = question.query();
+  const queryText = Lib.rawNativeQuery(query);
+
+  return <CodeBlock>{queryText}</CodeBlock>;
 }
 
 function ImplicitActionCardContent() {
@@ -65,6 +64,10 @@ function ModelActionListItem({
 }: Props) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
+  const [
+    executeModalOpened,
+    { open: openExecuteModal, close: closeExecuteModal },
+  ] = useDisclosure(false);
 
   const handleArchive = useCallback(() => {
     askConfirmation({
@@ -73,22 +76,6 @@ function ModelActionListItem({
       onConfirm: () => onArchive(action),
     });
   }, [action, askConfirmation, onArchive]);
-
-  const menuItems = useMemo(
-    () => [
-      {
-        title: canEdit ? t`Edit` : t`View`,
-        icon: canEdit ? "pencil" : "eye",
-        link: actionUrl,
-      },
-      canArchive && {
-        title: t`Archive`,
-        icon: "archive",
-        action: handleArchive,
-      },
-    ],
-    [actionUrl, canEdit, canArchive, handleArchive],
-  );
 
   return (
     <>
@@ -109,7 +96,33 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        <EntityMenu items={menuItems} trigger={<MenuIcon name="ellipsis" />} />
+        <Menu position="bottom-end">
+          <Menu.Target>
+            <ActionIcon aria-label={t`Actions`} variant="subtle">
+              <Icon name="ellipsis" />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              component={RouterLink}
+              data-testid="entity-menu-link"
+              leftSection={
+                <Icon name={canEdit ? "pencil" : "eye"} aria-hidden />
+              }
+              to={actionUrl}
+            >
+              {canEdit ? t`Edit` : t`View`}
+            </Menu.Item>
+            {canArchive && (
+              <Menu.Item
+                leftSection={<Icon name="archive" aria-hidden />}
+                onClick={handleArchive}
+              >
+                {t`Archive`}
+              </Menu.Item>
+            )}
+          </Menu.Dropdown>
+        </Menu>
       </ActionHeader>
       <ActionCardContainer>
         {action.type === "query" ? (
@@ -118,23 +131,26 @@ function ModelActionListItem({
           <ImplicitActionCardContent />
         ) : null}
         {canRun && (
-          <ModalWithTrigger
-            triggerElement={
-              <ActionRunButtonContainer>
-                <ActionRunButton
-                  as={Link}
-                  icon="play"
-                  onlyIcon
-                  tooltip={t`Run`}
+          <>
+            <ActionRunButtonContainer>
+              <Tooltip label={t`Run`}>
+                <ActionIcon
+                  variant="subtle"
+                  bg="background_page-primary"
+                  c="text-primary"
                   aria-label={t`Run`}
-                />
-              </ActionRunButtonContainer>
-            }
-          >
-            {({ onClose }: ModalProps) => (
-              <ActionExecuteModal actionId={action.id} onClose={onClose} />
-            )}
-          </ModalWithTrigger>
+                  onClick={openExecuteModal}
+                >
+                  <Icon name="play" />
+                </ActionIcon>
+              </Tooltip>
+            </ActionRunButtonContainer>
+            <ActionExecuteModal
+              opened={executeModalOpened}
+              actionId={action.id}
+              onClose={closeExecuteModal}
+            />
+          </>
         )}
       </ActionCardContainer>
       {confirmationModal}

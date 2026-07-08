@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
-   [metabase.warehouse-schema.api.table-test :as oss-test]))
+   [metabase.warehouse-schema-rest.api.table-test :as oss-test]))
 
 (def list-url "ee/upload-management/tables")
 
@@ -36,6 +36,27 @@
                           (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
                           set))))))))))
 
+(deftest list-uploaded-tables-no-duplicates-test
+  (testing "GET ee/upload-management/tables should not return duplicates for tables in attached DWH"
+    (testing "Tables with is_upload=true in attached DWH should only appear once (not duplicated)"
+      (mt/with-premium-features #{:upload-management :attached-dwh}
+        (mt/with-temp [:model/Database {dwh-db-id :id} {:is_attached_dwh true}
+                       ;; Table in attached DWH with is_upload=true - should appear once, not twice
+                       :model/Table {upload-table-id :id} {:db_id dwh-db-id :is_upload true :active true :name "uploaded_table"}
+                       ;; Table in attached DWH without is_upload - should also appear
+                       :model/Table {non-upload-table-id :id} {:db_id dwh-db-id :is_upload false :active true :name "non_upload_table"}]
+          (let [result (mt/user-http-request :crowberto :get 200 list-url)
+                dwh-table-ids (->> result
+                                   (filter #(= (:db_id %) dwh-db-id))
+                                   (map :id))]
+            (testing "Both tables should be in the result"
+              (is (contains? (set dwh-table-ids) upload-table-id))
+              (is (contains? (set dwh-table-ids) non-upload-table-id)))
+            (testing "Upload table should appear exactly once (no duplicates)"
+              (is (= 1 (count (filter #(= % upload-table-id) dwh-table-ids)))))
+            (testing "Non-upload table should appear exactly once"
+              (is (= 1 (count (filter #(= % non-upload-table-id) dwh-table-ids)))))))))))
+
 (defn- delete-url [table-id]
   (str "ee/upload-management/tables/" table-id))
 
@@ -50,7 +71,6 @@
           (testing "Behind a feature flag"
             (mt/with-premium-features #{} ;; not :upload-management
               (mt/assert-has-premium-feature-error "Upload Management" (mt/user-http-request :crowberto :delete 402 (delete-url 1)))))
-
           (mt/with-premium-features #{:upload-management}
             (testing "Happy path\n"
               (let [table-id (:id (oss-test/create-csv!))]
@@ -60,17 +80,14 @@
                   (is (true? (mt/user-http-request :crowberto :delete 200 (delete-url table-id)))))
                 (testing "The table is gone from the list"
                   (is (not (contains? (listed-table-ids) table-id))))))
-
             (testing "Uploads may be deleted even when *uploading* has been disabled"
               (upload-test/with-uploads-disabled!
                 (let [table-id (:id (oss-test/create-csv!))]
                   (is (true? (mt/user-http-request :crowberto :delete 200 (delete-url table-id)))))))
-
             (testing "The table must be uploaded"
               (mt/with-temp [:model/Table {table-id :id}]
                 (is (= {:message "The table must be an uploaded table."}
                        (mt/user-http-request :rasta :delete 422 (delete-url table-id))))))
-
             (testing "Write permissions to the table are required to delete it\n"
               (let [table-id (:id (oss-test/create-csv!))]
                 (testing "The delete request is rejected"
@@ -78,7 +95,6 @@
                          (mt/user-http-request :rasta :delete 403 (delete-url table-id)))))
                 (testing "The table remains in the list"
                   (is (contains? (listed-table-ids) table-id)))))
-
             (testing "The archive_cards argument is passed through"
               (let [passed-value (atom nil)]
                 (mt/with-dynamic-fn-redefs [upload/delete-upload! (fn [_ & {:keys [archive-cards?]}]

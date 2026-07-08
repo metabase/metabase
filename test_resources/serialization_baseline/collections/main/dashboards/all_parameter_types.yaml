@@ -1,0 +1,148 @@
+name: All Parameter Types
+entity_id: thzuTON-F8WG6EcXTXrNK
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+collection_id: cOlDaShBoArDs0ExAmPlx
+parameters:
+- id: a0000001-0000-0000-0000-000000000001
+  name: Text Equals
+  position: 0
+  sectionId: string
+  slug: text_equals
+  type: string/=
+- id: a0000002-0000-0000-0000-000000000002
+  name: Text Not Equals
+  position: 1
+  sectionId: string
+  slug: text_not_equals
+  type: string/!=
+- id: a0000003-0000-0000-0000-000000000003
+  name: Text Contains
+  position: 2
+  sectionId: string
+  slug: text_contains
+  type: string/contains
+- id: a0000004-0000-0000-0000-000000000004
+  name: Text Does Not Contain
+  position: 3
+  sectionId: string
+  slug: text_does_not_contain
+  type: string/does-not-contain
+- id: a0000005-0000-0000-0000-000000000005
+  name: Text Starts With
+  position: 4
+  sectionId: string
+  slug: text_starts_with
+  type: string/starts-with
+- id: a0000006-0000-0000-0000-000000000006
+  name: Text Ends With
+  position: 5
+  sectionId: string
+  slug: text_ends_with
+  type: string/ends-with
+- default: 42
+  id: a0000007-0000-0000-0000-000000000007
+  name: Number Equals
+  position: 6
+  sectionId: number
+  slug: number_equals
+  type: number/=
+- id: a0000008-0000-0000-0000-000000000008
+  name: Number Between
+  position: 7
+  sectionId: number
+  slug: number_between
+  type: number/between
+- id: a0000009-0000-0000-0000-000000000009
+  name: Date Single
+  position: 8
+  sectionId: date
+  slug: date_single
+  type: date/single
+- id: a0000010-0000-0000-0000-000000000010
+  name: Date Range
+  position: 9
+  sectionId: date
+  slug: date_range
+  type: date/range
+- id: a0000011-0000-0000-0000-000000000011
+  name: Date Month Year
+  position: 10
+  sectionId: date
+  slug: date_month_year
+  type: date/month-year
+- id: a0000012-0000-0000-0000-000000000012
+  name: Date Quarter Year
+  position: 11
+  sectionId: date
+  slug: date_quarter_year
+  type: date/quarter-year
+- id: a0000013-0000-0000-0000-000000000013
+  name: Date Relative
+  position: 12
+  sectionId: date
+  slug: date_relative
+  type: date/relative
+- id: a0000014-0000-0000-0000-000000000014
+  name: Date All Options
+  position: 13
+  sectionId: date
+  slug: date_all_options
+  type: date/all-options
+- id: a0000015-0000-0000-0000-000000000015
+  name: Boolean
+  position: 14
+  sectionId: boolean
+  slug: boolean_filter
+  type: boolean/=
+- id: a0000016-0000-0000-0000-000000000016
+  name: ID
+  position: 15
+  sectionId: id
+  slug: id_filter
+  type: number/=
+- id: a0000017-0000-0000-0000-000000000017
+  name: Category
+  position: 16
+  sectionId: string
+  slug: category_filter
+  type: string/=
+- id: a0000018-0000-0000-0000-000000000018
+  name: Location City
+  position: 17
+  sectionId: location
+  slug: location_city
+  type: string/=
+- id: a0000019-0000-0000-0000-000000000019
+  name: Temporal Unit
+  position: 18
+  sectionId: temporal-unit
+  slug: temporal_unit
+  temporal_units:
+  - month
+  - quarter
+  - year
+  type: temporal-unit
+- default: Widget
+  id: a0000020-0000-0000-0000-000000000020
+  name: Required With Default
+  position: 19
+  required: true
+  sectionId: string
+  slug: required_with_default
+  type: string/=
+  values_query_type: list
+  values_source_config:
+    values:
+    - Widget
+    - Gadget
+    - Gizmo
+    - Doohickey
+  values_source_type: static-list
+serdes/meta:
+- id: thzuTON-F8WG6EcXTXrNK
+  label: all_parameter_types
+  model: Dashboard
+dashcards: []
+tabs: []
+width: fixed

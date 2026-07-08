@@ -1,11 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor.util.relative-datetime-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.util.relative-datetime-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.util.relative-datetime-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.test :as mt]
@@ -23,9 +25,10 @@
     ;; This was standard before PR #38604, now server side timestamps are used for that. This test confirms that
     ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
     ;; cacheable.
-    (let [honey {:select [[(with-redefs [qp.relative-datetime/use-server-side-relative-datetime? (constantly false)]
-                             (sql.qp/->honeysql driver/*driver* [:relative-datetime value unit]))]
-                          [(sql.qp/->honeysql driver/*driver* [:relative-datetime value unit])]]}
+    (let [rel-dt-clause (sql.qp/mbql-clause driver/*driver* :relative-datetime value unit)
+          honey {:select [[(mt/with-dynamic-fn-redefs [qp.relative-datetime/use-server-side-relative-datetime? (constantly false)]
+                             (sql.qp/->honeysql driver/*driver* rel-dt-clause))]
+                          [(sql.qp/->honeysql driver/*driver* rel-dt-clause)]]}
           sql (sql/format honey)
           result (apply run-native-query sql)
           [db-generated ss-generated] (-> result mt/rows first)]

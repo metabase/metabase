@@ -9,8 +9,7 @@ import {
   SelectButtonRoot,
 } from "./SelectButton.styled";
 
-export interface SelectButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   left?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
@@ -28,7 +27,7 @@ export interface SelectButtonProps
   };
 }
 
-const SelectButton = forwardRef(function SelectButton(
+const SelectButtonInner = forwardRef(function SelectButton(
   {
     className,
     style,
@@ -95,8 +94,7 @@ const SelectButton = forwardRef(function SelectButton(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(SelectButton, {
+export const SelectButton = Object.assign(SelectButtonInner, {
   Root: SelectButtonRoot,
   Content: SelectButtonContent,
   Icon: SelectButtonIcon,

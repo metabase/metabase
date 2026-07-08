@@ -1,0 +1,235 @@
+## Staging tables for the metadata file importer.
+##
+## Two scratch tables drained into during an import, then merged into
+## metabase_table / metabase_field inside a single short transaction so
+## live-data writes are atomic. Both tables live permanently in the
+## schema; the importer wipes them on entry and exit (try/finally) so a
+## crashed prior attempt cannot leak rows into the next run.
+##
+## Wire format uses source-side integer IDs (the source appdb's
+## metabase_database / metabase_table / metabase_field surrogate keys).
+## They are internally consistent within one file and meaningless across
+## files. Staging carries `source_*_id` columns for the wire identity
+## and `target_*_id` columns populated by the resolve step against the
+## live appdb.
+##
+## Indexes:
+##   - PK on `source_id`     — probed by every depth-walk EXISTS subquery
+##   - `target_id`           — keys the merge UPDATE's clobber subqueries
+##   - `depth`               — per-level scoping for the depth-walk merge
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:00
+      author: galdre
+      comment: Create metabase_table_import staging table
+      changes:
+        - createTable:
+            tableName: metabase_table_import
+            remarks: Staging table for the metadata file importer's tables phase. Drained outside the merge txn, merged into metabase_table inside it.
+            columns:
+              - column:
+                  name: source_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_metabase_table_import
+                  remarks: Wire :id — source appdb's metabase_table.id. Unique within one file.
+              - column:
+                  name: source_db_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: Wire :db_id — references the source-side database row in :databases[].
+              - column:
+                  name: db_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Denormalized from :databases[] at drain time, used for natural-key match against target.
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Mirrors metabase_table.schema nullability.
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Wire :name — table's natural-key name component.
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: Wire :description — clobbered onto metabase_table.description on merge.
+              - column:
+                  name: display_name
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Pre-humanized at drain time so the merge SQL doesn't replicate the algorithm in three dialects.
+              - column:
+                  name: target_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Resolved by table-resolve step; → metabase_table.id. NULL means no live row matches; row is an insert candidate.
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:00.1
+      author: galdre
+      comment: Index metabase_table_import.target_id for the merge-tables clobber subqueries
+      changes:
+        - createIndex:
+            tableName: metabase_table_import
+            indexName: idx_mti_target_id
+            columns:
+              - column:
+                  name: target_id
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:01
+      author: galdre
+      comment: Create metabase_field_import staging table
+      changes:
+        - createTable:
+            tableName: metabase_field_import
+            remarks: Staging table for the metadata file importer's fields phase. Drained outside the merge txn, depth-tagged, then merged into metabase_field level by level inside the txn.
+            columns:
+              # --- wire identity ---
+              - column:
+                  name: source_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_metabase_field_import
+                  remarks: Wire :id — source appdb's metabase_field.id. Unique within one file.
+              - column:
+                  name: source_table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: Wire :table_id — references metabase_table_import.source_id within the same file.
+              - column:
+                  name: source_parent_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Wire :parent_id — references another metabase_field_import.source_id within the same file. NULL for top-level fields.
+              - column:
+                  name: source_fk_target_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Wire :fk_target_field_id — references another metabase_field_import.source_id. NULL for non-FK fields.
+              # --- clobber payload ---
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Wire :name — field's natural-key name component (within its parent + table).
+              - column:
+                  name: base_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Wire :base_type — clobbered onto metabase_field.base_type on merge.
+              - column:
+                  name: database_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: Wire :database_type — clobbered onto metabase_field.database_type on merge.
+              - column:
+                  name: effective_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: NULL when wire row omitted it (≡ base_type). Importer treats NULL as base_type on INSERT; leaves target alone on UPDATE.
+              - column:
+                  name: semantic_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Wire :semantic_type — clobbered onto metabase_field.semantic_type on merge.
+              - column:
+                  name: coercion_strategy
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: Wire :coercion_strategy — clobbered onto metabase_field.coercion_strategy on merge.
+              - column:
+                  name: description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: Wire :description — clobbered onto metabase_field.description on merge.
+              - column:
+                  name: nfc_path
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: NULL for empty/absent paths, JSON-encoded array string otherwise — same encoding as metabase_field.nfc_path.
+              # --- resolve outputs ---
+              - column:
+                  name: depth
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Populated once after drain by the depth-tagging step. 0 = root (no parent, no fk_target). Higher = max(parent depth, fk_target depth) + 1. NULL after depth-tagging means a cycle in the file's reference graph.
+              - column:
+                  name: target_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Resolved per-depth-level by natural-key match against metabase_field. NULL means no live row matches; row is an insert candidate at this depth.
+              - column:
+                  name: target_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Populated from the table-resolve step before the depth walk starts. Joined-through from metabase_table_import.target_id.
+              - column:
+                  name: target_parent_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Populated per-depth-level by self-join on source_parent_id → another row's target_id.
+              - column:
+                  name: target_fk_target_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: Populated per-depth-level by self-join on source_fk_target_id → another row's target_id.
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:01.1
+      author: galdre
+      comment: Index metabase_field_import.depth for per-level scoping in the depth-walk merge
+      changes:
+        - createIndex:
+            tableName: metabase_field_import
+            indexName: idx_mfi_depth
+            columns:
+              - column:
+                  name: depth
+
+  - changeSet:
+      id: v62.2026-05-08T00:00:01.2
+      author: galdre
+      comment: Index metabase_field_import.target_id for the merge-fields clobber subqueries
+      changes:
+        - createIndex:
+            tableName: metabase_field_import
+            indexName: idx_mfi_target_id
+            columns:
+              - column:
+                  name: target_id

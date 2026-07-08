@@ -1,12 +1,12 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
 import { goBack, push, replace } from "react-router-redux";
 import { match } from "ts-pattern";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
+import type { InjectedRouter, Route } from "metabase/router";
 
-import useBeforeUnload from "./use-before-unload";
+import { useBeforeUnload } from "./use-before-unload";
 
 interface UseConfirmLeaveModalInput {
   router: InjectedRouter;

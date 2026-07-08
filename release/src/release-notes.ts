@@ -253,9 +253,8 @@ export async function publishRelease({
   version,
   owner,
   repo,
-  issues,
   github,
-}: ReleaseProps & { oss_checksum: string, ee_checksum: string, issues: Issue[] }) {
+}: ReleaseProps) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
@@ -266,7 +265,7 @@ export async function publishRelease({
     name: getReleaseTitle(version),
     body: generateReleaseNotes({
       version,
-      issues,
+      issues: [], // we don't actually post any issue data with this template
       template: githubReleaseTemplate,
     }),
     draft: true,
@@ -326,7 +325,7 @@ export async function getChangelog({
   });
 
   return generateReleaseNotes({
-    template: githubReleaseTemplate,
+    template: websiteChangelogTemplate,
     version,
     issues,
   });

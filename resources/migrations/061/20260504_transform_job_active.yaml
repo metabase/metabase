@@ -1,0 +1,23 @@
+## Add active column to transform_job to allow disabling individual jobs
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+  - changeSet:
+      id: v61.2026-05-04T12:00:00
+      author: npfitz
+      comment: Add active column to transform_job
+      changes:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+                  remarks: Whether the job is active. Inactive jobs do not run on schedule.
+      rollback:
+        - dropColumn:
+            tableName: transform_job
+            columnName: active

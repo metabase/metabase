@@ -43,10 +43,12 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -132,7 +134,9 @@
    (mbql-query-impl/parse-tokens table-name `(do ~@body))))
 
 (defmacro mbql-query
-  "Macro for easily building MBQL queries for test purposes.
+  "DEPRECATED: Use Lib to generate MBQL queries instead of hand-rolling legacy MBQL queries in new tests.
+
+  Macro for easily building MBQL queries for test purposes.
 
   *  `$`  = `:field` clause wrapping Field ID
   *  `$$` = table ID
@@ -148,22 +152,25 @@
      complete details.
   *  Wraps 'inner' query with the standard `{:database (data/id), :type :query, :query {...}}` boilerplate
   *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present"
-  {:style/indent :defn}
+  {:style/indent :defn, :deprecated "0.61.0"}
   ([table-name]
    `(mbql-query ~table-name {}))
 
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
+   (assert (not (:type inner-query)) "Should be an inner-query, not an outer query")
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
      (mbql-query-impl/wrap-inner-query <>))))
 
 (defmacro query
-  "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
+  "DEPRECATED: Use Lib to generate MBQL queries instead of hand-rolling legacy MBQL queries in new tests.
+
+  Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
   automatically adds `:database` and `:type` to the top-level 'outer' query, and `:source-table` to the 'inner' MBQL
   query if not present."
-  {:style/indent 1}
+  {:style/indent 1, :deprecated "0.61.0"}
   ([table-name]
    `(query ~table-name {}))
 
@@ -177,13 +184,16 @@
 
 (declare id)
 
-(mu/defn native-query
-  "Like `mbql-query`, but for native queries."
-  [inner-native-query :- [:map
-                          [:query some?]]]
+(mu/defn native-query :- ::mbql.s/Query
+  "DEPRECATED: Use Lib to generate MBQL queries instead of hand-rolling legacy MBQL queries in new tests.
+
+  Like `mbql-query`, but for native queries."
+  [inner-native-query :- :map]
+  {:deprecated "0.61.0"}
+  #_{:clj-kondo/ignore [:deprecated-var]}
   {:database (id)
    :type     :native
-   :native   inner-native-query})
+   :native   (mbql.normalize/normalize ::mbql.s/TopLevelNativeInnerQuery inner-native-query)})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.
@@ -195,9 +205,13 @@
                       e)))))
 
 (defmacro run-mbql-query
-  "Like `mbql-query`, but runs the query as well."
-  {:style/indent :defn}
+  "DEPRECATED: Use Lib to generate MBQL queries and [[metabase.query-processor/process-query]] instead of hand-rolling
+  legacy MBQL queries in new tests.
+
+  Like `mbql-query`, but runs the query as well."
+  {:style/indent :defn, :deprecated "0.61.0"}
   [table-name & [query]]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (def ^:private FormattableName
@@ -234,7 +248,7 @@
 (defn metadata-provider
   "Get a metadata-provider for the current database."
   []
-  (lib.metadata.jvm/application-database-metadata-provider (id)))
+  (lib-be/application-database-metadata-provider (id)))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
@@ -305,10 +319,10 @@
      (mdb/finish-db-setup!)
      ~@body))
 
-;; Non-"normal" timeseries drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
+;; Non-"normal" timeseries drivers are tested in [[metabase.query-processor.timeseries-test]] and elsewhere
 (def timeseries-drivers
   "Drivers that are so weird that we can't use the standard dataset loading against them."
-  #{:druid :druid-jdbc})
+  #{:druid-jdbc})
 
 (mr/def ::driver-selector
   [:map {:closed true}
@@ -342,7 +356,10 @@
     (for [driver (tx.env/test-drivers)
           :let [driver (tx/the-driver-with-test-extensions driver)
                 conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
-                                  (into #{} (map :name (driver/connection-properties driver))))]
+                                  (->> (driver/connection-properties driver)
+                                       driver.u/collect-all-props-by-name
+                                       keys
+                                       (into #{})))]
           :when (driver/with-driver driver
                   (let [the-db (delay (db))]
                     (cond-> true

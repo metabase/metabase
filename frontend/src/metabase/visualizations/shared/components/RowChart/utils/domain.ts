@@ -1,6 +1,6 @@
 import { extent } from "d3";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type {
   ContinuousDomain,
   ContinuousScaleType,

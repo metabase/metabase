@@ -12,7 +12,7 @@ export function DevInstanceBanner() {
   }
 
   return (
-    <Alert icon={<Icon name="info_filled" />}>
+    <Alert icon={<Icon name="info" />}>
       {isHosted && (
         <BannerBody
           copyText={t`This instance is in development mode and can be used for development or testing purposes only.`}

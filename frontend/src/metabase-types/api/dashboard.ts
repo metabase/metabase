@@ -1,4 +1,3 @@
-import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
   BaseEntityId,
   CardDisplayType,
@@ -7,6 +6,8 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   Database,
+  EmbeddingParameters,
+  EmbeddingType,
   Field,
   FieldId,
   Parameter,
@@ -15,16 +16,23 @@ import type {
   ParameterValueOrArray,
   Table,
   UserId,
+  UserInfo,
   VirtualCardDisplay,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type {
   ActionDisplayType,
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId, VisualizationSettings } from "./card";
+import type {
+  Card,
+  CardId,
+  ColumnSettings,
+  VisualizationSettings,
+} from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
@@ -44,6 +52,7 @@ export interface Dashboard {
   entity_id: BaseEntityId;
   created_at: string;
   creator_id: UserId;
+  creator?: UserInfo;
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;
@@ -59,6 +68,7 @@ export interface Dashboard {
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
+  can_set_cache_policy?: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
     id: number;
@@ -73,6 +83,7 @@ export interface Dashboard {
   >;
   auto_apply_filters: boolean;
   archived: boolean;
+  is_remote_synced?: boolean;
   public_uuid: string | null;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
@@ -80,9 +91,11 @@ export interface Dashboard {
   param_fields?: Record<ParameterId, Field[]>;
 
   moderation_reviews: ModerationReview[];
+  view_count?: number;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
+  embedding_type?: EmbeddingType | null;
 
   /* For x-ray dashboards */
   transient_name?: string;
@@ -123,10 +136,20 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type DashboardCardPosition = Pick<
+  DashboardCardLayoutAttrs,
+  "col" | "row"
+>;
+export type DashboardCardSize = Pick<
+  DashboardCardLayoutAttrs,
+  "size_x" | "size_y"
+>;
+
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
   iframe?: string;
+  column_settings?: Record<string, ColumnSettings>;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -276,7 +299,19 @@ export type ListDashboardsResponse = Omit<
 export type GetDashboardRequest = {
   id: DashboardId;
   ignore_error?: boolean;
+  dashboard_load_id?: string;
 };
+
+export type DashboardParameterValuesRequest = {
+  dashId?: DashboardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
+};
+
+export type SearchDashboardParameterValuesRequest =
+  DashboardParameterValuesRequest & {
+    query: string;
+  };
 
 export type CreateDashboardRequest = {
   name: string;
@@ -304,6 +339,7 @@ export type UpdateDashboardRequest = {
     | "tabs"
     | "show_in_getting_started"
     | "enable_embedding"
+    | "embedding_type"
     | "collection_id"
     | "name"
     | "width"
@@ -314,6 +350,19 @@ export type UpdateDashboardRequest = {
 
 export type GetDashboardQueryMetadataRequest = {
   id: DashboardId;
+  dashboard_load_id?: string;
+};
+
+export type DashboardCardQueryRequest = {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  cardId: CardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+  // Sent in the request body (in addition to the path params above) when
+  // querying a saved dashcard, for query provenance/telemetry.
+  dashboard_id?: DashboardId;
   dashboard_load_id?: string;
 };
 
@@ -337,8 +386,9 @@ export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
-  dashboard_id: DashboardId;
-  parameter_id: ParameterId;
+  dashId?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
   value: ParameterValueOrArray;
 };
 

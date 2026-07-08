@@ -26,7 +26,6 @@
         "0 30 17 ? * 6"  "Run weekly on Friday at 5:30 PM UTC"
         "0 0 0 ? * 1"    "Run weekly on Sunday at 12 AM UTC"
         "0 45 14 ? * 4"  "Run weekly on Wednesday at 2:45 PM UTC"))
-
     (testing "falls back to cron->description for complex patterns"
       (are [cron expected] (= expected (channel.shared/friendly-cron-description cron))
         "0 0 12 1-15 * ?"  "Run at 12:00 pm, between day 1 and 15 of the month UTC"
@@ -34,7 +33,6 @@
         "0 0 12 ? * 2,4,6" "Run at 12:00 pm, only on Monday, Wednesday and Friday UTC"
         "0 0 12 L * ?"     "Run at 12:00 pm, on the last day of the month UTC"
         "0 0 12 ? * 2#1"   "Run at 12:00 pm, on the first Monday of the month UTC")))
-
   (mt/with-dynamic-fn-redefs [channel.shared/schedule-timezone (constantly "Asia/Ho_Chi_Minh")]
     (testing "with timezone Asia/Ho_Chi_Minh"
       (is (= "Run hourly Asia/Ho_Chi_Minh" (channel.shared/friendly-cron-description "0 0 * * * ?"))))))

@@ -1,0 +1,397 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { t } from "ttag";
+
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
+import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/private/notifications/SdkQuestionAlertListModal";
+import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
+import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
+import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-sql-parameters";
+import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
+import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
+import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
+import {
+  getError,
+  getIsGuestEmbed,
+  getPlugins,
+  getSessionTokenState,
+} from "embedding-sdk-bundle/store/selectors";
+import type { NavigateToNewCardParams } from "embedding-sdk-bundle/types";
+import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
+import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import {
+  type OnCreateOptions,
+  useCreateQuestion,
+} from "metabase/query_builder/containers/use-create-question";
+import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
+import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+
+import { getLastVisibleStageIndex } from "../utils/stages";
+
+import type { SdkQuestionContextType, SdkQuestionProviderProps } from "./types";
+
+/**
+ * Note: This context should only be used as a wrapper for the SdkQuestionDefaultView
+ * component. The idea behind this context is to allow the SdkQuestionDefaultView component
+ * to use components within the ./components folder, which use the context for display
+ * and functions.
+ * */
+export const SdkQuestionContext = createContext<
+  SdkQuestionContextType | undefined
+>(undefined);
+
+const DEFAULT_OPTIONS = {};
+
+export const SdkQuestionProvider = ({
+  questionId: rawQuestionId,
+  token: rawToken,
+  options = DEFAULT_OPTIONS,
+  deserializedCard,
+  componentPlugins,
+  onNavigateBack,
+  children,
+  onBeforeSave,
+  onSave,
+  onRun,
+  isSaveEnabled = true,
+  entityTypes,
+  dataPicker,
+  targetCollection,
+  initialCollection,
+  initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
+  hiddenParameters,
+  withDownloads,
+  withAlerts,
+  targetDashboardId,
+  backToDashboard,
+  getClickActionMode: userGetClickActionMode,
+  navigateToNewCard: userNavigateToNewCard,
+  onDrillThrough,
+  onVisualizationChange,
+  initialVisualization,
+}: SdkQuestionProviderProps) => {
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const dispatch = useSdkDispatch();
+  const navigation = useSdkInternalNavigationOptional();
+  const [isFirstRender, setIsFirstRender] = useState(true);
+  const { rawToken: tokenFromStore, error: tokenFetchError } =
+    useSdkSelector(getSessionTokenState);
+
+  const effectiveInitialSqlParameters = getEffectiveParameterValues(
+    sqlParameters,
+    initialSqlParameters,
+  );
+
+  // Store token so the refresh handler can check expiry. No need to await — not used here.
+  useEffect(() => {
+    if (rawToken && isGuestEmbed) {
+      dispatch(setInitialGuestToken(rawToken));
+    }
+  }, [rawToken, isGuestEmbed, dispatch]);
+
+  useEffect(() => {
+    setIsFirstRender(false);
+  }, []);
+
+  const {
+    resourceId: questionId,
+    token,
+    tokenError,
+  } = useExtractResourceIdFromJwtToken({
+    isGuestEmbed,
+    resourceId: rawQuestionId,
+    // Skip stale Redux token on first render (e.g. wizard re-issuing a token when toggling parameters); rawToken prop takes precedence.
+    // From the next render onward, tokenFromStore is used and the value is from a refreshed token.
+    token: (!isFirstRender ? tokenFromStore : null) ?? rawToken ?? undefined,
+  });
+
+  useSetupContentTranslations({ token });
+
+  const isNewQuestion = questionId === "new" || questionId === "new-native";
+
+  const error = useSdkSelector(getError);
+
+  const handleCreateQuestion = useCreateQuestion();
+  const handleSaveQuestion = useSaveQuestion();
+
+  const handleSave = async (question: Question) => {
+    if (isSaveEnabled) {
+      const saveContext = { isNewQuestion: false };
+      const sdkQuestion = transformSdkQuestion(question);
+
+      await onBeforeSave?.(sdkQuestion, saveContext);
+      await handleSaveQuestion(question);
+      onSave?.(sdkQuestion, saveContext);
+      await loadAndQueryQuestion();
+    }
+  };
+
+  const handleCreate = async (
+    question: Question,
+    options?: OnCreateOptions,
+  ): Promise<Question> => {
+    if (isSaveEnabled) {
+      const saveContext = {
+        isNewQuestion: true,
+        dashboardTabId: options?.dashboardTabId,
+      };
+      const sdkQuestion = transformSdkQuestion(question);
+
+      await onBeforeSave?.(sdkQuestion, saveContext);
+
+      const createdQuestion = await handleCreateQuestion(question, options);
+      onSave?.(transformSdkQuestion(createdQuestion), saveContext);
+
+      // Set the latest saved question object to update the question title.
+      replaceQuestion(createdQuestion);
+      return createdQuestion;
+    }
+
+    return question;
+  };
+
+  const {
+    question,
+    originalQuestion,
+    parameterValues,
+
+    queryResults,
+
+    isQuestionLoading,
+    isQueryRunning,
+
+    queryQuestion,
+    replaceQuestion,
+    loadAndQueryQuestion,
+    updateQuestion,
+    updateParameterValues,
+    navigateToNewCard,
+  } = useLoadQuestion({
+    questionId,
+    isGuestEmbed,
+    token,
+    options,
+    deserializedCard,
+    initialSqlParameters: effectiveInitialSqlParameters,
+    targetDashboardId,
+    initialVisualization,
+  });
+
+  useWarnConflictingParameterProps({
+    initialParameters: initialSqlParameters,
+    parameters: sqlParameters,
+    initialParameterPropName: "initialSqlParameters",
+    parameterPropName: "sqlParameters",
+  });
+
+  useSdkControlledSqlParameters({
+    sqlParameters,
+    onSqlParametersChange,
+    question,
+    parameterValues: parameterValues ?? {},
+    updateParameterValues,
+  });
+
+  const globalPlugins = useSdkSelector(getPlugins);
+
+  const plugins: MetabasePluginsConfig = useMemo(() => {
+    return { ...globalPlugins, ...componentPlugins };
+  }, [globalPlugins, componentPlugins]);
+
+  const getClickActionMode: ClickActionModeGetter =
+    userGetClickActionMode ??
+    (({ question }: { question: Question }) => {
+      return (
+        question &&
+        getEmbeddingMode({
+          question,
+          queryMode: EmbeddingSdkMode,
+          plugins: plugins as InternalMetabasePluginsConfig,
+        })
+      );
+    });
+
+  const mode = (question && getClickActionMode({ question })) ?? null;
+
+  // Wrap navigateToNewCard to intercept navigation to new card
+  const navigateToNewCardWithDrillThrough = useCallback(
+    async (params: NavigateToNewCardParams) => {
+      if (onDrillThrough) {
+        await onDrillThrough(
+          {
+            drillName: params.drillName,
+            nextCard: params.nextCard,
+          },
+          async () => {
+            await navigateToNewCard?.(params);
+          },
+        );
+      } else {
+        await navigateToNewCard?.(params);
+      }
+    },
+    [navigateToNewCard, onDrillThrough],
+  );
+
+  // Wrap navigateToNewCard to push the virtual entry for the internal navigation system
+  const navigateToNewCardWithSdkInternalNavigation = useCallback(
+    async (params: NavigateToNewCardParams) => {
+      // This actually changes what gets rendered
+      await navigateToNewCardWithDrillThrough(params);
+
+      // Push virtual entry if last entry is NOT already a question drill
+      const currentEntry = navigation?.stack.at(-1);
+      if (currentEntry?.type !== "question-drill") {
+        navigation?.push({
+          type: "question-drill",
+          virtual: true,
+          name: question?.displayName() ?? t`Question`,
+          onPop: () => loadAndQueryQuestion(),
+        });
+      }
+    },
+    [
+      navigateToNewCardWithDrillThrough,
+      navigation,
+      question,
+      loadAndQueryQuestion,
+    ],
+  );
+
+  const query = question?.query();
+  const lastVisibleStageIndex = useMemo(
+    () => getLastVisibleStageIndex(query),
+    [query],
+  );
+
+  const updateAndNormalizeQuestion = useCallback(
+    (nextQuestion: Question, options?: { run?: boolean }) =>
+      updateQuestion(
+        nextQuestion.setQuery(Lib.dropEmptyStages(nextQuestion.query())),
+        options,
+      ),
+    [updateQuestion],
+  );
+
+  const questionContext: SdkQuestionContextType = {
+    originalId: questionId,
+    lastVisibleStageIndex,
+    token,
+    isQuestionLoading,
+    isQueryRunning,
+    resetQuestion: loadAndQueryQuestion,
+    onReset: loadAndQueryQuestion,
+    onNavigateBack,
+    queryQuestion,
+    replaceQuestion,
+    updateQuestion,
+    updateAndNormalizeQuestion,
+    updateParameterValues,
+    navigateToNewCard:
+      userNavigateToNewCard !== undefined
+        ? navigateToNewCardWithDrillThrough
+        : navigateToNewCardWithSdkInternalNavigation,
+    plugins,
+    question,
+    originalQuestion,
+    parameterValues,
+    queryResults,
+    mode,
+    onSave: handleSave,
+    onCreate: handleCreate,
+    isSaveEnabled,
+    targetCollection,
+    initialCollection,
+    withDownloads,
+    withAlerts,
+    onRun,
+    backToDashboard,
+    hiddenParameters,
+    onVisualizationChange,
+  };
+
+  useEffect(() => {
+    if (tokenError) {
+      return;
+    }
+
+    loadAndQueryQuestion();
+  }, [loadAndQueryQuestion, tokenError]);
+
+  // Push the question name to the stack if the stack is empty (ie: this is the root question)
+  // We need to wait for the question to load to have the name
+  useEffect(() => {
+    if (question && navigation && navigation.stack.length === 0) {
+      navigation.push({
+        type: "question",
+        id: questionId ?? null,
+        name: question.displayName() || t`Question`,
+      });
+    }
+  }, [questionId, question, navigation]);
+
+  if (isGuestEmbed && isNewQuestion) {
+    return (
+      <SdkError
+        message={t`You can't explore or save questions in Guest Embed mode`}
+      />
+    );
+  }
+
+  if (tokenError) {
+    return <SdkError message={tokenError} />;
+  }
+
+  if (tokenFetchError) {
+    return <SdkError message={tokenFetchError.message} />;
+  }
+
+  if (error) {
+    return <SdkError message={error.message} />;
+  }
+
+  return (
+    <SdkQuestionContext.Provider value={questionContext}>
+      <EmbeddingEntityContextProvider uuid={null} token={token}>
+        <QuestionAlertModalProvider>
+          <EmbeddingDataPickerContextProvider
+            dataPicker={dataPicker}
+            entityTypes={entityTypes}
+          >
+            {children}
+          </EmbeddingDataPickerContextProvider>
+          <SdkQuestionAlertListModal />
+        </QuestionAlertModalProvider>
+      </EmbeddingEntityContextProvider>
+    </SdkQuestionContext.Provider>
+  );
+};
+
+export const useSdkQuestionContext = () => {
+  const context = useContext(SdkQuestionContext);
+  if (context === undefined) {
+    throw new Error(
+      "useSdkQuestionContext must be used within a SdkQuestionProvider",
+    );
+  }
+  return context;
+};

@@ -50,7 +50,6 @@
             (try (bar {})
                  (catch Exception e (ex-data e))))
         "when we pass bar an invalid shape um/defn throws"))
-
   (testing "invalid output"
     (is (=? {:humanized {:x ["should be an int, got: \"3\""]
                          :y ["missing required key, got: nil"]}}
@@ -86,7 +85,6 @@
 (deftest ^:parallel mu-defn-docstrings
   (testing "docstrings are preserved"
     (is (str/ends-with? (:doc (meta #'boo)) "something very important to remember goes here")))
-
   (testing "no schemas given should work"
     (is (= "Inputs: []\n  Return: :any"
            (:doc (meta #'qux-1))))
@@ -97,7 +95,6 @@
                       ""
                       "  Original docstring."])
            (:doc (meta #'qux-2)))))
-
   (testing "no return schemas given should work"
     (is (= "Inputs: [x :- :int]\n  Return: :any"
            (:doc (meta #'qux-3))))
@@ -108,7 +105,6 @@
                       ""
                       "  Original docstring."])
            (:doc (meta #'qux-4)))))
-
   (testing "no input schemas given should work"
     (is (= "Inputs: []\n  Return: :int"
            (:doc (meta #'qux-5))))
@@ -119,7 +115,6 @@
                       ""
                       "  Original docstring."])
            (:doc (meta #'qux-6)))))
-
   (testing "multi-arity, and varargs doc strings should work"
     (is (= (str/join "\n"
                      ;;v---doc inserts 2 spaces here, it's not misaligned!
@@ -174,14 +169,12 @@
     (testing "returns a simple fn*"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
-          (is (= '(def f
-                    "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
+          (is (= '(def f (clojure.core/fn [] "foo"))
                  (deanon-fn-names expansion))))))
     (testing "returns an instrumented fn"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
-                    "Inputs: []\n  Return: :int"
                     (clojure.core/let
                      [&f (clojure.core/fn f [] "foo")]
                       (clojure.core/fn

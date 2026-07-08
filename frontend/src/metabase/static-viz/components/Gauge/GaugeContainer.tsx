@@ -1,8 +1,8 @@
 import { CHAR_SIZES_FONT_WEIGHT } from "metabase/static-viz/constants/char-sizes";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import type { ColorGetter } from "metabase/ui/colors/types";
 import { truncateText } from "metabase/visualizations/lib/text";
-import type { ColorGetter } from "metabase/visualizations/types";
 
 import Gauge from "./Gauge";
 import {
@@ -89,7 +89,7 @@ export default function GaugeContainer({
           ],
           textAnchor: "middle",
           value: valueFormatter(segmentValue),
-          color: getColor("text-medium"),
+          color: getColor("text-secondary"),
         };
       }
 
@@ -101,7 +101,7 @@ export default function GaugeContainer({
           ],
           textAnchor: "middle",
           value: valueFormatter(segmentValue),
-          color: getColor("text-medium"),
+          color: getColor("text-secondary"),
         };
       }
 
@@ -109,7 +109,7 @@ export default function GaugeContainer({
         position: calculateSegmentLabelPosition(segmentValueAngle),
         textAnchor: calculateSegmentLabelTextAnchor(segmentValueAngle),
         value: valueFormatter(segmentValue),
-        color: getColor("text-medium"),
+        color: getColor("text-secondary"),
       };
     });
 
@@ -138,7 +138,7 @@ export default function GaugeContainer({
             weight: CHAR_SIZES_FONT_WEIGHT,
           },
         ),
-        color: getColor("text-dark"),
+        color: getColor("text-primary"),
       };
     });
 

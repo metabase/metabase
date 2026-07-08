@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -42,18 +43,19 @@
 ;; extensions
 
 ;; Time, UUID types aren't supported by redshift
-(doseq [[base-type database-type] {:type/BigInteger "BIGINT"
-                                   :type/Boolean    "BOOL"
-                                   :type/Date       "DATE"
-                                   :type/DateTime   "TIMESTAMP"
-                                   :type/Decimal    "DECIMAL"
-                                   :type/Float      "FLOAT8"
-                                   :type/Integer    "INTEGER"
+(doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
+                                   :type/Boolean        "BOOL"
+                                   :type/Date           "DATE"
+                                   :type/DateTime       "TIMESTAMP"
+                                   :type/DateTimeWithTZ "TIMESTAMPTZ"
+                                   :type/Decimal        "DECIMAL"
+                                   :type/Float          "FLOAT8"
+                                   :type/Integer        "INTEGER"
                                    ;; Use VARCHAR because TEXT in Redshift is VARCHAR(256)
                                    ;; https://docs.aws.amazon.com/redshift/latest/dg/r_Character_types.html#r_Character_types-varchar-or-character-varying
                                    ;; But don't use VARCHAR(MAX) either because of performance impact
                                    ;; https://docs.aws.amazon.com/redshift/latest/dg/c_best-practices-smallest-column-size.html
-                                   :type/Text       "VARCHAR(1024)"}]
+                                   :type/Text           "VARCHAR(1024)"}]
   (defmethod sql.tx/field-base-type->sql-type [:redshift base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
@@ -64,23 +66,45 @@
 (defn unique-session-schema []
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
+;;; `MB_REDSHIFT_TEST_HOSTS`
+;;;
+;;; We've had lots of problems with Redshift timing out because of too much CPU load on our single cluster in the past;
+;;; instead of continuing to increase the size of the cluster (which doesn't seem to help much) we're switching to a
+;;; handful of smaller clusters, and picking one randomly; there is nothing shared between test runs and no reason they
+;;; all need to be done on a single cluster anyway. Other than the `:host` these are all configured identically with the
+;;; same user, password, and database name.
+
+(defonce ^:private hosts
+  (delay
+    (when-let [hosts (not-empty (tx/db-test-env-var :redshift :hosts))]
+      (str/split hosts #","))))
+
+(defn- random-host
+  "Pick a random host to test against from `MB_REDSHIFT_TEST_HOSTS` if it's set; otherwise fall back to the host in
+  `MB_REDSHIFT_TEST_HOST`."
+  []
+  (u/prog1 (if (seq @hosts)
+             (rand-nth @hosts)
+             (tx/db-test-env-var-or-throw :redshift :host))
+    ;; using println on purpose here for purposes of debugging CI, we can remove in the future when we're happy that
+    ;; multiple hosts works as expected
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "Using Redshift host" (pr-str (first (str/split <> #"\."))))))
+
+(defonce ^:private host (delay (random-host)))
+
 (def db-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db)
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+  (delay {:host                    @host
+          :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
+          :db                      (tx/db-test-env-var :redshift :db "testdb")
+          :user                    (tx/db-test-env-var :redshift :user "metabase_ci")
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (def db-routing-connection-details
-  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
-          :user                    (tx/db-test-env-var-or-throw :redshift :user)
-          :password                (tx/db-test-env-var-or-throw :redshift :password)
-          :schema-filters-type     "inclusion"
-          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+  (delay
+    (assoc @db-connection-details :db (tx/db-test-env-var :redshift :db-routing "dev"))))
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
@@ -88,7 +112,7 @@
     @db-routing-connection-details
     @db-connection-details))
 
-(defmethod sql.tx/create-db-sql         :redshift [& _] nil)
+(defmethod sql.tx/create-db-sql :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
 
 (defmethod sql.tx/pk-sql-type :redshift [_] "INTEGER IDENTITY(1,1)")
@@ -98,7 +122,7 @@
 (defmethod sql.tx/qualified-name-components :redshift [& args]
   (apply tx/single-db-qualified-name-components (unique-session-schema) args))
 
-;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statment to kill all
+;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statement to kill all
 ;; open connections to that DB, which doesn't work with Redshift
 (defmethod ddl/drop-db-ddl-statements :redshift
   [& args]
@@ -164,39 +188,171 @@
                               :unknown-error)))]
         (group-by classify schemas)))))
 
-(defn- delete-old-schemas!
-  "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
-  not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
-  to redshift clusters hitting the max number of tables allowed."
+(defn- classify-isolation-schemas
+  "Classifies workspace isolation schemas by age using a single query. Returns a map:
+   {:expired  schemas older than threshold (safe to delete)
+    :recent   schemas created within threshold (might be from parallel test)}"
+  [^java.sql.Connection conn schemas]
+  (if (empty? schemas)
+    {}
+    (let [threshold    (t/minus (t/instant) (t/hours hours-before-expired-threshold))
+          schema-list  (str/join "," (map #(str "'" % "'") schemas))
+          ;; Use pg_class_info joined with pg_namespace to get oldest object creation time per schema
+          sql          (str "SELECT TRIM(n.nspname) as schema_name, MIN(c.relcreationtime) as oldest "
+                            "FROM pg_class_info c "
+                            "JOIN pg_namespace n ON c.relnamespace = n.oid "
+                            "WHERE TRIM(n.nspname) IN (" schema-list ") "
+                            "GROUP BY n.nspname")
+          schema->time (with-open [stmt (.createStatement conn)
+                                   rset (.executeQuery stmt sql)]
+                         (loop [result {}]
+                           (if (.next rset)
+                             (recur (assoc result
+                                           (.getString rset "schema_name")
+                                           (.getTimestamp rset "oldest")))
+                             result)))]
+      (group-by (fn [schema-name]
+                  (if-let [oldest (get schema->time schema-name)]
+                    (if (t/before? (t/instant oldest) threshold)
+                      :expired
+                      :recent)
+                    ;; Schema not in pg_class_info means no objects - treat as expired
+                    :expired))
+                schemas))))
+
+;;; --------------------------------- Enumeration ----------------------------------
+;;;
+;;; Pure (read-only) classifiers. Call from REPL to preview what cleanup WOULD do:
+;;;
+;;;     (with-open [c (.. (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)
+;;;                       jdbc/get-connection)]
+;;;       (rs-tx/orphan-schemas c))
+;;;     ;; => {:old [...] :expired-cache [...] :expired-isolation [...]}
+
+(defn- orphan-schemas
+  "Classify every schema in the connected Redshift DB into orphan buckets.
+   Returns a map with possibly-empty vectors under each key:
+     :old                 -- pre-current-convention test data schemas
+     :expired-cache       -- model-persistence cache schemas past TTL
+     :lacking-created-at  -- cache schemas with no `cache_info.created-at`
+     :old-style-cache     -- cache schemas without a `cache_info` table at all
+     :expired-isolation   -- workspace-isolation schemas past TTL
+
+   Pure: makes 1-2 catalog queries but does NOT drop anything. Use the
+   `drop-orphan-*!` fns to act on the result."
   [^java.sql.Connection conn]
   (let [{old-convention   :old
-         caches-with-info :cache}    (reduce (fn [acc s]
-                                               (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                                     (update acc :old conj s)
-                                                     (str/starts-with? s "metabase_cache_")
-                                                     (update acc :cache conj s)
-                                                     :else acc))
-                                             {:old [] :cache []}
-                                             (fetch-schemas conn))
-        {:keys [expired
-                old-style-cache
-                lacking-created-at]} (classify-cache-schemas conn caches-with-info)
-        drop-sql                     (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;"
-                                                               schema-name))]
-    ;; don't delete unknown-error and recent.
+         caches-with-info :cache
+         isolation        :isolation} (reduce (fn [acc s]
+                                                (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                                      (update acc :old conj s)
+                                                      (str/starts-with? s "metabase_cache_")
+                                                      (update acc :cache conj s)
+                                                      (driver.u/workspace-isolated-schema? s)
+                                                      (update acc :isolation conj s)
+                                                      :else acc))
+                                              {:old [] :cache [] :isolation []}
+                                              (fetch-schemas conn))
+        {expired-cache      :expired
+         old-style-cache    :old-style-cache
+         lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)
+        {expired-isolation  :expired}            (classify-isolation-schemas conn isolation)]
+    {:old                (vec old-convention)
+     :expired-cache      (vec expired-cache)
+     :old-style-cache    (vec old-style-cache)
+     :lacking-created-at (vec lacking-created-at)
+     :expired-isolation  (vec expired-isolation)}))
+
+(defn- orphan-isolation-users
+  "Enumerate iso users (`mb__isolation_*`) from `pg_user` directly.
+
+   Authoritative source: queries the cluster user catalog rather than deriving
+   from schema names. Catches users whose paired schema was already dropped in
+   a prior partial-cleanup run (DROP SCHEMA succeeded, DROP USER did not), which
+   the schema-derived enumeration misses forever.
+
+   No age filter: `pg_user` does not expose user creation time on Redshift
+   (`usecreatedate` absent, `last_ddl_timestamp` is per-DDL-touch). Caller
+   filters by pairing against live schemas instead -- `init-workspace-isolation!`
+   creates schema BEFORE user, so any iso user without a live schema is a
+   cleanup leak, not a mid-creation race."
+  [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)
+              rs   (.executeQuery stmt "SELECT usename FROM pg_user WHERE usename LIKE 'mb__isolation_%'")]
+    (loop [out []]
+      (if (.next rs)
+        (recur (conj out (.getString rs 1)))
+        out))))
+
+;;; --------------------------------- Destruction ----------------------------------
+
+(defn- drop-orphan-schemas!
+  "Drop every schema classified by [[orphan-schemas]] as expired/old. Per-entry
+  try/catch: never let one orphan block the rest.
+
+  Takes the orphan-map directly so callers can preview-then-drop without
+  re-querying. Caller owns the Statement."
+  [^java.sql.Statement stmt orphans]
+  (let [drop-sql (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
+    (doseq [[k fmt-str] [[:old                "Dropping old data schema: %s"]
+                         [:expired-cache      "Dropping expired cache schema: %s"]
+                         [:lacking-created-at "Dropping cache without created-at info: %s"]
+                         [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]
+                         [:expired-isolation  "Dropping expired workspace isolation schema: %s"]]
+            schema (get orphans k)]
+      (log/infof fmt-str schema)
+      (try
+        (.execute stmt (drop-sql schema))
+        (catch Throwable e
+          (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e)))))))
+
+(defn- drop-orphan-isolation-users!
+  "Drop iso users whose paired schema is no longer live. Callers ([[delete-old-schemas!]])
+   compute the username list AFTER [[drop-orphan-schemas!]] has run, so default-priv
+   dependencies on the user are already gone -- DROP USER should succeed without
+   REVOKE chasing.
+
+   Per-entry try/catch: a lingering grant from a NON-iso schema would block
+   DROP USER, but `grant-workspace-read-access!` issues those against
+   user-named input schemas which the production `destroy-workspace-isolation!`
+   revokes. If production ran, no orphan grants. If it didn't (the case this
+   cleanup catches), the user is dead-state anyway and a logged DROP failure
+   is fine."
+  [^java.sql.Statement stmt iso-usernames]
+  (doseq [iso-username iso-usernames]
+    (log/infof "Dropping expired workspace isolation user: %s" iso-username)
+    (try
+      (.execute stmt (format "DROP USER IF EXISTS \"%s\";" iso-username))
+      (catch Throwable e
+        (log/infof "Failed to drop user %s, skipping: %s" iso-username (ex-message e))))))
+
+(defn- delete-old-schemas!
+  "Remove unneeded schemas + users from redshift. Local databases are thrown
+  away after a test run; shared cloud instances are not. Test runs can leak
+  schemas (persisted models, workspace iso namespaces) and users (workspace
+  iso accounts), leading to clusters hitting the max-tables / max-users limits.
+
+  Glue: thin wrapper that calls the enumerator + droppers in order. To preview
+  from a REPL, call [[orphan-schemas]] / [[orphan-isolation-users]] directly.
+
+  Two-phase: drop schemas first, then re-snapshot live schemas and drop any iso
+  user whose schema is no longer live. Re-snapshotting AFTER the schema drop
+  means expired-iso users (whose schemas just dropped) are included, while
+  mid-creation parallel users (whose schemas exist) are excluded. Single
+  invariant: iso user without live schema = drop."
+  [^java.sql.Connection conn]
+  (let [orphans   (orphan-schemas conn)
+        iso-users (orphan-isolation-users conn)]
     (with-open [stmt (.createStatement conn)]
-      (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
-                                    [expired "Dropping expired cache schema: %s"]
-                                    [lacking-created-at "Dropping cache without created-at info: %s"]
-                                    [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]]
-              schema               collection]
-        (log/infof fmt-str schema)
-        (.execute stmt (drop-sql schema))))))
+      (drop-orphan-schemas! stmt orphans)
+      (let [live-schemas  (into #{} (fetch-schemas conn))
+            users-to-drop (remove live-schemas iso-users)]
+        (drop-orphan-isolation-users! stmt users-to-drop)))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]
     (doseq [^String sql [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (unique-session-schema))
-                         (format "CREATE SCHEMA \"%s\";"  (unique-session-schema))]]
+                         (format "CREATE SCHEMA \"%s\";" (unique-session-schema))]]
       (log/info (u/format-color 'blue "[redshift] %s" sql))
       (.execute stmt sql))))
 
@@ -294,29 +450,49 @@
    ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
    ;; can consider the dataset to already be loaded
    (empty? (:table-definitions dbdef))
-   ;; otherwise, check and make sure the first table in the dbdef has been created.
+   ;; otherwise, probe the first table directly. Retry a few times because fresh connections may be routed to
+   ;; Redshift compute nodes that haven't propagated DDL changes yet (eventual consistency).
    (let [session-schema (unique-session-schema)
          tabledef       (first (:table-definitions dbdef))
-         ;; table-name should be something like test_data_venues
-         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
-     (sql-jdbc.execute/do-with-connection-with-options
-      driver
-      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-      {:write? false}
-      (fn [^java.sql.Connection conn]
-        (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog        (if tx/*use-routing-details*
-                                                        (tx/db-test-env-var :redshift :db-routing)
-                                                        (tx/db-test-env-var :redshift :db))
-                                     #_schema-pattern session-schema
-                                     #_table-pattern  table-name
-                                     #_types          (into-array String ["TABLE"]))]
-          ;; if the ResultSet returns anything we know the table is already loaded.
-          (.next rset)))))))
+         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
+         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
+         probe-sql      (format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)
+         probe!         (fn []
+                          (sql-jdbc.execute/do-with-connection-with-options
+                           driver jdbc-spec {:write? false}
+                           (fn [^java.sql.Connection conn]
+                             (jdbc/query {:connection conn} [probe-sql])
+                             true)))]
+     (try
+       (probe!)
+       (catch com.amazon.redshift.util.RedshiftException e
+         (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+           false
+           (throw e)))
+       (catch Exception e
+         ;; Transient error (timeout, network, etc.) - retry once after a short delay.
+         (log/warnf e "dataset-already-loaded? probe failed for %s.%s, retrying" session-schema table-name)
+         (Thread/sleep 1000)
+         (try
+           (probe!)
+           (catch com.amazon.redshift.util.RedshiftException e2
+             (if (re-find #"relation .* does not exist" (or (ex-message e2) ""))
+               false
+               (throw e2)))))))))
+
+(defmethod driver/database-supports? [:redshift :test/use-fake-sync]
+  [_driver _feature _database]
+  ;; Use real sync in tests on master/release branches to catch sync regressions.
+  ;; Use fake sync in tests on feature branches for speed (~10 min savings per test run).
+  (not (tx/on-master-or-release-branch?)))
+
+(defmethod tx/fake-sync-schema :redshift
+  [_driver]
+  (unique-session-schema))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
-  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
         (doseq [statement [(format "DROP USER IF EXISTS %s;" role-name)
@@ -325,7 +501,7 @@
 
 (defn grant-table-perms-to-roles!
   [driver details roles]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
@@ -341,7 +517,7 @@
 
 (defmethod tx/drop-roles! :redshift
   [driver details roles _user-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
     (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
@@ -349,3 +525,5 @@
                            (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)
                            (format "DROP USER IF EXISTS %s" role-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defmethod sql.tx/generated-column-sql :redshift [_ _] nil)

@@ -27,11 +27,9 @@
               (is (= #{hash-key-1}
                      (into #{}
                            (map :hash_key (t2/select :model/FieldValues :field_id (u/the-id field) :type :advanced)))))
-
               (testing "calling a second time shouldn't create new FieldValues"
                 (params.field-values/get-or-create-field-values! field)
                 (is (= 1 (t2/count :model/FieldValues :field_id (u/the-id field) :type :advanced))))
-
               (testing "changing the impersonation role creates new FieldValues"
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" "impersonation_role_2"}}

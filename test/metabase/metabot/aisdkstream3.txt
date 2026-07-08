@@ -1,0 +1,2 @@
+3:"litellm.ServiceUnavailableError: litellm.MidStreamFallbackError: litellm.APIConnectionError: APIConnectionError: OpenrouterException - Connection closed. Original exception: APIConnectionError: litellm.APIConnectionError: APIConnectionError: OpenrouterException - Connection closed."
+d:{"finishReason":"error","usage":{"promptTokens":0,"completionTokens":0}}

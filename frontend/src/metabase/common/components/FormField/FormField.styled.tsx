@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import type { FieldAlignment, FieldOrientation } from "./types";
 
@@ -31,13 +31,14 @@ interface FieldLabelProps {
 
 export const FieldLabel = styled.label<FieldLabelProps>`
   display: block;
-  color: ${(props) => (props.hasError ? color("error") : color("text-medium"))};
+  color: ${(props) =>
+    props.hasError ? color("feedback-negative") : color("text-secondary")};
   font-size: 0.77rem;
   font-weight: 900;
 `;
 
 export const OptionalTag = styled.span`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.77rem;
   font-weight: 900;
   margin-left: 0.25rem;
@@ -56,27 +57,27 @@ export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
 `;
 
 export const FieldLabelError = styled.span`
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 `;
 
 export const FieldDescription = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-bottom: 0.5rem;
 `;
 
 export const FieldInfoIcon = styled(Icon)`
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-background_page-tertiary-inverse);
   margin-left: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
 export const FieldInfoLabel = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
   margin-left: auto;
   cursor: default;
@@ -97,7 +98,7 @@ export const FieldRoot = styled.div<FieldRootProps>`
 
   &:focus-within {
     ${FieldLabel} {
-      color: var(--mb-color-text-medium);
+      color: var(--mb-color-text-secondary);
     }
 
     ${FieldLabelError} {
@@ -110,5 +111,5 @@ export const FieldTitleActions = styled.div`
   margin-left: auto;
   font-size: 0.77rem;
   font-weight: 900;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

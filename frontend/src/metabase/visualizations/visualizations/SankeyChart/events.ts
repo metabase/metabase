@@ -15,13 +15,9 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type {
-  Card,
-  DatasetColumn,
-  RawSeries,
-  RowValue,
-} from "metabase-types/api";
+import type { Card, RawSeries, RowValue } from "metabase-types/api";
 
 const getSankeyClickData = (
   [
@@ -30,9 +26,8 @@ const getSankeyClickData = (
     },
   ]: RawSeries,
   columnValues: Record<ColumnKey, RowValue>,
-  predicate: (col: DatasetColumn, index: number) => boolean = () => true,
 ) => {
-  return cols.filter(predicate).map((col) => {
+  return cols.map((col) => {
     return {
       col,
       value: columnValues[getColumnKey(col)],
@@ -49,7 +44,10 @@ const isSankeyNodeEvent = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
 ): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
 
-const isNativeQuery = (card: Card) => card.dataset_query?.type === "native";
+const isNativeQuery = (card: Card) => {
+  const question = new Question(card);
+  return question.isNative();
+};
 
 export const createSankeyClickData = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
@@ -65,31 +63,28 @@ export const createSankeyClickData = (
   if (isSankeyNodeEvent(event)) {
     const source = sankeyColumns.source;
     const target = sankeyColumns.target;
+    const columnValues = event.data.hasInputs
+      ? event.data.inputColumnValues
+      : event.data.outputColumnValues;
 
     clickData.column = event.data.hasInputs ? target.column : source.column;
     clickData.value = event.data.rawName;
 
-    clickData.data = getSankeyClickData(
-      rawSeries,
-      event.data.inputColumnValues,
-      (_col, index) => index === source.index || index === target.index,
-    );
+    clickData.data = getSankeyClickData(rawSeries, columnValues);
   } else if (isSankeyEdgeEvent(event)) {
-    if (isNativeQuery(rawSeries[0].card)) {
-      return null;
-    }
-
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);
-    clickData.dimensions = [
-      {
-        column: sankeyColumns.source.column,
-        value: event.data.source,
-      },
-      {
-        column: sankeyColumns.target.column,
-        value: event.data.target,
-      },
-    ];
+    if (!isNativeQuery(rawSeries[0].card)) {
+      clickData.dimensions = [
+        {
+          column: sankeyColumns.source.column,
+          value: event.data.source,
+        },
+        {
+          column: sankeyColumns.target.column,
+          value: event.data.target,
+        },
+      ];
+    }
   }
 
   return clickData;

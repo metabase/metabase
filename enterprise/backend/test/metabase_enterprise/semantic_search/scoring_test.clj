@@ -1,11 +1,11 @@
 (ns metabase-enterprise.semantic-search.scoring-test
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.app-db.core :as mdb]
    [metabase.search.config :as search.config]
    [metabase.test :as mt])
   (:import
@@ -20,6 +20,7 @@
   [doc]
   (merge {:id 123
           :searchable_text (:name doc)
+          :embeddable_text (:name doc)
           :created_at #t "2025-01-01T12:00:00Z"
           :creator_id (mt/user->id :rasta)
           :archived false
@@ -33,7 +34,7 @@
   "Populate the index with the given documents."
   {:style/indent :defn}
   [documents & body]
-  `(with-open [_# (semantic.tu/open-temp-index!)]
+  `(semantic.tu/with-test-db! {:mode :mock-initialized}
      (semantic.tu/upsert-index! (map add-doc-defaults ~documents))
      ~@body))
 
@@ -71,9 +72,9 @@
     (with-index-contents!
       [{:model "card" :id 1 :name "orders"}
        {:model "card" :id 2 :name "unrelated"}
-       {:model "card" :id 3 :name "classified" :searchable_text "available only by court order"}
+       {:model "card" :id 3 :name "classified" :searchable_text "available only by court order" :embeddable_text "available only by court order"}
        {:model "card" :id 4 :name "order"}
-       {:model "card" :id 5 :name "orders, invoices, other stuff", :searchable_text "a verbose description"}
+       {:model "card" :id 5 :name "orders, invoices, other stuff", :searchable_text "a verbose description" :embeddable_text "a verbose description"}
        {:model "card" :id 6 :name "ordering"}]
       (with-redefs [semantic.tu/mock-embeddings {"order"      [0.11 -0.33  0.56 -0.77]
                                                  "orders"     [0.12 -0.34  0.57 -0.78]
@@ -93,6 +94,27 @@
                   ["card" 3 "classified"]]
                  (search-results :rrf "order"))))))))
 
+(deftest semantic-distance-test
+  (mt/with-premium-features #{:semantic-search}
+    ;; Bind embeddings around indexing *and* querying: cosine distance scores the stored doc embedding against the
+    ;; query embedding, so the docs must be indexed with these vectors, not the default fallback.
+    ;; Cosine distance ignores magnitude, so these order purely by direction relative to the query: "near" shares the
+    ;; query's direction (distance 0 -> score 1), "mid" diverges a little, "far" the most. All stay under the 0.7
+    ;; cutoff so every doc survives semantic retrieval.
+    (semantic.tu/with-mock-embeddings {"animal"      [1.0 0.0 0.0 0.0]
+                                       "animal near" [1.0 0.0 0.0 0.0]
+                                       "animal mid"  [1.0 0.5 0.0 0.0]
+                                       "animal far"  [1.0 1.0 0.0 0.0]}
+      (with-index-contents!
+        [{:model "card" :id 1 :name "animal near"}
+         {:model "card" :id 2 :name "animal mid"}
+         {:model "card" :id 3 :name "animal far"}]
+        (testing "Closer cosine distance ranks higher"
+          (is (= [["card" 1 "animal near"]
+                  ["card" 2 "animal mid"]
+                  ["card" 3 "animal far"]]
+                 (search-results :semantic-distance "animal"))))))))
+
 (deftest exact-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -103,6 +125,16 @@
                 ["card" 2 "stop words"]]
                (search-results :exact "the any most of stop words very")))))))
 
+(deftest exact-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales,  Revenue"}
+       {:model "card" :id 2 :name "Sales Revenue Report"}]
+      (testing "Exact matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales,  Revenue"]
+                ["card" 2 "Sales Revenue Report"]]
+               (search-results :exact "sales revenue")))))))
+
 (deftest prefix-test
   (mt/with-premium-features #{:semantic-search}
     (with-index-contents!
@@ -112,6 +144,16 @@
         (is (= [["card" 1 "this is a prefix of something longer"]
                 ["card" 2 "a prefix this is not, unfortunately"]]
                (search-results :prefix "this is a prefix")))))))
+
+(deftest prefix-normalization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-index-contents!
+      [{:model "card" :id 1 :name "Sales, Revenue Quarterly"}
+       {:model "card" :id 2 :name "Revenue and Sales"}]
+      (testing "Prefix matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales, Revenue Quarterly"]
+                ["card" 2 "Revenue and Sales"]]
+               (search-results :prefix "sales revenue")))))))
 
 (deftest pinned-test
   (mt/with-premium-features #{:semantic-search}
@@ -183,10 +225,10 @@
         [{:model "card"      :id 1 :name "view card"      :view_count 0}
          {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
          {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
-        ;; fix some test flakes where dataset 3 exists and has some sort of recent views
-        (semantic.tu/with-weights (assoc (search.config/weights :default)
-                                         :user-recency 0
-                                         :rrf 0)
+        (semantic.tu/with-weights (search.config/weights {:context :default
+                                                          ;; fix some test flakes where dataset 3 exists and has some
+                                                          ;; sort of recent views
+                                                          :weights {:user-recency 0, :rrf 0}})
           (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
                    {:model "card",      :id 1, :name "view card"}
                    {:model "dataset",   :id 3, :name "view dataset"}]
@@ -235,6 +277,56 @@
                 ["collection" 2 "collection official"]]
                (search-results* "collection")))))))
 
+(deftest library-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "Items whose root ancestor collection is a library type rank above non-library items"
+      (with-index-contents!
+        [{:model "card" :id 1 :name "plain card"}
+         {:model "card" :id 2 :name "lib-tree card library"         :root_collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"    :root_collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics" :root_collection_type "library-metrics"}
+         {:model "card" :id 5 :name "trashed card"                  :root_collection_type "trash"}]
+        (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
+          (testing "with positive :library weight, library items come first"
+            (is (= [true true true false false]
+                   (map in-library? (semantic.tu/with-weights {:library 1} (search-results* "card"))))))
+          (testing "with negative :library weight, library items come last"
+            (is (= [false false true true true]
+                   (map in-library? (semantic.tu/with-weights {:library -1} (search-results* "card")))))))))))
+
+(deftest data-layer-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing ":data-layer scorer reads the active per-tier weight via :data-layer/* params"
+      (with-index-contents!
+        [{:model "table" :id 1 :name "table no layer"}
+         {:model "table" :id 2 :name "table final"    :data_layer "final"}
+         {:model "table" :id 3 :name "table internal" :data_layer "internal"}
+         {:model "table" :id 4 :name "table hidden"   :data_layer "hidden"}]
+        (testing "final tables lead when only :data-layer/final is positive"
+          (is (= 2 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/final 1}
+                         (search-results* "table"))
+                       first second))))
+        (testing "internal tables lead when only :data-layer/internal is positive"
+          (is (= 3 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/internal 1}
+                         (search-results* "table"))
+                       first second))))
+        (testing "hidden tables lead when only :data-layer/hidden is positive"
+          (is (= 4 (-> (semantic.tu/with-weights {:data-layer 1 :data-layer/hidden 1}
+                         (search-results* "table"))
+                       first second))))))
+    (testing "tier ordering: final > internal > hidden under :metabot magnitudes"
+      (with-index-contents!
+        [{:model "table" :id 1 :name "foo table final"    :data_layer "final"}
+         {:model "table" :id 2 :name "foo table internal" :data_layer "internal"}
+         {:model "table" :id 3 :name "foo table hidden"   :data_layer "hidden"}]
+        (is (= [1 2 3]
+               (->> (semantic.tu/with-weights {:data-layer          33
+                                               :data-layer/final    1
+                                               :data-layer/internal 0.3
+                                               :data-layer/hidden   0.03}
+                      (search-results* "foo table"))
+                    (map second))))))))
+
 (deftest verified-test
   (with-index-contents!
     [{:model "card" :id 1 :name "card normal" :verified false}
@@ -256,76 +348,88 @@
 
 (deftest bookmark-test
   (mt/with-premium-features #{:semantic-search}
-    ;; TODO (BOT-360) enable for :mysql
-    (when-not (= :mysql (mdb/db-type))
-      (let [crowberto (mt/user->id :crowberto)
-            rasta     (mt/user->id :rasta)]
-        (mt/with-temp [:model/Card {c1 :id} {}
-                       :model/Card {c2 :id} {}]
-          (testing "bookmarked items are ranker higher"
-            (with-index-contents!
-              [{:model "card" :id c1 :name "card normal"}
-               {:model "card" :id c2 :name "card crowberto loved"}]
-              (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
-                             :model/CardBookmark _ {:card_id c1 :user_id rasta}]
-                (is (= [["card" c2 "card crowberto loved"]
-                        ["card" c1 "card normal"]]
-                       (search-results :bookmarked "card" {:current-user-id crowberto})))))))
-
-        (mt/with-temp [:model/Dashboard {d1 :id} {}
-                       :model/Dashboard {d2 :id} {}]
-          (testing "bookmarked dashboard"
-            (with-index-contents!
-              [{:model "dashboard" :id d1 :name "dashboard normal"}
-               {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
-              (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
-                             :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
-                (is (= [["dashboard" d2 "dashboard crowberto loved"]
-                        ["dashboard" d1 "dashboard normal"]]
-                       (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
-
-        (mt/with-temp [:model/Collection {c1 :id} {}
-                       :model/Collection {c2 :id} {}]
-          (testing "bookmarked collection"
-            (with-index-contents!
-              [{:model "collection" :id c1 :name "collection normal"}
-               {:model "collection" :id c2 :name "collection crowberto loved"}]
-              (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
-                             :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
-                (is (= [["collection" c2 "collection crowberto loved"]
-                        ["collection" c1 "collection normal"]]
-                       (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))))
+    (let [crowberto (mt/user->id :crowberto)
+          rasta     (mt/user->id :rasta)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/Card {c2 :id} {}]
+        (testing "bookmarked items are ranker higher"
+          (with-index-contents!
+            [{:model "card" :id c1 :name "card normal"}
+             {:model "card" :id c2 :name "card crowberto loved"}]
+            (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
+                           :model/CardBookmark _ {:card_id c1 :user_id rasta}]
+              (is (= [["card" c2 "card crowberto loved"]
+                      ["card" c1 "card normal"]]
+                     (search-results :bookmarked "card" {:current-user-id crowberto})))))))
+      (mt/with-temp [:model/Dashboard {d1 :id} {}
+                     :model/Dashboard {d2 :id} {}]
+        (testing "bookmarked dashboard"
+          (with-index-contents!
+            [{:model "dashboard" :id d1 :name "dashboard normal"}
+             {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
+            (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
+                           :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
+              (is (= [["dashboard" d2 "dashboard crowberto loved"]
+                      ["dashboard" d1 "dashboard normal"]]
+                     (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
+      (mt/with-temp [:model/Collection {c1 :id} {}
+                     :model/Collection {c2 :id} {}]
+        (testing "bookmarked collection"
+          (with-index-contents!
+            [{:model "collection" :id c1 :name "collection normal"}
+             {:model "collection" :id c2 :name "collection crowberto loved"}]
+            (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
+                           :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
+              (is (= [["collection" c2 "collection crowberto loved"]
+                      ["collection" c1 "collection normal"]]
+                     (search-results :bookmarked "collection" {:current-user-id crowberto}))))))))))
 
 (deftest user-recency-test
   (mt/with-premium-features #{:semantic-search}
-    ;; TODO (BOT-360) enable for :mysql
-    (when-not (= :mysql (mdb/db-type))
-      (let [user-id     (mt/user->id :crowberto)
-            right-now   (Instant/now)
-            long-ago    (.minus right-now 10 ChronoUnit/DAYS)
-            forever-ago (.minus right-now 30 ChronoUnit/DAYS)
-            recent-view (fn [model-id timestamp]
-                          {:model     "card"
-                           :model_id  model-id
-                           :user_id   user-id
-                           :timestamp timestamp})]
-        (mt/with-temp [:model/Card        {c1 :id} {}
-                       :model/Card        {c2 :id} {}
-                       :model/Card        {c3 :id} {}
-                       :model/Card        {c4 :id} {}
-                       :model/RecentViews _ (recent-view c1 forever-ago)
-                       :model/RecentViews _ (recent-view c2 right-now)
-                       :model/RecentViews _ (recent-view c2 forever-ago)
-                       :model/RecentViews _ (recent-view c4 forever-ago)
-                       :model/RecentViews _ (recent-view c4 long-ago)]
-          (with-index-contents!
-            [{:model "card"    :id c1 :name "card ancient"}
-             {:model "metric"  :id c2 :name "card recent"}
-             {:model "dataset" :id c3 :name "card unseen"}
-             {:model "dataset" :id c4 :name "card old"}]
-            (testing "We prefer results more recently viewed by the current user"
-              (is (= [["metric"  c2 "card recent"]
-                      ["dataset" c4 "card old"]
-                      ["card"    c1 "card ancient"]
-                      ["dataset" c3 "card unseen"]]
-                     (search-results :user-recency "card" {:current-user-id user-id}))))))))))
+    (let [user-id     (mt/user->id :crowberto)
+          right-now   (Instant/now)
+          long-ago    (.minus right-now 10 ChronoUnit/DAYS)
+          forever-ago (.minus right-now 30 ChronoUnit/DAYS)
+          recent-view (fn [model-id timestamp]
+                        {:model     "card"
+                         :model_id  model-id
+                         :user_id   user-id
+                         :timestamp timestamp})]
+      (mt/with-temp [:model/Card        {c1 :id} {}
+                     :model/Card        {c2 :id} {}
+                     :model/Card        {c3 :id} {}
+                     :model/Card        {c4 :id} {}
+                     :model/RecentViews _ (recent-view c1 forever-ago)
+                     :model/RecentViews _ (recent-view c2 right-now)
+                     :model/RecentViews _ (recent-view c2 forever-ago)
+                     :model/RecentViews _ (recent-view c4 forever-ago)
+                     :model/RecentViews _ (recent-view c4 long-ago)]
+        (with-index-contents!
+          [{:model "card"    :id c1 :name "card ancient"}
+           {:model "metric"  :id c2 :name "card recent"}
+           {:model "dataset" :id c3 :name "card unseen"}
+           {:model "dataset" :id c4 :name "card old"}]
+          (testing "We prefer results more recently viewed by the current user"
+            (is (= [["metric"  c2 "card recent"]
+                    ["dataset" c4 "card old"]
+                    ["card"    c1 "card ancient"]
+                    ["dataset" c3 "card unseen"]]
+                   (search-results :user-recency "card" {:current-user-id user-id})))))))))
+
+(deftest transform-user-recency-test
+  (testing "Transforms get a hard-coded intermediate user-recency score since view events are not tracked"
+    (let [user-id (mt/user->id :crowberto)
+          right-now (Instant/now)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/RecentViews _ {:model "card" :model_id c1 :user_id user-id :timestamp right-now}]
+        (with-index-contents!
+          [{:model "card" :id c1 :name "recently viewed card"}
+           {:model "transform" :id 1 :name "transform no views"}
+           {:model "card" :id 2 :name "never viewed card"}]
+          (testing "Transform ranks between recently viewed and never viewed cards"
+            (let [results (search-results :user-recency "card" {:current-user-id user-id})]
+              (def results results)
+              (is (= [["card" c1 "recently viewed card"]
+                      ["transform" 1 "transform no views"]
+                      ["card" 2 "never viewed card"]]
+                     results)))))))))

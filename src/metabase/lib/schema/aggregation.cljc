@@ -1,10 +1,12 @@
 (ns metabase.lib.schema.aggregation
+  (:refer-clojure :exclude [some #?(:clj doseq)])
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some #?(:clj doseq)]]))
 
 ;; count has an optional expression arg. This is the number of non-NULL values -- corresponds to count(<expr>) in SQL
 (mbql-clause/define-catn-mbql-clause :count :- :type/Integer
@@ -121,17 +123,20 @@
              :cum-sum
              :sum-where
              :var
-             :metric]]
+             :metric
+             :measure]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
 (defn- aggregation-expression?
   "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
   a single aggregation clause."
   [x]
-  (when-let [[tag _opts & args] (and (vector? x) x)]
+  (when-let [[tag _opts & args] (when (vector? x) x)]
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
         ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
-        (if (= :case tag)
+        ;;
+        ;; `:if` is an alias for `:case`
+        (if (#{:case :if} tag)
           (or (some aggregation-expression? (ffirst args))
               (some aggregation-expression? (fnext args)))
           (some aggregation-expression? args)))))
@@ -140,11 +145,45 @@
   [:and
    [:ref :metabase.lib.schema.mbql-clause/clause]
    [:fn
-    {:error/message "Valid aggregation clause"}
+    {:error/message #(i18n/tru "Aggregations should contain at least one aggregation function.")
+     :error/friendly true}
     aggregation-expression?]])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])
+
+(defn- has-unaggregated-ref?
+  "Checks if `x` contains a column reference that is not wrapped in an aggregation
+  function, e.g. the `[:field 2]` in `[:+ [:sum [:field 1]] [:field 2]]`."
+  [x]
+  (when (vector? x)
+    (let [[tag _opts & args] x]
+      (cond
+        (#{:field :expression} tag)
+        true
+
+        (lib.hierarchy/isa? tag ::aggregation-clause-tag)
+        false
+
+        ;; case/if conditions can reference unaggregated refs, we
+        ;; only need to check the result branches are aggregated
+        (#{:case :if} tag)
+        (let [[pairs default] args]
+          (boolean (or (some (fn [[_cond expr]] (has-unaggregated-ref? expr)) pairs)
+                       (has-unaggregated-ref? default))))
+
+        :else
+        (boolean (some has-unaggregated-ref? args))))))
+
+(mr/def ::aggregation-with-no-unaggregated-refs
+  "Stricter variant of ::aggregation used for query builder verification. Not enforced
+  on whole queries, so saved questions with unaggregated fields keep working."
+  [:and
+   [:ref ::aggregation]
+   [:fn
+    {:error/message #(i18n/tru "Fields in custom aggregations must be wrapped with a function like Sum.")
+     :error/friendly true}
+    (complement has-unaggregated-ref?)]])
 
 (def aggregation-operators
   "The list of available aggregation operator.

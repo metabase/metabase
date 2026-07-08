@@ -20,10 +20,15 @@ const mockPreviewResponse: PreviewDatabaseReplicationResponse = {
   totalEstimatedRowCount: 500000,
 };
 
+type SetupOpts = {
+  previewResponse?: RouteResponse;
+  createResponse?: RouteResponse;
+};
+
 const setup = async ({
-  previewResponse = mockPreviewResponse as RouteResponse,
-  createResponse = {} as RouteResponse,
-} = {}) => {
+  previewResponse = mockPreviewResponse,
+  createResponse = {},
+}: SetupOpts = {}) => {
   const database = createMockDatabase({ id: 1, name: "Test Database" });
 
   fetchMock.post(

@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Requires: BASE_REF, CURRENT_VERSION (for master)
+# Optional: PR_LABELS (comma-separated, for backport handling)
+
+if [[ -z "${BASE_REF:-}" ]]; then
+    echo "ERROR: BASE_REF is not set." >&2
+    exit 1
+fi
+
+# No format validation on BASE_REF — it comes from GitHub Actions (github.event.pull_request.base.ref),
+# and we don't want to be opinionated about branch naming conventions.
+
+# Ensure origin/${BASE_REF} is reachable
+if ! git rev-parse "origin/${BASE_REF}" >/dev/null 2>&1; then
+    git fetch --depth=1 origin -- "$BASE_REF" || {
+        echo "ERROR: Could not resolve origin/${BASE_REF}" >&2
+        exit 1
+    }
+fi
+
+echo "BASE_REF: ${BASE_REF}"
+
+# Determine the expected version and constraint
+if [[ "$BASE_REF" =~ ^release-x\.([0-9]+)\.x$ ]]; then
+    constraint="<="
+    version="${BASH_REMATCH[1]}"
+elif [[ "$BASE_REF" == "master" ]]; then
+    labels="${PR_LABELS:-}"
+
+    if [[ -z "${CURRENT_VERSION:-}" ]]; then
+        echo "ERROR: CURRENT_VERSION is not set." >&2
+        exit 1
+    fi
+    if ! [[ "$CURRENT_VERSION" =~ ^[1-9][0-9]*$ ]]; then
+        echo "ERROR: CURRENT_VERSION must be a positive integer, got: '${CURRENT_VERSION}'" >&2
+        exit 1
+    fi
+    echo "CURRENT_VERSION: ${CURRENT_VERSION}"
+
+    matches=0
+    for l in backport double-backport triple-backport; do
+        if [[ ",$labels," == *",$l,"* ]]; then
+            # N.B. not ((matches++)) — that exits 1 when matches=0 under set -e
+            matches=$((matches + 1))
+        fi
+    done
+
+    constraint="="
+    version=$((CURRENT_VERSION + 1))
+    # Backport labels shift the target version back so migrations land on the correct release branch.
+    [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
+    [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1))
+    [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2))
+
+    [[ $matches -gt 1 ]] && echo "NOTE: Multiple backport labels detected; using the earliest version (v${version})." >&2
+else
+    echo "Target branch '${BASE_REF}' is not master or a release branch — skipping."
+    exit 0
+fi
+
+expected_dir=$(printf "%03d" "$version")
+echo "Expected directory: ${constraint} ${expected_dir}"
+echo ""
+
+# Check that new migration files are in the correct directory
+changed_files=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}..HEAD" -- 'resources/migrations/**/*.yaml') || {
+    echo "ERROR: git diff failed — could not compare against origin/${BASE_REF}" >&2
+    exit 1
+}
+
+if [[ -z "$changed_files" ]]; then
+    echo "No new migration files changed."
+    exit 0
+fi
+
+errors=0
+while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9][0-9]*\)/.*|\1|p')
+    [[ -z "$dir" ]] && continue
+    dir_version=$((10#$dir))
+    dir=$(printf "%03d" "$dir_version")
+
+    if [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
+        [[ "$constraint" == "<=" && "$dir_version" -gt "$version" ]]; then
+        echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
+        errors=$((errors + 1))
+    fi
+done <<<"$changed_files"
+
+if [[ "$errors" -gt 0 ]]; then
+    echo "" >&2
+    echo "${errors} error(s) found." >&2
+    echo "" >&2
+    echo "Why: Migration files must be in the directory matching the target release version." >&2
+    echo "A misplaced migration misrepresents when it was introduced and will break downgrades spanning more than one version." >&2
+    echo "" >&2
+    if [[ "$constraint" == "<=" ]]; then
+        echo "To fix: move the file(s) to resources/migrations/${expected_dir}/ or any earlier version directory." >&2
+    else
+        echo "To fix: move the file(s) to resources/migrations/${expected_dir}/." >&2
+    fi
+    echo "" >&2
+    echo "If this PR will be backported, ensure the correct backport label is applied" >&2
+    echo "(backport, double-backport, or triple-backport) and re-run CI, even if you" >&2
+    echo "plan to create the backport PRs manually. Base the label on the oldest" >&2
+    echo "release you're targeting, and simply close any unwanted PRs." >&2
+    echo "" >&2
+    echo "If you are backporting more than 3 releases back, or this is an exceptional" >&2
+    echo "circumstance, you will need to either update this script or force merge." >&2
+    exit 1
+fi
+
+echo "All new migration files are in the correct directory."

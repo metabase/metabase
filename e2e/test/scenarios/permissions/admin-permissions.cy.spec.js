@@ -58,14 +58,14 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     cy.intercept("PUT", "/api/permissions/graph", (req) => {
       req.reply(500, "Server error");
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save changes").click();
     cy.contains("button", "Yes").click();
 
     // see error modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Server error");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("There was an error saving");
   });
 
@@ -88,7 +88,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       H.modal().should("not.exist");
 
       // Switching to data permissions page
-      cy.get("label").contains("Data").click();
+      cy.findByRole("tab", { name: "Data" }).click();
 
       H.modal().within(() => {
         cy.findByText("Discard your changes?");
@@ -102,7 +102,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.url().should("include", "/admin/permissions/collections/root");
 
       // Switching to data permissions page again
-      cy.get("label").contains("Data").click();
+      cy.findByRole("tab", { name: "Data" }).click();
 
       H.modal().button("Discard changes").click();
 
@@ -186,7 +186,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.button("Yes").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save changes").should("not.exist");
 
       H.assertPermissionTable([
@@ -200,7 +200,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
   });
 
-  it("don't propagate permissions by checkbox without access select", () => {
+  it("don't propagate permissions after turning off 'Also change sub-collections' toggle (#30494)", () => {
     cy.visit("/admin/permissions/collections");
 
     const collections = ["Our analytics", "First collection"];
@@ -224,14 +224,14 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       "All Users",
       COLLECTION_ACCESS_PERMISSION_INDEX,
       "View",
-      false,
+      true, // Turn 'Also change sub-collections' toggle on
     );
 
     H.modifyPermission(
       "All Users",
       COLLECTION_ACCESS_PERMISSION_INDEX,
       null,
-      true,
+      false, // Turn 'Also change sub-collections' toggle off
     );
 
     // Navigate to children
@@ -278,17 +278,17 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         "Query builder and native",
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You've made changes to permissions.");
 
       // Switching to databases focus should not show any warnings
-      cy.get("label").contains("Databases").click();
+      cy.findByRole("tab", { name: "Databases" }).click();
 
       cy.url().should("include", "/admin/permissions/data/database");
       H.modal().should("not.exist");
 
       // Switching to collection permissions page
-      cy.get("label").contains("Collection").click();
+      cy.findByRole("tab", { name: "Collections" }).click();
 
       H.modal().within(() => {
         cy.findByText("Discard your changes?");
@@ -302,7 +302,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.url().should("include", "/admin/permissions/data/database");
 
       // Switching to collection permissions page again
-      cy.get("label").contains("Collection").click();
+      cy.findByRole("tab", { name: "Collections" }).click();
 
       H.modal().button("Discard changes").click();
 
@@ -310,11 +310,11 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
 
     context("group focused view", () => {
-      it("shows filterable list of groups", { tags: "@flaky" }, () => {
+      it("shows filterable list of groups", () => {
         cy.visit("/admin/permissions");
 
         // no groups selected initially and it shows an empty state
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Select a group to see its data permissions");
 
         const groups = [
@@ -338,9 +338,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           "readonly",
         ];
 
-        // client filter debounce
-        cy.wait(300);
-
+        cy.findAllByRole("menuitem").should(
+          "have.length",
+          filteredGroups.length,
+        );
         H.assertSidebarItems(filteredGroups);
       });
 
@@ -354,9 +355,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           `/admin/permissions/data/group/${ADMIN_GROUP}`,
         );
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Permissions for the Administrators group");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1 person");
 
         H.assertPermissionTable([
@@ -421,7 +422,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
             groups: {},
             revision: data.response.body.revision,
           }).then(() => {
-            cy.get("label").contains("Databases").click();
+            cy.findByRole("tab", { name: "Databases" }).click();
             H.selectSidebarItem("Sample Database");
 
             H.modal().findByText("Someone just changed permissions");
@@ -482,7 +483,7 @@ describe("scenarios > admin > permissions", () => {
     cy.signIn("nodata");
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });
@@ -494,6 +495,8 @@ describe("scenarios > admin > permissions", () => {
   });
 
   it("shows permissions help", () => {
+    // pro-token because some help sections are hidden for OSS
+    H.activateToken("pro-self-hosted");
     cy.visit("/admin/permissions");
 
     // Data permissions w/o `legacy-no-self-service` in graph
@@ -577,7 +580,7 @@ describe("scenarios > admin > permissions", () => {
     });
   });
 
-  it("should show a dismissable modal and banner showing split permisson changes (#metabase#45073", () => {
+  it("should show a dismissable modal and banner showing split permission changes (#metabase#45073", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
     // we set them to false and ensure a modal is shown explaining the new permissions structure
@@ -629,7 +632,7 @@ describe("scenarios > admin > permissions", () => {
     cy.findByRole("alert").should("not.exist");
   });
 
-  it("split permisson change modal should dismiss even if network request fails", () => {
+  it("split permission change modal should dismiss even if network request fails", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
     // we set them to false and ensure a modal is shown explaining the new permissions structure
@@ -717,7 +720,7 @@ describe("scenarios > admin > permissions", () => {
         "All Users",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "View",
-        true,
+        false,
       );
 
       cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
@@ -740,7 +743,7 @@ describe("scenarios > admin > permissions", () => {
         "nosql",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "Curate",
-        true,
+        false,
       );
 
       cy.button("Save changes").click();

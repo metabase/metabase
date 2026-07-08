@@ -4,15 +4,14 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Button, Flex, Modal, type ModalProps, Stack, Text } from "metabase/ui";
-import { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
+import type { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
 import { CopyScimInput } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";
 
 type BaseUserProvisiongModalProps = Pick<ModalProps, "opened" | "onClose">;
 
-interface UserProvisioningFirstEnabledModalProps
-  extends BaseUserProvisiongModalProps {
+interface UserProvisioningFirstEnabledModalProps extends BaseUserProvisiongModalProps {
   scimBaseUrl: string;
   unmaskedScimToken: string;
   scimError: any;
@@ -34,7 +33,7 @@ export const UserProvisioningFirstEnabledModal = ({
       title={t`Here's what you'll need to set SCIM up`}
     >
       <Stack gap="lg">
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {t`To set up SCIM-based provisioning, you'll need to share this endpoint URL and token with your identity provider.`}
         </Text>
         <CopyScimInput label={t`SCIM endpoint URL`} value={scimBaseUrl} />
@@ -60,27 +59,35 @@ export const UserProvisioningFirstEnabledModal = ({
   );
 };
 
-interface UserProvisioningRegenerateTokenModalsProps
-  extends BaseUserProvisiongModalProps {}
+type RegenerateMutation = ReturnType<typeof useRegenerateScimTokenMutation>;
+
+type UserProvisioningRegenerateTokenModalsProps =
+  BaseUserProvisiongModalProps & {
+    regenerateToken: RegenerateMutation[0];
+    regenerateTokenReq: RegenerateMutation[1];
+  };
 
 export const UserProvisioningRegenerateTokenModal = ({
   opened,
   onClose,
+  regenerateToken,
+  regenerateTokenReq,
 }: UserProvisioningRegenerateTokenModalsProps) => {
   const [confirmed, setConfirmed] = useState(false);
-  const [regenerateToken, regenerateTokenReq] =
-    useRegenerateScimTokenMutation();
 
+  // Don't reset the mutation on close — the parent form needs the error to persist.
   useEffect(() => {
     if (!opened) {
       setConfirmed(false);
-      regenerateTokenReq.reset();
     }
-  }, [opened, regenerateTokenReq]);
+  }, [opened]);
 
   const handleConfirmRegenerate = async () => {
     setConfirmed(true);
-    await regenerateToken();
+    const result = await regenerateToken();
+    if ("error" in result && result.error) {
+      onClose();
+    }
   };
 
   if (!confirmed) {
@@ -89,10 +96,10 @@ export const UserProvisioningRegenerateTokenModal = ({
         opened={opened}
         onClose={onClose}
         title={t`Regenerate token?`}
-        // eslint-disable-next-line no-literal-metabase-strings -- admin settings
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin settings
         message={t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
         confirmButtonText={t`Regenerate now`}
-        confirmButtonProps={{ variant: "filled", color: "brand" }}
+        confirmButtonProps={{ variant: "filled", color: "core-brand" }}
         onConfirm={handleConfirmRegenerate}
       />
     );

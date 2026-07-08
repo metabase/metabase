@@ -253,26 +253,21 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it(
-          "1st stage implicit join (joined data source)",
-          { tags: "@skip" },
-          () => {
-            QSHelpers.setup1stStageImplicitJoinFromJoinFilter();
+        it("1st stage implicit join (joined data source)", () => {
+          QSHelpers.setup1stStageImplicitJoinFromJoinFilter();
 
-            QSHelpers.verifyDashcardCellValues({
-              dashcardIndex: 0,
-              values: ["4,447", "17,714"],
-            });
+          QSHelpers.verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["4,447", "17,714"],
+          });
 
-            QSHelpers.goBackToDashboard();
+          QSHelpers.goBackToDashboard();
 
-            QSHelpers.verifyDashcardCellValues({
-              dashcardIndex: 1,
-              values: ["4,447", "17,714"],
-            });
-          },
-        );
+          QSHelpers.verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["4,447", "17,714"],
+          });
+        });
 
         it("1st stage custom column", () => {
           QSHelpers.setup1stStageCustomColumnFilter();
@@ -306,8 +301,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage breakout", { tags: "@skip" }, () => {
+        it("1st stage breakout", () => {
           QSHelpers.setup1stStageBreakoutFilter();
 
           QSHelpers.verifyDashcardCellValues({

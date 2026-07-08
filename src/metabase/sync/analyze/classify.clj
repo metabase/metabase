@@ -23,10 +23,11 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -110,29 +111,30 @@
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
   things like inferring (and setting) the semantic types and preview display status for Fields belonging to `table`."
   [table :- i/TableInstance]
-  (let [table-id (:id table)]
-    (when-let [fields (fields-to-classify table)]
-      (let [existing-name-field (t2/count :model/Field
-                                          :table_id table-id
-                                          :active true
-                                          :visibility_type [:not-in ["sensitive" "retired"]]
-                                          :semantic_type :type/Name)
-            {:keys [fields-failed]}
-            (reduce (fn [state field]
-                      (let [result (classify! field state)]
-                        (cond-> state
-                          (instance? Exception result)
-                          (update :fields-failed inc)
+  (tracing/with-span :sync "sync.classify.fields" {:sync/table (:name table)}
+    (let [table-id (:id table)]
+      (when-let [fields (fields-to-classify table)]
+        (let [existing-name-field (t2/count :model/Field
+                                            :table_id table-id
+                                            :active true
+                                            :visibility_type [:not-in ["sensitive" "retired"]]
+                                            :semantic_type :type/Name)
+              {:keys [fields-failed]}
+              (reduce (fn [state field]
+                        (let [result (classify! field state)]
+                          (cond-> state
+                            (instance? Exception result)
+                            (update :fields-failed inc)
 
-                          (= :type/Name (:semantic_type result))
-                          (assoc :exists-name true))))
-                    {:fields-failed 0 :exists-name (pos? existing-name-field)}
-                    fields)]
-        {:fields-classified (count fields)
-         :fields-failed fields-failed}))))
+                            (= :type/Name (:semantic_type result))
+                            (assoc :exists-name true))))
+                      {:fields-failed 0 :exists-name (pos? existing-name-field)}
+                      fields)]
+          {:fields-classified (count fields)
+           :fields-failed fields-failed})))))
 
 (mu/defn ^:always-validate classify-table!
-  "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
+  "Run various classifiers on the `table`. These do things like inferring (and setting) entity type of `table`."
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))

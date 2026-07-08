@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionsEndpoints,
@@ -14,18 +13,19 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import {
   createMockCollectionItem,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",
@@ -36,7 +36,6 @@ const TEST_SEARCH_RESULTS: CollectionItem[] = [
   createMockCollectionItem({
     name,
     id: index + 1,
-    getUrl: () => "/",
   }),
 );
 

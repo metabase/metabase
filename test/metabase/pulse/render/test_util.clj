@@ -12,17 +12,36 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.test :as qp]
    [toucan2.core :as t2])
   (:import
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayOutputStream)
+   (javax.imageio ImageIO)
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
    (org.apache.batik.dom GenericText)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
+
+(defn blank-tile-png
+  "A blank 256×256 PNG tile, as bytes — a stand-in basemap tile for static map render tests."
+  ^bytes []
+  (let [img (BufferedImage. 256 256 BufferedImage/TYPE_INT_RGB)
+        out (ByteArrayOutputStream.)]
+    (ImageIO/write img "png" out)
+    (.toByteArray out)))
+
+(defn fake-tile-routes
+  "clj-http fake-routes map serving [[blank-tile-png]] for any tile URL matching `url-pattern`."
+  [url-pattern]
+  {url-pattern (constantly {:status  200
+                            :headers {}
+                            :body    (blank-tile-png)})})
 
 (def test-card
   {:id 1
@@ -92,10 +111,10 @@
 
 (defn- img-node-with-svg?
   [loc]
-  (let [[tag {:keys [src]}] (zip/node loc)]
-    (and
-     (= tag :img)
-     (str/starts-with? src "<svg"))))
+  (let [[tag attrs] (zip/node loc)]
+    (and (= tag :img)
+         (map? attrs)
+         (some-> ^String (:src attrs) (str/starts-with? "<svg")))))
 
 (def ^:private parse-svg #'js.svg/parse-svg-string)
 
@@ -182,7 +201,8 @@
   ([dashcard-id parameters]
    (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
          card                      (t2/select-one :model/Card :id (:card_id dashcard))
-         {:keys [result dashcard]} (notification.execute/execute-dashboard-subscription-card dashcard parameters)]
+         {:keys [result dashcard]} (channel.shared/maybe-realize-data-rows
+                                    (notification.execute/execute-dashboard-subscription-card dashcard parameters))]
      (with-redefs [js.svg/svg-string->bytes       identity
                    image-bundle/make-image-bundle (fn [_ s]
                                                     {:image-src   s

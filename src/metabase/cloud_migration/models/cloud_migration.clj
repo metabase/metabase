@@ -181,7 +181,12 @@
                           {:form-params  {:part_count (count parts)}
                            :content-type :json})
                 :body
-                json/decode+kw)
+                json/decode+kw
+                ;; This endpoint, and only this one in this ns, needs a backwards and forward compatible
+                ;; key conversion. This can be removed when Harbormaster does only underscores in the API,
+                ;; and the keys above (multipart-upload-id multipart-urls) renamed to use underscores.
+                ;; But it can also stay here indefinitely and will be correct.
+                u/deep-kebab-keys)
 
             etags
             (->> parts
@@ -209,7 +214,7 @@
   Will exit early if migration has been cancelled in any cluster instance.
   Should run in a separate thread since it can take a long time to complete."
   [{:keys [id external_id] :as migration} & {:keys [retry?]}]
-  ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
+  ;; dump-to-h2 starts behaving oddly if you try to dump repeatedly to the same file
   ;; in the same process, so use a random name.
   ;; The docker image process runs in non-root, so write to a dir it can access.
   (let [dump-file (io/file (System/getProperty "java.io.tmpdir")
@@ -217,7 +222,6 @@
     (try
       (when retry?
         (t2/update! :model/CloudMigration :id id {:state :init}))
-
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
@@ -226,7 +230,6 @@
         (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
       (log/info "Stopping scheduler")
       (task/stop-scheduler!)
-
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
       (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
@@ -234,26 +237,22 @@
         (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
                         {:id id})))
       (cloud-migration.settings/read-only-mode! false)
-
       (log/info "Uploading dump to store")
       (set-progress id :upload 50)
       (upload migration dump-file)
-
       (log/info "Notifying store that upload is done")
       (http/put (migration-url external_id "/uploaded"))
-
       ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
       ;; after finishing the dump to h2 migration
       (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
       (log/info "Restarting scheduler")
       (task/start-scheduler!)
-
       (log/info "Migration finished")
       (set-progress id :done 100)
       (catch Exception e
         ;; See set-progress for when :terminal is set.
         (if (-> e ex-data :terminal)
-          (log/info "Migration interruped due to terminal state")
+          (log/info "Migration interrupted due to terminal state")
           (do
             (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")

@@ -1,9 +1,10 @@
 import { renderWithProviders, waitFor } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import * as domUtils from "metabase/utils/dom";
+import * as iframeUtils from "metabase/utils/iframe";
 
 import { SsoButton } from "./SsoButton";
 
@@ -17,7 +18,7 @@ const setup = () => {
   });
 
   // simulate ebmedding
-  jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+  jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
 
   renderWithProviders(<SsoButton />, { storeInitialState: state });
 };

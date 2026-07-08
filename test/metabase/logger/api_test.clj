@@ -66,21 +66,18 @@
         (is (= :info (logger/ns-log-level trace-ns)))
         (is (nil? (logger/exact-ns-logger fatal-ns)))
         (is (nil? (logger/exact-ns-logger other-ns))))
-
       (testing "overriding multiple namespaces works"
         (mt/user-http-request :crowberto :post 204 "logger/adjustment"
                               {:duration timeout-ms, :duration_unit :milliseconds, :log_levels log-levels})
         (is (= :trace (logger/ns-log-level trace-ns)))
         (is (= :fatal (logger/ns-log-level fatal-ns)))
         (is (nil? (logger/exact-ns-logger other-ns))))
-
       (testing "a new override cancels the previous one"
         (mt/user-http-request :crowberto :post 204 "logger/adjustment"
                               {:duration timeout-ms, :duration_unit :milliseconds, :log_levels {other-ns :trace}})
         (is (= :info (logger/ns-log-level trace-ns)))
         (is (nil? (logger/exact-ns-logger fatal-ns)))
         (is (= :trace (logger/ns-log-level other-ns))))
-
       (testing "the override is automatically undone when the timeout is reached"
         (let [limit (+ (System/currentTimeMillis) timeout-ms 5000)]
           (loop []
@@ -95,13 +92,11 @@
 
               :else
               (is (nil? (logger/exact-ns-logger other-ns)) "the change has not been undone automatically")))))
-
       (testing "empty adjustment works"
         (mt/user-http-request :crowberto :post 204 "logger/adjustment"
                               {:duration timeout-ms, :duration_unit :milliseconds, :log_levels {}})
         (is (= :info (logger/ns-log-level trace-ns)))
         (is (nil? (logger/exact-ns-logger fatal-ns)))
-
         (testing "empty adjustment works a second time too"
           (mt/user-http-request :crowberto :post 204 "logger/adjustment"
                                 {:duration timeout-ms, :duration_unit :milliseconds, :log_levels {}})
@@ -124,17 +119,14 @@
                               {:duration timeout-hours, :duration_unit :hours, :log_levels log-levels})
         (is (= :trace (logger/ns-log-level trace-ns)))
         (is (= :fatal (logger/ns-log-level fatal-ns))))
-
       (testing "only admins can delete"
         (mt/user-http-request :lucky :delete 403 "logger/adjustment")
         (is (= :trace (logger/ns-log-level trace-ns)))
         (is (= :fatal (logger/ns-log-level fatal-ns))))
-
       (testing "delete undoes the adjustments"
         (mt/user-http-request :crowberto :delete 204 "logger/adjustment")
         (is (= :info (logger/ns-log-level trace-ns)))
         (is (nil? (logger/exact-ns-logger fatal-ns))))
-
       (testing "second delete is OK"
         (mt/user-http-request :crowberto :delete 204 "logger/adjustment")
         (is (= :info (logger/ns-log-level trace-ns)))

@@ -1,18 +1,19 @@
 import { Fragment, useMemo } from "react";
 import { c } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
-import { useSelector } from "metabase/lib/redux";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/redux";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
 
 import type { QuestionSource } from "./types";
-import { getIconPropsForSource } from "./utils";
 
 export const QuestionSources = () => {
+  const getIcon = useGetIcon();
   /** Retrieve current question from the Redux store */
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
@@ -23,13 +24,13 @@ export const QuestionSources = () => {
           subHead: false,
           isObjectDetail: true,
           formatTableAsComponent: false,
-        }) as QuestionSource[])
+        }) as QuestionSource[]) // note: this type cast is horrendous
       : [];
     return sources.map((source) => ({
       ...source,
-      iconProps: getIconPropsForSource(source),
+      iconProps: getIcon({ model: source.model ?? "card" }),
     }));
-  }, [underlyingQuestion]);
+  }, [underlyingQuestion, getIcon]);
 
   if (!underlyingQuestion || !sourcesWithIcons.length) {
     return null;
@@ -45,10 +46,8 @@ export const QuestionSources = () => {
         {sourcesWithIcons.map(({ href, name, iconProps }, index) => (
           <Fragment key={`${href}-${name}`}>
             <Link to={href} variant="brand">
-              <Flex gap="sm" lh="1.25rem" maw="20rem">
-                {iconProps ? (
-                  <Icon mt={2} c="text-dark" {...iconProps} />
-                ) : null}
+              <Flex gap="sm" lh="1.25rem" maw="20rem" align="center">
+                {iconProps ? <Icon {...iconProps} /> : null}
                 {name}
               </Flex>
             </Link>

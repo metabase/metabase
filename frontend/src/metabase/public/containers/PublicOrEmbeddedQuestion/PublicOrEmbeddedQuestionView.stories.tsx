@@ -5,7 +5,7 @@ import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
@@ -14,16 +14,18 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import PivotTable from "metabase/visualizations/visualizations/PivotTable";
+import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
 import {
   createMockCard,
@@ -31,10 +33,6 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import {
   PublicOrEmbeddedQuestionView,
@@ -94,7 +92,7 @@ const initialState = createMockState({
   }),
 });
 
-const store = getStore(publicReducers, initialState, [Api.middleware]);
+const store = getPublicStore(initialState);
 
 const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = (args) => {
   return <PublicOrEmbeddedQuestionView {...args} />;
@@ -148,7 +146,11 @@ export const LightThemeDownload = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    await downloadQuestionAsPng(canvasElement, asyncCallback);
+    try {
+      await downloadQuestionAsPng(canvasElement);
+    } finally {
+      asyncCallback();
+    }
   },
 };
 
@@ -195,7 +197,7 @@ export const TransparentThemeDefault = {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#ddd" h="100%">
+    <Box bg="background_page-primary" h="100%">
       <Story />
     </Box>
   );
@@ -285,7 +287,31 @@ export const SmartScalarDarkTheme = {
   },
 };
 
+// Regression guard for metabase#72443: `₂` subscript descender used to clip at the value's line-box edge.
+export const SmartScalarUnicodeSubscript = {
+  render: Template,
+
+  args: {
+    ...SmartScalarLightTheme.args,
+    card: createMockCard({
+      id: getNextId(),
+      display: "smartscalar",
+      visualization_settings: {
+        "graph.dimensions": ["timestamp"],
+        "graph.metrics": ["count"],
+        column_settings: {
+          '["name","Count"]': { suffix: "tCO₂e" },
+        },
+      },
+    }),
+  },
+};
+
 export const SmartScalarLightThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {
@@ -338,6 +364,10 @@ export const SmartScalarLightThemeTooltip = {
 };
 
 export const SmartScalarDarkThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {
@@ -376,16 +406,13 @@ function NarrowContainer(Story: StoryFn) {
   );
 }
 
-const downloadQuestionAsPng = async (
-  canvasElement: HTMLElement,
-  asyncCallback: () => void,
-) => {
+const downloadQuestionAsPng = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
   const downloadButton = await canvas.findByTestId(
     "question-results-download-button",
   );
-  await userEvent.click(downloadButton!);
+  await userEvent.click(downloadButton);
 
   const documentElement = within(document.documentElement);
   const pngButton = await documentElement.findByText(".png");
@@ -394,5 +421,4 @@ const downloadQuestionAsPng = async (
     await documentElement.findByTestId("download-results-button"),
   );
   await canvas.findByTestId("image-downloaded");
-  asyncCallback();
 };

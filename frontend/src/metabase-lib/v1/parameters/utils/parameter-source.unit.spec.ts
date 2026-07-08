@@ -6,6 +6,7 @@ import { createMockField } from "metabase-types/api/mocks";
 import {
   canListParameterValues,
   canSearchParameterValues,
+  canUseCustomSource,
   getQueryType,
 } from "./parameter-source";
 
@@ -79,6 +80,62 @@ describe("getQueryType", () => {
   });
 });
 
+describe("canUseCustomSource", () => {
+  it.each([
+    {
+      parameter: createMockUiParameter({
+        type: "string/=",
+        sectionId: "string",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "string/=",
+        sectionId: "location",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "category",
+        sectionId: "category",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "number/=",
+        sectionId: "number",
+      }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({ type: "id", sectionId: "id" }),
+      expected: true,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "date/single",
+        sectionId: "date",
+      }),
+      expected: false,
+    },
+    {
+      parameter: createMockUiParameter({
+        type: "temporal-unit",
+        sectionId: "temporal-unit",
+      }),
+      expected: false,
+    },
+  ])(
+    "should return $expected for $parameter.type ($parameter.sectionId)",
+    ({ parameter, expected }) => {
+      expect(canUseCustomSource(parameter)).toBe(expected);
+    },
+  );
+});
+
 describe("canListParameterValues", () => {
   it("should not list when it is disabled", () => {
     const parameter = createMockUiParameter({
@@ -128,7 +185,7 @@ describe("canListParameterValues", () => {
       values_source_type: "card",
       values_source_config: {
         card_id: 1,
-        value_field: ["field", noValuesField.id, null],
+        value_field: ["field", NO_VALUES_FIELD_ID, null],
       },
     });
 

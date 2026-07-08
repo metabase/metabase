@@ -1,6 +1,9 @@
 const { H } = cy;
 
-import { MetabotQuestion } from "@metabase/embedding-sdk-react";
+import {
+  InteractiveQuestion,
+  MetabotQuestion,
+} from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -32,15 +35,22 @@ const metabotResponseWithNavigateTo = `${metabotResponse}
 
 const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
 
+// Captured navigate_to event verbatim from a real embedding Metabot response
+// (database id swapped from 2 to 1 to match this env's Sample Database).
+const metabotResponseWithSqlEditor = `0:"I'll direct you to the SQL editor for the Sample Database so you can write a query for the most popular products!"
+2:{"type":"navigate_to","version":1,"value":"/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5IjoiIn19fQ=="}`;
+
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
     H.mockMetabotResponse({
       statusCode: 200,
       body: response,
     });
 
+    cy.log("Create a question");
     H.createQuestion({
       name: "1",
       query: {
@@ -54,9 +64,52 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       cy.wrap(question.entity_id).as("questionEntityId");
     });
 
+    cy.log("Create a collection");
+    cy.request("POST", "/api/collection", {
+      name: "first_collection",
+      description: "First collection",
+    }).then(({ body }) => {
+      cy.wrap(body.id).as("collectionId");
+    });
+
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
   };
+
+  it("should show the SQL editor when Metabot navigates to the SQL editor page", () => {
+    setup(metabotResponseWithSqlEditor);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Open the SQL editor {enter}");
+      cy.findByTestId("native-query-editor-container").should("be.visible");
+    });
+  });
+
+  it("should show drill-through results after drilling from a metabot question", () => {
+    setup(metabotResponseWithNavigateTo);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+      cy.findByTestId("visualization-root").should("exist");
+
+      H.tableInteractiveBody().findAllByRole("gridcell", { name: "2" }).click();
+    });
+
+    H.popover().findByText("View this Product's Orders").click();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+
+      H.assertTableData({
+        columns: ["Product ID", "Max of Quantity"],
+        firstRows: [["2", "18"]],
+      });
+    });
+  });
 
   it("should automatically show the ad-hoc question for the last agent message containing ad-hoc question link", () => {
     setup(metabotResponseWithNavigateTo);
@@ -67,6 +120,43 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
 
       cy.findByTestId("visualization-root").should("exist");
+    });
+  });
+
+  it("should allow saving a question", () => {
+    cy.intercept("POST", "/api/card").as("postCard");
+
+    setup(metabotResponseWithNavigateTo);
+
+    cy.get("@collectionId").then((collectionId) => {
+      mountSdkContent(
+        <MetabotQuestion isSaveEnabled targetCollection={collectionId} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+        cy.findByTestId("visualization-root").should("exist");
+
+        cy.findByText("Save").should("be.visible").click();
+
+        H.modal().within(() => {
+          cy.findByText("Save new question").should("be.visible");
+          cy.findByRole("button", { name: "Save" }).click();
+        });
+      });
+
+      cy.wait("@postCard").then((interception) => {
+        const response = interception.response?.body;
+        const questionId = response.id;
+
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+        getSdkRoot().within(() => {
+          cy.findByText(
+            "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
+          ).should("be.visible");
+        });
+      });
     });
   });
 
@@ -171,4 +261,146 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       });
     });
   });
+
+  it("should show suggestion buttons when no messages exist", () => {
+    setup(metabotResponse);
+    mockSuggestedPrompts();
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      // Verify suggestion buttons are visible
+      cy.findAllByTestId("metabot-suggestion-button", { timeout: 10_000 })
+        .should("have.length", 3)
+        .should("be.visible");
+
+      // Verify suggestion texts are shown in order
+      cy.findAllByTestId("metabot-suggestion-button")
+        .eq(0)
+        .should("contain.text", "Show me total sales by product");
+
+      cy.findAllByTestId("metabot-suggestion-button")
+        .eq(1)
+        .should("contain.text", "What are the top performing products?");
+
+      cy.findAllByTestId("metabot-suggestion-button")
+        .eq(2)
+        .should("contain.text", "How many orders were placed last month?");
+
+      // Clicking on a suggestion should remove the suggestion buttons and add the user's message
+      cy.findByText("Show me total sales by product").click();
+      cy.findAllByTestId("metabot-suggestion-button").should("not.exist");
+      cy.findAllByTestId("metabot-chat-message").should("have.length", 2);
+
+      cy.findAllByTestId("metabot-chat-message")
+        .first()
+        .should("contain.text", "Show me total sales by product");
+    });
+  });
+
+  it("should switch to stacked layout on small viewport", () => {
+    setup(metabotResponse);
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      // On desktop, use the sidebar layout
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+
+      // On mobile, use the stacked layout
+      cy.viewport(400, 600);
+      cy.findByTestId("metabot-overflow-button").should("be.visible");
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "stacked",
+      );
+
+      // On desktop, use the sidebar layout
+      cy.viewport(1200, 800);
+      cy.findByTestId("metabot-overflow-button").should("not.be.visible");
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+    });
+  });
+
+  it("should fallback to sidebar layout when invalid layout prop is provided and show a warning", () => {
+    setup(metabotResponse);
+
+    cy.window().then((win) => {
+      cy.spy(win.console, "warn").as("consoleWarn");
+    });
+
+    mountSdkContent(<MetabotQuestion layout="foobar" />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+    });
+
+    cy.get("@consoleWarn").should(
+      "have.been.calledWith",
+      'Invalid layout for MetabotQuestion: foobar. Valid values are "stacked", "sidebar", or "auto"',
+    );
+  });
 });
+
+describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
+  it("should show an error when embedded-metabot-enabled? is false", () => {
+    signInAsAdminAndEnableEmbeddingSdk();
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+
+    cy.log("Disable embedded metabot");
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Metabot is not enabled for embedded analytics.").should(
+        "be.visible",
+      );
+      cy.findByTestId("metabot-question-container").should("not.exist");
+    });
+  });
+});
+
+const mockSuggestedPrompts = () => {
+  cy.intercept(
+    "GET",
+    "/api/metabot/metabot/2/prompt-suggestions?limit=3&sample=true",
+    {
+      statusCode: 200,
+      body: {
+        prompts: [
+          {
+            id: 1,
+            prompt: "Show me total sales by product",
+          },
+          {
+            id: 2,
+            prompt: "What are the top performing products?",
+          },
+          {
+            id: 3,
+            prompt: "How many orders were placed last month?",
+          },
+        ],
+        limit: 3,
+        offset: 0,
+        total: 3,
+      },
+    },
+  ).as("suggestedPrompts");
+};

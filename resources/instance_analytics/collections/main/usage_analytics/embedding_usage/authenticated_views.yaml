@@ -1,0 +1,122 @@
+name: Authenticated views
+entity_id: g8NVUevCCqPFphn4FMrGd
+created_at: '2026-04-21T08:54:11.562015Z'
+creator_id: internal@metabase.com
+display: smartscalar
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_view_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: week}
+      - [Internal Metabase Database, public, v_view_log, timestamp]
+    expressions:
+    - - and
+      - {lib/expression-name: is_auth_embed}
+      - - not-null
+        - {}
+        - - field
+          - {base-type: type/Text, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_view_log, embedding_client]
+      - - not-in
+        - {}
+        - - field
+          - {base-type: type/Text, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_view_log, auth_method]
+        - public
+        - guest
+    - - not
+      - {lib/expression-name: is_top_level}
+      - - and
+        - {}
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, entity_type]
+          - card
+        - - not-null
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+          - dashboard
+    filters:
+    - - =
+      - {}
+      - - expression
+        - {base-type: type/Boolean, effective-type: type/Boolean}
+        - is_auth_embed
+      - true
+    - - =
+      - {}
+      - - expression
+        - {base-type: type/Boolean, effective-type: type/Boolean}
+        - is_top_level
+      - true
+    source-card: P6Ityjj7igswKh4NgZZjz
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  description: When the view happened
+  display_name: 'Timestamp: Week'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, timestamp]
+  - {temporal-unit: week}
+  id: [Internal Metabase Database, public, v_view_log, timestamp]
+  inherited_temporal_unit: week
+  name: timestamp
+  position: 1
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_view_log]
+  unit: week
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1020
+  lib/deduplicated-name: timestamp
+  lib/desired-column-alias: timestamp
+  lib/from-model?: true
+  lib/original-display-name: Timestamp
+  lib/original-name: timestamp
+  lib/source: source/previous-stage
+  lib/source-column-alias: timestamp
+  lib/temporal-unit: week
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings: {column_settings: null}
+card_schema: 23
+serdes/meta:
+- {id: g8NVUevCCqPFphn4FMrGd, label: authenticated_views, model: Card}
+dashboard_id: 2NWw98hfm_kimGA4xuyMW
+source_card_id: P6Ityjj7igswKh4NgZZjz
+type: question

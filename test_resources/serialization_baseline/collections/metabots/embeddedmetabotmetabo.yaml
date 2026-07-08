@@ -1,9 +1,0 @@
-created_at: '2025-05-28T17:49:20.649159Z'
-description: Metabot instance for embedded metabase users.
-entities: []
-entity_id: embeddedmetabotmetabo
-name: Embeddeded Metabot
-updated_at: '2025-05-28T17:49:20.649159Z'
-serdes/meta:
-- id: embeddedmetabotmetabo
-  model: Metabot

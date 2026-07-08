@@ -1,0 +1,10 @@
+name: Active Product Filter
+entity_id: WyQWnT23PF-SfbYLROllJ
+created_at: '2026-04-02T02:59:02.778668Z'
+content: '"CREATED_AT" >= DATEADD(''year'', -1, CURRENT_TIMESTAMP) AND "total_revenue" > 100'
+creator_id: admin@example.com
+template_tags: {}
+serdes/meta:
+- id: WyQWnT23PF-SfbYLROllJ
+  label: active_product_filter
+  model: NativeQuerySnippet

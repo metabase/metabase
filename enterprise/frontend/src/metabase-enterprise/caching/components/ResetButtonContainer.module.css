@@ -1,0 +1,4 @@
+/* Doubled class beats Mantine's transparent-on-hover rule for subtle buttons without `!important`. */
+.highlightOnHover.highlightOnHover[data-variant="subtle"]:hover {
+  background-color: var(--mb-color-background_surface-error);
+}

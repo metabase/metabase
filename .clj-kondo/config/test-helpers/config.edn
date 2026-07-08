@@ -3,7 +3,7 @@
   ;; TODO -- seems silly to maintain different blacklists and whitelists here than we use for the deftest `^:parallel`
   ;; checker...
   {:explicitly-safe
-   #{ ;; these toucan methods might actually set global values if it's used outside of a transaction,
+   #{;; these toucan methods might actually set global values if it's used outside of a transaction,
      ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
      toucan2.core/delete!
      toucan2.core/update!
@@ -13,7 +13,10 @@
      toucan2.core/insert-returning-pk!
      toucan2.core/insert-returning-pks!
      clojure.core.async/<!!
+     clojure.core.async/<!
      clojure.core.async/>!!
+     clojure.core.async/>!
+     clojure.core.async/alts!
      clojure.core.async/alts!!
      clojure.core.async/close!
      clojure.core.async/poll!
@@ -97,7 +100,7 @@
      metabase.permissions.models.permissions/update-data-perms-graph!
      metabase.permissions.models.permissions/update-group-permissions!
      metabase.permissions.test-util/with-restored-perms!
-     metabase.public-sharing.api-test/add-card-to-dashboard!
+     metabase.public-sharing-rest.api-test/add-card-to-dashboard!
      metabase.pulse.send/send-notifications!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.streaming.interface/begin!
@@ -107,6 +110,7 @@
      metabase.settings.models.setting-test/test-user-local-allowed-setting!
      metabase.settings.models.setting-test/test-user-local-only-setting!
      metabase.settings.models.setting.cache/restore-cache!
+     metabase.settings.models.setting/log-deprecated-env-var-usage!
      metabase.settings.models.setting/set!
      metabase.settings.models.setting/validate-settings-formatting!
      metabase.setup.core/create-token!

@@ -1,0 +1,27 @@
+.NoticeRoot {
+  display: flex;
+  padding: 1rem 1rem 1rem 1.5rem;
+  align-items: center;
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.NoticeContent {
+  flex: 1 1 auto;
+  margin: 0 0.75rem;
+  color: var(--mb-color-text-primary);
+}
+
+.NoticeWarningIcon {
+  color: var(--mb-color-accent5);
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.NoticeCloseIcon {
+  color: var(--mb-color-background_page-tertiary);
+  cursor: pointer;
+}
+
+.NoticeCloseIcon:hover {
+  color: var(--mb-color-navbar-admin);
+}

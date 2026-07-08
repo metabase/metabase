@@ -74,6 +74,7 @@
 
      2b. Otherwise if `:bin-width` is < 20°, replace them with the current `:bin-width` divided by 10, and add
          `:>=`/`:<` filters for the clicked latitude/longitude values."
+  (:refer-clojure :exclude [some])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -89,7 +90,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (def ^:private ContextWithLatLon
   [:merge
@@ -101,10 +103,10 @@
     [:lon-value  [:maybe number?]]]])
 
 (mu/defn- context-with-lat-lon :- [:maybe ContextWithLatLon]
-  [query                      :- ::lib.schema/query
-   stage-number               :- :int
-   {:keys [row], :as context} :- ::lib.schema.drill-thru/context]
-  (let [;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
+  [query                                 :- ::lib.schema/query
+   stage-number                          :- :int
+   {:keys [row dimensions], :as context} :- ::lib.schema.drill-thru/context]
+  (let [;; First check returned columns in case we breakout by lat/lon so we maintain the binning, otherwise check visible.
         [lat-column lon-column] (some
                                  (fn [columns]
                                    (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
@@ -117,12 +119,20 @@
                 (if (:id col-x)
                   (= (:id col-x) (:id col-y))
                   (= (:lib/desired-column-alias col-x) (:lib/desired-column-alias col-y))))
-              (column-value [column]
+              (row-value [column]
                 (some
-                 (fn [row-value]
-                   (when (same-column? column (:column row-value))
-                     (:value row-value)))
-                 row))]
+                 (fn [row-v]
+                   (when (same-column? column (:column row-v))
+                     (:value row-v)))
+                 row))
+              (dimensions-value [column]
+                (some (fn [dimension]
+                        (when (same-column? column (:column dimension))
+                          (:value dimension)))
+                      dimensions))
+              (column-value [column]
+                (or (row-value column)
+                    (dimensions-value column)))]
         (assoc context
                :lat-column lat-column
                :lon-column lon-column

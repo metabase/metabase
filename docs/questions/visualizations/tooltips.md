@@ -26,6 +26,6 @@ Or you could display one of the metrics on the chart, and include the other metr
 
 Removing a metric will give you the option to add it as an additional metric to the tooltip. In the visualization settings, click on the **Display** tab, and add **Additional tooltip metrics**. Only metrics included in the summarization step of the question are available to add to the tooltip.
 
-![Add additional tooltip metrics from the display tab. Only available when your chart has multiple multiple metrics](../images/metrics-in-tooltip.png)
+![Add additional tooltip metrics from the display tab. Only available when your chart has multiple metrics](../images/metrics-in-tooltip.png)
 
 Here we've kept the count on the chart, but now when you hover over a bar on the chart, the tooltip also includes the relevant average.

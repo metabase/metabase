@@ -1,6 +1,5 @@
 (ns metabase-enterprise.sso.integrations.sso-utils-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.test :as mt]))
@@ -14,7 +13,6 @@
         "localhost"
         "http://localhost:3000"
         "http://localhost:3000/dashboard/1-test-dashboard?currency=British%20Pound"))
-
     (testing "check-sso-redirect- throws an error for invalid redirect URIs"
       (are [uri] (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid redirect URL" (sso-utils/check-sso-redirect uri))
         "http://example.com"
@@ -23,46 +21,32 @@
         "localhost:3000" ; URI thinks `localhost` here is scheme
         "http://localhost:3000?a=not a param"))))
 
-(def default-user-attributes {:first_name       "Test"
-                              :last_name        "User"
-                              :email            "create-new-sso-user-test@metabase.com"
-                              :sso_source       :jwt
-                              :login_attributes {:foo "bar"}})
-
-(deftest create-new-sso-user-test
-  (mt/with-model-cleanup [:model/User]
-    (testing "create-new-sso-user! creates a new user with the given attributes"
-      (let [new-user (sso-utils/create-new-sso-user! default-user-attributes)]
-        (is (partial=
-             {:first_name "Test"
-              :last_name "User"
-              :email "create-new-sso-user-test@metabase.com"}
-             new-user))))
-    (testing "If a user with the given email already exists, a generic exception is thrown"
-      (is
-       (thrown-with-msg?
-        clojure.lang.ExceptionInfo
-        #"Error creating new SSO user"
-        (sso-utils/create-new-sso-user! default-user-attributes))))))
-
-(deftest create-new-sso-user-do-not-send-email-test
-  ;; when create a normal user, we send an invite email, but for sso users we don't
-  (testing "creating an sso users shouldn't send an invite email"
-    (mt/with-model-cleanup [:model/User]
-      (mt/with-fake-inbox
-        (sso-utils/create-new-sso-user! default-user-attributes)
-        (is (empty? (->> @mt/inbox
-                         vals
-                         (into [] cat)
-                         (map :subject)
-                         (filter #(str/includes? % "You're invited to join")))))))))
-
-(deftest is-embedding-header-test
-  (testing "is-react-sdk-header? detects embedding-sdk-react client header"
-    (is (sso-utils/is-react-sdk-header? {:headers {"x-metabase-client" "embedding-sdk-react"}})))
-  (testing "is-react-sdk-header? returns false for other client headers"
-    (is (not (sso-utils/is-react-sdk-header? {:headers {"x-metabase-client" "embedding-iframe"}}))))
-  (testing "is-simple-embed-header? detects embedding-simple client header"
-    (is (sso-utils/is-simple-embed-header? {:headers {"x-metabase-client" "embedding-simple"}})))
-  (testing "is-simple-embed-header? returns false for other client headers"
-    (is (not (sso-utils/is-simple-embed-header? {:headers {"x-metabase-client" "embedding-iframe"}})))))
+(deftest ^:parallel stringify-valid-attributes-test
+  (testing "string and number values are stringified"
+    (is (= {"name" "alice" "age" "42"}
+           (sso-utils/stringify-valid-attributes {:name "alice" :age 42}))))
+  (testing "nil values are dropped"
+    (is (= {"name" "alice"}
+           (sso-utils/stringify-valid-attributes {:name "alice" :missing nil}))))
+  (testing "map values are dropped"
+    (is (= {"name" "alice"}
+           (sso-utils/stringify-valid-attributes {:name "alice" :nested {:k "v"}}))))
+  (testing "keys starting with @ are dropped"
+    (is (= {"name" "alice"}
+           (sso-utils/stringify-valid-attributes {:name "alice" (keyword "@reserved") "v"}))))
+  (testing "multi-value sequential attributes are joined with commas (UXW-3921)"
+    (testing "vectors (e.g. JWT JSON arrays)"
+      (is (= {"roles" "admin,user"}
+             (sso-utils/stringify-valid-attributes {:roles ["admin" "user"]}))))
+    (testing "lazy seqs (e.g. SAML multi-value attributes)"
+      (is (= {"dept" "a,b,c"}
+             (sso-utils/stringify-valid-attributes {:dept (map identity ["a" "b" "c"])}))))
+    (testing "lists"
+      (is (= {"groups" "g1,g2"}
+             (sso-utils/stringify-valid-attributes {:groups '("g1" "g2")}))))
+    (testing "single-element collections still join cleanly"
+      (is (= {"tag" "only"}
+             (sso-utils/stringify-valid-attributes {:tag ["only"]}))))
+    (testing "non-string sequential elements are stringified"
+      (is (= {"ids" "1,2,3"}
+             (sso-utils/stringify-valid-attributes {:ids [1 2 3]}))))))

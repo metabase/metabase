@@ -1,0 +1,12 @@
+.header {
+  background-color: var(--mb-color-background_page-primary);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.row:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.checkboxColumn {
+  flex-shrink: 0;
+}

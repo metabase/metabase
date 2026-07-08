@@ -43,7 +43,8 @@
             :max-threads   (config/config-int :mb-jetty-maxthreads)
             :min-threads   (config/config-int :mb-jetty-minthreads)
             :max-queued    (config/config-int :mb-jetty-maxqueued)
-            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+            :max-idle-time (config/config-int :mb-jetty-maxidletime)
+            :send-server-version? false})
     (config/config-int :mb-jetty-request-header-size) (assoc :request-header-size (config/config-int
                                                                                    :mb-jetty-request-header-size))
     (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
@@ -63,6 +64,13 @@
   "*THE* instance of our Jetty web server, if there currently is one."
   ^Server []
   @instance*)
+
+(defn server-port
+  "Return the actual port the running Jetty server is listening on. Useful when the server was started with port 0
+  (OS-assigned random port). Returns `nil` if no server is running."
+  []
+  (when-let [^Server server (instance)]
+    (.. server getURI getPort)))
 
 (defn- async-proxy-handler ^ServletHandler [handler timeout]
   (proxy [ServletHandler] []

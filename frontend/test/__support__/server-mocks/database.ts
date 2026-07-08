@@ -10,8 +10,16 @@ import { setupTableEndpoints } from "./table";
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);
-  fetchMock.post(`path:/api/database/${db.id}/sync_schema`, {});
-  fetchMock.post(`path:/api/database/${db.id}/rescan_values`, {});
+  fetchMock.post(
+    `path:/api/database/${db.id}/sync_schema`,
+    {},
+    { name: `database-${db.id}-sync-schema` },
+  );
+  fetchMock.post(
+    `path:/api/database/${db.id}/rescan_values`,
+    {},
+    { name: `database-${db.id}-rescan-values` },
+  );
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   fetchMock.get(
     `path:/api/database/${db.id}/healthcheck`,
@@ -23,10 +31,23 @@ export function setupDatabaseEndpoints(db: Database) {
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints({ database: db });
   db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
+  setupUpdateDatabaseEndpoint(db);
+}
 
+export function setupUpdateDatabaseEndpoint(db: Database) {
   fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
     const body = await call?.request?.json();
     return { ...db, ...body };
+  });
+}
+
+export function setupUpdateDatabaseEndpointError(databaseId: Database["id"]) {
+  fetchMock.put(`path:/api/database/${databaseId}`, { status: 500 });
+}
+
+export function setupDatabaseHealthcheckEndpoint(databaseId: Database["id"]) {
+  fetchMock.get(`path:/api/database/${databaseId}/healthcheck`, {
+    body: { status: "ok" },
   });
 }
 
@@ -82,7 +103,7 @@ export const setupSchemaEndpoints = (db: Database) => {
 
   schemaNames.forEach((schema) => {
     fetchMock.get(
-      `path:/api/database/${db.id}/schema/${schema}`,
+      `path:/api/database/${db.id}/schema/${encodeURIComponent(schema)}`,
       schemas[schema],
       { name: `database-${db.id}-schema-${schema}` },
     );

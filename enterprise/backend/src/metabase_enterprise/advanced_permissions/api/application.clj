@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.api.application
-  "`/advanced-permisisons/application` Routes.
-  Implements the Permissions routes needed for application permission - a class of permissions that control access to features
-  like access Setting pages, access monitoring tools ... etc"
+  "`/advanced-permissions/application` Routes.
+  Implements the Permissions routes needed for application permission - a class of permissions that control access to
+  features like access Setting pages, access monitoring tools ... etc"
   (:require
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.api.common :as api]
@@ -11,6 +11,10 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph"
   "Fetch a graph of Application Permissions."
   []
@@ -34,6 +38,10 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/graph"
   "Do a batch update of Application Permissions by passing a modified graph."
   [_route-params

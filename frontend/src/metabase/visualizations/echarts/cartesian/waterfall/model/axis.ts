@@ -4,12 +4,14 @@ import type {
   ChartDataset,
   DateRange,
   DimensionModel,
-  Extent,
   TimeSeriesXAxisModel,
   WaterfallXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  Extent,
+} from "metabase/visualizations/types";
 import type { RawSeries, RowValue } from "metabase-types/api";
 
 import { getXAxisModel } from "../../model/axis";

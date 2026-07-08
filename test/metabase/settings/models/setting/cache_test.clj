@@ -49,10 +49,8 @@
     (setting-test/clear-settings-last-updated-value-in-db!)
     (setting-test/toucan-name! "Bird Can")
     (is (string? (setting-test/settings-last-updated-value-in-db)))
-
     (testing "...and is the value updated in the cache as well?"
       (is (string? (settings-last-updated-value-in-cache))))
-
     (testing "..and if I update it again, will the value be updated?"
       (let [first-value (setting-test/settings-last-updated-value-in-db)]
         ;; MySQL only has the resolution of one second on the timestamps here so we should wait that long to make sure
@@ -68,13 +66,11 @@
   (testing "If there is no cache, it should be considered out of date!"
     (clear-cache!)
     (#'setting.cache/cache-out-of-date?))
-
   (testing "But if I set a setting, it should cause the cache to be populated, and be up-to-date"
     (clear-cache!)
     (setting-test/toucan-name! "Reggae Toucan")
     (is (= false
            (#'setting.cache/cache-out-of-date?))))
-
   (testing "If another instance updates a Setting, `cache-out-of-date?` should return `true` based on DB comparisons..."
     (clear-cache!)
     (setting-test/toucan-name! "Reggae Toucan")

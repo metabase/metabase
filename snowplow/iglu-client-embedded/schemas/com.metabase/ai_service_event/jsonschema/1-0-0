@@ -1,0 +1,89 @@
+{
+    "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+    "self": {
+        "vendor": "com.metabase",
+        "name": "ai_service_event",
+        "format": "jsonschema",
+        "version": "1-0-0"
+    },
+    "type": "object",
+    "description": "Event to capture AI service interactions. Use to track user interactions, agent tool calls, workflows, etc.",
+    "properties": {
+        "hashed_metabase_license_token": {
+            "type": "string",
+            "description": "The hashed value of the Metabase license token",
+            "maxLength": 512
+        },
+        "user_id": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "description": "The ID of the user that initiated the interaction",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "request_id": {
+            "type": "string",
+            "description": "Unique ID assigned to each incoming request. Can be used to aggregate interactions within a single request.",
+            "maxLength": 512
+        },
+        "session_id": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Session identifier for chat conversations. Null for direct workflow calls.",
+            "maxLength": 512
+        },
+        "profile": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The profile of the user interacting with the AI service if applicable.",
+            "maxLength": 255
+        },
+        "source": {
+            "type": "string",
+            "description": "The source/trigger of the interaction (e.g., metabot agent chat, feature workflow, etc.)",
+            "maxLength": 255
+        },
+        "event": {
+            "type": "string",
+            "description": "A descriptive name for the event (e.g., use_tool__{tool_name})",
+            "maxLength": 255
+        },
+        "duration_ms": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "description": "Duration in milliseconds for the interaction to complete",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "result": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The outcome of the interaction (e.g., success, failure, partial, error)",
+            "maxLength": 255
+        },
+        "event_details": {
+            "description": "Additional structured details about the event. Format as JSON. Should not contain PII.",
+            "type": [
+                "object",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "hashed_metabase_license_token",
+        "request_id",
+        "source",
+        "event"
+    ],
+    "additionalProperties": false
+}

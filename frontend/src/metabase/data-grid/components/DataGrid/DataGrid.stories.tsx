@@ -1,20 +1,19 @@
 import type { Meta, StoryFn } from "@storybook/react";
 import { useCallback, useMemo, useState } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { BaseCell } from "metabase/data-grid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { publicReducers } from "metabase/reducers-public";
-import { Checkbox, Flex } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { Checkbox, Flex } from "metabase/ui";
 
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";
@@ -46,7 +45,7 @@ type Story = StoryFn<typeof DataGrid>;
 const initialState = createMockState({
   settings: createMockSettingsState(),
 });
-const store = getStore(publicReducers, initialState, []);
+const store = getPublicStore(initialState, []);
 
 const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
   return {
@@ -342,14 +341,8 @@ export const SelectableRows: Story = () => {
     [],
   );
 
-  const tableProps = useDataGridInstance({
-    data: sampleData,
-    columnsOptions: columns,
-    columnPinning: { left: ["row_selection"] },
-    enableRowSelection: true,
-    rowSelection,
-    onRowSelectionChange: setRowSelection,
-    columnRowSelectOptions: {
+  const columnRowSelectOptions = useMemo<ColumnOptions<SampleDataType>>(
+    () => ({
       id: "row_selection",
       name: "Row Selection",
       accessorFn: (row) => row.id,
@@ -375,7 +368,17 @@ export const SelectableRows: Story = () => {
           </Flex>
         </BaseCell>
       ),
-    },
+    }),
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange: setRowSelection,
+    columnRowSelectOptions,
   });
 
   return <DataGrid {...tableProps} />;

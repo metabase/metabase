@@ -1,6 +1,10 @@
 import _ from "underscore";
 
-import type { SearchResponse, SearchResult } from "metabase-types/api";
+import type {
+  ModelResult,
+  SearchResponse,
+  SearchResult,
+} from "metabase-types/api";
 
 import { createMockCollection } from "./collection";
 
@@ -23,6 +27,7 @@ export const createMockSearchResult = (
     can_write: true,
     table_id: 1,
     table_name: null,
+    table_display_name: null,
     bookmark: null,
     database_id: 1,
     database_name: "test-data",
@@ -46,6 +51,11 @@ export const createMockSearchResult = (
     ...options,
   };
 };
+
+export const createMockModelResult = (
+  model: Partial<ModelResult> = {},
+): ModelResult =>
+  createMockSearchResult({ ...model, model: "dataset" }) as ModelResult;
 
 export const createMockSearchResults = ({
   items = [createMockSearchResult()],

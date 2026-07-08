@@ -1,16 +1,18 @@
 ---
-title: "Table metadata admin settings"
+title: "Table metadata editing"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
 
-# Table metadata admin settings
+# Table metadata editing
 
-_Admin settings > Table metadata_
+> Prefer using [Data Studio > Tables](../data-studio/managing-tables.md) for metadata editing. The page _Admin > Table Metadata_ will be removed in future versions of Metabase.
 
-![Table metadata settings](./images/table-metadata-settings.png)
+_Admin > Table metadata_
 
 Metabase lets you add and edit metadata for your tables and columns.
+
+![Table metadata settings](./images/table-metadata-settings.png)
 
 The **Table metadata settings only affect the way Metabase displays the data. None of the settings change the data in your database.**
 
@@ -18,7 +20,7 @@ Admins can grant access to these metadata settings to other groups. See [table m
 
 ## Table settings
 
-_Admin settings > Table metadata > Database > Table_
+_Admin > Table metadata > Database > Table_
 
 You can search for tables, or use the tree navigation to find each of your connected databases and their tables.
 
@@ -26,7 +28,7 @@ You can search for tables, or use the tree navigation to find each of your conne
 
 To edit a table's display name or description in the table metadata tab, click into the box that contains the current table name or description and edit it. Changes will be saved automatically once you click out of the box.
 
-Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) and tooltips when view the table. Decscriptions help people find the right table for their use case.
+Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) and tooltips when viewing the table. Descriptions help people find the right table for their use case.
 
 ### Table sync options
 
@@ -65,7 +67,7 @@ To hide **all of the tables in a database** (say, if you've migrated to a new da
 
 ## Field settings
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 Fields are also known as Columns (see the [difference between fields and columns](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/database-basics#columns-vs-fields)).
 
@@ -91,13 +93,13 @@ Click the preview button to see sample data from that field.
 
 ## Scan values for a specific field
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
-To scan or discard field values for a specific field, click on the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (To be clear, values aren't actually dropped from your database.)
+To scan or discard field values for a specific field, click on the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (Values aren't dropped from your database.)
 
 ## Field data
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 ### Field name
 
@@ -147,11 +149,11 @@ If Metabase doesn't support the casting option you need, you can [create a SQL q
 
 ## Field metadata
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 ### Semantic type
 
-You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context and enable additional functionality, such as displaying text as an image (if the text is an image URL. Another example: you could set an Integer as a "Score" so people have a better idea what those integers indicate.
+You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context and enable additional functionality, such as displaying text as an image (if the text is an image URL). Another example: you could set an Integer as a "Score" so people have a better idea what those integers indicate.
 
 The semantic types you can choose from depend on the data type. If none of the options describe the values in the column, you can set this setting to "No semantic type".
 
@@ -159,7 +161,7 @@ See [semantic types](../data-modeling/semantic-types.md).
 
 ## Field behavior
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 ### Field visibility
 
@@ -208,7 +210,7 @@ Select "Custom mapping" from the dropdown menu. For each value in the column, en
 
 ## Field formatting
 
-_Admin settings > Table Metadata > Database > Table > Field_
+_Admin > Table Metadata > Database > Table > Field_
 
 See [Field formatting](./formatting.md#field-formatting).
 

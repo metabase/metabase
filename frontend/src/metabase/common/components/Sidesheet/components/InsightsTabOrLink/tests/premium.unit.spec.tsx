@@ -19,6 +19,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
         isUserAdmin: true,
       });
       expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
       expect(history?.getCurrentLocation().pathname).toBe("/dashboard/201");
@@ -36,6 +37,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
         isUserAdmin: true,
       });
       expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
       expect(history?.getCurrentLocation().pathname).toBe("/dashboard/202");
@@ -47,10 +49,29 @@ describe("InsightsTabOrLink (EE with token)", () => {
   });
 
   describe("for non-admins", () => {
-    it("renders nothing", async () => {
+    it("renders a link if they have permission to view Usage Analytics", async () => {
+      const { history } = await setup({
+        isForADashboard: true,
+        isUserAdmin: false,
+        hasUsageAnalyticsPermission: true,
+      });
+      expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+      const routerLink = await screen.findByText("Insights");
+      await userEvent.click(routerLink);
+      expect(history?.getCurrentLocation().pathname).toBe("/dashboard/201");
+      expect(history?.getCurrentLocation().query).toEqual({
+        dashboard_id: "1",
+      });
+      expect(
+        await screen.findByTestId("usage-analytics-dashboard"),
+      ).toBeInTheDocument();
+    });
+
+    it("renders nothing if they don't have permission", async () => {
       await setup({
         isForADashboard: true,
         isUserAdmin: false,
+        hasUsageAnalyticsPermission: false,
       });
       expect(screen.queryByRole("tab")).not.toBeInTheDocument();
       expect(screen.queryByRole("link")).not.toBeInTheDocument();

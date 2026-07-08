@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import * as Urls from "metabase/urls";
 import type Table from "metabase-lib/v1/metadata/Table";
-import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
 
@@ -16,12 +16,12 @@ type Props = {
   onConnectedTableClick?: (table: Table) => void;
 };
 
-function ConnectedTables({ table, onConnectedTableClick }: Props) {
+export function ConnectedTables({ table, onConnectedTableClick }: Props) {
   const fkTables = table.connectedTables();
 
   return fkTables.length ? (
     <Container>
-      <LabelContainer color="text-dark">
+      <LabelContainer color="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
       {fkTables.slice(0, 8).map((fkTable) => {
@@ -55,11 +55,8 @@ function ConnectedTableButton({
 
 function ConnectedTableLink({ table }: { table: Table }) {
   return (
-    <LabelLink to={ML_Urls.getUrl(table.newQuestion())}>
+    <LabelLink to={Urls.question(table.newQuestion())}>
       <InteractiveTableLabel table={table} />
     </LabelLink>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ConnectedTables;

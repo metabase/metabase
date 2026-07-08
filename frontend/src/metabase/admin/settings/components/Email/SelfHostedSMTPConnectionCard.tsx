@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
-import { color } from "metabase/lib/colors";
 import { Button, Flex, Paper, Title } from "metabase/ui";
 
 import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";
@@ -23,8 +22,8 @@ export const SelfHostedSMTPConnectionCard = () => {
             {isEmailConfigured && (
               <Paper
                 fw="bold"
-                c={"brand"}
-                bg={color("brand-light")}
+                c={"core-brand"}
+                bg="background_surface-brand-subtle"
                 p={"0.25rem 0.375rem"}
                 radius="xs"
               >{t`Active`}</Paper>

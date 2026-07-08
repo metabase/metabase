@@ -1,15 +1,16 @@
-import { withRouter } from "react-router";
-
 import {
   isInstanceAnalyticsCollection,
+  isLibraryCollection,
   isTrashedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
+import { withRouter } from "metabase/router";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
 
 import CollectionBookmark from "./CollectionBookmark";
 import { CollectionCaption } from "./CollectionCaption";
+import { CollectionExportAnalytics } from "./CollectionExportAnalytics";
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
@@ -41,10 +42,16 @@ const CollectionHeader = ({
   uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
   const isTrash = isTrashedCollection(collection);
+  const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
+  const isSemanticLayer = isLibraryCollection(collection);
+  const hasCuratePermissions = !!collection?.can_write;
+
+  const showNewButton = hasCuratePermissions && !isInstanceAnalytics;
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
-  const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
-  const hasCuratePermissions = !!collection?.can_write;
+  const showExportButton = isInstanceAnalytics && isAdmin && showUploadButton;
+  const showTimelinesButton = !isInstanceAnalytics;
+  const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
 
   return (
     <HeaderRoot>
@@ -52,11 +59,9 @@ const CollectionHeader = ({
         collection={collection}
         onUpdateCollection={onUpdateCollection}
       />
-      {!isTrash && (
+      {!isTrash && !isSemanticLayer && (
         <HeaderActions data-testid="collection-menu">
-          {!isInstanceAnalytics && hasCuratePermissions && (
-            <CollectionNewButton />
-          )}
+          {showNewButton && <CollectionNewButton />}
           {showUploadButton && (
             <CollectionUpload
               collection={collection}
@@ -65,9 +70,10 @@ const CollectionHeader = ({
               saveFile={saveFile}
             />
           )}
-          {!isInstanceAnalytics && (
+          {showTimelinesButton && (
             <CollectionTimeline collection={collection} />
           )}
+          {showExportButton && <CollectionExportAnalytics />}
           {isInstanceAnalytics && (
             <CollectionPermissions collection={collection} />
           )}
@@ -81,7 +87,7 @@ const CollectionHeader = ({
             collection={collection}
             onUpdateCollection={onUpdateCollection}
           />
-          {!isInstanceAnalytics && (
+          {showCollectionMenu && (
             <CollectionMenu
               collection={collection}
               isAdmin={isAdmin}

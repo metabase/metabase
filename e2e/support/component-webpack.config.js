@@ -1,9 +1,15 @@
 const fs = require("fs");
 const path = require("path");
 
+const chalk = require("chalk");
 const webpack = require("webpack");
 
-const mainConfig = require("../../rspack.main.config");
+const {
+  RESOLVE_ALIASES,
+} = require("../../frontend/build/shared/rspack/resolve-aliases");
+const {
+  SVGO_CONFIG,
+} = require("../../frontend/build/shared/rspack/svgo-config");
 
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
@@ -11,7 +17,7 @@ const { isEmbeddingSdkPackageInstalled, embeddingSdkPath } =
   resolveEmbeddingSdkPackage();
 
 console.log(
-  `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? "installed" : 'NOT installed, using locally built version from "resources/embedding-sdk"'}`,
+  `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? chalk.green("installed") : `${chalk.red("NOT installed")}, ${chalk.bold("using locally built version")} from "resources/embedding-sdk"'}`}`,
 );
 
 console.log(`Embedding SDK path alias is resolved to ${embeddingSdkPath}`);
@@ -22,10 +28,14 @@ module.exports = {
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".jsx", ".css", ".svg"],
     alias: {
-      ...mainConfig.resolve.alias,
+      ...RESOLVE_ALIASES,
       ...(embeddingSdkPath ? { [SDK_PACKAGE_NAME]: embeddingSdkPath } : null),
     },
-    fallback: { path: false, fs: false }, // FIXME: this might break file download tests, we might need to implement this properly
+    fallback: {
+      path: false,
+      fs: false,
+      querystring: require.resolve("querystring-es3"),
+    }, // FIXME: this might break file download tests, we might need to implement this properly
   },
   entry: [path.join(__dirname, "src", "index.js")],
   output: {
@@ -56,6 +66,7 @@ module.exports = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],
@@ -114,7 +125,7 @@ function resolveEmbeddingSdkPackage() {
       };
     }
   } catch (err) {
-    console.log(`Cannot resolve ${SDK_PACKAGE_NAME} via require.resolve:`, err);
+    console.log(`Cannot resolve ${SDK_PACKAGE_NAME} via require.resolve`);
   }
 
   const sdkLocalPackagePath = path.resolve(

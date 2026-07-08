@@ -1,16 +1,16 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import type { ResizableBoxProps } from "react-resizable";
 
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
-import type {
-  SelectionRange,
-  SidebarFeatures,
-} from "metabase/query_builder/components/NativeQueryEditor/types";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
-import type { QueryModalType } from "metabase/query_builder/constants";
+import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
+import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
+import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
+import type { QueryModalType } from "metabase/querying/constants";
+import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import type { QueryBuilderMode } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import * as Lib from "metabase-lib";
@@ -23,7 +23,6 @@ import type {
   NativeQuerySnippet,
   ParameterId,
 } from "metabase-types/api";
-import type { QueryBuilderMode } from "metabase-types/store";
 
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
@@ -36,7 +35,6 @@ interface ViewMainContainerProps {
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -51,12 +49,7 @@ interface ViewMainContainerProps {
 
   readOnly?: boolean;
   canChangeDatabase?: boolean;
-  hasTopBar?: boolean;
-  hasParametersList?: boolean;
-  hasEditingSidebar?: boolean;
-  sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
   editorContext?: "question";
 
@@ -106,6 +99,11 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     updateQuestion,
   } = props;
 
+  const visualizationResultProps = useVisualizationResultQBProps();
+
+  const { ref: mainRef, height: mainHeight } = useElementSize();
+  const { ref: footerRef, height: footerHeight } = useElementSize();
+
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
@@ -115,6 +113,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
+  const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
+
   return (
     <Box
       component="main"
@@ -122,9 +122,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         [ViewMainContainerS.isSidebarOpen]: isSidebarOpen,
       })}
       data-testid="query-builder-main"
+      ref={mainRef}
     >
       {isNative ? (
-        <ViewNativeQueryEditor {...props} />
+        <ViewNativeQueryEditor {...props} availableHeight={availableHeight} />
       ) : (
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
@@ -142,14 +143,18 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       >
         <QueryVisualization
           {...props}
+          {...visualizationResultProps}
           noHeader
           className={CS.spread}
           mode={queryMode}
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>
-      <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
-      <ViewFooter className={CS.flexNoShrink} />
+      <ObjectDetailSidesheet />
+      <Box ref={footerRef} className={ViewMainContainerS.Footer}>
+        <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
+        <ViewFooter className={CS.flexNoShrink} />
+      </Box>
     </Box>
   );
 };

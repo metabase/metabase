@@ -5,13 +5,17 @@ import type {
 import { SegmentedControl as MantineSegmentedControl } from "@mantine/core";
 export { segmentedControlOverrides } from "./SegmentedControl.config";
 
-export interface SegmentedControlItem<Value extends string>
-  extends Omit<MantineSegmentedControlItem, "value"> {
+export interface SegmentedControlItem<Value extends string> extends Omit<
+  MantineSegmentedControlItem,
+  "value"
+> {
   value: Value;
 }
 
-export interface SegmentedControlProps<Value extends string>
-  extends Omit<MantineSegmentedControlProps, "data" | "value" | "onChange"> {
+export interface SegmentedControlProps<Value extends string> extends Omit<
+  MantineSegmentedControlProps,
+  "data" | "value" | "onChange"
+> {
   data: SegmentedControlItem<Value>[] | Value[];
   value?: Value;
   onChange?: (value: Value) => void;

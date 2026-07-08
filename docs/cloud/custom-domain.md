@@ -16,40 +16,39 @@ By default, Metabase will automatically provision a domain name for your Metabas
 
 [Pro and Enterprise](https://www.metabase.com/pricing/) plans allow you to add a custom domain. Setting a custom domain will update your instance's [Site URL](../configuring-metabase/settings.md#site-url). The Site URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios.
 
-## How to add a custom domain to your Metabase
+## Add a custom domain to your Metabase
 
-1. Log in to your [Metabase Store account](https://store.metabase.com/).
+To add a custom domain to your Metabase:
 
-2. Find the Metabase instance that you want to add the custom domain to, and select **Manage** on the bottom right of the instance's card. Then click on the **Domains** tab.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Instances**.
+3. In the instance you want to add the custom domain to, click **Settings**.
+4. Find the **Custom domain** section.
+5. Enter your custom domain (e.g., `your.custom.domain`).
+6. Click **Update**.
+7. Ask the manager of your Domain Name System (DNS) records to add a CNAME pointing to:
 
-   You'll see something like this:
-
-   ![Metabase instance domains tab](./images/domains-tab.png)
-
-3. In the custom domain field (the input prefixed with `https://` in the Metabase Store), enter your custom domain (e.g., your.custom.domain).
-4. Talk to whoever manages your Domain Name System (DNS) records, and have them add a CNAME to wherever you manage your DNS records. Point that CNAME to this URL:
-
-   ```url
+   ```
    us-1.cd.metabaseapp.com
    ```
 
    So your CNAME record would look something like:
 
-   ```domain
+   ```
    CNAME    your.custom.domain    us-1.cd.metabaseapp.com
    ```
 
-   Just to be clear: you don't enter this record in the Metabase Store; you enter it in wherever you manage your DNS records.
+   > Enter this record where you manage your DNS records, not in the Metabase Store
 
-5. If you've already set up SSO (like SAML or LDAP) for your Metabase, you'll need to update the return URL in your identity provider configuration to include this new custom domain.
+8. If you've already set up SSO (like SAML or LDAP) for your Metabase, update the return URL in your identity provider configuration to include the new custom domain.
 
-That's it. You may need to wait a bit for the CNAME to update (this delay is specific to how DNS works, and not something Metabase has control over). Metabase will take care of the rest: we'll make sure that:
+You may need to wait for the CNAME to update (this delay is specific to how DNS works, not something Metabase has control over). Metabase takes care of the rest, making sure that:
 
-- the URL directs people to your Metabase,
-- your domain has SSL certificates set up to serve your instance over HTTPS to the new domain,
-- and that your [metabase.com/cloud/login](https://www.metabase.com/cloud/login) works as expected.
+- The URL directs users to your Metabase.
+- Your domain has SSL certificates set up to serve your instance over HTTPS to the new domain.
+- Your [metabase.com/cloud/login](https://www.metabase.com/cloud/login) works as expected.
 
-You'll still be able to access your original, automatically provisioned domain (e.g., yourcompany.metabaseapp.com), so existing embedded links should continue to work.
+You'll still be able to access your original, automatically provisioned domain (e.g., `yourcompany.metabaseapp.com`), so existing embedded links should continue to work.
 
 ## Why you'd want to use a custom domain
 
@@ -58,7 +57,13 @@ You'll still be able to access your original, automatically provisioned domain (
 
 ## Change the name of your Metabase (your DNS alias)
 
-Log in to your Metabase Store account and go to **Instances** > **DNS Alias**, where you can update your alias.
+To change your DNS alias:
+
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Instances**.
+3. Find the **DNS Alias** section.
+4. Enter your new alias.
+5. Click **Update**.
 
 ## Custom SMTP server
 

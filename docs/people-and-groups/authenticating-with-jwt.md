@@ -22,6 +22,8 @@ Assuming your site is localhost serving on port 3000:
 5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token and the "return to" URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
 6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
 
+As an alternative to putting the JWT in the URL query string (which some environments log or cache), you can send the same token in the body of a `POST` request to `/auth/sso` with `Content-Type: application/json` and a JSON body like `{"jwt": "TOKEN_GOES_HERE"}`. You can still pass `return_to` as a query parameter on that URL (for example `POST /auth/sso?return_to=/question/1-superb-question`). The login behavior is otherwise the same as the GET flow.
+
 ## Set up JWT authentication
 
 Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
@@ -30,7 +32,7 @@ Navigate to the **Admin**>**Settings** section of the Admin area, then click on 
 
 Here's a breakdown of each of the settings:
 
-- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identity provider.
+- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider.
 
 - **String Used by the JWT Signing Key**: The string used to seed the private key used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
 
@@ -42,6 +44,7 @@ These are additional settings you can fill in to pass user attributes to Metabas
 - **First name attribute:** the key to retrieve each JWT user's first name.
 - **Last name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 - **Group assignment attribute:** the key to retrieve each JWT user's group assignments.
+- **Tenant attribute:** the key to retrieve each JWT user's tenant. Default is `@tenant`. See [Tenants](../embedding/tenants.md).
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
@@ -64,7 +67,7 @@ You can configure JWT group assignments through Metabase's Admin interface, or b
 
 ### Configure group mapping through environment variables
 
-You can use the following environment variables to configure JTW group mappings instead of configuring them in Metabase's Admin settings:
+You can use the following environment variables to configure JWT group mappings instead of configuring them in Metabase's Admin settings:
 
 - [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups) to specify the key to retrieve the JWT user's groups;
 
@@ -94,17 +97,23 @@ If you add group mappings manually, Metabase will _not_ try to also match groups
 
 > Paid plans [charge for each additional account](../cloud/how-billing-works.md#what-counts-as-a-user-account).
 
-A new SSO login will automatically create a new Metabase account.
+User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via JWT SSO.
 
-Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
+
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if their account previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 
 ## Disabling password logins
 
 > **Avoid locking yourself out of your Metabase!** This setting will apply to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
-To require people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**.
+To require people to log in with SSO, disable password authentication from **Admin** > **Settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
+
+## Assigning tenant users to tenants
+
+If you're running a multi-tenant application, you can use JWT to automatically assign users to tenants based on a claim in the JWT token. See [Tenants](../embedding/tenants.md) for details.
 
 ## Note about Azure
 

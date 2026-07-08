@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.vertica-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.vertica-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -46,7 +47,8 @@
   (mt/test-driver :vertica
     (testing "Columns with dots in the name should be properly quoted (#13932)"
       (mt/dataset dots-in-names
-        (is (= {:query  ["SELECT"
+        (is (= {:lib/type :mbql.stage/native
+                :query  ["SELECT"
                          "  *"
                          "FROM"
                          "  table"

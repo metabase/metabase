@@ -1,11 +1,6 @@
 .page {
-  background-color: var(--mb-color-bg-white);
-
-  @media screen and (--breakpoint-min-lg) {
-    background-image: url("~assets/img/onboarding_bg.svg");
-    background-repeat: no-repeat;
-    background-position: bottom right;
-  }
+  background-color: var(--mb-color-background_page-primary);
+  position: relative;
 }
 
 .item:not([data-css-specificity-hack="🪗"]) {
@@ -22,48 +17,49 @@
 }
 
 .label:not([data-css-specificity-hack="🪗"]) {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: normal;
 }
 
 .control:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
     to right,
-    var(--mb-color-background-hover) 3rem,
+    var(--mb-color-background_surface-hover) 3rem,
     transparent 3rem
   );
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding-left: 0;
   height: 3rem;
 
   &:hover {
-    background: linear-gradient(
-      to right,
-      var(--mb-color-icon-secondary) 3rem,
-      var(--mb-color-background-hover) 3rem
-    );
-    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background_surface-hover);
+    color: var(--mb-color-core-brand);
+
+    .label,
+    .chevron {
+      color: var(--mb-color-core-brand);
+    }
   }
 
   [data-active="true"] & {
     background: linear-gradient(
       to right,
-      var(--mb-color-brand) 3rem,
+      var(--mb-color-core-brand) 3rem,
       transparent 3rem
     );
 
     &:hover {
       background: linear-gradient(
         to right,
-        var(--mb-color-brand) 3rem,
-        var(--mb-color-background-hover) 3rem
+        var(--mb-color-core-brand) 3rem,
+        var(--mb-color-background_surface-hover) 3rem
       );
 
       .label,
       .chevron svg {
-        color: var(--mb-color-brand);
+        color: var(--mb-color-core-brand);
       }
     }
   }
@@ -75,20 +71,20 @@
 
 .content:not([data-css-specificity-hack="🪗"]) {
   border: 0;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-inline: 1rem;
   padding-top: 1.5rem;
   padding-bottom: 3rem;
 }
 
 .icon:not([data-css-specificity-hack="🪗"]) {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   height: 3rem;
   margin-right: 1rem;
   width: 3rem;
 
   [data-active="true"] & {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }
 
@@ -106,7 +102,7 @@
 
 .support {
   align-items: center;
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
   border-radius: 0.5rem;
   display: flex;
   flex-wrap: wrap;
@@ -119,12 +115,12 @@
 
 .video {
   aspect-ratio: 16 / 9;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   width: 100%;
 }
 
 .image {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
 }

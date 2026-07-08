@@ -1,13 +1,14 @@
-import type { Location } from "history";
 import querystring from "querystring";
+
+import type { Location } from "history";
 import _ from "underscore";
 
-import { serializeCardForUrl } from "metabase/lib/card";
-import * as Urls from "metabase/lib/urls";
+import { serializeCardForUrl } from "metabase/common/utils/card";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, Series } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+import type { Card, Field, NormalizedField } from "metabase-types/api";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -43,24 +44,71 @@ export function getURLForCardState(
   query: QueryParams = {},
   objectId: string,
 ) {
-  interface Options {
-    hash: string;
-    query: QueryParams;
-    objectId?: string;
-  }
-  const options: Options = {
-    hash: card && dirty ? serializeCardForUrl(card) : "",
+  const options: Urls.CardUrlBuilderParams = {
+    hash:
+      card && dirty
+        ? serializeCardForUrl(card, {
+            includeOriginalCardId: true,
+            includeDatasetQuery: true,
+            includeDisplayIsLocked: true,
+          })
+        : "",
     query,
   };
   const isAdHocQuestion = !card.id;
   if (objectId != null) {
     if (isAdHocQuestion) {
-      options.query.objectId = objectId;
+      (options.query as QueryParams).objectId = objectId;
     } else {
       options.objectId = objectId;
     }
   }
-  return Urls.question(card, options);
+  return Urls.card(card, options);
+}
+
+/**
+ * The clean `/table/:slug` URL (e.g. /table/2-orders) for a question that is
+ * still the pristine, unmodified default view of a table — otherwise `null`.
+ *
+ * This is what lets the QB show the canonical table URL on entry and fall back
+ * to the `/question#<hash>` form (via {@link getURLForCardState}) the moment the
+ * question is edited away from the table's default.
+ */
+export function getTableUrlForPristineQuestion(
+  question: Question,
+): string | null {
+  if (question.isSaved()) {
+    return null;
+  }
+
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (isNative || Lib.stageCount(query) !== 1) {
+    return null;
+  }
+
+  // A card source (`card__123`) is a string id; only a real table qualifies.
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  if (typeof sourceTableId !== "number") {
+    return null;
+  }
+
+  const table = question.metadata().table(sourceTableId);
+  if (!table) {
+    return null;
+  }
+
+  const card = question.card();
+  const defaultCard = table.newQuestion().card();
+  const isPristine =
+    Lib.areLegacyQueriesEqual(card.dataset_query, defaultCard.dataset_query) &&
+    card.display === defaultCard.display &&
+    _.isEmpty(card.visualization_settings) &&
+    question.parameters().length === 0;
+
+  return isPristine
+    ? Urls.table({ id: sourceTableId, name: table.display_name })
+    : null;
 }
 
 export const isNavigationAllowed = ({
@@ -91,11 +139,12 @@ export const isNavigationAllowed = ({
   if (question.type() === "model") {
     const isRunningModel = pathname === "/model" && hash.length > 0;
     const allowedPathnames = isNewQuestion
-      ? ["/model/query", "/model/columns"]
+      ? ["/model/query", "/model/columns", "/model/metadata"]
       : validSlugs.flatMap((slug) => [
           `/model/${slug}/query`,
           `/model/${slug}/columns`,
           `/model/${slug}/notebook`,
+          `/model/${slug}/metadata`,
         ]);
 
     return isRunningModel || allowedPathnames.includes(pathname);
@@ -142,31 +191,7 @@ export const isNavigationAllowed = ({
   return true;
 };
 
-export const createRawSeries = (options: {
-  card: Card;
-  queryResult: any;
-  datasetQuery?: any;
-}): Series => {
-  const { card, queryResult, datasetQuery } = options;
-
-  // we want to provide the visualization with a card containing the latest
-  // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-  // BUT the last executed "dataset_query" (to ensure data matches the query)
-  return (
-    queryResult && [
-      {
-        ...queryResult,
-        card: {
-          ...card,
-          ...(datasetQuery && { dataset_query: datasetQuery }),
-        },
-      },
-    ]
-  );
-};
-
-const WRITABLE_COLUMN_PROPERTIES = [
-  "id",
+const WRITABLE_MBQL_COLUMN_PROPERTIES = [
   "display_name",
   "description",
   "semantic_type",
@@ -175,6 +200,19 @@ const WRITABLE_COLUMN_PROPERTIES = [
   "settings",
 ];
 
-export function getWritableColumnProperties(column: Field) {
-  return _.pick(column, WRITABLE_COLUMN_PROPERTIES);
+const WRITABLE_NATIVE_COLUMN_PROPERTIES = [
+  "id",
+  ...WRITABLE_MBQL_COLUMN_PROPERTIES,
+];
+
+export function getWritableColumnProperties(
+  column: NormalizedField | Field,
+  isNative: boolean,
+) {
+  return _.pick(
+    column,
+    isNative
+      ? WRITABLE_NATIVE_COLUMN_PROPERTIES
+      : WRITABLE_MBQL_COLUMN_PROPERTIES,
+  );
 }

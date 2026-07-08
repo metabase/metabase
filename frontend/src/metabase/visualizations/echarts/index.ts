@@ -1,10 +1,12 @@
 import {
   BarChart,
+  BoxplotChart,
   CustomChart,
   LineChart,
   SankeyChart,
   ScatterChart,
   SunburstChart,
+  TreemapChart,
 } from "echarts/charts";
 import {
   BrushComponent,
@@ -21,9 +23,11 @@ import { LabelLayout } from "echarts/features";
 import { SVGRenderer } from "echarts/renderers";
 
 export const registerEChartsModules = () => {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   use([
     LineChart,
     BarChart,
+    BoxplotChart,
     ScatterChart,
     CustomChart,
     SunburstChart,
@@ -37,6 +41,7 @@ export const registerEChartsModules = () => {
     BrushComponent,
     DatasetComponent,
     SankeyChart,
+    TreemapChart,
     LabelLayout,
     TooltipComponent,
   ]);

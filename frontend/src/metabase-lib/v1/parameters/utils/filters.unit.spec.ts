@@ -4,6 +4,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   createMockNativeCard,
+  createMockNormalizedField,
   createMockParameter,
 } from "metabase-types/api/mocks";
 
@@ -20,6 +21,7 @@ describe("parameters/utils/field-filters", () => {
       isCountry: () => false,
       isNumeric: () => false,
       isString: () => false,
+      isStringLike: () => false,
       isBoolean: () => false,
       isAddress: () => false,
       isCoordinate: () => false,
@@ -106,6 +108,17 @@ describe("parameters/utils/field-filters", () => {
           }),
         },
       ],
+      [
+        { type: "string/=" },
+        {
+          type: "string",
+          field: () => ({
+            ...field,
+            isString: () => false,
+            isStringLike: () => true,
+          }),
+        },
+      ],
     ].forEach(([parameter, dimension]) => {
       it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
         const predicate = dimensionFilterForParameter(
@@ -148,7 +161,7 @@ describe("parameters/utils/field-filters", () => {
 });
 
 function createMockField(mocks: Record<string, unknown>): Field {
-  return Object.assign(new Field(), mocks);
+  return Object.assign(new Field(createMockNormalizedField({})), mocks);
 }
 
 function createMockDimension(

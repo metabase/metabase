@@ -1,7 +1,9 @@
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
+import type { QueryBuilderMode } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { QueryBuilderMode } from "metabase-types/store";
+
+import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 
 interface FilterHeaderProps {
   question: Question;
@@ -24,26 +26,26 @@ export function QuestionFiltersHeader({
     return null;
   }
 
-  return <FilterPanel query={query} onChange={handleChange} />;
+  return (
+    <FilterPanel
+      query={query}
+      onChange={handleChange}
+      className={ViewTitleHeaderS.FilterPanel}
+    />
+  );
 }
 
 type RenderCheckOpts = {
   question: Question;
   queryBuilderMode: QueryBuilderMode;
-  isObjectDetail: boolean;
 };
 
-const shouldRender = ({
-  question,
-  queryBuilderMode,
-  isObjectDetail,
-}: RenderCheckOpts) => {
+const shouldRender = ({ question, queryBuilderMode }: RenderCheckOpts) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   return (
     queryBuilderMode === "view" &&
     !isNative &&
     isEditable &&
-    !isObjectDetail &&
     !question.isArchived()
   );
 };

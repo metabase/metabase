@@ -6,7 +6,7 @@ interface UseActionButtonLabelProps {
 }
 
 /**
- * Small hook to temporarly update a string, and return it to it's
+ * Small hook to temporarily update a string, and return it to its
  * initial value after the timeout expires.
  */
 

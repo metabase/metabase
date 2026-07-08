@@ -1,9 +1,8 @@
+import { useInterval } from "@mantine/hooks";
 import { useCallback, useRef, useState } from "react";
 import { useUnmount } from "react-use";
 
 import type { DashboardRefreshPeriodControls } from "../types";
-
-import { useInterval } from "./use-interval";
 
 const TICK_PERIOD = 1; // seconds
 export const useDashboardRefreshPeriod = ({

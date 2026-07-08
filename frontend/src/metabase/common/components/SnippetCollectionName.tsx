@@ -1,18 +1,23 @@
 import { t } from "ttag";
 
-import { isRootCollection } from "metabase/collections/utils";
-import SnippetCollections from "metabase/entities/snippet-collections";
+import { useGetCollectionQuery } from "metabase/api";
+import { isRootCollection } from "metabase/common/collections/utils";
 import type { CollectionId } from "metabase-types/api";
 
-function SnippetCollectionName({ id }: { id: CollectionId }) {
+export function SnippetCollectionName({ id }: { id: CollectionId }) {
   if (isRootCollection({ id })) {
-    return <span>{t`Top folder`}</span>;
+    return <span>{t`SQL snippets`}</span>;
   }
   if (!Number.isSafeInteger(id)) {
     return null;
   }
-  return <SnippetCollections.Name id={id} />;
+  return <SnippetCollectionNameLoader id={id} />;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SnippetCollectionName;
+function SnippetCollectionNameLoader({ id }: { id: CollectionId }) {
+  const { data: collection } = useGetCollectionQuery({
+    id,
+    namespace: "snippets",
+  });
+  return <span>{collection?.name ?? ""}</span>;
+}

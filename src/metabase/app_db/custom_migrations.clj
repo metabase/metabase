@@ -12,7 +12,6 @@
   If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code
   changing behaviour."
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
@@ -26,6 +25,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
+   [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
@@ -34,6 +34,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -160,7 +161,6 @@
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")
     ;; and construct new v2 paths by adding prefixes to the base path.
     [(str "/data" base-path) (str "/query" base-path)]
-
     ;; For the specific v1 path that grants full data access but no native query access, we add a
     ;; /schema/ suffix to the corresponding v2 query permission path.
     (when-let [db-id (second (re-find #"^/db/(\d+)/schema/$" v1-path))]
@@ -222,19 +222,19 @@
 
 (defn- update-legacy-field-refs-in-viz-settings [viz-settings]
   (let [old-to-new (fn [old]
-                     (match old
-                       ["ref" ref] ["ref" (match ref
+                     (match/match-one old
+                       ["ref" ref] ["ref" (match/match-one ref
                                             ["field-id" x] ["field" x nil]
                                             ["field-literal" x y] ["field" x {"base-type" y}]
-                                            ["fk->" x y] (let [x (match x
+                                            ["fk->" x y] (let [x (match/match-one x
                                                                    [_x0 x1] x1
-                                                                   x x)
-                                                               y (match y
+                                                                   _ x)
+                                                               y (match/match-one y
                                                                    [_y0 y1] y1
-                                                                   y y)]
+                                                                   _ y)]
                                                            ["field" y {:source-field x}])
-                                            ref ref)]
-                       k k))]
+                                            _ ref)]
+                       _ old))]
     (m/update-existing viz-settings "column_settings" update-keys
                        (fn [k]
                          (-> k
@@ -268,15 +268,15 @@
 
 (defn- update-legacy-field-refs-in-result-metadata [result-metadata]
   (let [old-to-new (fn [ref]
-                     (match ref
+                     (match/match-one ref
                        ["field-id" x] ["field" x nil]
                        ["field-literal" x y] ["field" x {"base-type" y}]
-                       ["fk->" x y] (let [x (match x
+                       ["fk->" x y] (let [x (match/match-one x
                                               [_x0 x1] x1
-                                              x x)
-                                          y (match y
+                                              _ x)
+                                          y (match/match-one y
                                               [_y0 y1] y1
-                                              y y)]
+                                              _ y)]
                                       ["field" y {:source-field x}])
                        _ ref))]
     (->> result-metadata
@@ -304,7 +304,7 @@
 (defn- remove-opts
   "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
   [field_ref & opts-to-remove]
-  (match field_ref
+  (match/match-one field_ref
     ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
     _ field_ref))
 
@@ -313,7 +313,7 @@
           (fn [column_settings]
             (into {}
                   (map (fn [[k v]]
-                         (match (vec (json/decode k))
+                         (match/match-one (vec (json/decode k))
                            ["ref" ["field" id opts]]
                            [(json/encode ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
                            _ [k v]))
@@ -332,7 +332,7 @@
              (fn [column_settings]
                (into {}
                      (mapcat (fn [[k v]]
-                               (match (vec (json/decode k))
+                               (match/match-one (vec (json/decode k))
                                  ["ref" ["field" id opts]]
                                  (for [column-metadata (column-key->metadata ["field" id opts])
                                        ;; remove "temporal-unit" and "binning" options from the matching field refs,
@@ -388,7 +388,7 @@
                                   :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
                                   :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
                        (group-by :tab_position)
-                               ;; sort by tab position
+                       ;; sort by tab position
                        (sort-by first))
         cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
     (loop [position+cards tab+cards
@@ -519,7 +519,7 @@
                       (fn [column_settings]
                         (let [copies-with-join-alias (into {}
                                                            (mapcat (fn [[k v]]
-                                                                     (match (vec (json/decode k))
+                                                                     (match/match-one (vec (json/decode k))
                                                                        ["ref" ["field" id opts]]
                                                                        (for [alias join-aliases]
                                                                          [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
@@ -540,11 +540,11 @@
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:and
-                                                 ;; only include cards with field refs in column_settings
+                                                    ;; only include cards with field refs in column_settings
                                                     [:or
                                                      [:like :object "%ref\\\\\",[\\\\\"field%"]
                                                      [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                 ;; only include cards with joins
+                                                    ;; only include cards with joins
                                                     [:like :object "%joins%"]
                                                     [:= :model "Card"]]})))
   ;; Reverse migration
@@ -673,7 +673,7 @@
                                     (fn [column_settings]
                                       (let [copies-with-join-alias (into {}
                                                                          (mapcat (fn [[k v]]
-                                                                                   (match (vec (json/decode k))
+                                                                                   (match/match-one (vec (json/decode k))
                                                                                      ["ref" ["field" id opts]]
                                                                                      (for [alias join-aliases]
                                                                                        [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
@@ -777,13 +777,13 @@
                                                    (m/map-vals
                                                     #(select-keys % ["click_behavior"])
                                                     column_settings)))
-                             ;; select click behavior top level and in column settings
+                              ;; select click behavior top level and in column settings
                               (select-keys ["column_settings" "click_behavior"])
                               (remove-nil-keys)))
         fix-top-level   (fn [toplevel]
                           (if (= (get toplevel "click") "link")
                             (assoc toplevel
-                                  ;; add new shape top level
+                                   ;; add new shape top level
                                    "click_behavior"
                                    {"type"         (get toplevel "click")
                                     "linkType"     "url"
@@ -793,11 +793,11 @@
                           (reduce-kv
                            (fn [m col field-settings]
                              (assoc m col
-                                   ;; add the click stuff under the new click_behavior entry or keep the
-                                   ;; field settings as is
+                                    ;; add the click stuff under the new click_behavior entry or keep the
+                                    ;; field settings as is
                                     (if (and (= (get field-settings "view_as") "link")
                                              (contains? field-settings "link_template"))
-                                     ;; remove old shape and add new shape under click_behavior
+                                      ;; remove old shape and add new shape under click_behavior
                                       (assoc field-settings
                                              "click_behavior"
                                              {"type"             (get field-settings "view_as")
@@ -809,23 +809,23 @@
                            column-settings))
         fixed-card      (-> (if (contains? dashcard "click")
                               (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
-                             ;; behavior added
+                              ;; behavior added
                               (fix-top-level card))
                             (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
-                           ;; the settings tree
+                            ;; the settings tree
                             existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
         final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
-                            ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
-                            ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
-                            ;; doesn't have link text
+                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                             ;; doesn't have link text
                              (walk/postwalk (fn [form]
                                               (if (map? form)
                                                 (into {} (for [[k v] form
                                                                :when (if (seqable? v)
-                                                                      ;; remove keys with empty maps. must be postwalk
+                                                                       ;; remove keys with empty maps. must be postwalk
                                                                        (seq v)
-                                                                      ;; remove nils
+                                                                       ;; remove nils
                                                                        (some? v))]
                                                            [k v]))
                                                 form))))]
@@ -913,7 +913,7 @@
   (when (not= (raw-setting :ldap-sync-admin-group) "true")
     (remove-admin-group-from-mappings-by-setting-key! :ldap-group-mappings))
   ;; sso are enterprise feature but we still run this even in OSS in case a customer
-  ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
+  ;; have switched from enterprise -> SSO and still have this mapping in Setting table
   (remove-admin-group-from-mappings-by-setting-key! :jwt-group-mappings)
   (remove-admin-group-from-mappings-by-setting-key! :saml-group-mappings))
 
@@ -995,7 +995,7 @@
             :let [is-pg-specical-case? (= [db-type table column]
                                           [:postgres :core_user :updated_at])]]
       (when is-pg-specical-case?
-        (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
+        (t2/query ["DROP VIEW IF EXISTS v_users;"]))
       (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
       (when is-pg-specical-case?
         (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
@@ -1058,7 +1058,6 @@
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Card"]}))))
-
   (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
@@ -1182,7 +1181,7 @@
   true)
 
 (define-migration CreateSampleContent)
-  ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
+;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
@@ -1331,9 +1330,124 @@
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
 
+(defn- card-ids-depending-on-database
+  "Set of report_card ids that depend on `database-id` directly (their own query targets it) or transitively
+  (a card built on such a card via source_card_id, to any depth)."
+  [database-id]
+  (loop [frontier (into #{} (map :id) (t2/query {:select [:id] :from [:report_card]
+                                                 :where  [:= :database_id database-id]}))
+         acc      #{}]
+    (if (empty? frontier)
+      acc
+      (let [acc'  (into acc frontier)
+            next* (into #{} (map :id) (t2/query {:select [:id] :from [:report_card]
+                                                 :where  [:and [:in :source_card_id frontier]
+                                                          [:not [:in :id acc']]]}))]
+        (recur next* acc')))))
+
+(defn- collection-has-survivors?
+  "True if `coll-id` still holds anything after sample content is gone: any content row filed into it, or any
+  surviving child collection (whose path is exactly `child-location`). Checked bottom-up so a child that itself
+  survived keeps its parent alive."
+  [coll-id child-location]
+  (boolean
+   (or (seq (t2/query {:select [1] :from [:collection] :where [:= :location child-location] :limit 1}))
+       (some (fn [table]
+               (seq (t2/query {:select [1] :from [table] :where [:= :collection_id coll-id] :limit 1})))
+             [:report_card :report_dashboard :native_query_snippet :pulse :timeline :document
+              :metabase_table :transform]))))
+
+(defn- remove-sqlite-sample-database-on-downgrade!
+  "Delete the SQLite sample database and everything that depends on it - its tables/fields, every Card whose
+  query targets it (directly or transitively through source_card_id), those cards' dashcards, and Dashboards
+  left empty as a result - even when that content was user-created, because it cannot work without the database.
+
+  The Example collections are then pruned, bottom-up: a sample collection is deleted only if nothing is left in
+  it once the sample content is gone (no content rows, no surviving child collection); a collection a user kept
+  their own content in is left intact. Permission records for the deleted collections go with them.
+
+  Children are deleted explicitly, bottom-up, rather than relying on ON DELETE CASCADE: MySQL 9.7 resolves
+  multi-level cascade fan-outs incompletely, leaving orphaned rows that later break ALTER TABLE statements which
+  re-validate foreign keys."
+  []
+  (when-let [sample-db-id (:id (t2/query-one {:select [:id]
+                                              :from   [:metabase_database]
+                                              :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))]
+    (let [card-ids               (card-ids-depending-on-database sample-db-id)
+          field-ids-q            {:select [:id]
+                                  :from   [:metabase_field]
+                                  :where  [:in :table_id {:select [:id]
+                                                          :from   [:metabase_table]
+                                                          :where  [:= :db_id sample-db-id]}]}
+          affected-dashboard-ids (if (empty? card-ids)
+                                   #{}
+                                   (->> (t2/query {:select-distinct [:dashboard_id]
+                                                   :from            [:report_dashboardcard]
+                                                   :where           [:in :card_id card-ids]})
+                                        (into #{} (map :dashboard_id))))]
+      (when (seq card-ids)
+        (t2/query {:delete-from :dashboardcard_series
+                   :where       [:or
+                                 [:in :card_id card-ids]
+                                 [:in :dashboardcard_id {:select [:id]
+                                                         :from   [:report_dashboardcard]
+                                                         :where  [:in :card_id card-ids]}]]})
+        (t2/query {:delete-from :report_dashboardcard :where [:in :card_id card-ids]})
+        (t2/query {:delete-from :parameter_card
+                   :where       [:or
+                                 [:in :card_id card-ids]
+                                 [:and [:= :parameterized_object_type "card"]
+                                  [:in :parameterized_object_id card-ids]]]})
+        (t2/query {:delete-from :report_card :where [:in :id card-ids]}))
+      (t2/query {:delete-from :dimension :where [:in :field_id field-ids-q]})
+      (t2/query {:delete-from :metabase_field
+                 :where       [:in :table_id {:select [:id]
+                                              :from   [:metabase_table]
+                                              :where  [:= :db_id sample-db-id]}]})
+      (t2/query {:delete-from :metabase_table :where [:= :db_id sample-db-id]})
+      (t2/query {:delete-from :metabase_database :where [:= :id sample-db-id]})
+      (when (seq affected-dashboard-ids)
+        ;; A dashboard that depended on the sample DB is removed once no card-backed dashcard survives - even if
+        ;; text/heading dashcards remain (the example dashboard is built entirely from sample cards plus headings).
+        ;; A dashboard that still has a real card of its own (e.g. a user mixed in another card) is left alone.
+        (let [non-empty (->> (t2/query {:select-distinct [:dashboard_id]
+                                        :from            [:report_dashboardcard]
+                                        :where           [:and [:in :dashboard_id affected-dashboard-ids]
+                                                          [:not= :card_id nil]]})
+                             (into #{} (map :dashboard_id)))
+              empty-ids (remove non-empty affected-dashboard-ids)]
+          (when (seq empty-ids)
+            (t2/query {:delete-from :report_dashboardcard :where [:in :dashboard_id empty-ids]})
+            (t2/query {:delete-from :dashboard_tab :where [:in :dashboard_id empty-ids]})
+            (t2/query {:delete-from :parameter_card
+                       :where       [:and [:= :parameterized_object_type "dashboard"]
+                                     [:in :parameterized_object_id empty-ids]]})
+            (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]}))))
+      ;; Prune the Example collections deepest-first, so an emptied child is gone before its parent is judged.
+      (doseq [{:keys [id location]} (->> (t2/query {:select [:id :location] :from [:collection] :where [:= :is_sample true]})
+                                         (sort-by (comp count :location) >))]
+        (when-not (collection-has-survivors? id (str location id "/"))
+          (t2/query {:delete-from :permissions
+                     :where       [:or
+                                   [:= :collection_id id]
+                                   [:in :object [(format "/collection/%d/" id)
+                                                 (format "/collection/%d/read/" id)]]]})
+          (t2/query {:delete-from :collection :where [:= :id id]}))))))
+
+;; The bundled sample database moved from H2 to SQLite. If an instance running a SQLite-sample
+;; version is downgraded to an H2-sample version, the older code cannot use the SQLite sample
+;; database (it has the wrong engine/details) and would leave it broken. On downgrade we therefore
+;; remove the SQLite sample database and the content left dangling by it, and we do NOT restore an
+;; H2 sample database. This mirrors the upgrade behavior in
+;; metabase.sample-data.impl/replace-sample-database!. There is no forward migration: the upgrade
+;; (H2 -> SQLite) replacement is handled at startup, not here.
+(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade
+  (log/info "No forward migration for MigrateAwayFromSqliteSampleDatabaseOnDowngrade")
+  (remove-sqlite-sample-database-on-downgrade!))
+
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
-;; 2. when series settings exist, remove the diplay key from each map in the series_settings list
+;; 2. when series settings exist, remove the display key from each map in the series_settings list
 
 (defn- area-bar-stacked-viz-migration
   [{display :display viz :visualization_settings :as card}]
@@ -1485,7 +1599,7 @@
 (defn- json-column-key-like-clause
   [key column]
   [:or [:like column (str "%\\\\\"" key "\\\\\"%")]
-       ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+   ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
    [:like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
 
 (defn- update-legacy-column-keys-in-card-viz-settings
@@ -1793,3 +1907,422 @@
     (run! rollback-one! (t2/reducible-query {:select [:id :details]
                                              :from   [:metabase_database]
                                              :where  [:= :engine "clickhouse"]}))))
+
+;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
+;; This was commented out before the 57 release since this was a migration purely to avoid any breakages internally.
+(define-migration BackfillTransformSourceType
+  ;; Copied logic from metabase-enterprise.transforms.models.transform, aside from query normalization
+  #_(let [parse-transform-source (fn [source-json]
+                                   (-> source-json
+                                       (json-out true)
+                                       (m/update-existing :type keyword)))
+          ;; Copied from metabase.lib.schema/native-only-query?
+          native-only-query?     (fn [query]
+                                   (and (map? query)
+                                        (= (count (:stages query)) 1)
+                                        (= (get-in query [:stages 0 :lib/type]) "mbql.stage/native")))
+          transforms             (t2/query {:select [:id :source]
+                                            :from   [:transform]})]
+      (doseq [{:keys [id source]} transforms]
+        (let [parsed-source  (parse-transform-source source)
+              source-type    (:type parsed-source)
+              query          (:query parsed-source)
+              transform-type (case source-type
+                               :python "python"
+                               :query  (if (native-only-query? query) "native" "mbql")
+                               (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
+                                               {:transform-id id :source-type source-type})))]
+          (t2/update! :transform id {:source_type transform-type})))))
+
+(define-migration BackfillTransformTargetDbId
+  ;; Backfills the target_db_id column for existing transform records.
+  ;;
+  ;; For query transforms, uses source.query.database as the source of truth.
+  ;; For python transforms, uses target.database. Records with no database
+  ;; information are left with nil target_db_id.
+  ;;
+  ;; Skips transforms whose referenced database no longer exists (leaves target_db_id NULL),
+  ;; since the subsequent FK constraint migration would fail if stale DB references were set.
+  (let [existing-db-ids (into #{} (map :id) (t2/query {:select [:id] :from [:metabase_database]}))]
+    (doseq [{:keys [id source target]} (t2/query {:select [:id :source :target]
+                                                  :from   [:transform]
+                                                  :where  [:= :target_db_id nil]})]
+      (let [source-map (json-out source false)
+            target-map (json-out target false)
+            ;; Mirror the app-code logic: for query transforms, source.query.database is the source of truth;
+            ;; for python transforms, target.database is the only option.
+            db-id      (or (get-in source-map ["query" "database"])
+                           (get target-map "database"))]
+        (when (and db-id (existing-db-ids db-id))
+          (t2/update! :transform id {:target_db_id db-id}))))))
+
+(define-migration SetTransformSourceDatabaseId
+  (doseq [transform (t2/select [:transform :id :source])]
+    (let [parsed-source (-> transform :source json/decode+kw)
+          db-id       (case (keyword (:type parsed-source))
+                        :query (get-in parsed-source [:query :database])
+                        :python (parsed-source :source-database)
+                        nil)]
+      (t2/update! :transform (:id transform) {:source_database_id db-id}))))
+
+(define-migration MoveExistingAtSymbolUserAttributes
+  (reserve-at-symbol-user-attributes/migrate!))
+
+(define-reversible-migration UnifySourceTablesFormat
+  (let [tables [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
+                {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+        python? (fn [source]
+                  (= "python" (get (json-out source false) "type")))
+        all-rows (into []
+                       (mapcat (fn [{:keys [table pks] w :where}]
+                                 (->> (t2/query (cond-> {:select (into [:source] pks)
+                                                         :from   [table]}
+                                                  w (assoc :where w)))
+                                      (filter #(or w (python? (:source %))))
+                                      (map #(assoc % ::table table ::pks pks)))))
+                       tables)
+        all-ids  (into #{}
+                       (mapcat (fn [{:keys [source]}]
+                                 (let [st (get (json-out source false) "source-tables")]
+                                   (when (map? st)
+                                     (filter int? (vals st))))))
+                       all-rows)
+        metadata (when (seq all-ids)
+                   (into {}
+                         (map (fn [{:keys [id db_id schema name]}]
+                                [id {"database_id" db_id "schema" schema "table" name}]))
+                         (t2/query {:select [:id :db_id :schema :name]
+                                    :from   [:metabase_table]
+                                    :where  [:in :id all-ids]})))]
+    (doseq [{:keys [source] :as row} all-rows]
+      (let [parsed (json-out source false)
+            st     (get parsed "source-tables")]
+        (when (map? st)
+          (let [entries (mapv (fn [[alias v]]
+                                (if (int? v)
+                                  ;; Integer value: backfill all metadata (database_id, schema, table) from DB.
+                                  (merge {"alias" alias "table_id" v}
+                                         (get metadata v))
+                                  ;; Ref-map value: already has database_id/schema/table; table_id is
+                                  ;; resolved lazily by normalize-source-tables when the transform is saved via the API.
+                                  (assoc v "alias" alias)))
+                              st)
+                pks     (::pks row)]
+            (t2/query {:update (::table row)
+                       :set    {:source (json-in (assoc parsed "source-tables" entries))}
+                       :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+  (let [convert-back
+        (fn [source-json]
+          (let [parsed (json-out source-json false)]
+            (when-let [st (get parsed "source-tables")]
+              (when (sequential? st)
+                (let [m (into {} (map (fn [entry]
+                                        [(get entry "alias")
+                                         (or (get entry "table_id") entry)]))
+                              st)]
+                  (json-in (assoc parsed "source-tables" m)))))))
+        tables  [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
+                 {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+        python? (fn [source]
+                  (= "python" (get (json-out source false) "type")))]
+    (doseq [{:keys [table pks] w :where} tables]
+      (doseq [row (cond->> (t2/query (cond-> {:select (into [:source] pks)
+                                              :from   [table]}
+                                       w (assoc :where w)))
+                    (not w) (filter #(python? (:source %))))]
+        (when-let [new-source (convert-back (:source row))]
+          (t2/query {:update table
+                     :set    {:source new-source}
+                     :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+(define-migration FixClickHouseUploadDBSchemaNames
+  "This data migration is meant to fix the issues seen in #69667, #68298 and #65945.
+   We made the driver feature `schemas` conditional on the `enable-multiple-db` DB connection setting.
+   So for DBs with `enable-multiple-db` set to false (such as our cloud hosted upload DBs), the `schemas` feature was
+   false. This meant that when a user disabled uploads, or changed their upload DBs, and then re-enabled uploads or
+   changed their upload DB back, the `uploads_schema_name` field of the DB was set to null. So any uploads made after
+   the `uploads_schema_name` field was set to null were created as tables with a null `schema`. For example:
+   ;; metabase_database
+   | id | engine     | name      | uploads_enabled | uploads_schema_name |
+   | 2  | clickhouse | upload_db | true            | null                | ;; `uploads_schema_name` set to null after disabling and re-enabling uploads
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; created before uploads_schema_name was set to null
+   | 2  | 2     | t2   | null   | true   | true      | ;; created after uploads_schema_name was set to null
+   On the clickhouse DB these tables are still created in a schema, particularly the one specified in the `dbname`
+   field of the DB `details`. This meant that the next time the DB sync ran, it would find this table under that
+   schema, and would not find that table with a null schema. So then it would create a new table with the same name
+   and a schema, and mark the old table with the null schema as inactive. For example:
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; this table has a schema so it's synced correctly
+   | 2  | 2     | t2   | null   | false  | true      | ;; this table is now inactive since it has a null schema and isn't found by sync
+   | 3  | 2     | t2   | db_foo | true   | false     | ;; this is the new table created by sync with the same name and a schema
+   We create models based on upload tables, and since the upload tables got marked as inactive, attempting to access
+   these models would give an inactive table error."
+  ;; Look for a clickhouse DB with uploads_enabled
+  (let [clickhouse-upload-db (t2/query {:select [:id :details :uploads_schema_name]
+                                        :from [:metabase_database]
+                                        :where [:and
+                                                [:= :engine "clickhouse"]
+                                                [:= :uploads_enabled true]]})
+        ;; If this DB has a null `uploads_schema_name`, then set the `uploads_schema_name` to the value of the `dbname`
+        set-uploads-schema-name! (fn [{:keys [id details uploads_schema_name]}]
+                                   (let [decrypted-details (encrypted-json-out details)
+                                         db-name (:dbname decrypted-details)]
+                                     (when (and db-name (not uploads_schema_name))
+                                       (t2/query {:update :metabase_database
+                                                  :set    {:uploads_schema_name db-name}
+                                                  :where  [:= :id id]}))))]
+    (if (< 1 (count clickhouse-upload-db))
+      (log/warn "FixClickHouseUploadDBSchemaNames: expected at most 1 ClickHouse upload database, found" (count clickhouse-upload-db))
+      (do
+        (run! set-uploads-schema-name! clickhouse-upload-db)
+        ;; Look for any inactive upload tables with a null schema
+        (let [inactive-upload-tables (t2/query {:select [:mt.id :mt.name :mt.db_id :md.uploads_schema_name]
+                                                :from [[:metabase_table :mt]]
+                                                :join [[:metabase_database :md] [:= :mt.db_id :md.id]]
+                                                :where [:and
+                                                        [:= :md.engine "clickhouse"]
+                                                        [:= :md.uploads_enabled true]
+                                                        [:not= :md.uploads_schema_name nil]
+                                                        [:= :mt.schema nil]
+                                                        [:= :mt.active false]
+                                                        [:= :mt.is_upload true]]})
+              retire-and-revive-upload-table! (fn [{:keys [id name db_id uploads_schema_name]}]
+                                                ;; Look for an active non-upload table with the same name and the correct `uploads_schema_name`
+                                                ;; Set it to be inactive and rename it to satisfy the (db_id, name, schema) unique key
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active false
+                                                                 :name (str name "_retired_69667")}
+                                                           :where [:and
+                                                                   [:= :name name]
+                                                                   [:= :schema uploads_schema_name]
+                                                                   [:= :active true]
+                                                                   [:= :is_upload false]
+                                                                   [:= :db_id db_id]]})
+                                                ;; Set the inactive upload table to be active and set the schema to the correct `uploads_schema_name`
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active true
+                                                                 :schema uploads_schema_name}
+                                                           :where [:= :id id]}))]
+          (run! retire-and-revive-upload-table! inactive-upload-tables))))))
+
+(defn- legacy-checkpoint-column-name
+  "Extract the column name from a legacy column-unique-key string.
+   Uses the same format as [[metabase.lib.metadata.column/unpack-unique-key]]:
+   `column-unique-key-v<version>$<column-key>`."
+  [unique-key]
+  (when-let [[_match _version column-key] (re-find #"^column-unique-key-v(\d+)\$(.+$)" unique-key)]
+    column-key))
+
+(defn- legacy-checkpoint-source-table-id
+  "Extract the source table ID from a parsed transform source for checkpoint migration.
+   Returns nil for native transforms (which can't be migrated)."
+  [parsed]
+  (case (keyword (:type parsed))
+    :query  (get-in parsed [:query :stages 0 :source-table])
+    :python (let [source-tables (:source-tables parsed)]
+              (cond
+                ;; vec format: [{:alias "t" :table_id 42}]
+                (sequential? source-tables)
+                (when (= 1 (count source-tables))
+                  (:table_id (first source-tables)))
+                ;; map format: {"t" 42} or {"t" {:table_id 42}}
+                (map? source-tables)
+                (when (= 1 (count source-tables))
+                  (let [v (first (vals source-tables))]
+                    (if (map? v) (:table_id v) v)))))
+    nil))
+
+(defn- resolve-checkpoint-field-id
+  "Try to resolve a legacy checkpoint-filter-unique-key to a field ID."
+  [parsed]
+  (when-let [unique-key (get-in parsed [:source-incremental-strategy :checkpoint-filter-unique-key])]
+    (when-let [column-name (legacy-checkpoint-column-name unique-key)]
+      (when-let [table-id (legacy-checkpoint-source-table-id parsed)]
+        (when (int? table-id)
+          (t2/select-one-pk :model/Field
+                            :table_id table-id
+                            :name column-name
+                            :active true))))))
+
+(define-migration RemoveLegacyIncrementalStrategies
+  (doseq [{:keys [id source]} (t2/select [:transform :id :source])]
+    (let [parsed (json-out source true)]
+      (when (:source-incremental-strategy parsed)
+        (if-let [field-id (resolve-checkpoint-field-id parsed)]
+          ;; Migrate: replace legacy keys with checkpoint-filter-field-id
+          (let [migrated (update parsed :source-incremental-strategy
+                                 (fn [s]
+                                   (-> s
+                                       (dissoc :checkpoint-filter-unique-key :checkpoint-filter)
+                                       (assoc :checkpoint-filter-field-id field-id))))]
+            (t2/query {:update :transform
+                       :set    {:source (json-in migrated)}
+                       :where  [:= :id id]}))
+          ;; Can't migrate: strip incremental strategy
+          (t2/query {:update :transform
+                     :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
+                     :where  [:= :id id]}))))))
+
+(defn- batched-data-layer-update!
+  "Update `metabase_table.data_layer` in 500K ID-range chunks to avoid timeout on large instances.
+   Computes min/max ID once and strides through the range. A final unbounded UPDATE catches any
+   rows inserted during the migration."
+  [from-values case-expr]
+  (let [batch-size 500000
+        {:keys [min-id max-id]} (t2/query-one
+                                 {:select [[[:min :id] :min-id]
+                                           [[:max :id] :max-id]]
+                                  :from   [:metabase_table]})]
+    (when (and min-id max-id)
+      (loop [start (long min-id)]
+        (when (<= start (long max-id))
+          (t2.execute/query-one
+           {:update :metabase_table
+            :set    {:data_layer case-expr}
+            :where  [:and
+                     [:>= :id start]
+                     [:< :id (+ start batch-size)]
+                     [:not-in :data_layer from-values]]})
+          (recur (+ start batch-size))))
+      ;; catch any rows inserted above the original max-id during the migration
+      (t2.execute/query-one
+       {:update :metabase_table
+        :set    {:data_layer case-expr}
+        :where  [:and
+                 [:> :id max-id]
+                 [:not-in :data_layer from-values]]}))))
+
+;; Intentionally not using define-reversible-migration here to avoid wrapping in a transaction.
+;; A single long transaction on millions of rows can hit connection/transaction timeouts.
+;; Each batch runs as its own implicit transaction instead.
+;; Partial completion is safe: :model/Table's transform-data-layer handles on-read conversion
+;; of any unconverted rows in both directions (58<->59).
+(defrecord DropMedallionNamesForDataLayer []
+  CustomTaskChange
+  (execute [_ _database]
+    (batched-data-layer-update!
+     ["hidden" "internal" "final"]
+     [:case [:= :data_layer "copper"] "hidden" :else "final"]))
+  (getConfirmationMessage [_]
+    "Custom migration: DropMedallionNamesForDataLayer")
+  (setUp [_])
+  (validate [_ _database]
+    (ValidationErrors.))
+  (setFileOpener [_ _resourceAccessor])
+
+  CustomTaskRollback
+  (rollback [_ _database]
+    (when (should-execute-change?)
+      (batched-data-layer-update!
+       ["copper" "bronze" "silver" "gold"]
+       [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))))
+
+(defn- find-table-id
+  "Find a metabase_table by db-id, schema, and name using case-insensitive matching,
+   preferring an exact case match when one exists."
+  [db-id schema table-name]
+  (:id (first (t2/query {:select   [:id]
+                         :from     [:metabase_table]
+                         :where    [:and
+                                    [:= :db_id db-id]
+                                    (if (some? schema)
+                                      [:= [:lower :schema] [:lower schema]]
+                                      [:is :schema nil])
+                                    [:= [:lower :name] [:lower table-name]]]
+                         :order-by [[[:case
+                                      [:and
+                                       [:= :name table-name]
+                                       (if (some? schema)
+                                         [:= :schema schema]
+                                         [:is :schema nil])]
+                                      0
+                                      :else 1]
+                                     :asc]]
+                         :limit    1}))))
+
+(define-migration BackfillTransformTargetTables
+  ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
+  ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a transform target row.
+  (let [;; Reproduces humanization/name->human-readable-name :simple (can't call library code in migrations)
+        acronyms  #{"id" "url" "ip" "uid" "uuid" "guid"}
+        cap-word  (fn [word]
+                    (let [lower (lower-case-en word)]
+                      (if (contains? acronyms lower)
+                        (upper-case-en word)
+                        (if (= word (upper-case-en word))
+                          (str/capitalize word)
+                          (str (str/capitalize (subs word 0 1)) (subs word 1))))))
+        humanize  (fn [s]
+                    (when (seq s)
+                      (let [result (str/join " " (for [part  (str/split s #"[-_\s]+")
+                                                       :when (not (str/blank? part))]
+                                                   (cap-word part)))]
+                        (if (str/blank? result) s result))))
+        upsert-table! (fn [db-id schema table-name]
+                        (or (find-table-id db-id schema table-name)
+                            (try
+                              (t2/query {:insert-into :metabase_table
+                                         :values      [{:db_id               db-id
+                                                        :schema              schema
+                                                        :name                table-name
+                                                        :display_name        (humanize table-name)
+                                                        :active              false
+                                                        :transform_target    true
+                                                        :data_source         "metabase-transform"
+                                                        :data_authority      "computed"
+                                                        :initial_sync_status "complete"
+                                                        :created_at          :%now
+                                                        :updated_at          :%now}]})
+                              (find-table-id db-id schema table-name)
+                              (catch Exception _
+                                (find-table-id db-id schema table-name)))))]
+    ;; Create provisional tables for transform targets that don't exist yet
+    (run! (fn [{:keys [target target_db_id]}]
+            (let [target-map (json-out target false)]
+              (when-let [table-name (get target-map "name")]
+                (let [schema (get target-map "schema")
+                      db-id  target_db_id]
+                  (upsert-table! db-id schema table-name)))))
+          (t2/reducible-query {:select [:target :target_db_id]
+                               :from   [:transform]
+                               :where  [:not= :target_db_id nil]}))))
+
+(define-migration BackfillTransformTargetTableId
+  ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
+  ;; If table_id is present in the JSON, use it directly.
+  ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
+  (run! (fn [{:keys [id target target_db_id]}]
+          (let [target-map (json-out target false)
+                table-id   (or (get target-map "table_id")
+                               (when-let [table-name (get target-map "name")]
+                                 (find-table-id target_db_id (get target-map "schema") table-name)))]
+            (when table-id
+              (t2/query {:update :transform
+                         :set    {:target_table_id table-id}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :target :target_db_id]
+                             :from   [:transform]
+                             :where  [:and
+                                      [:not= :target_db_id nil]
+                                      [:= :target_table_id nil]]})))
+
+(define-migration BackfillMetabotConversationEmbeddingHostname
+  ;; Carry over the hostname portion of metabot_conversation.embed_url into the
+  ;; new embedding_hostname column. Only the hostname is migrated — the path
+  ;; portion of pre-flag embed_url values has no consent basis under
+  ;; analytics-pii-retention-enabled and is intentionally discarded.
+  (run! (fn [{:keys [id embed_url]}]
+          (let [^java.net.URI parsed (try (java.net.URI. ^String embed_url) (catch Exception _ nil))
+                host                 (some-> parsed .getHost not-empty)
+                host*                (when host (subs host 0 (min (count host) 512)))]
+            (when host*
+              (t2/query {:update :metabot_conversation
+                         :set    {:embedding_hostname host*}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :embed_url]
+                             :from   [:metabot_conversation]
+                             :where  [:and
+                                      [:not= :embed_url nil]
+                                      [:= :embedding_hostname nil]]})))

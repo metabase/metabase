@@ -6,16 +6,18 @@ import { DATABASE_TABLE_EDITING_SETTING } from "../settings";
 
 import { AdminDatabaseTableEditingSection } from "./AdminDatabaseTableEditingSection";
 
-const setup = (
-  setting: DatabaseLocalSettingAvailability = { enabled: true },
-) => {
-  const mockDatabase = createMockDatabase();
+const setup = (options: {
+  driverSetting?: DatabaseLocalSettingAvailability;
+  engine?: string;
+}) => {
+  const { driverSetting = { enabled: true }, engine = "h2" } = options;
+  const mockDatabase = createMockDatabase({ engine });
 
   return renderWithProviders(
     <AdminDatabaseTableEditingSection
       database={mockDatabase}
       settingsAvailable={{
-        [DATABASE_TABLE_EDITING_SETTING]: setting,
+        [DATABASE_TABLE_EDITING_SETTING]: driverSetting,
       }}
       updateDatabase={() => Promise.resolve()}
     />,
@@ -23,24 +25,35 @@ const setup = (
 };
 
 describe("AdminDatabaseTableEditingSection", () => {
-  it("should render for supported engines", () => {
-    setup({
-      enabled: true,
-    });
+  it.each(["postgres", "mysql"])(
+    "should render for supported engine: %s",
+    (engine) => {
+      setup({ engine });
+      expect(
+        screen.getByTestId("database-table-editing-section"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("should hide section for unsupported engines", () => {
+    setup({ engine: "h2" });
     expect(
-      screen.getByTestId("database-table-editing-section"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("database-table-editing-section"),
+    ).not.toBeInTheDocument();
   });
 
   it("should render disabled toggle for specific disabled reasons", () => {
     setup({
-      enabled: false,
-      reasons: [
-        {
-          key: "permissions/no-writable-table",
-          message: "Database connection is read-only",
-        },
-      ],
+      driverSetting: {
+        enabled: false,
+        reasons: [
+          {
+            key: "permissions/no-writable-table",
+            message: "Database connection is read-only",
+          },
+        ],
+      },
+      engine: "postgres",
     });
 
     expect(
@@ -55,13 +68,16 @@ describe("AdminDatabaseTableEditingSection", () => {
 
   it("should hide section for other disabled reasons", () => {
     setup({
-      enabled: false,
-      reasons: [
-        {
-          key: "driver-feature-missing",
-          message: "The driver does not support table editing",
-        },
-      ],
+      driverSetting: {
+        enabled: false,
+        reasons: [
+          {
+            key: "driver-feature-missing",
+            message: "The driver does not support table editing",
+          },
+        ],
+      },
+      engine: "mysql",
     });
 
     expect(

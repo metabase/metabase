@@ -1,0 +1,12 @@
+.value {
+  display: inline;
+  color: var(--scalar-value-color, inherit);
+}
+
+.hoverable {
+  cursor: pointer;
+}
+
+.hoverable:hover {
+  color: var(--mb-color-core-brand);
+}

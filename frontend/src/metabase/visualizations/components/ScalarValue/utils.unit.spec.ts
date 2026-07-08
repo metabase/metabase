@@ -1,9 +1,9 @@
-import * as measureText from "metabase/lib/measure-text";
-import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import type { FontStyle } from "metabase/utils/measure-text";
+import * as measureText from "metabase/utils/measure-text";
 
 import { findSize } from "./utils";
 
-jest.doMock("metabase/lib/measure-text", () => ({
+jest.doMock("metabase/utils/measure-text", () => ({
   measureText: jest.fn(),
 }));
 
@@ -13,7 +13,7 @@ const createMockMeasureText = (width: number, height: number) => {
 
 const defaults = {
   text: "test",
-  unit: "rem",
+  unit: "rem" as const,
   fontFamily: "Lato",
   fontWeight: "900",
 };

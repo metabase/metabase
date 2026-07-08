@@ -3,10 +3,11 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { skipToken } from "metabase/api";
+import { Api, skipToken } from "metabase/api";
+import { tag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
@@ -27,15 +28,16 @@ export const GdriveSyncStatus = () => {
   const res = useGetGsheetsFolderQuery(!showGdrive ? skipToken : undefined);
   const { data: gdriveFolder, error: apiError } = res;
 
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isCurrentUser = currentUser?.id === gdriveFolder?.created_by_id;
 
   const status = getStatus({ status: gdriveFolder?.status, error: apiError });
 
   const previousStatus = usePrevious(status);
+  const wasInitializing = previousStatus === "initializing";
 
   useEffect(() => {
-    if (status === "syncing" && !forceHide) {
+    if (status === "initializing" && !forceHide) {
       const timeout = setTimeout(() => {
         dispatch(EnterpriseApi.util.invalidateTags(["gsheets-status"]));
       }, SYNC_POLL_INTERVAL);
@@ -46,13 +48,13 @@ export const GdriveSyncStatus = () => {
   }, [res, status, dispatch, forceHide]); // need res so this runs on every refetch
 
   useEffect(() => {
-    // if our setting changed to loading from not-connected, show the status
-    if (status === "syncing" && previousStatus === "not-connected") {
+    // This banner only tracks the initial connect lifecycle; background
+    // re-syncs (status === "syncing") are intentionally invisible here.
+    if (status === "initializing") {
       setForceHide(false);
     }
 
-    // if our setting changed to not-connected from loading, force hide
-    if (status === "not-connected" && previousStatus === "syncing") {
+    if (status === "not-connected" && wasInitializing) {
       setForceHide(true);
     }
 
@@ -60,16 +62,20 @@ export const GdriveSyncStatus = () => {
       setDbId(gdriveFolder?.db_id);
     }
 
-    if (status === "error" && previousStatus === "syncing") {
+    if (status === "active" && wasInitializing) {
+      dispatch(Api.util.invalidateTags([tag("table")]));
+    }
+
+    if (status === "error" && wasInitializing) {
       console.error(
         getErrorMessage(
           apiError,
-          // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only ui
           t`Please check that the folder is shared with the Metabase Service Account.`,
         ),
       );
     }
-  }, [status, previousStatus, gdriveFolder, dbId, apiError]);
+  }, [dispatch, status, wasInitializing, gdriveFolder, dbId, apiError]);
 
   if (forceHide || !isCurrentUser) {
     return null;
@@ -107,7 +113,7 @@ function GsheetsSyncStatusView({
     .with(
       "error",
       () =>
-        // eslint-disable-next-line no-literal-metabase-strings -- admin UI
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin UI
         t`Please check that the folder is shared with the Metabase Service Account.`,
     )
     .otherwise(() => undefined);
@@ -123,7 +129,7 @@ function GsheetsSyncStatusView({
               status === "active" ? `/browse/databases/${db_id}` : undefined,
             icon: "google_drive",
             description,
-            isInProgress: status === "syncing",
+            isInProgress: status === "initializing",
             isCompleted: status === "active",
             isAborted: status === "error",
           },

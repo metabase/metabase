@@ -8,7 +8,10 @@
   - Shared Question downloads
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
-  - Alert attachments"
+  - Alert attachments
+
+  TODO (Cam 9/17/25) -- these tests need to get moved into appropriate module(s)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.api.downloads-exports-test]}}}}}}
   (:require
    [clojure.data :as data]
    [clojure.data.csv :as csv]
@@ -23,6 +26,7 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)))
@@ -52,12 +56,17 @@
      (mapv name ks)
      (map #(mapv % ks) result))))
 
+(defn- parse-csv
+  "Parse CSV export bytes, stripping the leading UTF-8 BOM"
+  [s]
+  (csv/read-csv (cond-> s (string? s) u/strip-bom)))
+
 (defn- process-results
   [export-format results]
   (when (seq results)
     (case export-format
       :csv  (cond-> results
-              (not (map? results)) csv/read-csv)
+              (not (map? results)) parse-csv)
       :xlsx (read-xlsx results)
       :json (tabulate-maps results))))
 
@@ -588,7 +597,6 @@
               (testing "The headers also show the Row Totals header"
                 (is (= "Row totals"
                        (last (first result))))))))
-
         (testing "The Columns Properly indicate the pivot row names."
           (let [col1               (map first result)
                 col2               (map second result)
@@ -637,7 +645,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   true
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [[""
                    "Doohickey" "Doohickey"
                    "Gadget" "Gadget"
@@ -710,7 +718,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   true
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [["Created At: Month" "Category" "Sum of Price"]
                   ["May, 2016" "Doohickey" "144.12"]
                   ["May, 2016" "Gadget" "81.58"]
@@ -735,7 +743,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   false
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [["Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
                   ["2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
                  result)))))))
@@ -757,7 +765,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   true
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [["Category" "Created At: Year" "Sum of Price" "Count"]
                   ["Doohickey" "2016" "632.14" "13"]
                   ["Doohickey" "2017" "854.19" "17"]
@@ -806,7 +814,6 @@
                   ["May, 2016" "144.12" "81.58" "75.09" "90.21" "391"]
                   ["June, 2016" "82.92" "75.53" "83.26" "" "241.71"]]
                  (take 3 pivot))))
-
         (testing "but only when `qp.settings/enable-pivoted-exports` is true"
           (mt/with-temporary-setting-values [qp.settings/enable-pivoted-exports false]
             (let [result      (mt/user-http-request :crowberto :post 200
@@ -815,7 +822,7 @@
                                                     :pivot_results true)
                   sheet      (read-xlsx result)]
               (is (= [["Category" "Created At: Month" "Sum of Price" "Average of Rating"]
-                      ["Doohickey" "May 1, 2016, 12:00 AM" "144.12" "2.97"]
+                      ["Doohickey" "May 1, 2016, 12:00 AM" "144.12" "2.966666667"]
                       ["Doohickey" "June 1, 2016, 12:00 AM" "82.92" "3.6"]]
                      (take 3 sheet))))))))))
 
@@ -880,7 +887,7 @@
           (let [result (->> (mt/user-http-request :crowberto :post 200
                                                   (format "card/%d/query/csv" pivot-card-id)
                                                   {:format_rows true})
-                            csv/read-csv)]
+                            parse-csv)]
             (is (= [["Category" "Created At: Month" "Sum of Price"]
                     ["Doohickey" "May, 2016" "144.12"]
                     ["Doohickey" "June, 2016" "82.92"]
@@ -980,14 +987,14 @@
                                                        :type     :native
                                                        :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
         (let [results (all-outputs! card {:export-format :csv})]
-          (is (= {:card-download            110
-                  :unsaved-card-download    110
-                  :alert-attachment         110
-                  :dashcard-download        110
-                  :subscription-attachment  110
-                  :public-question-download 110
-                  :public-dashcard-download 110}
-                 (update-vals results count)))))))
+          (is (=? {:card-download            110
+                   :unsaved-card-download    110
+                   :dashcard-download        110
+                   :alert-attachment         110
+                   :subscription-attachment  110
+                   :public-question-download 110
+                   :public-dashcard-download 110}
+                  (update-vals results count)))))))
   (testing "Downloads row limit can be raised"
     (binding [qp.settings/*minimum-download-row-limit* 100]
       (mt/with-temporary-setting-values [download-row-limit 109]
@@ -996,14 +1003,14 @@
                                                          :type     :native
                                                          :native   {:query "SELECT 1 as A FROM generate_series(1,109);"}}}]
           (let [results (all-outputs! card {:export-format :csv})]
-            (is (= {:card-download            110
-                    :unsaved-card-download    110
-                    :alert-attachment         110
-                    :dashcard-download        110
-                    :subscription-attachment  110
-                    :public-question-download 110
-                    :public-dashcard-download 110}
-                   (update-vals results count)))))))))
+            (is (=? {:card-download            110
+                     :unsaved-card-download    110
+                     :dashcard-download        110
+                     :alert-attachment         110
+                     :subscription-attachment  110
+                     :public-question-download 110
+                     :public-dashcard-download 110}
+                    (update-vals results count)))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
   (testing "A model's visualization settings are respected in downloads."
@@ -1091,7 +1098,7 @@
 
 (deftest clean-errors-test
   (testing "Queries that error should not include visualization settings (metabase-private #233)"
-    (with-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
+    (mt/with-dynamic-fn-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
       (mt/with-temp [:model/Card {card-id :id} {:display                :table
                                                 :type                   :model
                                                 :dataset_query          {:database (mt/id)
@@ -1117,7 +1124,7 @@
             ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
             ;; a json blob to the output stream, it creates an invalid xlsx anyway.
             ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
-            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format)
+            (let [results (mt/user-http-request :rasta :post 500 (format "card/%d/query/%s" card-id export-format)
                                                 {:format_rows true})
                   results-string (if (= "xlsx" export-format)
                                    (read-xlsx results)
@@ -1199,8 +1206,8 @@
                  "January 1, 2018, 12:00 AM"
                  "January 1, 2019, 12:00 AM"
                  "Row totals"]
-                ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2,185.89"]
-                ["Gadget" "679.83" "1,059.11" "844.51" "435.75" "3,019.2"]]
+                ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
+                ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.2"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows false :pivot true}))))))))
 
 (deftest unformatted-downloads-and-exports-keep-numbers-as-numbers
@@ -1617,7 +1624,6 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))
-
         (testing "for json"
           (let [result-scaled (card-download card-scaled {:export-format :json :format-rows true})
                 result-unscaled (card-download card-unscaled {:export-format :json :format-rows true})
@@ -1735,7 +1741,6 @@
                   ["3"            ""      ""      "35.39" "35.39"]
                   ["Grand totals" ""      "53.98" ""      "55.7464"]]
                  (rest result))))))
-
     (mt/dataset test-data
       (mt/with-temp [:model/Card source-model
                      {:dataset_query
@@ -1775,3 +1780,26 @@
                   ["3"            "300.0" ""      "300.0"]
                   ["Grand totals" "200.0" "100.0" "175.0"]]
                  (rest result))))))))
+
+(deftest ^:parallel pivot-long-column-names-download-test
+  (testing "Pivot table downloads should include columns with very long names that are present in frontend"
+    (let [long-title (apply str (repeat 10 "Long title"))]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:columns ["CATEGORY"]
+                                                  :rows    ["VENDOR"]
+                                                  :values  ["sum" long-title]}}
+                        :dataset_query          (mt/mbql-query orders
+                                                  {:aggregation [[:sum $total]
+                                                                 [:aggregation-options [:count] {:name         long-title
+                                                                                                 :display-name long-title}]]
+                                                   :breakout    [$product_id->products.category
+                                                                 $product_id->products.vendor]
+                                                   :limit       3})}]
+          (testing "download"
+            (let [res     (card-download pivot-card {:export-format :csv :pivot true :format-rows false})
+                  headers (second res)]
+              (is (= 3 (count headers)))
+              (is (some #{long-title} headers)))))))))

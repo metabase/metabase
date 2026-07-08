@@ -1,0 +1,8 @@
+name: Audit Database
+entity_id: aUdItDaTaBaSe0000001
+engine: h2
+is_audit: true
+created_at: '2026-04-02T00:00:00Z'
+serdes/meta:
+- id: Audit Database
+  model: Database

@@ -15,17 +15,14 @@
                                                       :location (str "/" c1-id "/")}
                        :model/Collection {c4-id :id} {:name     "child collection"
                                                       :location (str "/" c2-id "/")}]
-
       (let [coll-ids [c1-id c2-id c3-id c4-id]
             all-eids #(t2/select-fn-set :entity_id :model/Collection :id [:in coll-ids])]
         (testing "all collections have entity_ids"
           (is (every? some? (all-eids))))
-
         (testing "removing the entity_ids"
           (doseq [id coll-ids]
             (t2/update! :model/Collection id {:entity_id nil}))
           (is (every? nil? (all-eids))))
-
         (testing "backfill now recreates them"
           (serdes.backfill/backfill-ids-for! :model/Collection)
           (is (every? some? (all-eids))))))))
@@ -38,7 +35,6 @@
         (t2/update! :model/Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
                (t2/select-fn-set :entity_id :model/Collection :type nil))))
-
       (testing "backfill"
         (serdes.backfill/backfill-ids-for! :model/Collection)
         (testing "sets a blank entity_id"
@@ -54,7 +50,6 @@
         (t2/update! :model/Collection c2-id {:entity_id nil})
         (is (= #{c1-eid nil}
                (t2/select-fn-set :entity_id :model/Collection :type nil))))
-
       (testing "backfilling twice"
         (serdes.backfill/backfill-ids-for! :model/Collection)
         (let [first-eid (t2/select-one-fn :entity_id :model/Collection :id c2-id)]

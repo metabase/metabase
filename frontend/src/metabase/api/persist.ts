@@ -63,7 +63,7 @@ export const persistApi = Api.injectEndpoints({
     setRefreshSchedule: builder.mutation<void, PersistedInfoRefreshSchedule>({
       query: (body) => ({
         method: "POST",
-        url: "/api/persist/set-refresh/schedule",
+        url: "/api/persist/set-refresh-schedule",
         body,
       }),
       invalidatesTags: (_, error) =>

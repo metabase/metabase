@@ -119,7 +119,7 @@ produces the same result as
 datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-Yes, `DATEDIF` looks a bit wrong, but the spreadsheet function really is `DATEDIF()` with one "f", not `DATEDIFF()`.
+Yes, it's `DATEDIF` with one 'F'.
 
 ### Python
 

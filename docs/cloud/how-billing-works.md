@@ -25,8 +25,8 @@ Companies with large number of users can talk to sales about our [Enterprise pla
 
 Though we bill you monthly, we calculate how much you owe each day. So, say you're on the [Starter plan](https://www.metabase.com/pricing/). Your monthly bill would include:
 
-- $85 flat payment for the month. This payment additionally covers the first five people who use your Metabase that month. If you have fewer than five people using your Metabase, your bill will still be $85 that month.
-- Each additional person costs \$5, prorated for how many days their [accounts were available](#what-counts-as-a-user-account) that month. So if an account only existed for the last 10 days of your 30 day billing period, you'd only be charged for those 10 days, not for the full 30 days. Same goes if you deactivated an account prior to the end of the billing period, you'll only be charged for the days when the account was available for use during that billing period. Basically, you only ever pay for all accounts in your Metabase that haven't been deactivated yet.
+- $100 flat payment for the month. This payment additionally covers the first five people who use your Metabase that month. If you have fewer than five people using your Metabase, your bill will still be $100 that month.
+- Each additional person costs \$6, prorated for how many days their [accounts were available](#what-counts-as-a-user-account) that month. So if an account only existed for the last 10 days of your 30 day billing period, you'd only be charged for those 10 days, not for the full 30 days. Same goes if you deactivated an account before the end of the billing period, you'll only be charged for the days when the account was available for use during that billing period. Basically, you only ever pay for all accounts in your Metabase that haven't been deactivated yet.
 
 ## How annual billing works
 
@@ -56,13 +56,13 @@ Generally, annual billing is a great deal; it's cheaper across the board. The on
 
 ## What counts as a user account?
 
-A user account is any account which has been added to your Metabase instance (manually or via SSO) that has not been deactivated. You can view a list of user accounts in your **Admin settings** -> **People** list. Any user account which has been [deactivated](../people-and-groups/managing.md#deactivating-an-account) doesn't count toward your number of user accounts. That is to say: if an account exists, but has not been deactivated, that account will count toward your bill, _even if no one signs in and uses that account_. If an account is deactivated, that account is charged for the number of days the account was available for use during that billing period, including the day it was deactivated (since it was available for use for part of the day up until it was deactivated).
+A user account is any account which has been added to your Metabase instance (manually or via SSO) that has not been deactivated. You can view a list of user accounts in your **Admin** -> **People** list. Any user account which has been [deactivated](../people-and-groups/managing.md#deactivating-an-account) doesn't count toward your number of user accounts. That is to say: if an account exists, but has not been deactivated, that account will count toward your bill, _even if no one signs in and uses that account_. If an account is deactivated, that account is charged for the number of days the account was available for use during that billing period, including the day it was deactivated (since it was available for use for part of the day up until it was deactivated).
 
 ## How billing works with embedding
 
-Interactive Embedding requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
+Full app embedding and modular embedding (unless using guest embeds) requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
 
-Static Embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
+Guest embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
 
 ## How we count active user accounts each day
 
@@ -79,7 +79,7 @@ For example, say you're running two Metabase instances, A and B, that both use t
 
 Then the number of user accounts would total 8 for that day.
 
-If you're on Metabase Cloud, counting active users works the same: each day we count the maxium number of user accounts at any one time over the previous 36 hours.
+If you're on Metabase Cloud, counting active users works the same: each day we count the maximum number of user accounts at any one time over the previous 36 hours.
 
 We refresh the user count you see in your [Metabase Store account page](https://store.metabase.com) every day. Since the refresh only happens once a day, there might be a delay between when you adjust the number of user accounts in your Metabase and when your accounts sync with your Store page.
 
@@ -92,7 +92,7 @@ Metabase offers annual invoicing for Pro plans (in addition to our Enterprise pl
 ### How invoicing works for Pro plans
 
 - After switching to billing via invoices, Metabase will send you an invoice via email for the amount due for that year, as well as payment instructions. Each year after that, you'll get an annual invoice billing you for the coming year.
-- **After receiving an invoice via email, you have 15 days to pay the invoice with ACH, wire transfer, or credit card**.
+- **After receiving an invoice via email, you have 30 days to pay the invoice with ACH, wire transfer, or credit card**.
 - If you add user accounts to your plan throughout the year, Metabase will bill these true-ups on a quarterly basis, with invoices for the prorated yearly cost of the additional user accounts (see [annual billing](#how-annual-billing-works)).
 - Payment can be done via Automated Clearing House (ACH) or wire transfer.
 - You can see a list of all of your invoices and their statuses in the **Billing** tab of your Metabase Store account.

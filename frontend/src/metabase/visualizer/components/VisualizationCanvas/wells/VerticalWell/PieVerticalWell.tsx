@@ -3,9 +3,8 @@ import cx from "classnames";
 import { type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Stack, Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/redux";
+import { Box, Ellipsified, Stack, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {

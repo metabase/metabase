@@ -84,7 +84,7 @@ If you or someone else wrote a SQL query that includes [variables][variable-glos
 
 ![SQL filter](../images/SQL-filter-widget.png)
 
-Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
+Writing SQL queries that use variables or parameters can be powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
 
 ## Snippets
 
@@ -116,7 +116,7 @@ On saved SQL questions without [parameters](./sql-parameters.md), you'll get the
 
 ![Explore results button](../images/explore-results.png)
 
-## Drill-though in SQL questions
+## Drill-through in SQL questions
 
 Visualizations created with SQL have limited [drill-through][drill-through] capabilities:
 
@@ -138,4 +138,4 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable
-[drill-through]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through
+[drill-through]: https://www.metabase.com/docs/latest/questions/visualizations/drill-through

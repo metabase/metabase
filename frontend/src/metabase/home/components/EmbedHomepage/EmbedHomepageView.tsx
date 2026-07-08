@@ -1,7 +1,8 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Box, Card, Stack, Text, Title } from "metabase/ui";
+import { UpsellEmbedHomepage } from "metabase/common/components/upsells/UpsellEmbedHomepage";
+import { Box, Card, Flex, Stack, Text, Title } from "metabase/ui";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
 import { EmbedJsContent } from "./EmbedJsContent";
@@ -12,7 +13,7 @@ import { StaticEmbedContent } from "./StaticEmbedContent";
 
 export type EmbedHomepageViewProps = {
   exampleDashboardId: number | null;
-  variant: "oss/starter" | "ee";
+  variant: "oss" | "ee";
   hasEmbeddingFeature: boolean;
   onDismiss: (reason: EmbeddingHomepageDismissReason) => void;
   // links
@@ -44,7 +45,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     : undefined;
 
   const content = match(variant)
-    .with("oss/starter", () => {
+    .with("oss", () => {
       return (
         <>
           <StaticEmbedContent
@@ -91,27 +92,35 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     .exhaustive();
 
   return (
-    <Stack maw={550}>
-      <HeaderWithDismiss onDismiss={onDismiss} />
+    <Flex gap="lg" align="flex-start" maw={1000}>
+      <Stack maw={550}>
+        <HeaderWithDismiss onDismiss={onDismiss} />
 
-      <Card px="xl" py="lg">
-        <Stack gap="xl">
-          <Box>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-            <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
-            <Text>
-              {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-              {t`Give your customers secure, multi-tenant access to their data with as much (or as little) interactivity and tools to explore data as you want, with as much customization as you need. Embed dashboards, charts—even Metabase's query editor—with iframes or as individual React components.`}
-            </Text>
-          </Box>
-          {content}
-        </Stack>
-      </Card>
+        <Card px="xl" py="lg">
+          <Stack gap="xl">
+            <Box>
+              {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only visible to admins */}
+              <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
+              <Text>
+                {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only visible to admins */}
+                {t`Give your customers secure, multi-tenant access to their data with as much (or as little) interactivity and tools to explore data as you want, with as much customization as you need. Embed dashboards, charts—even Metabase's query editor—with iframes or as individual React components.`}
+              </Text>
+            </Box>
+            {content}
+          </Stack>
+        </Card>
 
-      <NeedMoreInfoCard
-        embeddingDocsUrl={embeddingDocsUrl}
-        analyticsDocsUrl={analyticsDocsUrl}
-      />
-    </Stack>
+        <NeedMoreInfoCard
+          embeddingDocsUrl={embeddingDocsUrl}
+          analyticsDocsUrl={analyticsDocsUrl}
+        />
+      </Stack>
+
+      {variant === "oss" && (
+        <Box mt="2.5rem">
+          <UpsellEmbedHomepage location="embedding-homepage" />
+        </Box>
+      )}
+    </Flex>
   );
 };

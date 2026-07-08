@@ -80,7 +80,7 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see help info", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Not seeing one here?").click();
 
       H.modal().within(() => {
@@ -145,9 +145,13 @@ describe("scenarios > account > notifications", () => {
       cy.signInAsAdmin();
       openUserNotifications();
 
+      cy.intercept("POST", "/api/notification/*/unsubscribe").as(
+        "alertUnsubscribe",
+      );
+
       cy.findByTestId("notifications-list")
         .findByText("Created by Robert Tableton", { exact: false })
-        .should("exist");
+        .should("be.visible");
 
       clickUnsubscribe();
 
@@ -156,9 +160,18 @@ describe("scenarios > account > notifications", () => {
         cy.findByText("Unsubscribe").click();
       });
 
-      cy.findByTestId("notifications-list")
-        .findByText("Created by Robert Tableton", { exact: false })
-        .should("not.exist");
+      cy.wait("@alertUnsubscribe");
+
+      // This was the admin's only notification and they didn't create it, so
+      // unsubscribing empties the list and the notifications-list container
+      // unmounts into the empty state. Anchor on the success toast first, then
+      // assert the list is gone — don't scope the negative check inside the
+      // container that disappears.
+      H.undoToastList()
+        .findByText("Successfully unsubscribed.")
+        .should("be.visible");
+
+      cy.findByTestId("notifications-list").should("not.exist");
     });
 
     it("should be able to see created notifications that a user is not subscribed to", () => {
@@ -167,7 +180,7 @@ describe("scenarios > account > notifications", () => {
           H.createQuestionAlert({
             admin_id,
             card_id,
-            cron_schedule: "0 0 2 * * ?",
+            cron_schedule: "0 0 3 * * ?",
             handlers: [
               {
                 channel_type: "channel/email",
@@ -187,11 +200,11 @@ describe("scenarios > account > notifications", () => {
       openUserNotifications();
 
       cy.findByTestId("notifications-list").within(() => {
-        cy.findByText("Check daily at 2:00 AM").should("exist");
+        cy.findByText("Check daily at 3:00 AM").should("exist");
 
         const notificationCard = () =>
           cy
-            .findByText("Check daily at 2:00 AM")
+            .findByText("Check daily at 3:00 AM")
             .closest("[data-testid=notification-alert-item]")
             .should("exist");
 
@@ -219,7 +232,7 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see help info", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Not seeing one here?").click();
 
       H.modal().within(() => {
@@ -233,18 +246,18 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see pulses notifications", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subscription");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Slack’d hourly", { exact: false });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created by you", { exact: false });
     });
 
     it("should be able to unsubscribe and delete a pulse when the user has created it", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subscription");
       clickUnsubscribe();
 
@@ -253,7 +266,7 @@ describe("scenarios > account > notifications", () => {
         cy.findByText("Yes, delete this subscription").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subscription").should("not.exist");
     });
   });

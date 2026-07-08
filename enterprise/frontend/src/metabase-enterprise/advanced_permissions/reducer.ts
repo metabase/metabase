@@ -8,18 +8,19 @@ import {
   UPDATE_DATA_PERMISSION,
 } from "metabase/admin/permissions/permissions";
 import {
-  DataPermission,
-  DataPermissionValue,
-  type EntityId,
-} from "metabase/admin/permissions/types";
-import {
   DATABASES_BASE_PATH,
   GROUPS_BASE_PATH,
 } from "metabase/admin/permissions/utils/urls";
-import type { GroupId, Impersonation } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type GroupId,
+  type Impersonation,
+  type PermissionEntityId,
+} from "metabase-types/api";
 
 export const getImpersonatedPostAction = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
   view: "database" | "group",
 ) =>

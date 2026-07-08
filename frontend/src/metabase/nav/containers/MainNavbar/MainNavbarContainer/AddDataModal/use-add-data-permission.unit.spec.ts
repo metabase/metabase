@@ -6,13 +6,12 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import type { UserWithApplicationPermissions } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { useAddDataPermissions } from "./use-add-data-permission";
 
@@ -30,7 +29,7 @@ function setup({
   });
 
   if (canAccessSettings) {
-    (currentUser as UserWithApplicationPermissions).permissions = {
+    currentUser.permissions = {
       can_access_setting: true,
       can_access_monitoring: false,
       can_access_subscription: false,

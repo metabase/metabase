@@ -159,6 +159,17 @@
                                   :points_of_interest
                                   :caveats
                                   :serdes/meta]
+ :Transform                      []
+ [:Transform :source]            []
+ [:Transform :target]            []
+ :TransformJob                   []
+ [:TransformJob :job_tags]       []
+ :TransformTag                   []
+ :PythonLibrary                  [:path
+                                  :source
+                                  :entity_id
+                                  :created_at
+                                  :serdes/meta]
  :Metabot                        [:name
                                   :description
                                   :created_at

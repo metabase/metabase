@@ -2,7 +2,6 @@
   (:require
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn current-page :- [:maybe ::lib.schema/page]
@@ -22,4 +21,9 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     page         :- [:maybe ::lib.schema/page]]
-   (lib.util/update-query-stage query stage-number u/assoc-dissoc :page page)))
+   (lib.util/update-query-stage query stage-number (fn [stage]
+                                                     (if page
+                                                       (-> stage
+                                                           (dissoc :limit) ; drop `:limit` if present since it conflicts with `:page`
+                                                           (assoc :page page))
+                                                       (dissoc stage :page))))))

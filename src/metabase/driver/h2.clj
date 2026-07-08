@@ -1,40 +1,49 @@
 (ns metabase.driver.h2
+  (:refer-clojure :exclude [some every?])
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [every? some]])
   (:import
-   (java.sql
-    Clob
-    ResultSet
-    ResultSetMetaData
-    SQLException)
+   (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
-   (org.h2.engine SessionLocal)))
+   (org.h2.engine SessionLocal)
+   (org.h2.util StringUtils)))
 
 (set! *warn-on-reflection* true)
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent :sql-jdbc)
+(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -70,14 +79,20 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
+                              ;; (Ngoc - 2026-01-27) we have the code to support workspace isolation but since workspace
+                              ;; is useless with out transforms, so we disable it for now
+                              :workspace                 false
                               :database-routing          true
+                              :describe-is-generated     true
+                              :describe-is-nullable      true
+                              :describe-default-expr     true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod driver/connection-properties :h2
@@ -110,8 +125,8 @@
                                         bad-markers))]
     (pred s)))
 
-(defmethod driver/can-connect? :h2
-  [driver {:keys [db] :as details}]
+(defmethod driver/validate-db-details! :h2
+  [_driver {:keys [db]}]
   (when-not driver.settings/*allow-testing-h2-connections*
     (throw (ex-info (tru "H2 is not supported as a data warehouse") {:status-code 400})))
   (when (string? db)
@@ -127,7 +142,11 @@
       ;; keys are uppercased by h2 when parsed:
       ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/engine/ConnectionInfo.java#L298
       (when (contains? properties "INIT")
-        (throw (ex-info "INIT not allowed" {:keys ["INIT"]})))))
+        (throw (ex-info "INIT not allowed" {:keys ["INIT"]}))))))
+
+(defmethod driver/can-connect? :h2
+  [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
 
 (defmethod driver/db-start-of-week :h2
@@ -135,7 +154,7 @@
   :monday)
 
 ;; TODO - it would be better not to put all the options in the connection string in the first place?
-(defn- connection-string->file+options
+(defn connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
@@ -144,7 +163,7 @@
   {:pre [(string? connection-string)]}
   (let [[file & options] (str/split connection-string #";+")
         options          (into {} (for [option options]
-                                    (str/split option #"=")))]
+                                    (str/split option #"=" 2)))]
     [file options]))
 
 (defn- db-details->user [{:keys [db], :as details}]
@@ -153,26 +172,37 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(defn- check-native-query-not-using-default-user [{query-type :type, :as query}]
+(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- [:map
+                                                                                       [:type [:enum :native :query]]]]
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [details]} (driver-api/database (driver-api/metadata-provider))
+      (let [details (-> (driver-api/metadata-provider) driver-api/database driver.conn/effective-details)
             user              (db-details->user details)]
-        (when (or (str/blank? user)
-                  (= user "sa"))        ; "sa" is the default USER
+        (when (and config/is-prod? ;; we elevated permissions in workspace tests
+                   (or (str/blank? user)
+                       (= user "sa")))        ; "sa" is the default USER
           (throw
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type driver-api/qp.error-type.db})))))))
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
-  ^Parser [h2-db-id]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
+  ^Parser [h2-database-or-id]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-database-or-id))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
-    (let [session (-> conn (get-field "inner") (get-field "session"))]
+    (let [^org.h2.jdbc.JdbcConnection inner (try
+                                              ;; May be a wrapper, get the innermost object that has session field
+                                              (u/prog1 (.unwrap conn org.h2.jdbc.JdbcConnection)
+                                                (assert (instance? org.h2.jdbc.JdbcConnection <>)))
+                                              (catch java.sql.SQLException e
+                                                (throw (ex-info "Not an H2 connection. Are we sure this is an H2 database?"
+                                                                {:database h2-database-or-id
+                                                                 :conn     conn}
+                                                                e))))
+          session (get-field inner "session")]
       ;; Only SessionLocal represents a connection we can create a parser with. Remote sessions and other
       ;; session types are ignored.
       (when (instance? SessionLocal session)
@@ -191,8 +221,11 @@
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
-  [database query]
-  (when-let [h2-parser (make-h2-parser database)]
+  [database-or-id :- [:or
+                      ::lib.schema.id/database
+                      ::lib.schema.metadata/database]
+   ^String query  :- :string]
+  (when-let [h2-parser (make-h2-parser database-or-id)]
     (try
       (let [command            (.prepareCommand h2-parser query)
             first-command-type (.getCommandType command)
@@ -208,6 +241,43 @@
       ;; only valid queries can be classified.
       (catch org.h2.message.DbException _
         {:command-types [] :remaining-sql nil}))))
+
+(def ^:private unsupported-builtin-functions
+  "H2 built-in functions that operate on the server environment (filesystem, linked databases,
+   session and memory state) rather than on query data. They are not supported in native queries
+   or actions, and can be embedded inside otherwise-ordinary SELECT/CALL statements, so they are
+   matched by name rather than by statement type."
+  #{"ABORT_SESSION"
+    "CANCEL_SESSION"
+    "CSVREAD"
+    "CSVWRITE"
+    "DATABASE_PATH"
+    "DB_OBJECT_ID"
+    "DB_OBJECT_SQL"
+    "FILE_READ"
+    "FILE_WRITE"
+    "LINK_SCHEMA"
+    "MEMORY_FREE"
+    "MEMORY_USED"})
+
+(def ^:private unsupported-builtin-function-regex
+  (re-pattern (str "(?i)\\b(?:" (str/join "|" unsupported-builtin-functions) ")\\b")))
+
+(defn- unsupported-functions-in-query
+  "The set of `unsupported-builtin-functions` referenced by `sql`, or nil if none. Scans the SQL
+   text rather than the parsed command, so it still applies when the H2 parser is unavailable."
+  [sql]
+  (when sql
+    (perf/not-empty
+     (into #{} (map u/upper-case-en)
+           (re-seq unsupported-builtin-function-regex
+                   (StringUtils/toUpperEnglish sql))))))
+
+(defn- check-no-unsupported-functions [sql]
+  (when-let [fns (unsupported-functions-in-query sql)]
+    (throw (ex-info (tru "These functions are not supported in native queries: {0}" (str/join ", " (sort fns)))
+                    {:type      driver-api/qp.error-type.db
+                     :functions fns}))))
 
 (defn- every-command-allowed-for-actions? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
@@ -239,6 +309,7 @@
 
 (defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
+    (check-no-unsupported-functions query)
     (when-let [query-classification (classify-query database query)]
       (when-not (every-command-allowed-for-actions? query-classification)
         (throw (ex-info "DDL commands are not allowed to be used with H2."
@@ -252,10 +323,15 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(defn- check-read-only-statements [{{:keys [query]} :native}]
-  (when query
+(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- [:map
+                                                                             [:type [:enum :query :native]]
+                                                                             [:native
+                                                                              [:map
+                                                                               [:query string?]]]]]
+  (when sql
+    (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
-                                               query)]
+                                               sql)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
                         {:classification query-classification}))))))
@@ -281,30 +357,9 @@
   ;; FIXME: need to check the equivalent of check-native-query-not-using-default-user and check-action-commands-allowed
   ((get-method driver/execute-raw-queries! :sql-jdbc) driver conn-spec queries))
 
-(defn- dateadd [unit amount expr]
-  (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
-    (-> [:dateadd
-         (h2x/literal unit)
-         (if (number? amount)
-           (sql.qp/inline-num (long amount))
-           (h2x/cast-unless-type-in "integer" #{"long" "integer"} amount))
-         expr]
-        (h2x/with-database-type-info (h2x/database-type expr)))))
-
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
-  (cond
-    (= unit :quarter)
-    (recur driver hsql-form (h2x/* amount 3) :month)
-
-    ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
-    ;; for application DB purposes) convert to `:millisecond`
-    (and (= unit :second)
-         (not (zero? (rem amount 1))))
-    (recur driver hsql-form (* amount 1000.0) :millisecond)
-
-    :else
-    (dateadd unit amount hsql-form)))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ messages]
@@ -405,11 +460,11 @@
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
   ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
   ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
@@ -441,10 +496,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -516,7 +569,7 @@
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
 ;; options users might try to put in their connection string, like INIT=...
 
-(defn- file+options->connection-string
+(defn file+options->connection-string
   "Implode the results of `connection-string->file+options` back into a connection string."
   [file options]
   (apply str file (for [[k v] options]
@@ -538,7 +591,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (driver-api/spec :h2 (cond-> details
+  (driver-api/spec :h2 (cond-> (driver/sanitize-db-details details)
                          (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
@@ -569,13 +622,19 @@
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [classname (some-> (.getColumnClassName rsmeta i)
-                          (Class/forName true (driver-api/the-classloader)))]
-    (if (isa? classname Clob)
-      (fn []
-        (driver-api/clob->str (.getObject rs i)))
-      (fn []
-        (.getObject rs i)))))
+  (let [col-type (.getColumnType rsmeta i)]
+    (when (= col-type Types/JAVA_OBJECT)
+      (throw (ex-info "Unable to parse jdbc type"
+                      {:column-index i
+                       :column-name  (.getColumnName rsmeta i)
+                       :column-type  col-type})))
+    (let [classname (some-> (.getColumnClassName rsmeta i)
+                            (Class/forName true (driver-api/the-classloader)))]
+      (if (isa? classname Clob)
+        (fn []
+          (driver-api/clob->str (.getObject rs i)))
+        (fn []
+          (.getObject rs i))))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]
@@ -605,6 +664,30 @@
     :metabase.upload/date                     [:date]
     :metabase.upload/datetime                 [:timestamp]
     :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for H2 that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:varchar])
+(defmethod type->database-type :type/Text [_] [:varchar])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Float [_] [(keyword "DOUBLE PRECISION")])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/TimeWithTZ [_] [:time-with-time-zone])
+(defmethod type->database-type :type/UUID [_] [:uuid])
+
+(defmethod driver/type->database-type :h2
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod driver/create-auto-pk-with-append-csv? :h2 [_driver] true)
 
@@ -641,3 +724,79 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :h2
   [_ e]
   (#{"42S02" "42S03" "42S04"} (sql-jdbc/get-sql-state e)))
+
+(defmethod sql.normalize/normalize-unquoted-name :h2
+  [_ name-str]
+  (u/upper-case-en name-str))
+
+(defmethod sql/default-schema :h2
+  [_]
+  "PUBLIC")
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- replace-credentials
+  "Replace USER and PASSWORD in an H2 connection string."
+  [connection-string new-user new-password]
+  (let [[file options] (connection-string->file+options connection-string)]
+    (file+options->connection-string file (assoc options "USER" new-user "PASSWORD" new-password))))
+
+(defn- get-user-from-connection-string
+  "Extract the USER from an H2 connection string."
+  [connection-string]
+  (let [[_file options] (connection-string->file+options connection-string)]
+    (get options "USER")))
+
+(defmethod driver/init-workspace-isolation! :h2
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
+        password    (driver.u/random-workspace-password)
+        ;; H2 embeds credentials in the :db connection string, so we need to build a new one
+        original-db (:db (driver.conn/effective-details database))
+        new-db      (replace-credentials original-db username password)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [(format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
+                     (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
+                     (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [password]))))))
+    {:schema           schema-name
+     :database_details {:db new-db}}))
+
+(defmethod driver/destroy-workspace-isolation! :h2
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql [;; CASCADE drops all objects (tables, etc.) in the schema
+                     (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)
+                     (format "DROP USER IF EXISTS \"%s\"" username)]]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/grant-workspace-read-access! :h2
+  [_driver database workspace schemas]
+  (let [username (-> workspace :database_details :db get-user-from-connection-string)
+        qu       (sql.u/quote-name :h2 :field username)
+        schemas  (distinct schemas)]
+    ;; H2 uses GRANT SELECT ON SCHEMA schemaName TO userName.
+    ;; Schema-wide grant covers existing + future tables. Per-table grants
+    ;; are not emitted: workspace input shape is per-namespace, not per-table.
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [schema schemas]
+          (.addBatch ^Statement stmt
+                     ^String (format "GRANT SELECT ON SCHEMA %s TO %s"
+                                     (sql.u/quote-name :h2 :schema schema) qu)))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/llm-sql-dialect-resource :h2 [_]
+  "metabot/prompts/dialects/h2.md")

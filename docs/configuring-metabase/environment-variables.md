@@ -71,6 +71,33 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
+### `MB_AI_FEATURES_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled`.
+- [Configuration file name](./config-file.md): `ai-features-enabled`
+
+Whether AI features are enabled.
+
+### `MB_AI_USAGE_MAX_RETENTION_DAYS`
+
+- Type: integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
+- [Configuration file name](./config-file.md): `ai-usage-max-retention-days`
+
+Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
+
+Sets the maximum number of days Metabase preserves rows for the following application database tables:
+
+- `ai_usage_log`
+- `metabot_conversation`
+- `metabot_message`
+
+Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
+If set to 0, Metabase will keep all rows.
+
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
@@ -101,13 +128,24 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_PII_RETENTION_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
+- [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
+
+Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
 - Default: `true`
 - [Configuration file name](./config-file.md): `anon-tracking-enabled`
 
-Enable the collection of anonymous usage data in order to help Metabase improve.
+Enable the collection of anonymous usage data in order to help Metabase improve..
 
 ### `MB_API_KEY`
 
@@ -293,6 +331,13 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
 
+### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
+
+- Type: integer
+- Default: `250`
+
+Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
+
 ### `MB_CHECK_FOR_UPDATES`
 
 - Type: boolean
@@ -308,6 +353,33 @@ Identify when new versions of Metabase are available.
 
 Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true,
   but you can disable this behavior if you want to sync it manually or use SerDes to populate its data model.
+
+### `MB_CSP_IMG_ALLOWED_HOSTS`
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
+- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
+
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations (`map-tile-server-url`, always allowed automatically).
+
+### `MB_CSP_IMG_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
+- [Configuration file name](./config-file.md): `csp-img-enabled`
+
+Restrict the browser Content Security Policy so images can only load from this Metabase instance or the hosts listed in `csp-img-allowed-hosts`. Must be on to enable Custom Visualizations.
+
+### `MB_CSV_FIELD_SEPARATOR`
+
+- Type: string
+- Default: `,`
+- [Exported as](../installation-and-operation/serialization.md): `csv-field-separator`.
+- [Configuration file name](./config-file.md): `csv-field-separator`
+
+Character to use as field separator in CSV exports. Defaults to comma (,). Common alternatives include semicolon (;) for European locales and tab (\t).
 
 ### `MB_CUSTOM_FORMATTING`
 
@@ -340,6 +412,7 @@ Whether or not the use of custom GeoJSON is enabled.
 
 - Type: boolean
 - Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage`.
 - [Configuration file name](./config-file.md): `custom-homepage`
 
 Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.
@@ -348,9 +421,21 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 - Type: integer
 - Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage-dashboard`.
 - [Configuration file name](./config-file.md): `custom-homepage-dashboard`
 
 ID of dashboard to use as a homepage.
+
+### `MB_CUSTOM_VIZ_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-viz-enabled`.
+- [Configuration file name](./config-file.md): `custom-viz-enabled`
+
+Should custom visualizations be enabled for this instance?
 
 ### `MB_DASHBOARDS_SAVE_LAST_USED_PARAMETERS`
 
@@ -379,9 +464,11 @@ Timeout in milliseconds for connecting to databases, both Metabase application d
 
 By default, this is 20 minutes.
 
-Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
+Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
+  If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
+
+  This setting does not apply to queries executed within transforms; those are governed by MB_TRANSFORM_TIMEOUT instead.
+
   Please be aware that other services (like Nginx) may still drop long-running queries.
 
 ### `MB_DEFAULT_MAPS_ENABLED`
@@ -392,6 +479,13 @@ Timeout in minutes for databases query execution, both Metabase application data
 - [Configuration file name](./config-file.md): `default-maps-enabled`
 
 Whether or not the default GeoJSON maps are enabled.
+
+### `MB_DISABLE_AUTO_SYNC`
+
+- Type: boolean
+- Default: `false`
+
+When true, suppresses automatically-triggered syncs: the scheduled sync-and-analyze and update-field-values jobs do not run (and new triggers are not registered), and adding a new database does not kick off an initial sync. Syncs originating from an explicit request — the Sync-now REST endpoints, or a transform finalizing its output table — are unaffected. For deployments that load database metadata from disk at startup and should not have Metabase re-discover it.
 
 ### `MB_DISABLE_CORS_ON_LOCALHOST`
 
@@ -435,6 +529,17 @@ The email address you want to use for the sender of emails from your custom SMTP
 - [Configuration file name](./config-file.md): `email-from-name`
 
 The name you want to use for the sender of emails.
+
+### `MB_EMAIL_MAX_RECIPIENTS_PER_MESSAGE`
+
+- Type: integer
+- Default: `50`
+- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-message`.
+- [Configuration file name](./config-file.md): `email-max-recipients-per-message`
+
+The maximum number of recipients allowed on a single email. Notifications with more recipients than
+                this are split into multiple messages. This guards against SMTP providers (e.g. Amazon SES) that reject
+                any message exceeding their per-message recipient cap. Defaults to 50; set to 0 to disable batching.
 
 ### `MB_EMAIL_MAX_RECIPIENTS_PER_SECOND`
 
@@ -544,6 +649,15 @@ SMTP username.
 
 Custom SMTP server username.
 
+### `MB_EMBEDDED_METABOT_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled`.
+- [Configuration file name](./config-file.md): `embedded-metabot-enabled`
+
+Whether Metabot is enabled for embedding.
+
 ### `MB_EMBEDDING_APP_ORIGIN [DEPRECATED]`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -567,8 +681,6 @@ Allow this origin to embed the full Metabase application.
 Allow these space delimited origins to embed Metabase interactive.
 
 ### `MB_EMBEDDING_APP_ORIGINS_SDK`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: ``
@@ -626,7 +738,7 @@ Allow admins to embed Metabase via the SDK?
 - Default: `false`
 - [Configuration file name](./config-file.md): `enable-embedding-simple`
 
-Allow admins to embed Metabase via Embedded Analytics JS?
+Allow admins to embed Metabase via modular embedding?
 
 ### `MB_ENABLE_EMBEDDING_STATIC`
 
@@ -663,14 +775,6 @@ Enable pivoted exports and pivoted subscriptions.
 
 Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?
 
-### `MB_ENABLE_QUERY_CACHING`
-
-- Type: boolean
-- Default: `true`
-- [Configuration file name](./config-file.md): `enable-query-caching`
-
-Allow caching results of queries that take a long time to run.
-
 ### `MB_ENABLE_XRAYS`
 
 - Type: boolean
@@ -679,6 +783,16 @@ Allow caching results of queries that take a long time to run.
 - [Configuration file name](./config-file.md): `enable-xrays`
 
 Allow users to explore data using X-rays.
+
+### `MB_FINGERPRINT_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `fingerprint-max-fields-per-table`.
+
+Maximum number of fields per table to fingerprint. If a table has more eligible fields than this, the rest are
+  skipped during fingerprinting analysis -- loading that many fields into memory at once can exhaust the heap (this has
+  OOM'd instances syncing document databases like MongoDB with very large or dynamic schemas).
 
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
@@ -747,6 +861,14 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 
 Custom URL for the help link.
 
+### `MB_HIDE_STACKTRACES`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `hide-stacktraces`
+
+Prevent the exception middleware from including stacktraces in responses.
+
 ### `MB_HTTP_CHANNEL_HOST_STRATEGY`
 
 - Type: keyword
@@ -802,6 +924,17 @@ Change this to a higher value if you notice that regular usage consumes all or c
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
 
+### `MB_JDBC_NETWORK_TIMEOUT_MS`
+
+- Type: integer
+- Default: `1800000`
+
+By default, this is 30 minutes.
+
+Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-
+
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -842,6 +975,26 @@ Key to retrieve the JWT user's groups.
 
 Key to retrieve the JWT user's last name.
 
+### `MB_JWT_ATTRIBUTE_TENANT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `@tenant`
+- [Configuration file name](./config-file.md): `jwt-attribute-tenant`
+
+Key to retrieve the JWT user's tenant.
+
+### `MB_JWT_ATTRIBUTE_TENANT_ATTRIBUTES`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `@tenant.attributes`
+- [Configuration file name](./config-file.md): `jwt-attribute-tenant-attributes`
+
+Key to retrieve the JWT user's tenant attributes.
+
 ### `MB_JWT_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -850,7 +1003,7 @@ Key to retrieve the JWT user's last name.
 - Default: `false`
 - [Configuration file name](./config-file.md): `jwt-enabled`
 
-Is JWT authentication configured and enabled?
+Is JWT authentication enabled?
 
 When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.
@@ -905,7 +1058,9 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 - Default: `true`
 - [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
 
-When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.
+Determines what happens when a user logs in via JWT and doesn't have a Metabase account.
+
+When set to `true`, users who log in via JWT will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via JWT.
 
 ### `MB_LANDING_PAGE`
 
@@ -914,7 +1069,7 @@ When a user logs in via JWT, create a Metabase account for them automatically if
 - [Exported as](../installation-and-operation/serialization.md): `landing-page`.
 - [Configuration file name](./config-file.md): `landing-page`
 
-Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.
+Enter a relative URL like /dashboard/1 or /collection/2.
 
 ### `MB_LANDING_PAGE_ILLUSTRATION`
 
@@ -1058,6 +1213,14 @@ Should we sync user attributes when someone logs in via LDAP?
 
 Comma-separated list of user attributes to skip syncing for LDAP users.
 
+### `MB_LDAP_TIMEOUT_SECONDS`
+
+- Type: double
+- Default: `15.0`
+- [Configuration file name](./config-file.md): `ldap-timeout-seconds`
+
+Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
 ### `MB_LDAP_USER_BASE`
 
 - Type: string
@@ -1080,8 +1243,9 @@ User lookup filter. The placeholder '{login}' will be replaced by the user suppl
 - Default: `true`
 - [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled`
 
-When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
-don't have one.
+Determines what happens when a user logs in via LDAP and doesn't have a Metabase account.
+
+When set to `true`, users who log in via LDAP will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via LDAP.
 
 ### `MB_LICENSE_TOKEN_MISSING_BANNER_DISMISSAL_TIMESTAMP`
 
@@ -1090,6 +1254,22 @@ don't have one.
 - [Configuration file name](./config-file.md): `license-token-missing-banner-dismissal-timestamp`
 
 The array of last two ISO8601 dates when an admin dismissed the license token missing banner.
+
+### `MB_LLM_ANTHROPIC_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-anthropic-api-key`
+
+The Anthropic API Key.
+
+### `MB_LLM_METABOT_PROVIDER`
+
+- Type: string
+- Default: `anthropic/claude-sonnet-4-6`
+- [Configuration file name](./config-file.md): `llm-metabot-provider`
+
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4-5`.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -1141,6 +1321,46 @@ The custom illustration for the login page.
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
+
+### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
+
+- Type: string
+- Default: ``
+- [Configuration file name](./config-file.md): `mcp-apps-cors-custom-origins`
+
+Custom CORS origins for self-hosted MCP clients, space-separated.
+
+### `MB_MCP_APPS_CORS_ENABLED_CLIENTS`
+
+- Type: csv
+- Default: `[]`
+- [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
+
+Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+
+### `MB_METABOT_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled`.
+- [Configuration file name](./config-file.md): `metabot-enabled`
+
+Whether Metabot is enabled for regular usage.
+
+### `MB_METABOT_RECENT_VIEWS_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether the user's recently viewed items are included in the Metabot system prompt.
+
+### `MB_METABOT_SLACK_SIGNING_SECRET`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
+
+Signing secret for verifying requests from the Metabot Slack app.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
@@ -1238,6 +1458,15 @@ The base URL where dashboard notitification links will point to instead of the M
 
 The size of the thread pool used to send system event notifications.
 
+### `MB_NOTIFICATION_TEMP_FILE_SIZE_MAX_BYTES`
+
+- Type: integer
+- Default: `10485760`
+
+The maximum file size that will be created when storing notification query results on disk.
+  Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`. To disable this size limit set the
+  value to 0.
+
 ### `MB_NOTIFICATION_THREAD_POOL_SIZE`
 
 - Type: integer
@@ -1248,6 +1477,36 @@ The size of the thread pool used to send notifications.
 If Metabase stops sending notifications like alerts, it may be because long-running
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
+
+### `MB_OIDC_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `allow-all`
+- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+
+What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+### `MB_OIDC_PROVIDERS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `oidc-providers`
+
+JSON containing OIDC provider configurations.
+
+### `MB_OIDC_USER_PROVISIONING_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+
+Determines what happens when a user logs in via OIDC and doesn't have a Metabase account.
+
+When set to `true`, users who log in via OIDC will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via OIDC.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1298,6 +1557,86 @@ The absolute maximum time to keep any cached query results, in seconds.
 
 Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
+### `MB_REMOTE_SYNC_AUTO_IMPORT`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import`
+
+Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+
+### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+- Type: integer
+- Default: `5`
+- [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
+
+If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+
+### `MB_REMOTE_SYNC_BRANCH`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-branch`
+
+The remote branch to sync with, e.g. `main`.
+
+### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
+
+Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+
+### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
+
+Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
+
+### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
+
+The maximum amount of time a remote sync task will be given to complete.
+
+### `MB_REMOTE_SYNC_TOKEN`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-token`
+
+An Authorization Bearer token allowing access to the git repo over HTTP.
+
+### `MB_REMOTE_SYNC_TRANSFORMS`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `remote-sync-transforms`
+
+Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).
+
+### `MB_REMOTE_SYNC_TYPE`
+
+- Type: keyword
+- Default: `read-only`
+- [Configuration file name](./config-file.md): `remote-sync-type`
+
+Git synchronization type - :read-write or :read-only.
+
+### `MB_REMOTE_SYNC_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `remote-sync-url`
+
+The location of your git repository, e.g. https://github.com/acme-inco/metabase.git.
+
 ### `MB_REPORT_TIMEZONE`
 
 - Type: string
@@ -1322,13 +1661,13 @@ Number of hours a password reset is considered valid.
 
 The initial retry delay in milliseconds.
 
-### `MB_RETRY_MAX_ATTEMPTS`
+### `MB_RETRY_JITTER_FACTOR`
 
-- Type: integer
-- Default: `7`
-- [Configuration file name](./config-file.md): `retry-max-attempts`
+- Type: double
+- Default: `0.1`
+- [Configuration file name](./config-file.md): `retry-jitter-factor`
 
-The maximum number of attempts for an event.
+The jitter factor of the retry delay.
 
 ### `MB_RETRY_MAX_INTERVAL_MILLIS`
 
@@ -1338,6 +1677,14 @@ The maximum number of attempts for an event.
 
 The maximum delay between attempts.
 
+### `MB_RETRY_MAX_RETRIES`
+
+- Type: integer
+- Default: `6`
+- [Configuration file name](./config-file.md): `retry-max-retries`
+
+The maximum number of retries for an event.
+
 ### `MB_RETRY_MULTIPLIER`
 
 - Type: double
@@ -1345,14 +1692,6 @@ The maximum delay between attempts.
 - [Configuration file name](./config-file.md): `retry-multiplier`
 
 The delay multiplier between attempts.
-
-### `MB_RETRY_RANDOMIZATION_FACTOR`
-
-- Type: double
-- Default: `0.1`
-- [Configuration file name](./config-file.md): `retry-randomization-factor`
-
-The randomization factor of the retry delay.
 
 ### `MB_SAML_APPLICATION_NAME`
 
@@ -1403,6 +1742,16 @@ SAML attribute for group syncing.
 - [Configuration file name](./config-file.md): `saml-attribute-lastname`
 
 SAML attribute for the user's last name.
+
+### `MB_SAML_ATTRIBUTE_TENANT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `saml-attribute-tenant`
+
+SAML attribute for the user's tenant slug.
 
 ### `MB_SAML_ENABLED`
 
@@ -1526,8 +1875,19 @@ Is SAML Single Log Out enabled?
 - Default: `true`
 - [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
 
-When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
-don't have one.
+Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
+
+When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.
+
+### `MB_SCAN_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `scan-max-fields-per-table`.
+
+Maximum number of fields per table to scan for field values. If a table has more active fields than this, the rest
+  are skipped when scanning field values -- scanning that many fields would load them all into memory and, on non-SQL
+  drivers like MongoDB, issue a warehouse request per field.
 
 ### `MB_SCIM_ENABLED`
 
@@ -1550,7 +1910,7 @@ Used for encrypting and checking whether SDK requests are signed.
 - Default: `null`
 
 When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.
-  Value must be a valid configured langauge option in your database such as 'english' or 'simple'.
+  Value must be a valid configured language option in your database such as 'english' or 'simple'.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
@@ -1589,8 +1949,8 @@ Should new email notifications be sent to admins, for all new SSO users?
 
 Value for the session cookie's `SameSite` directive.
 
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+See [Embedding Metabase in a different domain](../embedding/full-app-embedding.md#embedding-metabase-in-a-different-domain).
+        Read more about [Full app embedding](../embedding/full-app-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ### `MB_SESSION_COOKIES`
@@ -1734,6 +2094,61 @@ Bot user OAuth token for connecting the Metabase Slack app. This should be used 
 
 The name of the channel where bug reports should be posted.
 
+### `MB_SLACK_CONNECT_ATTRIBUTE_TEAM_ID`
+
+- Type: string
+- Default: `https://slack.com/team_id`
+- [Configuration file name](./config-file.md): `slack-connect-attribute-team-id`
+
+Slack OIDC claim for the team/workspace ID.
+
+### `MB_SLACK_CONNECT_AUTHENTICATION_MODE`
+
+- Type: string
+- Default: `link-only`
+- [Configuration file name](./config-file.md): `slack-connect-authentication-mode`
+
+Controls whether Slack can be used for SSO login or just account linking. Valid values: "sso" or "link-only" (default).
+
+### `MB_SLACK_CONNECT_CLIENT_ID`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `slack-connect-client-id`
+
+Client ID for your Slack app. Get this from https://api.slack.com/apps.
+
+### `MB_SLACK_CONNECT_CLIENT_SECRET`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `slack-connect-client-secret`
+
+Client Secret for your Slack app.
+
+### `MB_SLACK_CONNECT_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `slack-connect-enabled`
+
+Is Slack Connect authentication configured and enabled?
+
+### `MB_SLACK_CONNECT_SIGNING_SECRET_VERSION`
+
+- Type: integer
+- Default: `0`
+
+Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.
+
+### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `slack-connect-user-provisioning-enabled`
+
+When a user logs in via Slack Connect, create a Metabase account for them automatically if they don't have one.
+
 ### `MB_SLACK_FILES_CHANNEL [DEPRECATED]`
 
 > DEPRECATED: 0.54.0
@@ -1770,6 +2185,13 @@ Identify the source of HTTP requests by this header's value, instead of its remo
 
 Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory.
+
+### `MB_SQL_TOOLS_PARSER_BACKEND`
+
+- Type: keyword
+- Default: `sqlglot`
+
+Parser backend of `sql-tools` module.
 
 ### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
 
@@ -1814,6 +2236,16 @@ Enable or disable surveys.
 
 Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo. Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields from root to leaf are synced as well.
 
+### `MB_SYNC_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `sync-max-fields-per-table`.
+
+Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields.
+
 ### `MB_SYNCHRONOUS_BATCH_UPDATES`
 
 - Type: boolean
@@ -1822,6 +2254,51 @@ Maximum number of leaf fields synced per collection of document database. Curren
 - [Configuration file name](./config-file.md): `synchronous-batch-updates`
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
+
+### `MB_THREAD_INTERRUPT_ESCALATION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+By default, this is 0 and the thread interrupt escalation does not run.
+
+Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
+        This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.
+
+### `MB_TRANSFORM_RUN_JOB_SQL_CONCURRENCY`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `3`
+
+Maximum number of SQL-backed transforms a single transform-job run may execute in parallel.
+
+This setting is only configurable on instances with the transforms add-on; OSS
+  deployments without the add-on always use the default.
+
+### `MB_TRANSFORM_TIMEOUT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: integer
+- Default: `240`
+
+The timeout for a transform job, in minutes.
+
+Controls the timeout for transform runs, including the queries they execute. This takes precedence
+  over MB_DB_QUERY_TIMEOUT_MINUTES for queries executed inside a transform, so transforms can run longer than regular
+  Metabase queries. Enforced per-statement via `Statement.setQueryTimeout`; transforms also use a separate JDBC
+  connection pool whose c3p0 leak-detector tolerates this longer runtime, so non-transform connections continue to
+  use the shorter `MB_DB_QUERY_TIMEOUT_MINUTES` leak-detector.
+
+### `MB_TRANSFORMS_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `transforms-enabled`
+
+Enable transforms for instances that have not explicitly purchased the transform add-on.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
@@ -1878,15 +2355,33 @@ Upload settings.
 
 Prefix for upload table names.
 
-### `MB_USE_TENANTS`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+### `MB_USAGE_METADATA_ENABLED`
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `use-tenants`
 
-Turn on the Tenants feature, allowing users to be assigned to a particular Tenant.
+Whether usage-driven metadata batch processing is enabled.
+
+### `MB_USAGE_METADATA_LAST_COMPLETED_DAY`
+
+- Type: string
+- Default: `null`
+
+Internal watermark for the last completed usage metadata day.
+
+### `MB_USAGE_METADATA_RETENTION_DAYS`
+
+- Type: integer
+- Default: `90`
+
+How many days of usage metadata rollups to retain.
+
+### `MB_USAGE_METADATA_SCHEDULE`
+
+- Type: string
+- Default: `0 0 2 * * ? *`
+
+Cron schedule (in UTC) for usage metadata batch processing.
 
 ### `MB_USER_VISIBILITY`
 
@@ -1915,6 +2410,26 @@ Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when brow
 
 Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
+### `MB_APPLICATION_DB_IDLE_CONNECTION_TEST_PERIOD_SECONDS`
+
+Type: integer<br>
+Default: `60`<br>
+Since: v62.0
+
+How often, in seconds, to test idle connections in the application database pool. Set to `0` to disable idle connection testing.
+
+### `MB_APPLICATION_DB_MAX_CONNECTION_AGE_SECONDS`
+
+Type: integer<br>
+Default: `3600`<br>
+Since: v62.0
+
+Maximum lifetime, in seconds, of a connection in the application database pool. After this duration the connection is closed and a new one is opened. Set to `0` to keep connections until the database closes them.
+
+The default of one hour is set primarily to limit memory growth (especially on PostgreSQL).
+
+If you are connecting with a short-lived credential (e.g. an AWS RDS IAM auth token) baked into the URL or password at startup, setting this to `0` is a partial workaround — eventual reconnects from the database or the network will still fail. Prefer [MB_DB_AWS_IAM](#mb_db_aws_iam) (AWS RDS / Aurora) or [MB_DB_AZURE_MANAGED_IDENTITY_CLIENT_ID](#mb_db_azure_managed_identity_client_id) (Azure).
+
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>
@@ -1929,6 +2444,30 @@ To see how many connections are being used, check the Metabase logs and look for
 
 See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#mb_jdbc_data_warehouse_max_connection_pool_size) for setting maximum connections to the databases connected to Metabase.
 
+### `MB_APPLICATION_DB_MAX_IDLE_TIME_EXCESS_CONNECTIONS_SECONDS`
+
+Type: integer<br>
+Default: `600`<br>
+Since: v62.0
+
+How long, in seconds, an idle connection beyond the minimum pool size may stay open before being culled. Set to `0` to never cull excess idle connections.
+
+### `MB_APPLICATION_DB_TEST_CONNECTION_ON_CHECKOUT`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v62.0
+
+When `true`, each connection is validated when checked out of the pool. Adds latency to every checkout. Useful when credentials may invalidate connections behind the pool's back.
+
+### `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
+
+Type: integer<br>
+Default: `3600`<br>
+Since: v62.0
+
+How long, in seconds, before a checked-out but unreturned connection is forcibly reclaimed. The legacy name `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT` continues to work; the suffixed form is preferred.
+
 ### `MB_ASYNC_QUERY_THREAD_POOL_SIZE`
 
 Type: integer<br>
@@ -1936,29 +2475,6 @@ Default: `50`<br>
 Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
-
-### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
-
-Type: integer<br>
-Default: `20`<br>
-
-Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
-
-### `MB_AUDIT_MAX_RETENTION_DAYS`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: integer<br>
-Default: 720 (Metabase keeps all rows)<br>
-
-Sets the maximum number of days Metabase preserves rows for the following application database tables:
-
-- `query_execution`
-- `audit_log`
-- `view_log`
-
-Twice a day, Metabase will delete rows older than this threshold.
-
-The minimum value is `30` days (Metabase will treat entered values of `1` to `29` the same as `30`). If set to `0`, Metabase will keep all rows.
 
 ### `MB_COLORIZE_LOGS`
 
@@ -1981,12 +2497,36 @@ Default: `true`
 
 When set to `false`, Metabase will print migrations needed to be done in the application database and exit. Those migrations need to be applied manually. When `true`, Metabase will automatically make changes to the application database. This is not related to migrating away from H2.
 
+### `MB_DB_AWS_IAM`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v0.58.0
+
+When `true`, authenticate to the application database (PostgreSQL or MySQL/MariaDB on AWS RDS or Aurora) using AWS IAM instead of a password. Omit [MB_DB_PASS](#mb_db_pass). Auth tokens are refreshed automatically.
+
+Requires that AWS credentials are available via the standard credential chain (e.g. EKS IRSA, EC2 instance profile, ECS task role, or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`), that the credentials hold the `rds-db:connect` permission for your database user, and that the DB user is set up for IAM authentication.
+
+For MySQL/MariaDB, also set [MB_DB_SSL_CERT](#mb_db_ssl_cert), or pass the SSL parameters in [MB_DB_CONNECTION_URI](#mb_db_connection_uri).
+
+### `MB_DB_AZURE_MANAGED_IDENTITY_CLIENT_ID`
+
+Type: string<br>
+Default: `null`<br>
+Since: v0.51.0
+
+Authenticate to a PostgreSQL or MySQL application database using an Azure Managed Identity instead of a password. Set this to the client ID of a user-assigned Managed Identity attached to your compute resource. Omit [MB_DB_PASS](#mb_db_pass). Access tokens are refreshed automatically.
+
+Requires the Database authentication providers Pro/Enterprise feature.
+
 ### `MB_DB_CONNECTION_URI`
 
 Type: string<br>
 Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
+
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
 
 Examples:
 
@@ -2041,6 +2581,17 @@ Type: integer<br>
 Default: `null`
 
 The port for [MB_DB_HOST](#mb_db_host).
+
+### `MB_DB_SSL_CERT`
+
+Type: string<br>
+Default: `null`<br>
+Since: v0.58.0
+
+SSL configuration for the application database. Used with [MB_DB_AWS_IAM](#mb_db_aws_iam) on MySQL/MariaDB, where SSL is required.
+
+- `"trust"` — trust the server certificate without validation.
+- A filesystem path to a PEM file — validate against the supplied CA certificate.
 
 ### `MB_DB_TYPE`
 
@@ -2236,27 +2787,39 @@ Default: `null`
 
 Password for Java TrustStore file.
 
-### `MB_LANDING_PAGE`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: string<br>
-Default: `""`
-
-Default page to show people when they log in.
-
-### `MB_LOAD_ANALYTICS_CONTENT`
-
-Type: Boolean<br>
-Default: True
-
-If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
-
 ### `MB_LOAD_SAMPLE_CONTENT`
 
 Type: Boolean<br>
 Default: True
 
 Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
+### `MB_MONITOR_PERFORMANCE`
+
+Type: string<br>
+Default: `""`
+
+When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
+
+- `"true"` generates a timestamped output file like `metabase-20260115_143000.jfr`
+- A value ending in `.jfr` is used as the output filename
+- Any other non-empty value is treated as a directory path. A new timestamped JFR file is written to that directory every 30 minutes (e.g., `metabase-20260115_143000.jfr`). Data is only written at the end of each 30-minute interval.
+- `""` or `"false"` disables monitoring (the default)
+
+The performance recording stores only method signature calls and other code execution metrics.
+It does not store any sensitive information such as environment variables, system properties, or other machine information.
+
+### `MB_MONITOR_PERFORMANCE_SAVE_RATE`
+
+Type: integer<br>
+Default: mode-specific (5 minutes for single-file mode, 30 minutes for rolling mode)
+
+Override the interval (in minutes) at which JFR recording data is saved to disk. Only applies when [MB_MONITOR_PERFORMANCE](#mb_monitor_performance) is enabled.
+
+- In single-file mode, the default is `5` minutes.
+- In rolling directory mode, the default is `30` minutes.
+
+Setting this value overrides the default for whichever mode is active.
 
 ### `MB_NO_SURVEYS`
 
@@ -2284,7 +2847,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 
 ### `MB_PASSWORD_COMPLEXITY`
 
-Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
+Type: string (`"weak"`, `"normal"`, `"strong"`, `"strong-enough"`)<br>
 Default: `"normal"`
 
 Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
@@ -2292,6 +2855,7 @@ Enforce a password complexity rule to increase security for regular logins. This
 - `weak` no character constraints
 - `normal` at least 1 digit
 - `strong` minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+- `strong-enough` minimum 15 characters
 
 ### `MB_PASSWORD_LENGTH`
 
@@ -2309,12 +2873,14 @@ Path of the "plugins" directory, which is used to store the Metabase database dr
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
-### `MB_PREMIUM_EMBEDDING_TOKEN`
+### `MB_PROMETHEUS_SERVER_PORT`
 
-Type: string<br>
+Type: integer<br>
 Default: `null`
 
-The license token used for Pro and Enterprise to enable premium features on the Enterprise edition. It is also used for the deprecated "Premium Embedding" functionality on the OSS edition.
+Port to serve Prometheus metrics from. If set, Prometheus collectors are registered and served from `localhost:<port>/metrics`.
+
+See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
 
 ### `MB_QP_CACHE_BACKEND`
 
@@ -2322,32 +2888,6 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
-
-### `MB_SEARCH_TYPEAHEAD_ENABLED`
-
-Type: boolean<br>
-Default: `true`<br>
-Since: v39.0
-
-Show auto-suggestions when using the global search in the top navigation bar.
-
-### `MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`
-
-Type: boolean<br>
-Default: `true`<br>
-Since: v39.0
-
-Send email notification to user, when they login from a new device. Set to `false` to stop sending "We've noticed a new login on your Metabase account" emails for all users.
-
-Also, this variable controls the geocoding service that Metabase uses to know the location from where your users logged in. Setting this variable to false also disables this reverse geocoding functionality.
-
-### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: boolean<br>
-Default: `true`
-
-Send email notifications to users in Admin group, when a new SSO users is created on Metabase.
 
 ### `MB_SETUP_TOKEN`
 
@@ -2372,13 +2912,6 @@ Default: `"true"`<br>
 Since: v48.4
 
 Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
-
-### `MB_SOURCE_ADDRESS_HEADER`
-
-Type: string<br>
-Default: `X-Forwarded-For`
-
-Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#mb_disable_session_throttle).
 
 ### `MB_SSL_CERTIFICATE_PUBLIC_KEY`
 

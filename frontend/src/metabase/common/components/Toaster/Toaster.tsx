@@ -73,14 +73,13 @@ export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
   confirmText?: string;
   isShown: boolean;
   fixed?: boolean;
-  className: string;
   onConfirm: () => void;
   onDismiss: () => void;
 }
 
 // TODO: Port to Mantine Notifications or consolidate with Undo-style toasts or
 // BulkActionsToast
-const Toaster = ({
+export const Toaster = ({
   message,
   confirmText = t`Turn on`,
   isShown,
@@ -122,6 +121,3 @@ const Toaster = ({
     </Portal>
   ) : null;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Toaster;

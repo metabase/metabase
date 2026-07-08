@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import type { DeleteGroupMappingModalProps } from "./DeleteGroupMappingModal";
-import DeleteGroupMappingModal from "./DeleteGroupMappingModal";
+import {
+  DeleteGroupMappingModal,
+  type DeleteGroupMappingModalProps,
+} from "./DeleteGroupMappingModal";
 
 type SetupOpts = Partial<DeleteGroupMappingModalProps>;
 

@@ -1,36 +1,93 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { plugin as cypressGrepPlugin } from "@cypress/grep/plugin";
+import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
+import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
+
+import {
+  extractFailedTests,
+  recordFailedTestsForQuarantine,
+  reportFailedTestsToConductor,
+} from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
+  copyDirectory,
+  readDirectory,
   removeDirectory,
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
-import webpackConfig from "./component-webpack.config";
 import * as dbTasks from "./db_tasks";
+import {
+  startCustomVizDevServer,
+  stopCustomVizDevServer,
+} from "./helpers/e2e-custom-viz-dev-server-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
+import {
+  startMockLlmServer,
+  stopMockLlmServer,
+} from "./helpers/e2e-mock-llm-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
+const coverageTask = require("@cypress/code-coverage/task");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
 
-const isEnterprise = process.env["MB_EDITION"] === "ee";
-const isCI = process.env["CYPRESS_CI"] === "true";
+const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
+// The Cypress config process runs with cwd = this file's directory
+// (e2e/support), so @cypress/code-coverage writes .nyc_output/out.json here.
+// NYC_OUTPUT_FILE is anchored to __dirname to read from that same place;
+// COVERAGE_MANIFEST_RAW_DIR points at e2e/coverage-manifest-raw, which the
+// nightly workflow uploads.
+const COVERAGE_MANIFEST_RAW_DIR = path.resolve(
+  __dirname,
+  "../coverage-manifest-raw",
+);
+const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
 
-const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
+const isEnterprise = process.env["MB_EDITION"] === "ee";
+const isCI = !!process.env.CI;
+
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
-const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
+// Persists raw __coverage__ counters per spec. The manifest builder reads
+// these later, applies baseline subtraction, and maps surviving files to
+// modules. We delete .nyc_output/out.json between specs so each entry
+// reflects only that spec's execution — @cypress/code-coverage otherwise
+// accumulates.
+function writeSpecCoverageEntry(spec) {
+  if (!fs.existsSync(NYC_OUTPUT_FILE)) {
+    return;
+  }
 
-const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
-const targetVersion = process.env["CROSS_VERSION_TARGET"];
+  const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
 
-const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
+  // The manifest builder only needs per-file function counters to compute the
+  // baseline greater-delta. Drop statement/branch maps and counters, and drop
+  // files where no function was invoked. Cuts each entry from ~25MB to <200KB.
+  const trimmed = {};
+  for (const [file, fc] of Object.entries(coverage)) {
+    if (!Object.values(fc.f || {}).some((c) => c > 0)) {
+      continue;
+    }
+    trimmed[file] = { f: fc.f };
+  }
+
+  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
+  const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
+  fs.writeFileSync(
+    path.join(COVERAGE_MANIFEST_RAW_DIR, entryName),
+    JSON.stringify({ spec: spec.relative, coverage: trimmed }),
+  );
+
+  fs.unlinkSync(NYC_OUTPUT_FILE);
+}
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -49,26 +106,49 @@ const assetsResolverPlugin = {
   },
 };
 
-// these are special and shouldn't be chunked out arbitrarily
-const specBlacklist = ["/embedding-sdk/", "/cross-version/"];
-
-function getSplittableSpecs(specs) {
-  return specs.filter((spec) => {
-    return !specBlacklist.some((blacklistedPath) =>
-      spec.includes(blacklistedPath),
-    );
-  });
-}
-
 const defaultConfig = {
+  // Expose non-sensitive environment variables synchronously via Cypress.expose()
+  // These are safe to expose in the browser and are used for configuration
+  expose: {
+    CI: isCI,
+    IS_ENTERPRISE: isEnterprise,
+    MB_EDITION: process.env["MB_EDITION"],
+    ENABLE_NETWORK_THROTTLING: !!process.env["ENABLE_NETWORK_THROTTLING"],
+    SNOWPLOW_MICRO_URL: snowplowMicroUrl,
+    CLIENT_PORT: process.env["CLIENT_PORT"],
+    feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
+      ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
+      : undefined,
+    // Lets @cypress/code-coverage/support skip its hooks entirely on
+    // uninstrumented runs, instead of logging a warning on every spec.
+    coverage: isInstrumented,
+  },
+
+  allowCypressEnv: false,
+
   // This is the functionality of the old cypress-plugins.js file
-  setupNodeEvents(on, config) {
+  setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
 
+    // Build custom-viz .tgz fixtures from sources
+    execFileSync(
+      "node",
+      [
+        path.resolve(
+          __dirname,
+          "../../enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs",
+        ),
+      ],
+      { stdio: "inherit" },
+    );
+
+    // Use cypress-on-fix to enable multiple handlers
+    const on = cypressOnFix(cypressOn);
+
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
-    config.env.grep ??= process.env.GREP;
+    config.expose.grep ??= process.env.GREP;
 
     // cypress-terminal-report
     if (isCI) {
@@ -96,9 +176,12 @@ const defaultConfig = {
      ********************************************************************/
 
     on("before:browser:launch", (browser = {}, launchOptions) => {
-      //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
-        launchOptions.args.push("--auto-open-devtools-for-tabs");
+        // Open dev tools in Chrome by default when in headed mode
+        if (browser.isHeaded) {
+          launchOptions.args.push("--auto-open-devtools-for-tabs");
+        }
+        launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
@@ -124,39 +207,64 @@ const defaultConfig = {
       ...dbTasks,
       ...ciTasks,
       ...verifyDownloadTasks,
+      readDirectory,
+      copyDirectory,
       removeDirectory,
       signJwt,
+      startMockLlmServer,
+      stopMockLlmServer,
+      startCustomVizDevServer,
+      stopCustomVizDevServer,
     });
 
     /********************************************************************
      **                          CONFIG                                **
      ********************************************************************/
 
-    if (!isQaDatabase) {
-      config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
-    }
-
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
-    config.env.grepIntegrationFolder = "../../";
-    config.env.grepFilterSpecs = true;
+    config.expose.grepIntegrationFolder = "../../";
+    config.expose.grepFilterSpecs = true;
+    config.expose.grepOmitFiltered = true;
 
-    config.env.IS_ENTERPRISE = isEnterprise;
-    config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
-    config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
-    config.env.SOURCE_VERSION = sourceVersion;
-    config.env.TARGET_VERSION = targetVersion;
-
-    require("@cypress/grep/src/plugin")(config);
+    cypressGrepPlugin(config);
 
     if (isCI) {
-      cypressSplit(on, config, getSplittableSpecs);
+      cypressSplit(on, config);
       collectFailingTests(on, config);
     }
 
-    // this is an official workaround to keep recordings of the failed specs only
-    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
+    if (isInstrumented) {
+      coverageTask(on, config);
+    }
+
+    // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
+    // can include it in the payload (CYPRESS_RETRIES isn't otherwise set in CI;
+    // the value lives in mainConfig.retries.runMode). DEV-1999.
+    const resolvedRetries =
+      typeof config.retries === "number"
+        ? config.retries
+        : (config.retries?.runMode ?? 0);
+    process.env.CYPRESS_RETRIES = String(resolvedRetries);
+
+    on("after:spec", async (spec, results) => {
+      // Report failures to ci-conductor mid-run (no-ops unless configured).
+      if (isCI) {
+        // Reporting to ci-conductor must NEVER break the test run, so this is
+        // a hard backstop around everything — extraction, payload build, and
+        // the request. The reporter also handles its own errors internally.
+        try {
+          const failedTests = extractFailedTests(spec, results);
+          // Persist ultimate failures for the post-run quarantine gate (DEV-2082).
+          recordFailedTestsForQuarantine(failedTests);
+          await reportFailedTestsToConductor(failedTests);
+        } catch (error) {
+          console.error("[ci-conductor] reporting failed (ignored)", error);
+        }
+      }
+
+      // this is an official workaround to keep recordings of the failed specs only
+      // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
         if (results && results.video && results.stats.failures === 0) {
@@ -164,10 +272,25 @@ const defaultConfig = {
           fs.unlinkSync(results.video);
         }
       }
+
+      if (isInstrumented) {
+        // Don't let a bad/partial coverage file abort the nightly shard - at
+        // worst we lose this spec's entry, not the whole run.
+        try {
+          writeSpecCoverageEntry(spec);
+        } catch (error) {
+          console.error(
+            "[coverage] failed to write spec entry (ignored)",
+            error,
+          );
+        }
+      }
     });
 
     return config;
   },
+  baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+  defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
@@ -178,21 +301,12 @@ const defaultConfig = {
   viewportHeight: 800,
   viewportWidth: 1280,
   // enable video recording in run mode
-  video: true,
-  videoCompression: true,
+  video: process.env["CYPRESS_VIDEO"] !== "false",
+  videoCompression: false,
 };
 
 const mainConfig = {
   ...defaultConfig,
-  ...(isEmbeddingSdk
-    ? {
-        chromeWebSecurity: true,
-        hosts: {
-          "my-site.local": "127.0.0.1",
-        },
-      }
-    : {}),
-  projectId: "ywjy9z",
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {
@@ -219,59 +333,15 @@ const mainConfig = {
     },
   },
   retries: {
-    runMode: 1,
+    runMode:
+      process.env["CYPRESS_RETRIES"] != null
+        ? parseInt(process.env["CYPRESS_RETRIES"], 10)
+        : 1,
     openMode: 0,
   },
 };
 
-const snapshotsConfig = {
-  ...defaultConfig,
-  specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
-  video: false,
-};
-
-const crossVersionSourceConfig = {
-  ...defaultConfig,
-  baseUrl: "http://localhost:3000",
-  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.{js,ts}",
-};
-
-const crossVersionTargetConfig = {
-  ...defaultConfig,
-  baseUrl: "http://localhost:3001",
-  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.{js,ts}",
-};
-
-const stressTestConfig = {
-  ...defaultConfig,
-  retries: 0,
-};
-
-const embeddingSdkComponentTestConfig = {
-  ...defaultConfig,
-  defaultCommandTimeout: 10000,
-  requestTimeout: 10000,
-  video: false,
-  specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",
-  indexHtmlFile: "e2e/support/component-index.html",
-  supportFile: "e2e/support/component-cypress.js",
-
-  reporter: mainConfig.reporter,
-  reporterOptions: mainConfig.reporterOptions,
-  retries: mainConfig.retries,
-
-  devServer: {
-    framework: "react",
-    bundler: "webpack",
-    webpackConfig: webpackConfig,
-  },
-};
-
 module.exports = {
+  defaultConfig,
   mainConfig,
-  snapshotsConfig,
-  stressTestConfig,
-  crossVersionSourceConfig,
-  crossVersionTargetConfig,
-  embeddingSdkComponentTestConfig,
 };

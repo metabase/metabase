@@ -223,7 +223,7 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByTestId("select-button")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeInTheDocument();
     });
 
     it("can submit form field values", async () => {

@@ -1,0 +1,25 @@
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
+import { Link } from "metabase/router";
+import { Box, FixedSizeIcon, Group } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
+
+import S from "./GraphLink.module.css";
+
+type GraphLinkProps = {
+  label: string;
+  icon: IconName;
+  url: string;
+};
+
+export function GraphLink({ label, icon, url }: GraphLinkProps) {
+  return (
+    <Box className={cx(S.link, CS.textWrap)} component={Link} to={url}>
+      <Group gap="sm" align="center" wrap="nowrap">
+        <FixedSizeIcon name={icon} c="core-brand" />
+        <Box lh="h4">{label}</Box>
+      </Group>
+    </Box>
+  );
+}

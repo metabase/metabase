@@ -339,7 +339,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?category=Gizmo&id_filter=1");
 
-      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
+      H.tableInteractiveBody()
+        .findAllByRole("row")
+        .should("have.length", 1)
+        .and("contain", "Gizmo");
     });
 
     it("works when main filter's value is set through URL", () => {
@@ -367,7 +370,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         cy.location("search").should("eq", "?category=Doohickey&id_filter=4");
 
-        cy.findAllByRole("row")
+        H.tableInteractiveBody()
+          .findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Doohickey");
 
@@ -382,14 +386,16 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           .and("contain", "2 selections")
           .and("contain", "Widget");
 
-        cy.findAllByRole("row")
+        H.tableInteractiveBody()
+          .findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Widget")
           .and("contain", "Durable Steel Toucan");
 
         removeValueForFilter("Category");
 
-        cy.findAllByRole("row")
+        H.tableInteractiveBody()
+          .findAllByRole("row")
           .should("have.length", 2)
           .and("contain", "Widget")
           .and("contain", "Doohickey")
@@ -402,7 +408,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         cy.button("Update filter").click();
 
-        cy.findAllByRole("row")
+        H.tableInteractiveBody()
+          .findAllByRole("row")
           .should("have.length", 1)
           .and("contain", "Doohickey");
 
@@ -431,7 +438,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       });
 
-      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
+      H.tableInteractiveBody()
+        .findAllByRole("row")
+        .should("have.length", 1)
+        .and("contain", "Gizmo");
 
       H.filterWidget()
         .should("have.length", 1)
@@ -463,7 +473,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         H.visitEmbeddedPage(payload);
       });
 
-      cy.findAllByRole("row").should("have.length", 1).and("contain", "Gizmo");
+      H.tableInteractiveBody()
+        .findAllByRole("row")
+        .should("have.length", 1)
+        .and("contain", "Gizmo");
 
       H.filterWidget()
         .should("have.length", 1)

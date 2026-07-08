@@ -1,0 +1,17 @@
+import { t } from "ttag";
+
+import { Box, Tooltip } from "metabase/ui";
+
+export const CollectionSyncStatusBadge = () => (
+  <Tooltip label={t`Unsynced changes`}>
+    <Box
+      bdrs="50%"
+      bg="feedback-warning"
+      h="0.5rem"
+      w="0.5rem"
+      mr="xs"
+      flex="0 0 auto"
+      data-testid="remote-sync-status"
+    />
+  </Tooltip>
+);

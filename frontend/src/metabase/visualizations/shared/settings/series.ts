@@ -1,7 +1,6 @@
 import { getIn } from "icepick";
-import _ from "underscore";
 
-import { getColorsForValues } from "metabase/lib/colors/charts";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -11,13 +10,29 @@ export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";
 export const getSeriesColors = (
   seriesVizSettingsKeys: string[],
   settings: VisualizationSettings,
-  seriesVizSettingsDefaultKeys: string[],
+  seriesVizSettingsDefaultKeys: (string | undefined)[],
 ) => {
-  const assignments = _.chain(seriesVizSettingsKeys)
-    .map((key) => [key, getIn(settings, [SERIES_SETTING_KEY, key, "color"])])
-    .filter(([_key, color]) => color != null)
-    .object()
-    .value();
+  const assignments: Record<string, string> = {};
+
+  const seriesSettings = getIn(settings, [SERIES_SETTING_KEY]) as
+    | Record<string, { color?: string; title?: string }>
+    | undefined;
+
+  if (seriesSettings) {
+    for (const [key, seriesObject] of Object.entries(seriesSettings)) {
+      if (!seriesObject) {
+        continue;
+      }
+
+      if (seriesObject.color != null) {
+        assignments[key] = seriesObject.color;
+
+        if (seriesObject.title != null) {
+          assignments[seriesObject.title] = seriesObject.color;
+        }
+      }
+    }
+  }
 
   const legacyColors = settings["graph.colors"];
   if (legacyColors) {
@@ -66,6 +81,10 @@ export const getSeriesDefaultLineMarker = (
 export const getSeriesDefaultLineMissing = (
   settings: ComputedVisualizationSettings,
 ) => settings["line.missing"] ?? "interpolate";
+
+export const getSeriesDefaultShowSeriesTrendline = (
+  settings: ComputedVisualizationSettings,
+) => settings["graph.show_trendline"];
 
 export const getSeriesDefaultShowSeriesValues = (
   settings: ComputedVisualizationSettings,

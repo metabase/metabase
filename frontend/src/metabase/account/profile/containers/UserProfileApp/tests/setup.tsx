@@ -1,19 +1,19 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import UserProfileApp from "../UserProfileApp";
 
 export function setup({
   isPasswordLoginEnabled = true,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures = {},
 }: {
   isPasswordLoginEnabled?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 } = {}) {
   const state = createMockState({
@@ -23,8 +23,10 @@ export function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(<UserProfileApp />, { storeInitialState: state });

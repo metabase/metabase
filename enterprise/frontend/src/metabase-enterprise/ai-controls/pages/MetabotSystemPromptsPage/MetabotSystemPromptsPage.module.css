@@ -1,0 +1,25 @@
+/*
+ * 8rem accounts for the admin layout chrome above this wrapper (nav header +
+ * page top padding) plus a small gap below so the content doesn't touch the
+ * viewport edge.
+ */
+.wrapper {
+  height: calc(100dvh - 8rem);
+  overflow: hidden;
+}
+
+.textareaRoot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.textareaWrapper {
+  flex: 1;
+  display: flex;
+}
+
+.textareaInput {
+  height: 100%;
+  line-height: 1.25rem;
+}

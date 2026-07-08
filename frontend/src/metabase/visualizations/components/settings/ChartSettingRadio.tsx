@@ -37,7 +37,10 @@ export const ChartSettingRadio = ({
           <Radio
             key={optionValue}
             label={
-              <Text fw="bold" c={optionValue === value ? "brand" : undefined}>
+              <Text
+                fw="bold"
+                c={optionValue === value ? "core-brand" : undefined}
+              >
                 {name}
               </Text>
             }

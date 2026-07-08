@@ -1,9 +1,12 @@
 import { Fragment } from "react";
+import { t } from "ttag";
 
-import { Badge } from "metabase/common/components/Badge";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import * as Urls from "metabase/lib/urls";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
+import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   Collection,
   CollectionEssentials,
@@ -11,11 +14,6 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
-import {
-  BreadcrumbsPathSeparator,
-  ExpandButton,
-  PathContainer,
-} from "./CollectionBreadcrumbs.styled";
 import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
@@ -32,6 +30,7 @@ export const CollectionBreadcrumbs = ({
   baseCollectionId = null,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
+  const tc = useTranslateContent();
 
   if (!collection) {
     return null;
@@ -42,24 +41,32 @@ export const CollectionBreadcrumbs = ({
     collection,
   });
 
-  const separator = <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>;
+  const separator = (
+    <Box
+      c="text-disabled"
+      fz="0.8em"
+      fw="bold"
+      mx="0.5rem"
+      style={{ userSelect: "none" }}
+    >
+      /
+    </Box>
+  );
 
   const content =
     parts.length > 1 && !isExpanded ? (
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
         {separator}
-        <ExpandButton
-          small
-          borderless
-          icon="ellipsis"
-          onlyIcon
+        <ActionIcon
           onClick={toggle}
-        />
+          aria-label={isExpanded ? t`Collapse` : t`Expand`}
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
         {separator}
       </>
     ) : (
@@ -67,7 +74,6 @@ export const CollectionBreadcrumbs = ({
         <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
-            isSingleLine
             onClick={onClick ? () => onClick(collection) : undefined}
           />
           {separator}
@@ -76,29 +82,22 @@ export const CollectionBreadcrumbs = ({
     );
 
   return (
-    <>
-      <PathContainer>
-        {content}
-        <CollectionBadge
-          collectionId={collection.id}
-          isSingleLine
-          onClick={onClick ? () => onClick(collection) : undefined}
-        />
-      </PathContainer>
+    <Flex align="center" miw="0">
+      {content}
+      <CollectionBadge
+        collectionId={collection.id}
+        onClick={onClick ? () => onClick(collection) : undefined}
+      />
       {dashboard && (
         <>
           {separator}
-          <Badge
-            icon={{ name: "dashboard" }}
-            inactiveColor="text-light"
-            isSingleLine
-            to={Urls.dashboard(dashboard)}
-          >
-            {dashboard.name}
-          </Badge>
+
+          <Breadcrumb icon="dashboard" to={Urls.dashboard(dashboard)}>
+            {tc(dashboard.name)}
+          </Breadcrumb>
         </>
       )}
-    </>
+    </Flex>
   );
 };
 

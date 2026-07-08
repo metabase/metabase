@@ -2,11 +2,11 @@
 import { t } from "ttag";
 
 import { useCancelCloudMigrationMutation } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { color } from "metabase/lib/colors";
-import { useDispatch } from "metabase/lib/redux";
+import type { Plan } from "metabase/common/utils/plan";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
   Box,
@@ -21,10 +21,12 @@ import {
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
+import { getMigrationUrl } from "./utils";
 
 interface MigrationInProgressProps {
+  storeUrl: string;
+  plan: Plan;
   migration: InProgressCloudMigration;
-  checkoutUrl: string;
 }
 
 const progressMessage: Record<InProgressStates, string> = {
@@ -35,8 +37,9 @@ const progressMessage: Record<InProgressStates, string> = {
 };
 
 export const MigrationInProgress = ({
+  storeUrl,
+  plan,
   migration,
-  checkoutUrl,
 }: MigrationInProgressProps) => {
   const dispatch = useDispatch();
 
@@ -52,29 +55,26 @@ export const MigrationInProgress = ({
     await cancelCloudMigration();
     dispatch(
       addUndo({
-        icon: "info_filled",
+        icon: "info",
         message: t`Migration to Metabase Cloud has been canceled.`,
-        undo: false,
       }),
     );
   };
+
+  const migrationUrl = getMigrationUrl(storeUrl, plan, migration);
 
   return (
     <>
       <MigrationCard>
         <Flex gap="1.5rem" align="start">
           <Flex
-            bg={color("brand-light")}
+            bg="background_surface-brand-subtle"
             h="64px"
             style={{ borderRadius: "50%", flex: "0 0 64px" }}
             justify="center"
             align="center"
           >
-            <Icon
-              name="cloud_filled"
-              size="2.375rem"
-              style={{ color: color("brand") }}
-            />
+            <Icon name="cloud_filled" size="2.375rem" c="core-brand" />
           </Flex>
           <Box style={{ flex: "1 0 0" }}>
             <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>
@@ -88,7 +88,7 @@ export const MigrationInProgress = ({
             )}
 
             <Box mt="lg" mb="md">
-              <Text size="md" c="text-medium">
+              <Text size="md" c="text-secondary">
                 {progressMessage[migration.state]}
               </Text>
               <Progress value={migration.progress} mt=".25rem" />
@@ -98,12 +98,12 @@ export const MigrationInProgress = ({
               <Button
                 mt="md"
                 onClick={openModal}
-                c="error"
+                c="feedback-negative"
               >{t`Cancel migration`}</Button>
               <Button
                 mt="md"
                 component={ExternalLink}
-                href={checkoutUrl}
+                href={migrationUrl}
                 variant="filled"
               >{t`Go to Metabase Store`}</Button>
             </Flex>
@@ -123,7 +123,7 @@ export const MigrationInProgress = ({
         <Flex justify="end" mt="3.5rem">
           <Button
             variant="filled"
-            color="error"
+            color="feedback-negative"
             onClick={handleCancelMigration}
           >{t`Cancel migration`}</Button>
         </Flex>

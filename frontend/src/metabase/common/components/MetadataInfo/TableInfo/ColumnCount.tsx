@@ -4,10 +4,10 @@ import type Table from "metabase-lib/v1/metadata/Table";
 
 import { Label, LabelContainer } from "../MetadataInfo.styled";
 
-function ColumnCount({ table }: { table: Table }) {
+export function ColumnCount({ table }: { table: Table }) {
   const fieldCount = table.numFields();
   return (
-    <LabelContainer color="text-dark">
+    <LabelContainer color="text-primary">
       <Label>
         {ngettext(
           msgid`${fieldCount} column`,
@@ -18,6 +18,3 @@ function ColumnCount({ table }: { table: Table }) {
     </LabelContainer>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColumnCount;

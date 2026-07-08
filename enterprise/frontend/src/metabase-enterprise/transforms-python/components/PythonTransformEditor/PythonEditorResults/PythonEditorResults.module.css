@@ -1,0 +1,59 @@
+.header {
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.logs {
+  white-space: pre;
+  font-family: var(--mb-default-monospace-font-family);
+  overflow: auto;
+}
+
+.visualization {
+  flex: 1 0 auto;
+}
+
+.results {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+}
+
+.tableHeader {
+  background-color: var(--mb-color-background_page-secondary);
+  padding: var(--mantine-spacing-sm);
+}
+
+.tableCell {
+  border-top: 1px solid var(--mb-color-border-neutral);
+  padding: var(--mantine-spacing-sm);
+}
+
+.loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.error {
+  background-color: var(--mb-color-background_surface-error);
+}
+
+.traceback {
+  white-space: pre;
+  font-family: var(--mb-default-monospace-font-family);
+  overflow: auto;
+}
+
+.content {
+  overflow: auto;
+}
+
+.footer {
+  border-top: 1px solid var(--mb-color-border-neutral);
+  flex-shrink: 0;
+}

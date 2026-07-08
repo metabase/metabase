@@ -24,6 +24,10 @@
     (throw (ex-info (tru "API is not available on non-hosted servers.")
                     {:status-code 402}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/override"
   "Update multiple cloud email Settings. You must be a superuser or have `setting` permission to do this.
   Calling this automatically sets `cloud-smtp-enabled` to true if the settings are valid."
@@ -36,7 +40,6 @@
                 [:email-smtp-security-override {:optional true} [:or string? nil?]]
                 [:email-smtp-username-override {:optional true} [:or string? nil?]]]]
   (check-features)
-
   ;; Validations match validation in settings, but pre-checking here to avoid attempting network checks for invalid settings.
   (when (and (:email-smtp-port-override settings)
              (not (#{465 587 2525} (:email-smtp-port-override settings))))
@@ -46,10 +49,13 @@
              (not (#{:tls :ssl :starttls} (keyword (:email-smtp-security-override settings)))))
     (throw (ex-info (tru "Invalid email-smtp-security-override value")
                     {:status-code 400})))
-
   (u/prog1 (email/check-and-update-settings settings mb-to-smtp-override-settings (channel.settings/email-smtp-password-override))
     (when (nil? (:errors (:body <>))) (channel.settings/smtp-override-enabled! true))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/override"
   "Clear all cloud email related settings. You must be a superuser or have `setting` permission to do this."
   []

@@ -32,7 +32,7 @@
 (defn- db-identifier->name
   "Get the name of identifier from JDBC error message.
   An identifier can contains quote and full schema, database, table , etc.
-  This formats so that we get  only the identifer name with quote removed.
+  This formats so that we get  only the identifier name with quote removed.
 
 
     (db-identifier->name \"PUBLIC.TABLE\" ) => \"TABLE\""
@@ -61,7 +61,7 @@
                          constraint-name table-name)
               (reduced nil))))
       [[] nil nil]
-      (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
+      (jdbc/reducible-query jdbc-spec sql-args {:transaction? false})))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]

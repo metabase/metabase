@@ -1,0 +1,118 @@
+name: Sync Linear Release
+
+on:
+  push:
+    branches:
+      - master
+      - "release-x.**"
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "sync | update | complete"
+        type: choice
+        options: [sync, update, complete]
+        default: sync
+      release_version:
+        description: "Override minor version, e.g. v0.57.8 (else derived from branch)"
+        type: string
+        required: false
+      stage:
+        description: "Target stage (required for 'update'), e.g. rc"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync-linear-release:
+    continue-on-error: true
+    if: ${{ github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - name: Check out (full history + tags — linear-release needs a full clone)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Build release code from master
+        run: git checkout master
+      - name: Build the release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Derive the in-flight MINOR version + scan baseline (via release/ helpers)
+        id: ctx
+        uses: actions/github-script@v9
+        continue-on-error: true
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          # master develops the next GA major. cut-release-branch.yml bumps this
+          # org var to the just-cut major, so master == CURRENT_VERSION + 1.
+          # Confirm this matches your conventions before enabling.
+          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          INPUT_VERSION: ${{ github.event.inputs.release_version }}
+        with:
+          script: | # js
+            try {
+              const R = require('${{ github.workspace }}/release/dist/index.cjs');
+
+              const { REF_NAME, CURRENT_VERSION, INPUT_VERSION } = process.env;
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+
+              // Manual dispatch override wins.
+              if (INPUT_VERSION) {
+                const releaseVersion = R.getLinearReleaseName(INPUT_VERSION);
+                console.log({ REF_NAME, CURRENT_VERSION, INPUT_VERSION, releaseVersion });
+                core.setOutput('release_version', releaseVersion);
+                core.setOutput('base_ref', '');
+                return;
+              }
+
+              // Branch -> major: release branches encode it; master develops the next major.
+              const major = REF_NAME.startsWith('release-x.')
+                ? R.getMajorVersionNumberFromReleaseBranch(REF_NAME)
+                : String(Number(CURRENT_VERSION) + 1);
+
+              // Last STABLE MINOR shipped on this line (ignore patches + pre-releases),
+              // so the release we record is always the next MINOR (e.g. v0.63.3) and a
+              // patch build (v0.63.2.3) maps to its parent minor rather than its own release.
+              const lastMinorTag = await R.getLastReleaseTag({
+                github, owner, repo,
+                version: `v0.${major}.0`, // only the major is read out of this
+                ignorePatches: true,
+                ignorePreReleases: true,
+              });
+
+              const releaseVersion = lastMinorTag
+                ? R.findNextMinorVersion(lastMinorTag) // v0.63.2 -> v0.63.3
+                : `v0.${major}.0`;                   // .0 not cut yet (done manually)
+              const linearReleaseName = R.getLinearReleaseName(releaseVersion);
+
+              console.log({
+                REF_NAME, CURRENT_VERSION, INPUT_VERSION,
+                major, lastMinorTag, releaseVersion, linearReleaseName,
+              });
+
+              core.setOutput('release_version', linearReleaseName);
+              core.setOutput('base_ref', lastMinorTag ?? '');
+
+              core.info(`Linear release ${linearReleaseName} (baseline: ${lastMinorTag ?? 'none'})`);
+            } catch (err) { // this should never fail a CI check
+              console.error(err);
+            }
+
+      - name: Restore branch (for subsequent steps)
+        run: git checkout ${{ github.ref_name }} # restore branch
+      - name: Sync / update / complete the Linear release
+        if: ${{ steps.ctx.outputs.release_version }}
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
+          command: ${{ github.event.inputs.command || 'sync' }}
+          release_version: ${{ steps.ctx.outputs.release_version }}
+          base_ref: ${{ steps.ctx.outputs.base_ref }}
+          stage: ${{ github.event.inputs.stage }}
+          # Linear extracts ENG-ids AND detects PR numbers from the scanned commits,
+          # so a PR that closes no Linear issue is still tracked on the release.

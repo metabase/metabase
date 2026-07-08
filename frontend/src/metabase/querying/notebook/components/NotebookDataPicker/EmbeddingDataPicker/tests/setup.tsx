@@ -4,9 +4,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
-import { createMockModelResult } from "metabase/browse/models/test-utils";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { createMockState } from "metabase/redux/store/mocks";
+import { createMockEmbeddingDataPickerState } from "metabase/redux/store/mocks/embedding-data-picker";
 import type { Query } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import { createMockModelResult } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -14,8 +17,6 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
@@ -50,15 +51,16 @@ export function setup({
       canChangeDatabase={true}
       isDisabled={false}
       onChange={jest.fn()}
+      title="Pick your starting data"
       placeholder="Pick your starting data"
       table={undefined}
     />,
     entityTypes
       ? {
           storeInitialState: createMockState({
-            embeddingDataPicker: {
+            embeddingDataPicker: createMockEmbeddingDataPickerState({
               entityTypes,
-            },
+            }),
           }),
         }
       : undefined,

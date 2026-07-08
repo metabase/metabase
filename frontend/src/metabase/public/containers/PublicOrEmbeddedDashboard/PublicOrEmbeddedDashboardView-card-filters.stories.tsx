@@ -3,19 +3,22 @@ import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import { publicReducers } from "metabase/reducers-public";
+} from "metabase/dashboard/context/mock-context";
+import { Heading } from "metabase/dashboard/visualizations/Heading";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import { Heading } from "metabase/visualizations/visualizations/Heading";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -29,11 +32,6 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 import { PRODUCTS } from "metabase-types/api/mocks/presets";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
@@ -92,7 +90,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     }),
   });
 
-  const store = getStore(publicReducers, initialState, [Api.middleware]);
+  const store = getPublicStore(initialState);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />

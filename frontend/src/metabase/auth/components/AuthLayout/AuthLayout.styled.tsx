@@ -1,13 +1,12 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { hueRotate } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100vh;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background_page-secondary);
 `;
 
 export const LayoutBody = styled.div`
@@ -24,8 +23,8 @@ export const LayoutCard = styled.div`
   width: 100%;
   margin-top: 1.5rem;
   padding: 2.5rem 1.5rem;
-  background-color: var(--mb-color-bg-white);
-  box-shadow: 0 1px 15px var(--mb-color-shadow);
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: 0 1px 15px var(--mb-color-shadow-default);
   border-radius: 6px;
 
   ${breakpointMinSmall} {
@@ -36,19 +35,15 @@ export const LayoutCard = styled.div`
 
 export const LayoutIllustration = styled.div<{
   backgroundImageSrc: string;
-  isDefault: boolean;
 }>`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  filter: ${({ isDefault }) =>
-    isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
   background-image: ${({ backgroundImageSrc }) =>
     `url("${backgroundImageSrc}")`};
-  background-size: ${({ isDefault }) =>
-    isDefault ? "max(2592px, 100%) auto" : "100% auto"};
+  background-size: 100% auto;
   background-repeat: no-repeat;
   background-position: right bottom;
 `;

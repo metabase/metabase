@@ -1,13 +1,11 @@
-import { useCallback, useState } from "react";
-import { useMount } from "react-use";
+import { useCallback, useEffect } from "react";
+import { useAsyncFn, useMount } from "react-use";
 
-import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
-import { connect } from "metabase/lib/redux";
+import { publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
+import { connect, useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { PublicApi } from "metabase/services";
-import type { WritebackAction } from "metabase-types/api";
-import type { AppErrorDescriptor } from "metabase-types/store";
 
 import PublicAction from "./PublicAction";
 import {
@@ -20,7 +18,7 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  setErrorPage: (error: AppErrorDescriptor) => void;
+  setErrorPage: (error: any) => void;
 }
 
 type Props = OwnProps & DispatchProps;
@@ -30,20 +28,26 @@ const mapDispatchToProps = {
 };
 
 function PublicActionLoader({ params, setErrorPage }: Props) {
-  const [action, setAction] = useState<WritebackAction | null>(null);
-  const fetchAction = useSafeAsyncFunction(PublicApi.action);
+  const dispatch = useDispatch();
+  const [{ value: action, error }, fetchAction] = useAsyncFn(
+    () =>
+      runRtkEndpoint(
+        { uuid: params.uuid },
+        dispatch,
+        publicApi.endpoints.getPublicAction,
+      ),
+    [params.uuid, dispatch],
+  );
 
   useMount(() => {
-    async function loadAction() {
-      try {
-        const action = await fetchAction({ uuid: params.uuid });
-        setAction(action);
-      } catch (error) {
-        setErrorPage(error as AppErrorDescriptor);
-      }
-    }
-    loadAction();
+    fetchAction();
   });
+
+  useEffect(() => {
+    if (error) {
+      setErrorPage(error);
+    }
+  }, [error, setErrorPage]);
 
   const renderContent = useCallback(() => {
     if (!action) {

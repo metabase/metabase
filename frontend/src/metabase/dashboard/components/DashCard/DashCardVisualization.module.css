@@ -1,19 +1,19 @@
 .DashCardVisualization {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
+}
+
+/* Clip the viz to the card's radius, else its square content squares off the
+   rounded card. inherit tracks the root radius; the wrapper relays it down. */
+.VisualizationContainer,
+.Visualization {
+  border-radius: inherit;
 }
 
 .VirtualDashCardOverlayText {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .InlineParametersList *,
 .InlineParametersMenuTrigger * {
   pointer-events: all;
-}
-
-.isNightMode {
-  & .invertInNightMode {
-    border-color: var(--mb-color-text-white-alpha-85);
-    background-color: var(--mb-color-bg-night);
-  }
 }

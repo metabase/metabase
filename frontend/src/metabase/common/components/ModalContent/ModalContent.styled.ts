@@ -10,11 +10,11 @@ export const ActionsWrapper = styled.div`
 `;
 
 export const ModalContentActionIcon = styled(Icon)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;
 
@@ -22,6 +22,6 @@ export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
   flex-shrink: 0;
 
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

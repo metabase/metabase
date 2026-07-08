@@ -5,12 +5,13 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import Link from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { Box, Checkbox } from "metabase/ui";
+import { Link } from "metabase/common/components/Link";
+import { useDispatch, useSelector } from "metabase/redux";
+import { loginGoogle } from "metabase/redux/auth";
+import { Box, Checkbox, useColorScheme } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { getCspNonce } from "metabase/utils/csp";
 
-import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
 import S from "./GoogleButton.module.css";
@@ -30,6 +31,8 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   const locale = useSelector(getSiteLocale);
   const [errors, setErrors] = useState<string[]>([]);
   const dispatch = useDispatch();
+
+  const { resolvedColorScheme } = useColorScheme();
 
   const handleLogin = useCallback(
     async ({ credential = "" }: CredentialResponse) => {
@@ -59,13 +62,21 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
     <Box ref={buttonContainer}>
       {isCard && clientId ? (
         <ErrorBoundary>
-          <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
+          <GoogleOAuthProvider clientId={clientId} nonce={getCspNonce()}>
             <GoogleLogin
               useOneTap
               onSuccess={handleLogin}
               onError={handleError}
               locale={locale}
               width={width}
+              theme={
+                resolvedColorScheme === "dark" ? "filled_black" : "outline"
+              }
+              // This is needed to ensure that no white border shows up around the
+              // login button in dark mode (UXW-2138)
+              containerProps={{
+                style: { colorScheme: "light" },
+              }}
             />
           </GoogleOAuthProvider>
           <Checkbox
@@ -84,7 +95,7 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
       {errors.length > 0 && (
         <Box mt="1rem">
           {errors.map((error, index) => (
-            <Box c="error" ta="center" key={index}>
+            <Box c="feedback-negative" ta="center" key={index}>
               {error}
             </Box>
           ))}

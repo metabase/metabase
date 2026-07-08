@@ -3,15 +3,18 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_AUDIT } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import { isNotNull } from "metabase/utils/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Database as DatabaseType } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type {
+  Database as DatabaseType,
+  PermissionEntityId,
+} from "metabase-types/api";
 
-import type { EntityId, RawDataRouteParams } from "../../types";
+import type { RawDataRouteParams } from "../../types";
 import {
   getDatabaseEntityId,
   getSchemaEntityId,
@@ -21,18 +24,18 @@ import { getDatabase } from "../../utils/metadata";
 
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 
-type DataTreeNodeItem = {
-  entityId: EntityId;
+export type DataTreeNodeItem = {
+  entityId: PermissionEntityId;
   children?: DataTreeNodeItem[];
 } & ITreeNodeItem;
 
-type DataSidebarProps = {
+export type DataSidebarProps = {
   title?: string;
   description?: string;
   entityGroups: DataTreeNodeItem[][];
   entityViewFocus?: "database";
-  selectedId?: string | null;
-  filterPlaceholder?: string;
+  selectedId?: string;
+  filterPlaceholder: string;
 };
 
 const getRouteParams = (
@@ -54,6 +57,7 @@ const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
   const entities = metadata
     .databasesList({ savedQuestions: false })
     .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
+    .filter((db) => !(db as DatabaseType).router_database_id)
     .map((database) => ({
       id: database.id,
       name: database.name,
@@ -73,7 +77,7 @@ const getTablesSidebar = (
   schemaName?: string,
   tableId?: string,
 ): DataSidebarProps => {
-  let selectedId = null;
+  let selectedId: string | undefined = undefined;
 
   if (tableId != null) {
     selectedId = getTableId(tableId);
@@ -90,8 +94,7 @@ const getTablesSidebar = (
         name: schema.name,
         entityId: getSchemaEntityId(schema),
         icon: "folder" as const,
-        children: schema
-          .getTables()
+        children: (schema.tables ?? [])
           .sort((a, b) => a.displayName().localeCompare(b.displayName()))
           .map((table) => ({
             id: getTableId(table.id),

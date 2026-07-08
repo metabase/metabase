@@ -115,14 +115,11 @@
                                    :semantic_type       nil
                                    :fingerprint_version i/*latest-fingerprint-version*
                                    :last_analyzed       nil}]
-
       (classify/classify-fields! table)
-
       (let [name-fields (t2/select :model/Field
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
         (is (= 1 (count name-fields)))
-
         ;; Should be the first name field encountered, but we can't assume a specific ordering
         (is (#{"lastName" "fullName" "firstName"} (:name (first name-fields))))))))
 
@@ -151,7 +148,6 @@
                                        :fingerprint_version i/*latest-fingerprint-version*
                                        :last_analyzed       nil}]
       (classify/classify-fields! table)
-
       (let [name-fields (t2/select :model/Field
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
@@ -159,7 +155,6 @@
         ;; The original fields should keep their type/Name
         (is (some #(= "firstName" (:name %)) name-fields))
         (is (some #(= "lastName" (:name %)) name-fields))
-
         (is (not= :type/Name (:semantic_type (t2/select-one :model/Field :id (u/the-id field)))))))))
 
 (deftest no-name-field-candidates-test
@@ -169,7 +164,6 @@
                    :model/Field _ {:name "id" :base_type :type/Integer :table_id (u/the-id table)}
                    :model/Field _ {:name "value" :base_type :type/Float :table_id (u/the-id table)}
                    :model/Field _ {:name "timestamp" :base_type :type/DateTime :table_id (u/the-id table)}]
-
       (is (not= ::thrown (try (classify/classify-fields! table) (catch Throwable _ ::thrown))))
       (let [name-fields (t2/select :model/Field
                                    :table_id (u/the-id table)
@@ -191,11 +185,9 @@
                                    :semantic_type nil
                                    :fingerprint_version i/*latest-fingerprint-version*
                                    :last_analyzed nil}]
-
       ;; Run classification twice
       (classify/classify-fields! table)
       (classify/classify-fields! table)
-
       (let [name-fields (t2/select :model/Field
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name)]
@@ -216,11 +208,9 @@
                     :preview_display true
                     :fingerprint_version i/*latest-fingerprint-version*
                     :last_analyzed nil}]
-
-      (with-redefs [classifiers.no-preview-display/infer-no-preview-display
-                    (fn [field _] (assoc field :preview_display false))]
+      (mt/with-dynamic-fn-redefs [classifiers.no-preview-display/infer-no-preview-display
+                                  (fn [field _] (assoc field :preview_display false))]
         (classify/classify-fields! table))
-
       (let [updated-field (t2/select-one :model/Field :id (u/the-id field))]
         (is (not= :type/Name (:semantic_type updated-field)))
         (is (false? (:preview_display updated-field)))))))
@@ -236,9 +226,7 @@
                                                 :semantic_type nil
                                                 :fingerprint_version i/*latest-fingerprint-version*
                                                 :last_analyzed nil}]
-
       (classify/classify-fields! table)
-
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name-field))]
         (is (= :type/Name (:semantic_type updated-field)))))))
 
@@ -257,9 +245,7 @@
                                                 :active true
                                                 :fingerprint_version i/*latest-fingerprint-version*
                                                 :last_analyzed nil}]
-
       (classify/classify-fields! table)
-
       (let [updated-field (t2/select-one :model/Field :id (u/the-id potential-name))
             existing-field (t2/select-one :model/Field :id (u/the-id active-field))]
         (is (not= :type/Name (:semantic_type updated-field)))
@@ -278,9 +264,7 @@
                                           :visibility_type "normal"
                                           :fingerprint_version i/*latest-fingerprint-version*
                                           :last_analyzed nil}]
-
       (classify/classify-fields! table)
-
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))
 
@@ -303,8 +287,6 @@
                                           :visibility_type "normal"
                                           :fingerprint_version i/*latest-fingerprint-version*
                                           :last_analyzed nil}]
-
       (classify/classify-fields! table)
-
       (let [updated-field (t2/select-one :model/Field :id (u/the-id new-name))]
         (is (= :type/Name (:semantic_type updated-field)))))))

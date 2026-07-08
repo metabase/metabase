@@ -6,9 +6,12 @@
    [metabase.analytics.stats :as stats]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(deftest ee-snowplow-features-test
+(use-fixtures :once (fixtures/initialize :db))
+
+(deftest ^:parallel ee-snowplow-features-test
   (testing "Every feature returned by `ee-snowplow-features-data` has a corresponding OSS fallback"
     (let [ee-features (map :name (ee-stats/ee-snowplow-features-data))
           oss-features (map :name (@#'stats/ee-snowplow-features-data'))]

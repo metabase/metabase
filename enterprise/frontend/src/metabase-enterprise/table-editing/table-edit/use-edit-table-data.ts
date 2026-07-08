@@ -2,17 +2,7 @@ import type { Location } from "history";
 import { useCallback } from "react";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
-import type { OrderByDirection, Query } from "metabase-lib";
-import {
-  changeDirection,
-  displayInfo,
-  findMatchingColumn,
-  fromLegacyColumn,
-  orderBy,
-  orderBys,
-  orderableColumns,
-  removeOrderBys,
-} from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
 
@@ -21,12 +11,12 @@ import { useAdHocTableQuery } from "./use-adhoc-table-query";
 type Props = {
   tableId: number;
   databaseId: number;
-  location: Location<{ filter?: string }>;
+  location: Location<{ query?: string }>;
 };
 
 export type TableDataGetColumnSortDirection = (
   column: DatasetColumn,
-) => OrderByDirection | undefined;
+) => Lib.OrderByDirection | undefined;
 
 export function useEditTableData({ tableId, databaseId, location }: Props) {
   const { tableQuestion, tableQuery, handleTableQuestionChange } =
@@ -44,11 +34,11 @@ export function useEditTableData({ tableId, databaseId, location }: Props) {
       );
 
       if (column != null) {
-        const columnInfo = displayInfo(query, stageIndex, column);
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
         if (columnInfo.orderByPosition != null) {
-          const orderBysMap = orderBys(query, stageIndex);
+          const orderBysMap = Lib.orderBys(query, stageIndex);
           const orderBy = orderBysMap[columnInfo.orderByPosition];
-          const orderByInfo = displayInfo(query, stageIndex, orderBy);
+          const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
           return orderByInfo.direction;
         }
       }
@@ -70,18 +60,18 @@ export function useEditTableData({ tableId, databaseId, location }: Props) {
       if (column) {
         const sortDirection = getColumnSortDirection(columnOrField);
 
-        let newQuery: Query;
+        let newQuery: Lib.Query;
         if (sortDirection === "asc") {
           // have existing sorting by asc, then make it desc
-          const clauses = orderBys(query, stageIndex);
-          newQuery = changeDirection(query, clauses[0]);
+          const clauses = Lib.orderBys(query, stageIndex);
+          newQuery = Lib.changeDirection(query, clauses[0]);
         } else if (sortDirection === "desc") {
           // have existing sorting by desc, then remove sorting - WRK-446
-          newQuery = removeOrderBys(query, stageIndex);
+          newQuery = Lib.removeOrderBys(query, stageIndex);
         } else {
           // no existing sorting on this column - apply new sorting (default - by asc)
-          newQuery = orderBy(
-            removeOrderBys(query, stageIndex),
+          newQuery = Lib.orderBy(
+            Lib.removeOrderBys(query, stageIndex),
             stageIndex,
             column,
           );
@@ -113,11 +103,11 @@ export function useEditTableData({ tableId, databaseId, location }: Props) {
 const getQueryColumn = (question: Question, columnOrField: DatasetColumn) => {
   const query = question.query();
   const stageIndex = -1;
-  const column = findMatchingColumn(
+  const column = Lib.findMatchingColumn(
     query,
     stageIndex,
-    fromLegacyColumn(query, stageIndex, columnOrField),
-    orderableColumns(query, stageIndex),
+    Lib.fromLegacyColumn(query, stageIndex, columnOrField),
+    Lib.orderableColumns(query, stageIndex),
   );
 
   return {

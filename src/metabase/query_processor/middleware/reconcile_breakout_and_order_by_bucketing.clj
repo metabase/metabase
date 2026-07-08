@@ -33,6 +33,7 @@
   The frontend, on the rare occasion it generates a query that explicitly specifies an `order-by` clause, usually will
   generate one that directly corresponds to the bad example above. This middleware finds these cases and rewrites the
   query to look like the good example."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -40,10 +41,10 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- bucketed-breakouts [query stage-path {breakouts :breakout, :as _stage}]
   (->> breakouts
@@ -61,7 +62,7 @@
   (-> order-bys
       (lib.walk/walk-clauses*
        (fn [clause]
-         (when (and (lib.util/clause-of-type? clause #{:field :expression})
+         (when (and (lib/clause-of-type? clause #{:field :expression})
                     (not (lib/raw-temporal-bucket clause))
                     (not (lib/binning clause)))
            (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query stage-path clause)]

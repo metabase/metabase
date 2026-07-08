@@ -1,6 +1,6 @@
-import { formatValue } from "metabase/lib/formatting";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { RowValue } from "metabase-types/api";
 
 export const funnelToBarTransform: TransformSeries = (rawSeries, settings) => {

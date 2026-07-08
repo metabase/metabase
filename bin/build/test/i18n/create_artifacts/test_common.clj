@@ -87,7 +87,7 @@
    :str-plural        nil
    :fuzzy?            false
    :plural?           false
-   :source-references ["src/metabase/lib/aggregation.cljc"]
+   :source-references ["src/metabase/utils/aggregation.cljc"]
    :comment           nil})
 
 (def ^:private cljs-message
@@ -97,7 +97,7 @@
    :str-plural        nil
    :fuzzy?            false
    :plural?           false
-   :source-references ["src/metabase/lib/aggregation.cljs"]
+   :source-references ["src/metabase/utils/aggregation.cljs"]
    :comment           nil})
 
 (def ^:private messages

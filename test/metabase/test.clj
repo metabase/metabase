@@ -16,12 +16,12 @@
    [metabase.core.init]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.request.core]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -71,7 +71,7 @@
   driver/keep-me
   i18n.tu/keep-me
   initialize/keep-me
-  lib.metadata.jvm/keep-me
+  lib-be/keep-me
   mb.hawk.init/keep-me
   mdb.test-util/keep-me
   metabase.channel.email-test/keep-me
@@ -112,7 +112,6 @@
   with-actions-test-data-and-actions-enabled
   with-empty-db
   with-temp-test-data]
-
  [data
   $ids
   dataset
@@ -129,17 +128,13 @@
   with-db
   with-temp-copy-of-db
   with-empty-h2-app-db!]
-
  [data.impl
   *db-is-temp-copy?*]
-
  [datasets
   test-driver
   test-drivers]
-
  [driver
   with-driver]
-
  [metabase.channel.email-test
   email-to
   fake-inbox-email-fn
@@ -153,63 +148,52 @@
   summarize-multipart-single-email
   with-expected-messages
   with-fake-inbox]
-
  [client
   build-url
   client
   real-client
   client-full-response
   client-real-response]
-
  [i18n.tu
   with-mock-i18n-bundles!
   with-user-locale]
-
  [initialize
   initialize-if-needed!]
-
- [lib.metadata.jvm
+ [lib-be
   application-database-metadata-provider]
-
  [metabase.util.log.capture
   with-log-messages-for-level]
-
  [mdb.test-util
   with-app-db-timezone-id!]
-
  [metabase.model-persistence.test-util
   with-persistence-enabled!]
-
  [metabase.request.core
   as-admin
   with-current-user]
-
  [metabase.test.util.dynamic-redefs
   dynamic-value
+  original-fn
   with-dynamic-fn-redefs]
-
  [premium-features.test-util
   assert-has-premium-feature-error
   with-premium-features
   with-additional-premium-features
   when-ee-evailable]
-
  [perms.test-util
   with-restored-data-perms!
   with-restored-data-perms-for-group!
   with-restored-data-perms-for-groups!
   with-no-data-perms-for-all-users!
   with-full-data-perms-for-all-users!
+  with-db-perm-for-group!
   with-perm-for-group!
-  with-perm-for-group-and-table!]
-
+  with-perm-for-group-and-table!
+  with-data-analyst-role!]
  [qp
   process-query
   userland-query]
-
  [qp.store
   with-metadata-provider]
-
  [qp.test-util
   boolish->bool
   card-with-metadata
@@ -231,13 +215,10 @@
   with-database-timezone-id
   with-report-timezone-id!
   with-results-timezone-id]
-
  [sql.qp-test-util
   with-native-query-testing-context]
-
  [test-runner.assert-exprs
   derecordize]
-
  [test.users
   fetch-user
   test-user?
@@ -247,14 +228,13 @@
   user-http-request
   user-http-request-full-response
   user-real-request
+  user-real-request-full-response
   with-group
   with-group-for-user
   with-test-user]
-
  [toucan2.tools.with-temp
   with-temp
   with-temp-defaults]
-
  [tu
   boolean-ids-and-timestamps
   call-with-map-params
@@ -264,7 +244,10 @@
   file->bytes
   file-path->bytes
   bytes->base64-data-uri
+  format-env-key
+  priv-key->base64-uri
   latest-audit-log-entry
+  all-entries-for
   let-url
   metric-value
   obj->json->obj
@@ -290,6 +273,7 @@
   with-all-users-data-perms-graph!
   with-anaphora
   with-prometheus-system!
+  with-random-premium-token!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -298,34 +282,27 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified-cards!
+  with-verified!
   works-after]
-
  [tu.async
   wait-for-result
   with-open-channels]
-
  [tu.log
   ns-log-level
   set-ns-log-level!
   with-log-level]
-
  [tu.misc
   object-defaults
   with-clock
   with-single-admin-user!]
-
  [u.random
   random-name
   random-hash
   random-email]
-
  [tu.thread-local
   test-helpers-set-global-values!]
-
  [test.tz
   with-system-timezone-id!]
-
  [tx
   arbitrary-select-query
   count-with-template-tag-query
@@ -344,11 +321,8 @@
   metabase-instance
   native-query-with-card-template-tag
   sorts-nil-first?]
-
  [tx.env
-  set-test-drivers!
-  with-test-drivers]
-
+  set-test-drivers!]
  [schema-migrations-test.impl
   with-temp-empty-app-db])
 

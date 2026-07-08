@@ -4,14 +4,14 @@
    [metabase.test.util.js :as test.js]
    [metabase.xrays.domain-entities.converters :as converters]))
 
-(deftest incoming-basics-test
+(deftest ^:parallel incoming-basics-test
   (testing "simple values are not transformed"
     (is (= identity (converters/incoming number?)))
     (is (= identity (converters/incoming string?)))
     (is (= identity (converters/incoming nil?)))
     (is (= identity (converters/incoming boolean?)))))
 
-(deftest keywords-test
+(deftest ^:parallel keywords-test
   (testing "plain keywords are transformed without changing their spelling"
     (let [->kw (converters/incoming keyword?)
           kw-> (converters/outgoing keyword?)
@@ -23,8 +23,9 @@
         (is (= kw (->kw s)))
         (is (= s (kw-> kw)))
         (is (= kw (-> kw kw-> ->kw)))
-        (is (= s  (-> s  ->kw kw->))))))
+        (is (= s  (-> s  ->kw kw->)))))))
 
+(deftest ^:parallel keywords-test-2
   (testing "qualified keywords are transformed without changing their spelling"
     (let [->kw (converters/incoming :qualified-keyword)
           kw-> (converters/outgoing :qualified-keyword)
@@ -38,20 +39,19 @@
         (is (= kw (-> kw kw-> ->kw)))
         (is (= s  (-> s  ->kw kw->)))))))
 
-(def HalfDeclared
+(def ^:private HalfDeclared
   [:map
    [:declared-camel {:js/prop "declaredCamel"} string?]
    [:declared-snake string?]
    [:declared-kebab {:js/prop "declared-kebab"} string?]])
 
-(def ->half-declared
+(def ^:private ->half-declared
   (converters/incoming HalfDeclared))
 
-(deftest map-basics-test
+(deftest ^:parallel map-basics-test
   (testing "incoming maps"
     (testing "become CLJS maps"
       (is (map? ((converters/incoming [:map]) #js {}))))
-
     (testing "have both declared and undeclared keys normalized as :kebab-case-keywords"
       (is (= {:declared-camel   "yes"
               :declared-snake   "also"
@@ -65,7 +65,6 @@
                                    "undeclaredCamel"  7
                                    "undeclared_snake" 8
                                    "undeclared-kebab" 9}))))
-
     (testing "work like maps for their declared keys"
       (let [converted (->half-declared #js {"declaredCamel"  "yes"
                                             "declared_snake" "also"
@@ -78,7 +77,6 @@
         (is (= "also"     (converted :declared-snake)))
         (is (= "finally"  (converted :declared-kebab)))
         (is (= :not-found (converted :does-not-exist :not-found)))
-
         (is (= #{:declared-camel :declared-snake :declared-kebab}
                (set (keys converted))))
         (is (= #{"yes" "also" "finally"}
@@ -89,7 +87,6 @@
                       :declared-kebab "finally"}]
           (is (= native converted))
           (is (= converted native))))))
-
   (testing "outgoing maps"
     (let [input #js {"declaredCamel"    "yes"
                      "declared_snake"   "also"
@@ -98,7 +95,6 @@
                      "undeclared_snake" 8
                      "undeclared-kebab" 9}
           obj   (->half-declared input)]
-
       (testing "are converted per the schema by :js/prop; defaulting to snake_case"
         (let [adjusted (assoc obj :declared-camel "no")]
           (is (not (identical? obj adjusted)))
@@ -119,14 +115,13 @@
 (def Grandparent
   [:map [:parent Parent]])
 
-(deftest nesting-test
+(deftest ^:parallel nesting-test
   (testing "deeply nested maps"
     (let [input     #js {"parent" #js {"child" #js {"innerValue" "asdf"}}}
           exp-clj   {:parent {:child {:inner-value "asdf"}}}
           converted ((converters/incoming Grandparent) input)]
       (is (= exp-clj converted))
       (is (test.js/= input ((converters/outgoing Grandparent) converted)))))
-
   (testing "nesting kitchen sink"
     (let [schema    [:map
                      [:foo-bar {:js/prop "fooBar"}
@@ -187,13 +182,13 @@
       (testing "round-trips as expected"
         (is (test.js/= input (-> input ->sink sink->)))))))
 
-(deftest idempotency-test
+(deftest ^:parallel idempotency-test
   (testing "CLJS maps are not further converted"
     (let [->parent (converters/incoming Parent)
           input    {:child {:inner-value "foo"}}]
       (is (identical? input (->parent input))))))
 
-(deftest opaque-any-test
+(deftest ^:parallel opaque-any-test
   (testing ":any values are not touched, and round-trip as identical?"
     (let [schema    [:map
                      [:wrapper [:map
@@ -214,14 +209,13 @@
       (is (identical? js-obj (let [^Object wrapper (.-wrapper returned)]
                                (.-inner wrapper)))))))
 
-(deftest uuid-test
+(deftest ^:parallel uuid-test
   (testing "UUIDs are converted to strings in JS and back to #uuid objects in CLJS"
     (let [uuid (random-uuid)]
       (is (= (str uuid)
              ((converters/outgoing :uuid) uuid)))
       (is (= uuid
              ((converters/incoming :uuid) (str uuid))))))
-
   (testing "UUIDs nested in maps work too"
     (let [uuid   (random-uuid)
           schema [:map [:id :uuid]]]
@@ -229,7 +223,6 @@
                      ((converters/outgoing schema) {:id uuid})))
       (is (= {:id uuid}
              ((converters/incoming schema) #js {:id (str uuid)})))))
-
   (testing "UUIDs nested in maps inside a map-of work too"
     (let [uuid   (random-uuid)
           schema [:map-of :string [:map [:id :uuid]]]]

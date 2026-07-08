@@ -19,6 +19,10 @@
       current-password
       new-password)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
   [_route-params
@@ -41,8 +45,8 @@
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
-       ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap
-       ;; settings
+        ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap
+        ;; settings
         (setting/set-many! ldap-settings)
         (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message

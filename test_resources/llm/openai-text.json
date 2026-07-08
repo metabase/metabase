@@ -1,0 +1,155 @@
+[
+  {
+    "type": "response.created",
+    "sequence_number": 0,
+    "response": {
+      "id": "resp_text_001",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "status": "in_progress",
+      "output": []
+    }
+  },
+  {
+    "type": "response.in_progress",
+    "sequence_number": 1,
+    "response": {
+      "id": "resp_text_001",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "status": "in_progress",
+      "output": []
+    }
+  },
+  {
+    "type": "response.output_item.added",
+    "sequence_number": 2,
+    "output_index": 0,
+    "item": {
+      "id": "msg_text_001",
+      "type": "message",
+      "status": "in_progress",
+      "role": "assistant",
+      "content": []
+    }
+  },
+  {
+    "type": "response.content_part.added",
+    "sequence_number": 3,
+    "output_index": 0,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "text": ""
+    }
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 4,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": "Hello"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 5,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": "!"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 6,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " How"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 7,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " can"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 8,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " I"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 9,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": " help"
+  },
+  {
+    "type": "response.output_text.delta",
+    "sequence_number": 10,
+    "output_index": 0,
+    "content_index": 0,
+    "delta": "?"
+  },
+  {
+    "type": "response.output_text.done",
+    "sequence_number": 11,
+    "output_index": 0,
+    "content_index": 0,
+    "text": "Hello! How can I help?"
+  },
+  {
+    "type": "response.content_part.done",
+    "sequence_number": 12,
+    "output_index": 0,
+    "content_index": 0,
+    "part": {
+      "type": "output_text",
+      "text": "Hello! How can I help?"
+    }
+  },
+  {
+    "type": "response.output_item.done",
+    "sequence_number": 13,
+    "output_index": 0,
+    "item": {
+      "id": "msg_text_001",
+      "type": "message",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Hello! How can I help?"
+        }
+      ]
+    }
+  },
+  {
+    "type": "response.completed",
+    "sequence_number": 14,
+    "response": {
+      "id": "resp_text_001",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 20,
+        "output_tokens": 8,
+        "total_tokens": 28
+      },
+      "output": [
+        {
+          "id": "msg_text_001",
+          "type": "message",
+          "status": "completed",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "Hello! How can I help?"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -148,8 +148,7 @@ describe(
                       assertScoreFormPrefilled(firstScoreRow);
                     });
                   });
-
-                  cy.icon("close").click();
+                  cy.button("Close").click();
                 });
                 objectDetailModal().icon("close").click();
 
@@ -308,21 +307,21 @@ function assertUpdatedScoreNotInTable() {
 
 function assertSuccessfullUpdateToast() {
   cy.log("it shows a toast informing the update was successful");
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "success")
+    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully updated");
 }
 
 function assertSuccessfullDeleteToast() {
   cy.log("it shows a toast informing the delete was successful");
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "success")
+    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully deleted");
 }
 

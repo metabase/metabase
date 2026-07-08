@@ -29,9 +29,7 @@ describe("scenarios > admin > permissions > database details permissions", () =>
     cy.signInAsNormalUser();
 
     cy.visit("/");
-    cy.icon("gear").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").should("be.visible").click();
+    H.goToAdmin();
 
     cy.location("pathname").should("eq", "/admin/databases");
 
@@ -40,7 +38,7 @@ describe("scenarios > admin > permissions > database details permissions", () =>
       .and("not.contain", "Settings")
       .and("not.contain", "Data Model");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sample Database").click();
 
     cy.findByTestId("database-connection-info-section").within(() => {

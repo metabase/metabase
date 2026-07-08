@@ -4,8 +4,8 @@
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -32,12 +32,23 @@
     (into serdes.models/data-model)
 
     (not (:no-settings opts))
-    (conj "Setting")))
+    (conj "Setting")
 
-(defn targets-of-type
-  "Returns target seq filtered on given model name"
-  [targets model-name]
-  (filter #(= (first %) model-name) targets))
+    (not (:no-transforms opts))
+    (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")
+
+    (not (:no-embedding-themes opts))
+    (conj "EmbeddingTheme")
+
+    (not (:no-custom-viz-plugins opts))
+    (conj "CustomVizPlugin")))
+
+;; OsiAiContext is intentionally NOT in the default export set. It's a top-level model that *depends on* its
+;; entity, extracted unfiltered, so any export — even an untargeted "full" one, which still omits personal and
+;; analytics collections — would pull ai_context rows whose referenced Card/Table/Measure/Segment is absent,
+;; leaking curator text and creating dangling deps that fail import. It stays out until reverse-dependency
+;; export lands (its row should travel *with* its entity), tracked in
+;; https://linear.app/metabase/issue/BOT-1759; see the metabase.osi.models.osi-ai-context serdes TODO.
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
@@ -60,52 +71,53 @@
         (into (map :id) roots)
         (into (mapcat collection/descendant-ids) roots))))
 
-(defn- collection-label [coll-id]
-  (if coll-id
-    (let [collection (t2/hydrate (t2/select-one :model/Collection :id coll-id) :ancestors)
-          names      (->> (conj (:ancestors collection) collection)
-                          (map :name)
-                          (str/join " > "))]
-      (format "%d: %s" coll-id names))
-    "[no collection]"))
-
-(defn- card-label [card-id]
-  (let [card (t2/select-one [:model/Card :collection_id :name] :id card-id)]
-    (format "Card %d (%s from collection %s)" card-id (:name card) (collection-label (:collection_id card)))))
-
 (defn- parse-target [[model-name id :as target]]
   (if (string? id)
-    [model-name (serdes/eid->id model-name id)]
+    (if-let [resolved-id (serdes/eid->id model-name id)]
+      [model-name resolved-id]
+      (throw (ex-info (format "Could not find %s with entity ID: %s" model-name id)
+                      {:status-code 400
+                       :model       model-name
+                       :entity-id   id})))
     target))
 
-(defn- escape-analysis [{colls "Collection" cards "Card"} nodes]
-  (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
-  (when-let [colls (-> colls set not-empty)]
-    (let [known-cards (t2/select-pks-set :model/Card {:where [:or
-                                                              [:in :collection_id colls]
-                                                              (when (contains? colls nil)
-                                                                [:= :collection_id nil])]})
-          escaped     (->> (set/difference (set cards) known-cards)
-                           (mapv (fn [id]
-                                   (-> (get nodes ["Card" id])
-                                       (assoc :escapee id)))))]
-      escaped)))
+(defn- analytics-collection-ids
+  "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
+   These collections are intentionally excluded from serialization."
+  []
+  (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
+    (into (set (map :id analytics-roots))
+          (mapcat collection/descendant-ids)
+          analytics-roots)))
 
-(defn- log-escape-report! [escaped]
-  (let [dashboards (group-by #(get % "Dashboard") escaped)]
-    (doseq [[dash-id escapes] (dissoc dashboards nil)]
-      (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
-                 dash-id
-                 (t2/select-one-fn :name :model/Dashboard :id dash-id)
-                 (str/join ", " (map #(card-label (:escapee %)) escapes))))
-    (when-let [other (not-empty (get dashboards nil))]
-      (log/warnf "Failed to export Cards based on questions outside requested collections: %s"
-                 (str/join ", " (for [item other]
-                                  (format "%s -> %s"
-                                          (if (get item "Card")
-                                            (card-label (get item "Card"))
-                                            (dissoc item :escapee))
-                                          (card-label (:escapee item)))))))))
+(defn- analytics-card-ids
+  "Of `card-ids`, the subset living in an 'analytics' namespace collection. These are removed from extraction (they
+   have stable entity_ids across instances) and references to them stay valid, resolving on import. `card-ids` is
+   queried in bounded `:in` batches so a large closure doesn't blow past database parameter limits."
+  [card-ids]
+  (let [analytics-colls (analytics-collection-ids)]
+    (if (and (seq card-ids) (seq analytics-colls))
+      (into #{}
+            (comp (partition-all serdes/query-batch-size)
+                  (mapcat (fn [batch]
+                            (t2/select-pks-set :model/Card {:where [:and
+                                                                    [:in :id (vec batch)]
+                                                                    [:in :collection_id (vec analytics-colls)]]}))))
+            card-ids)
+      #{})))
+
+(defn- resolve-targets
+  "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
+  [{:keys [targets] :as opts} user-id]
+  (let [initial-targets (if (seq targets)
+                          (mapv parse-target targets)
+                          (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
+        ;; a map of `{[model-name id] {source-model source-id ...}}`
+        targets         (u/traverse initial-targets #(serdes/descendants (first %) (second %) opts))]
+    ;; due to traverse argument we'd lose original source entities, lets track them
+    (merge-with into
+                targets
+                (u/traverse (map key targets) #(serdes/required (first %) (second %))))))
 
 (defn- extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
@@ -122,32 +134,42 @@
   `opts` are passed down to [[serdes/extract-all]] for each model."
   [{:keys [targets user-id] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [inner-targets (if (seq targets)
-                        (mapv parse-target targets)
-                        (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
-        ;; nodes are a map of `{[model-name id] {dep-model dep-id ...}}`
-        nodes         (set/union
-                       (u/traverse inner-targets #(serdes/ascendants (first %) (second %)))
-                       (u/traverse inner-targets #(serdes/descendants (first %) (second %))))
-        ;; by model is a map of `{model-name [ids ...]}`
-        by-model      (u/group-by first second (keys nodes))
-        escaped       (escape-analysis by-model nodes)]
-    (if (seq escaped)
-      (log-escape-report! escaped)
-      (let [models         (model-set opts)
-            coll-set       (get by-model "Collection")
-            by-model       (select-keys by-model models)
-            extract-by-ids (fn [[model ids]]
-                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                    :where          [:in :id ids]})))
-            extract-all    (fn [model]
-                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
-        (eduction cat
-                  [(if (seq targets)
-                     (eduction (map extract-by-ids) cat by-model)
-                     (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
-                   ;; extract all non-content entities like data model and settings if necessary
-                   (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
+  (let [models       (model-set opts)
+        has-content? (seq (set/intersection (set serdes.models/content) models))
+        nodes        (when has-content?
+                       (resolve-targets opts user-id))
+        ;; `by-model` is a map of `{model-name [ids ...]}`
+        by-model (u/group-by first second (keys nodes))
+        ;; Cards in analytics collections aren't extracted (stable entity_ids), but references to them stay valid.
+        analytics-cards (when has-content?
+                          (analytics-card-ids (get by-model "Card")))
+        coll-set        (get by-model "Collection")]
+    ;; Validate that every entity to be extracted has all its references satisfied; aborts (unless
+    ;; continue-on-error) before any archive is produced, so incomplete exports fail fast and loudly.
+    (when has-content?
+      (dependency-validation/validate-dependencies! by-model coll-set analytics-cards opts)) ;; may throw
+    (let [;; When targets are specified, also include Tables found via descendants
+          ;; (published tables in target collections). These are extracted by ID, not all.
+          targeted-data-model (when (seq targets)
+                                (select-keys by-model serdes.models/data-model-in-collection))
+          by-model        (cond-> (select-keys by-model models)
+                            ;; Add Tables back if they were found in descendants
+                            (seq targeted-data-model) (merge targeted-data-model)
+                            ;; Remove analytics cards from extraction - they have stable entity_ids across instances
+                            ;; so cards that reference them can still be exported and imported correctly
+                            (and analytics-cards (contains? by-model "Card"))
+                            (update "Card" (fn [ids] (vec (remove analytics-cards ids)))))
+          extract-by-ids  (fn [[model ids]]
+                            (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                   :where          [:in :id ids]})))
+          extract-all     (fn [model]
+                            (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+      (eduction cat
+                [(if (seq targets)
+                   (eduction (map extract-by-ids) cat by-model)
+                   (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
+                 ;; extract all non-content entities like data model and settings if necessary
+                 (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))]))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
@@ -159,6 +181,9 @@
   (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
                (merge
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
-                (u/traverse colls #(serdes/descendants (first %) (second %))))))
-  (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
-  (log-escape-report! escaped))
+                (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
+  (def by-model (u/group-by first second (keys nodes)))
+  ;; continue-on-error so this just logs in the REPL instead of throwing
+  (dependency-validation/validate-dependencies! by-model (get by-model "Collection")
+                                                (analytics-card-ids (get by-model "Card"))
+                                                {:continue-on-error true}))

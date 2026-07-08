@@ -13,7 +13,7 @@
   :feature    :disable-password-login
   :audit      :raw-value
   :getter     (fn []
-                ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
+                ;; if `:enable-password-login` has an *explicit* (non-default) value, and SSO is configured, use that;
                 ;; otherwise this always returns true.
                 (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)

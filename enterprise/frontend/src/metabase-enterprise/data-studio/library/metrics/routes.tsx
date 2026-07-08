@@ -1,0 +1,29 @@
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { IndexRoute, Route } from "metabase/router";
+
+import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
+import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
+import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
+import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPage";
+import { DataStudioMetricQueryPage } from "./pages/DataStudioMetricQueryPage";
+import { DataStudioNewMetricPage } from "./pages/NewMetricPage";
+
+export function getDataStudioMetricRoutes() {
+  return (
+    <Route path="metrics">
+      <Route path="new" component={DataStudioNewMetricPage} />
+      <Route path=":cardId" component={DataStudioMetricAboutPage} />
+      <Route path=":cardId/overview" component={DataStudioMetricOverviewPage} />
+      <Route path=":cardId/query" component={DataStudioMetricQueryPage} />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route
+          path=":cardId/dependencies"
+          component={DataStudioMetricDependenciesPage}
+        >
+          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        </Route>
+      )}
+      <Route path=":cardId/history" component={DataStudioMetricHistoryPage} />
+    </Route>
+  );
+}

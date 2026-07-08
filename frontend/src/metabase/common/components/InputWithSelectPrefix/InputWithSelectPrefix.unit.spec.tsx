@@ -36,7 +36,7 @@ describe("InputWithSelectPrefix", () => {
     const input = screen.getByPlaceholderText("my-input");
     await userEvent.clear(input);
     await userEvent.type(input, "new.limo");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
 
     expect(changeSpy).toHaveBeenCalledWith("http://new.limo");
   });

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -43,26 +43,29 @@ export const useConfirmation = () => {
     />
   ) : null;
 
-  const show = ({
-    title,
-    message,
-    onConfirm,
-    onCancel,
-    confirmButtonText = t`Confirm`,
-    cancelButtonText = t`Cancel`,
-    confirmButtonProps,
-    size,
-  }: ConfirmationState) =>
-    setConfirmationState({
+  const show = useCallback(
+    ({
       title,
       message,
       onConfirm,
       onCancel,
-      confirmButtonText,
-      cancelButtonText,
+      confirmButtonText = t`Confirm`,
+      cancelButtonText = t`Cancel`,
       confirmButtonProps,
       size,
-    });
+    }: ConfirmationState) =>
+      setConfirmationState({
+        title,
+        message,
+        onConfirm,
+        onCancel,
+        confirmButtonText,
+        cancelButtonText,
+        confirmButtonProps,
+        size,
+      }),
+    [],
+  );
 
   return { modalContent, show };
 };

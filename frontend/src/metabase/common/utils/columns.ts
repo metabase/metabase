@@ -1,5 +1,5 @@
-import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 export function getColumnIcon(
   column: Lib.ColumnMetadata | Lib.ColumnTypeInfo,

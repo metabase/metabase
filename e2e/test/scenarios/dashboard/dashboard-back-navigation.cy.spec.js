@@ -52,6 +52,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard().realHover();
     H.getDashboardCardMenu().click();
     H.popover().findByText("Edit question").click();
+    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     cy.findByLabelText(backButtonLabel).click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
@@ -75,7 +76,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByTestId("native-query-top-bar")
       .findByText("This question is written in SQL.")
       .should("be.visible");
-    H.NativeEditor.get().should("not.be.visible");
+    H.NativeEditor.get().should("not.exist");
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {

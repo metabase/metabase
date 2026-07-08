@@ -12,7 +12,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe(
@@ -89,7 +89,7 @@ describe("admin > database > add", () => {
 
     cy.visit("/admin/databases/create");
     // should display a setup help card
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Need help connecting?");
 
     cy.findByLabelText("Database type").click();
@@ -122,9 +122,9 @@ describe("admin > database > add", () => {
             .click({ force: true })
             .should("have.attr", "data-checked", "true");
 
-          cy.findByLabelText(
+          cy.findByDisplayValue(
             "Never, I'll do this manually if I need to",
-          ).should("have.attr", "aria-selected", "true");
+          ).should("exist");
 
           // make sure tooltips behave as expected
           cy.findByLabelText("Host")
@@ -243,11 +243,9 @@ describe("admin > database > add", () => {
           "true",
         );
 
-        cy.findByLabelText("Never, I'll do this manually if I need to").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        cy.findByDisplayValue(
+          "Never, I'll do this manually if I need to",
+        ).should("exist");
       });
     });
 
@@ -255,10 +253,7 @@ describe("admin > database > add", () => {
       "should add Mongo database and redirect to db info page",
       { tags: "@mongo" },
       () => {
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("MongoDB").click({ force: true });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Additional connection string options");
+        H.popover().contains("MongoDB").click();
 
         H.typeAndBlurUsingLabel("Display name", "QA Mongo");
         H.typeAndBlurUsingLabel("Host", "localhost");
@@ -268,11 +263,14 @@ describe("admin > database > add", () => {
         H.typeAndBlurUsingLabel("Password", "metasample123");
         H.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Show advanced options").click();
+        cy.findByRole("button", { name: /Show advanced options/ }).click();
+        cy.findByLabelText(
+          "Additional connection string options (optional)",
+        ).should("be.visible");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Save").should("not.be.disabled").click();
+        cy.findByRole("button", { name: /Save/ })
+          .should("not.be.disabled")
+          .click();
 
         cy.wait("@createDatabase");
 
@@ -324,7 +322,7 @@ describe("admin > database > add", () => {
           cy.button("Save", { timeout: 7000 })
             .should("not.be.disabled")
             .click();
-          cy.findByText(/Exception authenticating MongoCredential/);
+          cy.findByText(/Authentication failed/);
           cy.button("Failed");
 
           cy.findByLabelText("Paste your connection string")
@@ -358,11 +356,11 @@ describe("admin > database > add", () => {
     );
 
     it("should add MySQL database and redirect to db info page", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
 
       H.typeAndBlurUsingLabel("Display name", "QA MySQL8");
@@ -379,7 +377,7 @@ describe("admin > database > add", () => {
         "allowPublicKeyRetrieval=true",
       );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.be.disabled").click();
 
       cy.wait("@createDatabase");
@@ -422,6 +420,71 @@ describe("admin > database > add", () => {
   });
 });
 
+describe("database page > side panel", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    cy.visit("/admin/databases/create");
+  });
+
+  it("should show side panel with help content when 'Help is here' is clicked", () => {
+    cy.findByRole("button", { name: /Help is here/ }).click();
+    cy.findByTestId("database-help-side-panel").within(() => {
+      cy.findByText("Add PostgreSQL").should("be.visible");
+      cy.findByRole("link", { name: /Read the full docs/ }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Talk to an expert/ }).should("be.visible");
+      cy.findByRole("button", { name: /Invite a teammate to help you/ }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("should update the side panel content when the engine is changed", () => {
+    const enginesMap = [
+      { name: "Amazon Athena", file: "athena" },
+      { name: "BigQuery", file: "bigquery" },
+      { name: "Amazon Redshift", file: "redshift" },
+      { name: "ClickHouse", file: "clickhouse" },
+      { name: "Databricks", file: "databricks" },
+      { name: "Druid JDBC", file: "druid" },
+      { name: "MongoDB", file: "mongo" },
+      { name: "MySQL", file: "mysql" },
+      { name: "PostgreSQL", file: "postgresql" },
+      { name: "Presto", file: "presto" },
+      { name: "SQL Server", file: "sql-server" },
+      { name: "Snowflake", file: "snowflake" },
+      { name: "Spark SQL", file: "sparksql" },
+      { name: "Starburst (Trino)", file: "starburst" },
+    ];
+
+    for (const engineSpec of enginesMap) {
+      cy.findByTestId("database-form").within(() => {
+        cy.findByLabelText("Database type").click();
+      });
+      H.popover().contains(engineSpec.name).click();
+      cy.findByRole("button", { name: /Help is here/ }).click();
+      cy.findByTestId("database-help-side-panel").within(() => {
+        cy.findByText("Add " + engineSpec.name).should("be.visible");
+        cy.findByRole("link", { name: /Read the full docs/ })
+          .should("have.attr", "href")
+          .and("contain", engineSpec.file);
+
+        // Check we don't have an error when loading the doc contents
+        cy.findByRole("alert").should("not.exist");
+        cy.contains("Failed to load detailed documentation").should(
+          "not.exist",
+        );
+      });
+
+      cy.findByRole("button", { name: /Close panel/ }).click();
+      cy.findByTestId("database-help-side-panel").should("not.exist");
+    }
+  });
+});
+
 describe("scenarios > admin > databases > exceptions", () => {
   beforeEach(() => {
     H.restore();
@@ -443,7 +506,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.get("nav").should("contain", "Metabase Admin");
     // The response still contains the database name,
     // so there's no reason we can't display it.
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Sample Database/i);
     // This seems like a reasonable CTA if the database is beyond repair.
     cy.button("Remove this database").should("not.be.disabled");
@@ -469,9 +532,7 @@ describe("scenarios > admin > databases > exceptions", () => {
       .findByRole("button", { name: "Edit connection details" })
       .should("be.disabled")
       .trigger("mouseenter", { force: true });
-    H.tooltip().findByText(
-      "This database is managed by Metabase Cloud and cannot be modified.",
-    );
+    H.tooltip().findByText("The sample database cannot be edited.");
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
@@ -492,8 +553,44 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.button("Save").click();
     cy.wait("@createDatabase");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("DATABASE CONNECTION ERROR").should("exist");
+    cy.findByTestId("database-form")
+      .parent()
+      .within(() => {
+        cy.findByText("DATABASE CONNECTION ERROR").should("be.visible");
+      });
+  });
+
+  it("should show specific error message when error is on host or port", () => {
+    cy.intercept("POST", "/api/database", (req) => {
+      req.reply({
+        statusCode: 400,
+        body: {
+          message: "DATABASE CONNECTION ERROR",
+          errors: {
+            host: "Check your host",
+            port: "Check your port",
+          },
+        },
+      });
+    }).as("createDatabase");
+
+    cy.visit("/admin/databases/create");
+
+    H.typeAndBlurUsingLabel("Display name", "Test");
+    H.typeAndBlurUsingLabel("Database name", "db");
+    H.typeAndBlurUsingLabel("Username", "admin");
+
+    cy.button("Save").click();
+    cy.wait("@createDatabase");
+
+    cy.findByTestId("database-form")
+      .parent()
+      .within(() => {
+        cy.findByText("DATABASE CONNECTION ERROR").should("not.exist");
+        cy.findByText(
+          /Make sure your Host and Port settings are correct/,
+        ).should("be.visible");
+      });
   });
 
   it("should handle non-existing databases (metabase#11037)", () => {
@@ -502,7 +599,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.wait("@loadDatabase").then(({ response }) => {
       expect(response.statusCode).to.eq(404);
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not found.");
     cy.findByRole("table").should("not.exist");
   });
@@ -510,7 +607,9 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    IS_ENTERPRISE && H.activateToken("pro-self-hosted");
+    if (IS_ENTERPRISE) {
+      H.activateToken("pro-self-hosted");
+    }
 
     cy.intercept(
       {
@@ -533,18 +632,18 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.visit("/admin/databases");
     cy.wait("@failedGet");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Something.s gone wrong/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       /We.ve run into an error\. You can try refreshing the page, or just go back\./,
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(errorMessage).should("not.be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show error details").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(errorMessage).should("be.visible");
   });
 });
@@ -553,142 +652,6 @@ describe("scenarios > admin > databases > sample database", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
-  });
-
-  it("database settings", () => {
-    visitDatabase(SAMPLE_DB_ID);
-
-    cy.findAllByTestId("database-connection-info-section").should(
-      "contain.text",
-      "Connected",
-    );
-
-    editDatabase();
-
-    // should not display a setup help card
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Need help connecting?").should("not.exist");
-
-    cy.log(
-      "should not be possible to change database type for the Sample Database (metabase#16382)",
-    );
-    cy.findByLabelText("Database type")
-      .should("have.value", "H2")
-      .and("be.disabled");
-
-    cy.log("should correctly display connection settings");
-    cy.findByLabelText("Display name").should("have.value", "Sample Database");
-    cy.findByLabelText("Connection String")
-      .should("have.attr", "value")
-      .and("contain", "sample-database.db");
-
-    cy.log("should be possible to modify the connection settings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show advanced options").click();
-    // `auto_run_queries` toggle should be ON by default
-    cy.findByLabelText(/Rerun queries for simple explorations/)
-      .should("have.attr", "data-checked", "true")
-      .click({ force: true });
-    // Reported failing in v0.36.4
-    cy.log(
-      "should respect the settings for automatic query running (metabase#13187)",
-    );
-    cy.findByLabelText(/Rerun queries for simple explorations/).should(
-      "not.have.attr",
-      "data-checked",
-    );
-
-    cy.log("change the metadata_sync period");
-    cy.findByLabelText(/Choose when syncs and scans happen/).click({
-      force: true,
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hourly").click();
-    H.popover().within(() => {
-      cy.findByText("Daily").click({ force: true });
-    });
-
-    // "lets you change the cache_field_values period"
-    cy.findByLabelText("Never, I'll do this manually if I need to").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-
-    cy.findByLabelText("Regularly, on a schedule")
-      .click()
-      .within(() => {
-        cy.findByText("Daily").click();
-      });
-    H.popover().findByText("Weekly").click();
-
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.details["let-user-control-scheduling"]).to.equal(true);
-      expect(body.schedules.metadata_sync.schedule_type).to.equal("daily");
-      expect(body.schedules.cache_field_values.schedule_type).to.equal(
-        "weekly",
-      );
-    });
-
-    // "lets you change the cache_field_values to 'Only when adding a new filter widget'"
-    cy.findByLabelText("Only when adding a new filter widget").click();
-    cy.button("Save changes", { timeout: 10000 }).click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(true);
-    });
-
-    // and back to never
-    cy.findByLabelText("Never, I'll do this manually if I need to").click();
-    cy.button("Save changes", { timeout: 10000 }).click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(false);
-    });
-  });
-
-  it("allows to save the default schedule (metabase#57198)", () => {
-    visitDatabase(SAMPLE_DB_ID);
-    editDatabase();
-    cy.findByRole("button", { name: /Show advanced options/ }).click();
-    cy.findByLabelText(/Choose when syncs and scans happen/).click({
-      force: true,
-    });
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(false);
-      // frontend sends wrong value but backend automatically corrects it for us:
-      expect(response.body.schedules.cache_field_values).to.equal(null);
-    });
-
-    editDatabase();
-    cy.findByLabelText("Regularly, on a schedule").click();
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
-      expect(body.is_full_sync).to.equal(true);
-      expect(body.is_on_demand).to.equal(false);
-      expect(body.schedules.cache_field_values).to.deep.eq({
-        schedule_day: "mon",
-        schedule_frame: null,
-        schedule_hour: 0,
-        schedule_type: "daily",
-      });
-    });
-
-    editDatabase();
-    cy.findByLabelText("Only when adding a new filter widget").click();
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(true);
-      expect(body.schedules.cache_field_values).to.equal(null);
-    });
   });
 
   it("database actions", () => {
@@ -735,14 +698,14 @@ describe("scenarios > admin > databases > sample database", () => {
     // lets you trigger the manual database schema sync
     cy.button("Sync database schema").click();
     cy.wait("@sync_schema");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");
 
     // lets you trigger the manual rescan of field values
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Re-scan field values").click();
     cy.wait("@rescan_values");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Scan triggered!");
 
     // lets you discard saved field values
@@ -768,7 +731,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     H.modal().within(() => {
-      cy.button("Delete this content and the DB connection")
+      cy.button("Delete this DB connection")
         .as("deleteButton")
         .should("be.disabled");
       cy.findByLabelText(/Delete [0-9]* saved questions?/)
@@ -788,7 +751,7 @@ describe("scenarios > admin > databases > sample database", () => {
         .click()
         .should("be.checked");
       cy.findByText(
-        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!",
+        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone. Transforms that use this database won’t be deleted, but they will stop working.",
       );
 
       cy.get("@deleteButton").should("be.disabled");
@@ -804,7 +767,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.location("pathname").should("eq", "/admin/databases/"); // FIXME why the trailing slash?
     cy.intercept("POST", "/api/database/sample_database").as("sample_database");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Bring the sample database back", {
       timeout: 10000,
     }).click();
@@ -844,7 +807,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByTestId("database-name-confirmation-input").type(
         "Sample Database",
       );
-      cy.findByText("Delete this content and the DB connection").click();
+      cy.findByText("Delete this DB connection").click();
       cy.wait("@deleteDatabase");
     });
 
@@ -852,7 +815,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("not.exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
@@ -869,7 +832,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByText("Sample Database").should("exist");
     });
 
-    cy.findByTestId("exit-admin").click();
+    H.goToMainApp();
 
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
@@ -883,7 +846,7 @@ describe("scenarios > admin > databases > sample database", () => {
   });
 });
 
-H.describeWithSnowplow("add database card", () => {
+describe("add database card", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -894,7 +857,7 @@ H.describeWithSnowplow("add database card", () => {
   it("should track the click on the card", () => {
     cy.visit("/browse/databases");
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findByTestId("database-browser")
       .findAllByRole("link")
       .last()

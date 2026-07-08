@@ -1,9 +1,11 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.test.data.sql]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql]
@@ -170,12 +172,19 @@
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
 
+(defn- find-method-for-ancestor-type
+  "Find a registered method for `driver` (or any of its ancestors) with `ancestor-type`."
+  [driver ancestor-type]
+  (let [methods* (methods field-base-type->sql-type)]
+    (some #(get methods* [% ancestor-type])
+          (cons driver (ancestors driver/hierarchy driver)))))
+
 (defmethod field-base-type->sql-type :default
   [driver base-type]
   (or (some
        (fn [ancestor-type]
          (when-not (= ancestor-type :type/*)
-           (when-let [method (get (methods field-base-type->sql-type) [driver ancestor-type])]
+           (when-let [method (find-method-for-ancestor-type driver ancestor-type)]
              (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
                         driver base-type ancestor-type)
              (method driver base-type))))
@@ -240,28 +249,71 @@
            (str/join ", " (map #(format-and-quote-field-name driver %) field-names))
            (if condition (str " WHERE " condition) ""))))
 
-(defn- field-definition-sql
-  [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
-  (let [field-name (format-and-quote-field-name driver field-name)
-        field-type (or (cond
-                         (and (map? base-type) (contains? base-type :native))
-                         (:native base-type)
+(defmulti generated-column-sql
+  "Return the driver-specific equivalent of 'GENERATED ALWAYS AS $expr' (SQL:2003) to be appended to a column definition.
+  The expression should be given as a string.
 
-                         (and (map? base-type) (contains? base-type :natives))
-                         (get-in base-type [:natives driver])
+  Implementor notes:
+  If a driver does not support adding generated columns for tests, return nil."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
 
-                         base-type
-                         (field-base-type->sql-type driver base-type))
-                       (throw (ex-info (format "Missing datatype for field %s for driver: %s"
-                                               field-name driver)
-                                       {:field  field-definition
-                                        :driver driver})))
+(defmethod generated-column-sql :default
+  [_ expr]
+  (format "GENERATED ALWAYS AS (%s)" expr))
+
+(defmulti generated-column-infers-type?
+  "Some databases (SQL-Server) do not specify the types of generated columns."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod generated-column-infers-type? :default
+  [_]
+  false)
+
+(defmulti default-column-sql
+  "Return the driver-specific equivalent of 'DEFAULT $expr' (SQL:92) to be appended to a column definition.
+  The expression should be given as a string.
+
+  If the driver does not support default columns for tests, return nil."
+  {:arglists '([driver expr])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-column-sql :default [_ expr]
+  (format "DEFAULT (%s)" expr))
+
+(defn field-definition-sql
+  "Generate the fragment of a `CREATE TABLE` DDL statement for a specific column."
+  [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
+  (let [field-name      (format-and-quote-field-name driver field-name)
+        field-type      (or (cond
+                              (and (map? base-type) (contains? base-type :native))
+                              (:native base-type)
+
+                              (and (map? base-type) (contains? base-type :natives))
+                              (get-in base-type [:natives driver])
+
+                              base-type
+                              (field-base-type->sql-type driver base-type))
+                            (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                                    field-name driver)
+                                            {:field  field-definition
+                                             :driver driver})))
         not-null       (when not-null?
                          "NOT NULL")
         unique         (when unique?
                          "UNIQUE")
+        default        (when default-expr
+                         (default-column-sql driver default-expr))
+        generated      (when generated-expr
+                         (generated-column-sql driver generated-expr))
+        infer-type     (and generated-expr (generated-column-infers-type? driver))
+        field-type'    (when-not infer-type field-type)
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
+    (str/join " " (filter some? [field-name field-type' not-null default generated unique inline-comment]))))
 
 (defn fielddefs->pk-field-names
   "Find the pk field names in fieldefs"
@@ -301,12 +353,11 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- get-tabledef
-  [dbdef table-name]
-  (->> dbdef
-       :table-definitions
-       (filter #(= (:table-name %) table-name))
-       first))
+(defn get-tabledef
+  "Find the first table definition with `table-name`."
+  [{:keys [table-definitions], :as _dbdef} table-name]
+  (m/find-first #(= (:table-name %) table-name)
+                table-definitions))
 
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
@@ -318,7 +369,6 @@
         _ (when (< 1 (count pk-names))
             (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
         pk-name             (first pk-names)]
-
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that

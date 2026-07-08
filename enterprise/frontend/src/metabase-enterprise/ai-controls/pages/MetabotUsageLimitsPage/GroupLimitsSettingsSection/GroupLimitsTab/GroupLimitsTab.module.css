@@ -1,0 +1,50 @@
+.TableContainer {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  background: var(--mb-color-background_page-primary);
+  overflow: hidden;
+}
+
+.Table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.HeaderCell {
+  background: var(--mb-color-background_page-primary);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  box-sizing: border-box;
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.BodyRow {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.BodyCell {
+  padding: 0.5rem 1rem;
+  vertical-align: middle;
+  font-size: var(--mantine-font-size-md);
+  color: var(--mb-color-text-primary);
+}
+
+/* Caps input + right-section unit, hence wider than input-only would be. */
+.LimitInputWrapper {
+  max-width: 14rem;
+}
+
+.InputUnitSection {
+  color: var(--mb-color-text-primary);
+  padding-inline: 0.75rem;
+}

@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/redux/metadata";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,
   Dataset,
@@ -9,9 +11,11 @@ import type {
 
 import { Api } from "./api";
 import {
+  provideAdhocDatasetTags,
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 interface RefetchDeps {
   /**
@@ -25,8 +29,38 @@ interface IgnorableError {
   ignore_error?: boolean;
 }
 
+export type DownloadDatasetArgs = {
+  method: "GET" | "POST";
+  url: string;
+  body?: Record<string, unknown>;
+};
+
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    downloadDataset: builder.mutation<Response, DownloadDatasetArgs>({
+      query: ({ method, url, body }) => {
+        if (method === "POST") {
+          // BE expects the body to be form-encoded :(
+          const formData = new URLSearchParams();
+          if (body != null) {
+            for (const key in body) {
+              formData.append(key, JSON.stringify(body[key]));
+            }
+          }
+          return {
+            method: "POST",
+            url,
+            body: formData,
+            rawResponse: true,
+          };
+        }
+        return {
+          method: "GET",
+          url,
+          rawResponse: true,
+        };
+      },
+    }),
     getAdhocQuery: builder.query<
       Dataset,
       DatasetQuery & RefetchDeps & IgnorableError
@@ -37,6 +71,12 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      providesTags: () => provideAdhocDatasetTags(),
+      // Dataset results can be large and the cache key is the full
+      // DatasetQuery, so cross-caller cache hits are rare. Evict
+      // immediately on unsubscribe to match the legacy fetch-and-discard
+      // behavior used by the imperative `runAdhocDatasetQuery` runner.
+      keepUnusedDataFor: 0,
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
@@ -54,6 +94,8 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      providesTags: () => provideAdhocDatasetTags(),
+      keepUnusedDataFor: 0,
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
       query: (body) => ({
@@ -63,6 +105,10 @@ export const datasetApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
     }),
     getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: (body) => ({
@@ -87,9 +133,12 @@ export const datasetApi = Api.injectEndpoints({
 });
 
 export const {
+  useDownloadDatasetMutation,
   useGetAdhocQueryQuery,
+  useLazyGetAdhocQueryQuery,
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryMetadataQuery,
+  useLazyGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
   useGetRemappedParameterValueQuery,
 } = datasetApi;

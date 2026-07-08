@@ -1,0 +1,19 @@
+.card {
+  position: relative;
+  cursor: pointer;
+  font: inherit;
+  text-align: inherit;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.card:hover {
+  border-color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+}

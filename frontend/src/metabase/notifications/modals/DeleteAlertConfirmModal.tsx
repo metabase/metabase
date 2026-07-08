@@ -25,7 +25,7 @@ export const DeleteAlertConfirmModal = ({
       <Button onClick={onClose}>{t`Cancel`}</Button>
       <Button
         variant="filled"
-        color="error"
+        color="feedback-negative"
         onClick={onConfirm}
       >{t`Delete it`}</Button>
     </Flex>

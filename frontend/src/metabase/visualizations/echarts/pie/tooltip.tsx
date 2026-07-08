@@ -1,6 +1,6 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
+import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart/use-chart-events";
 

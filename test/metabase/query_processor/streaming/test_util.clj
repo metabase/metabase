@@ -5,8 +5,8 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.driver.settings :as driver.settings]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json])
@@ -33,7 +33,7 @@
 (defmethod parse-result* :csv
   [_ ^InputStream is _]
   (with-open [reader (InputStreamReader. is)]
-    (doall (csv/read-csv reader))))
+    (doall (csv/read-csv (u/strip-bom (slurp reader))))))
 
 (defmethod parse-result* :xlsx
   [_ ^InputStream is column-names]

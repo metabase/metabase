@@ -2,11 +2,10 @@ import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import Button from "metabase/common/components/Button";
-import ModalContent from "metabase/common/components/ModalContent";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
-import { ActionsApi } from "metabase/services";
+import { useExecuteActionMutation } from "metabase/api";
+import { ModalContent } from "metabase/common/components/ModalContent";
+import { useToast } from "metabase/common/hooks/use-toast";
+import { Button } from "metabase/ui";
 import type { WritebackActionId } from "metabase-types/api";
 
 import type { ObjectId } from "./types";
@@ -24,24 +23,32 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
   onClose,
   onSuccess,
 }) => {
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
+  const [executeAction] = useExecuteActionMutation();
 
   const handleSubmit = async () => {
+    if (actionId == null) {
+      return;
+    }
+
     try {
-      await ActionsApi.execute({
+      await executeAction({
         id: actionId,
         parameters: {
-          id: typeof objectId === "string" ? parseInt(objectId, 10) : objectId,
+          id:
+            typeof objectId === "string"
+              ? parseInt(objectId, 10)
+              : (objectId ?? null),
         },
-      });
+      }).unwrap();
 
       const message = t`Successfully deleted`;
-      dispatch(addUndo({ message, toastColor: "success" }));
+      sendToast({ message, toastColor: "feedback-positive" });
       onClose();
       onSuccess();
     } catch (error) {
       const message = getActionErrorMessage(error);
-      dispatch(addUndo({ icon: "warning", toastColor: "error", message }));
+      sendToast({ icon: "warning", toastColor: "feedback-negative", message });
     }
   };
 
@@ -53,7 +60,8 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
         <Button
           key="delete"
-          danger
+          variant="filled"
+          color="feedback-negative"
           disabled={
             typeof actionId === "undefined" ||
             typeof objectId === "undefined" ||

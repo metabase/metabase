@@ -2,11 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import InputBlurChange from "metabase/common/components/InputBlurChange";
-import { UtilApi } from "metabase/services";
-import { Box, Button, Flex } from "metabase/ui";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import { Box, Button, Flex, TextInputBlurChange } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
 
@@ -17,6 +17,7 @@ export const EmbeddingSecretKeyWidget = () => {
   const { value, updateSetting, settingDetails } = useAdminSetting(
     "embedding-secret-key",
   );
+  const [generateRandomToken] = useLazyGenerateRandomTokenQuery();
 
   const handleChange = async (newToken: string) => {
     updateSetting({
@@ -26,30 +27,33 @@ export const EmbeddingSecretKeyWidget = () => {
   };
 
   const generateToken = async () => {
-    const result = await UtilApi.random_token();
+    const result = await generateRandomToken().unwrap();
     handleChange(result.token);
   };
 
   return (
-    <Box data-testid="embedding-secret-key-setting" maw="36rem">
+    <Box data-testid="embedding-secret-key-setting">
       <SettingHeader
         id="embedding-secret-key"
         title={t`Embedding secret key`}
+        titleProps={{ fz: "lg", mb: "xs" }}
         description={t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`}
       />
       <SetByEnvVarWrapper
         settingDetails={settingDetails}
         settingKey="embedding-secret-key"
       >
-        <Flex maw="52rem" py="md" gap="md" w="full">
-          <InputBlurChange
+        <Flex gap="md" w="100%">
+          <TextInputBlurChange
             value={value}
             onBlurChange={(e) => handleChange(e.target.value)}
+            rightSection={value && <CopyButton value={value} />}
+            w="100%"
           />
           {value ? (
             <>
               <Button
-                variant="filled"
+                variant="outline"
                 onClick={openModal}
                 style={{ flexShrink: 0 }}
               >{t`Regenerate key`}</Button>

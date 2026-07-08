@@ -1,10 +1,9 @@
-import {
-  BrowseContainer,
-  BrowseMain,
-  BrowseSection,
-} from "../components/BrowseContainer.styled";
+import { Flex } from "metabase/ui";
+
+import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import TableBrowser from "../containers/TableBrowser";
+
+import { TableBrowser } from "./TableBrowser";
 
 export const BrowseTables = ({
   params: { dbId, schemaName },
@@ -15,13 +14,19 @@ export const BrowseTables = ({
   };
 }) => {
   return (
-    <BrowseContainer>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+    >
       <BrowseDataHeader />
-      <BrowseMain>
-        <BrowseSection direction="column">
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%" direction="column">
           <TableBrowser dbId={dbId} schemaName={schemaName} />
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };

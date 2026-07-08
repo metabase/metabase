@@ -77,15 +77,15 @@ describe(
             .findByText(PARAMETER_NAME)
             .click();
         });
-        H.popover().findByText(COLUMN_NAME).click();
+        H.selectDropdown().findByText(COLUMN_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
         H.getDashboardCard().findAllByText("true").first().click();
-        H.filterWidget().findByText("true").should("be.visible");
+        H.filterWidget().findByText("True").should("be.visible");
         H.getDashboardCard().findByText("1 row").should("be.visible");
         H.getDashboardCard().findAllByText("true").first().click();
-        H.filterWidget().findByText("true").should("not.exist");
+        H.filterWidget().findByText("True").should("not.exist");
         H.getDashboardCard().findByText("200 rows").should("be.visible");
       });
 
@@ -109,7 +109,7 @@ describe(
           .findByTestId("unset-click-mappings")
           .findByText(COLUMN_NAME)
           .click();
-        H.popover().findByText(COLUMN_NAME).click();
+        H.selectDropdown().findByText(COLUMN_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -128,7 +128,7 @@ describe(
         cy.log("assert click behavior");
         H.getDashboardCard().findAllByText("true").first().click();
         H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
-        H.filterWidget().findByText("true").should("be.visible");
+        H.filterWidget().findByText("True").should("be.visible");
       });
 
       it("should allow to use a 'Go to a custom destination - Dashboard' click behavior with a parameter", () => {
@@ -141,7 +141,7 @@ describe(
         H.popover().button("Add filter").click();
         H.getDashboardCard().findAllByText("true").first().click();
         H.dashboardHeader().findByText(DASHBOARD_NAME).should("be.visible");
-        H.filterWidget().findByText("true").should("be.visible");
+        H.filterWidget().findByText("True").should("be.visible");
       });
     });
 
@@ -164,8 +164,9 @@ describe(
         H.filterWidget().click();
         H.popover().button("Add filter").click();
         H.getDashboardCard().findByText(QUESTION_NAME).click();
+        H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(1);
-        H.filterWidget().findByText("true").should("be.visible");
+        H.filterWidget().findByText("True").should("be.visible");
       });
 
       it("should allow to use a 'Go to a custom destination - Saved question' click behavior", () => {
@@ -188,13 +189,13 @@ describe(
           .findByTestId("unset-click-mappings")
           .findByText(COLUMN_NAME)
           .click();
-        H.popover().findByText(FIELD_NAME).click();
+        H.selectDropdown().findByText(FIELD_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
         H.getDashboardCard().findAllByText("true").first().click();
         H.assertTableRowsCount(1);
-        H.filterWidget().findByText("true").should("be.visible");
+        H.filterWidget().findByText("True").should("be.visible");
       });
 
       it("should allow to use a 'Go to a custom destination - URL' click behavior", () => {
@@ -226,7 +227,7 @@ describe(
             cy.log("assert click behavior");
             H.getDashboardCard().findAllByText("true").first().click();
             H.assertTableRowsCount(1);
-            H.filterWidget().findByText("true").should("be.visible");
+            H.filterWidget().findByText("True").should("be.visible");
           },
         );
       });
@@ -250,8 +251,9 @@ describe(
         H.filterWidget().click();
         H.popover().button("Add filter").click();
         H.getDashboardCard().findByText(QUESTION_NAME).click();
+        H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(53);
-        H.filterWidget().findByText("true").should("be.visible");
+        H.filterWidget().findByText("True").should("be.visible");
       });
 
       it("should allow to use boolean parameters mapped to SQL query parameters in a public dashboard", () => {
@@ -461,11 +463,10 @@ function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
       cy.findByText("Dashboard").click();
     });
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Dashboards").click();
       cy.findByText(DASHBOARD_NAME).click();
     });
     H.sidebar().findByText(PARAMETER_NAME).click();
-    H.popover().findByText(targetName).click();
+    H.selectDropdown().findByText(targetName).click();
     H.saveDashboard();
   });
 }

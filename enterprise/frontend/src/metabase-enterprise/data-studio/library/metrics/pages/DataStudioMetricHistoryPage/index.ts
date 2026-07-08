@@ -1,0 +1,1 @@
+export { DataStudioMetricHistoryPage } from "./DataStudioMetricHistoryPage";

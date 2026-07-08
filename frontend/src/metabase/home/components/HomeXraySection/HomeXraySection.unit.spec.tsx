@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupDatabaseCandidatesEndpoint,
   setupDatabasesEndpoints,
@@ -73,5 +75,73 @@ describe("HomeXraySection", () => {
     expect(screen.getByText("H2")).toBeInTheDocument();
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.queryByText("People")).not.toBeInTheDocument();
+  });
+
+  it("should default to 'public' schema when it's present", async () => {
+    await setup({
+      database: createMockDatabase({
+        name: "H2",
+        is_sample: false,
+      }),
+      candidates: [
+        createMockDatabaseCandidate({
+          id: "1/auth",
+          schema: "auth",
+          tables: [createMockTableCandidate({ title: "People" })],
+        }),
+        createMockDatabaseCandidate({
+          id: "1/public",
+          schema: "public",
+          tables: [createMockTableCandidate({ title: "Orders" })],
+        }),
+      ],
+    });
+
+    expect(screen.getByTestId("xray-schema-name")).toHaveTextContent("public");
+  });
+
+  it("should allow switching between schemas", async () => {
+    await setup({
+      database: createMockDatabase({
+        name: "H2",
+        is_sample: false,
+      }),
+      candidates: [
+        createMockDatabaseCandidate({
+          id: "1/public",
+          schema: "public",
+          tables: [createMockTableCandidate({ title: "Orders" })],
+        }),
+        createMockDatabaseCandidate({
+          id: "1/internal",
+          schema: "internal",
+          tables: [createMockTableCandidate({ title: "People" })],
+        }),
+      ],
+    });
+
+    expect(screen.getByTestId("xray-schema-name")).toHaveTextContent("public");
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("xray-schema-name"));
+    await userEvent.click(screen.getByRole("option", { name: "internal" }));
+
+    expect(screen.getByTestId("xray-schema-name")).toHaveTextContent(
+      "internal",
+    );
+    expect(screen.getByText("People")).toBeInTheDocument();
+    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+  });
+
+  it("should not render a caption when there are no x-rays", async () => {
+    await setup({
+      database: createMockDatabase(),
+      candidates: [],
+    });
+
+    expect(
+      screen.queryByText(/Here are some explorations/),
+    ).not.toBeInTheDocument();
   });
 });

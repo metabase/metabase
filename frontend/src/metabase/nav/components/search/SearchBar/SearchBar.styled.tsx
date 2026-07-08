@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
@@ -19,6 +20,7 @@ export const SearchBarRoot = styled.div`
   width: 100%;
 
   ${breakpointMinSmall} {
+    max-width: 14.5rem;
     position: relative;
   }
 `;
@@ -33,17 +35,18 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive }) => {
     if (isActive) {
       return css`
-        background-color: var(--mb-color-bg-medium);
+        background-color: var(--mb-color-background_page-tertiary);
       `;
     }
     return css`
-      background-color: var(--mb-color-bg-white);
+      background-color: var(--mb-color-background_page-primary);
+
       &:hover {
-        background-color: var(--mb-color-bg-light);
+        background-color: var(--mb-color-background_page-secondary);
       }
     `;
   }}
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   overflow: hidden;
   transition:
     background 150ms,
@@ -64,7 +67,7 @@ export const SearchInputContainer = styled.div<{
       props.isActive &&
       css`
         width: 100%;
-        border-color: var(--mb-color-border);
+        border-color: var(--mb-color-border-neutral);
         ${activeInputCSS};
       `};
   }
@@ -80,7 +83,7 @@ export const SearchInput = styled.input<{
 }>`
   background-color: transparent;
   border: none;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
   font-size: 0.875rem;
   flex-basis: 0;
@@ -91,7 +94,7 @@ export const SearchInput = styled.input<{
   }
 
   &::placeholder {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 
   ${breakpointMinSmall} {
@@ -115,7 +118,7 @@ export const SearchInput = styled.input<{
 
 const ICON_MARGIN = "10px";
 
-export const SearchIcon = styled(Icon)<{
+export const SearchIcon = styled(Icon, { shouldForwardProp: isPropValid })<{
   isActive: boolean;
 }>`
   flex-basis: 1rem;
@@ -141,11 +144,11 @@ export const CloseSearchButton = styled.button`
   justify-content: center;
   width: 3rem;
   height: 100%;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;
 
@@ -153,7 +156,7 @@ export const SearchResultsFloatingContainer = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   ${breakpointMaxSmall} {
     top: ${APP_BAR_HEIGHT};

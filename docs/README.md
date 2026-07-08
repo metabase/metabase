@@ -51,7 +51,9 @@ Metabase's reference documentation.
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
-- [Commands](./installation-and-operation/commands.md)
+- [Remote sync](./installation-and-operation/remote-sync.md)
+- [Metabase CLI](./installation-and-operation/metabase-cli.md)
+- [Metabase JAR commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
 - [About the anonymous usage data we collect](./installation-and-operation/information-collection.md)
@@ -86,6 +88,7 @@ Metabase's reference documentation.
 
 - [The SQL editor](./questions/native-editor/writing-sql.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
+- [Table variables](./questions/native-editor/table-variables.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [Snippets](./questions/native-editor/snippets.md)
 - [Snippet folder permissions](./permissions/snippets.md)
@@ -93,7 +96,9 @@ Metabase's reference documentation.
 #### Visualizing data
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
+- [Box plots](./questions/visualizations/box-plot.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
+- [Custom visualizations](./questions/visualizations/custom.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
 - [Gauge charts](./questions/visualizations/gauge.md)
@@ -120,6 +125,10 @@ Metabase's reference documentation.
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
 - [Actions on dashboards](./dashboards/actions.md)
 
+### Documents
+
+- [Introduction to documents](./documents/introduction.md)
+
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
@@ -143,7 +152,15 @@ Metabase's reference documentation.
 
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
-- [Setting up Metabot](./ai/settings.md)
+- [AI settings](./ai/settings.md)
+- [AI usage controls](./ai/usage-controls.md)
+- [AI usage auditing](./ai/usage-auditing.md)
+- [AI customization](./ai/customization.md)
+- [AI system prompts](./ai/system-prompts.md)
+- [Agent API](./ai/agent-api.md)
+- [MCP server](./ai/mcp.md)
+- [Metabot in Slack](./ai/metabot-slack.md)
+- [AI privacy](./ai/privacy.md)
 
 ### Exploration and organization
 
@@ -172,6 +189,8 @@ Metabase's reference documentation.
 #### Paid SSO options
 
 - [JWT-based authentication](./people-and-groups/authenticating-with-jwt.md)
+- [OIDC-based authentication](./people-and-groups/authenticating-with-oidc.md)
+  - [OIDC with Keycloak](./people-and-groups/oidc-keycloak.md)
 - [SAML-based authentication](./people-and-groups/authenticating-with-saml.md)
   - [SAML with Auth0](./people-and-groups/saml-auth0.md)
   - [SAML with Microsoft Entra ID](./people-and-groups/saml-azure.md)
@@ -199,11 +218,13 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
-- [Interactive embedding](./embedding/interactive-embedding.md)
-- [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
-- [Static embedding](./embedding/static-embedding.md)
-- [Parameters for static embeds](./embedding/static-embedding-parameters.md)
-- [Securing embedded Metabase](./embedding/securing-embeds.md)
+- Modular embedding
+  - [SSO](./embedding/modular-embedding.md)
+  - [Guest](./embedding/guest-embedding.md)
+  - [SDK](./embedding/sdk/introduction.md)
+- [Full app embedding](./embedding/full-app-embedding.md)
+- [Securing embeds](./embedding/securing-embeds.md)
+- [AI agent resources](./embedding/ai-agent-resources.md)
 
 ### Configuration
 

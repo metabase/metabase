@@ -1,22 +1,28 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import PinDropZone from "metabase/collections/components/PinDropZone";
-import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
+import PinDropZone from "metabase/common/collections/components/PinDropZone";
+import PinnedItemCard from "metabase/common/collections/components/PinnedItemCard";
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
-import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/common/components/dnd/ItemDragSource";
+} from "metabase/common/collections/types";
+import {
+  isPreviewShown,
+  isRootCollection,
+} from "metabase/common/collections/utils";
+import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
-import type { IconName } from "metabase/ui";
 import { Box, Group, Icon, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  IconName,
+} from "metabase-types/api";
 
 import { Container, Grid } from "./PinnedItemOverview.styled";
 
@@ -283,10 +289,10 @@ function SectionTitle({ title, description, icon }: SectionTitleProps) {
   return (
     <Stack gap="sm" pb="md">
       <Group gap="sm">
-        {icon && <Icon name={icon} color={color("brand")} />}
+        {icon && <Icon name={icon} c="core-brand" />}
         <h3>{title}</h3>
       </Group>
-      {description && <Box c="text-medium">{description}</Box>}
+      {description && <Box c="text-secondary">{description}</Box>}
     </Stack>
   );
 }

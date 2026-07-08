@@ -1,5 +1,4 @@
-import type { LinkProps as RouterLinkProps } from "react-router";
-
+import type { RouterLinkProps } from "metabase/router/react-router";
 import type { TooltipProps } from "metabase/ui";
 
 export interface LinkProps extends RouterLinkProps {

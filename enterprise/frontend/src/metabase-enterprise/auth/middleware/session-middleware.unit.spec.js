@@ -2,7 +2,7 @@ import FakeTimers from "@sinonjs/fake-timers";
 import Cookie from "js-cookie";
 import { replace } from "react-router-redux";
 
-import { logout, refreshSession } from "metabase/auth/actions";
+import { logout, refreshSession } from "metabase/redux/auth";
 
 import {
   COOKIE_POOLING_TIMEOUT,
@@ -11,7 +11,7 @@ import {
 } from "./session-middleware";
 
 jest.mock("js-cookie", () => jest.fn());
-jest.mock("metabase/auth/actions", () => ({
+jest.mock("metabase/redux/auth", () => ({
   logout: jest.fn(),
   refreshSession: jest.fn(() => Promise.resolve()),
 }));
@@ -119,13 +119,32 @@ describe("createSessionMiddleware", () => {
   });
 
   describe("logged in redirect", () => {
-    beforeEach(() => {
+    beforeEach(() => {});
+
+    it("should not redirect to the redirectUrl if visiting login page", async () => {
       changeJSDOMURL(
         "https://metabase.com/auth/login?redirect=%2Fquestion%2F1%3Fquery%3D5%23hash",
       );
+
+      Cookie.get = jest
+        .fn()
+        .mockImplementationOnce(() => "stale")
+        .mockImplementationOnce(() => "stale");
+
+      const { handleAction, dispatchMock } = setup();
+
+      handleAction(actionStub);
+      clock.tick(COOKIE_POOLING_TIMEOUT);
+
+      expect(dispatchMock).not.toHaveBeenCalled();
+      expect(replace).not.toHaveBeenCalled();
     });
 
     it("should redirect to the redirectUrl", async () => {
+      changeJSDOMURL(
+        "https://metabase.com/some-route?redirect=%2Fquestion%2F1%3Fquery%3D5%23hash",
+      );
+
       Cookie.get = jest
         .fn()
         .mockImplementationOnce(() => "alive")

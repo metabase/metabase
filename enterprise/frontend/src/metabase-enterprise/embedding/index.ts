@@ -4,16 +4,7 @@ import { PLUGIN_ADMIN_SETTINGS, PLUGIN_EMBEDDING } from "metabase/plugins";
 import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { InteractiveEmbeddingSettings } from "./components/InteractiveEmbeddingSettings";
-
-if (hasPremiumFeature("embedding")) {
-  PLUGIN_EMBEDDING.isEnabled = () => true;
-  PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled =
-    isInteractiveEmbeddingEnabled;
-
-  PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings =
-    InteractiveEmbeddingSettings;
-}
+import { InteractiveEmbeddingSettingsCard } from "./components/InteractiveEmbeddingSettingsCard";
 
 /**
  * We can't gate this component behind a feature flag, because SDK users could
@@ -21,3 +12,16 @@ if (hasPremiumFeature("embedding")) {
  */
 PLUGIN_EMBEDDING.SimpleDataPicker = SimpleDataPicker;
 PLUGIN_EMBEDDING.DataSourceSelector = DataSourceSelector;
+
+/**
+ * Initialize embedding plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("embedding")) {
+    PLUGIN_EMBEDDING.isEnabled = () => true;
+    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled =
+      isInteractiveEmbeddingEnabled;
+    PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettingsCard =
+      InteractiveEmbeddingSettingsCard;
+  }
+}

@@ -1,17 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box, Space, Tabs } from "metabase/ui";
+import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
+
+import type { Widget } from "../types";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
-
-interface Widget {
-  id: string;
-  section: string;
-  props: Record<string, unknown>;
-}
+import { WidgetPopoverPortalContext } from "./settings/WidgetPopoverPortalContext";
 
 interface ChartSettingsWidgetPopoverProps {
   anchor: HTMLElement;
@@ -24,14 +22,33 @@ export const ChartSettingsWidgetPopover = ({
   handleEndShowWidget,
   widgets,
 }: ChartSettingsWidgetPopoverProps) => {
-  const sections = useRef<string[]>([]);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const sections = useRef<(string | undefined)[]>([]);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [dropdownTarget, setDropdownTarget] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
+
+  const setContentRef = useCallback((node: HTMLDivElement | null) => {
+    contentRef.current = node;
+    setScrollContainer(node);
+  }, []);
+
+  const portalValue = useMemo(
+    () =>
+      dropdownTarget && scrollContainer
+        ? { dropdownTarget, scrollContainer }
+        : null,
+    [dropdownTarget, scrollContainer],
+  );
 
   useEffect(() => {
     sections.current = _.chain(widgets).pluck("section").unique().value();
   }, [widgets]);
 
-  const [currentSection, setCurrentSection] = useState("");
+  const [currentSection, setCurrentSection] = useState<string | undefined>("");
 
   useEffect(() => {
     setCurrentSection(sections.current[0]);
@@ -48,14 +65,30 @@ export const ChartSettingsWidgetPopover = ({
   };
 
   return (
-    <TippyPopover
-      reference={anchor}
-      content={
-        widgets.length > 0 ? (
+    <PopoverWithRef
+      anchorEl={anchor}
+      opened={!!anchor && widgets.length > 0}
+      onDismiss={onClose}
+      position="right"
+      offset={{ mainAxis: 10, crossAxis: 10 }}
+      middlewares={{
+        shift: { padding: 16 },
+        flip: { fallbackStrategy: "initialPlacement" },
+        size: { padding: 5 },
+      }}
+      styles={{ dropdown: { overflow: "visible" } }}
+      {...(isEmbeddingSdk() && {
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      })}
+    >
+      <Box ref={setDropdownTarget}>
+        <WidgetPopoverPortalContext.Provider value={portalValue}>
           <Box
             pt={hasMultipleSections ? 0 : undefined}
-            ref={contentRef}
-            mah="37.5rem"
+            ref={setContentRef}
+            data-testid="chart-settings-widget-popover-content"
+            mah="40rem"
             miw="336px"
             className={CS.overflowYAuto}
           >
@@ -68,7 +101,11 @@ export const ChartSettingsWidgetPopover = ({
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (
-                    <Tabs.Tab key={sectionName} value={sectionName} p="md">
+                    <Tabs.Tab
+                      key={sectionName}
+                      value={String(sectionName)}
+                      p="md"
+                    >
                       {sectionName}
                     </Tabs.Tab>
                   ))}
@@ -86,22 +123,8 @@ export const ChartSettingsWidgetPopover = ({
                 />
               ))}
           </Box>
-        ) : null
-      }
-      visible={!!anchor}
-      onClose={onClose}
-      placement="right"
-      offset={[10, 10]}
-      popperOptions={{
-        modifiers: [
-          {
-            name: "preventOverflow",
-            options: {
-              padding: 16,
-            },
-          },
-        ],
-      }}
-    />
+        </WidgetPopoverPortalContext.Provider>
+      </Box>
+    </PopoverWithRef>
   );
 };

@@ -117,7 +117,7 @@ setAttributes(
 
 /*
  * Child constraints govern how many children an AST node can have and where
- * thare placed relative to the node.
+ * there placed relative to the node.
  *
  * These are syntax rules, rather than semantic ones, since that is handled
  * later by a different pass. i.e. LOGICAL_AND and LOGICAL_OR rules don't check

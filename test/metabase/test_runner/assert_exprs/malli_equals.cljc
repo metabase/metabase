@@ -27,7 +27,6 @@
      (defmethod t/assert-expr 'malli=
        [message [_ schema & actuals]]
        `(malli=-report ~message ~schema ~(vec actuals)))
-
      ;; Clojure doing macroexpansion for ClojureScript usage.
      (when-let [assert-expr (try
                               (requiring-resolve 'cljs.test/assert-expr)

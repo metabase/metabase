@@ -1,11 +1,11 @@
-import { type Dispatch, type SetStateAction, useMemo } from "react";
+import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Panel } from "metabase/admin/performance/components/StrategyEditorForDatabases.styled";
 import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { FormProvider } from "metabase/forms";
-import { color } from "metabase/lib/colors";
+import { Box, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { CacheConfig } from "metabase-types/api";
 
@@ -13,14 +13,10 @@ import { useResetToDefaultForm } from "../hooks/useResetToDefaultForm";
 
 import { ResetButtonContainer } from "./ResetButtonContainer";
 import { StrategyFormLauncher } from "./StrategyFormLauncher";
-import {
-  StrategyFormLauncherPanelBox,
-  StrategyFormLauncherPanelStack,
-} from "./StrategyFormLauncherPanel.styled";
+import S from "./StrategyFormLauncherPanel.module.css";
 
 export const StrategyFormLauncherPanel = ({
   configs,
-  setConfigs,
   targetId,
   updateTargetId,
   databases,
@@ -28,7 +24,6 @@ export const StrategyFormLauncherPanel = ({
   shouldShowResetButton,
 }: {
   configs: CacheConfig[];
-  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>;
   targetId: number | null;
   updateTargetId: UpdateTargetId;
   databases: Database[];
@@ -41,15 +36,19 @@ export const StrategyFormLauncherPanel = ({
     handleSubmit: resetAllToDefault,
     versionNumber: resetFormVersionNumber,
   } = useResetToDefaultForm({
-    configs,
-    setConfigs,
     databaseIds,
     isFormVisible: targetId !== null,
   });
 
   return (
-    <Panel role="group" style={{ backgroundColor: color("bg-light") }}>
-      <StrategyFormLauncherPanelBox>
+    <Box
+      component="section"
+      role="group"
+      h="100%"
+      bg="background_page-secondary"
+      className={S.root}
+    >
+      <Box className={cx(S.section, S.divided)}>
         <StrategyFormLauncher
           forId={rootId}
           title={t`Default policy`}
@@ -58,8 +57,8 @@ export const StrategyFormLauncherPanel = ({
           updateTargetId={updateTargetId}
           isFormDirty={isStrategyFormDirty}
         />
-      </StrategyFormLauncherPanelBox>
-      <StrategyFormLauncherPanelStack>
+      </Box>
+      <Stack className={cx(S.section, S.stack)}>
         {databases?.map((db) => (
           <StrategyFormLauncher
             forId={db.id}
@@ -71,7 +70,7 @@ export const StrategyFormLauncherPanel = ({
             key={`database_${db.id}`}
           />
         ))}
-      </StrategyFormLauncherPanelStack>
+      </Stack>
       <FormProvider
         initialValues={{}}
         onSubmit={resetAllToDefault}
@@ -79,6 +78,6 @@ export const StrategyFormLauncherPanel = ({
       >
         {shouldShowResetButton && <ResetButtonContainer />}
       </FormProvider>
-    </Panel>
+    </Box>
   );
 };

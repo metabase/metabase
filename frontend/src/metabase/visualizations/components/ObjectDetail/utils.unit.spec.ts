@@ -119,7 +119,7 @@ describe("ObjectDetail utils", () => {
 
   describe("getObjectName", () => {
     const question = new Question(card, metadata);
-    const table = question.legacyQueryTable();
+    const table = metadata.table(ORDERS_ID);
 
     it("should get an entity name when there is an entity name column", () => {
       const name = getObjectName({
@@ -134,7 +134,7 @@ describe("ObjectDetail utils", () => {
 
     it("should get a singularized table name if no entity name is present", () => {
       const name = getObjectName({
-        table: table as any,
+        table,
         question: question,
         cols: [idCol, qtyCol],
         zoomedRow: [22, 33],

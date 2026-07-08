@@ -38,7 +38,7 @@ describe("collection permissions", () => {
                   H.appBar().within(() => {
                     cy.icon("add").click();
                   });
-                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                  // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                   cy.findByText("Dashboard").click();
                   cy.findByLabelText(/Which collection/).findByText(
                     "Second collection",
@@ -48,7 +48,7 @@ describe("collection permissions", () => {
                 onlyOn(user === "admin", () => {
                   it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
                     cy.visit("/collection/root");
-                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders in a dashboard").click();
                     H.appBar().within(() => {
                       cy.icon("add").click();
@@ -99,14 +99,6 @@ describe("collection permissions", () => {
                 it("should be able to duplicate the dashboard without obstructions from the modal (metabase#15256)", () => {
                   duplicate("Orders in a dashboard");
                 });
-
-                it(
-                  "should be able to duplicate the question (metabase#15255)",
-                  { tags: "@skip" },
-                  () => {
-                    duplicate("Orders");
-                  },
-                );
               });
 
               describe("archive", () => {
@@ -145,7 +137,7 @@ describe("collection permissions", () => {
                       cy.findByText("Trash").click();
                     });
                     cy.location("pathname").should("eq", "/trash");
-                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders");
                   });
                 });
@@ -154,7 +146,7 @@ describe("collection permissions", () => {
                   it("shouldn't be able to archive/edit root or personal collection", () => {
                     cy.visit("/collection/root");
                     cy.icon("edit").should("not.exist");
-                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Your personal collection").click();
                     cy.icon("edit").should("not.exist");
                   });
@@ -176,7 +168,7 @@ describe("collection permissions", () => {
 
                     H.openCollectionMenu();
                     H.popover().within(() =>
-                      // eslint-disable-next-line no-unscoped-text-selectors -- linter erroring for no reason
+                      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- linter erroring for no reason
                       cy.findByText("Move to trash").click(),
                     );
                     H.modal().findByText("Move to trash").click();
@@ -192,14 +184,14 @@ describe("collection permissions", () => {
                     });
 
                     // While we're here, we can test unarchiving the collection as well
-                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Trashed collection");
-                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Undo").click();
 
                     cy.wait("@editCollection");
 
-                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                     cy.findByText(
                       "Sorry, you don’t have permission to see that.",
                     ).should("not.exist");
@@ -305,7 +297,7 @@ describe("collection permissions", () => {
             it("should not show pins or a helper text (metabase#20043)", () => {
               cy.visit("/collection/root");
 
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders in a dashboard");
               cy.icon("pin").should("not.exist");
             });
@@ -324,7 +316,7 @@ describe("collection permissions", () => {
             it("should not be able to use bulk actions on collection items (metabase#16490)", () => {
               cy.visit("/collection/root");
 
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders")
                 .closest("tr")
                 .within(() => {
@@ -332,7 +324,7 @@ describe("collection permissions", () => {
                   cy.findByRole("checkbox").should("not.exist");
                 });
 
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+              // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders in a dashboard")
                 .closest("tr")
                 .within(() => {
@@ -346,7 +338,7 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
-                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Dashboard").click();
 
                 // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
@@ -361,9 +353,7 @@ describe("collection permissions", () => {
                   // Test will fail on this step first
                   cy.findByText("First collection").should("not.exist");
                   // This is the second step that makes sure not even search returns collections with read-only access
-                  cy.findByPlaceholderText(
-                    "Search this collection or everywhere…",
-                  ).type("third{Enter}");
+                  cy.findByPlaceholderText("Search…").type("third{Enter}");
 
                   cy.wait("@search");
                   cy.findByText(/Loading/i).should("not.exist");
@@ -382,7 +372,7 @@ describe("collection permissions", () => {
 
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from people");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByLabelText(/Where do you want to save this/).findByText(

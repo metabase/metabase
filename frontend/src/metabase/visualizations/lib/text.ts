@@ -1,7 +1,4 @@
-import type {
-  FontStyle,
-  TextWidthMeasurer,
-} from "../shared/types/measure-text";
+import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
 
 export const CHAR_ELLIPSES = "…";
 

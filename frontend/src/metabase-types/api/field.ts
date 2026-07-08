@@ -1,6 +1,6 @@
 import type { RowValue } from "./dataset";
-import type { FieldReference } from "./query";
-import type { Table, TableId } from "./table";
+import type { DimensionReference, FieldReference } from "./query";
+import type { ConcreteTableId, Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -29,12 +29,12 @@ export type TextFieldFingerprint = {
 };
 
 export type NumberFieldFingerprint = {
-  avg: number;
-  max: number;
-  min: number;
-  q1: number;
-  q3: number;
-  sd: number;
+  avg?: number;
+  max?: number;
+  min?: number;
+  q1?: number;
+  q3?: number;
+  sd?: number;
 };
 
 export type DateTimeFieldFingerprint = {
@@ -70,7 +70,7 @@ export interface Field {
   id: FieldId | FieldReference;
   table_id: TableId;
   table?: Table;
-  field_ref?: FieldReference;
+  field_ref?: DimensionReference;
 
   name: string;
   display_name: string;
@@ -86,7 +86,7 @@ export interface Field {
   preview_display: boolean;
   position: number;
 
-  parent_id?: FieldId;
+  parent_id?: FieldId | null;
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
@@ -116,11 +116,20 @@ export interface Field {
 
 export interface FieldFormattingSettings {
   currency?: string;
+  number_separators?: string;
 }
 
 export interface GetFieldRequest {
   id: FieldId;
   include_editable_data_model?: boolean;
+}
+
+export interface GetFieldTableIdsRequest {
+  field_ids: FieldId[];
+}
+
+export interface GetFieldTableIdsResponse {
+  table_ids: ConcreteTableId[];
 }
 
 export interface UpdateFieldRequest {

@@ -5,22 +5,21 @@
  * good reason.
  */
 
-import "dotenv/config";
 import { Octokit } from "@octokit/rest";
 import "zx/globals";
 import { $ } from "zx";
 $.verbose = false;
 
 import {
-  isValidVersionString,
-  hasBeenReleased,
-  isValidCommitHash,
-  isEnterpriseVersion,
+  closeMilestone,
   getMajorVersion,
   getVersionInfo,
-  publishRelease,
-  closeMilestone,
+  hasBeenReleased,
+  isEnterpriseVersion,
+  isValidCommitHash,
+  isValidVersionString,
   openNextMilestones,
+  publishRelease,
   versionRequirements,
 } from "./src";
 
@@ -50,7 +49,6 @@ const isWithoutGithub = process.argv?.[5]?.trim() === "--without-github";
 let latestFlag: string | boolean | null = process.argv?.[6]?.trim();
 
 const log = (message, color = "blue") =>
-  // eslint-disable-next-line no-console
   console.log(chalk[color](`\n${message}\n`));
 
 function error(message) {

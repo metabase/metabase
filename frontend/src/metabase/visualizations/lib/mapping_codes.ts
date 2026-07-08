@@ -60,7 +60,7 @@ export const STATE_CODES = [
   ["WY", "Wyoming"],
 ];
 
-export const COUNTRY_NAME_TO_CODE = {
+export const COUNTRY_NAME_TO_CODE: Record<string, string> = {
   afghanistan: "af",
   "åland islands": "ax",
   "aland islands": "ax",

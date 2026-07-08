@@ -1,0 +1,34 @@
+.root {
+  overflow: auto;
+}
+
+.chartContainer {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.exploreButtonOverlay {
+  position: absolute;
+  top: var(--mantine-spacing-xl);
+  right: var(--mantine-spacing-xl);
+  z-index: 1;
+}
+
+.descriptionSection {
+  overflow: auto;
+}
+
+.visualizationPanel {
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--default-border-radius);
+  overflow: hidden;
+  /* keeps the embedded visualization non-interactive (no tooltips/hover) */
+  pointer-events: none;
+}
+
+.innerVisualization {
+  overflow: hidden;
+  flex: 1;
+}

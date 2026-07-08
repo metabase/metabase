@@ -1,32 +1,37 @@
 ---
 title: Webhooks
+summary: Set up webhooks to send alerts to your app, a third-party service, or wherever you want to send your data.
 ---
 
 # Webhooks
 
-Admins can set up webhooks so that people can send [alerts](../questions/alerts.md) to a particular URL. Which means you can set up an alert to send the results of a question to an endpoint of your choice: to your app, a third-party service, or wherever.
+Admins and people with [settings access](../permissions/application.md#settings-access) can set up webhooks to send [alerts](../questions/alerts.md) to a particular URL. This means you can set up an alert to send the results of a question to an endpoint of your choice: to your app, a third-party service, or wherever.
+
+Only admins and people with settings access can send alerts to webhooks.
 
 For now, webhooks are only available for [alerts](../questions/alerts.md); you can't select a webhook as the recipient of a [dashboard subscription](../dashboards/subscriptions.md).
 
-## Creating a webhook
+## Create a webhook
 
-Before you can send an alert to a webhook, an admin will need to create a webhook to target.
+_Admin > Settings > Webhooks_
 
-Admins can create a webhook by clicking on the **gear icon** > **Admin settings** > **Notification channels**. In the **Webhooks for alerts**, click **+ Add another**. Metabase will hand you a short form to fill out:
+Before people can send alerts to a webhook, an admin or someone with [settings access](../permissions/application.md#settings-access) will need to create a webhook to target.
 
-- **Webhook URL**. Where you want Metabase to send the results of an alert. Must be a valid URL.
-- **Give it a name**. You have to name the webhook so that people can pick the right hook when setting up an alert on a question.
-- **Description**. You should probably tell people what the hook is for.
-- **Authentication method**. See below.
+To create a webhook:
 
-## Webhook authentication method
+1. Click the **grid** icon in top right corner and select **Admin**.
+2. In the Admin console, go **Settings > Webhooks**.
+3. In **Webhooks for alerts**, click **Add a webhook**.
+4. Metabase will show you a short form to fill out:
 
-You can specify an auth method for the webhook.
-
-- **None**: Anything goes.
-- **Basic**: Set a username and password.
-- **Bearer**: Include a [secret token](https://datatracker.ietf.org/doc/html/rfc6750).
-- **API key**: You can add the API key to the Header or as a Query param. Both approaches require a key and value (the API key itself).
+   - **Webhook URL**. Where you want Metabase to send the results of an alert. Must be a valid URL.
+   - **Give it a name**. Name the webhook so that people can pick the right hook when setting up an alert on a question.
+   - **Description**. Tell people what the hook is for.
+   - **Authentication method**:
+     - **None**: Anything goes.
+     - **Basic**: Set a username and password.
+     - **Bearer**: Include a [secret token](https://datatracker.ietf.org/doc/html/rfc6750).
+     - **API key**: You can add the API key to the Header or as a Query param. Both approaches require a key and value (the API key itself).
 
 ## Webhook payload
 
@@ -40,7 +45,7 @@ And the data as seen in the table view, which Metabase will send as a `raw_data`
 
 ![Results as table view](./images/table-view.png)
 
-Here's an example payload for an alert (we truncated the PNG encoding because it's long and extremely boring):
+Here's an example payload for an alert (we truncated the PNG encoding because it's boring):
 
 ```JSON
 {

@@ -53,7 +53,7 @@
   (driver.tu/wrap-notify-all-databases-updated!
    (if (= (mdb/db-type) :h2)
      (test.tz/do-with-system-timezone-id! tz thunk)
-      ;; otherwise if db-type is postgres or mysql
+     ;; otherwise if db-type is postgres or mysql
      (let [initial-tz (val (first (t2/query-one (case (mdb/db-type)
                                                   :postgres "SELECT current_setting('TIMEZONE')"
                                                   :mysql "SELECT @@global.time_zone"))))
@@ -80,10 +80,10 @@
                   :mariadb
                   db-type)]
     (->> (:databaseChangeLog content)
-      ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current lb-type
+         ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current lb-type
          (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
                                                         (not (str/includes? dbms (name lb-type))))))
-      ;; remove ignored changeSets
+         ;; remove ignored changeSets
          (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
          (remove str/blank?))))
@@ -92,10 +92,23 @@
   "Returns a list of existing migration files."
   [include-legacy?]
   (into (if include-legacy?
-          ["migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]
+          ["liquibase_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]
           ["migrations/001_update_migrations.yaml"])
-        (filter io/resource (for [n (range 56 100)]
-                              (format "migrations/%03d_update_migrations.yaml" n)))))
+        (concat
+         ;; Per-release migration files (v56-v59 pattern)
+         (filter io/resource (for [n (range 56 100)]
+                               (format "migrations/%03d_update_migrations.yaml" n)))
+         ;; Directory-based migration files (v60+ pattern)
+         (let [migrations-dir (io/resource "migrations")]
+           (when migrations-dir
+             (->> (io/file migrations-dir)
+                  file-seq
+                  (filter (fn [^java.io.File f]
+                            (and (.isFile f)
+                                 (re-matches #".*\d{3}/\d{8}_.+\.yaml$" (str f)))))
+                  sort
+                  (map (fn [^java.io.File f]
+                         (str "migrations/" (.getName (.getParentFile f)) "/" (.getName f))))))))))
 
 (defn all-liquibase-ids
   "Returns a set of all changeset IDs from all migration files."

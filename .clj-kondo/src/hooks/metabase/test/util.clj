@@ -1,6 +1,6 @@
 (ns hooks.metabase.test.util
-  (:require [clj-kondo.hooks-api :as hooks]
-            [hooks.common :as common]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]))
 
 (defn- namespaced-symbol-node? [node]
   (when (hooks/token-node? node)
@@ -28,8 +28,8 @@
                                             (mapcat (fn [[setting-name v]]
                                                       (concat
                                                        [(with-meta (hooks/token-node '_) (meta setting-name)) v]
-                                                        ;; if the setting name is namespace-qualified add a `_`
-                                                        ;; entry for it too.
+                                                       ;; if the setting name is namespace-qualified add a `_`
+                                                       ;; entry for it too.
                                                        (when (namespaced-symbol-node? setting-name)
                                                          [(with-meta (hooks/token-node '_) (meta setting-name)) setting-name]))))
                                             (partition 2 (:children bindings))))

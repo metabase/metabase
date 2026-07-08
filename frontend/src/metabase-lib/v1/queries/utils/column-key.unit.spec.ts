@@ -1,4 +1,5 @@
 import {
+  type LegacyColumnKeyOptions,
   getColumnKey,
   getColumnNameFromKey,
   getColumnSettings,
@@ -14,6 +15,7 @@ import {
 type TestCase = {
   title: string;
   column: DatasetColumn;
+  options?: LegacyColumnKeyOptions;
   expectedKey: string;
 };
 
@@ -94,9 +96,49 @@ describe("getLegacyColumnKey", () => {
       }),
       expectedKey: JSON.stringify(["ref", ["expression", "foo"]]),
     },
-  ])("should create a ref-based key: $title", ({ column, expectedKey }) => {
-    expect(getLegacyColumnKey(column)).toEqual(expectedKey);
-  });
+    {
+      title: "should include `base-type` by default",
+      column: createMockColumn({
+        name: "foo",
+        field_ref: ["field", 1, { "base-type": "type/DateTime" }],
+      }),
+      expectedKey: JSON.stringify([
+        "ref",
+        ["field", 1, { "base-type": "type/DateTime" }],
+      ]),
+    },
+    {
+      title: "should allow to exclude `base-type`",
+      column: createMockColumn({
+        name: "foo",
+        field_ref: ["field", 1, { "base-type": "type/DateTime" }],
+      }),
+      options: {
+        excludeBaseType: true,
+      },
+      expectedKey: JSON.stringify(["ref", ["field", 1, null]]),
+    },
+    {
+      title: "should allow to exclude `base-type` when there are other options",
+      column: createMockColumn({
+        name: "foo",
+        field_ref: [
+          "field",
+          1,
+          { "base-type": "type/DateTime", "source-field": 2 },
+        ],
+      }),
+      options: {
+        excludeBaseType: true,
+      },
+      expectedKey: JSON.stringify(["ref", ["field", 1, { "source-field": 2 }]]),
+    },
+  ])(
+    "should create a ref-based key: $title",
+    ({ column, options, expectedKey }) => {
+      expect(getLegacyColumnKey(column, options)).toEqual(expectedKey);
+    },
+  );
 
   it.each<TestCase>([
     {
@@ -191,6 +233,17 @@ describe("getObjectColumnSettings", () => {
     const settings = {
       [getLegacyColumnKey(column)]: { column_title: "A" },
       [getColumnKey(column)]: { column_title: "B" },
+    };
+    expect(getObjectColumnSettings(settings, column)).toEqual({
+      column_title: "A",
+    });
+  });
+
+  it("should be able to find the setting when `base-type` is not present", () => {
+    const settings = {
+      [getLegacyColumnKey(column, { excludeBaseType: true })]: {
+        column_title: "A",
+      },
     };
     expect(getObjectColumnSettings(settings, column)).toEqual({
       column_title: "A",

@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
+import { Box } from "metabase/ui";
+
 import { UserTypeToggle } from "../UserTypeToggle";
 
-import { ChangeTypeButton, UserTypeCellRoot } from "./UserTypeCell.styled";
+import S from "./UserTypeCell.module.css";
 
 interface UserTypeCellProps {
   isAdmin: boolean;
@@ -15,15 +17,39 @@ export const UserTypeCell = ({
   onChange,
 }: UserTypeCellProps) => {
   if (isAdmin) {
-    return <UserTypeCellRoot>{t`Admin`}</UserTypeCellRoot>;
+    return (
+      <Box
+        component="td"
+        className={S.cell}
+        tt="capitalize"
+        fz="md"
+        fw="bold"
+        c="text-secondary"
+      >
+        {t`Admin`}
+      </Box>
+    );
   }
 
   return (
-    <UserTypeCellRoot>
+    <Box
+      component="td"
+      className={S.cell}
+      tt="capitalize"
+      fz="md"
+      fw="bold"
+      c="text-secondary"
+    >
       {isManager ? t`Manager` : t`Member`}
-      <ChangeTypeButton>
+      <Box
+        component="button"
+        className={S.changeButton}
+        c="core-filter"
+        px="xs"
+        py={0}
+      >
         <UserTypeToggle isManager={isManager} onChange={onChange} />
-      </ChangeTypeButton>
-    </UserTypeCellRoot>
+      </Box>
+    </Box>
   );
 };

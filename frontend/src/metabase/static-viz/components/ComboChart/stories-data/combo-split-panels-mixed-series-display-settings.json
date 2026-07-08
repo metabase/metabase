@@ -1,0 +1,360 @@
+[
+  {
+    "card": {
+      "name": "split panels breakout",
+      "display": "line",
+      "visualization_settings": {
+        "graph.split_panels": true,
+        "series_settings": {
+          "Affiliate": {
+            "line.style": "dashed"
+          },
+          "Facebook": {
+            "display": "bar"
+          },
+          "Google": {
+            "display": "area"
+          },
+          "Twitter": {
+            "line.interpolate": "step-after"
+          }
+        },
+        "graph.x_axis.scale": "timeseries",
+        "graph.dimensions": ["CREATED_AT", "SOURCE"],
+        "graph.y_axis.split_number": 3,
+        "graph.metrics": ["count"]
+      },
+      "result_metadata": [
+        {
+          "name": "CREATED_AT",
+          "display_name": "Created At: Quarter",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "semantic_type": "type/CreationTimestamp",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "quarter"
+            }
+          ],
+          "source": "breakout",
+          "unit": "quarter",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          }
+        },
+        {
+          "name": "SOURCE",
+          "display_name": "User → Source",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Source",
+          "field_ref": [
+            "field",
+            30,
+            {
+              "source-field": 11
+            }
+          ],
+          "source": "breakout",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          }
+        },
+        {
+          "name": "count",
+          "display_name": "Count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "source": "aggregation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 72,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 4,
+                "q1": 122.25,
+                "q3": 322.67544467966326,
+                "max": 352,
+                "sd": 111.97627549847246,
+                "avg": 220.7058823529412
+              }
+            }
+          }
+        }
+      ]
+    },
+    "data": {
+      "rows": [
+        ["2022-04-01T00:00:00Z", "Affiliate", 10],
+        ["2022-04-01T00:00:00Z", "Facebook", 4],
+        ["2022-04-01T00:00:00Z", "Google", 16],
+        ["2022-04-01T00:00:00Z", "Organic", 14],
+        ["2022-04-01T00:00:00Z", "Twitter", 13],
+        ["2022-07-01T00:00:00Z", "Affiliate", 43],
+        ["2022-07-01T00:00:00Z", "Facebook", 56],
+        ["2022-07-01T00:00:00Z", "Google", 48],
+        ["2022-07-01T00:00:00Z", "Organic", 37],
+        ["2022-07-01T00:00:00Z", "Twitter", 51],
+        ["2022-10-01T00:00:00Z", "Affiliate", 91],
+        ["2022-10-01T00:00:00Z", "Facebook", 80],
+        ["2022-10-01T00:00:00Z", "Google", 93],
+        ["2022-10-01T00:00:00Z", "Organic", 81],
+        ["2022-10-01T00:00:00Z", "Twitter", 107],
+        ["2023-01-01T00:00:00Z", "Affiliate", 123],
+        ["2023-01-01T00:00:00Z", "Facebook", 152],
+        ["2023-01-01T00:00:00Z", "Google", 120],
+        ["2023-01-01T00:00:00Z", "Organic", 135],
+        ["2023-01-01T00:00:00Z", "Twitter", 137],
+        ["2023-04-01T00:00:00Z", "Affiliate", 152],
+        ["2023-04-01T00:00:00Z", "Facebook", 164],
+        ["2023-04-01T00:00:00Z", "Google", 154],
+        ["2023-04-01T00:00:00Z", "Organic", 165],
+        ["2023-04-01T00:00:00Z", "Twitter", 138],
+        ["2023-07-01T00:00:00Z", "Affiliate", 199],
+        ["2023-07-01T00:00:00Z", "Facebook", 196],
+        ["2023-07-01T00:00:00Z", "Google", 221],
+        ["2023-07-01T00:00:00Z", "Organic", 192],
+        ["2023-07-01T00:00:00Z", "Twitter", 196],
+        ["2023-10-01T00:00:00Z", "Affiliate", 200],
+        ["2023-10-01T00:00:00Z", "Facebook", 248],
+        ["2023-10-01T00:00:00Z", "Google", 233],
+        ["2023-10-01T00:00:00Z", "Organic", 246],
+        ["2023-10-01T00:00:00Z", "Twitter", 239],
+        ["2024-01-01T00:00:00Z", "Affiliate", 228],
+        ["2024-01-01T00:00:00Z", "Facebook", 281],
+        ["2024-01-01T00:00:00Z", "Google", 259],
+        ["2024-01-01T00:00:00Z", "Organic", 257],
+        ["2024-01-01T00:00:00Z", "Twitter", 281],
+        ["2024-04-01T00:00:00Z", "Affiliate", 260],
+        ["2024-04-01T00:00:00Z", "Facebook", 307],
+        ["2024-04-01T00:00:00Z", "Google", 276],
+        ["2024-04-01T00:00:00Z", "Organic", 281],
+        ["2024-04-01T00:00:00Z", "Twitter", 290],
+        ["2024-07-01T00:00:00Z", "Affiliate", 287],
+        ["2024-07-01T00:00:00Z", "Facebook", 302],
+        ["2024-07-01T00:00:00Z", "Google", 329],
+        ["2024-07-01T00:00:00Z", "Organic", 313],
+        ["2024-07-01T00:00:00Z", "Twitter", 291],
+        ["2024-10-01T00:00:00Z", "Affiliate", 271],
+        ["2024-10-01T00:00:00Z", "Facebook", 333],
+        ["2024-10-01T00:00:00Z", "Google", 331],
+        ["2024-10-01T00:00:00Z", "Organic", 329],
+        ["2024-10-01T00:00:00Z", "Twitter", 328],
+        ["2025-01-01T00:00:00Z", "Affiliate", 326],
+        ["2025-01-01T00:00:00Z", "Facebook", 332],
+        ["2025-01-01T00:00:00Z", "Google", 348],
+        ["2025-01-01T00:00:00Z", "Organic", 339],
+        ["2025-01-01T00:00:00Z", "Twitter", 345],
+        ["2025-04-01T00:00:00Z", "Affiliate", 311],
+        ["2025-04-01T00:00:00Z", "Facebook", 326],
+        ["2025-04-01T00:00:00Z", "Google", 319],
+        ["2025-04-01T00:00:00Z", "Organic", 321],
+        ["2025-04-01T00:00:00Z", "Twitter", 338],
+        ["2025-07-01T00:00:00Z", "Affiliate", 325],
+        ["2025-07-01T00:00:00Z", "Facebook", 349],
+        ["2025-07-01T00:00:00Z", "Google", 329],
+        ["2025-07-01T00:00:00Z", "Organic", 328],
+        ["2025-07-01T00:00:00Z", "Twitter", 310],
+        ["2025-10-01T00:00:00Z", "Affiliate", 308],
+        ["2025-10-01T00:00:00Z", "Facebook", 346],
+        ["2025-10-01T00:00:00Z", "Google", 319],
+        ["2025-10-01T00:00:00Z", "Organic", 349],
+        ["2025-10-01T00:00:00Z", "Twitter", 310],
+        ["2026-01-01T00:00:00Z", "Affiliate", 321],
+        ["2026-01-01T00:00:00Z", "Facebook", 352],
+        ["2026-01-01T00:00:00Z", "Google", 332],
+        ["2026-01-01T00:00:00Z", "Organic", 305],
+        ["2026-01-01T00:00:00Z", "Twitter", 340],
+        ["2026-04-01T00:00:00Z", "Affiliate", 65],
+        ["2026-04-01T00:00:00Z", "Facebook", 78],
+        ["2026-04-01T00:00:00Z", "Google", 71],
+        ["2026-04-01T00:00:00Z", "Organic", 72],
+        ["2026-04-01T00:00:00Z", "Twitter", 58]
+      ],
+      "cols": [
+        {
+          "name": "CREATED_AT",
+          "display_name": "Created At: Quarter",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "semantic_type": "type/CreationTimestamp",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "quarter"
+            }
+          ],
+          "source": "breakout",
+          "unit": "quarter",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          }
+        },
+        {
+          "name": "SOURCE",
+          "display_name": "User → Source",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Source",
+          "field_ref": [
+            "field",
+            30,
+            {
+              "source-field": 11
+            }
+          ],
+          "source": "breakout",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          }
+        },
+        {
+          "name": "count",
+          "display_name": "Count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "source": "aggregation"
+        }
+      ],
+      "results_metadata": {
+        "columns": [
+          {
+            "name": "CREATED_AT",
+            "display_name": "Created At: Quarter",
+            "base_type": "type/DateTime",
+            "effective_type": "type/DateTime",
+            "semantic_type": "type/CreationTimestamp",
+            "field_ref": [
+              "field",
+              13,
+              {
+                "temporal-unit": "quarter"
+              }
+            ],
+            "source": "breakout",
+            "unit": "quarter",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            }
+          },
+          {
+            "name": "SOURCE",
+            "display_name": "User → Source",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": "type/Source",
+            "field_ref": [
+              "field",
+              30,
+              {
+                "source-field": 11
+              }
+            ],
+            "source": "breakout",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.4084
+                }
+              }
+            }
+          },
+          {
+            "name": "count",
+            "display_name": "Count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "source": "aggregation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 72,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 4,
+                  "q1": 122.25,
+                  "q3": 322.67544467966326,
+                  "max": 352,
+                  "sd": 111.97627549847246,
+                  "avg": 220.7058823529412
+                }
+              }
+            }
+          }
+        ]
+      },
+      "results_timezone": "UTC"
+    }
+  }
+]

@@ -1,7 +1,7 @@
 (ns metabase.parameters.chain-filter.dedupe-joins
   (:require
    [clojure.set :as set]
-   [medley.core :as m]))
+   [metabase.util.log :as log]))
 
 (def ^:private source-node (comp :table :lhs))
 
@@ -58,19 +58,46 @@
           (let [next-node (node-fn edge)]
             (recur (cons next-node nodes) (conj result next-node))))))))
 
+(defn- prefer-requested-fks
+  "Sometimes when trying to find a chain of joins between two requested tables, there are multiple FKs which point
+  between them. These create parallel edges in the graph of joins, and we need to choose one. This function groups
+  edges by their source and target, keeps any single edges, and tries to disambiguate using the input set of preferred
+  field IDs.
+
+  If they cannot be disambiguated (either because multiple FKs are preferred, or none are) then log quietly and choose
+  one arbitrarily."
+  [preferred-fk-ids edges]
+  (if (= (count edges) 1)
+    (first edges)
+    (let [preferred (filter (fn [{{lhs-field :field} :lhs
+                                  {rhs-field :field} :rhs}]
+                              (or (preferred-fk-ids lhs-field)
+                                  (preferred-fk-ids rhs-field)))
+                            edges)]
+      (case (count preferred)
+        1 (first preferred)
+        (do (log/debugf "Could not choose between multiple FKs for a chain filters join. %d edges, %d preferred"
+                        (count edges)
+                        (count preferred))
+            (or (first preferred)
+                (first edges)))))))
+
 (defn dedupe-joins
   "Remove unnecessary joins from a collection of `in-joins`.
 
   `keep-ids` = the IDs of Tables that we want to keep joins for. Joins that are not needed to keep these Tables may be
   removed.
+  `field-ids` = FKs we prefer - where there are parallel edges, we expect exactly one of them to be in this set.
 
   Note that this function implements a simple greedy algorithm, replacing the previous optimal, but exponential
   implementation."
-  [source-id in-joins keep-ids]
-  (let [;; get rid of parallel edges, for our purposes they are equivalent
-        edges (m/distinct-by edge-nodes in-joins)
+  [source-id field-ids in-joins keep-ids]
+  (let [;; Group up any parallel edges, and choose one from each group. Prefer the input `field-ids`.
+        edges     (-> (group-by edge-nodes in-joins)
+                      (update-vals #(prefer-requested-fks field-ids %))
+                      vals)
         out-edges (group-by source-node edges)
-        in-edges (group-by target-node edges)
+        in-edges  (group-by target-node edges)
         ;; Collect the IDs that must be included either way to prefer them
         ;; during the construction of the tree.
         transitive-keep-ids (forced-nodes source-node keep-ids in-edges)

@@ -1,60 +1,59 @@
 import { c, t } from "ttag";
-import _ from "underscore";
 
-import { useGetCollectionQuery } from "metabase/api";
-import Link from "metabase/common/components/Link";
-import { MoveModal } from "metabase/common/components/MoveModal";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
-import { color } from "metabase/lib/colors";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+} from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { Link } from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
+import { useSetCollection } from "metabase/common/hooks";
 import { Flex, Icon } from "metabase/ui";
-import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { color } from "metabase/ui/utils/colors";
+import * as Urls from "metabase/urls";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import S from "./DashboardMoveModal.module.css";
-
-const mapDispatchToProps = {
-  setDashboardCollection: Dashboards.actions.setCollection,
-};
 
 function DashboardMoveModal({
   dashboard,
   onClose,
-  setDashboardCollection,
 }: {
   dashboard: Dashboard;
   onClose: () => void;
-  setDashboardCollection: (
-    source: { id: DashboardId },
-    destination: { id: CollectionId },
-    options: any,
-  ) => void;
 }) {
-  const recentsAndSearchFilter = (item: CollectionPickerItem) =>
-    item.model === "collection" && item.id === dashboard.collection_id;
+  const setCollection = useSetCollection();
 
   return (
     <MoveModal
       title={t`Move dashboard to…`}
       onClose={onClose}
-      initialCollectionId={dashboard.collection_id ?? "root"}
       canMoveToDashboard={false}
+      movingItem={{
+        ...dashboard,
+        collection: {
+          id: dashboard.collection?.id || "root",
+          name: dashboard.collection?.name || "",
+          namespace: dashboard.collection?.namespace,
+        }, // parent collection info
+        model: "dashboard",
+      }}
       onMove={async (destination) => {
-        await setDashboardCollection({ id: dashboard.id }, destination, {
-          notify: {
+        await setCollection(
+          { model: "dashboard", id: dashboard.id },
+          destination,
+          {
             message: (
               <DashboardMoveToast
                 collectionId={destination.id || ROOT_COLLECTION.id}
               />
             ),
           },
-        });
+        );
         onClose();
       }}
-      recentAndSearchFilter={recentsAndSearchFilter}
     />
   );
 }
@@ -71,7 +70,7 @@ const DashboardMoveToast = ({
       <Icon
         name="collection"
         style={{ marginInlineEnd: "0.25rem" }}
-        color="text-white"
+        c="text-primary-inverse"
       />
       {c("{0} is a location where the dashboard was moved to")
         .jt`Dashboard moved to ${
@@ -81,7 +80,7 @@ const DashboardMoveToast = ({
             className={S.CollectionLink}
             to={Urls.collection(collection)}
             style={{ marginInlineStart: ".25em" }}
-            color={color("brand")}
+            color={color("core-brand")}
           >
             {collection.name}
           </Link>
@@ -91,10 +90,27 @@ const DashboardMoveToast = ({
   );
 };
 
-export const DashboardMoveModalConnected = _.compose(
-  connect(null, mapDispatchToProps),
-  Dashboards.load({
-    id: (_state: State, props: { params: { slug: string } }) =>
-      Urls.extractCollectionId(props.params.slug),
-  }),
-)(DashboardMoveModal);
+export const DashboardMoveModalConnected = ({
+  params,
+  onClose,
+}: {
+  params: { slug?: string };
+  onClose: () => void;
+}) => {
+  const id = Urls.extractCollectionId(params.slug);
+  const { currentData: dashboard, error } = useGetDashboardQuery(
+    id != null ? { id } : skipToken,
+  );
+
+  return (
+    <LoadingAndErrorWrapper
+      loading={id != null && !dashboard}
+      error={error}
+      noWrapper
+    >
+      {dashboard && (
+        <DashboardMoveModal dashboard={dashboard} onClose={onClose} />
+      )}
+    </LoadingAndErrorWrapper>
+  );
+};

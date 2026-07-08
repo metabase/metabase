@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
@@ -6,9 +7,10 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
 } from "metabase/api";
-import { getCollectionName } from "metabase/collections/utils";
+import { useSetArchive } from "metabase/archive/hooks";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import EntityItem from "metabase/common/components/EntityItem";
+import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
@@ -20,31 +22,24 @@ import {
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
+import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import Bookmarks from "metabase/entities/bookmarks";
-import Questions from "metabase/entities/questions";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import {
   Button,
   FixedSizeIcon,
   Flex,
   Icon,
-  type IconName,
   Menu,
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import * as Urls from "metabase/urls";
+import type { IconName, SortingOptions } from "metabase-types/api";
 
-import {
-  Cell,
-  CollectionLink,
-  CollectionTableCell,
-  NameColumn,
-  TableRow,
-} from "../components/BrowseTable.styled";
+import BrowseTableS from "../components/BrowseTable.module.css";
 
+import { trackMetricBookmarked } from "./analytics";
 import type { MetricResult, SortColumn } from "./types";
 import { getMetricDescription, sortMetrics } from "./utils";
 
@@ -55,7 +50,7 @@ type MetricsTableProps = {
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "name",
-  sort_direction: SortDirection.Asc,
+  sort_direction: "asc",
 };
 
 export const itemsTableContainerName = "ItemsTableContainer";
@@ -102,7 +97,7 @@ export function MetricsTable({
     <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
       <colgroup>
         {/* <col> for Name column */}
-        <NameColumn {...nameProps} />
+        <col className={BrowseTableS.nameColumn} />
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
         <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
@@ -188,7 +183,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       }
 
       const { id, name } = metric;
-      const url = Urls.metric({ id, name });
+      const url = Urls.metric({ id, name, type: "metric" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       // TODO: metabase/metabse#47713
@@ -207,13 +202,16 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   );
 
   return (
-    <TableRow onClick={handleClick}>
+    <tr
+      className={metric ? BrowseTableS.tableRow : BrowseTableS.tableRowSkeleton}
+      onClick={handleClick}
+    >
       <NameCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
       <MenuCell metric={metric} />
       <Columns.RightEdge.Cell />
-    </TableRow>
+    </tr>
   );
 }
 
@@ -240,7 +238,9 @@ function NameCell({ metric }: { metric?: MetricResult }) {
     >
       <MaybeItemLink
         to={
-          metric ? Urls.metric({ id: metric.id, name: metric.name }) : undefined
+          metric
+            ? Urls.metric({ id: metric.id, name: metric.name, type: "metric" })
+            : undefined
         }
         style={{
           // To align the icons with "Name" in the <th>
@@ -281,27 +281,28 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
   );
 
   return (
-    <CollectionTableCell
+    <td
+      className={cx(BrowseTableS.collectionCell, BrowseTableS.hideAtSm)}
       data-testid={`path-for-collection: ${collectionName}`}
-      {...collectionProps}
     >
       {metric?.collection ? (
-        <CollectionLink
+        <Link
+          className={BrowseTableS.collectionLink}
           to={Urls.collection(metric.collection)}
           onClick={stopPropagation}
         >
           {content}
-        </CollectionLink>
+        </Link>
       ) : (
         content
       )}
-    </CollectionTableCell>
+    </td>
   );
 }
 
 function DescriptionCell({ metric }: { metric?: MetricResult }) {
   return (
-    <Cell {...descriptionProps}>
+    <td className={cx(BrowseTableS.cell, BrowseTableS.hideAtMd)}>
       {metric ? (
         <MarkdownPreview
           lineClamp={12}
@@ -313,7 +314,7 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         <SkeletonText />
       )}
-    </Cell>
+    </td>
   );
 }
 
@@ -328,6 +329,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
   const dispatch = useDispatch();
+  const archive = useSetArchive();
 
   const actions = useMemo(() => {
     if (!metric) {
@@ -346,8 +348,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     } else {
@@ -360,7 +360,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-          dispatch(Bookmarks.actions.invalidateLists());
+
+          trackMetricBookmarked();
         },
       });
     }
@@ -382,21 +383,20 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         title: t`Move to trash`,
         icon: "trash",
         action() {
-          dispatch(
-            Questions.actions.setArchived(
-              { id: metric.id, model: "metric" },
-              true,
-            ),
-          );
+          archive({ id: metric.id, model: "metric" }, true);
         },
       });
     }
 
     return actions;
-  }, [metric, createBookmark, deleteBookmark, dispatch]);
+  }, [metric, createBookmark, deleteBookmark, dispatch, archive]);
 
   return (
-    <Cell onClick={stopPropagation} style={{ padding: 0 }}>
+    <td
+      className={BrowseTableS.cell}
+      onClick={stopPropagation}
+      style={{ padding: 0 }}
+    >
       <Menu position="bottom-end">
         <Menu.Target>
           <Button
@@ -404,7 +404,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             variant="subtle"
             px="sm"
             aria-label={t`Metric options`}
-            c="text-dark"
+            c="text-primary"
           >
             <Icon name="ellipsis" />
           </Button>
@@ -421,6 +421,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           ))}
         </Menu.Dropdown>
       </Menu>
-    </Cell>
+    </td>
   );
 }

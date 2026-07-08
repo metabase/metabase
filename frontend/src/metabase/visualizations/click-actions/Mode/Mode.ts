@@ -1,3 +1,4 @@
+import { transformClickedDataPoint } from "metabase/embedding-sdk/lib/transform-clicked";
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { queryDrill } from "metabase/querying/drills/utils/query-drill";
 import type { DrillThruDisplayInfo } from "metabase-lib";
@@ -5,11 +6,12 @@ import type Question from "metabase-lib/v1/Question";
 
 import type {
   ClickAction,
+  ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "../../types";
 
-export class Mode {
+export class Mode implements ClickActionsMode {
   _question: Question;
   _queryMode: QueryClickActionsMode;
   _plugins?: MetabasePluginsConfig;
@@ -53,12 +55,35 @@ export class Mode {
     }
 
     if (this._plugins?.mapQuestionClickActions) {
-      actions = this._plugins.mapQuestionClickActions(actions, {
-        value: clicked.value,
-        column: clicked.column,
-        event: clicked.event,
-        data: clicked.data,
-      });
+      const actionsOrActionObject = this._plugins.mapQuestionClickActions(
+        actions,
+        transformClickedDataPoint(clicked, question),
+      );
+
+      if (Array.isArray(actionsOrActionObject)) {
+        actions = actionsOrActionObject;
+      } else if ("onClick" in actionsOrActionObject) {
+        // If the plugin returns a single object, it means we should call that action right away without showing the popover
+        // `performDefaultAction` checks if it only gets one action, and if it has `default: true`, it's called directly without showing the popover
+        actions = [
+          {
+            // makes it run without showing the popover
+            default: true,
+
+            // fallback values in case they just return `{ onClick: () => {})`}
+            section: "auto",
+            type: "custom",
+            buttonType: "horizontal",
+            name: "default",
+
+            ...(actionsOrActionObject as Partial<ClickAction>),
+          },
+        ];
+      } else {
+        console.warn(
+          "mapQuestionClickActions should return an array of actions, or a single object with a `onClick` property",
+        );
+      }
     }
 
     return actions;

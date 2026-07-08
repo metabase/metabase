@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
+import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
 import {
   Flex,
   Icon,
@@ -64,7 +64,7 @@ export const FieldVisibilityPicker = ({
               </Text>
 
               {option?.description && (
-                <Text c="text-tertiary" className={S.description} lh="1rem">
+                <Text c="text-disabled" className={S.description} lh="1rem">
                   {option.description}
                 </Text>
               )}

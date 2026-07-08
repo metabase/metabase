@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
+import * as Urls from "metabase/urls";
 
 import { getIsLdapEnabled } from "../../selectors";
 import { AuthButton } from "../AuthButton";

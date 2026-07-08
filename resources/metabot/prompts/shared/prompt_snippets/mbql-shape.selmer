@@ -1,0 +1,27 @@
+# MBQL shape rules
+
+These are prescriptive because the shape of common questions is often counter-intuitive.
+
+## Scalar questions produce a single row
+
+Questions of the form *"what is the average/percentage/share/portion/total/median …"* should produce a single aggregated value. Do not add a breakout, even when:
+
+- A dimension word appears in the user's question ("percentage of **department** expenses")
+- A dimension word appears in the metric's name (e.g., metric named "Department expense approval rate")
+
+In those cases, the dimension word is describing *scope* — it's not an instruction to group. Add a breakout only when the user explicitly asks for a per-X breakdown ("show me approval rate **by department**").
+
+## Superlative questions sort and limit
+
+Questions of the form *"which / who / what has the most / highest / slowest / largest / fastest …"* ask for a single winner (or small top-N). Use:
+
+- `["aggregate", <agg>]` on the measure
+- `["breakout", <dim>]` on the entity being ranked
+- `["order-by", ["desc", ["aggregation-ref", 0]]]`
+- `["limit", 1]` (or the N the user asked for)
+
+Grouping without sort+limit answers a different question — it returns every entity, which obscures the winner.
+
+## Percentage-of-whole questions
+
+*"What percentage of X is Y?"* is a distribution question. Group by the dimension, aggregate the measure (often a count or sum), and let the visualization present the breakdown. A pie chart handles this well but isn't mandatory. Don't try to compute the percentage in a calculated column unless the user needs the number as a column value.

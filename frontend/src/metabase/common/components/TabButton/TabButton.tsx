@@ -1,8 +1,9 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
 // eslint-disable-next-line no-restricted-imports
-import { type Theme, css } from "@emotion/react";
+import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import cx from "classnames";
 import type {
   ChangeEventHandler,
   HTMLAttributes,
@@ -21,9 +22,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import ControlledPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { lighten } from "metabase/lib/colors";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -33,8 +33,8 @@ import {
   getTabPanelId,
 } from "../Tab";
 
+import S from "./TabButton.module.css";
 import {
-  MenuButton,
   TabButtonInput,
   TabButtonInputResizer,
   TabButtonInputWrapper,
@@ -157,36 +157,43 @@ const _TabButton = forwardRef(function TabButton(
         />
       </TabButtonInputWrapper>
       {showMenu && (
-        <ControlledPopoverWithTrigger
-          visible={isMenuOpen}
-          onOpen={() => setIsMenuOpen(true)}
-          onClose={() => setIsMenuOpen(false)}
-          renderTrigger={({ onClick }) => (
-            <MenuButton
-              icon="chevrondown"
-              iconSize={10}
-              isSelected={isSelected}
-              isOpen={isMenuOpen}
-              onClick={onClick}
+        <Popover
+          opened={isMenuOpen}
+          onChange={setIsMenuOpen}
+          position="bottom-start"
+          trapFocus
+        >
+          <Popover.Target>
+            <ActionIcon
+              variant="subtle"
+              size="xs"
+              className={cx(S.menuButton, {
+                [S.menuButtonOpen]: isMenuOpen && !disabled,
+              })}
+              onClick={() => setIsMenuOpen(true)}
               ref={menuButtonRef}
               disabled={disabled}
-            />
-          )}
-          popoverContent={({ closePopover }) => (
+            >
+              <Icon name="chevrondown" size={10} />
+            </ActionIcon>
+          </Popover.Target>
+          <Popover.Dropdown>
             <TabButtonMenu
               menuItems={menuItems}
               value={value}
-              closePopover={closePopover}
+              closePopover={() => setIsMenuOpen(false)}
             />
-          )}
-        />
+          </Popover.Dropdown>
+        </Popover>
       )}
     </TabButtonRoot>
   );
 });
 
-export interface RenameableTabButtonProps
-  extends Omit<TabButtonProps, "onRename" | "onFinishRenaming" | "isRenaming"> {
+export interface RenameableTabButtonProps extends Omit<
+  TabButtonProps,
+  "onRename" | "onFinishRenaming" | "isRenaming"
+> {
   onRename: (newLabel: string) => void;
   renameMenuLabel?: string;
   renameMenuIndex?: number;
@@ -195,9 +202,8 @@ export interface RenameableTabButtonProps
 }
 
 // These styles need to be here instead of .styled to avoid circular dependency
-const getBorderStyle = (theme: Theme) => css`
-  border: 1px solid var(--mb-color-brand);
-  box-shadow: 0px 0px 0px 1px ${lighten(theme.fn.themeColor("brand"), 0.28)};
+const getBorderStyle = () => css`
+  box-shadow: 0px 0px 2px 1px var(--mb-color-core-brand);
 `;
 export const RenameableTabButtonStyled = styled(_TabButton)<{
   isRenaming: boolean;
@@ -205,10 +211,9 @@ export const RenameableTabButtonStyled = styled(_TabButton)<{
   canRename: boolean;
 }>`
   ${TabButtonInputWrapper} {
-    ${(props) => props.isRenaming && getBorderStyle(props.theme)}
+    ${(props) => props.isRenaming && getBorderStyle()}
     :hover {
-      ${(props) =>
-        props.canRename && props.isSelected && getBorderStyle(props.theme)}
+      ${(props) => props.canRename && props.isSelected && getBorderStyle()}
     }
   }
 `;
@@ -283,9 +288,7 @@ export function RenameableTabButton({
       onRename={(e) => setLabel(e.target.value)}
       onFinishRenaming={onFinishEditing}
       onInputDoubleClick={() => setIsRenaming(canRename)}
-      menuItems={
-        menuItems as TabButtonMenuItem[] /* workaround for styled component swallowing generic type */
-      }
+      menuItems={menuItems}
       ref={inputRef}
       {...props}
     />

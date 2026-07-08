@@ -13,7 +13,7 @@ describe("scenarios > dashboard > text and headings", () => {
     H.enableTracking();
   });
 
-  H.describeWithSnowplow("text", () => {
+  describe("text", () => {
     beforeEach(() => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
     });
@@ -152,7 +152,7 @@ describe("scenarios > dashboard > text and headings", () => {
     });
   });
 
-  H.describeWithSnowplow("heading", () => {
+  describe("heading", () => {
     beforeEach(() => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
     });
@@ -335,7 +335,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    H.updateSetting("site-locale", "fr");
+    H.updateSetting("site-locale", "en-ZZ");
     cy.reload();
 
     H.editDashboard();
@@ -361,14 +361,21 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       cy.findByText("Today").click();
     });
 
-    H.getDashboardCard(0).findByText("Variable: Aujourd'hui").should("exist");
-    H.getDashboardCard(1).findByText("Variable: Aujourd'hui").should("exist");
+    H.getDashboardCard(0)
+      .findByText("Variable: [zz] Today")
+      .should("be.visible");
+    H.getDashboardCard(1)
+      .findByText("Variable: [zz] Today")
+      .should("be.visible");
 
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
     // English on the homepage.
     cy.visit("/");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick up where you left off").should("exist");
+
+    cy.findByTestId("home-page").within(() => {
+      cy.findByText("Pick up where you left off").should("be.visible");
+      cy.findByText("[zz] Pick up where you left off").should("not.exist");
+    });
   });
 
   it("should localize date parameters in the instance locale", () => {
@@ -429,7 +436,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
         .findByText("Single Date")
         .click();
       H.popover().within(() => {
-        cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
+        cy.findByRole("textbox").click().clear().type("07/19/2026").blur();
         cy.button("Add filter").click();
       });
 
@@ -441,15 +448,15 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
 
       // Parameter value in widget should use user localization (English)
       cy.findByTestId("dashboard-parameters-widget-container")
-        .findByText("July 19, 2023")
+        .findByText("July 19, 2026")
         .should("exist");
 
       // Parameter value in dashboard should use site localization (French)
       H.getDashboardCard(1)
-        .findByText("Variable: juillet 19, 2023")
+        .findByText("Variable: juillet 19, 2026")
         .should("exist");
       H.getDashboardCard(2)
-        .findByText("Variable: juillet 19, 2023")
+        .findByText("Variable: juillet 19, 2026")
         .should("exist");
     });
   });

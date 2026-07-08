@@ -26,6 +26,12 @@ export const setupTokenStatusEndpointEmpty = () => {
   });
 };
 
+export const setupTokenRefreshEndpoint = () => {
+  fetchMock.post("path:/api/premium-features/token/refresh", 200, {
+    name: "premium-token-refresh",
+  });
+};
+
 export const setupTokenActivationEndpoint = ({
   success,
   status,

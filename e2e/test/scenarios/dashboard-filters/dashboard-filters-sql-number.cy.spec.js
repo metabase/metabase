@@ -41,7 +41,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
 
@@ -171,7 +171,8 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     cy.findByPlaceholderText("Price").type("95").blur();
     cy.findByPlaceholderText("Rating").type("3.8").blur();
 
-    cy.findAllByRole("row")
+    cy.findByTestId("table-body")
+      .findAllByRole("row")
       .should("have.length", 2)
       // first line price
       .and("contain", "98.82")

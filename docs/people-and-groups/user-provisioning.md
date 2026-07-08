@@ -13,23 +13,24 @@ Metabase supports user provisioning via the System for Cross-domain Identity Man
 
 > For now, Metabase officially supports SCIM for [Okta](https://help.okta.com/en-us/content/topics/apps/apps_app_integration_wizard_scim.htm?cshid=ext_Apps_App_Integration_Wizard-scim) and [Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/identity/app-provisioning/configure-automatic-user-provisioning-portal). Other SCIM providers may work, but we haven't tested them. If you're having issues with another identity provider, please [reach out to us](https://www.metabase.com/help-premium).
 
-## Setting up user provisioning
+## Set up user provisioning via SCIM
 
 ![Setting up user provisioning with SCIM in Metabase](./images/user-provisioning.png)
 
-To set up user provisioning. Click on the settings **Gear** icon in the upper right and navigate to **Admin settings** > **Settings**> **Authentication**.
+To set up user provisioning:
 
-Click on the **User provisioning** tab.
+1. Click the **grid** icon in the upper right and navigate to **Admin** > **Settings**> **Authentication**.
 
-## User provisioning via SCIM
+2. Click the **User provisioning** tab.
+3. Toggle on user provisioning.
 
-To set up user provisioning with SCIM, hit the toggle to enable it. Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
+Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
 
-> If you've previously set up user provisioning with SAML, Metabase will turn that setting off and use the SCIM setup instead.
+> SAML user provisioning is always disabled when SCIM is enabled.
 
 ## SCIM endpoint URL
 
-The SCIM endpoint is `/api/ee/scim/v2`. So your URL will looks something like:
+The SCIM endpoint is `/api/ee/scim/v2`. So your URL will look something like:
 
 ```
 https://metabase.example.com/api/ee/scim/v2
@@ -47,9 +48,7 @@ Copy the token and save the token somewhere safe. For security, Metabase can't s
 
 Once you've enabled SCIM in Metabase and gotten your SCIM endpoint URL and SCIM token, follow the docs for [Setting up SCIM in Okta](https://help.okta.com/en-us/content/topics/apps/apps_app_integration_wizard_scim.htm?cshid=ext_Apps_App_Integration_Wizard-scim).
 
-With Okta, Metabase supports user and group provisioning; groups are created and populated in Metabase.
-
-NOTE: the authentication mode you need to set is "HTTP Header"
+With Okta, Metabase supports user and group provisioning; groups are created and populated in Metabase. The authentication mode you need to set is "HTTP Header".
 
 ## SCIM with Microsoft Entra ID
 
@@ -62,3 +61,4 @@ With Microsoft Entra ID, Metabase only supports user provisioning (groups aren't
 - [Authenticating with SAML](./authenticating-with-saml.md)
 - [SAML with Okta](./saml-okta.md)
 - [SAML with Microsoft Entra ID](./saml-azure.md)
+- [OIDC-based authentication](./authenticating-with-oidc.md)

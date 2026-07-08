@@ -1,13 +1,18 @@
 (ns metabase.pulse.dashboard-subscription-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.dashboard-subscription-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
@@ -15,6 +20,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -236,9 +242,14 @@
       slack-branding-text]}]
    (apply concat
           (for [card-id card-ids]
-            [{:type "section"
-              :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
-             {:type "image" :slack_file {:id (format "%s.png" pulse.test-util/card-name)} :alt_text pulse.test-util/card-name}]))))
+            (let [id (t2/select-one-pk :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+              [{:type "section"
+                :text {:type "mrkdwn"
+                       :text (format "<https://testmb.com/dashboard/%d#scrollTo=%d|Test card>"
+                                     dashboard-id
+                                     id)
+                       :verbatim true}}
+               {:type "image" :slack_file {:id (format "%s.png" pulse.test-util/card-name)} :alt_text pulse.test-util/card-name}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Tests                                                      |
@@ -392,18 +403,23 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
-       (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
+       (let [id (t2/select-one-pk :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)]
+         (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
                   converted to mrkdwn (Slack markup language)"
-         (is (= {:channel "#general"
-                 :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
-                           {:type "section"
-                            :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
-                                     slack-branding-text]}
-                           {:type "section"
-                            :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
-                           {:type "section" :text {:type "plain_text" :text "1,000"}}
-                           {:type "section" :text {:type "mrkdwn" :text "*header*"}}]}
-                pulse-results))))}}))
+           (is (= {:channel "#general"
+                   :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
+                             {:type "section"
+                              :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
+                                       slack-branding-text]}
+                             {:type "section"
+                              :text {:type "mrkdwn"
+                                     :text (format "<https://testmb.com/dashboard/%d#scrollTo=%d|Test card>"
+                                                   dashboard-id
+                                                   id)
+                                     :verbatim true}}
+                             {:type "section" :text {:type "plain_text" :text "1,000"}}
+                             {:type "section" :text {:type "mrkdwn" :text "*header*"}}]}
+                  pulse-results)))))}}))
 
 (deftest virtual-card-heading-test
   (tests!
@@ -431,18 +447,23 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [pulse-results]]
-       (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown isn't
+       (let [id (t2/select-one-pk :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)]
+         (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown isn't
                   converted to mrkdwn (Slack markup language)"
-         (is (= {:channel "#general"
-                 :blocks [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
-                          {:type "section"
-                           :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
-                                    slack-branding-text]}
-                          {:type "section"
-                           :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
-                          {:type "section" :text {:type "plain_text" :text "1,000"}}
-                          {:type "section" :text {:type "mrkdwn" :text "*# header, quote isn't escaped*"}}]}
-                pulse-results))))}}))
+           (is (= {:channel "#general"
+                   :blocks [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
+                            {:type "section"
+                             :fields [{:type "mrkdwn" :text (format "<https://testmb.com/dashboard/%d|*Sent from Metabase Test by Rasta Toucan*>" dashboard-id)}
+                                      slack-branding-text]}
+                            {:type "section"
+                             :text {:type "mrkdwn"
+                                    :text (format "<https://testmb.com/dashboard/%d#scrollTo=%d|Test card>"
+                                                  dashboard-id
+                                                  id)
+                                    :verbatim true}}
+                            {:type "section" :text {:type "plain_text" :text "1,000"}}
+                            {:type "section" :text {:type "mrkdwn" :text "*# header, quote isn't escaped*"}}]}
+                  pulse-results)))))}}))
 
 (deftest dashboard-filter-test
   (with-redefs [channel.slack/attachment-text-length-limit 15]
@@ -468,23 +489,28 @@
 
        :slack
        (fn [{:keys [card-id dashboard-id]} [message]]
-         (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
+         (let [{:keys [id]} (t2/select-one :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+           (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown is
                    converted to mrkdwn (Slack markup language) and truncated appropriately"
-           (is (= {:channel "#general"
-                   :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
-                             {:type "section"
-                              :fields [{:type "mrkdwn" :text "*State*\nCA, NY…"} {:type "mrkdwn" :text "*Quarter and Y…"}]}
-                             {:type "section"
-                              :fields
-                              [{:type "mrkdwn"
-                                :text
-                                (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>"
-                                        dashboard-id)}
-                               slack-branding-text]}
-                             {:type "section"
-                              :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
-                             {:type "section" :text {:type "plain_text" :text "1,000"}}]}
-                  message))))}})))
+             (is (= {:channel "#general"
+                     :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
+                               {:type "section"
+                                :fields [{:type "mrkdwn" :text "*State*\nCA, NY…"} {:type "mrkdwn" :text "*Quarter and Y…"}]}
+                               {:type "section"
+                                :fields
+                                [{:type "mrkdwn"
+                                  :text
+                                  (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>"
+                                          dashboard-id)}
+                                 slack-branding-text]}
+                               {:type "section"
+                                :text {:type "mrkdwn"
+                                       :text (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021#scrollTo=%d|Test card>"
+                                                     dashboard-id
+                                                     id)
+                                       :verbatim true}}
+                               {:type "section" :text {:type "plain_text" :text "1,000"}}]}
+                    message)))))}})))
 
 (deftest dashboard-with-header-filters-test
   (tests!
@@ -514,24 +540,29 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [message]]
-       (testing "Header card with inline parameters includes parameter values below header"
-         (is (= {:channel "#general"
-                 :blocks  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                           {:type "section",
-                            :fields [{:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
-                           {:type "section",
-                            :fields [{:type "mrkdwn",
-                                      :text (str "<https://testmb.com/dashboard/"
-                                                 dashboard-id
-                                                 "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}
-                                     slack-branding-text]}
-                           {:type "section"
-                            :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
-                           {:type "section", :text {:type "plain_text", :text "1,000"}}
-                           {:type "section",
-                            :text {:type "mrkdwn", :text "*## Dashboard Header*"},
-                            :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}
-                message))))}}))
+       (let [{:keys [id]} (t2/select-one :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+         (testing "Header card with inline parameters includes parameter values below header"
+           (is (= {:channel "#general"
+                   :blocks  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                             {:type "section",
+                              :fields [{:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                             {:type "section",
+                              :fields [{:type "mrkdwn",
+                                        :text (str "<https://testmb.com/dashboard/"
+                                                   dashboard-id
+                                                   "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}
+                                       slack-branding-text]}
+                             {:type "section"
+                              :text {:type "mrkdwn"
+                                     :text (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021#scrollTo=%d|Test card>"
+                                                   dashboard-id
+                                                   id)
+                                     :verbatim true}}
+                             {:type "section", :text {:type "plain_text", :text "1,000"}}
+                             {:type "section",
+                              :text {:type "mrkdwn", :text "*## Dashboard Header*"},
+                              :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}
+                  message)))))}}))
 
 (deftest dashboard-with-dashcard-filters-test
   (tests!
@@ -556,22 +587,27 @@
 
      :slack
      (fn [{:keys [card-id dashboard-id]} [message]]
-       (testing "Dashcard with inline parameters shows State parameter in dashboard fields"
-         (is (= {:channel "#general"
-                 :blocks  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                           {:type "section",
-                            :fields [{:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
-                           {:type "section",
-                            :fields [{:type "mrkdwn",
-                                      :text (str "<https://testmb.com/dashboard/"
-                                                 dashboard-id
-                                                 "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}
-                                     slack-branding-text]}
-                           {:type "section",
-                            :text {:type "mrkdwn", :text (format "<https://testmb.com/question/%d|Test card>" card-id), :verbatim true}}
-                           {:type "section", :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}
-                           {:type "section", :text {:type "plain_text", :text "1,000"}}]}
-                message))))}}))
+       (let [id (t2/select-one-pk :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+         (testing "Dashcard with inline parameters shows State parameter in dashboard fields"
+           (is (= {:channel "#general"
+                   :blocks  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                             {:type "section",
+                              :fields [{:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                             {:type "section",
+                              :fields [{:type "mrkdwn",
+                                        :text (str "<https://testmb.com/dashboard/"
+                                                   dashboard-id
+                                                   "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}
+                                       slack-branding-text]}
+                             {:type "section",
+                              :text {:type "mrkdwn",
+                                     :text (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021#scrollTo=%d|Test card>"
+                                                   dashboard-id
+                                                   id),
+                                     :verbatim true}}
+                             {:type "section", :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}
+                             {:type "section", :text {:type "plain_text", :text "1,000"}}]}
+                  message)))))}}))
 
 (deftest dashboard-with-link-card-test
   (tests!
@@ -594,23 +630,18 @@
                                                      #"https://testmb\.com/collection/\d+"
                                                      #"Linked collection name"
                                                      #"Linked collection desc"
-
                                                      #"https://testmb\.com/browse/\d+"
                                                      #"Linked database name"
                                                      #"Linked database desc"
-
                                                      #"https://testmb\.com/question\?db=\d+table=\d+"
                                                      #"Linked table dname"
                                                      #"Linked table desc"
-
                                                      #"https://testmb\.com/question/\d+"
                                                      #"Linked card name"
                                                      #"Linked card desc"
-
                                                      #"https://testmb\.com/question/\d+"
                                                      #"Linked model name"
                                                      #"Linked model desc"
-
                                                      #"https://testmb\.com/dashboard/\d+"
                                                      #"Linked Dashboard name"
                                                      #"Linked Dashboard desc")
@@ -621,41 +652,47 @@
                 vals))))
 
      :slack
-     (fn [_ [message]]
-       (is (=? {:channel "#general",
-                :blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
-                         {:type "section",
-                          :fields
-                          [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
-                           {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
-                         {:type "section", :fields [{:type "mrkdwn"
-                                                     :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}
-                                                    slack-branding-text]}
-                         {:type "section"
-                          :text {:type "mrkdwn" :text #"<https://testmb\.com/question/\d+\|Test card>" :verbatim true}}
-                         {:type "section", :text {:type "plain_text", :text "1,000"}}
-                         {:type "section",
-                          :text
-                          {:type "mrkdwn",
-                           :text #"\*<https://testmb\.com/collection/\d+\|Linked collection name>\*\nLinked collection desc"}}
-                         {:type "section",
-                          :text
-                          {:type "mrkdwn", :text #"\*<https://testmb\.com/browse/\d+\|Linked database name>\*\nLinked database desc"}}
-                         {:type "section",
-                          :text
-                          {:type "mrkdwn",
-                           :text #"\*<https://testmb\.com/question\?db=\d+&table=\d+\|Linked table dname>\*\nLinked table desc"}}
-                         {:type "section",
-                          :text
-                          {:type "mrkdwn",
-                           :text #"\*<https://testmb\.com/dashboard/\d+\|Linked Dashboard name>\*\nLinked Dashboard desc"}}
-                         {:type "section",
-                          :text {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked card name>\*\nLinked card desc"}}
-                         {:type "section",
-                          :text
-                          {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked model name>\*\nLinked model desc"}}
-                         {:type "section", :text {:type "mrkdwn", :text "*<https://metabase.com|https://metabase.com>*"}}]}
-               message)))}}))
+     (fn [{:keys [dashboard-id card-id]} [message]]
+       (let [id (t2/select-one-pk :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+         (is (=? {:channel "#general",
+                  :blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                           {:type "section",
+                            :fields
+                            [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
+                             {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                           {:type "section", :fields [{:type "mrkdwn"
+                                                       :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}
+                                                      slack-branding-text]}
+                           {:type "section"
+                            :text {:type "mrkdwn"
+
+                                   :text (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021#scrollTo=%d|Test card>"
+                                                 dashboard-id
+                                                 id)
+                                   :verbatim true}}
+                           {:type "section", :text {:type "plain_text", :text "1,000"}}
+                           {:type "section",
+                            :text
+                            {:type "mrkdwn",
+                             :text #"\*<https://testmb\.com/collection/\d+\|Linked collection name>\*\nLinked collection desc"}}
+                           {:type "section",
+                            :text
+                            {:type "mrkdwn", :text #"\*<https://testmb\.com/browse/\d+\|Linked database name>\*\nLinked database desc"}}
+                           {:type "section",
+                            :text
+                            {:type "mrkdwn",
+                             :text #"\*<https://testmb\.com/question\?db=\d+&table=\d+\|Linked table dname>\*\nLinked table desc"}}
+                           {:type "section",
+                            :text
+                            {:type "mrkdwn",
+                             :text #"\*<https://testmb\.com/dashboard/\d+\|Linked Dashboard name>\*\nLinked Dashboard desc"}}
+                           {:type "section",
+                            :text {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked card name>\*\nLinked card desc"}}
+                           {:type "section",
+                            :text
+                            {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked model name>\*\nLinked model desc"}}
+                           {:type "section", :text {:type "mrkdwn", :text "*<https://metabase.com|https://metabase.com>*"}}]}
+                 message))))}}))
 
 (deftest mrkdwn-length-limit-test
   (with-redefs [channel.slack/block-text-length-limit 10]
@@ -726,21 +763,21 @@
         (testing "SQL Query"
           (mt/with-temp [:model/Card {sql-card-id :id} {:name          "Products (SQL)"
                                                         :dataset_query (mt/native-query
-                                                                         {:query
-                                                                          (str "SELECT id, title, category\n"
-                                                                               "FROM products\n"
-                                                                               "WHERE {{category}}\n"
-                                                                               "ORDER BY id ASC\n"
-                                                                               "LIMIT 2")
+                                                                        {:query
+                                                                         (str "SELECT id, title, category\n"
+                                                                              "FROM products\n"
+                                                                              "WHERE {{category}}\n"
+                                                                              "ORDER BY id ASC\n"
+                                                                              "LIMIT 2")
 
-                                                                          :template-tags
-                                                                          {"category"
-                                                                           {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
-                                                                            :name         "category"
-                                                                            :display-name "Category"
-                                                                            :type         :dimension
-                                                                            :dimension    [:field (mt/id :products :category) nil]
-                                                                            :widget-type  :category}}})}
+                                                                         :template-tags
+                                                                         {"category"
+                                                                          {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
+                                                                           :name         "category"
+                                                                           :display-name "Category"
+                                                                           :type         :dimension
+                                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                                           :widget-type  :category}}})}
                          :model/DashboardCard _ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
                                                                        :card_id      sql-card-id
                                                                        :target       [:dimension [:template-tag "category"]]}]
@@ -773,7 +810,7 @@
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
                      :model/Card      {card-id :id} {:name          "Products (SQL)"
                                                      :dataset_query (mt/native-query
-                                                                      {:query "SELECT * FROM venues LIMIT 1"})}
+                                                                     {:query "SELECT * FROM venues LIMIT 1"})}
                      :model/DashboardCard _ {:dashboard_id dashboard-id
                                              :card_id      card-id}]
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
@@ -799,7 +836,6 @@
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
-
   (testing "Link cards are returned and info should be newly fetched"
     (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
@@ -824,12 +860,12 @@
                      {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) collection-owner-id nil))))
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
 (deftest iframe-cards-are-skipped-test
@@ -850,7 +886,6 @@
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
-
   (testing "Link cards are returned and info should be newly fetched"
     (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
@@ -875,13 +910,12 @@
                      {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) collection-owner-id nil))))
-
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
 (deftest execute-dashboard-with-tabs-test
@@ -1020,32 +1054,38 @@
 
      :slack
      (fn [{:keys [dashboard-id card-id]} [pulse-results]]
-       (is (=? {:channel "#general"
-                :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
-                          {:type "section"
-                           :fields
-                           [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
-                            {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
-                          {:type "section"
-                           :fields
-                           [{:type "mrkdwn"
-                             :text
-                             (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>"
-                                     dashboard-id)}
-                            slack-branding-text]}
-                          {:type "section" :text {:type "mrkdwn" :text "*The first tab*"}}
-                          {:type "section"
-                           :text {:type "mrkdwn" :text (format "<https://testmb.com/question/%d|Test card>" card-id) :verbatim true}}
-                          {:type "section" :text {:type "plain_text" :text "1,000"}}
-                          {:type "section" :text {:type "mrkdwn" :text "Card 1 tab-1"}}
-                          {:type "section" :text {:type "mrkdwn" :text "Card 2 tab-1"}}
-                          {:type "section" :text {:type "mrkdwn" :text "*The second tab*"}}
-                          {:type "section" :text {:type "mrkdwn" :text "Card 1 tab-2"}}
-                          {:type "section" :text {:type "mrkdwn" :text "Card 2 tab-2"}}]}
-               (pulse.test-util/thunk->boolean pulse-results))))}}))
+       (let [{:keys [dashboard_tab_id id]} (t2/select-one :model/DashboardCard :dashboard_id dashboard-id :card_id card-id)]
+         (is (=? {:channel "#general"
+                  :blocks  [{:type "header" :text {:type "plain_text" :text "Aviary KPIs" :emoji true}}
+                            {:type "section"
+                             :fields
+                             [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
+                              {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                            {:type "section"
+                             :fields
+                             [{:type "mrkdwn"
+                               :text
+                               (format "<https://testmb.com/dashboard/%d?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>"
+                                       dashboard-id)}
+                              slack-branding-text]}
+                            {:type "section" :text {:type "mrkdwn" :text "*The first tab*"}}
+                            {:type "section"
+                             :text {:type "mrkdwn"
+                                    :text (format "<https://testmb.com/dashboard/%d?tab=%d&state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021#scrollTo=%d|Test card>"
+                                                  dashboard-id
+                                                  dashboard_tab_id
+                                                  id)
+                                    :verbatim true}}
+                            {:type "section" :text {:type "plain_text" :text "1,000"}}
+                            {:type "section" :text {:type "mrkdwn" :text "Card 1 tab-1"}}
+                            {:type "section" :text {:type "mrkdwn" :text "Card 2 tab-1"}}
+                            {:type "section" :text {:type "mrkdwn" :text "*The second tab*"}}
+                            {:type "section" :text {:type "mrkdwn" :text "Card 1 tab-2"}}
+                            {:type "section" :text {:type "mrkdwn" :text "Card 2 tab-2"}}]}
+                 (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (defn- result-attachment!
-  [part]
+  [part _creator-id]
   (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/maybe-realize-data-rows part)]
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
@@ -1126,6 +1166,39 @@
                   :channel/email first :message first :content
                   (re-find #"<h1>dashboard description</h1>")))))))
 
+(deftest dashboard-disable-links-test
+  (testing "Dashboard with links disabled"
+    (mt/with-temp [:model/Card                  {card-id :id} {:name          "Test card"
+                                                               :dataset_query {:database (mt/id)
+                                                                               :type     :native
+                                                                               :native   {:query "select * from orders limit 1"}}
+                                                               :display       :table}
+                   :model/Dashboard             {dashboard-id :id} {:name "dashboard subscription with disabled links"}
+                   :model/DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                         :card_id      card-id}
+                   :model/Pulse                 {pulse-id :id} {:name          "Pulse Name"
+                                                                :dashboard_id  dashboard-id
+                                                                :disable_links true}
+                   :model/PulseCard             _ {:pulse_id          pulse-id
+                                                   :card_id           card-id
+                                                   :dashboard_card_id dashboard-card-id}
+                   :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                   :pulse_channel_id pc-id}]
+      (let [pulse (t2/select-one :model/Pulse pulse-id)
+            has-link? (fn [pulse]
+                        (->> (pulse.test-util/with-captured-channel-send-messages!
+                               (pulse.send/send-pulse! pulse))
+                             :channel/email first :message first :content
+                             (re-find #"href=")
+                             (= "href=")))]
+        (testing "test that disable_links: false will keep links in the email subscription"
+          (is (true? (has-link? (assoc pulse :disable_links false)))))
+        (testing "test that disable_links: nil will keep links in the email subscription"
+          (is (true? (has-link? (assoc pulse :disable_links nil)))))
+        (testing "test that disable_links: true will disable all links in the email subscription"
+          (is (false? (has-link? pulse))))))))
+
 (deftest attachments-test
   (tests!
    {:card (pulse.test-util/checkins-query-card {})}
@@ -1138,7 +1211,6 @@
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/csv-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
-
    "xlsx"
    {:pulse-card {:include_xls true}
     :assert
@@ -1148,7 +1220,6 @@
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/xls-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
-
    "no result should not include csv"
    {:card {:dataset_query (mt/mbql-query venues {:filter [:= $id -1]})}
     :pulse-card {:include_csv true}
@@ -1162,6 +1233,45 @@
                                                 pulse.test-util/png-attachment]})
               (mt/summarize-multipart-single-email email
                                                    #"Aviary KPIs"))))}}))
+
+(deftest dashboard-sub-pivot-csv-attachment-test
+  (testing "PulseCard.pivot_results true produces a pivoted (not flat) CSV attachment (#49525)"
+    (let [{:keys [dataset_query visualization_settings]} (api.pivots/pivot-card)
+          header-col-count (fn [pivot?]
+                             (let [col-count (atom nil)]
+                               (do-test!
+                                {:card       {:dataset_query          dataset_query
+                                              :display                :pivot
+                                              :visualization_settings visualization_settings}
+                                 :dashcard   {:visualization_settings visualization_settings}
+                                 :pulse-card {:include_csv   true
+                                              :pivot_results pivot?}
+                                 :assert
+                                 {:email
+                                  (fn [_ [email]]
+                                    (let [csv-part (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+                                      (reset! col-count (-> csv-part :content slurp str/split-lines first (str/split #",") count))))}})
+                               @col-count))]
+      (is (not= (header-col-count true) (header-col-count false))
+          "the pivoted CSV header shape must differ from the flat CSV header shape"))))
+
+(deftest dashboard-subscription-email-branding-respects-whitelabel-test
+  (testing "the 'Made with Metabase' footer in dashboard subscription emails respects the :whitelabel premium feature"
+    (let [mp            (mt/metadata-provider)
+          query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          has-branding? (fn [email] (str/includes? (-> email :message first :content) "Made with"))]
+      (mt/with-premium-features #{}
+        (do-test!
+         {:card   {:dataset_query query}
+          :assert {:email (fn [_ [email]] (is (true? (has-branding? email))))}}))
+      ;; Whitelabeling is only wired up in EE builds (`enable-whitelabeling?` is gated on
+      ;; `config/ee-available?`), so `:whitelabel` can never hide the footer on OSS builds.
+      ;; The EE app-db jobs run this same file with EE on the classpath and cover the hidden case.
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:whitelabel}
+         (do-test!
+          {:card   {:dataset_query query}
+           :assert {:email (fn [_ [email]] (is (false? (has-branding? email))))}}))))))
 
 (deftest multi-series-test
   (mt/with-temp
@@ -1245,7 +1355,7 @@
                                                                                (str "metabase-test" (random/random-name)))]
                                                               (.mkdirs dir)
                                                               dir))
-                  notification.payload.execute/rows-to-disk-threadhold 1
+                  notification.payload.execute/cells-to-disk-threshold 1
                   channel/send!                      (fn [& _args]
                                                        (testing "sanity check that there are files there to cleanup"
                                                          (is (not-empty (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))]
@@ -1260,9 +1370,9 @@
 (deftest dashboard-with-rows-saved-to-disk-test
   (testing "whether the rows of a dashboard saved to disk or in memory, all channels should work"
     (doseq [limit [1 #_10]]
-      (with-redefs [notification.payload.execute/rows-to-disk-threadhold 5]
+      (with-redefs [notification.payload.execute/cells-to-disk-threshold 5]
         (notification.tu/with-channel-fixtures [:channel/slack]
-          (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threadhold)
+          (testing (if (> limit @#'notification.payload.execute/cells-to-disk-threshold)
                      "dashboard has rows saved to disk"
                      "dashboard has rows saved in memory")
             (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
@@ -1290,7 +1400,6 @@
                        (mt/summarize-multipart-single-email
                         (first (:channel/email pulse-results))
                         #"Aviary KPIs")))
-
                 (is (=? {:channel "#general",
                          :blocks (default-slack-blocks dashboard-id [card-id])}
                         (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results)))))))))))))
@@ -1323,3 +1432,161 @@
               (first (:channel/email pulse-results))
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
+
+(defn- pdf->text
+  "All text extracted from the rendered PDF `bytes`. Card titles/headings are drawn as native, selectable text, so a
+  card that was rendered leaves its title here and an omitted card leaves nothing."
+  ^String [^bytes pdf-bytes]
+  (with-open [doc (org.apache.pdfbox.Loader/loadPDF pdf-bytes)]
+    (.getText (org.apache.pdfbox.text.PDFTextStripper.) doc)))
+
+(deftest dashboard-pdf-hides-empty-cards-test
+  (testing "PDF export omits a dashcard with `card.hide_empty` when it has no results, leaving its grid space blank (UXW-4706)"
+    (mt/with-temp [:model/Card          {full-id :id}  {:name "Has Data Card" :dataset_query (mt/mbql-query venues)}
+                   :model/Card          {empty-id :id} {:name          "Hidden Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Hide-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id full-id  :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 8 :size_x 8 :size_y 4
+                                           :visualization_settings {:card.hide_empty true}}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Has Data Card")
+            "the card with results is rendered")
+        (is (not (str/includes? text "Hidden Empty Card"))
+            "the empty card with card.hide_empty is omitted from the PDF"))))
+  (testing "an empty card WITHOUT card.hide_empty is still rendered (shows the no-results placeholder)"
+    (mt/with-temp [:model/Card          {empty-id :id} {:name          "Shown Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Show-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Shown Empty Card")
+            "without the setting, the empty card still appears")
+        (is (str/includes? text "No results")
+            "and shows the no-results placeholder rather than being hidden")))))
+
+(deftest dashboard-sub-include-pdf-test
+  (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
+    (let [render-args (atom nil)]
+      ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                      (reset! render-args {:dashboard-id dashboard-id
+                                           :user-id      user-id
+                                           :parameters   parameters
+                                           :parts        parts})
+                      (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"
+                                                         :details      {:include_pdf true}}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (testing "renderer is called with the subscription's dashboard id and resolved parameters"
+              (is (= dashboard-id (:dashboard-id @render-args)))
+              (is (= [] (:parameters @render-args))))
+            (testing "the already-executed dashboard parts are handed to the renderer so queries aren't re-run"
+              (is (some #(= :card (:type %))
+                        (:parts @render-args))))
+            (let [message  (:message (first (:channel/email pulse-results)))
+                  pdf-part (some #(when (= "application/pdf" (:content-type %)) %) message)]
+              (testing "the PDF attachment is named after the dashboard"
+                (is (= "Aviary KPIs.pdf" (:file-name pdf-part)))
+                (is (= java.net.URL (class (:content pdf-part)))))
+              (testing "the email still includes its HTML body and the chart image"
+                (is (some #(= "image/png" (:content-type %)) message))
+                (is (some #(= "text/html; charset=utf-8" (:type %)) message))))))))))
+
+(deftest dashboard-sub-no-pdf-by-default-test
+  (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
+    (let [called? (atom false)]
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [& _] (reset! called? true) (byte-array 0))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (is (false? @called?))
+            (is (= (rasta-dashsub-message
+                    {:message [{"Aviary KPIs" true}
+                               pulse.test-util/png-attachment]})
+                   (mt/summarize-multipart-single-email
+                    (first (:channel/email pulse-results))
+                    #"Aviary KPIs")))))))))
+
+(deftest dashboard-sub-slack-include-pdf-test
+  (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general" :include_pdf true}}]
+        (let [render-args (atom nil)]
+          (with-redefs [channel.render/render-dashboard-to-pdf
+                        (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id
+                                               :parameters parameters :parts parts})
+                          (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+            (pulse.test-util/slack-test-setup!
+             (let [results (pulse.test-util/with-captured-channel-send-messages!
+                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                   msg     (first (:channel/slack results))]
+               (testing "renderer is called with the subscription's dashboard id"
+                 (is (= dashboard-id (:dashboard-id @render-args))))
+               (testing "the slack message carries the rendered PDF"
+                 (is (bytes? (-> msg :pdf :bytes)))
+                 (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))
+               (testing "it's a single message: no chart-image blocks, title/link ride along as the PDF caption"
+                 (is (empty? (:blocks msg)))
+                 (is (str/includes? (-> msg :pdf :comment) "Aviary KPIs")))))))))))
+
+(deftest dashboard-sub-slack-no-pdf-sends-images-test
+  (testing "Without :include_pdf, Slack still sends chart images and no PDF"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}}]
+        (pulse.test-util/slack-test-setup!
+         (let [results (pulse.test-util/with-captured-channel-send-messages!
+                         (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+               msg     (first (:channel/slack results))]
+           (is (nil? (:pdf msg)))
+           (is (some #(= "image" (:type %)) (:blocks msg)))))))))

@@ -1,0 +1,30 @@
+import { memo } from "react";
+import { t } from "ttag";
+
+import D from "metabase/reference/components/Detail.module.css";
+import { QueryButton } from "metabase/reference/components/QueryButton";
+import type { IconName } from "metabase-types/api";
+
+import S from "./UsefulQuestions.module.css";
+
+interface UsefulQuestionsProps {
+  questions: { text: string; icon: IconName; link: string }[];
+}
+
+const UsefulQuestions = ({ questions }: UsefulQuestionsProps) => (
+  <div className={D.detail}>
+    <div className={D.detailBody}>
+      <div className={D.detailTitle}>
+        <span>{t`Potentially useful questions`}</span>
+      </div>
+      <div className={S.usefulQuestions}>
+        {questions.map((question, index) => (
+          <QueryButton key={index} {...question} />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default memo(UsefulQuestions);

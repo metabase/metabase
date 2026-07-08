@@ -15,22 +15,24 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding: 0.75rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   background-color: ${(props) =>
-    props.readOnly ? "var(--mb-color-bg-light)" : "var(--mb-color-bg-white)"};
+    props.readOnly
+      ? "var(--mb-color-background_page-secondary)"
+      : "var(--mb-color-background_page-primary)"};
   outline: none;
   text-align: inherit;
 
   &:focus,
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
     transition: border 300ms ease-in-out;
   }
 
-  ${focusOutlineStyle("brand")};
+  ${focusOutlineStyle("core-brand")};
 
   &:disabled {
     pointer-events: none;
@@ -40,7 +42,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   ${(props) =>
     props.hasError &&
     css`
-      border-color: var(--mb-color-error);
+      border-color: var(--mb-color-feedback-negative);
     `};
 
   ${(props) =>

@@ -4,21 +4,11 @@ import type * as Lib from "metabase-lib";
 import { NumberFingerprint } from "./NumberFingerprint";
 
 type SetupOpts = {
-  fingerprintTypeInfo?: {
-    avg: unknown;
-    min: unknown;
-    max: unknown;
-  };
+  fingerprintTypeInfo?: Lib.NumberFingerprintDisplayInfo;
 };
 
 function setup({ fingerprintTypeInfo }: SetupOpts) {
-  render(
-    <NumberFingerprint
-      fingerprintTypeInfo={
-        fingerprintTypeInfo as Lib.NumberFingerprintDisplayInfo
-      }
-    />,
-  );
+  render(<NumberFingerprint fingerprintTypeInfo={fingerprintTypeInfo} />);
 }
 
 describe("NumberFingerprint", () => {

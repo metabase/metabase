@@ -9,8 +9,9 @@ import { DashboardParameterList } from "metabase/dashboard/components/DashboardP
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Icon, Menu } from "metabase/ui";
 
-interface CollapsibleDashboardParameterListProps
-  extends ComponentProps<typeof DashboardParameterList> {
+interface CollapsibleDashboardParameterListProps extends ComponentProps<
+  typeof DashboardParameterList
+> {
   isCollapsed: boolean;
   triggerClassName?: string;
 }
@@ -88,7 +89,13 @@ export const CollapsibleDashboardParameterList = forwardRef<
     <>
       {/* Invisible expanded parameter list for measurements */}
       <div
-        className={cx(CS.fixed, CS.hidden, CS.pointerEventsNone, CS.fullWidth)}
+        className={cx(
+          CS.fixed,
+          CS.hidden,
+          CS.pointerEventsNone,
+          CS.fullWidth,
+          CS.left,
+        )}
       >
         <DashboardParameterList
           {...parametersListCommonProps}

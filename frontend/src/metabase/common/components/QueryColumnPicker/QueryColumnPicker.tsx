@@ -10,20 +10,22 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import { color } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
-import { isNotNull } from "metabase/lib/types";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { color } from "metabase/ui/utils/colors";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
-import { BucketPickerPopover } from "./BucketPickerPopover";
+import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
 
 const CUSTOM_EXPRESSION_SECTION_KEY = "custom-expression";
@@ -36,7 +38,7 @@ export type ColumnListItem = Lib.ColumnDisplayInfo & {
 
 type ExpressionClauseItem = {
   type: "expression-clause";
-  clause: DefinedClauseName;
+  clause: Lib.DefinedClauseName;
   displayName: string;
 };
 
@@ -61,7 +63,7 @@ export interface QueryColumnPickerProps {
   /**
    * Set onSelectExpression to allow custom expressions to be selected
    */
-  onSelectExpression?: (clause?: DefinedClauseName) => void;
+  onSelectExpression?: (clause?: Lib.DefinedClauseName) => void;
   expressionSectionIcon?: IconName;
   onClose?: () => void;
   "data-testid"?: string;
@@ -69,6 +71,8 @@ export interface QueryColumnPickerProps {
   hasInitialFocus?: boolean;
   alwaysExpanded?: boolean;
   disableSearch?: boolean;
+  /** Hide section/group names (table names) in the picker */
+  hideSectionNames?: boolean;
 }
 
 const SEARCH_PROP = [
@@ -87,7 +91,7 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   checkIsColumnSelected,
   onSelect,
   onSelectSection,
@@ -99,7 +103,10 @@ export function QueryColumnPicker({
   hasInitialFocus = true,
   alwaysExpanded,
   disableSearch,
+  hideSectionNames = false,
 }: QueryColumnPickerProps) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
   const withCustomExpressions = onSelectExpression != null;
   const [isSearching, setIsSearching] = useState(false);
 
@@ -117,12 +124,12 @@ export function QueryColumnPicker({
           type: "column" as const,
           ...columnInfo,
           column,
-          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
+          combinedDisplayName: `${tc(columnInfo.table?.displayName) ?? ""} ${tc(columnInfo.displayName)}`,
         };
       });
 
       return {
-        name: groupInfo.displayName,
+        name: hideSectionNames ? undefined : tc(groupInfo.displayName),
         icon: getColumnGroupIcon(groupInfo),
         items,
       };
@@ -162,6 +169,8 @@ export function QueryColumnPicker({
     withCustomExpressions,
     expressionSectionIcon,
     isSearching,
+    tc,
+    hideSectionNames,
   ]);
 
   const handleSelectSection = useCallback(
@@ -258,7 +267,7 @@ export function QueryColumnPicker({
 
       return (
         (hasBinning || hasTemporalBucketing) && (
-          <BucketPickerPopover
+          <ColumnBucketPickerPopover
             classNames={{
               root: S.itemWrapper,
               /*
@@ -313,6 +322,18 @@ export function QueryColumnPicker({
     [checkIsColumnSelected],
   );
 
+  const renderItemName = useCallback(
+    (item: Item) =>
+      isSearching
+        ? item.displayName
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
+            tc,
+            locale,
+          }),
+    [tc, locale, isSearching],
+  );
+
   return (
     <DelayGroup>
       <AccordionList<Item, QueryColumnPickerSection>
@@ -360,10 +381,6 @@ function getColumnWithoutBucketing(
     return Lib.withBinning(column, null);
   }
   return column;
-}
-
-function renderItemName(item: Item) {
-  return item.displayName;
 }
 
 function renderItemWrapper(content: ReactNode) {

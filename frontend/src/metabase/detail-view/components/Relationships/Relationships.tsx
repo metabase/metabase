@@ -2,36 +2,24 @@ import { type ReactNode, useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { type BoxProps, Stack, Text } from "metabase/ui";
-import type {
-  DatasetColumn,
-  ForeignKey,
-  RowValues,
-  Table,
-} from "metabase-types/api";
+import type { ForeignKey } from "metabase-types/api";
 
 import { Relationship } from "./Relationship";
-import { getUrl } from "./utils";
 
 interface Props {
-  columns: DatasetColumn[];
-  row: RowValues;
   rowId: string | number;
   rowName: ReactNode;
-  table: Table;
   tableForeignKeys: ForeignKey[];
   onClick?: () => void;
 }
 
 export function Relationships({
-  columns,
-  row,
   rowId,
   rowName,
-  table,
   tableForeignKeys,
   onClick,
 }: Props & BoxProps): JSX.Element | null {
-  const sortedForeignTables = useMemo(
+  const sortedForeignKeys = useMemo(
     () =>
       tableForeignKeys.toSorted((a, b) => {
         const aDisplayName = a.origin?.table?.display_name ?? "";
@@ -58,14 +46,12 @@ export function Relationships({
       </Text>
 
       <Stack gap="md">
-        {sortedForeignTables.map((fk) => {
+        {sortedForeignKeys.map((fk) => {
           return (
             <Relationship
               key={`${fk.origin_id}-${fk.destination_id}`}
               fk={fk}
-              href={getUrl({ columns, row, table, fk })}
               rowId={rowId}
-              table={table}
               onClick={onClick}
             />
           );

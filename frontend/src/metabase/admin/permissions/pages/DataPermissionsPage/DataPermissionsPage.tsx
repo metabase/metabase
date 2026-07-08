@@ -1,23 +1,25 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 import { useAsync } from "react-use";
-import _ from "underscore";
 
-import { useTableListQuery } from "metabase/common/hooks";
-import Databases from "metabase/entities/databases";
-import Groups from "metabase/entities/groups";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
+import {
+  skipToken,
+  useGetDatabaseMetadataQuery,
+  useListDatabasesQuery,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
+import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, Group, PermissionsGraph } from "metabase-types/api";
+import type { DatabaseId, GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import {
-  LOAD_DATA_PERMISSIONS_FOR_GROUP,
+  loadDataPermissionsForGroup,
   restoreLoadedPermissions,
   saveDataPermissions,
 } from "../../permissions";
@@ -29,55 +31,69 @@ type DataPermissionsPageProps = {
   params: {
     databaseId: DatabaseId;
   };
-  databases: Database[];
-  groups: Group[];
 };
+
+const EMPTY_GROUP_LIST: GroupInfo[] = [];
+const EMPTY_DATABASE_LIST: Database[] = [];
 
 function DataPermissionsPage({
   children,
   route,
   params,
-  databases,
-  groups,
 }: DataPermissionsPageProps) {
+  const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
+  const databases = useSelector(
+    (state) =>
+      getMetadataUnfiltered(state).databasesList() ?? EMPTY_DATABASE_LIST,
+  );
+  const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
+    {},
+  );
+  const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDirty);
   const diff = useSelector((state) => getDiff(state, { databases, groups }));
   const showSplitPermsModal = useSelector((state) =>
     getSetting(state, "show-updated-permission-modal"),
   );
-
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
   const savePermissions = () => dispatch(saveDataPermissions());
 
   const { loading: isLoadingAllUsers } = useAsync(async () => {
+    if (isLoadingGroups) {
+      return;
+    }
     const allUsers = groups.find(isDefaultGroup);
-    const result = await PermissionsApi.graphForGroup({
-      groupId: allUsers?.id,
-    });
-    await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
-  }, []);
+    await dispatch(loadDataPermissionsForGroup(allUsers?.id));
+  }, [isLoadingGroups]);
 
   const { loading: isLoadingAdminstrators } = useAsync(async () => {
+    if (isLoadingGroups) {
+      return;
+    }
     const admins = groups.find(isAdminGroup);
-    const result = await PermissionsApi.graphForGroup({
-      groupId: admins?.id,
-    });
-    await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
-  }, []);
+    await dispatch(loadDataPermissionsForGroup(admins?.id));
+  }, [isLoadingGroups]);
 
-  const { isLoading: isLoadingTables } = useTableListQuery({
-    query: {
-      dbId: params.databaseId,
-      include_hidden: true,
-      remove_inactive: true,
-      skip_fields: true,
-    },
-    enabled: params.databaseId !== undefined,
-  });
+  const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
+    params.databaseId !== undefined
+      ? {
+          id: params.databaseId,
+          include_hidden: true,
+          remove_inactive: true,
+          skip_fields: true,
+        }
+      : skipToken,
+  );
 
-  if (isLoadingAllUsers || isLoadingAdminstrators || isLoadingTables) {
+  if (
+    isLoadingDatabases ||
+    isLoadingGroups ||
+    isLoadingAllUsers ||
+    isLoadingAdminstrators ||
+    isLoadingTables
+  ) {
     return (
       <Center h="100%">
         <Loader size="lg" />
@@ -90,7 +106,7 @@ function DataPermissionsPage({
       tab="data"
       onLoad={resetPermissions}
       onSave={savePermissions}
-      diff={diff as PermissionsGraph}
+      diff={diff}
       isDirty={isDirty}
       route={route}
       helpContent={<DataPermissionsHelp />}
@@ -102,9 +118,4 @@ function DataPermissionsPage({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Groups.loadList(),
-  Databases.loadList({
-    selectorName: "getListUnfiltered",
-  }),
-)(DataPermissionsPage);
+export default DataPermissionsPage;

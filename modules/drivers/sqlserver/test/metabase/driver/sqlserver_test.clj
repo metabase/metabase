@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sqlserver-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,25 +12,38 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [next.jdbc]))
+   [next.jdbc]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use TIMEFROMPARTS and "
+                "not produce a DATETIME2FROMPARTS result that requires a date component")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["TIMEFROMPARTS(DATEPART(hour, \"test_col\"), 0, 0, 0, 0)"]
+             (sql.qp/format-honeysql :sqlserver (sql.qp/date :sqlserver :hour expr)))))))
 
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
@@ -45,11 +60,11 @@
                              :source-query {:source-table 1
                                             :order-by     [[:asc [:field 2 nil]]]
                                             :limit        10}}]}]
-      (is (query= expected
-                  (#'sqlserver/fix-order-bys original)))
+      (is (= expected
+             (#'sqlserver/fix-order-bys original)))
       (testing "Inside `:source-query`"
-        (is (query= {:source-query expected}
-                    (#'sqlserver/fix-order-bys {:source-query original})))))))
+        (is (= {:source-query expected}
+               (#'sqlserver/fix-order-bys {:source-query original})))))))
 
 (deftest ^:parallel fix-order-bys-test-2
   (testing "Add limit for :source-query order bys"
@@ -57,21 +72,21 @@
       (let [original {:source-table 1
                       :order-by     [[:asc 2]]}]
         (testing "Not in a source query -- don't do anything"
-          (is (query= original
-                      (#'sqlserver/fix-order-bys original))))
+          (is (= original
+                 (#'sqlserver/fix-order-bys original))))
         (testing "In source query -- add `:limit`"
-          (is (query= {:source-query (assoc original :limit limit/absolute-max-results)}
-                      (#'sqlserver/fix-order-bys {:source-query original}))))
+          (is (= {:source-query (assoc original :limit limit/absolute-max-results)}
+                 (#'sqlserver/fix-order-bys {:source-query original}))))
         (testing "In source query in source query-- add `:limit` at both levels"
-          (is (query= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
-                                      :order-by     [[:asc [:field 1]]]
-                                      :limit        limit/absolute-max-results}}
-                      (#'sqlserver/fix-order-bys {:source-query {:source-query original
-                                                                 :order-by     [[:asc [:field 1]]]}}))))
+          (is (= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
+                                 :order-by     [[:asc [:field 1]]]
+                                 :limit        limit/absolute-max-results}}
+                 (#'sqlserver/fix-order-bys {:source-query {:source-query original
+                                                            :order-by     [[:asc [:field 1]]]}}))))
         (testing "In source query inside source query for join -- add `:limit`"
-          (is (query= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
-                      (#'sqlserver/fix-order-bys
-                       {:joins [{:source-query {:source-query original}}]}))))))))
+          (is (= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
+                 (#'sqlserver/fix-order-bys
+                  {:joins [{:source-query {:source-query original}}]}))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -117,12 +132,43 @@
                                                     :port               1433
                                                     :additional-options "trustServerCertificate=false"})))))
 
+(deftest ^:parallel reject-details-with-dangerous-additional-options-test
+  (mt/test-driver :sqlserver
+    (let [details (:details (mt/db))]
+      (testing "db details with potentially dangerous additional options are rejected"
+        (are [bad-option] (let [bad-opts-details (assoc details :additional-options bad-option)
+                                bad-host-details (update details :host str ";" bad-option)]
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-opts-details)))
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-host-details))))
+          "socketFactoryClass=bad.Factory"
+          "socketFactoryConstructorArg=bad"
+          "trustManagerClass=bad.TrustManager"
+          "trustManagerConstructorArg=/etc/passwd"
+          "accessTokenCallbackClass=bad.Callback"
+          "socketfactoryclass=bad.Factory"
+          "SOCKETFACTORYCLASS=bad.Factory"
+          "socketFactoryClass=bad.Factory;socketFactoryConstructorArg=bad"
+          "socketFactoryClass=bad.Factory;trustServerCertificate=false"
+          "trustServerCertificate=false;socketFactoryClass=bad.Factory"))
+      (testing "db details without potentially dangerous options are accepted"
+        (are [options] (let [details (assoc details :additional-options options)]
+                         (is (true? (driver/can-connect? :sqlserver details))))
+          nil
+          ""
+          " "
+          "trustServerCertificate=false"
+          "trustStore=/path/to/store;trustStorePassword=password;trustStoreType=pkcs12")))))
+
 (deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
       (is (= {:query ["SELECT"
-                      "  TOP(1048575) \"source\".\"name\" AS \"name\""
+                      "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
                       "  ("
                       "    SELECT"
@@ -131,7 +177,7 @@
                       "      \"dbo\".\"venues\""
                       "    ORDER BY"
                       "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"source\""]
+                      "  ) AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -145,7 +191,7 @@
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
       (is (= {:query  ["SELECT"
-                       "  TOP(10) \"source\".\"name\" AS \"name\""
+                       "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
                        "  ("
                        "    SELECT"
@@ -154,7 +200,7 @@
                        "      \"dbo\".\"venues\""
                        "    ORDER BY"
                        "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"source\""]
+                       "  ) AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -168,34 +214,34 @@
 (deftest ^:parallel dont-add-top-clauses-for-top-level-test
   (mt/test-driver :sqlserver
     (testing (str "We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because "
-                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL"))
-    ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
-    ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
-    (let [preprocessed (-> (mt/mbql-query venues
-                             {:source-query {:source-table $$venues
-                                             :fields       [$name]
-                                             :order-by     [[:asc $id]]}
-                              :order-by     [[:asc $id]]})
-                           qp.preprocess/preprocess
-                           (lib/limit nil))]
-      (mt/with-metadata-provider (mt/id)
-        (is (= {:query  ["SELECT"
-                         "  \"source\".\"name\" AS \"name\""
-                         "FROM"
-                         "  ("
-                         "    SELECT"
-                         "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                         "    FROM"
-                         "      \"dbo\".\"venues\""
-                         "    ORDER BY"
-                         "      \"dbo\".\"venues\".\"id\" ASC"
-                         "  ) AS \"source\""
-                         "ORDER BY"
-                         "  \"source\".\"id\" ASC"]
-                :params nil}
-               (-> (driver/mbql->native :sqlserver preprocessed)
-                   (update :query (fn [sql]
-                                    (str/split-lines (driver/prettify-native-form :sqlserver sql)))))))))))
+                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL")
+      ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
+      ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
+      (let [preprocessed (-> (mt/mbql-query venues
+                               {:source-query {:source-table $$venues
+                                               :fields       [$name]
+                                               :order-by     [[:asc $id]]}
+                                :order-by     [[:asc $id]]})
+                             qp.preprocess/preprocess
+                             (lib/limit nil))]
+        (mt/with-metadata-provider (mt/id)
+          (is (= {:query  ["SELECT"
+                           "  \"__mb_source\".\"name\" AS \"name\""
+                           "FROM"
+                           "  ("
+                           "    SELECT"
+                           "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                           "    FROM"
+                           "      \"dbo\".\"venues\""
+                           "    ORDER BY"
+                           "      \"dbo\".\"venues\".\"id\" ASC"
+                           "  ) AS \"__mb_source\""
+                           "ORDER BY"
+                           "  \"__mb_source\".\"id\" ASC"]
+                  :params nil}
+                 (-> (driver/mbql->native :sqlserver preprocessed)
+                     (update :query (fn [sql]
+                                      (str/split-lines (driver/prettify-native-form :sqlserver sql))))))))))))
 
 (deftest ^:parallel max-results-should-actually-work-test
   (mt/test-driver :sqlserver
@@ -644,6 +690,85 @@
                   (is (= expected-types
                          (map :base_type results-metadata-cols))))))))))))
 
+(deftest ^:parallel predicate-expression-in-custom-column-test
+  (mt/test-driver :sqlserver
+    (let [mp    (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          id (lib.metadata/field mp (mt/id :products :id))
+          price (lib.metadata/field mp (mt/id :products :price))
+          category (lib.metadata/field mp (mt/id :products :category))]
+      (testing "predicate expression with >"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "price_gt60" (lib/> price 60))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "price_gt60")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [2 "Doohickey" 70.08 true]
+                  [3 "Doohickey" 35.39 false]
+                  [4 "Doohickey" 73.99 true]
+                  [5 "Gadget" 82.75 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with contains"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "contains_get" (lib/contains category "get"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "contains_get")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [2 "Doohickey" 70.08 false]
+                  [3 "Doohickey" 35.39 false]
+                  [4 "Doohickey" 73.99 false]
+                  [5 "Gadget" 82.75 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with not"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "not_predicate" (lib/not (lib/> price 60)))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "not_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 true]
+                  [2 "Doohickey" 70.08 false]
+                  [3 "Doohickey" 35.39 true]
+                  [4 "Doohickey" 73.99 false]
+                  [5 "Gadget" 82.75 false]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with or, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "or_predicate" (lib/or (lib/> price 60) (lib/contains category "get")))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "or_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 true]
+                  [9 "Widget" 58.31 true]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with and, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "and_predicate" (lib/and (lib/> price 60) (lib/contains category "get")))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "and_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 true]
+                  [9 "Widget" 58.31 false]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "nested predicate expression, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "nested_predicate" (lib/and (lib/and (lib/> price 30) (lib/< price 60))
+                                                                    (lib/or (lib/contains category "wid")
+                                                                            (lib/contains category "gad"))))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "nested_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 false]
+                  [9 "Widget" 58.31 true]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 false]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
     (testing "Should match datetime fields even in non-default timezone (#30454)"
@@ -709,19 +834,20 @@
 (deftest ^:parallel default-database-role-test
   (testing "SQL Server default database role handling"
     (testing "returns role when explicitly configured"
-      (let [database {:details {:user "login_user" :role "db_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "returns nil when no role is configured"
-      (let [database {:details {:user "login_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "returns nil even when user is 'sa'"
-      (let [database {:details {:user "sa"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "ignores user field and only uses role field"
-      (let [database {:details {:user "login_user" :role "impersonation_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user" :role "impersonation_user"}}]
         (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
 
 (deftest ^:parallel wtf-test
@@ -742,7 +868,6 @@
                                          {driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
                                           driver-api/qp.add.desired-alias "name"}]]}}]
-
         (is (= {:where
                 [:=
                  [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
@@ -756,3 +881,104 @@
                 {:filter [:expression "NameEquals" {:base-type                      :type/Boolean
                                                     driver-api/qp.add.source-table  driver-api/qp.add.none
                                                     driver-api/qp.add.desired-alias nil}]})))))))
+
+(mt/defdataset ^:private bigint-identity-data
+  [["bigint_identity_test"
+    [{:field-name "id", :base-type {:native "BIGINT IDENTITY(1,1)"}, :pk? true}
+     {:field-name "name", :base-type :type/Text}]
+    []]])
+
+(deftest bigint-identity-base-type-test
+  (testing "BIGINT IDENTITY columns should sync as :type/BigInteger, not :type/* (#68631)"
+    (mt/test-driver :sqlserver
+      (mt/dataset bigint-identity-data
+        (is (= :type/BigInteger
+               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct SQL Server types"
+    (are [base-type expected] (= expected (driver/type->database-type :sqlserver base-type))
+      :type/Boolean            [:bit]
+      :type/Date               [:date]
+      :type/DateTime           [:datetime2]
+      :type/DateTimeWithTZ     [:datetimeoffset]
+      :type/Decimal            [:decimal]
+      :type/Float              [:float]
+      :type/Integer            [:int]
+      :type/Number             [:bigint]
+      :type/Text               [:text]
+      :type/Time               [:time]
+      :type/UUID               [:uniqueidentifier])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :sqlserver
+    (testing "compile-transform creates SELECT INTO"
+      ;; Both formats are valid T-SQL: double-quoted identifiers (Macaw/JSQLParser)
+      ;; and bracketed identifiers (SQLGlot). SQL Server accepts both.
+      (is (contains? #{["SELECT * INTO \"PRODUCTS_COPY\" FROM products" nil]
+                       ["SELECT * INTO [PRODUCTS_COPY] FROM products" nil]}
+                     (driver/compile-transform :sqlserver {:query {:query "SELECT * FROM products"}
+                                                           :output-table "PRODUCTS_COPY"}))))
+    (testing "compile-insert generates INSERT INTO"
+      (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
+             (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}
+                                                :output-table "PRODUCTS_COPY"}))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :sqlserver
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver (mt/db) nil
+       (fn [conn]
+         (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
+           (is (seq privileges) "Should return at least one table")
+           (doseq [priv privileges]
+             (is (= #{:role :schema :table :select :update :insert :delete}
+                    (set (keys priv)))
+                 "Should have all required keys")
+             (is (nil? (:role priv)))
+             (is (string? (:schema priv)))
+             (is (string? (:table priv)))
+             (is (boolean? (:select priv)))
+             (is (boolean? (:update priv)))
+             (is (boolean? (:insert priv)))
+             (is (boolean? (:delete priv))))
+           (testing "Test tables should appear with at least SELECT privilege"
+             (let [dbo-orders (filter (fn [priv]
+                                        (and (= "dbo" (:schema priv))
+                                             (= "ORDERS" (u/upper-case-en (:table priv)))))
+                                      privileges)]
+               (when (seq dbo-orders)
+                 (is (every? :select dbo-orders)))))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (mt/test-driver :sqlserver
+    (is (= "REVERT; EXECUTE AS USER = 'role''; SELECT sleep(10); --';"
+           (sql-jdbc.execute/do-with-connection-with-options
+            :sqlserver (mt/id) nil
+            (fn [conn]
+              (driver.sql-jdbc/set-role-statement :sqlserver conn "role'; SELECT sleep(10); --")))))))
+
+(mt/defdataset ^:private datetime-offset
+  [["datetime-offset"
+    [{:field-name "start", :base-type {:native "DATETIMEOFFSET"}}
+     {:field-name "end", :base-type {:native "DATETIMEOFFSET"}}]
+    [["2025-10-10 09:00:00 +02:00" "2025-10-10 10:00:00 +02:00"]
+     ["2025-10-11 09:15:00 +02:00" "2025-10-11 09:30:00 +02:00"]]]])
+
+(deftest ^:parallel datetime-diff-with-datetime-offset-test
+  (mt/test-driver :sqlserver
+    (mt/dataset datetime-offset
+      (let [mp (mt/metadata-provider)
+            datetime-table (lib.metadata/table mp (mt/id :datetime-offset))
+            start-col (lib.metadata/field mp (mt/id :datetime-offset :start))
+            end-col (lib.metadata/field mp (mt/id :datetime-offset :end))
+            diff-minutes (lib/expression-clause :datetime-diff
+                                                [start-col end-col :minute]
+                                                nil)]
+        (is (= [[1 "2025-10-10T07:00:00Z" "2025-10-10T08:00:00Z" 60]
+                [2 "2025-10-11T07:15:00Z" "2025-10-11T07:30:00Z" 15]]
+               (-> (lib/query mp datetime-table)
+                   (lib/expression "diff-minutes" diff-minutes)
+                   (qp/process-query)
+                   (mt/rows))))))))

@@ -65,16 +65,14 @@
             unhashed-key (u.secret/secret key)
             _            (when-not (and (<= 11 (count key) 254)
                                         (re-matches #"mb_[A-Za-z0-9+/=]+" key))
-                           (throw (ex-info (format "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'.")
+                           (throw (ex-info "Invalid API key format. Key must be between 11-254 characters and start with 'mb_'."
                                            {:name name})))
             prefix       (api-key/prefix (u.secret/expose unhashed-key))
             creator      (get-admin-user-by-email creator)]
-
         ;; Check if there's an existing API key with the same prefix
         (when (t2/exists? :model/ApiKey :key_prefix prefix)
           (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
                           {:name name :prefix prefix})))
-
         (log/info (u/format-color :green "Creating new API key %s" (pr-str name)))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))

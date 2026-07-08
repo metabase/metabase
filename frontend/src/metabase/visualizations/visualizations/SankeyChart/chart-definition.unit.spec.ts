@@ -1,3 +1,4 @@
+import { checkNotNull } from "metabase/utils/types";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -6,6 +7,8 @@ import {
 } from "metabase-types/api/mocks/dataset";
 
 import { SANKEY_CHART_DEFINITION } from "./chart-definition";
+
+const isSensible = checkNotNull(SANKEY_CHART_DEFINITION.isSensible);
 
 const columns = [
   createMockColumn({
@@ -37,7 +40,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columns,
       });
 
-      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(true);
+      expect(isSensible(data)).toBe(true);
     });
 
     it("should return false when there are no rows", () => {
@@ -46,7 +49,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columns,
       });
 
-      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(isSensible(data)).toBe(false);
     });
 
     it("should return false when there are not enough columns", () => {
@@ -55,7 +58,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columns.slice(0, 2),
       });
 
-      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(isSensible(data)).toBe(false);
     });
 
     it("should return false when there are not enough dimension columns", () => {
@@ -86,7 +89,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columnsWithoutDimensions,
       });
 
-      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(isSensible(data)).toBe(false);
     });
 
     it("should return false when there are not enough metric columns", () => {
@@ -116,7 +119,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columnsWithoutMetrics,
       });
 
-      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(isSensible(data)).toBe(false);
     });
 
     it("should return false when data contains cycles", () => {
@@ -129,7 +132,7 @@ describe("SANKEY_CHART_DEFINITION", () => {
         cols: columns,
       });
 
-      expect(SANKEY_CHART_DEFINITION.isSensible(data)).toBe(false);
+      expect(isSensible(data)).toBe(false);
     });
   });
 

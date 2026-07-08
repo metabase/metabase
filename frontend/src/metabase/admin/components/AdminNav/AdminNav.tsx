@@ -1,17 +1,16 @@
 import type React from "react";
 
-import Link from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
+import { Link } from "metabase/common/components/Link";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Icon,
-  type IconName,
   NavLink,
   type NavLinkProps,
   Stack,
   type StackProps,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export const AdminNavWrapper = ({
   children,
   ...stackProps
@@ -19,15 +18,7 @@ export const AdminNavWrapper = ({
   children: React.ReactNode;
 } & StackProps) => {
   return (
-    <Stack
-      w="16rem"
-      gap={0}
-      bg="white"
-      p="md"
-      h="100%"
-      {...stackProps}
-      component="nav"
-    >
+    <Stack w="16rem" gap={0} p="md" h="100%" {...stackProps} component="nav">
       {children}
     </Stack>
   );

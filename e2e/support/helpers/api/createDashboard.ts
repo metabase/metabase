@@ -8,6 +8,7 @@ export interface DashboardDetails extends Omit<CreateDashboardRequest, "name"> {
   name?: string;
   auto_apply_filters?: Dashboard["auto_apply_filters"];
   enable_embedding?: Dashboard["enable_embedding"];
+  embedding_type?: Dashboard["embedding_type"];
   embedding_params?: Dashboard["embedding_params"];
   dashcards?: Partial<DashboardCard>[];
 }
@@ -33,6 +34,7 @@ export const createDashboard = (
     name = "Test Dashboard",
     auto_apply_filters,
     enable_embedding,
+    embedding_type,
     embedding_params,
     dashcards,
     ...restDashboardDetails
@@ -41,7 +43,7 @@ export const createDashboard = (
 
   cy.log(`Create a dashboard: ${name}`);
 
-  // For all the possible keys, refer to `src/metabase/dashboards/api.clj`
+  // For all the possible keys, refer to `src/metabase/dashboards_rest/api.clj`
   return cy
     .request<Dashboard>("POST", "/api/dashboard", {
       name,
@@ -59,6 +61,7 @@ export const createDashboard = (
         return cy.request<Dashboard>("PUT", `/api/dashboard/${body.id}`, {
           auto_apply_filters,
           enable_embedding,
+          embedding_type,
           embedding_params,
           dashcards,
         });

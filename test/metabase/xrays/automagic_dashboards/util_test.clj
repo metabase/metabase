@@ -1,4 +1,5 @@
 (ns metabase.xrays.automagic-dashboards.util-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.automagic-dashboards.util-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
@@ -19,7 +20,9 @@
               (is (=? {:id (mt/id :orders :discount)}
                       (magic.util/->field root (mt/id :orders :discount))))
               (is (=? {:id (mt/id :orders :discount)}
-                      (magic.util/->field root [:field (mt/id :orders :discount) nil]))))))))))
+                      (magic.util/->field
+                       root
+                       [:field {:lib/uuid (str (random-uuid))} (mt/id :orders :discount)]))))))))))
 
 (deftest ^:parallel ->field-test-2
   (testing "Demonstrate the stated methods in which ->fields works"
@@ -33,7 +36,9 @@
                   (is (=? {:id (mt/id :orders :discount)}
                           (magic.util/->field root (mt/id :orders :discount))))
                   (is (=? {:id (mt/id :orders :discount)}
-                          (magic.util/->field root [:field (mt/id :orders :discount) nil]))))
+                          (magic.util/->field
+                           root
+                           [:field {:lib/uuid (str (random-uuid))} (mt/id :orders :discount)]))))
                 (testing "Looking up the field by name or named field ref works,
                           returning the metadata description of the field."
                   (is (=? {:name      "DISCOUNT"
@@ -41,4 +46,6 @@
                           (magic.util/->field root "DISCOUNT"))))
                 (is (=? {:name      "DISCOUNT"
                          :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
-                        (magic.util/->field root [:field "DISCOUNT" {:base-type :type/Float}])))))))))))
+                        (magic.util/->field
+                         root
+                         [:field {:base-type :type/Float, :lib/uuid (str (random-uuid))} "DISCOUNT"])))))))))))

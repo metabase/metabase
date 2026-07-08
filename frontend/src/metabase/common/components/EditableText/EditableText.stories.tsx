@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import EditableText, { type EditableTextProps } from "./EditableText";
+import { EditableText, type EditableTextProps } from "./EditableText";
 
 export default {
   title: "Components/Text/EditableText",

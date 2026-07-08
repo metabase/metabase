@@ -1,11 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon } from "metabase/ui";
 
 import type { NotebookStepHeaderProps } from "../../../types";
+import S from "../NotebookStep.module.css";
 
 export function NotebookStepHeader({
   title,
@@ -22,7 +23,7 @@ export function NotebookStepHeader({
             CS.mlAuto,
             CS.textLight,
             CS.textMediumHover,
-            CS.hoverChild,
+            S.StepHeader,
           )}
           onClick={onRevert}
         >

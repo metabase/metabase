@@ -1,0 +1,173 @@
+# This workflow is the single source of truth for generating and updating various caches used by our CI pipeline.
+# It sets the fresh cache each Monday but provides a manual trigger to update it on-demand.
+#
+# All other jobs only restore from this cache; *they never update it*!
+# They should always use `actions/cache/restore@vX` because `actions/cache@vX` would attempt to save the cache.
+#
+# Our agreed-upon strategy is to use a deterministic cache key based on the week of the year.
+# Jobs can utilize the prior week's cache if the current week's cache is not found.
+#
+#
+# PRINCIPLES:
+#   - The cache is never wrong!
+#   - Caches are immutable once created.
+#   - Caches are for speeding up builds, not for correctness.
+#   - It is faster to download a large cache than to re-resolve missing dependencies.
+#
+#
+# DESIGN:
+#
+# 1. Prepare
+#     - A job first prepares the local environment (e.g., installs JDK, Clojure, Node.js, etc.)
+#     - This fetches the dependencies from the cache (if it exists) and warms up the local cache for this workflow.
+# 2. Resolve
+#     - The next step pre-resolves all dependencies, ensuring that the local cache is fully populated and up-to-date.
+# 3. Update
+#     - The final step saves the local cache back to GitHub Actions cache with a deterministic key.
+#     - If a cache entry already exists for that key, it is deleted first to ensure immutability.
+#
+name: Cache Generator
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays at 03:00 UTC
+  workflow_dispatch: # manually update the cache
+
+concurrency:
+  group: cache-generator
+  cancel-in-progress: true
+
+jobs:
+  get-cache-keys:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Get cache keys
+        uses: ./.github/actions/get-cache-keys
+        id: get-cache-keys
+    outputs:
+      m2-cache-key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+      node-cache-key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
+      eslint-cache-key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
+      cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+
+  generate-caches:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    needs: get-cache-keys
+    env:
+      M2_CACHE_KEY: ${{ needs.get-cache-keys.outputs.m2-cache-key }}
+      NODE_CACHE_KEY: ${{ needs.get-cache-keys.outputs.node-cache-key }}
+      CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
+      ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # Backend preparation and cache
+      - name: Prepare backend
+        uses: ./.github/actions/prepare-backend
+
+      # Pre-resolve every Clojure dependency classpath CI actually uses, so the
+      # saved cache is a SUPERSET of what each job resolves at runtime.
+      #
+      # Why a single `-P` is not enough: tools.deps selects dependency *versions*
+      # globally per classpath, so different alias combinations can resolve the
+      # same transitive lib to different versions (e.g. `org.clojure/data.json`
+      # 2.4.0 vs 2.5.x, `org.ow2.asm/asm` 9.2 vs newer). Resolving only one combo
+      # leaves the others to fetch their version-deltas straight from Maven
+      # Central / Clojars on every run -> intermittent 403s. See DEV-2094.
+      #
+      # Keep this list in sync with the `clojure` invocations across .github/.
+      # Each entry notes its consumer. We resolve the FULL alias strings (not a
+      # hand-reduced set) on purpose: if a currently dep-less alias later gains a
+      # dependency, this still covers it instead of silently drifting back into a
+      # cache gap.
+      - name: Pre-resolve Clojure dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          combos=(
+            ":build:dev:ee:ee-dev:drivers:drivers-dev:cljs"     # build + uberjar (combined classpath)
+            ":cljs"                                             # shadow-cljs (build:cljs); resolves :cljs alone -> covers asm:9.2
+            ":dev:ee:ee-dev:drivers:drivers-dev:test:eastwood"  # backend.yml (eastwood + eastwood/test)
+            ":dev:ci:ee:ee-dev:drivers:drivers-dev:test"        # test-driver.yml (ee) -> covers data.json:2.4.0
+            ":dev:ci:oss:oss-dev:drivers:drivers-dev:test"      # test-driver.yml (oss)
+            ":dev:ci:test:ee:ee-dev"                            # backend.yml matrix (ee) + generative-query-test.yml
+            ":dev:ci:test:oss:oss-dev"                          # backend.yml matrix (oss)
+            ":dev:ci:ee:ee-dev:test:cloverage"                  # backend-cloverage.yml
+            ":dev:drivers:drivers-dev:test"                     # reset-cloud-test-dataset.yml + presto script
+            ":dev:drivers:build:build-dev:build-test:ci"        # build-scripts.yml
+            ":ee:drivers:check"                                 # backend.yml (check; git dep athos/clj-check)
+            ":ee:doc"                                           # docs-generate-base.yml
+            ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
+            ":run:ee"                                           # cross-branch-migration-test
+            ":dev:ee:migrate"                                   # cross-branch-migration-test
+          )
+          for combo in "${combos[@]}"; do
+            echo "::group::clojure -P -A${combo}"
+            clojure -P -A"${combo}"
+            echo "::endgroup::"
+          done
+
+      - name: Update M2 cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: ${{ env.M2_CACHE_KEY }}
+
+      # Frontend preparation and caches
+      # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
+      # It then (3) runs `bun install --frozen-lockfile` which ensures the local cache is fully populated.
+      # IMPORTANT: Caching node_modules after patches are already applied will break any PR that attempts to either:
+      #   - upgrade a patched library
+      #   - change a patch
+      # Hence why we explicitly exclude patches from the cache (controlled by the `apply-patches` action input).
+      - name: Install front-end dependencies
+        uses: ./.github/actions/prepare-frontend
+        with:
+          apply-patches: "false"
+
+      - name: Get bun cache directory
+        id: bun-cache
+        run: |
+          BUN_CACHE_DIR=$(bun pm cache)
+          echo "Bun cache directory: $BUN_CACHE_DIR"
+          echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
+
+      - name: Ensure that Cypress executable is ready
+        run: |
+          bun run cypress install
+          bun run cypress cache path
+          bun run cypress cache list
+          bun run cypress verify
+        shell: bash
+
+      - name: Update node_modules cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: |
+            ${{ steps.bun-cache.outputs.dir }}
+            node_modules
+          key: ${{ env.NODE_CACHE_KEY }}
+
+      - name: Update Cypress cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ env.CYPRESS_CACHE_KEY }}
+
+      # ESLint cache (requires both backend and frontend)
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+
+      - name: Run ESLint to populate cache
+        run: bun run lint-eslint-pure
+
+      - name: Update eslint cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: ${{ github.workspace}}/.eslintcache
+          key: ${{ env.ESLINT_CACHE_KEY }}

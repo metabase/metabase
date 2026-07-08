@@ -4,16 +4,18 @@ import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
+  type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
+} from "metabase/utils/formatting";
+import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/lib/formatting";
-import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
+} from "metabase/visualizations/lib/formatting";
 import type { FormattingSettings } from "metabase-types/api";
-
-import { SetByEnvVar } from "./AdminSettingInput";
 
 const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   "type/Temporal": {
@@ -39,13 +41,19 @@ export function FormattingWidget() {
   const {
     value: initialValue,
     updateSetting,
-    isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
   const [localValue, setLocalValue] = useState<FormattingSettings | undefined>({
     ...DEFAULT_FORMATTING_SETTINGS,
     ...initialValue,
   });
+
+  useEffect(() => {
+    setLocalValue({
+      ...DEFAULT_FORMATTING_SETTINGS,
+      ...initialValue,
+    });
+  }, [initialValue]);
 
   const {
     date_style: dateStyle,
@@ -63,14 +71,12 @@ export function FormattingWidget() {
     const currencyOptions = (
       getCurrencyOptions() as { name: string; value: string }[]
     ).map(mapNameToLabel);
-    const currencyStyleOptions =
-      getCurrencyStyleOptions(currency).map(mapNameToLabel);
+    const currencyStyleOptions = getCurrencyStyleOptions(
+      currency,
+      currencyStyle,
+    ).map(mapNameToLabel);
     return [currencyOptions, currencyStyleOptions];
-  }, [currency]);
-
-  if (isLoading) {
-    return null;
-  }
+  }, [currency, currencyStyle]);
 
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
 
@@ -158,7 +164,7 @@ export function FormattingWidget() {
                 { label: "100 000,00", value: ", " },
                 { label: "100.000,00", value: ",." },
                 { label: "100000.00", value: "." },
-                { label: "100'000.00", value: ".'" },
+                { label: "100’000.00", value: ".’" },
               ]}
               onChange={(newValue) =>
                 handleChange({
@@ -177,6 +183,7 @@ export function FormattingWidget() {
               label={t`Unit of currency`}
               value={currency}
               inputType="select"
+              searchable
               options={currencyOptions}
               onChange={(newValue) =>
                 handleChange({
@@ -199,7 +206,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Currency": {
                     ...localValue?.["type/Currency"],
-                    currency_style: newValue as string,
+                    currency_style: newValue as CurrencyStyle,
                   },
                 })
               }
@@ -218,6 +225,7 @@ function FormattingInput({
   onChange,
   options,
   inputType,
+  searchable,
 }: {
   id: string;
   label: string;
@@ -225,6 +233,7 @@ function FormattingInput({
   onChange: (newValue: string | boolean | number) => void;
   options?: { label: string; value: string }[];
   inputType: "boolean" | "select" | "radio";
+  searchable?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -248,6 +257,7 @@ function FormattingInput({
           value={localValue}
           onChange={handleChange}
           data={options ?? []}
+          searchable={searchable}
         />
       )}
       {inputType === "boolean" && (

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen } from "__support__/ui";
 
-import { setup } from "./utils";
+import { setup } from "./utils.spec";
 
 describe("TitleAndDescription component", () => {
   describe("EE with content translation token and static embedding", () => {
@@ -11,7 +11,7 @@ describe("TitleAndDescription component", () => {
 
     it("displays translated question title and description", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["content_translation"],
         tokenFeatures: { content_translation: true },
         staticallyEmbedded: true,
         dictionary: [

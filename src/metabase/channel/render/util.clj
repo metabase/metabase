@@ -40,6 +40,44 @@
    (and (some? dashcard)
         (get-in dashcard [:visualization_settings :visualization]))))
 
+(defn visualizer-display-type
+  "The display type a visualizer dashcard renders as (from its visualizer viz settings), or nil when
+  `dashcard` isn't a visualizer dashcard."
+  [dashcard]
+  (when (is-visualizer-dashcard? dashcard)
+    (-> dashcard :visualization_settings :visualization :display keyword)))
+
+(defn merged-viz-settings
+  "Merge a card's and dashcard's `:visualization_settings`, with the dashcard's taking precedence."
+  [card dashcard]
+  (merge (:visualization_settings card) (:visualization_settings dashcard)))
+
+(defn dashcard-title
+  "The title to display for `card` on `dashcard`: a non-blank dashboard-level `card.title` override wins over the
+  card's own name. The override lives at the visualizer's nested location (`[:visualization :settings :card.title]`)
+  for visualizer dashcards, otherwise directly on the dashcard's viz settings. Shared by the PDF, email, and Slack
+  renderers (and the attachment-filename logic) so they all resolve titles the same way."
+  [card dashcard]
+  (or (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title]))
+      (not-empty (get-in dashcard [:visualization_settings :card.title]))
+      (:name card)))
+
+(defn viz-setting
+  "Look up the `map.*`-style setting `k` (a string) in `viz-settings`, tolerating either string or keyword
+  keys — production stores viz-settings keys as keywords-with-dots, but they can also arrive as strings."
+  [viz-settings k]
+  (or (get viz-settings k) (get viz-settings (keyword k))))
+
+(defn col-of-type?
+  "Whether result column `col`'s semantic type derives from `sem-type` (e.g. `:type/Latitude`)."
+  [col sem-type]
+  (isa? (some-> (:semantic_type col) keyword) sem-type))
+
+(defn any-col-of-type?
+  "Whether any column in `cols` has a semantic type deriving from `sem-type`."
+  [cols sem-type]
+  (boolean (some #(col-of-type? % sem-type) cols)))
+
 (defn is-scalar-funnel?
   "Check if the visualization is a scalar funnel.
    Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"

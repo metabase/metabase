@@ -5,7 +5,7 @@ import {
   COPY_BUTTON_ICON,
   CopyButton,
 } from "metabase/common/components/CopyButton";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import {
   SidesheetCard,
   type SidesheetCardProps,
@@ -56,7 +56,7 @@ export const EntityInfoIcon = () => {
                 <Link
                   target="_new"
                   to={docsLink}
-                  style={{ color: "var(--mb-color-brand)" }}
+                  style={{ color: "var(--mb-color-core-brand)" }}
                 >
                   {t`Learn more`}
                 </Link>

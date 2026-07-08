@@ -76,7 +76,6 @@ describe("scenarios > question > joined questions", () => {
       .findByLabelText(/Where do you want to save this/)
       .click();
     H.pickEntity({
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.entityPickerModal().button("Select this collection").click();
@@ -241,7 +240,7 @@ describe("scenarios > question > joined questions", () => {
     H.addSummaryField({ metric: "Count of rows" });
     H.addSummaryGroupingField({ table: "Products", field: "ID" });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
     H.joinTable("Reviews");
     H.visualize();
@@ -290,7 +289,7 @@ describe("scenarios > question > joined questions", () => {
 
     cy.findByLabelText("Right column").click();
     H.popover().findByText("by month").click({ force: true });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Week").click();
 
     assertJoinColumnName("left", "Created At: Week");
@@ -300,7 +299,7 @@ describe("scenarios > question > joined questions", () => {
 
     cy.findByLabelText("Right column").click();
     H.popover().findByText("by week").click({ force: true });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Day").click();
 
     assertJoinColumnName("left", "Created At: Day");
@@ -341,7 +340,7 @@ describe("scenarios > question > joined questions", () => {
     );
 
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.entityPickerModal().findByText("People").click();
+    H.miniPicker().findByText("People").click();
 
     H.getNotebookStep("join").should("not.exist");
 

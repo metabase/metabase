@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 interface Props {
   isCompleted?: boolean;
@@ -10,16 +10,16 @@ interface Props {
 
 export const StepRoot = styled.section<Props>`
   position: relative;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
-  background-color: ${(props) =>
-    color(props.isCompleted ? "bg-white" : "bg-medium")};
+  background-color: ${color("background_page-primary")};
 `;
 
 export const StepTitle = styled.div<Props>`
-  color: ${(props) => (props.isCompleted ? color("success") : color("brand"))};
+  color: ${(props) =>
+    props.isCompleted ? color("feedback-positive") : color("core-brand")};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -36,14 +36,17 @@ export const StepLabel = styled.div<Props>`
   width: 2.625rem;
   height: 2.625rem;
   border: 1px solid
-    ${(props) => (props.isCompleted ? color("success") : color("border"))};
+    ${(props) =>
+      props.isCompleted ? color("feedback-positive") : color("border-neutral")};
   border-radius: 50%;
   background-color: ${(props) =>
-    props.isCompleted ? color("success") : color("bg-white")};
+    props.isCompleted
+      ? color("feedback-positive")
+      : color("background_page-primary")};
 `;
 
 export const StepLabelText = styled.span`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: 700;
   line-height: 1;
 `;
@@ -51,5 +54,5 @@ export const StepLabelText = styled.span`
 export const StepLabelIcon = styled(Icon)`
   width: 1rem;
   height: 1rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 `;

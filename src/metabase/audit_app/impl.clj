@@ -14,7 +14,7 @@
   "ID of Audit DB which is loaded when running an EE build."
   13371337)
 
-(def ^:private default-audit-collection-entity-id
+(def default-audit-collection-entity-id
   "Default audit collection entity (instance analytics) id."
   "vG58R8k-QddHWA7_47umn")
 

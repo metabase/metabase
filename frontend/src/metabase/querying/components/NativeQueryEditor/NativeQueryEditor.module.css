@@ -1,0 +1,38 @@
+.queryEditor {
+  background-color: var(--mb-color-background_page-secondary);
+  display: flex;
+  flex-direction: column;
+  flex: var(--native-query-editor-flex, none);
+  width: 100%;
+}
+
+.editorWrapper {
+  overflow: auto;
+  width: 100%;
+  /* flex-shrink must be 1 so the wrapper fits when the topbar leaves less
+     space than the wrapper's content would claim. */
+  flex: 1 1 auto;
+  max-height: 100%;
+}
+
+.resizableArea {
+  display: flex;
+  border-top: 1px solid var(--mb-color-border-neutral);
+  flex: 1 1 auto;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.resizableBoxContent {
+  overflow: hidden;
+}
+
+.actionButtons {
+  /* min-height of the top bar, it's needed for vertical alignment when there
+  are several template tags */
+  height: 3rem;
+}
+
+.readOnlyEditor {
+  overflow: auto;
+}

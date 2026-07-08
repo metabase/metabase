@@ -1,14 +1,21 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.e2e-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.database-routing.e2e-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.database-routing.e2e-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase-enterprise.database-routing.e2e-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [clojurewerkz.quartzite.conversion :as qc]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
@@ -121,7 +128,6 @@
             (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination')")
             (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                     :user_attribute "db_name"}]
-
               (mt/with-test-user :crowberto
                 (is (= [["router"]]
                        (-> (qp/process-query {:database (u/the-id router-db)
@@ -213,7 +219,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -224,7 +230,7 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti router-dataset-details
@@ -239,8 +245,8 @@
   {:dbname "db_router_data"
    :enable-multiple-db false})
 
-(defmethod router-dataset-details :bigquery-cloud-sdk [_driver]
-  {:dataset-filters-patterns "metabase_routing_dataset"})
+(defmethod router-dataset-details :bigquery-cloud-sdk [driver]
+  {:dataset-filters-patterns (str "*" (str/replace (router-dataset-name driver) "-" "_"))})
 
 (defmethod router-dataset-details :databricks [driver]
   {:multi-level-schema false
@@ -259,8 +265,8 @@
    :enable-multiple-db false})
 
 (defmethod routed-dataset-details :bigquery-cloud-sdk [driver]
-  {:service-account-json (tx/db-test-env-var-or-throw driver :service-account-json-routing)
-   :dataset-filters-patterns "metabase_routing_dataset"})
+  {:service-account-json     (tx/db-test-env-var-or-throw driver :service-account-json-routing)
+   :dataset-filters-patterns (str "*" (str/replace (routed-dataset-name driver) "-" "_"))})
 
 (defmethod routed-dataset-details :redshift [driver]
   {:db (tx/db-test-env-var-or-throw driver :db-routing)})
@@ -270,22 +276,36 @@
    :multi-level-schema false
    :schema-filters-patterns (routed-dataset-name driver)})
 
+;; the test requires both datasets share a hash (for the name qualifier)
+;; this is because the qp when routing a db does not map to the routed table (it reuses metadata of original)
+;; the end result is the compiled query would retain the routed sha_* qualifier rather than the hash of the original.
+;; using :hash-key now forces the hash key used to sha to be shared between the two datasets.
+
+(defn- router-dataset [driver]
+  (let [dataset (mt/dataset-definition (router-dataset-name driver)
+                                       [["t"
+                                         [{:field-name "f", :base-type :type/Text}]
+                                         [["original-foo"]
+                                          ["original-bar"]]]])]
+    (assoc dataset :hash-key dataset)))
+
+(defn- routed-dataset [driver]
+  (let [router (router-dataset driver)
+        dataset (mt/dataset-definition (routed-dataset-name driver)
+                                       [["t"
+                                         [{:field-name "f", :base-type :type/Text}]
+                                         [["routed-foo"]
+                                          ["routed-bar"]]]])]
+    (assoc dataset :hash-key (:hash-key router))))
+
 (deftest db-routing-e2e-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
     (mt/with-premium-features #{:database-routing}
       (binding [tx/*use-routing-details* true]
-        (mt/dataset (mt/dataset-definition (routed-dataset-name driver/*driver*)
-                                           [["t"
-                                             [{:field-name "f", :base-type :type/Text}]
-                                             [["routed-foo"]
-                                              ["routed-bar"]]]])
+        (mt/dataset (routed-dataset driver/*driver*)
           (let [routed (mt/db)]
             (binding [tx/*use-routing-details* false]
-              (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
-                                                 [["t"
-                                                   [{:field-name "f", :base-type :type/Text}]
-                                                   [["original-foo"]
-                                                    ["original-bar"]]]])
+              (mt/dataset (router-dataset driver/*driver*)
                 (let [router (mt/db)]
                   (t2/update! :model/Database (u/the-id routed)
                               {:details (merge (:details routed)
@@ -310,7 +330,23 @@
                           (is (= [[1 "routed-foo"] [2 "routed-bar"]]
                                  (->> (mt/query t)
                                       (mt/process-query)
-                                      (mt/formatted-rows [int str])))))))))))))))))
+                                      (mt/formatted-rows [int str]))))))
+                      (testing "sync task can see database"
+                        (let [job-data       (reify qc/JobDataMapConversion
+                                               ;; i'm doing this at the "job-data" level so it's as close to what runs in
+                                               ;; the task itself without actually hitting scheduler stuff.
+                                               (from-job-data [_] {"db-id" (u/the-id router)})
+                                               (to-job-data [_]))
+                              results        (#'task.sync-databases/sync-and-analyze-database! job-data)
+                              step-with-name (fn [step-name]
+                                               (->> results :metadata-results :steps
+                                                    (some (fn [step] (when (= step-name (first step)) (second step))))))]
+                          (is (set/subset? #{"sync-fields" "sync-tables"}
+                                           (->> results :metadata-results :steps (map first) set)))
+                          ;; this is usually 1 total tables, but some cloud dbs put multiple databases inside of a
+                          ;; single catalog
+                          (is (=? {:updated-tables 0 :total-tables pos-int?}
+                                  (step-with-name "sync-tables"))))))))))))))))
 
 (deftest athena-region-bucket-routing-test
   (mt/test-driver :athena

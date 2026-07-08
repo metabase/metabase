@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 interface ToggleRootProps {
   checked?: boolean;
@@ -25,9 +25,9 @@ const getBackgroundColor = ({
   currentColor,
 }: ToggleRootProps): string => {
   if (checked) {
-    return currentColor ?? color("brand");
+    return currentColor ?? color("core-brand");
   } else {
-    return "var(--mb-color-bg-medium)";
+    return "var(--mb-color-background_page-tertiary)";
   }
 };
 
@@ -35,12 +35,12 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   appearance: none;
   position: relative;
   display: inline-block;
-  color: ${(props) => props.currentColor ?? color("brand")};
+  color: ${(props) => props.currentColor ?? color("core-brand")};
   cursor: pointer;
   width: ${(props) => (props.small ? "28px" : "48px")};
   height: ${(props) => (props.small ? "17px" : "24px")};
   border-radius: 99px;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   background-color: ${getBackgroundColor};
   transition: background-color 0.3s;
   flex-shrink: 0;
@@ -48,7 +48,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   &[disabled] {
     cursor: not-allowed;
     opacity: 0.5;
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 
   &:after {
@@ -59,10 +59,10 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     position: absolute;
     top: 1px;
     transform: translateX(${getTranslateX});
-    background-color: var(--mb-color-bg-white);
+    background-color: var(--mb-color-background_page-primary);
     transition: transform 0.3s;
-    box-shadow: 2px 2px 6px var(--mb-color-shadow);
+    box-shadow: 2px 2px 6px var(--mb-color-shadow-default);
   }
 
-  ${focusOutlineStyle("brand")};
+  ${focusOutlineStyle("core-brand")};
 `;

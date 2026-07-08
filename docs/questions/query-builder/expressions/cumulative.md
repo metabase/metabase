@@ -61,7 +61,7 @@ If you use a datetime dimension in the **Group by** block, Metabase will accumul
 
 ![Cumulative count by category, source, and created at](../../images/cumulative-date-category.png)
 
-If there are multiple datetime dimensions (including multiple groupings by the same datetime column), Metabase will accumulate along the the more granular dimension, regardless of their order. For example, if you're grouping by "Created At: Month" and "Viewed At: Week", Metabase will accumulate along "Viewed At: Week".
+If there are multiple datetime dimensions (including multiple groupings by the same datetime column), Metabase will accumulate along the more granular dimension, regardless of their order. For example, if you're grouping by "Created At: Month" and "Viewed At: Week", Metabase will accumulate along "Viewed At: Week".
 
 ![Cumulative count by two datetime fields](../../images/cumulative-multiple-datetimes.png)
 

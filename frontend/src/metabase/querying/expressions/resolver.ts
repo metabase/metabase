@@ -6,10 +6,9 @@ import * as Lib from "metabase-lib";
 import { CompileError } from "./errors";
 import { EDITOR_FK_SYMBOLS, getDisplayNameWithSeparator } from "./identifier";
 import type { Node } from "./pratt";
-import type { ExpressionType } from "./types";
 
 export type Resolver = (
-  type: ExpressionType,
+  type: Lib.ExpressionType,
   name: string,
   node?: Node,
 ) => Lib.ExpressionParts | Lib.ExpressionArg;
@@ -19,13 +18,24 @@ type Options = {
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
 };
 
 export function resolver(options: Options): Resolver {
-  const { query, stageIndex, expressionMode, availableColumns } = options;
+  const {
+    query,
+    stageIndex,
+    expressionMode,
+    availableColumns,
+    availableMetrics,
+  } = options;
 
-  const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
+  const metrics = _.memoize(
+    () => availableMetrics ?? Lib.availableMetrics(query, stageIndex),
+  );
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
+  const measures = _.memoize(() => Lib.availableMeasures(query, stageIndex));
+
   const cache = infoCache(options);
 
   return function (type, name, node) {
@@ -33,10 +43,21 @@ export function resolver(options: Options): Resolver {
 
     if (type === "aggregation") {
       // Return metrics
-      const dimension = findByName([...metrics(), ...availableColumns]);
+      const dimension = findByName([
+        ...metrics(),
+        ...measures(),
+        ...availableColumns,
+      ]);
+
       if (!dimension) {
-        throw new CompileError(t`Unknown Aggregation or Metric: ${name}`, node);
-      } else if (!Lib.isMetricMetadata(dimension)) {
+        throw new CompileError(
+          t`Unknown Aggregation, Measure or Metric: ${name}`,
+          node,
+        );
+      } else if (
+        !Lib.isMetricMetadata(dimension) &&
+        !Lib.isMeasureMetadata(dimension)
+      ) {
         // If no metric was found, but there is a matching column,
         // show a more sophisticated error message
         throw new CompileError(
@@ -65,15 +86,17 @@ export function resolver(options: Options): Resolver {
       return dimension;
     }
 
-    // Return columns and, in the case of aggregation expressions, metrics
+    // Return columns and, in the case of aggregation expressions, metrics and measures
     const dimension = findByName([
       ...availableColumns,
-      ...(expressionMode === "aggregation" ? metrics() : []),
+      ...(expressionMode === "aggregation"
+        ? [...metrics(), ...measures()]
+        : []),
     ]);
     if (!dimension) {
       if (expressionMode === "aggregation") {
         throw new CompileError(
-          t`Unknown column, Aggregation or Metric: ${name}`,
+          t`Unknown column, Aggregation, Measure or Metric: ${name}`,
           node,
         );
       }
@@ -83,13 +106,21 @@ export function resolver(options: Options): Resolver {
   };
 }
 
-type Dimension = Lib.SegmentMetadata | Lib.MetricMetadata | Lib.ColumnMetadata;
+type Dimension =
+  | Lib.ColumnMetadata
+  | Lib.MeasureMetadata
+  | Lib.MetricMetadata
+  | Lib.SegmentMetadata;
+
+type DimensionInfo =
+  | Lib.ColumnDisplayInfo
+  | Lib.MeasureDisplayInfo
+  | Lib.MetricDisplayInfo
+  | Lib.SegmentDisplayInfo;
 
 function nameMatcher(
   name: string,
-  info: (
-    dimension: Dimension,
-  ) => Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo,
+  info: (dimension: Dimension) => DimensionInfo,
 ): (dimensions: Dimension[]) => Dimension | undefined {
   function byName({
     preserveSeparators,
@@ -145,11 +176,8 @@ function equals(caseSensitive: boolean, a: string, b: string) {
 // The cache only lives for the duration of each compile phase,
 // so the query can not change in the meantime.
 function infoCache(options: Options) {
-  const cache = new Map<
-    Dimension,
-    Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo
-  >();
-  return function (dimension: Dimension) {
+  const cache = new Map<Dimension, DimensionInfo>();
+  return function (dimension: Dimension): DimensionInfo {
     const cached = cache.get(dimension);
     if (cached) {
       return cached;

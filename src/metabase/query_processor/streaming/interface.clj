@@ -22,7 +22,7 @@
   (finish! [this final-metadata]
     "Write anything needed after writing the last row. `final-metadata` is the final, complete metadata available
     after reducing all rows. Very important: This method *must* `.close` the underlying OutputStream when it is
-    finshed."))
+    finished."))
 
 (defmulti streaming-results-writer
   "Given a `export-format` and `java.io.Writer`, return an object that implements `StreamingResultsWriter`."

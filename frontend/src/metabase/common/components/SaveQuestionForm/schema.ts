@@ -1,7 +1,7 @@
 import * as Yup from "yup";
 
-import * as Errors from "metabase/lib/errors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import * as Errors from "metabase/utils/errors";
 
 export const SAVE_QUESTION_SCHEMA = Yup.object({
   saveType: Yup.string().oneOf(["overwrite", "create"]),

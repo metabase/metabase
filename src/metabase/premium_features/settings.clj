@@ -1,7 +1,9 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -36,6 +38,16 @@
   :setter     :none
   :getter     (fn []
                 ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
+
+(defsetting locked-meters
+  (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
+  :encryption :no
+  :type       :json
+  :visibility :internal
+  :audit      :never
+  :export?    false
+  :default    {}
+  :doc        false)
 
 ;;; TODO - rename this to premium-features-token?
 (defsetting premium-embedding-token
@@ -146,6 +158,10 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
+(define-premium-feature ^{:added "0.59.0"} enable-sso-oidc?
+  "Should we enable OIDC-based authentication?"
+  :sso-oidc)
+
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
@@ -163,6 +179,7 @@
   []
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
+      (enable-sso-oidc?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
 
@@ -206,10 +223,6 @@
   "Enable restrict email recipients?"
   :email-restrict-recipients)
 
-(define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
-  "Enable automatic descriptions of questions and dashboards by LLMs?"
-  :llm-autodescription)
-
 (define-premium-feature ^{:added "0.51.0"} enable-query-reference-validation?
   "Enable the Query Validator Tool?"
   :query-reference-validation)
@@ -238,30 +251,14 @@
   "Is this a development instance that should have watermarks?"
   :development-mode)
 
-(define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
-  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase-enterprise.metabot-v3.core]].)"
-  :metabot-v3)
-
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-fixer?
-  "Should Metabase suggest SQL fixes?"
-  :ai-sql-fixer)
-
-(define-premium-feature ^{:added "0.54.0"} enable-ai-sql-generation?
-  "Should Metabase generate SQL queries?"
-  :ai-sql-generation)
-
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
-  "Should we enable Embedded Analytics JS?"
+  "Should we enable modular embedding?"
   :embedding-simple)
 
-(define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
-  "Should Metabase do AI analysis on entities?"
-  :ai-entity-analysis)
-
-(define-premium-feature ^{:added "0.55.0"} offer-metabase-ai?
-  "Offer Metabase AI add-on"
-  :offer-metabase-ai)
+(define-premium-feature ^{:added "0.57.0"} enable-embedding-hub?
+  "Should we enable the embedding hub?"
+  :embedding-hub)
 
 (define-premium-feature ^{:added "0.56.0"} cloud-custom-smtp?
   "Can Metabase have a custom smtp details separate from the default Cloud details."
@@ -279,23 +276,109 @@
   "Should we enable the semantic search backend?"
   :semantic-search)
 
+(define-premium-feature ^{:added "0.63.0"} enable-library-retrieval?
+  "Should we enable the Metabot library entity-retrieval tool (retrieve_library_entities)?
+  Independent of `:semantic-search`: this gates only that tool, not the general semantic search engine."
+  :library-retrieval)
+
 (define-premium-feature ^{:added "0.57.0"} table-data-editing?
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
 
-(define-premium-feature ^{:added "0.57.0"} enable-documents?
-  "Does this instance support the new document entity."
-  :documents)
+(define-premium-feature ^{:added "0.57.0"} enable-remote-sync?
+  "Does this instance support remote syncing collections."
+  :remote-sync)
 
-(define-premium-feature ^{:added "0.57.0"} enable-transforms?
-  "Should we allow users to use transforms?"
-  :transforms)
+(define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
+  "Should we allow users to use transforms? Replacement for transforms"
+  :transforms-basic)
+
+(define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
+  "Should we allow users to use Python transforms?"
+  :transforms-python)
+
+(define-premium-feature ^{:added "0.57.0"} enable-dependencies?
+  "Should we allow users to use dependency tracking?"
+  :dependencies)
+
+(define-premium-feature ^{:added "0.57.1"} enable-support-users?
+  "Should users be allowed to enable support users in-app?"
+  :support-users)
+
+(define-premium-feature ^{:added "0.58.0"} enable-library?
+  "Should we enable the Library?"
+  :library)
+
+(defsetting security-center-disabled
+  (deferred-tru "Globally disable Security Center as a customer-controlled escape hatch.")
+  :type             :boolean
+  :feature          :admin-security-center
+  :default          false
+  :visibility       :internal
+  :include-in-list? false
+  :audit            :never
+  :setter           :none
+  :export?          false)
+
+(define-premium-feature security-center-enabled?
+  "True if the current instance has Security Center access.
+   Requires the `:admin-security-center` feature flag, a non-trial subscription,
+   a self-hosted instance, and the `security-center-disabled` setting to be unset."
+  :admin-security-center
+  :getter (fn []
+            (and (has-feature? :admin-security-center)
+                 (not (is-hosted?))
+                 (not (security-center-disabled))
+                 (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
+                 (or config/is-test? config/is-e2e?
+                     (not= (mdb/db-type) :h2)))))
+
+(define-premium-feature ^{:added "0.58.0"} enable-tenants?
+  "Should the multi-tenant feature be enabled?"
+  :tenants)
+
+(define-premium-feature enable-metabot-v3?
+  "Should we allow users to use the Metabase-managed tiered AI provider?"
+  :metabot-v3)
+
+(define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-managed?
+  "Should we allow users to use the Metabase-managed AI provider?"
+  :metabase-ai-managed)
+
+(define-premium-feature ^{:added "0.60.0"} enable-offer-metabase-ai-managed?
+  "Should we offer users the Metabase-managed AI provider?"
+  :offer-metabase-ai-managed)
+
+(defenterprise enable-custom-viz?
+  "Should we enable custom visualizations? OSS falls back to `false`; the EE implementation checks the
+  `custom-viz-enabled` setting and the `:custom-viz` premium feature."
+  metabase-enterprise.custom-viz-plugin.settings
+  []
+  false)
+
+(define-premium-feature enable-data-complexity-score?
+  "Should we expose Data Complexity Score?"
+  :data-complexity-score)
+
+(define-premium-feature enable-writable-connection?
+  "Should we allow admins to configure separate write connection credentials?"
+  :writable-connection)
+
+(define-premium-feature ^{:added "0.61.0"} enable-ai-controls?
+  "Should we enable AI controls (metabot permissions, scope management)?"
+  :ai-controls)
+
+(define-premium-feature ^{:added "0.62.0"} enable-schema-viewer?
+  "Should we allow users to view database schemas as ER diagrams?"
+  :schema-viewer)
+
+(define-premium-feature enable-workspaces?
+  "Should we allow users to manage workspaces?"
+  :workspaces)
 
 (defn- -token-features []
-  {:advanced_permissions           (enable-advanced-permissions?)
-   :ai_sql_fixer                   (enable-ai-sql-fixer?)
-   :ai_sql_generation              (enable-ai-sql-generation?)
-   :ai_entity_analysis             (enable-ai-entity-analysis?)
+  {:admin_security_center          (security-center-enabled?)
+   :advanced_permissions           (enable-advanced-permissions?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
@@ -305,12 +388,18 @@
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
+   :custom-viz                     (enable-custom-viz?)
+   :custom-viz-available           (has-feature? :custom-viz)
+   :data-complexity-score          (enable-data-complexity-score?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
+   :library                        (enable-library?)
+   :library_retrieval              (enable-library-retrieval?)
+   :dependencies                   (enable-dependencies?)
+   :schema-viewer                  (enable-schema-viewer?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
-   :documents                      (enable-documents?)
    :email_allow_list               (enable-email-allow-list?)
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
@@ -319,11 +408,12 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :llm_autodescription            (enable-llm-autodescription?)
-   :metabot_v3                     (enable-metabot-v3?)
-   :offer_metabase_ai              (offer-metabase-ai?)
+   :metabot-v3                     (enable-metabot-v3?)
+   :metabase-ai-managed            (enable-metabase-ai-managed?)
+   :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
+   :remote_sync                    (enable-remote-sync?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
    :semantic_search                (enable-semantic-search?)
@@ -334,14 +424,29 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :sso_oidc                       (enable-sso-oidc?)
+   :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
-   :transforms                     (enable-transforms?)
+   :tenants                        (enable-tenants?)
+   :transforms-basic               (enable-basic-transforms?)
+   :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
-   :whitelabel                     (enable-whitelabeling?)})
+   :workspaces                     (enable-workspaces?)
+   :whitelabel                     (enable-whitelabeling?)
+   :writable_connection            (enable-writable-connection?)
+   :ai_controls                    (enable-ai-controls?)})
 
 (defsetting token-features
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     -token-features
+  :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
   :doc        false)

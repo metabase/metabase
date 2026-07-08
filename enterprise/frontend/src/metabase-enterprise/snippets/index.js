@@ -1,84 +1,86 @@
 import { t } from "ttag";
 
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import { canonicalCollectionId } from "metabase/collections/utils";
-import Modal from "metabase/common/components/Modal";
+import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import {
+  PLUGIN_SNIPPET_FOLDERS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
-  PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
 } from "metabase/plugins";
+import { setOpenModalWithProps } from "metabase/redux/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import CollectionOptionsButton from "./components/CollectionOptionsButton";
-import CollectionRow from "./components/CollectionRow";
-import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
+import { CollectionRow } from "./components/CollectionRow";
+import { MoveSnippetModal } from "./components/MoveSnippetModal";
+import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
+import { SnippetCollectionPickerModal } from "./components/SnippetCollectionPickerModal";
 
-if (hasPremiumFeature("snippet_collections")) {
-  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
-    icon: "folder",
-    name: t`New folder`,
-    onClick: () =>
-      snippetSidebar.setState({
-        modalSnippetCollection: {
-          parent_id: canonicalCollectionId(
-            snippetSidebar.props.snippetCollection.id,
-          ),
-        },
-      }),
-  }));
+/**
+ * Initialize snippets plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("snippet_collections")) {
+    // Add new menu option
+    PLUGIN_SNIPPET_FOLDERS.isEnabled = true;
+    PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal = SnippetCollectionPickerModal;
+    PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal =
+      SnippetCollectionPermissionsModal;
+    PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal = MoveSnippetModal;
+    PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push((snippetSidebar) => ({
+      icon: "folder",
+      name: t`New folder`,
+      onClick: () => {
+        snippetSidebar.props.dispatch(
+          setOpenModalWithProps({
+            id: "collection",
+            props: {
+              initialCollectionId: canonicalCollectionId(
+                snippetSidebar.props.snippetCollection.id,
+              ),
+              namespaces: ["snippets"],
+              pickerOptions: SNIPPET_COLLECTION_PICKER_OPTIONS,
+              showAuthorityLevelPicker: false,
+              shouldNavigateOnCreate: false,
+            },
+          }),
+        );
+      },
+    }));
 
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
-    (snippetSidebar) =>
-      snippetSidebar.state.modalSnippetCollection && (
-        <Modal
-          onClose={() =>
-            snippetSidebar.setState({ modalSnippetCollection: null })
-          }
-        >
-          <SnippetCollectionFormModal
-            collection={snippetSidebar.state.modalSnippetCollection}
-            onClose={() =>
-              snippetSidebar.setState({ modalSnippetCollection: null })
-            }
-            onSaved={() => {
-              snippetSidebar.setState({ modalSnippetCollection: null });
-            }}
-          />
-        </Modal>
-      ),
-    (snippetSidebar) =>
-      snippetSidebar.state.permissionsModalCollectionId != null && (
-        <Modal
-          onClose={() =>
-            snippetSidebar.setState({ permissionsModalCollectionId: null })
-          }
-        >
-          <CollectionPermissionsModal
-            params={{
-              slug: snippetSidebar.state.permissionsModalCollectionId,
-            }}
-            onClose={() =>
-              snippetSidebar.setState({ permissionsModalCollectionId: null })
-            }
-            namespace="snippets"
-          />
-        </Modal>
-      ),
-  );
+    // Set collection row renderer
+    PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
 
-  PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
-
-  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
-    const collection = snippetSidebar.props.snippetCollection;
-    return (
-      <CollectionOptionsButton
-        {...snippetSidebar.props}
-        {...props}
-        setSidebarState={snippetSidebar.setState.bind(snippetSidebar)}
-        collection={collection}
-      />
-    );
-  });
+    // Add header button
+    PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar) => {
+      const collection = snippetSidebar.props.snippetCollection;
+      return (
+        <CollectionRowMenu
+          key="snippet-collection-row-menu"
+          collection={collection}
+        />
+      );
+    });
+  }
 }
+
+/**
+ * Reset snippets plugin features.
+ *
+ * @internal for testing purposes only
+ */
+export function resetPlugin() {
+  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.length = 0;
+  PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = null;
+  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.length = 0;
+}
+
+const SNIPPET_COLLECTION_PICKER_OPTIONS = {
+  hasLibrary: false,
+  hasRootCollection: true,
+  hasPersonalCollections: false,
+  hasRecents: false,
+  hasSearch: false,
+  hasConfirmButtons: true,
+  canCreateCollections: false,
+};

@@ -5,27 +5,28 @@ import cx from "classnames";
 import { type PropsWithChildren, useMemo } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import Markdown from "metabase/common/components/Markdown";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Tooltip, useMantineTheme } from "metabase/ui";
+import { Box, Flex, useMantineTheme } from "metabase/ui";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
 
-import {
-  ScalarDescriptionContainer,
-  ScalarDescriptionIcon,
-  ScalarDescriptionPlaceholder,
-  ScalarRoot,
-  ScalarTitleContainer,
-  ScalarTitleContent,
-  ScalarValueWrapper,
-} from "./ScalarValue.styled";
+import S from "./ScalarValue.module.css";
 import { findSize, getMaxFontSize } from "./utils";
 
 export const ScalarWrapper = ({ children }: PropsWithChildren) => (
-  <ScalarRoot>{children}</ScalarRoot>
+  <Flex
+    pos="relative"
+    direction="column"
+    wrap="wrap"
+    justify="center"
+    align="center"
+    flex={1}
+    w="100%"
+    h="100%"
+    data-testid="scalar-root"
+  >
+    {children}
+  </Flex>
 );
 
 interface ScalarValueProps {
@@ -35,6 +36,8 @@ interface ScalarValueProps {
   gridSize?: VisualizationGridSize;
   totalNumGridCols?: number;
   fontFamily: string;
+  color?: string;
+  disableHover?: boolean;
 }
 
 export const ScalarValue = ({
@@ -44,6 +47,8 @@ export const ScalarValue = ({
   gridSize,
   totalNumGridCols,
   fontFamily,
+  color = "inherit",
+  disableHover,
 }: ScalarValueProps) => {
   const {
     other: { number: numberTheme },
@@ -63,7 +68,9 @@ export const ScalarValue = ({
       unit: "rem",
       step: 0.2,
       min: 1,
-      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+      max: gridSize
+        ? getMaxFontSize(gridSize.width, totalNumGridCols, width)
+        : 4,
     });
   }, [
     fontFamily,
@@ -76,61 +83,21 @@ export const ScalarValue = ({
   ]);
 
   return (
-    <ScalarValueWrapper
-      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
-      fontSize={fontSize}
-      lineHeight={numberTheme?.value?.lineHeight}
+    <Box
+      component="h1"
+      className={cx(
+        DashboardS.ScalarValue,
+        QueryBuilderS.ScalarValue,
+        S.value,
+        !disableHover && S.hoverable,
+      )}
+      fz={fontSize}
+      lh={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
+      // Route color through a CSS variable so `S.hoverable:hover` can override (inline `style` would beat the class on specificity).
+      style={{ "--scalar-value-color": color }}
     >
       {value ?? t`null`}
-    </ScalarValueWrapper>
+    </Box>
   );
 };
-
-interface ScalarTitleProps {
-  lines?: number;
-  title: string;
-  description: string;
-  onClick?: () => void;
-}
-
-export const ScalarTitle = ({
-  lines = 2,
-  title,
-  description,
-  onClick,
-}: ScalarTitleProps) => (
-  <ScalarTitleContainer data-testid="scalar-title" lines={lines}>
-    {/*
-      This is a hacky spacer so that the h3 is centered correctly.
-      It needs match the width of the tooltip icon on the other side.
-     */}
-    {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
-    <ScalarTitleContent
-      className={cx(
-        DashboardS.fullscreenNormalText,
-        DashboardS.fullscreenNightText,
-        EmbedFrameS.fullscreenNightText,
-      )}
-      onClick={onClick}
-    >
-      <Ellipsified tooltip={title} lines={lines} placement="bottom">
-        {title}
-      </Ellipsified>
-    </ScalarTitleContent>
-    {description && description.length > 0 && (
-      <ScalarDescriptionContainer data-testid="scalar-description">
-        <Tooltip
-          label={
-            <Markdown dark disallowHeading unstyleLinks>
-              {description}
-            </Markdown>
-          }
-          maw="22em"
-        >
-          <ScalarDescriptionIcon name="info_filled" />
-        </Tooltip>
-      </ScalarDescriptionContainer>
-    )}
-  </ScalarTitleContainer>
-);

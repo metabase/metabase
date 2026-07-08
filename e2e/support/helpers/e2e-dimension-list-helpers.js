@@ -9,7 +9,7 @@ export function getDimensions(isSelected) {
 }
 
 export function getDimensionByName({ name, index = 0, isSelected }) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return getDimensions(isSelected).filter(`:contains("${name}")`).eq(index);
 }
 

@@ -31,7 +31,7 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   infoTooltip?: string;
 }
 
-const FormField = forwardRef(function FormField(
+const FormFieldInner = forwardRef(function FormField(
   {
     title,
     actions,
@@ -100,8 +100,7 @@ const FormField = forwardRef(function FormField(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(FormField, {
+export const FormField = Object.assign(FormFieldInner, {
   Root: FieldRoot,
   Label: FieldLabel,
   LabelContainer: FieldLabelContainer,

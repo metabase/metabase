@@ -1,4 +1,4 @@
-import type { CardType, TableId } from "metabase-types/api";
+import type { CardType, CollectionId, TableId } from "metabase-types/api";
 
 export interface DataSourceSelectorProps {
   isInitiallyOpen: boolean;
@@ -12,10 +12,16 @@ export interface DataSourceSelectorProps {
   canChangeDatabase: boolean;
   selectedDatabaseId: number | null;
   selectedTableId?: TableId;
-  selectedCollectionId?: number | null;
+  selectedCollectionId?: CollectionId | null;
   canSelectModel: boolean;
   canSelectTable: boolean;
   canSelectQuestion: boolean;
   triggerElement: JSX.Element;
   setSourceTableFn: (tableId: TableId) => void;
+  /**
+   * Accessible name applied to the popover dropdown. Lets consumers that
+   * render more than one picker (e.g. the notebook's data and join steps)
+   * give each popover a distinct, queryable name.
+   */
+  popoverAriaLabel?: string;
 }

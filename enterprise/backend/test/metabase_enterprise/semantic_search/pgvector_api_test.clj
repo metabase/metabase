@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
@@ -21,12 +22,11 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
-(use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 
 (deftest init-semantic-search!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
         model2         (assoc semantic.tu/mock-embedding-model :model-name "embed-harder")
@@ -69,7 +69,7 @@
                       (semantic.index-metadata/find-compatible-index! pgvector index-metadata model2))))))))))
 
 (deftest init-recreates-missing-index-table-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
         sut*           semantic.pgvector-api/init-semantic-search!
@@ -86,6 +86,32 @@
           (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model1)
           (is (true? (@#'semantic.index-metadata/index-table-exists? pgvector index))))))))
 
+(deftest ensure-active-hnsw-index!-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.tu/unique-index-metadata)
+          model          semantic.tu/mock-embedding-model
+          cleanup        (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))]
+      (with-open [index-ref ^Closeable (semantic.tu/closeable
+                                        (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model)
+                                        cleanup)]
+        (let [index     @index-ref
+              hnsw-name (semantic.index/hnsw-index-name index)]
+          (testing "builds the HNSW index on the active index table when it is missing"
+            ;; init only builds the HNSW index when configured for :hnsw, so drop it for a deterministic
+            ;; starting point regardless of the ambient strategy -- mimics a brute-force-configured instance.
+            (jdbc/execute! pgvector [(str "DROP INDEX IF EXISTS \"" hnsw-name "\"")])
+            (is (not (semantic.tu/table-has-index? (:table-name index) hnsw-name)))
+            (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)
+            (is (semantic.tu/table-has-index? (:table-name index) hnsw-name)))
+          (testing "is a noop when the HNSW index already exists"
+            (let [before (semantic.tu/index-relfilenode hnsw-name)]
+              (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)
+              (is (= before (semantic.tu/index-relfilenode hnsw-name))
+                  "relfilenode unchanged => the existing index was reused, not rebuilt")))))
+      (testing "is a noop when there is no active index"
+        (is (nil? (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)))))))
+
 (defn- open-semantic-search! ^Closeable [pgvector index-metadata embedding-model]
   (semantic.tu/closeable
    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
@@ -98,7 +124,7 @@
     (is (thrown? Exception (apply sut args)))))
 
 (deftest index-documents!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         model1         semantic.tu/mock-embedding-model
         model2         (assoc semantic.tu/mock-embedding-model :model-name "embedagain")
@@ -115,7 +141,6 @@
                 (is (= [{:args [pgvector @index-ref documents]
                          :ret  ret}]
                        @calls))))
-
             (testing "check proxies after switch"
               (reset! calls [])
               (let [new-index (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model2)
@@ -125,7 +150,7 @@
                        @calls))))))))))
 
 (deftest delete-documents!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         dash           "dashboard"
         card           "card"
@@ -166,14 +191,14 @@
 (deftest query-test
   (semantic.tu/with-indexable-documents!
     (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
-      (let [pgvector       semantic.tu/db
+      (let [pgvector       (semantic.env/get-pgvector-datasource!)
             index-metadata (semantic.tu/unique-index-metadata)
             model1         semantic.tu/mock-embedding-model
             model2         (assoc semantic.tu/mock-embedding-model :model-name "judge-embedd")
             remove-scores  (fn [rows] (mapv #(dissoc % :score :all-scores) rows)) ; scores have time-sensitives components
             sut*           semantic.pgvector-api/query
             sut            #(remove-scores (:results (mt/as-admin (apply sut* %&)))) ; see notes below about perms
-            search-string  "insect patterns" ; specifics of search will be handled under index tests
+            search-string  "puppy" ; specifics of search will be handled under index tests
             _              (assert (semantic.tu/mock-embeddings search-string)
                                    "search string should have test embedding")
             search         {:search-string search-string}]
@@ -187,9 +212,9 @@
               (is (= api-results index-results))))
           ;; it would be better to test permissions at a higher level than we currently do, but for now to save time...
           (testing "assumption: permissions are applied at the index query level, check the expected fn is called"
-            (let [query-index semantic.index/query-index
+            (let [query-index (mt/original-fn #'semantic.index/query-index)
                   called      (atom false)]
-              (with-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
+              (mt/with-dynamic-fn-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
                 (sut pgvector index-metadata search)
                 (is @called))))
           (testing "same results after reinit"
@@ -218,7 +243,7 @@
 
 (deftest e2e-index-a-sample-db-with-gate-test
   (let [docs            (mt/dataset test-data (vec (search.ingestion/searchable-documents)))
-        pgvector        semantic.tu/db
+        pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         embedding-model semantic.tu/mock-embedding-model
         open-job-thread (fn [& args]
@@ -251,9 +276,7 @@
                   job-thread ^Closeable (open-job-thread pgvector index-metadata)]
         (let [index @index-ref
               {:keys [caught-ex ^Thread thread]} @job-thread]
-
           (is (= (frequencies (map :model docs)) (semantic.pgvector-api/gate-updates! pgvector index-metadata docs)))
-
           (let [max-wait         (+ (System/currentTimeMillis) 1000)
                 get-indexed-q    {:select [:model [:model_id :id]] :from [(keyword (:table-name index))]}
                 get-indexed      (fn [] (frequencies
@@ -269,10 +292,8 @@
                                      (< max-wait (System/currentTimeMillis)) indexed
                                      (= indexed expected-indexed) indexed
                                      :else (recur (get-indexed))))]
-
             (testing "we indexed all the expected documents"
               (is (= expected-indexed indexed-in-time))))
-
           (testing "interrupt"
             (.interrupt thread)
             (is (.join thread (Duration/ofSeconds 10)))

@@ -1,12 +1,13 @@
 import {
-  CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
+  type MetabaseTheme,
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -132,6 +133,42 @@ describe("scenarios > embedding-sdk > styles", () => {
         .invoke("css", "color")
         .should("equal", "rgb(255, 0, 0)");
     });
+
+    it('should be able to reset theme colors by setting it to "undefined" (EMB-696)', () => {
+      const THEME = defineMetabaseTheme({
+        colors: {
+          "text-primary": "#0000ff",
+        },
+      });
+      function TestComponent() {
+        const [theme, setTheme] = useState<MetabaseTheme | undefined>(
+          undefined,
+        );
+        return (
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            theme={theme}
+          >
+            <button onClick={() => setTheme(THEME)}>Set theme</button>
+            <button onClick={() => setTheme(undefined)}>Remove theme</button>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        );
+      }
+      cy.mount(<TestComponent />);
+
+      getSdkRoot().within(() => {
+        cy.findByRole("button", { name: "Set theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          .should("equal", "rgb(0, 0, 255)");
+        cy.findByRole("button", { name: "Remove theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          // --mb-color-text-primary
+          .should("equal", "rgba(7, 23, 34, 0.84)");
+      });
+    });
   });
 
   describe("style leaking", () => {
@@ -170,7 +207,11 @@ describe("scenarios > embedding-sdk > styles", () => {
           "font-family",
           defaultBrowserFontFamily,
         );
-        cy.findByText("Product ID").should("have.css", "font-family", "Lato");
+        cy.findByText("Product ID").should(
+          "have.css",
+          "font-family",
+          "Lato, Arial, sans-serif",
+        );
       });
     });
 
@@ -217,7 +258,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         cy.findByText(/Failed to fetch the user/).should(
           "have.css",
           "font-family",
-          "Lato",
+          "Lato, Arial, sans-serif",
         );
       });
     });
@@ -240,7 +281,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot()
         .findByText("Product ID")
-        .should("have.css", "font-family", "Impact");
+        .should("have.css", "font-family", "Impact, sans-serif");
     });
 
     it("should fallback to the font from the instance if no fontFamily is set on the theme", () => {
@@ -273,7 +314,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot()
         .findByText("Product ID")
-        .should("have.css", "font-family", '"Roboto Mono"');
+        .should("have.css", "font-family", '"Roboto Mono", monospace');
     });
 
     it("should work with 'Custom' fontFamily, using the font files linked in the instance", () => {
@@ -324,27 +365,11 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       getSdkRoot()
         .findByText("Product ID")
-        .should("have.css", "font-family", "Custom");
+        .should("have.css", "font-family", "Custom, sans-serif");
     });
   });
 
   describe("modals, popovers and tooltips", () => {
-    it("legacy WindowModal modals should render with our styles", () => {
-      // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
-      cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <CreateDashboardModal />
-        </MetabaseProvider>,
-      );
-
-      H.modal()
-        .findByText("New dashboard")
-        .should("exist")
-        .and("have.css", "font-family", "Lato");
-
-      // TODO: good place for a visual regression test
-    });
-
     it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
@@ -358,7 +383,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       getSdkRoot()
         .findByText("Save")
         .should("exist")
-        .and("have.css", "font-family", "Lato")
+        .and("have.css", "font-family", "Lato, Arial, sans-serif")
         .click();
 
       // TODO: good place for a visual regression test
@@ -369,7 +394,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       getSdkRoot()
         .findByText("Select a collection or dashboard")
         .should("exist")
-        .and("have.css", "font-family", "Lato");
+        .and("have.css", "font-family", "Lato, Arial, sans-serif");
 
       // TODO: good place for a visual regression test
     });
@@ -458,7 +483,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
           H.popover()
             .findByText("Columns")
-            .should("have.css", "font-family", "Impact");
+            .should("have.css", "font-family", "Impact, sans-serif");
         });
       });
 
@@ -473,12 +498,16 @@ describe("scenarios > embedding-sdk > styles", () => {
           });
         });
 
-        getSdkRoot().findByText("Tooltip test").click();
-        getSdkRoot().findByLabelText("Back to Test Dashboard").realHover();
+        // Set a value on the date filter to make the Clear button appear
+        getSdkRoot().findByText("Date filter").click();
+        H.popover().findByText("Today").click();
+
+        // Hover over the Clear button which has a Mantine Tooltip
+        getSdkRoot().findByRole("button", { name: "Clear" }).realHover();
 
         H.tooltip()
-          .findByText("Back to Test Dashboard")
-          .should("have.css", "font-family", "Impact");
+          .findByText("Clear")
+          .should("have.css", "font-family", "Impact, sans-serif");
       });
 
       it("should render echarts tooltip with our styles", () => {
@@ -500,7 +529,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           .eq(0)
           .should("exist")
           .get(".echarts-tooltip-container")
-          .should("have.css", "font-family", "Impact");
+          .should("have.css", "font-family", "Impact, sans-serif");
       });
 
       it("should render DragOverlay of SortableList with our styles", () => {
@@ -520,12 +549,13 @@ describe("scenarios > embedding-sdk > styles", () => {
         H.moveDnDKitListElement("draggable-item-", {
           startIndex: 0,
           dropIndex: 1,
+          useMouseEvents: true,
           onBeforeDragEnd: () => {
             cy.get(".drag-overlay").within(() => {
               cy.findByTestId("draggable-item-ID").should(
                 "have.css",
                 "font-family",
-                "Impact",
+                "Impact, sans-serif",
               );
             });
           },
@@ -597,6 +627,49 @@ describe("scenarios > embedding-sdk > styles", () => {
         expectElementToHaveNoAppliedCssRules(tag);
       }
     });
+
+    it("SDK-themed Mantine CSS variables should be scoped to .mb-wrapper and not leak to :root", () => {
+      const SDK_BRAND_HEX = "#bada55";
+
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={defineMetabaseTheme({ colors: { brand: SDK_BRAND_HEX } })}
+        >
+          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot().findByText("Product ID").should("exist");
+
+      const MANTINE_VAR = "--mantine-color-brand-0";
+
+      cy.get(".mb-wrapper")
+        .first()
+        .then(($wrapper) => {
+          const wrapperValue = getComputedStyle($wrapper[0])
+            .getPropertyValue(MANTINE_VAR)
+            .trim()
+            .toLowerCase();
+
+          expect(
+            wrapperValue,
+            `${MANTINE_VAR} must be set on .mb-wrapper from SDK theme`,
+          ).to.not.equal("");
+
+          cy.document().then((doc) => {
+            const rootValue = getComputedStyle(doc.documentElement)
+              .getPropertyValue(MANTINE_VAR)
+              .trim()
+              .toLowerCase();
+
+            expect(
+              rootValue,
+              `SDK-derived ${MANTINE_VAR}=${wrapperValue} must NOT leak to :root (found ${rootValue || "<empty>"})`,
+            ).to.not.equal(wrapperValue);
+          });
+        });
+    });
   });
 });
 
@@ -617,7 +690,7 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
   ).flatMap((sheet) => {
     const cssRules = Array.from(sheet.cssRules).filter(
       (rule) => rule instanceof CSSStyleRule,
-    ) as CSSStyleRule[];
+    );
 
     return cssRules.filter((rule) => element.matches(rule.selectorText));
   });

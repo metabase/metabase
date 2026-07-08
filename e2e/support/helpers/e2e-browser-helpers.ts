@@ -21,3 +21,14 @@ export function grantClipboardPermissions() {
     },
   });
 }
+
+export function readClipboard() {
+  return cy.window().then((win) => {
+    return win.navigator.clipboard.readText();
+  });
+}
+
+const isMac = Cypress.platform === "darwin";
+
+export const metaKey = isMac ? "Meta" : "Control";
+export const holdMetaKey = isMac ? { metaKey: true } : { ctrlKey: true };

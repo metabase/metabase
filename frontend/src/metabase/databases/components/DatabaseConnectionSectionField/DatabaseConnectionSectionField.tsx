@@ -23,7 +23,7 @@ export const DatabaseConnectionSectionField = ({
   return (
     <FormField>
       <Box
-        bg="var(--mb-color-background-info)"
+        bg="background_page-tertiary"
         p="lg"
         style={{ borderRadius: "var(--default-border-radius)" }}
       >

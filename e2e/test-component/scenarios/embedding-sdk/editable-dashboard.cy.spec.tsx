@@ -1,6 +1,7 @@
 const { H } = cy;
 import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -11,7 +12,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { defer } from "metabase/lib/promise";
+import { defer } from "metabase/utils/promise";
 import type {
   ConcreteFieldReference,
   DashboardCard,
@@ -21,6 +22,8 @@ import {
   createMockHeadingDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+
+const { WEB_PORT } = WEBMAIL_CONFIG;
 
 const categoryParameter = createMockParameter({
   id: "1b9cd9f1",
@@ -200,7 +203,7 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
         name: "Date filter",
         slug: "filter-date",
         type: "date/all-options",
-        default: "2024-01-01~2024-12-31",
+        default: "2027-01-01~2027-12-31",
       };
       const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
         "field",
@@ -375,6 +378,12 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
 
           cy.log("make the dashboard dirty");
           cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME }).click();
+          // Wait for the card to actually be added before navigating away.
+          // The leave-confirmation modal only shows when the dashboard is dirty,
+          // so clicking "New Question" too early skips the modal entirely.
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME)
+            .should("be.visible");
           cy.button("New Question").should("be.visible").click();
 
           cy.log("we should now see the save confirmation modal");
@@ -400,16 +409,29 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.log("make the dashboard dirty again");
           cy.button("Add questions").should("be.visible").click();
           cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME_2 }).click();
-          cy.button("New Question").click();
+          // Wait for the second card to be added (dashboard dirty) before
+          // navigating away, so the leave-confirmation modal shows reliably.
+          H.getDashboardCards().should("have.length", 2);
+          cy.button("New Question").should("be.visible").click();
 
           H.modal().button("Save changes").click();
 
           cy.log("we are back in the query builder");
-          H.popover().findByRole("link", { name: "Products" }).click();
+          // Wait for the new-question editor to finish mounting before reaching
+          // into the data-source popover. Otherwise we can match a stale popover
+          // from the dashboard edit view while navigation is still in flight.
+          cy.contains("Pick your starting data").should("be.visible");
+          H.popover()
+            .findByRole("link", { name: "Products" })
+            .should("be.visible")
+            .click();
           cy.button("Save").click();
 
           H.modal().within(() => {
             cy.findByLabelText("Name").clear().type(ADDED_QUESTION_NAME_3);
+            cy.findByLabelText("Where do you want to save this?").should(
+              "not.exist",
+            );
             // Test saving a question to a different tab
             cy.findByLabelText("Which tab should this go on?")
               .should("be.visible")
@@ -440,6 +462,49 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           H.getDashboardCard(1)
             .findByText(ADDED_QUESTION_NAME_2)
             .should("be.visible");
+        });
+      });
+    });
+  });
+
+  describe("subscriptions", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.setupSMTP();
+      const questionCard: Partial<DashboardCard> = {
+        id: ORDERS_DASHBOARD_DASHCARD_ID,
+        card_id: ORDERS_QUESTION_ID,
+        row: 0,
+        col: 0,
+        size_x: 16,
+        size_y: 8,
+      };
+      H.createDashboard({
+        name: DASHBOARD_NAME,
+        dashcards: [questionCard],
+        parameters: [categoryParameter, textParameter, countParameter],
+      }).then(({ body: dashboard }) => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        cy.wrap(dashboard.entity_id).as("dashboardEntityId");
+      });
+      cy.signOut();
+    });
+
+    it("should not include links to Metabase", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <EditableDashboard dashboardId={dashboardId} withSubscriptions />,
+        );
+
+        cy.button("Subscriptions").click();
+        H.clickSend();
+        const emailUrl = `http://localhost:${WEB_PORT}/email`;
+        cy.request("GET", emailUrl).then(({ body }) => {
+          const latest = body.slice(-1)[0];
+          cy.request(`${emailUrl}/${latest.id}/html`).then(({ body }) => {
+            expect(body).to.include("Embedding SDK Test Dashboard");
+            expect(body).not.to.include("href=");
+          });
         });
       });
     });

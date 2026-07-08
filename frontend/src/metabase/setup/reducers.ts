@@ -1,10 +1,9 @@
 import { createReducer } from "@reduxjs/toolkit";
 
-import type { SetupState } from "metabase-types/store";
+import type { SetupState, SetupStep } from "metabase/redux/store";
 
 import {
   loadLocaleDefaults,
-  loadUserDefaults,
   selectStep,
   skipDatabase,
   submitDatabase,
@@ -16,7 +15,6 @@ import {
   updateLocale,
   updateTracking,
 } from "./actions";
-import type { SetupStep } from "./types";
 
 const getUserFromQueryParams = () => {
   const params = new URLSearchParams(window.location.search);
@@ -51,11 +49,6 @@ const initialState: SetupState = {
 };
 
 export const reducer = createReducer(initialState, (builder) => {
-  builder.addCase(loadUserDefaults.fulfilled, (state, { payload: user }) => {
-    if (user) {
-      state.user = user;
-    }
-  });
   builder.addCase(
     loadLocaleDefaults.fulfilled,
     (state, { payload: locale }) => {

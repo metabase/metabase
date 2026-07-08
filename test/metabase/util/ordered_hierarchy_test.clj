@@ -40,7 +40,6 @@
             :obtuse-triangle
             :triangle]
            (vec (ordered-hierarchy/sorted-tags polygons)))))
-
   (testing "Hiccup structures are translated into the expected graph structure"
     (is (= {:trapezoid             [:quadrilateral]
             :isosceles-trapezoid   [:trapezoid]

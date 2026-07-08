@@ -1,27 +1,27 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useCreateMembershipMutation,
-  useDeleteMembershipMutation,
-  useUpdateMembershipMutation,
-} from "metabase/api";
-import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   canEditMembership,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
+} from "metabase/admin/utils/groups";
+import {
+  useCreateMembershipMutation,
+  useDeleteMembershipMutation,
+  useUpdateMembershipMutation,
+} from "metabase/api";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useToast } from "metabase/common/hooks/use-toast";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
+import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
-import Alert from "./Alert";
+import { Alert } from "./Alert";
 import { GroupMembersTable } from "./GroupMembersTable";
 
 interface GroupDetailProps {
@@ -36,6 +36,7 @@ export const GroupDetail = ({
   currentUser,
 }: GroupDetailProps) => {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const [createMembership] = useCreateMembershipMutation();
   const [updateMembership] = useUpdateMembershipMutation();
@@ -82,7 +83,7 @@ export const GroupDetail = ({
     } else {
       const { error } = await updateMembership(membership);
       if (error) {
-        dispatch(addUndo({ message: t`Failed to update user` }));
+        sendToast({ message: t`Failed to update user` });
       }
     }
   };
@@ -108,7 +109,7 @@ export const GroupDetail = ({
     } else {
       const { error } = await deleteMembership(membership);
       if (error) {
-        dispatch(addUndo({ message: t`Failed to remove user from group` }));
+        sendToast({ message: t`Failed to remove user from group` });
       }
     }
   };
@@ -116,21 +117,21 @@ export const GroupDetail = ({
   return (
     <SettingsSection>
       <AdminPaneLayout
-        title={
-          <Fragment>
-            {getGroupNameLocalized(group ?? {})}
-            <Box component="span" c="text-light" ms="sm">
-              {ngettext(
-                msgid`${group.members.length} member`,
-                `${group.members.length} members`,
-                group.members.length,
-              )}
-            </Box>
-          </Fragment>
+        title={getGroupNameLocalized(group ?? {})}
+        description={ngettext(
+          msgid`${group.members.length} member`,
+          `${group.members.length} members`,
+          group.members.length,
+        )}
+        titleActions={
+          canEditMembership(group) && (
+            <Button
+              variant="filled"
+              onClick={onAddUsersClicked}
+              disabled={addUserVisible}
+            >{t`Add members`}</Button>
+          )
         }
-        buttonText={t`Add members`}
-        buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
-        buttonDisabled={addUserVisible}
       >
         <GroupDescription group={group} />
         <GroupMembersTable
@@ -149,29 +150,35 @@ export const GroupDetail = ({
 };
 
 const GroupDescription = ({ group }: { group: Group }) => {
+  // Let plugin handle tenant-specific descriptions first
+  const tenantDescription = PLUGIN_TENANTS.GroupDescription({ group });
+  if (tenantDescription) {
+    return tenantDescription;
+  }
+
   if (isDefaultGroup(group)) {
     return (
-      <Box maw="38rem" px="1rem">
-        <p>
+      <Box maw="38rem" mb="md">
+        <Text>
           {t`All users belong to the ${getGroupNameLocalized(
             group,
           )} group and can't be removed from it. Setting permissions for this group is a great way to
         make sure you know what new Metabase users will be able to see.`}
-        </p>
+        </Text>
       </Box>
     );
   }
 
   if (isAdminGroup(group)) {
     return (
-      <Box maw="38rem" px="1rem">
-        <p>
+      <Box maw="38rem" mb="md">
+        <Text>
           {t`This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the
         settings in the Admin Panel, including changing permissions! So, add people to this group with care.`}
-        </p>
-        <p>
+        </Text>
+        <Text>
           {t`To make sure you don't get locked out of Metabase, there always has to be at least one user in this group.`}
-        </p>
+        </Text>
       </Box>
     );
   }

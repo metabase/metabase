@@ -19,7 +19,9 @@
   ([target]
    `(import-fn ~target nil))
   ([target sym]
-   (redef target sym)))
+   (macros/case
+     :clj `(p/import-fn ~target ~sym)
+     :cljs (redef target sym))))
 
 (defmacro import-fns
   "Imports defns from other namespaces.

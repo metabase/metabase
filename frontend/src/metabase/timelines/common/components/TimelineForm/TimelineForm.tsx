@@ -2,19 +2,18 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import Button from "metabase/common/components/Button";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
-import FormInput from "metabase/common/components/FormInput";
-import FormSelect from "metabase/common/components/FormSelect";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import FormTextArea from "metabase/common/components/FormTextArea";
-import { Form, FormProvider } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { getTimelineIcons } from "metabase/lib/timelines";
+import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
+import { FormInput } from "metabase/common/components/FormInput";
+import { FormTextArea } from "metabase/common/components/FormTextArea";
+import { getTimelineIcons } from "metabase/common/utils/timelines";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import { Button } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type { TimelineData } from "metabase-types/api";
 
 import FormArchiveButton from "../FormArchiveButton";
 
+import { IconField } from "./IconField";
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
 const TIMELINE_SCHEMA = Yup.object({
@@ -54,7 +53,7 @@ const TimelineForm = ({
             autoFocus
           />
           <FormTextArea name="description" title={t`Description`} nullable />
-          <FormSelect name="icon" title={t`Default icon`} options={icons} />
+          <IconField name="icon" title={t`Default icon`} options={icons} />
           <TimelineFormFooter>
             <FormErrorMessage inline />
             {!isNew && (
@@ -66,9 +65,9 @@ const TimelineForm = ({
               {t`Cancel`}
             </Button>
             <FormSubmitButton
-              title={isNew ? t`Create` : t`Update`}
+              label={isNew ? t`Create` : t`Update`}
               disabled={!dirty}
-              primary
+              variant="filled"
             />
           </TimelineFormFooter>
         </Form>

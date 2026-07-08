@@ -1,8 +1,10 @@
 (ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
@@ -93,7 +95,6 @@
     [{:collection_id 1337} :write] #{"/collection/1337/"}
     [{:collection_id nil} :read]   #{"/collection/root/read/"}
     [{:collection_id nil} :write]  #{"/collection/root/"})
-
   (testing "invalid input"
     (doseq [[reason inputs] {"map must have `:collection_id` key"
                              [[{} :read]]
@@ -123,7 +124,6 @@
          (perms/revoke-collection-permissions!
           (perms-group/all-users)
           (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
-
     (testing "(should apply to descendants as well)"
       (mt/with-temp [:model/Collection collection {:location (collection/children-location
                                                               (collection/user->personal-collection
@@ -152,7 +152,6 @@
              Exception
              (f (perms-group/all-users)
                 (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
-
         (testing "(should apply to descendants as well)"
           (is (thrown?
                Exception
@@ -226,26 +225,92 @@
       ;; to think about how this works since the collection ID will be `NULL`.
       "/collection/root/" {})))
 
-(deftest cannot-grant-application-permissions-to-tenant-groups
+(deftest cannot-grant-non-subscription-application-permissions-to-tenant-groups
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
-                          (perms/grant-application-permissions! tenant-group-id :subscription)))))
+    (testing "Setting and monitoring permissions should still be blocked"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                            (perms/grant-application-permissions! tenant-group-id :setting)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                            (perms/grant-application-permissions! tenant-group-id :monitoring))))
+    (testing "Subscription permissions should be allowed"
+      (is (nil? (perms/grant-application-permissions! tenant-group-id :subscription))))))
 
-(deftest cannot-grant-write-permissions-to-tenant-group
+(deftest cannot-grant-collection-permissions-to-tenant-group
+  ;; right now, with no tenant collections, you can't grant any permissions on any collection to a tenant group
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
-                 :model/Collection {coll-id :id} {:location "/"}]
-    ;; just call grant/revoke to show that nothing here throws
-    (perms/grant-collection-read-permissions! tenant-group-id coll-id)
+                 :model/Collection {coll-id :id} {:location "/" :type "tenant-collection"}]
     (perms/revoke-collection-permissions! tenant-group-id coll-id)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot have write access to any collections\."
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
+                          (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot have write access to any collections\."
                           (perms/grant-collection-readwrite-permissions! tenant-group-id coll-id)))))
 
 (deftest cannot-grant-read-or-write-permissions-on-analytics-to-tenant-group
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
-    (with-redefs [audit.impl/is-collection-id-audit? (constantly true)]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot receive any access to the audit collection\."
+    (mt/with-dynamic-fn-redefs [audit.impl/is-collection-id-audit? (constantly true)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
                             (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group
       (perms/grant-collection-read-permissions! normal-group-id coll-id))))
+
+(deftest can-create-use-parent-collection-perms-test
+  (testing "can-create? for models using :perms/use-parent-collection-perms checks parent collection write permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection coll {:name "Test Collection"}]
+        (testing "can create in collection when user has write permissions"
+          (mt/with-temp [:model/PermissionsGroup group {}
+                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                              :group_id (:id group)}]
+            (perms/grant-collection-readwrite-permissions! group coll)
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (true? (mi/can-create? :model/Card {:collection_id (:id coll)}))))))
+        (testing "cannot create in collection when user lacks write permissions"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-create? :model/Card {:collection_id (:id coll)})))))
+        (testing "cannot create without collection_id (root collection)"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-create? :model/Card {})))
+            (is (false? (mi/can-create? :model/Card {:collection_id nil})))))))
+    (testing "with root collection perms"
+      (testing "can create without collection_id (root collection)"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (true? (mi/can-create? :model/Card {})))
+          (is (true? (mi/can-create? :model/Card {:collection_id nil}))))))))
+
+(deftest ^:parallel can-create-use-parent-collection-perms-dashboard-test
+  (testing "can-create? works for dashboards using parent collection permissions"
+    (mt/with-temp [:model/Collection coll {:name "Dashboard Collection"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "admin can create dashboard in any collection"
+          (is (true? (mi/can-create? :model/Dashboard {:collection_id (:id coll)}))))
+        (testing "admin can create dashboard in root collection"
+          (is (true? (mi/can-create? :model/Dashboard {}))))))))
+
+(deftest ^:parallel can-read-via-parent-collection?-test
+  (testing "read perm is true iff the current user has read on the parent collection"
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
+      (is (true?  (boolean (perms/can-read-via-parent-collection? nil)))))
+    (binding [api/*current-user-permissions-set* (atom #{})]
+      (is (false? (boolean (perms/can-read-via-parent-collection? 42))))
+      (is (false? (boolean (perms/can-read-via-parent-collection? nil)))))
+    (binding [api/*current-user-permissions-set* (atom #{"/collection/42/read/"})]
+      (is (true?  (boolean (perms/can-read-via-parent-collection? 42))))
+      (is (false? (boolean (perms/can-read-via-parent-collection? 99)))))))
+
+(deftest collection-id-only-read-methods-not-overridden-test
+  (testing "no one has redefmethod'd mi/can-read? for a model registered as collection-id-only"
+    ;; Load the model namespaces so their `define-collection-based-visibility!` calls populate the registry.
+    (require 'metabase.queries.models.card
+             'metabase.dashboards.models.dashboard)
+    (let [registered (perms/collection-id-only-read-models)]
+      (is (seq registered))
+      (doseq [t2-model registered]
+        (is (identical? (perms/collection-id-only-read-method t2-model)
+                        (get-method mi/can-read? t2-model))
+            (str t2-model ": `mi/can-read?` was overridden after "
+                 "`define-collection-based-visibility!` installed it. "
+                 "If this model needs richer read perms, remove the macro call so downstream consumers "
+                 "(e.g., semantic search's fast path) don't assume the collection-id-only contract."))))))

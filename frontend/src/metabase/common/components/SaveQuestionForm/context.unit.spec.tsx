@@ -1,4 +1,6 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import * as formik from "formik";
+
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   defaultAuditInfo,
   setupAuditInfoEndpoint,
@@ -6,7 +8,8 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
@@ -16,9 +19,12 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
-import { SaveQuestionProvider, useSaveQuestionContext } from "./context";
+import {
+  FormValuesPatcher,
+  SaveQuestionProvider,
+  useSaveQuestionContext,
+} from "./context";
 
 const TestComponent = () => {
   const { values, saveToDashboard } = useSaveQuestionContext();
@@ -40,6 +46,7 @@ const TestComponent = () => {
 interface setupProps {
   question?: Question;
   originalQuestion?: Question | null;
+  initialCollectionId?: number | string | null;
 }
 
 const setup = ({
@@ -51,11 +58,15 @@ const setup = ({
     }),
   ),
   originalQuestion = null,
+  initialCollectionId,
 }: setupProps = {}) => {
   const onCreate = jest.fn();
   const onSave = jest.fn();
 
   setupAuditInfoEndpoint();
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -63,7 +74,8 @@ const setup = ({
     }),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("audit_app");
+  setupEnterpriseOnlyPlugin("collections");
 
   renderWithProviders(
     <SaveQuestionProvider
@@ -71,6 +83,7 @@ const setup = ({
       originalQuestion={originalQuestion}
       onCreate={onCreate}
       onSave={onSave}
+      initialCollectionId={initialCollectionId}
     >
       <TestComponent />
     </SaveQuestionProvider>,
@@ -130,6 +143,38 @@ describe("SaveQuestionContext", () => {
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
 
+      it("should use the initialCollectionId prop over recent selections (EMB-1609)", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [createMockRecentCollectionItem({ model: "collection", id: 10 })],
+          ["selections"],
+        );
+
+        setup({ initialCollectionId: 42 });
+
+        await waitFor(async () =>
+          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+            "42",
+          ),
+        );
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
+      it("should not suggest a recent dashboard when initialCollectionId is set (EMB-1609)", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [createMockRecentCollectionItem({ model: "dashboard", id: 10 })],
+          ["selections"],
+        );
+
+        setup({ initialCollectionId: 42 });
+
+        await waitFor(async () =>
+          expect(await screen.findByTestId("collectionId")).toHaveTextContent(
+            "42",
+          ),
+        );
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
       it("should require saving to a specific dashboard if the question has a dashboard id already", async () => {
         setupRecentViewsAndSelectionsEndpoints(
           [createMockRecentCollectionItem({ model: "dashboard", id: 10 })],
@@ -137,13 +182,14 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question(
-            createMockCard({
+          question: new Question({
+            ...createMockCard({
               collection_id: 11,
               collection: createMockCollection({ id: 11 }),
               dashboard_id: 20,
             }),
-          ),
+            creationType: "custom_question",
+          }),
         });
 
         expect(screen.getByTestId("saveToDashboard")).toBeInTheDocument();
@@ -338,5 +384,80 @@ describe("SaveQuestionContext", () => {
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
     });
+  });
+});
+
+describe("FormValuesPatcher", () => {
+  const setValuesSpy = jest.fn();
+  const setup = (initialValue: unknown) => {
+    jest.spyOn(formik, "useFormikContext").mockReturnValue({
+      values: initialValue,
+      setValues: setValuesSpy,
+    } as unknown as formik.FormikContextType<unknown>);
+  };
+
+  beforeEach(() => {
+    setValuesSpy.mockClear();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should patch untouched fields when nextValues change", () => {
+    setup({ name: "initial", count: 1 });
+
+    const { rerender } = render(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    rerender(
+      <FormValuesPatcher nextValues={{ name: "updated", count: 99 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    expect(setValuesSpy).toHaveBeenCalledWith({ name: "updated", count: 99 });
+  });
+
+  it("should preserve user-modified fields when nextValues change", () => {
+    setup({ name: "user typed", count: 1 });
+
+    const { rerender } = render(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    rerender(
+      <FormValuesPatcher nextValues={{ name: "updated", count: 99 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    expect(setValuesSpy).toHaveBeenCalledWith({
+      name: "user typed",
+      count: 99,
+    });
+  });
+
+  it("should not patch anything when nextValues remain unchanged", () => {
+    setup({ name: "initial", count: 1 });
+
+    const { rerender } = render(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    rerender(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    expect(setValuesSpy).not.toHaveBeenCalled();
   });
 });

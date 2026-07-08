@@ -3,8 +3,6 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/common/components/Button";
-
 interface TabButtonProps {
   isSelected?: boolean;
   disabled?: boolean;
@@ -54,7 +52,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
   padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px); /* tab .list padding - input padding - borders/margins */
   color: ${(props) =>
     props.isSelected && !props.disabled
-      ? "var(--mb-color-brand)"
+      ? "var(--mb-color-core-brand)"
       : "var(--mb-color-text-primary)"};
   opacity: ${(props) => (props.disabled ? 0.3 : 1)};
   font-size: var(--mantine-font-size-md);
@@ -66,7 +64,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     ${(props) =>
       !props.disabled &&
       css`
-        color: var(--mb-color-brand);
+        color: var(--mb-color-core-brand);
       `}
   }
 
@@ -84,36 +82,9 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     !props.disabled &&
     css`
       :after {
-        border-color: var(--mb-color-brand);
+        border-color: var(--mb-color-core-brand);
       }
     `}
-`;
-
-export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
-  transition: background-color 0s;
-  align-self: center;
-  padding: 0.25rem;
-  color: inherit;
-  border: none;
-
-  ${(props) =>
-    props.isOpen &&
-    !props.disabled &&
-    css`
-      color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-medium);
-    `}
-  &:hover,:focus {
-    ${(props) =>
-      props.disabled
-        ? css`
-            color: var(--mb-color-text-dark);
-          `
-        : css`
-            color: var(--mb-color-brand);
-            background-color: var(--mb-color-bg-medium);
-          `}
-  }
 `;
 
 export const MenuContent = styled.ul`
@@ -124,7 +95,7 @@ export const MenuItem = styled.li`
   width: 100%;
   padding: 0.85em 1.45em;
   border-radius: 0.5em;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: 700;
   text-align: start;
   text-decoration: none;
@@ -132,7 +103,7 @@ export const MenuItem = styled.li`
 
   &:focus,
   :hover {
-    color: var(--mb-color-brand);
-    background-color: var(--mb-color-bg-light);
+    color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_page-secondary);
   }
 `;

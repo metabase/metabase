@@ -1,8 +1,10 @@
 (ns ^:mb/driver-tests metabase.driver.druid-jdbc.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.druid-jdbc.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.druid-jdbc.query-processor-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]))
+   [metabase.query-processor.timeseries-test.util :as tqpt]
+   [metabase.test :as mt]))
 
 (deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid-jdbc

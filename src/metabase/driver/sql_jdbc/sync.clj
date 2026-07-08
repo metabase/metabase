@@ -26,7 +26,6 @@
   fallback-metadata-query
   filtered-syncable-schemas
   have-select-privilege?]
-
  [sql-jdbc.describe-table
   add-table-pks
   database-type->base-type-or-warn
@@ -40,15 +39,14 @@
   describe-table
   describe-table-fields
   describe-table-fields-xf
-  describe-table-fks
   describe-table-indexes
   get-catalogs
-  pattern-based-database-type->base-type]
-
+  pattern-based-database-type->base-type
+  reducible-fks-for-tables-matching-options
+  reducible-table-fks-from-jdbc-metadata]
  [sql-jdbc.describe-database
   describe-database
   fast-active-tables
   post-filtered-active-tables]
-
  [sql-jdbc.dbms-version
   dbms-version])

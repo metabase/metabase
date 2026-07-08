@@ -9,7 +9,7 @@ export const SidebarRoot = styled.aside`
   flex-shrink: 0;
   overflow: hidden;
   width: 300px;
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const SidebarHeader = styled.div`
@@ -19,13 +19,13 @@ export const SidebarHeader = styled.div`
 
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-disabled);
 `;
 
 export const BackButton = styled.button`
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-family: var(--mb-default-font-family);
   font-weight: 700;
   font-size: 14px;
@@ -35,6 +35,6 @@ export const BackButton = styled.button`
   text-align: left;
 
   &:hover {
-    color: var(--mb-color-filter);
+    color: var(--mb-color-core-filter);
   }
 `;

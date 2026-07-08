@@ -38,7 +38,7 @@ export const ComparisonPickerButton = styled(Button)<ButtonProps>`
 
   &:hover {
     ${ComparisonPickerSecondaryText} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 ` as unknown as typeof Button;
@@ -53,7 +53,7 @@ export const DoneButton = (props: ButtonProps) => (
 
 export const DragHandleIcon = styled(Icon)`
   cursor: grab;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const ExpandIcon = styled(Icon)`
@@ -61,5 +61,5 @@ export const ExpandIcon = styled(Icon)`
 `;
 
 export const RemoveIcon = styled(Icon)`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;

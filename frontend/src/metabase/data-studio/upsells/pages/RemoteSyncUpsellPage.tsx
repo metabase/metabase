@@ -1,0 +1,48 @@
+import { t } from "ttag";
+
+import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
+import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
+import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
+import { UpsellCardContent } from "metabase/common/components/upsells/components/UpsellCardContent";
+import { DATA_STUDIO_UPGRADE_URL } from "metabase/common/components/upsells/constants";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Stack } from "metabase/ui";
+
+const CAMPAIGN = "remote-sync";
+const LOCATION = "data-studio-remote-sync";
+
+export function RemoteSyncUpsellPage() {
+  const applicationName = useSelector(getApplicationName);
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
+    url: DATA_STUDIO_UPGRADE_URL,
+    campaign: CAMPAIGN,
+    location: LOCATION,
+  });
+
+  return (
+    <DottedBackground px="3.5rem" pb="2rem">
+      <PaneHeader
+        breadcrumbs={
+          <DataStudioBreadcrumbs>{t`Remote sync`}</DataStudioBreadcrumbs>
+        }
+      />
+      <Stack align="center" p={40}>
+        <LineDecorator>
+          <UpsellCardContent
+            campaign={CAMPAIGN}
+            location={LOCATION}
+            title={t`Manage your ${applicationName} content in Git`}
+            description={t`Keep your most important datasets, metrics, and SQL logic under version control. Sync content to a Git repository to review changes, collaborate, and maintain a production-ready source of truth.`}
+            image="app/assets/img/data-studio-remote-sync-upsell.svg"
+            upgradeOnClick={upgradeOnClick}
+            upgradeUrl={upgradeUrl}
+            variant="image-full-height"
+          />
+        </LineDecorator>
+      </Stack>
+    </DottedBackground>
+  );
+}

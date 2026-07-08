@@ -136,11 +136,9 @@
         updates-needed? (and parent-updates
                              (not= (sanitize-row (merge existing-row parent-updates))
                                    (sanitize-row row)))]
-
     ;; Update the parent row if needed
     (when (or force-update? updates-needed?)
       (t2/update! model (id-col row) (sanitize-row row-with-refs)))
-
     ;; Handle non-ref nested models
     (when nested-specs
       (let [nested-without-refs (non-ref-nested-models nested-specs row)]
@@ -150,7 +148,6 @@
            (with-parent-id row-with-refs nested-without-refs (id-col row))
            nested-without-refs
            update-path))))
-
     (or force-update? updates-needed?)))
 
 (defn- handle-sequential-updates!
@@ -183,17 +180,14 @@
           (log/tracef "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
           (let [rows (map sanitize-row to-create)]
             (t2/insert! model rows)))))
-
     (when (seq to-delete)
       ;; TODO: cascade deletes?
       (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map id-col to-delete)))
       (t2/delete! model id-col [:in (map id-col to-delete)]))
-
     (when (seq to-update)
       (log/tracef "%s Attempt updating %s rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
         (handle-rows-update! row existing-rows spec path)))
-
     ;; the row might not change, but the nested models might
     (when (and (seq to-skip) nested-specs)
       (log/tracef "%s nested models detected, updating unchanged nested models for %s %s"

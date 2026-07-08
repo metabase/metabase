@@ -1,0 +1,9 @@
+.UpsellGem {
+  color: var(--mb-color-core-brand);
+  flex-shrink: 0;
+}
+
+.UpsellGemNew {
+  color: var(--mb-color-core-brand);
+  flex-shrink: 0;
+}

@@ -1,9 +1,0 @@
-.refreshLink {
-  color: var(--mb-color-text-light);
-  cursor: pointer;
-  padding: 0.5rem;
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-}

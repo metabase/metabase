@@ -2,16 +2,17 @@ import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import {
-  findDashCardForInlineParameter,
-  isQuestionDashCard,
-  isVirtualDashCard,
-} from "metabase/dashboard/utils";
+import { findDashCardForInlineParameter } from "metabase/dashboard/utils";
 import {
   type ParameterMappingOption,
   getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "metabase/parameters/utils/mapping-options";
+import type { DashboardState } from "metabase/redux/store";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -24,7 +25,6 @@ import type {
   ParameterTarget,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { DashboardState } from "metabase-types/store";
 
 import type { SetMultipleDashCardAttributesOpts } from "../core";
 
@@ -135,7 +135,7 @@ export function getAutoWiredMappingsForDashcards(
 export function getParameterMappings<DC extends DashboardCard>(
   dashcard: DC,
   parameter_id: ParameterId,
-  card_id: CardId,
+  card_id: CardId | null,
   target: ParameterTarget | null,
 ): NonNullable<DC["parameter_mappings"]> {
   const isVirtual = isVirtualDashCard(dashcard);

@@ -5,7 +5,6 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
-
    [toucan2.core :as t2]))
 
 (deftest ^:parallel table-name-resolution-test
@@ -22,7 +21,7 @@
     ;; classloader/require for thread safety
     (classloader/require nspace)))
 
-(deftest ^:parallel all-models-are-accounted-for-test
+(deftest all-models-are-accounted-for-test
   (load-every-metabase-namespace)
   (doseq [model (descendants :metabase/model)
           :when (= (namespace model) "model")]
@@ -30,7 +29,7 @@
       (is (models.resolution/model->namespace model)
           (format "%s should have a mapping for %s" `models.resolution/model->namespace model)))))
 
-(deftest ^:parallel all-entries-are-valid-test
+(deftest all-entries-are-valid-test
   (doseq [[model nspace] models.resolution/model->namespace
           :when (or config/ee-available?
                     (not (str/starts-with? nspace "metabase-enterprise")))]

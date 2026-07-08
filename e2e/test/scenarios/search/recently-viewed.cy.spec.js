@@ -4,6 +4,9 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
+const advanceServerClockBy = (milliseconds) =>
+  cy.request("POST", "/api/testing/set-time", { "add-ms": milliseconds });
+
 describe("search > recently viewed", () => {
   beforeEach(() => {
     H.restore();
@@ -13,9 +16,11 @@ describe("search > recently viewed", () => {
     cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
+    advanceServerClockBy(100);
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     // "Orders in a dashboard" dashboard
+    advanceServerClockBy(100);
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByTextEnsureVisible("Product ID");
 
@@ -61,6 +66,7 @@ describe("search > recently viewed", () => {
 
     cy.intercept("/api/dataset").as("dataset");
 
+    advanceServerClockBy(100);
     cy.findAllByTestId("recently-viewed-item-title").eq(2).click();
     cy.wait("@dataset");
 
@@ -89,10 +95,6 @@ describe("Recently Viewed > Entity Picker", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a collection").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Collections/ });
-
-      cy.findByText("Today");
       cy.findByText("My Fresh Collection");
     });
   });
@@ -106,10 +108,7 @@ describe("Recently Viewed > Entity Picker", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Add this question to a dashboard").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Dashboards/ });
-
-      cy.findByText("Today");
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders in a dashboard").click();
       cy.button("Select").click();
     });
@@ -148,10 +147,10 @@ describe("search > recently viewed > enterprise features", () => {
 });
 
 const assertRecentlyViewedItem = (index, title, type) => {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("recently-viewed-item-title")
     .eq(index)
     .should("have.text", title);
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("result-link-wrapper").eq(index).should("have.text", type);
 };

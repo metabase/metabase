@@ -50,7 +50,7 @@
       ;; Since MySQL TIMESTAMPs aren't timezone-aware this means comparisons are done between timestamps in the report
       ;; timezone and the local datetime portion of the parameter, in UTC. Bad!
       ;;
-      ;; Convert it to a LocalDateTime, in the report timezone, so comparisions will work correctly.
+      ;; Convert it to a LocalDateTime, in the report timezone, so comparisons will work correctly.
       ;;
       ;; See also — https://dev.mysql.com/doc/refman/5.5/en/datetime.html
       (let [offset (.. (t/zone-id) getRules (getOffset (t/instant t)))
@@ -178,7 +178,7 @@
 ;;;; [[next.jdbc]] and Toucan 2 mappings
 
 (extend-protocol next.jdbc.prepare/SettableParameter
-   ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
+  ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
   Instant
   (set-parameter [t stmt i]
     (jdbc/set-parameter (t/offset-date-time t (t/zone-offset 0)) stmt i))

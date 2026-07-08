@@ -133,12 +133,10 @@
                                   (get column-settings {::mb.viz/column-name col-id-or-name}))
                               (qualify-keys col-settings))
         global-settings      (streaming.common/viz-settings-for-col col viz-settings)
-        currency?            (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                          (= (::mb.viz/number-style viz-settings) "currency")
-                                          (and (nil? (::mb.viz/number-style column-settings))
-                                               (or
-                                                (::mb.viz/currency-style column-settings)
-                                                (::mb.viz/currency column-settings)))))
+        ;; Shared with the XLSX export path so both agree on what counts as currency (GDGT-2398). The extra
+        ;; viz-settings check covers a number-style set at the global/viz level rather than on the column itself.
+        currency?            (or (streaming.common/currency-settings? column-settings)
+                                 (= (::mb.viz/number-style viz-settings) "currency"))
 
         {::mb.viz/keys [number-separators decimals scale number-style
                         prefix suffix currency-style currency]} global-settings
@@ -317,6 +315,42 @@
        (fn [value]
          (->TextWrapper (str value) value))
        identity))))
+
+(defn get-formatter
+  "Returns a memoized fn that builds a column formatter (via [[create-formatter]]) for a column."
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (create-formatter timezone column settings format-rows?))))
+
+(defn- create-formatters
+  "Value formatters for the columns at `indexes`; each formats a raw value via
+  [[metabase.query-processor.streaming.common/format-value]] then the column's formatter."
+  [columns indexes timezone settings format-rows?]
+  (let [formatter-fn (get-formatter timezone settings format-rows?)]
+    (mapv (fn [idx]
+            (let [formatter (formatter-fn (nth columns idx))]
+              (fn [value]
+                (formatter (streaming.common/format-value value)))))
+          indexes)))
+
+(mu/defn make-formatters :- [:map
+                             [:row-formatters [:sequential ifn?]]
+                             [:col-formatters [:sequential ifn?]]
+                             [:val-formatters [:sequential ifn?]]]
+  "Row/col/measure value formatters for a pivot export, keyed by `:row-formatters`/`:col-formatters`/`:val-formatters`.
+  Shared by the CSV export and static-viz pivot render paths. `row-indexes`/`col-indexes`/`val-indexes` are column
+  indexes into `columns`."
+  [columns      :- [:sequential :map]
+   row-indexes  :- [:maybe [:sequential :int]]
+   col-indexes  :- [:maybe [:sequential :int]]
+   val-indexes  :- [:maybe [:sequential :int]]
+   settings     :- [:maybe :map]
+   timezone     :- [:maybe :string]
+   format-rows? :- :boolean]
+  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
+   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
+   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
 
 (defn NumericWrapper?
   "Is `x` an instance of `NumericWrapper`?"

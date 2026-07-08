@@ -2,16 +2,19 @@ import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
 import { screen, within } from "__support__/ui";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { BaseEntityId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockModerationReview,
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUserInfo,
 } from "metabase-types/api/mocks";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
 
@@ -74,7 +77,14 @@ describe("QuestionInfoSidebar", () => {
 
     describe("for admins", () => {
       it("should show tabs for Overview, Relationships, History, and Insights", async () => {
-        setup({ user: { is_superuser: true } });
+        setup({
+          user: { is_superuser: true },
+          settings: createMockSettings({
+            "token-features": createMockTokenFeatures({
+              audit_app: false,
+            }),
+          }),
+        });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(4);
         expect(tabs.map((tab) => tab.textContent)).toEqual([
@@ -83,10 +93,9 @@ describe("QuestionInfoSidebar", () => {
           "Relationships",
           "Insights",
         ]);
-        const insightsTab = await screen.findByRole("tab", {
-          name: "Insights",
-        });
-        userEvent.click(insightsTab);
+
+        const insightsTab = screen.getByText("Insights");
+        await userEvent.click(insightsTab);
         expect(
           await screen.findByText(/See who.s doing what, when/),
         ).toBeInTheDocument();
@@ -114,13 +123,13 @@ describe("QuestionInfoSidebar", () => {
     it("should show creation information", () => {
       const card = createMockCard({
         name: "Question",
-        creator: {
+        creator: createMockUserInfo({
           first_name: "Ash",
           last_name: "Ketchum",
           email: "Ashboy@example.com",
           common_name: "Ash Ketchum",
           id: 19,
-        },
+        }),
         created_at: "2024-04-13T00:00:00Z",
       });
       setup({ card });
@@ -267,7 +276,7 @@ describe("QuestionInfoSidebar", () => {
       const query = getJoinedQuery();
       const card = createMockCard({
         type: "model",
-        dataset_query: Lib.toLegacyQuery(query),
+        dataset_query: Lib.toJsQuery(query),
       });
       await setup({ card });
       await userEvent.click(screen.getByRole("tab", { name: "Relationships" }));
@@ -277,25 +286,28 @@ describe("QuestionInfoSidebar", () => {
 });
 
 function getJoinedQuery() {
-  const query = createQuery();
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const productsId = findRHSColumn("PRODUCTS", "ID");
-  const stageIndex = -1;
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    ordersProductId,
-    productsId,
-  );
-  return Lib.join(
-    query,
-    stageIndex,
-    Lib.joinClause(table, [condition], defaultStrategy),
-  );
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "PRODUCT_ID",
+                },
+                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }

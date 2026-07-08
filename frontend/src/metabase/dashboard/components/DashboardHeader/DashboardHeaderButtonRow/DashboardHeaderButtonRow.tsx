@@ -14,8 +14,8 @@ import {
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
@@ -39,10 +39,10 @@ export const DashboardHeaderButtonRow = ({
   const {
     isFullscreen,
     onFullscreenChange,
-    hasNightModeToggle,
-    onNightModeChange,
     downloadsEnabled,
+    withSubscriptions,
     dashboardActions,
+    refreshPeriod,
   } = useDashboardContext();
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
@@ -79,9 +79,9 @@ export const DashboardHeaderButtonRow = ({
             config.enabled({
               isFullscreen,
               onFullscreenChange,
-              hasNightModeToggle,
-              onNightModeChange,
               downloadsEnabled,
+              withSubscriptions,
+              refreshPeriod,
               ...buttonComponentProps,
             })
           ) {

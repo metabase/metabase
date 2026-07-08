@@ -2,9 +2,10 @@ name: Prepare Uberjar Artifact
 description: Prepare and upload Metabase JAR as a GitHub artifact.
 
 inputs:
-  name:
-    required: true
-    description: Artifact name
+  edition:
+    required: false
+    default: "ee"
+    description: Metabase edition (ee or oss)
 
 runs:
   using: "composite"
@@ -16,9 +17,9 @@ runs:
       run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
       shell: bash
     - name: Upload JARs as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: ${{ inputs.name }}
+        name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
         path: |
           ./target/uberjar/metabase.jar
           ./COMMIT-ID

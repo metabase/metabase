@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -270,3 +271,10 @@
    {:keys [database-name], :as _dbdef} :- [:map [:database-name :string]]]
   (let [physical-name (ddl.i/format-name driver database-name)]
     (contains? (existing-databases) physical-name)))
+
+(mu/defmethod load-data/do-insert! :athena
+  [driver                    :- :keyword
+   ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
+   table-identifier
+   rows]
+  (load-data/do-insert*! driver conn table-identifier rows {:transaction? false}))

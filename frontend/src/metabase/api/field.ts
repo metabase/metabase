@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/redux/metadata";
+import { FieldSchema } from "metabase/schema";
 import type {
   CreateFieldDimensionRequest,
   Field,
@@ -5,6 +7,8 @@ import type {
   FieldId,
   FieldValue,
   GetFieldRequest,
+  GetFieldTableIdsRequest,
+  GetFieldTableIdsResponse,
   GetFieldValuesResponse,
   GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
@@ -22,6 +26,7 @@ import {
   provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -32,6 +37,21 @@ export const fieldApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (field) => (field ? provideFieldTags(field) : []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, FieldSchema)),
+        ),
+    }),
+    getFieldTableIds: builder.query<
+      GetFieldTableIdsResponse,
+      GetFieldTableIdsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/field/table-ids",
+        body,
+      }),
+      providesTags: [listTag("field")],
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: (fieldId) => ({
@@ -74,6 +94,7 @@ export const fieldApi = Api.injectEndpoints({
           idTag("field-values", id),
           tag("parameter-values"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     updateFieldValues: builder.mutation<void, UpdateFieldValuesRequest>({
@@ -102,6 +123,7 @@ export const fieldApi = Api.injectEndpoints({
           idTag("field", id),
           idTag("field-values", id),
           tag("parameter-values"),
+          tag("dataset"),
         ]),
     }),
     deleteFieldDimension: builder.mutation<void, FieldId>({
@@ -114,6 +136,7 @@ export const fieldApi = Api.injectEndpoints({
           idTag("field", id),
           idTag("field-values", id),
           tag("parameter-values"),
+          tag("dataset"),
         ]),
     }),
     rescanFieldValues: builder.mutation<void, FieldId>({
@@ -143,6 +166,7 @@ export const fieldApi = Api.injectEndpoints({
 
 export const {
   useGetFieldQuery,
+  useGetFieldTableIdsQuery,
   useGetFieldValuesQuery,
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,

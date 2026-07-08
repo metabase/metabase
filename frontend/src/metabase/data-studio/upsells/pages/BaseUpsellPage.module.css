@@ -1,0 +1,6 @@
+@media screen and (max-height: 520px) {
+  .UpsellPageContent {
+    height: 100%;
+    overflow-y: auto;
+  }
+}

@@ -7,6 +7,7 @@ interface AddRowProps {
   value: string;
   isValid: boolean;
   placeholder?: string;
+  ariaLabel?: string;
   onKeyDown?: (event: React.KeyboardEvent) => void;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onDone: () => void;
@@ -18,6 +19,7 @@ export const AddRow = ({
   value,
   isValid,
   placeholder,
+  ariaLabel,
   onKeyDown,
   onChange,
   onDone,
@@ -29,7 +31,7 @@ export const AddRow = ({
     p="0.5rem"
     display="relative"
     align="center"
-    bd="1px solid var(--mb-color-brand)"
+    bd="1px solid var(--mb-color-core-brand)"
     style={{ borderRadius: "0.5rem" }}
   >
     {children}
@@ -41,6 +43,7 @@ export const AddRow = ({
       styles={{ input: { background: "transparent" } }}
       value={value}
       placeholder={placeholder}
+      aria-label={ariaLabel}
       autoFocus
       onKeyDown={onKeyDown}
       onChange={onChange}
@@ -50,7 +53,6 @@ export const AddRow = ({
     </Button>
     <Button
       variant={isValid ? "filled" : "outline"}
-      bg={!isValid ? "transparent" : ""}
       disabled={!isValid}
       onClick={onDone}
     >

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -14,20 +13,20 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
+import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
-import type { IconName } from "metabase/ui";
+import type { Route } from "metabase/router";
 import {
   Group,
   Button as NewButton,
   Modal as NewModal,
   Text,
 } from "metabase/ui";
-import type { PermissionsGraph } from "metabase-types/api";
+import type { IconName } from "metabase-types/api";
 
 import {
   clearSaveError as clearPermissionsSaveError,
@@ -40,12 +39,17 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab = "data" | "collections" | "application";
+export type PermissionsPageTab =
+  | "data"
+  | "collections"
+  | "application"
+  | "tenant-collections"
+  | "tenant-specific-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
   confirmBar?: ReactNode;
-  diff?: PermissionsGraph;
+  diff?: PermissionsGraphDiff;
   isDirty?: boolean;
   onSave?: () => void;
   onLoad?: () => void;
@@ -88,6 +92,7 @@ export function PermissionsPageLayout({
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     dispatch(push(`/admin/permissions/${tab}`));
+
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
   };
@@ -115,6 +120,8 @@ export function PermissionsPageLayout({
           />
         )}
 
+        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} route={route} />
+
         <ConfirmModal
           opened={saveError != null}
           onClose={clearSaveError}
@@ -126,9 +133,7 @@ export function PermissionsPageLayout({
           closeButtonText={null}
         />
 
-        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
-
-        <TabsContainer className={CS.borderBottom}>
+        <TabsContainer>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
             {helpContent && !isHelpReferenceOpen && (
