@@ -152,7 +152,7 @@ describe("Metabot Query Builder", () => {
 
 // Response helpers
 const mockNavigateToResponse = (path: string) =>
-  H.createMetabotSSEBody([H.metabotDataPart("navigate_to", path)]);
+  H.createMetabotSSEBody(H.metabotDataPart("navigate_to", path));
 
 const mockTextOnlyResponse = (text: string) =>
   H.createMetabotSSEBody(H.metabotTextPart(text));
@@ -165,10 +165,10 @@ const mockGeneratedEntityResponse = (datasetQuery: unknown) => {
     query: { id: "query-1", query: datasetQuery },
     display: "table",
   };
-  return H.createMetabotSSEBody([H.metabotDataPart("generated_entity", value)]);
+  return H.createMetabotSSEBody(H.metabotDataPart("generated_entity", value));
 };
 
-const mockErrorResponse = H.createMetabotSSEBody([
+const mockErrorResponse = H.createMetabotSSEBody(
   H.metabotErrorPart("Anthropic API key expired or invalid"),
   H.metabotFinishPart("error"),
-]);
+);

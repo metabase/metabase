@@ -241,13 +241,13 @@ describe("Native SQL generation", () => {
 
 // Response helpers
 const mockCodeEditResponse = (sql: string) =>
-  H.createMetabotSSEBody([
+  H.createMetabotSSEBody(
     H.metabotDataPart("code_edit", {
       buffer_id: "qb",
       mode: "rewrite",
       value: sql,
     }),
-  ]);
+  );
 
 const mockTextOnlyResponse = (text: string) =>
   H.createMetabotSSEBody(H.metabotTextPart(text));

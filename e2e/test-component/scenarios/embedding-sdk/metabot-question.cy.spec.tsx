@@ -32,10 +32,10 @@ const adHocQuestionPath = `/question#${btoa(
 const metabotResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
 );
-const metabotResponseWithNavigateTo = H.createMetabotSSEBody([
-  ...H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+const metabotResponseWithNavigateTo = H.createMetabotSSEBody(
+  H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
   H.metabotDataPart("navigate_to", adHocQuestionPath),
-]);
+);
 
 const metabotRetryResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),

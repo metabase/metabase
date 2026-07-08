@@ -502,9 +502,9 @@ const createMockTransformSuggestionResponse = (
   text: string,
   transformJSON: string,
 ) => {
-  return H.createMetabotSSEBody([
-    ...H.metabotTextPart(text),
+  return H.createMetabotSSEBody(
+    H.metabotTextPart(text),
     H.metabotDataPart("transform_suggestion", JSON.parse(transformJSON)),
     H.metabotDataPart("state", {}),
-  ]);
+  );
 };

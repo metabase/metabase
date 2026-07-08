@@ -249,15 +249,15 @@ describe("Metabot in full-app embedding", () => {
   });
 });
 
-const whoIsYourFavoriteResponse = H.createMetabotSSEBody([
-  ...H.metabotTextPart("You, but don't tell anyone."),
+const whoIsYourFavoriteResponse = H.createMetabotSSEBody(
+  H.metabotTextPart("You, but don't tell anyone."),
   H.metabotDataPart("state", { queries: {} }),
   H.metabotFinishPart("stop", {
     usage: { inputTokens: 4916, outputTokens: 8, totalTokens: 4924 },
   }),
-]);
+);
 
-const apiKeyInvalidResponse = H.createMetabotSSEBody([
+const apiKeyInvalidResponse = H.createMetabotSSEBody(
   H.metabotErrorPart("Anthropic API key expired or invalid"),
   H.metabotFinishPart("error"),
-]);
+);

@@ -104,22 +104,37 @@ const lifecycleFinishFor = (events: SSEEvent[]): (SSEEvent | "[DONE]")[] => {
 };
 
 /**
- * Serialize Metabot v2 SSE events into a `text/event-stream` response body.
+ * Serialize Metabot v2 SSE parts into a `text/event-stream` response body.
  *
- * Each event becomes a `data: {JSON}\n\n` chunk. The full backend lifecycle is
- * wrapped around the provided events to match real server output:
- *   `start` → `start-step` → ...<your events>... → `finish-step` → `finish` → `[DONE]`
- * Any lifecycle event supplied at the head or tail is preserved and not
- * duplicated, so a custom `finish` (e.g. with `finishReason: "error"`) flows
- * through unchanged.
+ * Accepts each part as a positional argument; a part is either one event or an
+ * array of events (e.g. `metabotTextPart`, which expands to start/delta/end).
+ * Arguments are flattened one level, so parts compose without spreading:
+ *   createMetabotSSEBody(
+ *     metabotTextPart("Here is the link"),
+ *     metabotDataPart("navigate_to", path),
+ *   )
+ *
+ * Each event is emitted as a `data: {JSON}\n\n` chunk, wrapped in the backend
+ * lifecycle to match real server output:
+ *   `start` → `start-step` → ...<parts>... → `finish-step` → `finish` → `[DONE]`
+ * A lifecycle event supplied at the head or tail is preserved rather than
+ * duplicated, so a custom `finish` (e.g. `finishReason: "error"`) flows through.
  */
-export const createMetabotSSEBody = (events: SSEEvent[]): string =>
-  [...lifecycleStartFor(events), ...events, ...lifecycleFinishFor(events)]
+export const createMetabotSSEBody = (
+  ...parts: Array<SSEEvent | SSEEvent[]>
+): string => {
+  const events = parts.flat();
+  return [
+    ...lifecycleStartFor(events),
+    ...events,
+    ...lifecycleFinishFor(events),
+  ]
     .map((event) => {
       const payload = typeof event === "string" ? event : JSON.stringify(event);
       return `data: ${payload}\n\n`;
     })
     .join("");
+};
 
 /** A streamed assistant text message, emitted as start/delta/end events. */
 export const metabotTextPart = (text: string, id = "text-0"): SSEEvent[] => [

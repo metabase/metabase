@@ -36,10 +36,10 @@ const adHocQuestionPathProducts = buildAdHocPath({
 });
 
 const buildNavigateToResponse = (path: string) =>
-  H.createMetabotSSEBody([
-    ...H.metabotTextPart(`Here is the [question link](${path})`),
+  H.createMetabotSSEBody(
+    H.metabotTextPart(`Here is the [question link](${path})`),
     H.metabotDataPart("navigate_to", path),
-  ]);
+  );
 
 type MetabotConsumerProps = {
   prompts: string[];
