@@ -186,7 +186,10 @@
   ([driver sql replacements {:keys [allow-unused? on-parse-error]}]
    (try
      (replace-names driver sql replacements {:allow-unused? (boolean allow-unused?)})
-     (catch Throwable e
+     ;; Exception, not Throwable: the Error band (StackOverflow/OOM/…) must
+     ;; propagate raw. :on-parse-error is a parse-failure translator, not a
+     ;; catch-all — it must not intercept fatal signals.
+     (catch Exception e
        (if on-parse-error
          (on-parse-error sql e)
          (throw e))))))

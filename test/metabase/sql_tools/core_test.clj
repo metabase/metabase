@@ -306,3 +306,23 @@
                             (sql-tools/rewrite-table-refs
                              :postgres "SELECT 1"
                              {:tables {}}))))))
+
+(deftest rewrite-table-refs-propagates-error-band-test
+  (testing "an Error (a Throwable that is not an Exception) propagates raw"
+    ;; :on-parse-error is a parse-failure translator, not a catch-all — it must not
+    ;; swallow the Error band (StackOverflow/OOM/…) into a parse-failure label.
+    ;; Production callers (e.g. workspaces table remapping) rely on those fatal
+    ;; signals surfacing unwrapped.
+    (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (StackOverflowError. "boom")))]
+      (is (thrown? StackOverflowError
+                   (sql-tools/rewrite-table-refs
+                    :postgres "SELECT 1"
+                    {:tables {}}
+                    {:on-parse-error (fn [_sql _e] ::handled)})))))
+  (testing "an Exception still routes to :on-parse-error"
+    (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (ex-info "boom" {})))]
+      (is (= ::handled
+             (sql-tools/rewrite-table-refs
+              :postgres "SELECT 1"
+              {:tables {}}
+              {:on-parse-error (fn [_sql _e] ::handled)}))))))
