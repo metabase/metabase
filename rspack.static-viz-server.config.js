@@ -14,7 +14,7 @@ module.exports = (env) => {
     ...base,
     target: "node",
     entry: {
-      "static-viz-server": "../static-viz-server/app.ts",
+      "static-viz-server": "../static-viz-server/index.ts",
     },
     output: {
       ...base.output,
