@@ -1,3 +1,5 @@
+import "./polyfill";
+
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 

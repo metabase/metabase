@@ -1,3 +1,8 @@
+// Installs a browser-like global environment for the rendering code. This is a global side effect, so
+// it is part of the static-viz core: importing metabase/static-viz sets it up for every runtime that
+// lacks these globals (GraalVM and Node alike).
+import "fast-text-encoding";
+
 import ResizeObserver from "resize-observer-polyfill";
 
 const defineGlobal = (name: PropertyKey, value: unknown): void => {
