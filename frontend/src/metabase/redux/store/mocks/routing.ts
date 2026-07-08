@@ -8,7 +8,7 @@ export const createMockRoutingState = (
   return {
     ...opts,
     locationBeforeTransitions: createMockLocation(
-      opts?.locationBeforeTransitions,
+      opts?.locationBeforeTransitions ?? undefined,
     ),
   };
 };

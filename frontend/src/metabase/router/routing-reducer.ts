@@ -12,16 +12,14 @@ import type { Location } from "history";
 export const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
 
 export interface RouterState {
-  locationBeforeTransitions: Location;
+  locationBeforeTransitions: Location | null;
 }
 
 // react-router-redux's reducer starts with a null location and relies on
 // `getLocation`'s default to guard reads until the history sync populates it.
-// The exported type keeps the library's non-null contract that the app is
-// built on, so consumers read a plain `Location`.
-const INITIAL_STATE = {
+const INITIAL_STATE: RouterState = {
   locationBeforeTransitions: null,
-} as unknown as RouterState;
+};
 
 interface LocationChangeAction extends Action<typeof LOCATION_CHANGE> {
   payload: Location;
