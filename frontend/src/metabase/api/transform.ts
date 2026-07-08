@@ -1,17 +1,27 @@
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   CreateTransformRequest,
+  DagTransform,
   Dataset,
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
+  ListDagRunTransformRunsRequest,
+  ListDagTransformsRequest,
+  ListTransformGraphRunMembersRequest,
+  ListTransformGraphRunsRequest,
+  ListTransformGraphRunsResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
   RunInspectorQueryRequest,
+  RunTransformDagRequest,
+  RunTransformDagResponse,
   RunTransformResponse,
   Transform,
+  TransformDagRunId,
   TransformId,
+  TransformRunForJobRun,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
@@ -26,6 +36,10 @@ import {
   provideTransformTags,
   tag,
 } from "./tags";
+import {
+  getMockTransformGraphRunMembers,
+  getMockTransformGraphRunsResponse,
+} from "./transform-graph-runs.mock";
 
 export const transformApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -139,6 +153,88 @@ export const transformApi = Api.injectEndpoints({
         }
       },
     }),
+    runTransformDag: builder.mutation<
+      RunTransformDagResponse,
+      RunTransformDagRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/transform/${id}/run-dag`,
+        body,
+      }),
+      // A DAG run touches many transforms, so invalidate all transform/run state
+      // rather than only the seed transform.
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          idTag("transform", id),
+          tag("transform"),
+          tag("table"),
+          listTag("table-remapping"),
+          listTag("transform-run"),
+          listTag("transform-dag-run"),
+        ]),
+    }),
+    listDagTransforms: builder.query<DagTransform[], ListDagTransformsRequest>({
+      query: ({ transformId, direction }) => ({
+        method: "GET",
+        url: `/api/transform/${transformId}/dag-transforms`,
+        params: { direction },
+      }),
+      providesTags: (_response, _error, { transformId }) => [
+        idTag("transform", transformId),
+      ],
+    }),
+    listDagRunTransformRuns: builder.query<
+      TransformRunForJobRun[],
+      ListDagRunTransformRunsRequest
+    >({
+      query: ({ dagRunId }) => ({
+        method: "GET",
+        url: `/api/transform-dag-run/${dagRunId}/transform-runs`,
+      }),
+      providesTags: (_response, _error, { dagRunId }) => [
+        idTag("transform-dag-run", dagRunId),
+      ],
+    }),
+    cancelDagRun: builder.mutation<void, TransformDagRunId>({
+      query: (runId) => ({
+        method: "POST",
+        url: `/api/transform-dag-run/${runId}/cancel`,
+      }),
+      invalidatesTags: (_, error, runId) =>
+        invalidateTags(error, [
+          idTag("transform-dag-run", runId),
+          listTag("transform-dag-run"),
+          listTag("transform-run"),
+        ]),
+    }),
+    listTransformGraphRuns: builder.query<
+      ListTransformGraphRunsResponse,
+      ListTransformGraphRunsRequest
+    >({
+      // TODO(GDGT-2625): the backend does not yet expose a combined list of job
+      // runs + DAG runs + standalone transform runs. Until it does, resolve
+      // against a local fixture; swap this `queryFn` for a `query` when the real
+      // endpoint lands (and delete transform-graph-runs.mock.ts).
+      queryFn: (params) => ({
+        data: getMockTransformGraphRunsResponse(params),
+      }),
+      providesTags: [
+        listTag("transform-run"),
+        listTag("transform-dag-run"),
+        listTag("transform-job"),
+      ],
+    }),
+    listTransformGraphRunMembers: builder.query<
+      TransformRunForJobRun[],
+      ListTransformGraphRunMembersRequest
+    >({
+      // TODO(GDGT-2625): serve member runs from the mock for now. Once the BE
+      // lands, branch by run type — dag → GET /transform/:id/dag-runs/:id/
+      // transform-runs (listDagRunTransformRuns), job → the job-run endpoint.
+      queryFn: (params) => ({ data: getMockTransformGraphRunMembers(params) }),
+      providesTags: [listTag("transform-run")],
+    }),
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
         method: "POST",
@@ -245,6 +341,12 @@ export const {
   useGetInspectorLensQuery,
   useLazyGetInspectorLensQuery,
   useRunTransformMutation,
+  useRunTransformDagMutation,
+  useListDagTransformsQuery,
+  useListDagRunTransformRunsQuery,
+  useCancelDagRunMutation,
+  useListTransformGraphRunsQuery,
+  useListTransformGraphRunMembersQuery,
   useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,
   useUpdateTransformMutation,

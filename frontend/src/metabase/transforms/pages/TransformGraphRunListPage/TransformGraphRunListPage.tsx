@@ -2,36 +2,33 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
-  useListTransformRunsQuery,
-  useListTransformTagsQuery,
+  useListTransformGraphRunsQuery,
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
-import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { RunTabs } from "metabase/transforms/components/RunTabs";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { Center, Flex, Stack } from "metabase/ui";
+import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { TransformRun, TransformRunId } from "metabase-types/api";
+import type { TransformGraphRun } from "metabase-types/api";
 
-import { RunFilterBar } from "./RunFilterBar";
-import S from "./RunListPage.module.css";
-import { RunPagination } from "./RunPagination";
-import { RunSidebar } from "./RunSidebar/RunSidebar";
-import { RunTable } from "./RunTable";
+import { TransformGraphRunFilterBar } from "./TransformGraphRunFilterBar";
+import S from "./TransformGraphRunListPage.module.css";
+import { TransformGraphRunSidebar } from "./TransformGraphRunSidebar";
+import { TransformGraphRunTable, getRowKey } from "./TransformGraphRunTable";
 import { PAGE_SIZE } from "./constants";
 import type {
-  TransformRunFilterOptions,
-  TransformRunSortOptions,
+  TransformGraphRunFilterOptions,
+  TransformGraphRunSortOptions,
 } from "./types";
 import {
   getFilterOptions,
@@ -40,39 +37,37 @@ import {
   hasFilterOptions,
 } from "./utils";
 
-const EMPTY_RUNS: TransformRun[] = [];
+const EMPTY_RUNS: TransformGraphRun[] = [];
 
-type RunListPageProps = {
+type TransformGraphRunListPageProps = {
   location: Location;
 };
 
-export function RunListPage({ location }: RunListPageProps) {
+export function TransformGraphRunListPage({
+  location,
+}: TransformGraphRunListPageProps) {
   usePageTitle(t`Runs`);
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
-  const [selectedRunId, setSelectedRunId] = useState<
-    TransformRunId | undefined
-  >();
+  const [selectedKey, setSelectedKey] = useState<string | undefined>();
   const [isPolling, setIsPolling] = useState(false);
   const dispatch = useDispatch();
 
   const {
     data,
     isLoading: isLoadingRuns,
-    error: runsError,
-  } = useListTransformRunsQuery(
+    error,
+  } = useListTransformGraphRunsQuery(
     {
       offset: page * PAGE_SIZE,
       limit: PAGE_SIZE,
+      types: params.types,
       statuses: params.statuses,
       "transform-ids": params.transformIds,
-      "transform-tag-ids": params.transformTagIds,
       "start-time": params.startTime,
-      "end-time": params.endTime,
-      "run-methods": params.runMethods,
       "sort-column": params.sortColumn,
       "sort-direction": params.sortDirection,
     },
@@ -81,20 +76,10 @@ export function RunListPage({ location }: RunListPageProps) {
     },
   );
 
-  const {
-    data: transforms = [],
-    isLoading: isLoadingTransforms,
-    error: transformsError,
-  } = useListTransformsQuery({});
+  const { data: transforms = [], isLoading: isLoadingTransforms } =
+    useListTransformsQuery({});
 
-  const {
-    data: tags = [],
-    isLoading: isLoadingTags,
-    error: tagsError,
-  } = useListTransformTagsQuery();
-
-  const isLoading = isLoadingRuns || isLoadingTransforms || isLoadingTags;
-  const error = runsError ?? transformsError ?? tagsError;
+  const isLoading = isLoadingRuns || isLoadingTransforms;
 
   if (isPolling !== isPollingNeeded(data?.data)) {
     setIsPolling(isPollingNeeded(data?.data));
@@ -104,34 +89,34 @@ export function RunListPage({ location }: RunListPageProps) {
 
   const selectedRun = useMemo(
     () =>
-      selectedRunId != null
-        ? runs.find((run) => run.id === selectedRunId)
+      selectedKey != null
+        ? runs.find((run) => getRowKey(run) === selectedKey)
         : undefined,
-    [selectedRunId, runs],
+    [selectedKey, runs],
   );
 
   useLayoutEffect(() => {
-    if (selectedRunId != null && selectedRun == null) {
-      setSelectedRunId(undefined);
+    if (selectedKey != null && selectedRun == null) {
+      setSelectedKey(undefined);
     }
-  }, [selectedRunId, selectedRun]);
+  }, [selectedKey, selectedRun]);
 
   const handleParamsChange = useCallback(
-    (newParams: Urls.TransformRunListParams) => {
-      dispatch(replace(Urls.transformRunList(newParams)));
+    (newParams: Urls.TransformGraphRunListParams) => {
+      dispatch(replace(Urls.transformGraphRunList(newParams)));
     },
     [dispatch],
   );
 
   const handleFilterOptionsChange = useCallback(
-    (filterOptions: TransformRunFilterOptions) => {
+    (filterOptions: TransformGraphRunFilterOptions) => {
       handleParamsChange({ ...params, ...filterOptions, page: undefined });
     },
     [params, handleParamsChange],
   );
 
   const handleSortOptionsChange = useCallback(
-    (sortOptions: TransformRunSortOptions | undefined) => {
+    (sortOptions: TransformGraphRunSortOptions | undefined) => {
       handleParamsChange({
         ...params,
         sortColumn: sortOptions?.column,
@@ -143,17 +128,15 @@ export function RunListPage({ location }: RunListPageProps) {
   );
 
   const handlePageChange = useCallback(
-    (page: number) => {
-      handleParamsChange({ ...params, page });
+    (nextPage: number) => {
+      handleParamsChange({ ...params, page: nextPage });
     },
     [params, handleParamsChange],
   );
 
-  const handleSelect = useCallback((runId: TransformRunId) => {
-    setSelectedRunId(runId);
+  const handleSelect = useCallback((run: TransformGraphRun) => {
+    setSelectedKey(getRowKey(run));
   }, []);
-
-  const isMeterLocked = useSetting("transforms-meter-locked");
 
   return (
     <Flex
@@ -161,7 +144,7 @@ export function RunListPage({ location }: RunListPageProps) {
       ref={containerRef}
       h="100%"
       wrap="nowrap"
-      data-testid="transforms-run-list"
+      data-testid="transform-graph-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
         <PaneHeader
@@ -170,50 +153,54 @@ export function RunListPage({ location }: RunListPageProps) {
           py={0}
           showMetabotButton
         />
-        {!data || isLoading || error != null ? (
+        {isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
-            {isMeterLocked && <LockedTransformsBanner />}
-            <RunFilterBar
+            <TransformGraphRunFilterBar
               filterOptions={getFilterOptions(params)}
               transforms={transforms}
-              tags={tags}
               onFilterOptionsChange={handleFilterOptionsChange}
             />
-            <RunTable
+            <TransformGraphRunTable
               runs={runs}
-              tags={tags}
               hasFilters={hasFilterOptions(getFilterOptions(params))}
               sortOptions={getSortOptions(params)}
               onSortOptionsChange={handleSortOptionsChange}
               onSelect={handleSelect}
             />
-            <RunPagination
-              page={page}
-              itemsLength={runs.length}
-              totalCount={data.total}
-              onPageChange={handlePageChange}
-            />
+            {data != null && data.total > PAGE_SIZE && (
+              <Group justify="end">
+                <PaginationControls
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  itemsLength={runs.length}
+                  total={data.total}
+                  showTotal
+                  onPreviousPage={() => handlePageChange(page - 1)}
+                  onNextPage={() => handlePageChange(page + 1)}
+                />
+              </Group>
+            )}
           </Stack>
         )}
       </Stack>
       {selectedRun != null && (
-        <RunSidebar
+        <TransformGraphRunSidebar
           run={selectedRun}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
-          onClose={() => setSelectedRunId(undefined)}
+          onClose={() => setSelectedKey(undefined)}
         />
       )}
     </Flex>
   );
 }
 
-export function isPollingNeeded(runs: TransformRun[] = []) {
+export function isPollingNeeded(runs: TransformGraphRun[] = []) {
   return runs.some(
     (run) => run.status === "started" || run.status === "canceling",
   );

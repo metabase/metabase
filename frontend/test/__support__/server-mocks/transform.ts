@@ -1,11 +1,14 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  DagTransform,
   Dataset,
   InspectorLensId,
   ListTransformJobRunsResponse,
   ListTransformRunsResponse,
+  RunTransformDagResponse,
   Transform,
+  TransformDagRunId,
   TransformId,
   TransformJob,
   TransformJobId,
@@ -82,6 +85,37 @@ export function setupListJobRunTransformRunsEndpoint(
     `path:/api/transform-job/${jobId}/runs/${runId}/transform-runs`,
     runs,
   );
+}
+
+export function setupListDagTransformsEndpoint(
+  transformId: TransformId,
+  transforms: DagTransform[],
+) {
+  fetchMock.get(
+    `path:/api/transform/${transformId}/dag-transforms`,
+    transforms,
+  );
+}
+
+export function setupRunTransformDagEndpoint(
+  transformId: TransformId,
+  response: RunTransformDagResponse = {
+    message: "DAG run started",
+    dag_run_id: 1,
+  },
+) {
+  fetchMock.post(`path:/api/transform/${transformId}/run-dag`, response);
+}
+
+export function setupListDagRunTransformRunsEndpoint(
+  dagRunId: TransformDagRunId,
+  runs: TransformRunForJobRun[] | (() => TransformRunForJobRun[]),
+) {
+  fetchMock.get(`path:/api/transform-dag-run/${dagRunId}/transform-runs`, runs);
+}
+
+export function setupCancelDagRunEndpoint(dagRunId: TransformDagRunId) {
+  fetchMock.post(`path:/api/transform-dag-run/${dagRunId}/cancel`, 204);
 }
 
 export function setupCreateTransformJobEndpoint(job: TransformJob) {

@@ -379,6 +379,145 @@ export type ListJobRunTransformRunsRequest = {
   runId: TransformJobRunId;
 };
 
+export type TransformDagRunId = number;
+
+export const TRANSFORM_DAG_DIRECTIONS = ["upstream", "downstream"] as const;
+export type TransformDagDirection = (typeof TRANSFORM_DAG_DIRECTIONS)[number];
+
+export const TRANSFORM_DAG_RUN_STATUSES = [
+  "started",
+  "succeeded",
+  "failed",
+  "timeout",
+  "canceled",
+] as const;
+export type TransformDagRunStatus = (typeof TRANSFORM_DAG_RUN_STATUSES)[number];
+
+export const TRANSFORM_DAG_RUN_SORT_COLUMNS = [
+  "start_time",
+  "end_time",
+] as const;
+export type TransformDagRunSortColumn =
+  (typeof TRANSFORM_DAG_RUN_SORT_COLUMNS)[number];
+
+// A DAG-reprocess run seeded from a single transform. Unlike job runs it lives in
+// its own `transform_dag_run` table (GDGT-2507) and carries the seed transform +
+// the direction of the DAG traversal instead of a job id.
+export type TransformDagRun = {
+  id: TransformDagRunId;
+  source_transform_id: TransformId | null;
+  direction: TransformDagDirection | null;
+  status: TransformDagRunStatus | null;
+  is_active: boolean | null;
+  start_time: string;
+  end_time: string | null;
+  message: string | null;
+  user_id?: UserId | null;
+  created_at: string;
+  updated_at: string;
+  // hydrated name of the seed transform
+  transform_name?: string | null;
+};
+
+export type RunTransformDagRequest = {
+  id: TransformId;
+  direction: TransformDagDirection;
+  skip_fresh_deps?: boolean;
+};
+
+export type RunTransformDagResponse = {
+  dag_run_id: TransformDagRunId | null;
+  message: string;
+};
+
+export type ListDagTransformsRequest = {
+  transformId: TransformId;
+  direction: TransformDagDirection;
+};
+
+// The ordered transforms a DAG reprocess would run, used to preview the plan
+// before confirming.
+export type DagTransform = Pick<Transform, "id" | "name">;
+
+// Per-transform DAG run history: GET /api/transform/:id/dag-runs
+export type ListTransformDagRunsRequest = {
+  transformId: TransformId;
+  status?: TransformDagRunStatus;
+  "sort-column"?: TransformDagRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformDagRunsResponse = {
+  data: TransformDagRun[];
+} & PaginationResponse;
+
+// GET /api/transform-dag-run/:run-id/transform-runs — the member transform runs of
+// a DAG run. Reuses TransformRunForJobRun since the child-row rendering only needs
+// the fields shared by both run kinds.
+export type ListDagRunTransformRunsRequest = {
+  dagRunId: TransformDagRunId;
+};
+
+// "Transform graph runs" are the higher-level, root runs shown as the default tab
+// on the Runs page: job runs, DAG-reprocess runs, and standalone single-transform
+// runs. They are unified so a user can browse every triggered run in one place and
+// drill into the member transform runs of each. This mirrors the backend
+// `RunSummaryResponse` from `GET /api/transform/runs`; a row is identified by the
+// `(run_type, id)` pair and `entity_id` points at the associated job/transform.
+// NOTE: the FE still resolves this against a mock (see api/transform.ts) until the
+// backend listing endpoint is finalized — only the shape is aligned here.
+export const TRANSFORM_GRAPH_RUN_TYPES = ["job", "dag", "transform"] as const;
+export type TransformGraphRunType = (typeof TRANSFORM_GRAPH_RUN_TYPES)[number];
+
+export const TRANSFORM_GRAPH_RUN_SORT_COLUMNS = [
+  "start_time",
+  "end_time",
+] as const;
+export type TransformGraphRunSortColumn =
+  (typeof TRANSFORM_GRAPH_RUN_SORT_COLUMNS)[number];
+
+export type TransformGraphRun = {
+  run_type: TransformGraphRunType;
+  // the underlying run id (job-run / dag-run / transform-run id). Unique only
+  // within a run_type — combine with run_type for a stable row key.
+  id: number;
+  // the associated job (for job runs) or transform (for dag/transform runs) id,
+  // used to build drill-down URLs. Null when the entity was deleted.
+  entity_id: number | null;
+  // the job or transform name; null when the entity was deleted.
+  name: string | null;
+  // set only for DAG runs.
+  direction: TransformDagDirection | null;
+  run_method: TransformRunMethod | null;
+  status: TransformRunStatus | null;
+  is_active: boolean | null;
+  start_time: string;
+  end_time: string | null;
+  message: string | null;
+  user_id: UserId | null;
+};
+
+export type ListTransformGraphRunsRequest = {
+  types?: TransformGraphRunType[];
+  statuses?: TransformRunStatus[];
+  "transform-ids"?: TransformId[];
+  "start-time"?: string;
+  "sort-column"?: TransformGraphRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformGraphRunsResponse = {
+  data: TransformGraphRun[];
+} & PaginationResponse;
+
+// The member transform runs of a transform-graph run. The backend resolves these
+// per type — DAG: GET /api/transform-dag-run/:id/transform-runs, job: the job-run
+// endpoint — but the FE currently serves them from a mock keyed by (run_type, id).
+export type ListTransformGraphRunMembersRequest = {
+  run_type: TransformGraphRunType;
+  id: number;
+};
+
 export type TestPythonTransformRequest = {
   code: string;
   source_tables: PythonTransformTableAliases;

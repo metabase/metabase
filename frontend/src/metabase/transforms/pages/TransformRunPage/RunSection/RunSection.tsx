@@ -1,9 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
   useCancelCurrentTransformRunMutation,
+  useRunTransformDagMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase/api";
@@ -13,13 +15,18 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
-import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
+import { Anchor, Box, Card, Divider, Group, Menu, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type { Transform, TransformTagId } from "metabase-types/api";
+import type {
+  Transform,
+  TransformDagDirection,
+  TransformTagId,
+} from "metabase-types/api";
 
 import {
   trackTransformRunTagsUpdated,
+  trackTransformTriggerDagRun,
   trackTransformTriggerManualRun,
 } from "../../../analytics";
 import { RunButton } from "../../../components/RunButton";
@@ -27,6 +34,7 @@ import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 
 import { LogOutput } from "./LogOutput";
+import { RunDagConfirmModal } from "./RunDagConfirmModal";
 
 type RunSectionProps = {
   transform: Transform;
@@ -124,18 +132,40 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
+  const [runTransformDag] = useRunTransformDagMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
   const [
     isConfirmCancellationModalOpen,
     { close: closeConfirmModal, open: openConfirmModal },
   ] = useDisclosure(false);
+  // When set, the DAG-run confirmation modal is open for the chosen direction.
+  const [dagDirection, setDagDirection] =
+    useState<TransformDagDirection | null>(null);
 
   const handleRun = async () => {
     trackTransformTriggerManualRun({ transformId: transform.id });
     const { error } = await runTransform(transform.id);
     if (error) {
       sendErrorToast(t`Failed to run transform`);
+    }
+  };
+
+  const handleRunDag = async () => {
+    if (dagDirection == null) {
+      return;
+    }
+    trackTransformTriggerDagRun({
+      transformId: transform.id,
+      direction: dagDirection,
+    });
+    const { error } = await runTransformDag({
+      id: transform.id,
+      direction: dagDirection,
+    });
+    setDagDirection(null);
+    if (error) {
+      sendErrorToast(t`Failed to run transforms`);
     }
   };
 
@@ -155,6 +185,24 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
         onRun={handleRun}
         onCancel={openConfirmModal}
         isDisabled={readOnly}
+        menuItems={
+          readOnly ? undefined : (
+            <>
+              <Menu.Item onClick={() => setDagDirection("upstream")}>
+                {t`Run this and all upstream transforms`}
+              </Menu.Item>
+              <Menu.Item onClick={() => setDagDirection("downstream")}>
+                {t`Run this and all downstream transforms`}
+              </Menu.Item>
+            </>
+          )
+        }
+      />
+      <RunDagConfirmModal
+        transformId={transform.id}
+        direction={dagDirection}
+        onClose={() => setDagDirection(null)}
+        onConfirm={handleRunDag}
       />
       <ConfirmModal
         title={t`Cancel this run?`}

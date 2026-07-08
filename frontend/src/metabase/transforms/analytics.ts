@@ -3,6 +3,7 @@ import type {
   IndexKind,
   InspectorCardId,
   InspectorLensId,
+  TransformDagDirection,
   TransformId,
   TransformJobId,
 } from "metabase-types/api";
@@ -18,6 +19,20 @@ export function trackTransformTriggerManualRun({
   trackSimpleEvent({
     event: "transform_trigger_manual_run",
     target_id: transformId,
+  });
+}
+
+export function trackTransformTriggerDagRun({
+  transformId,
+  direction,
+}: {
+  transformId: TransformId;
+  direction: TransformDagDirection;
+}) {
+  trackSimpleEvent({
+    event: "transform_trigger_dag_run",
+    target_id: transformId,
+    event_detail: direction,
   });
 }
 

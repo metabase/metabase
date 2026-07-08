@@ -4,6 +4,8 @@ import type {
   DatabaseId,
   SortDirection,
   TableId,
+  TransformGraphRunSortColumn,
+  TransformGraphRunType,
   TransformId,
   TransformJobId,
   TransformJobRunSortColumn,
@@ -16,7 +18,10 @@ import type {
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
+// `/runs` shows the higher-level transform-graph runs (default tab); the
+// low-level per-transform runs live under `/runs/individual`.
 const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
+const INDIVIDUAL_RUNS_ROOT_URL = `${RUNS_ROOT_URL}/individual`;
 const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
 
 export type TransformPythonLibraryParams = {
@@ -198,10 +203,58 @@ export function transformRunList({
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${RUNS_ROOT_URL}?${queryString}`;
+    return `${INDIVIDUAL_RUNS_ROOT_URL}?${queryString}`;
   } else {
-    return RUNS_ROOT_URL;
+    return INDIVIDUAL_RUNS_ROOT_URL;
   }
+}
+
+export type TransformGraphRunListParams = {
+  page?: number;
+  types?: TransformGraphRunType[];
+  statuses?: TransformRunStatus[];
+  transformIds?: TransformId[];
+  startTime?: string;
+  sortColumn?: TransformGraphRunSortColumn;
+  sortDirection?: SortDirection;
+};
+
+export function transformGraphRunList({
+  page,
+  types,
+  statuses,
+  transformIds,
+  startTime,
+  sortColumn,
+  sortDirection,
+}: TransformGraphRunListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  types?.forEach((type) => {
+    searchParams.append("types", type);
+  });
+  statuses?.forEach((status) => {
+    searchParams.append("statuses", status);
+  });
+  transformIds?.forEach((transformId) => {
+    searchParams.append("transform-ids", String(transformId));
+  });
+  if (startTime != null) {
+    searchParams.set("start-time", startTime);
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0
+    ? `${RUNS_ROOT_URL}?${queryString}`
+    : RUNS_ROOT_URL;
 }
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
