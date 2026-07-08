@@ -1,12 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
+  skipToken,
   useCancelCurrentTransformRunMutation,
   useCancelDagRunMutation,
   useCancelJobRunMutation,
-  useListTransformGraphRunMembersQuery,
+  useListDagRunTransformRunsQuery,
+  useListJobRunTransformRunsQuery,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -70,15 +72,63 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
   onClose,
 }: TransformGraphRunSidebarProps) {
   const [isPolling, setIsPolling] = useState(false);
+  const pollingInterval = isPolling ? POLLING_INTERVAL : undefined;
 
-  const {
-    data: transformRuns = EMPTY_TRANSFORM_RUNS,
-    isLoading,
-    error,
-  } = useListTransformGraphRunMembersQuery(
-    { run_type: run.run_type, id: run.id },
-    { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
+  // Member transform runs are fetched from a different endpoint per run type; the
+  // non-matching queries are skipped. A standalone transform run has no members
+  // endpoint — it is its own single member, synthesized from the run summary.
+  const dagResult = useListDagRunTransformRunsQuery(
+    run.run_type === "dag" ? { dagRunId: run.id } : skipToken,
+    { pollingInterval },
   );
+  const jobResult = useListJobRunTransformRunsQuery(
+    run.run_type === "job" && run.entity_id != null
+      ? { jobId: run.entity_id, runId: run.id }
+      : skipToken,
+    { pollingInterval },
+  );
+  const standaloneRuns = useMemo<TransformRunForJobRun[]>(
+    () =>
+      run.run_type === "transform"
+        ? [
+            {
+              id: run.id,
+              transform_id: run.entity_id,
+              transform_name: run.name,
+              job_run_id: null,
+              status: run.status,
+              run_method: run.run_method ?? "manual",
+              start_time: run.start_time,
+              end_time: run.end_time,
+              message: run.message,
+            },
+          ]
+        : EMPTY_TRANSFORM_RUNS,
+    [run],
+  );
+
+  const { transformRuns, isLoading, error } = (() => {
+    switch (run.run_type) {
+      case "dag":
+        return {
+          transformRuns: dagResult.data ?? EMPTY_TRANSFORM_RUNS,
+          isLoading: dagResult.isLoading,
+          error: dagResult.error,
+        };
+      case "job":
+        return {
+          transformRuns: jobResult.data ?? EMPTY_TRANSFORM_RUNS,
+          isLoading: jobResult.isLoading,
+          error: jobResult.error,
+        };
+      case "transform":
+        return {
+          transformRuns: standaloneRuns,
+          isLoading: false,
+          error: undefined,
+        };
+    }
+  })();
 
   const shouldPoll =
     run.status === "started" ||

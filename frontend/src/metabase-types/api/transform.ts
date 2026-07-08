@@ -518,14 +518,6 @@ export type ListTransformGraphRunsResponse = {
   data: TransformGraphRun[];
 } & PaginationResponse;
 
-// The member transform runs of a transform-graph run. The backend resolves these
-// per type — DAG: GET /api/transform-dag-run/:id/transform-runs, job: the job-run
-// endpoint — but the FE currently serves them from a mock keyed by (run_type, id).
-export type ListTransformGraphRunMembersRequest = {
-  run_type: TransformGraphRunType;
-  id: number;
-};
-
 export type TestPythonTransformRequest = {
   code: string;
   source_tables: PythonTransformTableAliases;

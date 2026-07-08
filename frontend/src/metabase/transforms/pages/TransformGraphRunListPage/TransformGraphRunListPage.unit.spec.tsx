@@ -3,6 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCancelJobRunEndpoint,
+  setupListDagRunTransformRunsEndpoint,
+  setupListJobRunTransformRunsEndpoint,
+  setupListTransformGraphRunsEndpoint,
   setupListTransformsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
@@ -14,16 +17,32 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
+import type { TransformGraphRun } from "metabase-types/api";
+import {
+  createMockListTransformGraphRunsResponse,
+  createMockTransformGraphRun,
+  createMockTransformRunForJobRun,
+} from "metabase-types/api/mocks";
 
 import { TransformGraphRunListPage } from "./TransformGraphRunListPage";
 
-// The list and each run's member transforms are backed by a local fixture
-// (transform-graph-runs.mock) via queryFn until the backend combined endpoint
-// lands, so these tests assert against it. The transforms list (for the Transform
-// filter) is a real endpoint and is mocked here.
-function setup({ initialRoute = "/data-studio/transforms/runs" } = {}) {
+type SetupOpts = {
+  runs?: TransformGraphRun[];
+  initialRoute?: string;
+};
+
+function setup({
+  runs = [],
+  initialRoute = "/data-studio/transforms/runs",
+}: SetupOpts = {}) {
   setupUserMetabotPermissionsEndpoint();
   setupListTransformsEndpoint([]);
+  setupListTransformGraphRunsEndpoint(
+    createMockListTransformGraphRunsResponse({
+      data: runs,
+      total: runs.length,
+    }),
+  );
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
   renderWithProviders(
@@ -35,83 +54,110 @@ function setup({ initialRoute = "/data-studio/transforms/runs" } = {}) {
   );
 }
 
+const JOB_RUN = createMockTransformGraphRun({
+  run_type: "job",
+  id: 101,
+  entity_id: 1,
+  name: "Hourly refresh",
+  run_method: "cron",
+});
+
+const DAG_RUN = createMockTransformGraphRun({
+  run_type: "dag",
+  id: 202,
+  entity_id: 12,
+  name: "Customers deduped",
+  direction: "upstream",
+  status: "failed",
+});
+
+const TRANSFORM_RUN = createMockTransformGraphRun({
+  run_type: "transform",
+  id: 301,
+  entity_id: 20,
+  name: "Products normalized",
+});
+
 describe("TransformGraphRunListPage", () => {
-  // Filter by a single type so the table has ≤ 4 rows — the TreeTable virtualizes,
-  // so asserting on a filtered subset avoids off-screen rows being absent from the DOM.
+  it("renders job, DAG, and standalone runs with a Run name and Type", async () => {
+    setup({ runs: [JOB_RUN, DAG_RUN, TRANSFORM_RUN] });
 
-  it("filters to job runs (via the URL) and labels them Job", async () => {
-    setup({ initialRoute: "/data-studio/transforms/runs?types=job" });
-
+    // Run column: job/transform names as plain text, DAG runs as name + arrow.
     expect(await screen.findByText("Hourly refresh")).toBeInTheDocument();
-    expect(screen.getByText("Nightly rollups")).toBeInTheDocument();
-    expect(screen.getByText("Weekly archive")).toBeInTheDocument();
-    expect(screen.getByText("Monthly export")).toBeInTheDocument();
-    // Scope the type-cell count to the table (the filter chip also reads "Job").
-    const table = screen.getByRole("treegrid", { name: "Runs" });
-    expect(within(table).getAllByText("Job")).toHaveLength(4);
-    // Non-job runs are filtered out.
-    expect(screen.queryByText("Products normalized")).not.toBeInTheDocument();
-  });
-
-  it("renders DAG runs with directional names and a Transformation type", async () => {
-    setup({ initialRoute: "/data-studio/transforms/runs?types=dag" });
-
-    expect(
-      await screen.findByText("Orders cleaned → Downstream"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Upstream → Revenue by month")).toBeInTheDocument();
     expect(
       screen.getByText("Upstream → Customers deduped"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Sessions enriched → Downstream"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Products normalized")).toBeInTheDocument();
+
+    // Type column: "Job" for the job, "Transformation" for the DAG + standalone.
     const table = screen.getByRole("treegrid", { name: "Runs" });
-    expect(within(table).getAllByText("Transformation")).toHaveLength(4);
+    expect(within(table).getByText("Job")).toBeInTheDocument();
+    expect(within(table).getAllByText("Transformation")).toHaveLength(2);
   });
 
-  it("renders standalone transform runs by name", async () => {
-    setup({ initialRoute: "/data-studio/transforms/runs?types=transform" });
-
-    expect(await screen.findByText("Products normalized")).toBeInTheDocument();
-    expect(screen.getByText("Inventory snapshot")).toBeInTheDocument();
-    expect(screen.getByText("Payments reconciled")).toBeInTheDocument();
-    expect(screen.getByText("Events deduped")).toBeInTheDocument();
-    const table = screen.getByRole("treegrid", { name: "Runs" });
-    expect(within(table).getAllByText("Transformation")).toHaveLength(4);
-  });
-
-  it("opens a sidebar with the member transforms when a DAG run is clicked", async () => {
-    setup({ initialRoute: "/data-studio/transforms/runs?types=dag" });
+  it("drills into a DAG run's member transforms via the dag-run endpoint", async () => {
+    setupListDagRunTransformRunsEndpoint(202, [
+      createMockTransformRunForJobRun({
+        id: 1,
+        transform_name: "Orders cleaned",
+        status: "succeeded",
+      }),
+      createMockTransformRunForJobRun({
+        id: 2,
+        transform_name: "Customers deduped",
+        status: "failed",
+        message: "boom",
+      }),
+    ]);
+    setup({ runs: [DAG_RUN] });
 
     await userEvent.click(
       await screen.findByText("Upstream → Customers deduped"),
     );
 
     const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
-    // The failed upstream DAG run resolves to its member transform runs.
     expect(
-      await within(sidebar).findByText("Customers deduped"),
+      await within(sidebar).findByText("Orders cleaned"),
     ).toBeInTheDocument();
     // The failed member surfaces its error message.
     expect(
       within(sidebar).getByRole("region", { name: "Error" }),
     ).toBeInTheDocument();
-    // Header links to the seed transform (entity id 12 in the fixture).
+    // Header links to the seed transform (entity id 12).
     expect(
       within(sidebar).getByRole("link", { name: "View this transform" }),
     ).toHaveAttribute("href", "/data-studio/transforms/12");
   });
 
+  it("shows a standalone transform run as its own single member (no fetch)", async () => {
+    setup({ runs: [TRANSFORM_RUN] });
+
+    await userEvent.click(await screen.findByText("Products normalized"));
+
+    const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
+    const member = within(sidebar).getByTestId("transform-run-item");
+    expect(member).toHaveTextContent("Products normalized");
+  });
+
   it("cancels an in-progress job run via the job-run cancel endpoint", async () => {
-    // The started "Nightly rollups" job run is job id 2, run id 102 in the fixture.
+    const startedJob = createMockTransformGraphRun({
+      run_type: "job",
+      id: 102,
+      entity_id: 2,
+      name: "Nightly rollups",
+      run_method: "cron",
+      status: "started",
+    });
+    setupListJobRunTransformRunsEndpoint(2, 102, [
+      createMockTransformRunForJobRun({ id: 5, transform_name: "Step" }),
+    ]);
     setupCancelJobRunEndpoint(2, 102);
-    setup({ initialRoute: "/data-studio/transforms/runs?types=job" });
+    setup({ runs: [startedJob] });
 
     await userEvent.click(await screen.findByText("Nightly rollups"));
 
     const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
-    // Header links to the job details page (job id 2 in the fixture).
+    // Header links to the job details page (job id 2).
     expect(
       within(sidebar).getByRole("link", { name: "View this job" }),
     ).toHaveAttribute("href", "/data-studio/transforms/jobs/2");

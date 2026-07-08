@@ -44,14 +44,14 @@ export function RunDagConfirmModal({
       onClose={onClose}
     >
       <Stack gap="lg">
-        <Text>{t`Here are the transforms that will be run, in this order:`}</Text>
+        <Text>{t`These transforms will be run:`}</Text>
         {isFetching ? (
           <Center py="lg">
             <Loader />
           </Center>
         ) : (
           <ScrollArea.Autosize mah="50vh">
-            <List type="ordered">
+            <List>
               {(transforms ?? []).map((transform) => (
                 <List.Item key={transform.id}>{transform.name}</List.Item>
               ))}

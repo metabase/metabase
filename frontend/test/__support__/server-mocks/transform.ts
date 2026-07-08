@@ -4,6 +4,7 @@ import type {
   DagTransform,
   Dataset,
   InspectorLensId,
+  ListTransformGraphRunsResponse,
   ListTransformJobRunsResponse,
   ListTransformRunsResponse,
   RunTransformDagResponse,
@@ -21,6 +22,12 @@ export function setupListTransformRunsEndpoint(
   response: ListTransformRunsResponse,
 ) {
   fetchMock.get(`path:/api/transform/run`, response);
+}
+
+export function setupListTransformGraphRunsEndpoint(
+  response: ListTransformGraphRunsResponse,
+) {
+  fetchMock.get(`path:/api/transform/runs`, response);
 }
 
 export function setupListTransformsEndpoint(transforms: Transform[]) {
