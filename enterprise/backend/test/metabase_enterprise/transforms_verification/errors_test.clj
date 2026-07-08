@@ -5,13 +5,13 @@
    [metabase-enterprise.transforms-verification.api.util :as api-util]
    [metabase-enterprise.transforms-verification.errors :as errors]))
 
-(deftest status-map-keys-are-declared-error-types-test
+(deftest ^:parallel status-map-keys-are-declared-error-types-test
   (testing "every :error-type in the HTTP status map is a declared error-type"
     (is (empty? (set/difference (set (keys api-util/test-run-error-http-status))
                                 errors/all))
         "an entry in test-run-error-http-status maps a keyword absent from errors/all — likely a typo or a renamed/removed error-type")))
 
-(deftest ex-constructs-typed-exception-test
+(deftest ^:parallel ex-constructs-typed-exception-test
   (testing "errors/ex threads type, message, data, and cause"
     (let [cause (RuntimeException. "root")
           e     (errors/ex ::errors/seed-failed "boom" {:created []} cause)]
@@ -25,7 +25,7 @@
       (is (= ::errors/cycle (:error-type (ex-data e))))
       (is (nil? (ex-cause e))))))
 
-(deftest ex-rejects-undeclared-error-type-test
+(deftest ^:parallel ex-rejects-undeclared-error-type-test
   (testing "a literal keyword absent from errors/all fails at macro-expansion"
     ;; The compiler wraps the expansion-time throw in a CompilerException; the
     ;; vocabulary message is on its cause.

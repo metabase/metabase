@@ -32,7 +32,7 @@
 ;; Delegation: typed parsing flows through upload/parse-csv
 ;; ---------------------------------------------------------------------------
 
-(deftest parse-fixture-multi-column-test
+(deftest ^:parallel parse-fixture-multi-column-test
   (testing "Multi-column CSV with mixed types"
     (let [csv    (write-csv-file! "id,name,score,active,dt\n1,alpha,9.5,true,2024-03-15\n2,beta,3.2,false,2024-06-01\n")
           schema [{:name "id"     :base-type :type/Integer :nullable? false}
@@ -53,7 +53,7 @@
 ;; Header mismatch errors
 ;; ---------------------------------------------------------------------------
 
-(deftest header-mismatch-missing-columns-test
+(deftest ^:parallel header-mismatch-missing-columns-test
   (testing "CSV missing columns that target schema requires → typed error"
     (let [csv    (write-csv-file! "id,name\n1,alpha\n")
           schema [{:name "id"    :base-type :type/Integer :nullable? false}
@@ -67,7 +67,7 @@
              (:error-type (ex-data ex))))
       (is (= #{"score"} (set (:missing-columns (ex-data ex))))))))
 
-(deftest header-mismatch-extra-columns-test
+(deftest ^:parallel header-mismatch-extra-columns-test
   (testing "CSV has extra columns not in target schema → typed error"
     (let [csv    (write-csv-file! "id,name,unexpected_col\n1,alpha,extra\n")
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
@@ -80,7 +80,7 @@
              (:error-type (ex-data ex))))
       (is (= #{"unexpected_col"} (set (:extra-columns (ex-data ex))))))))
 
-(deftest header-mismatch-case-sensitive-test
+(deftest ^:parallel header-mismatch-case-sensitive-test
   (testing "Header matching is case-sensitive — 'Name' ≠ 'name'"
     (let [csv    (write-csv-file! "id,Name\n1,alpha\n")
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
@@ -95,7 +95,7 @@
       (is (= #{"Name"} (set (:extra-columns  (ex-data ex)))))
       (is (= #{"name"} (set (:missing-columns (ex-data ex))))))))
 
-(deftest header-mismatch-both-missing-and-extra-test
+(deftest ^:parallel header-mismatch-both-missing-and-extra-test
   (testing "ex-data includes both :missing-columns and :extra-columns when applicable"
     (let [csv    (write-csv-file! "id,wrong_col\n1,alpha\n")
           schema [{:name "id"        :base-type :type/Integer :nullable? false}
@@ -107,7 +107,7 @@
       (is (= #{"right_col"} (set (:missing-columns (ex-data ex)))))
       (is (= #{"wrong_col"} (set (:extra-columns   (ex-data ex))))))))
 
-(deftest duplicate-header-names-test
+(deftest ^:parallel duplicate-header-names-test
   (testing "duplicate CSV header names → typed error naming the duplicates"
     ;; A duplicated name passes a set-based check while its row values misalign
     ;; against the real table columns.
@@ -125,7 +125,7 @@
 ;; Ragged row errors
 ;; ---------------------------------------------------------------------------
 
-(deftest ragged-row-short-test
+(deftest ^:parallel ragged-row-short-test
   (testing "a data row with fewer cells than the header → typed error with row index"
     (let [csv    (write-csv-file! "id,count\n1,100\n2\n")
           schema [{:name "id"    :base-type :type/Integer :nullable? false}
@@ -144,7 +144,7 @@
 ;; Unparseable cell errors
 ;; ---------------------------------------------------------------------------
 
-(deftest unparseable-cell-error-test
+(deftest ^:parallel unparseable-cell-error-test
   (testing "Unparseable cell → typed error with row-index, column name, raw value"
     (let [csv    (write-csv-file! "id,count\n1,100\n2,not-a-number\n3,300\n")
           schema [{:name "id"    :base-type :type/Integer :nullable? false}
@@ -163,7 +163,7 @@
 ;; Output shape: feeds insert-from-source!
 ;; ---------------------------------------------------------------------------
 
-(deftest output-shape-feeds-insert-test
+(deftest ^:parallel output-shape-feeds-insert-test
   (testing "Output :columns has :name :base-type :nullable? keys for create-table-from-schema!"
     (let [csv    (write-csv-file! "id,name\n1,foo\n")
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
@@ -185,7 +185,7 @@
 ;; Edge cases
 ;; ---------------------------------------------------------------------------
 
-(deftest target-schema-required-test
+(deftest ^:parallel target-schema-required-test
   (testing "parse-fixture rejects an empty target schema with a typed ::empty-target-schema error"
     (let [csv (write-csv-file! "id\n1\n")]
       (doseq [empty-schema [nil []]]
@@ -194,7 +194,7 @@
           (is (= ::errors/empty-target-schema (:error-type (ex-data e)))
               (str "empty-schema " (pr-str empty-schema) " must throw typed error")))))))
 
-(deftest column-order-preserved-test
+(deftest ^:parallel column-order-preserved-test
   (testing "Row values are in the same order as :columns"
     (let [csv    (write-csv-file! "z,a,m\n3,1,2\n")
           schema [{:name "z" :base-type :type/Integer :nullable? true}

@@ -65,7 +65,7 @@
 ;; 1. Equal multisets pass under row reordering
 ;; ---------------------------------------------------------------------------
 
-(deftest equal-multisets-pass-reordering-test
+(deftest ^:parallel equal-multisets-pass-reordering-test
   (testing "rows in different order → :passed"
     (let [report (run-diff [["id" :type/Integer] ["name" :type/Text]]
                            [[1 "alice"] [2 "bob"] [3 "carol"]]
@@ -79,7 +79,7 @@
 ;; 2. Duplicate-row multiplicity is respected
 ;; ---------------------------------------------------------------------------
 
-(deftest duplicate-row-multiplicity-test
+(deftest ^:parallel duplicate-row-multiplicity-test
   (testing "two identical expected rows ≠ one actual row"
     (let [report (run-diff [["x" :type/Integer]] [[42]] [[42] [42]])]
       (is (= :failed (:status report)))
@@ -92,21 +92,21 @@
 ;; 3. Missing rows / extra rows / both
 ;; ---------------------------------------------------------------------------
 
-(deftest missing-rows-test
+(deftest ^:parallel missing-rows-test
   (testing "fewer actual rows than expected → missing-rows"
     (let [report (run-diff [["id" :type/Integer]] [[1] [2]] [[1] [2] [3]])]
       (is (= :failed (:status report)))
       (is (= 1 (count (:missing-rows report))))
       (is (empty? (:extra-rows report))))))
 
-(deftest extra-rows-test
+(deftest ^:parallel extra-rows-test
   (testing "more actual rows than expected → extra-rows"
     (let [report (run-diff [["id" :type/Integer]] [[1] [2] [3]] [[1] [2]])]
       (is (= :failed (:status report)))
       (is (empty? (:missing-rows report)))
       (is (= 1 (count (:extra-rows report)))))))
 
-(deftest missing-and-extra-rows-test
+(deftest ^:parallel missing-and-extra-rows-test
   (testing "some missing, some extra"
     (let [report (run-diff [["id" :type/Integer]] [[1] [3] [4]] [[1] [2] [3]])]
       (is (= :failed (:status report)))
@@ -117,7 +117,7 @@
 ;; 4. Temporal gauntlet — canonicalization of QP temporal strings vs Java time objects
 ;; ---------------------------------------------------------------------------
 
-(deftest date-column-qp-string-vs-localdate-test
+(deftest ^:parallel date-column-qp-string-vs-localdate-test
   (testing "QP :type/Date returns midnight-UTC string; expected CSV parses to LocalDate → equal"
     ;; QP actual: "2024-03-15T00:00:00Z"
     ;; parse-fixture(:type/Date) produces: LocalDate/of 2024 3 15
@@ -126,7 +126,7 @@
                            [[(LocalDate/of 2024 3 15)]])]
       (is (= :passed (:status report))))))
 
-(deftest datetime-column-qp-string-vs-localdatetime-test
+(deftest ^:parallel datetime-column-qp-string-vs-localdatetime-test
   (testing "QP :type/DateTime returns Z-suffixed string; expected parses to LocalDateTime → equal"
     ;; QP actual: "2024-01-15T10:30:00Z"
     ;; parse-fixture(:type/DateTime): LocalDateTime/of 2024 1 15 10 30 0
@@ -135,7 +135,7 @@
                            [[(LocalDateTime/of 2024 1 15 10 30 0)]])]
       (is (= :passed (:status report))))))
 
-(deftest datetime-with-tz-vs-localdatetime-with-local-tz-test
+(deftest ^:parallel datetime-with-tz-vs-localdatetime-with-local-tz-test
   (testing ":type/DateTimeWithTZ and :type/DateTimeWithLocalTZ are indistinguishable after round-trip"
     ;; The QP always returns :type/DateTimeWithLocalTZ for timestamptz columns.
     ;; The diff must treat both types equivalently for coercion.
@@ -144,7 +144,7 @@
                            [[(OffsetDateTime/of 2024 3 15 12 0 0 0 ZoneOffset/UTC)]])]
       (is (= :passed (:status report))))))
 
-(deftest tz-aware-offset-datetime-comparison-test
+(deftest ^:parallel tz-aware-offset-datetime-comparison-test
   (testing "OffsetDateTime with non-UTC offset equals the same instant expressed as UTC"
     ;; 2024-03-15T08:00:00-04:00 == 2024-03-15T12:00:00Z
     (let [report (run-diff [["ts" :type/DateTimeWithLocalTZ :type/DateTimeWithTZ]]
@@ -152,7 +152,7 @@
                            [[(OffsetDateTime/of 2024 3 15 8 0 0 0 (ZoneOffset/ofHours -4))]])]
       (is (= :passed (:status report))))))
 
-(deftest genuinely-different-timestamp-mismatch-test
+(deftest ^:parallel genuinely-different-timestamp-mismatch-test
   (testing "a genuinely different timestamp → mismatch reported (canonical values)"
     (let [report (run-diff [["ts" :type/DateTime]]
                            [["2024-01-15T10:30:00Z"]]
@@ -165,7 +165,7 @@
               (seq (:extra-rows report))
               (seq (:cell-mismatches report)))))))
 
-(deftest offset-less-temporal-strings-lenient-parse-test
+(deftest ^:parallel offset-less-temporal-strings-lenient-parse-test
   (testing "an offset-less date string parses as UTC wall time"
     (let [report (run-diff [["d" :type/Date]]
                            [["2024-03-15"]]
@@ -177,7 +177,7 @@
                            [[(LocalDateTime/of 2024 1 15 10 30 0)]])]
       (is (= :passed (:status report))))))
 
-(deftest unparseable-cell-typed-error-test
+(deftest ^:parallel unparseable-cell-typed-error-test
   (testing "an unparseable temporal value throws ::cannot-canonicalize, not a raw parse exception"
     (let [e (is (thrown? clojure.lang.ExceptionInfo
                          (run-diff [["d" :type/Date]]
@@ -191,7 +191,7 @@
                                    [[(BigInteger/valueOf 42)]])))]
       (is (= ::errors/cannot-canonicalize (-> e ex-data :error-type))))))
 
-(deftest null-temporal-passes-test
+(deftest ^:parallel null-temporal-passes-test
   (testing "NULL temporal on both sides → equal"
     (let [report (run-diff [["d" :type/Date]] [[nil]] [[nil]])]
       (is (= :passed (:status report))))))
@@ -200,7 +200,7 @@
 ;; 5. Numeric rules
 ;; ---------------------------------------------------------------------------
 
-(deftest integer-vs-long-widening-test
+(deftest ^:parallel integer-vs-long-widening-test
   (testing "Integer vs Long vs BigInteger are equal when values match"
     ;; QP may return Integer or Long; parse-fixture(:type/Integer) returns BigInteger.
     (let [report (run-diff [["n" :type/Integer]]
@@ -208,7 +208,7 @@
                            [[(BigInteger/valueOf 42)] [(BigInteger/valueOf 99)]])]
       (is (= :passed (:status report))))))
 
-(deftest float-comparison-exact-test
+(deftest ^:parallel float-comparison-exact-test
   (testing "floats are compared exactly (after decimal normalisation): 3.0 ≠ 3.1"
     (let [report (run-diff [["f" :type/Float]] [[3.0]] [[3.1]])]
       (is (= :failed (:status report)))))
@@ -216,7 +216,7 @@
     (let [report (run-diff [["f" :type/Float]] [[3.0]] [[3.0]])]
       (is (= :passed (:status report))))))
 
-(deftest bigint-precision-above-2-53-test
+(deftest ^:parallel bigint-precision-above-2-53-test
   (testing "a clojure.lang.BigInt above 2^53 compares exactly (no double round-trip)"
     ;; 2^53 + 1 is the first integer a double cannot represent.
     (let [huge   (inc' (long (Math/pow 2 53)))
@@ -231,7 +231,7 @@
                            [[(biginteger (inc' huge))]])]
       (is (= :failed (:status report))))))
 
-(deftest truncated-counts-capped-cell-mismatches-test
+(deftest ^:parallel truncated-counts-capped-cell-mismatches-test
   (testing ":truncated includes cell-mismatch entries beyond the cap, per its contract"
     ;; One missing/extra row pair whose rows differ in (mismatch-cap + 1) cells:
     ;; the pair produces cap+1 cell mismatches, one of which is capped away.
@@ -243,7 +243,7 @@
       (is (= diff/mismatch-cap (count (:cell-mismatches report))))
       (is (= 1 (:truncated report))))))
 
-(deftest decimal-scale-bigdecimal-multiset-test
+(deftest ^:parallel decimal-scale-bigdecimal-multiset-test
   (testing "true BigDecimal values with different scales (e.g. Postgres numeric columns)
             compare equal in the multiset path — row-key strips trailing zeros"
     ;; Doubles coincidentally produce identical strings; BigDecimals with explicit
@@ -253,7 +253,7 @@
                            [[(java.math.BigDecimal. "3.5")]])]
       (is (= :passed (:status report))))))
 
-(deftest report-rows-are-display-values-test
+(deftest ^:parallel report-rows-are-display-values-test
   (testing "missing/extra rows in the report carry display values — never internal
             multiset keys (a genuine mismatch must show \"3.02\", row-value form)"
     (let [report (run-diff [["f" :type/Float]] [[3.0]] [[3.02]])]
@@ -265,12 +265,12 @@
 ;; 6. NULL vs empty-string (blank → nil)
 ;; ---------------------------------------------------------------------------
 
-(deftest null-vs-nil-passes-test
+(deftest ^:parallel null-vs-nil-passes-test
   (testing "actual nil == expected nil"
     (let [report (run-diff [["s" :type/Text]] [[nil]] [[nil]])]
       (is (= :passed (:status report))))))
 
-(deftest boolean-false-not-confused-with-nil-test
+(deftest ^:parallel boolean-false-not-confused-with-nil-test
   (testing "false != nil — boolean false is not confused with SQL NULL"
     (let [report (run-diff [["b" :type/Boolean]] [[false]] [[nil]])]
       (is (= :failed (:status report)))))
@@ -282,7 +282,7 @@
 ;; 7. :ignore-columns option
 ;; ---------------------------------------------------------------------------
 
-(deftest ignore-columns-now-style-test
+(deftest ^:parallel ignore-columns-now-style-test
   (testing "an ignored column that would differ doesn't cause failure"
     ;; Simulate a now()-style column: actual has timestamps, expected has anything.
     ;; We simply ignore the column by name.
@@ -294,7 +294,7 @@
                            {:ignore-columns #{"updated_at"}})]
       (is (= :passed (:status report))))))
 
-(deftest ignore-unknown-column-name-errors-test
+(deftest ^:parallel ignore-unknown-column-name-errors-test
   (testing "an unknown ignore-column name → error, not silent no-op"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -306,7 +306,7 @@
 ;; 8. Column mismatch — detected first, row comparison skipped
 ;; ---------------------------------------------------------------------------
 
-(deftest missing-column-test
+(deftest ^:parallel missing-column-test
   (testing "expected column absent from actual → :column-issues, no row comparison"
     (let [actual-cols [(col "id" :type/Integer)]
           actual-rows [[1]]
@@ -320,7 +320,7 @@
       (is (empty? (:missing-rows report)))
       (is (empty? (:extra-rows report))))))
 
-(deftest extra-column-test
+(deftest ^:parallel extra-column-test
   (testing "actual has a column not in expected → :column-issues"
     (let [actual-cols [(col "id" :type/Integer) (col "extra" :type/Text)]
           actual-rows [[1 "x"]]
@@ -330,7 +330,7 @@
       (is (= :failed (:status report)))
       (is (seq (:column-issues report))))))
 
-(deftest column-order-independence-test
+(deftest ^:parallel column-order-independence-test
   (testing "columns in different order (same names) → not a column mismatch"
     ;; Expected fixture has columns in a different order, but same names.
     ;; The diff should reorder both sides to match actual-cols order.
@@ -349,7 +349,7 @@
 ;; 9. Mismatch cap
 ;; ---------------------------------------------------------------------------
 
-(deftest mismatch-cap-test
+(deftest ^:parallel mismatch-cap-test
   (testing "more than cap mismatches → capped report + :truncated count"
     ;; Generate 10 rows over the cap on each side
     (let [n      (+ diff/mismatch-cap 10)
@@ -367,7 +367,7 @@
 ;; 10. Report is JSON-able (no Java objects in the report)
 ;; ---------------------------------------------------------------------------
 
-(deftest report-is-json-able-test
+(deftest ^:parallel report-is-json-able-test
   (testing "a passing report serializes without error"
     (let [report (run-diff [["id" :type/Integer] ["d" :type/Date]]
                            [[1 "2024-03-15T00:00:00Z"]]
@@ -395,7 +395,7 @@
 ;; 11. Report shape invariants
 ;; ---------------------------------------------------------------------------
 
-(deftest report-shape-test
+(deftest ^:parallel report-shape-test
   (testing "all required keys present in a passing report"
     (let [report (run-diff [["x" :type/Integer]] [[1]] [[(BigInteger/valueOf 1)]])]
       (is (contains? report :status))
@@ -415,21 +415,21 @@
 ;; 12. Edge cases: empty actual / empty expected
 ;; ---------------------------------------------------------------------------
 
-(deftest empty-actual-rows-test
+(deftest ^:parallel empty-actual-rows-test
   (testing "no actual rows, some expected → all missing"
     (let [report (run-diff [["x" :type/Integer]] [] [[(BigInteger/valueOf 1)]])]
       (is (= :failed (:status report)))
       (is (= 1 (count (:missing-rows report))))
       (is (empty? (:extra-rows report))))))
 
-(deftest empty-expected-rows-test
+(deftest ^:parallel empty-expected-rows-test
   (testing "no expected rows, some actual → all extra"
     (let [report (run-diff [["x" :type/Integer]] [[1]] [])]
       (is (= :failed (:status report)))
       (is (empty? (:missing-rows report)))
       (is (= 1 (count (:extra-rows report)))))))
 
-(deftest both-empty-passes-test
+(deftest ^:parallel both-empty-passes-test
   (testing "no actual rows and no expected rows → :passed"
     (let [report (run-diff [["x" :type/Integer]] [] [])]
       (is (= :passed (:status report))))))
@@ -438,7 +438,7 @@
 ;; 13. Ignore columns + multiset correctness
 ;; ---------------------------------------------------------------------------
 
-(deftest ignore-columns-multiset-test
+(deftest ^:parallel ignore-columns-multiset-test
   (testing "ignore-columns is accounted for in multiset comparison (ignored column not part of row key)"
     ;; Two rows, same id, different timestamps — with ts ignored, both rows reduce to [1], [2]
     (let [report (run-diff [["id" :type/Integer]
@@ -452,7 +452,7 @@
 ;; cell-mismatch entries must not have :actual-raw/:expected-raw
 ;; ---------------------------------------------------------------------------
 
-(deftest cell-mismatch-keys-no-raw-fields-test
+(deftest ^:parallel cell-mismatch-keys-no-raw-fields-test
   (testing "cell-mismatch entry has exactly the expected keys — no :actual-raw/:expected-raw"
     (let [report     (run-diff [["ts" :type/DateTime]]
                                [["2024-01-15T10:30:00Z"]]

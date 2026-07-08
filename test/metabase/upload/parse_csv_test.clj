@@ -16,7 +16,7 @@
   [cols]
   (constantly cols))
 
-(deftest parse-csv-typed-cells-test
+(deftest ^:parallel parse-csv-typed-cells-test
   (testing "each base-type parses to its contract value type; blank cells → nil"
     (let [csv  (str "id,price,active,day,ts,ts_tz,name\n"
                     "1,3.5,true,2024-01-02,2024-01-02T03:04:05,2024-01-02T03:04:05Z,widget\n"
@@ -60,7 +60,7 @@
                                            (cols->header-fn [{:name "n" :base-type :type/BigInteger}]))]
       (is (instance? BigInteger (ffirst rows))))))
 
-(deftest parse-csv-file-source-bom-test
+(deftest ^:parallel parse-csv-file-source-bom-test
   (testing "File source: UTF-8 BOM is stripped before the header is read"
     (let [f (File/createTempFile "parse-csv-test-" ".csv")]
       (try
@@ -77,7 +77,7 @@
         (finally
           (.delete f))))))
 
-(deftest parse-csv-header-fn-contract-test
+(deftest ^:parallel parse-csv-header-fn-contract-test
   (testing "header->columns receives the raw header row"
     (let [header* (atom nil)]
       (upload/parse-csv "a,b\n1,2\n" (fn [header]
@@ -106,7 +106,7 @@
     (let [cols [{:name "a" :base-type :type/Integer :nullable? false :anything 42}]]
       (is (= cols (:columns (upload/parse-csv "a\n1\n" (cols->header-fn cols))))))))
 
-(deftest parse-csv-ragged-row-test
+(deftest ^:parallel parse-csv-ragged-row-test
   (testing "a short row fails closed"
     (let [e (is (thrown? clojure.lang.ExceptionInfo
                          (upload/parse-csv "a,b\n1\n"
@@ -127,7 +127,7 @@
               :actual-cell-count   2}
              (ex-data e))))))
 
-(deftest parse-csv-unparseable-cell-test
+(deftest ^:parallel parse-csv-unparseable-cell-test
   (testing "a cell its parser rejects fails closed with position, column, and cause"
     (let [e (is (thrown? clojure.lang.ExceptionInfo
                          (upload/parse-csv "n,s\n1,x\nabc,y\n"
@@ -140,7 +140,7 @@
              (ex-data e)))
       (is (some? (ex-cause e))))))
 
-(deftest parse-csv-base-type-fallback-test
+(deftest ^:parallel parse-csv-base-type-fallback-test
   (testing "a base type with no upload mapping parses as text"
     (let [{:keys [rows]} (upload/parse-csv "j\n{\"k\": 1}\n"
                                            (cols->header-fn [{:name "j" :base-type :type/JSON}]))]
