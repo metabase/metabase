@@ -12,18 +12,25 @@ A Metabase **action** is a server-defined write operation against the data wareh
 Actions belong to a model. They mutate that model's rows. Concretely:
 
 - Every action has a parent model. In the schema it appears as `schema.models.<modelName>.actions.<actionName>`.
+- Model entries are included here only to catalog actions. Do not render models as questions, pass model ids to `InteractiveQuestion`, or fetch model rows; use semantic-layer queries/questions for read views.
 - An action's `type` is either `"implicit"` (CRUD on the model) or `"query"` (custom SQL the user authored).
 - Implicit actions have an `implicitKind` that says what they do: `"row/create"`, `"row/update"`, `"row/delete"`, or `"bulk/*"` variants.
 - Each action publishes a `parameters` list. Each parameter has a `slug` (the key the Data App sends), a `jsType` (`"string"` / `"number"` / `"Date"` / `"boolean"` / `"unknown"`), and an optional `required` flag.
-- The action does **not** carry a `columns` list of its own. The response row shape is loosely typed as `Record<string, RowValue>` — read individual fields off `result["created-row"]` after a `row/create` and trust the schema for the field names. If you need richer per-field typing in your own code, reach into the parent model's `columns` via `schema.models.<modelName>.columns`.
+- Use `action.parameters` to know which fields to render and submit. A create result may include `result["created-row"]`, but that row is only typed as `Record<string, RowValue>`; use it for lightweight confirmation, then refresh the existing table/question/query data already used by the page. Do not fetch or render the parent model itself.
 
 ## What's in the schema (and what isn't)
 
-Before writing any action-invoking code, look at the schema and enumerate what's available under `schema.models.<m>.actions` across the models the app cares about. The schema is your **complete** catalog of actions for the instance. If a model's `actions` entry has `create`, `update`, `delete`, those are the actions invokable. Anything not present doesn't exist as far as the Data App is concerned.
+Before writing any action-invoking code, look at the schema and enumerate what's available under `schema.models.<m>.actions` across the models the app cares about. The schema is your **complete** catalog of actions for the instance, not a catalog of model data to display. If a model's `actions` entry has `create`, `update`, `delete`, those are the actions invokable. Anything not present doesn't exist as far as the Data App is concerned.
 
 ## The hook
 
 ```ts
+import { useAction } from "@metabase/embedding-sdk-react";
+import {
+  type ActionKindFromDataAppSchema,
+  type ActionParametersFromDataAppSchema,
+} from "@metabase/embedding-sdk-react/data-app";
+
 const { execute, isExecuting, result, error, reset } = useAction<
   ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>,
   ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>
@@ -31,8 +38,8 @@ const { execute, isExecuting, result, error, reset } = useAction<
 ```
 
 - **First argument** is the action's numeric **id** — read it off the schema entry as `schema.models.<model>.actions.<action>.id`. The hook also accepts an action's `entity_id` string, but in a Data App you always have the numeric id on hand from the schema, so pass that.
-- **`TParameters` generic** — the type of the parameters object you'll pass to `execute`. In a Data App, derive it from the schema with `ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` (imported from `@metabase/embedding-sdk-react`); the helper expands the schema's `parameters[]` into a keyed object, marks `required: true` entries as required keys, and types each value from its `jsType`. Skip the generic and `execute` accepts any `Record<string, unknown>`.
-- **`TKind` generic** — the action kind literal that drives the discriminated `result` shape. In a Data App, derive it from the same schema entry with `ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>`; the helper maps `implicitKind` (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`) and `type === "query"` → `"query"`. Skip the generic and `result` defaults to the `AnyActionResult` union — TS-narrowable via `"<key>" in result`, but you lose the per-kind precision.
+- **`TParameters` generic** — the type of the parameters object you'll pass to `execute`. In a Data App, derive it from the schema with `ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` imported from `@metabase/embedding-sdk-react/data-app`; the helper expands the schema's `parameters[]` into a keyed object, marks `required: true` entries as required keys, and types each value from its `jsType`. Skip the generic and `execute` accepts any `Record<string, unknown>`.
+- **`TKind` generic** — the action kind literal that drives the discriminated `result` shape. In a Data App, derive it from the same schema entry with `ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` imported from `@metabase/embedding-sdk-react/data-app`; the helper maps `implicitKind` (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`) and `type === "query"` → `"sql"`. Skip the generic and `result` defaults to the `AnyActionResult` union — TS-narrowable via `"<key>" in result`, but you lose the per-kind precision.
 - **`execute(parameters)`** — triggers the action. Parameters object is keyed by parameter `slug`; parameters declared `required: true` are required keys, everything else optional. Returns the response body on success AND throws on failure (the error is also written to `error` state for render-time consumers). Resolves to `null` (without making a request) when `actionId` is `null` or the SDK is not yet initialized — guard the call site if those cases are reachable.
 - **No `enabled` / `options` argument.** The hook only ever runs when `execute(...)` is called, so a gate option would be redundant. Skip the action by branching in the event handler:
   ```ts
@@ -42,7 +49,7 @@ const { execute, isExecuting, result, error, reset } = useAction<
   };
   ```
 - **`isExecuting`** — `true` between the call and its resolution. Drive button `disabled` from this so the user can't double-click into duplicate requests.
-- **`result`** — the response body, discriminated by `TKind` (or the `AnyActionResult` union when `TKind` is omitted). `null` before the first call and after `reset()`. Use it for confirmation data (`result?.["created-row"]` after an insert, `result?.["rows-affected"]` after a SQL action), but prefer refreshing surrounding data over driving UI from the response body — see *After an action runs*.
+- **`result`** — the response body, discriminated by `TKind` (or the `AnyActionResult` union when `TKind` is omitted). `null` before the first call and after `reset()`. Use it for lightweight confirmation (`result?.["created-row"]` after an insert, `result?.["rows-affected"]` after a SQL action), but do not treat create rows as richly typed model rows; refresh surrounding data instead — see *After an action runs*.
 - **`error`** — the last thrown error, typed `ActionExecuteError | null`. Read fields directly with no cast: `error?.data?.message`, `error?.status`, `error?.isCancelled`.
 - **`reset()`** — clears `result` and `error` back to `null`. Useful after the user acknowledges success or dismisses an error.
 
@@ -51,7 +58,13 @@ const { execute, isExecuting, result, error, reset } = useAction<
 ## Canonical usage — a form that creates a row
 
 ```tsx
-import { schema } from "../metabase.data";
+import { useAction } from "@metabase/embedding-sdk-react";
+import {
+  type ActionKindFromDataAppSchema,
+  type ActionParametersFromDataAppSchema,
+} from "@metabase/embedding-sdk-react/data-app";
+
+import schema from "../metabase.data";
 
 function AddPersonForm({ onCreated }: { onCreated: () => void }) {
   const { useState } = React;
@@ -89,14 +102,30 @@ function AddPersonForm({ onCreated }: { onCreated: () => void }) {
 
 ## Showing the error message
 
-When `execute(...)` fails, surface the backend message in the UI. The hook's `error` is typed `ActionExecuteError | null` — shape `{ status?, data: { message?, errors? }, isCancelled }` where the human-readable diagnostic lives at `error.data.message` (SQL constraint violations, validation failures, permission denials all land there). `error.data.errors` is a per-field map (`{ <slug>: <message> }`) when the backend reports parameter-level failures, or `{}` for whole-request failures. Read both directly, no cast:
+When `execute(...)` fails, surface both error layers. The hook's `error` is typed `ActionExecuteError | null` — shape `{ status?, data: { message?, errors? }, isCancelled }`. `error.data.message` is the whole-request failure. `error.data.errors` is a per-field validation map keyed by parameter slug (`{ <slug>: <message> }`), or `{}` for whole-request failures. Read both directly, no cast:
 
 ```tsx
+const fieldErrors = error?.data.errors ?? {};
+
 {error ? (
   <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
     {error.data.message ?? "Action failed."}
   </pre>
 ) : null}
+
+{action.parameters.map((parameter) => {
+  const fieldError = fieldErrors[parameter.slug];
+  return (
+    <label key={parameter.slug}>
+      {parameter.displayName}
+      <input
+        aria-invalid={Boolean(fieldError)}
+        style={{ borderColor: fieldError ? "#dc2626" : undefined }}
+      />
+      {fieldError ? <div role="alert">{fieldError}</div> : null}
+    </label>
+  );
+})}
 ```
 
 Use `<pre>` (or any element with `white-space: pre-wrap`) — the messages contain newlines that matter (driver errors include the SQL on its own line). A `<span>` collapses them into one wall of text.
@@ -114,6 +143,7 @@ That whole string is `error.data.message`. Render it as-is.
 **Don't:**
 
 - Render `"Failed"` / `"Something went wrong"` / `String(error)` instead of `error.data.message` — the user loses the only fix-it info they have.
+- Render only `error.data.message` for validation failures — `error.data.errors[parameter.slug]` is often the actionable "which field and why" detail.
 - Paraphrase the message into a "friendlier" version. The raw H2/Postgres/SQL error is more actionable than any rewrite.
 
 ## After an action runs — keeping the UI honest
