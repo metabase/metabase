@@ -1,25 +1,27 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Flex, Title } from "metabase/ui";
+import type { IconProps, MantineStyleProps } from "metabase/ui";
+import { Flex, Icon, Title } from "metabase/ui";
 
-import {
-  ActionsWrapper,
-  ModalContentActionIcon,
-  ModalHeaderBackIcon,
-} from "./ModalContent.styled";
 import S from "./ModalHeader.module.css";
 import type { CommonModalProps } from "./types";
+
+export const ModalContentActionIcon = ({ className, ...props }: IconProps) => (
+  <Icon {...props} className={cx(S.actionIcon, className)} />
+);
 
 export interface ModalHeaderProps extends CommonModalProps {
   children: ReactNode;
 
   className?: string;
+  py?: MantineStyleProps["py"];
 }
 
 export const ModalHeader = ({
   children,
   className,
+  py = "xl",
   fullPageModal,
   centeredTitle,
   headerActions,
@@ -33,23 +35,29 @@ export const ModalHeader = ({
     <Flex
       gap="sm"
       align="center"
-      p="xl"
-      className={cx(S.HeaderContainer, className)}
+      px="xl"
+      py={py}
+      flex="0 0 auto"
+      className={className}
       data-testid="modal-header"
     >
       <Flex
         align="center"
         gap="sm"
+        flex="1 1 auto"
         className={cx(S.HeaderTextContainer, {
           [S.clickable]: !!onBack,
         })}
         onClick={onBack}
       >
-        {onBack && <ModalHeaderBackIcon name="chevronleft" />}
+        {onBack && (
+          <Icon name="chevronleft" flex="0 0 auto" className={S.backIcon} />
+        )}
 
         <Title
           order={3}
           w="100%"
+          flex="1 1 auto"
           className={cx(S.HeaderText, {
             [S.HeaderTextCentered]: fullPageModal || centeredTitle,
           })}
@@ -59,7 +67,7 @@ export const ModalHeader = ({
       </Flex>
 
       {hasActions && (
-        <ActionsWrapper>
+        <Flex gap="sm">
           {headerActions}
           {onClose && (
             <ModalContentActionIcon
@@ -68,7 +76,7 @@ export const ModalHeader = ({
               onClick={onClose}
             />
           )}
-        </ActionsWrapper>
+        </Flex>
       )}
     </Flex>
   );

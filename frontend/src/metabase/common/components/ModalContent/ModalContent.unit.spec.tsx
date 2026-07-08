@@ -4,7 +4,7 @@ import { getIcon, render, screen } from "__support__/ui";
 
 import type { ModalContentProps } from "./ModalContent";
 import { ModalContent } from "./ModalContent";
-import { ModalContentActionIcon } from "./ModalContent.styled";
+import { ModalContentActionIcon } from "./ModalHeader";
 
 describe("ModalContent", () => {
   it("should render header action buttons", async () => {
