@@ -46,10 +46,10 @@
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
-         (when-let [card-id (lib.params.parse/tag-name->card-id tag-name)]
+         (when-let [card-id (lib.schema.template-tag/tag-name->card-id tag-name)]
            {:type    :card
             :card-id card-id})
-         (when-let [snippet-name (lib.params.parse/tag-name->snippet-name tag-name)]
+         (when-let [snippet-name (lib.schema.template-tag/tag-name->snippet-name tag-name)]
            {:type         :snippet
             :snippet-name snippet-name})
          (when-not (:display-name tag)
@@ -71,7 +71,7 @@
                            (_ :guard string?) [found more]
 
                            {:type ::lib.parse/param, :name tag-name}
-                           (let [normalized-name (lib.params.parse/match-and-normalize-tag-name tag-name)]
+                           (let [normalized-name (lib.normalize/normalize ::lib.schema.template-tag/name tag-name)]
                              [(cond-> found
                                 (and normalized-name (not (some #(= (:name %) normalized-name) found)))
                                 (conj (fresh-tag normalized-name)))
@@ -96,7 +96,10 @@
                                      (u.humanization/name->human-readable-name :simple new-name)
                                      (:display-name old-tag))]
               (-> old-tag
-                  #_(dissoc :card-id :snippet-name :snippet-id) ; NOCOMMIT
+                  ;; TODO (Cam 2026-07-07) the code previously removed these, but this made the template tags invalid
+                  ;; since these are required depending on tag type; commenting it out doesn't seem to break things as
+                  ;; far as I can tell... so I'm not sure why they were removed in the first place
+                  #_(dissoc :card-id :snippet-name :snippet-id)
                   (assoc :display-name new-display-name
                          :name         new-name))))]
     (mapv (fn [{tag-name :name, :as tag}]
@@ -284,11 +287,12 @@
   query with [[native-query]] should populate them automatically by way of [[extract-template-tags]]."
   [query        :- ::lib.schema/query
    ;; this function is used by the frontend, so we'll also support a template tag map as input
-   updated-tags :- ::lib.schema.template-tag/template-tag-map-or-sequence] ; NOCOMMIT - FE only?
-  (let [updated-tags (->> (lib.normalize/normalize ::lib.schema.template-tag/template-tags updated-tags)
-                          ;; NOCOMMIT -- do name normalization automatically
-                          (mapv (fn [tag]
-                                  (update tag :name (some-fn lib.params.parse/match-and-normalize-tag-name identity)))))]
+   ;;
+   ;; TODO (Cam 2026-07-07) we should make map input be FE-only and force list inputs on the backend, but this will
+   ;; require updating a lot of tests. We can
+   updated-tags :- ::lib.schema.template-tag/template-tag-map-or-sequence]
+  ;; normalization is also important here because it normalizes template tag names.
+  (let [updated-tags (lib.normalize/normalize ::lib.schema.template-tag/template-tags updated-tags)]
     (letfn [(update-template-tags [existing-tags]
               ;; prefer order from `updated-tags`, but only update tags that are present in `existing-tags`; keep any
               ;; `existing-tags` that don't have updates.

@@ -2,9 +2,11 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.util :as lib.util]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -64,50 +66,98 @@
 
 (deftest ^:parallel normalize-template-tags-map-to-list-test
   (testing "names in the map values need to match keys in the map"
-    (is (=? [{:name         "time-unit"
+    (is (=? [{:name         "time_unit"
               :display-name "id"
               :type         :temporal-unit
               :dimension    [:field {:lib/uuid string?} 1]}]
             (lib/normalize ::lib.schema.template-tag/template-tags
-                           {"time-unit" {:name         "id"
+                           {"time_unit" {:name         "id"
                                          :display-name "id"
                                          :type         :temporal-unit
                                          :dimension    [:field 1]}})))))
 
-(deftest ^:parallel normalize-template-tags-list-to-map-test
-  (testing "names in the map values need to match keys in the map"
-    (let [m (lib/normalize ::lib.schema.template-tag/template-tag-map
-                           (mapv (fn [i]
-                                   {:widget-type  :category
-                                    :id           (lib.util/format "00000000-0000-0000-0000-00000000000%d" i)
-                                    :name         (lib.util/format "parameter_%d" i)
-                                    :display-name (lib.util/format "Parameter %d" i)
-                                    :type         :dimension
-                                    :dimension    [:field {} 1]
-                                    :default      nil})
-                                 (range 10)))]
-      ;; map order is only preserved within Lib in the JVM; for FE/JS however we convert to JS objects at
-      ;; the [[metabase.lib.js]] boundary which preserves order outside of Lib
-      #?(:clj (is (instance? flatland.ordered.map.OrderedMap m)
-                  "should be converted to a map type that preserves order"))
-      #?(:clj (is (= ["parameter_0"
-                      "parameter_1"
-                      "parameter_2"
-                      "parameter_3"
-                      "parameter_4"
-                      "parameter_5"
-                      "parameter_6"
-                      "parameter_7"
-                      "parameter_8"
-                      "parameter_9"]
-                     (keys m))
-                  "should preserve key order"))
-      (is (=? {"parameter_0" {:widget-type  :category
-                              :id           "00000000-0000-0000-0000-000000000000"
-                              :name         "parameter_0"
-                              :display-name "Parameter 0"
-                              :type         :dimension
-                              :dimension    [:field {} 1]
-                              :default      nil}}
-              m)
-          "shape of map should be correct"))))
+(deftest ^:parallel validate-template-tag-name-test
+  (testing "valid tag names"
+    (are [tag-name] (nil? (me/humanize (mr/explain ::lib.schema.template-tag/name tag-name)))
+      "var_abc"
+      "snippet: x"
+      "#123"
+      "#123-card-slug")))
+
+(deftest ^:parallel validate-invalid-template-tag-name-test
+  (testing "invalid tag names"
+    (are [tag-name expected-error] (= [expected-error]
+                                      (me/humanize (mr/explain ::lib.schema.template-tag/name tag-name)))
+      "var-abc"
+      "Variable template tag names can only contain letters, numbers, underscores, or periods"
+
+      "snippet:x"
+      (str "Snippet template tag names must match the format 'snippet: <name>' where <name> is any character besides"
+           " '}'; the last character cannot be a space")
+
+      ;; ID cannot start with a zero
+      "#0123"
+      "Card template tag names must match the format '#<card-id>' or '#<card-id>-<slug>'"
+
+      "#123_card"
+      "Card template tag names must match the format '#<card-id>' or '#<card-id>-<slug>'")))
+
+(deftest ^:parallel normalize-template-tag-name-test
+  (are [tag-name normalized] (= normalized
+                                (lib/normalize ::lib.schema.template-tag/name tag-name))
+    " snippet:  x " "snippet: x"
+    " var_abc "     "var_abc"
+    "var-abc"       "var_abc"
+    " #123-card "   "#123-card"
+    "#0123-card"    "#123-card"))
+
+(deftest ^:parallel normalize-snippet-template-tag-name-test
+  (are [input] (= {:type         :snippet
+                   :name         "snippet: My Snippet"
+                   :snippet-name "My Snippet"}
+                  (lib/normalize ::lib.schema.template-tag/template-tag input))
+    ;; missing `:name`
+    {:type         :snippet
+     :snippet-name "My Snippet"}
+    ;; missing `:snippet-name`
+    {:type :snippet
+     :name "snippet: My Snippet"}
+    ;; has both, but `:name` is wrong
+    {:type         :snippet
+     :name         "My Snippet"
+     :snippet-name "My Snippet"}))
+
+(deftest ^:parallel normalize-card-template-tag-name-test
+  (are [input] (= {:type    :card
+                   :card-id 1
+                   :name    "#1"}
+                  (lib/normalize ::lib.schema.template-tag/template-tag input))
+    ;; missing `:card-id`
+    {:type    :card
+     :name    "#1"}
+    ;; missing `:name`
+    {:type    :card
+     :card-id 1}
+    ;; has both, but `:name` is wrong
+    {:type    :card
+     :card-id 1
+     :name    "#400"}))
+
+(deftest ^:parallel template-tag-distinct-names-test
+  (testing "multiple template tags with the same :name"
+    (let [tag {:default      nil
+               :id           "f7672b4d-1e84-1fa8-bf02-b5e584cd4535"
+               :name         "state"
+               :display-name "State"
+               :type         :dimension
+               :options      {:case-sensitive false}
+               :dimension    [:field
+                              {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
+                              1]
+               :widget-type  :string/contains}]
+      (testing "Validation should fail if there are duplicates"
+        (is (= ["Template tags must have distinct :names"]
+               (me/humanize (mr/explain ::lib.schema.template-tag/template-tags [tag tag])))))
+      (testing "Normalization should remove duplicates"
+        (is (= [tag]
+               (lib/normalize ::lib.schema.template-tag/template-tags [tag tag])))))))

@@ -25,6 +25,7 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -110,7 +111,6 @@
  lib/->metadata-provider
  lib/duplicate-column-error
  lib/json-field?
- lib/match-and-normalize-tag-name
  lib/missing-column-error
  lib/missing-table-alias-error
  lib/native-query-table-references
@@ -347,3 +347,15 @@
 (def Join
   "Schema for a legacy MBQL join."
   ::mbql.s/Join)
+
+(defn match-and-normalize-tag-name
+  "Normalize a template tag name. This function is provided for compatibility since the underlying function has been
+  rolled into schema normalization.
+
+  TODO (Cam 2026-07-07) mark this as deprecated, update driver changelog, and direct people to do
+
+    (lib/normalize ::lib.schema.template-tag/name ...)
+
+  instead."
+  [template-tag-name]
+  (lib/normalize ::lib.schema.template-tag/name template-tag-name))
