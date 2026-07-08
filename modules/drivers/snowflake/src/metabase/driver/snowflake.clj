@@ -390,13 +390,16 @@
   ;; `enablePutGet=false` on every connection (#73578).
   ;;
   ;; `TIMESTAMP_NTZ` / `TIMESTAMP_TZ` mirror what [[database-type->base-type]] reads back, so inferred
-  ;; types round-trip through sync. `NUMBER IDENTITY(1, 1)` is Snowflake's auto-incrementing PK
-  ;; (a.k.a. `AUTOINCREMENT`).
+  ;; types round-trip through sync.
+  ;;
+  ;; `NUMBER IDENTITY(1, 1) ORDER` is Snowflake's auto-incrementing PK. `ORDER` keeps generated ids
+  ;; sequential in insertion order; the default (`NOORDER`) hands out values from per-cluster ranges,
+  ;; leaving large gaps between separate inserts (e.g. appends jump from 1 to 101).
   (case upload-type
     :metabase.upload/varchar-255              [[:varchar 255]]
     :metabase.upload/text                     [:text]
     :metabase.upload/int                      [:bigint]
-    :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1]]
+    :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1] :order]
     :metabase.upload/float                    [:double]
     :metabase.upload/boolean                  [:boolean]
     :metabase.upload/date                     [:date]
