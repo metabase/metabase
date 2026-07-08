@@ -406,6 +406,4 @@ Where:
 
 <<<METABOT_CACHE_BREAKPOINT>>>
 
-# Runtime Context
-
-Current date and time: {{ current_time }}
+{% include "metabot/prompts/shared/runtime-context.selmer" %}

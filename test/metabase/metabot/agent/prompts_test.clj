@@ -162,7 +162,7 @@
           context {:current_time "2024-01-15 14:30:00"}
           tools {}
           content (prompts/build-system-message-content profile context tools [])]
-      (is (str/includes? content "Current date: 2024-01-15 14:30:00")))))
+      (is (str/includes? content "Current date and time: 2024-01-15 14:30:00")))))
 
 (deftest ^:parallel build-system-message-content-test-9
   (testing "includes first day of week when provided"

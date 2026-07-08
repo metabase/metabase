@@ -398,7 +398,9 @@
         (let [body  (slurp f)
               n     (count (re-seq #"<<<METABOT_CACHE_BREAKPOINT>>>" body))
               has-volatile? (some #(re-find % body)
-                                  [#"\{\{\s*current_time\s*\}\}"
+                                  [;; the shared runtime-context template renders all the volatile vars
+                                   #"\{%\s*include\s+\"metabot/prompts/shared/runtime-context\.selmer\"\s*%\}"
+                                   #"\{\{\s*current_time\s*\}\}"
                                    #"\{%\s*if\s+recent_views\s*%\}"
                                    #"\{%\s*if\s+current_user_info\s*%\}"
                                    #"\{%\s*if\s+viewing_context\s*%\}"

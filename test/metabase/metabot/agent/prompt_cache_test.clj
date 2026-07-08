@@ -8,7 +8,10 @@
 
   Snippets under `shared/prompt_snippets/` are also asserted to be free of
   Selmer template directives, since they are intended to be safe to embed
-  anywhere in the cacheable prefix without coupling to runtime context."
+  anywhere in the cacheable prefix without coupling to runtime context.
+  Templates that render per-request values live directly under `shared/`
+  (see `volatile-shared-templates`) and may only be included below the
+  breakpoint."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -26,6 +29,12 @@
    :permission/metabot-other-tools    :yes})
 
 (def ^:private snippets-dir "metabot/prompts/shared/prompt_snippets")
+
+(def ^:private volatile-shared-templates
+  "Shared templates (under `shared/`, not `shared/prompt_snippets/`) that render
+  per-request values. They must only ever be included below the cache breakpoint
+  (see volatile-shared-templates-included-below-breakpoint-test)."
+  #{"metabot/prompts/shared/runtime-context.selmer"})
 
 (defn- snippet-files []
   (->> (io/resource snippets-dir)
@@ -51,10 +60,28 @@
 (def ^:private system-templates-with-breakpoint
   ["internal.selmer"
    "embedding-next.selmer"
+   "natural-language-querying-fallback.selmer"
    "natural-language-querying-only.selmer"
    "sql-querying-only.selmer"
    "slackbot.selmer"
    "transform-codegen.selmer"])
+
+(deftest ^:parallel volatile-shared-templates-included-below-breakpoint-test
+  (testing "volatile shared templates may only be included after the cache breakpoint sentinel"
+    (let [system-dir (io/file (io/resource "metabot/prompts/system"))]
+      (doseq [^java.io.File f (->> (file-seq system-dir)
+                                   (filter #(.isFile ^java.io.File %))
+                                   (filter #(str/ends-with? (.getName ^java.io.File %) ".selmer")))
+              template volatile-shared-templates
+              :let [body        (slurp f)
+                    include-idx (.indexOf body ^String template)]
+              :when (not (neg? include-idx))]
+        (testing (str (.getName f) " → " template)
+          (let [breakpoint-idx (.indexOf body ^String cache-breakpoint)]
+            (is (not (neg? breakpoint-idx))
+                "template includes a volatile shared template but has no cache breakpoint")
+            (is (< breakpoint-idx include-idx)
+                "volatile shared template is included in the cacheable prefix")))))))
 
 (defn- render
   [template-name per-request-context]
