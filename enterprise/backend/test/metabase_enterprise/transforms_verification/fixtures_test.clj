@@ -9,24 +9,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-verification.errors :as errors]
-   [metabase-enterprise.transforms-verification.fixtures :as fixtures])
-  (:import
-   (java.io File)))
+   [metabase-enterprise.transforms-verification.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
-
-;; ---------------------------------------------------------------------------
-;; Test helpers
-;; ---------------------------------------------------------------------------
-
-(defn- write-csv-file!
-  "Write `content` string to a temp file. Returns the File. Caller is responsible
-  for deletion."
-  ^File [^String content]
-  (let [f (File/createTempFile "fixtures-test-" ".csv")]
-    (.deleteOnExit f)
-    (spit f content)
-    f))
 
 ;; ---------------------------------------------------------------------------
 ;; Delegation: typed parsing flows through upload/parse-csv
@@ -34,7 +19,7 @@
 
 (deftest ^:parallel parse-fixture-multi-column-test
   (testing "Multi-column CSV with mixed types"
-    (let [csv    (write-csv-file! "id,name,score,active,dt\n1,alpha,9.5,true,2024-03-15\n2,beta,3.2,false,2024-06-01\n")
+    (let [csv    "id,name,score,active,dt\n1,alpha,9.5,true,2024-03-15\n2,beta,3.2,false,2024-06-01\n"
           schema [{:name "id"     :base-type :type/Integer :nullable? false}
                   {:name "name"   :base-type :type/Text    :nullable? true}
                   {:name "score"  :base-type :type/Float   :nullable? true}
@@ -55,7 +40,7 @@
 
 (deftest ^:parallel header-mismatch-missing-columns-test
   (testing "CSV missing columns that target schema requires → typed error"
-    (let [csv    (write-csv-file! "id,name\n1,alpha\n")
+    (let [csv    "id,name\n1,alpha\n"
           schema [{:name "id"    :base-type :type/Integer :nullable? false}
                   {:name "name"  :base-type :type/Text    :nullable? true}
                   {:name "score" :base-type :type/Float   :nullable? true}]
@@ -69,7 +54,7 @@
 
 (deftest ^:parallel header-mismatch-extra-columns-test
   (testing "CSV has extra columns not in target schema → typed error"
-    (let [csv    (write-csv-file! "id,name,unexpected_col\n1,alpha,extra\n")
+    (let [csv    "id,name,unexpected_col\n1,alpha,extra\n"
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
                   {:name "name" :base-type :type/Text    :nullable? true}]
           ex     (try (fixtures/parse-fixture csv schema)
@@ -82,7 +67,7 @@
 
 (deftest ^:parallel header-mismatch-case-sensitive-test
   (testing "Header matching is case-sensitive — 'Name' ≠ 'name'"
-    (let [csv    (write-csv-file! "id,Name\n1,alpha\n")
+    (let [csv    "id,Name\n1,alpha\n"
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
                   {:name "name" :base-type :type/Text    :nullable? true}]
           ex     (try (fixtures/parse-fixture csv schema)
@@ -97,7 +82,7 @@
 
 (deftest ^:parallel header-mismatch-both-missing-and-extra-test
   (testing "ex-data includes both :missing-columns and :extra-columns when applicable"
-    (let [csv    (write-csv-file! "id,wrong_col\n1,alpha\n")
+    (let [csv    "id,wrong_col\n1,alpha\n"
           schema [{:name "id"        :base-type :type/Integer :nullable? false}
                   {:name "right_col" :base-type :type/Text    :nullable? true}]
           ex     (try (fixtures/parse-fixture csv schema)
@@ -111,7 +96,7 @@
   (testing "duplicate CSV header names → typed error naming the duplicates"
     ;; A duplicated name passes a set-based check while its row values misalign
     ;; against the real table columns.
-    (let [csv    (write-csv-file! "id,id\n1,2\n")
+    (let [csv    "id,id\n1,2\n"
           schema [{:name "id" :base-type :type/Integer :nullable? false}]
           ex     (try (fixtures/parse-fixture csv schema)
                       nil
@@ -127,7 +112,7 @@
 
 (deftest ^:parallel ragged-row-short-test
   (testing "a data row with fewer cells than the header → typed error with row index"
-    (let [csv    (write-csv-file! "id,count\n1,100\n2\n")
+    (let [csv    "id,count\n1,100\n2\n"
           schema [{:name "id"    :base-type :type/Integer :nullable? false}
                   {:name "count" :base-type :type/Integer :nullable? true}]
           ex     (try (fixtures/parse-fixture csv schema)
@@ -146,7 +131,7 @@
 
 (deftest ^:parallel unparseable-cell-error-test
   (testing "Unparseable cell → typed error with row-index, column name, raw value"
-    (let [csv    (write-csv-file! "id,count\n1,100\n2,not-a-number\n3,300\n")
+    (let [csv    "id,count\n1,100\n2,not-a-number\n3,300\n"
           schema [{:name "id"    :base-type :type/Integer :nullable? false}
                   {:name "count" :base-type :type/Integer :nullable? true}]
           ex     (try (fixtures/parse-fixture csv schema)
@@ -165,7 +150,7 @@
 
 (deftest ^:parallel output-shape-feeds-insert-test
   (testing "Output :columns has :name :base-type :nullable? keys for create-table-from-schema!"
-    (let [csv    (write-csv-file! "id,name\n1,foo\n")
+    (let [csv    "id,name\n1,foo\n"
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
                   {:name "name" :base-type :type/Text    :nullable? true}]
           result (fixtures/parse-fixture csv schema)]
@@ -174,7 +159,7 @@
         (is (keyword? (:base-type col)))
         (is (contains? col :nullable?)))))
   (testing "Output :rows are vectors of plain values (insert-from-source! :rows path)"
-    (let [csv    (write-csv-file! "id,name\n1,foo\n2,bar\n")
+    (let [csv    "id,name\n1,foo\n2,bar\n"
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
                   {:name "name" :base-type :type/Text    :nullable? true}]
           result (fixtures/parse-fixture csv schema)]
@@ -187,7 +172,7 @@
 
 (deftest ^:parallel target-schema-required-test
   (testing "parse-fixture rejects an empty target schema with a typed ::empty-target-schema error"
-    (let [csv (write-csv-file! "id\n1\n")]
+    (let [csv "id\n1\n"]
       (doseq [empty-schema [nil []]]
         (let [e (try (fixtures/parse-fixture csv empty-schema) nil
                      (catch clojure.lang.ExceptionInfo ex ex))]
@@ -196,7 +181,7 @@
 
 (deftest ^:parallel column-order-preserved-test
   (testing "Row values are in the same order as :columns"
-    (let [csv    (write-csv-file! "z,a,m\n3,1,2\n")
+    (let [csv    "z,a,m\n3,1,2\n"
           schema [{:name "z" :base-type :type/Integer :nullable? true}
                   {:name "a" :base-type :type/Integer :nullable? true}
                   {:name "m" :base-type :type/Integer :nullable? true}]
