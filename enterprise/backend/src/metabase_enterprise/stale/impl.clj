@@ -17,7 +17,10 @@
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
    [:sort-column  [:enum {:doc "The column to sort by."} :name :last_used_at]]
    [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]
-   [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]])
+   [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]
+   [:include-columns {:optional true}
+    [:set {:doc "Extra union columns to return on each row (rows carry only :id and :model by default)."}
+     [:enum :name :last_used_at]]]])
 
 (defn- sort-column [column]
   (case column
@@ -33,7 +36,7 @@
   (map #(staleness/find-stale-query % args) models))
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
-  (cond-> {:select [:id :model]
+  (cond-> {:select (into [:id :model] (sort (:include-columns args)))
            :from [[{:union-all (queries args)} :dummy_alias]]
            :order-by [[(sort-column (:sort-column args))
                        (:sort-direction args)]]}
@@ -66,6 +69,9 @@
 
   - `sort-direction`: `:asc` or `:desc`
 
+  - `include-columns`: extra union columns (`:name`, `:last_used_at`) to return on each row; rows carry
+  only `:id` and `:model` by default
+
   Returns a map containing two keys,
 
   - `:rows` (a collection of maps containing an `:id` and `:model` field, like `{:id 1 :model :model/Card}`), and
@@ -77,7 +83,7 @@
     (throw (ex-info "not implemented." {:collection-ids collection-ids})))
   {:rows (into []
                (comp
-                (map #(select-keys % [:id :model]))
+                (map #(select-keys % (into [:id :model] (:include-columns args))))
                 (map (fn [v] (update v :model #(keyword "model" %)))))
                (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})

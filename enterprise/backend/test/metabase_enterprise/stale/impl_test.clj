@@ -268,6 +268,25 @@
              :sort-column    :name
              :sort-direction :asc})))))
 
+(deftest include-columns-adds-union-columns-to-rows
+  (mt/with-temp [:model/Dashboard {id :id} (stale-dashboard {:name          "My Stale Dashboard"
+                                                             :collection_id nil})]
+    (let [base {:collection-ids #{nil}
+                :cutoff-date    (date-months-ago 6)
+                :limit          10
+                :offset         0
+                :sort-column    :name
+                :sort-direction :asc}]
+      (testing "rows carry only :id and :model by default"
+        (is (= [{:id id :model :model/Dashboard}]
+               (:rows (stale/find-candidates base)))))
+      (testing ":include-columns adds the requested union columns"
+        (is (=? [{:id           id
+                  :model        :model/Dashboard
+                  :name         "My Stale Dashboard"
+                  :last_used_at some?}]
+                (:rows (stale/find-candidates (assoc base :include-columns #{:name :last_used_at})))))))))
+
 (deftest collection-ids-all-searches-instance-wide
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard {in-coll-id :id} (stale-dashboard {:name "A" :collection_id col-id})

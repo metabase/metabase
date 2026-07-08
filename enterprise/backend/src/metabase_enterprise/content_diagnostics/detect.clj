@@ -35,6 +35,19 @@
 ;;; A checker is a 0-arg fn returning a seq of finding maps:
 ;;;   {:entity-type <kw> :entity-id <int> :finding-type <kw> :details <map>}
 
+(defn- entity-attrs-lookup
+  "Batched `{[model id] → {:created_at … :creator_id …}}` for the candidate rows — one query per model
+  over just the candidates (F ≪ N). Both are plain columns on every covered model but aren't part of
+  the `find-stale-query` union contract, so the scan re-fetches them here."
+  [rows]
+  (into {}
+        (for [[model rows-for-model] (group-by :model rows)
+              :let [id->attrs (t2/select-pk->fn #(select-keys % [:created_at :creator_id])
+                                                [model :id :created_at :creator_id]
+                                                :id [:in (into #{} (map :id) rows-for-model)])]
+              [id attrs] id->attrs]
+          [[model id] attrs])))
+
 (defn stale-checker
   "Instance-wide stale candidates for every covered entity type as finding maps (reuses the EE stale
   module). `:models` is passed explicitly (derived from [[entity-type->model]]) because `find-candidates`
@@ -45,21 +58,27 @@
   (let [threshold (cd.settings/content-diagnostics-stale-threshold-days)
         cutoff    (t/minus (t/local-date) (t/days threshold))
         {:keys [rows]} (stale.impl/find-candidates
-                        {:collection-ids :all
-                         :models         (set (vals entity-type->model))
-                         :cutoff-date    cutoff
-                         :limit          nil
-                         :offset         nil
-                         :sort-column    :name
-                         :sort-direction :asc})
+                        {:collection-ids  :all
+                         :models          (set (vals entity-type->model))
+                         ;; `name` + recency ride along from the stale query itself, keeping the
+                         ;; per-model recency source (card `last_used_at`, dashboard/document
+                         ;; `last_viewed_at`, transform latest run) single-sourced in the arms.
+                         :include-columns #{:name :last_used_at}
+                         :cutoff-date     cutoff
+                         :limit           nil
+                         :offset          nil
+                         :sort-column     :name
+                         :sort-direction  :asc})
+        entity-attrs (entity-attrs-lookup rows)
         ;; batch-resolve creator_id → common_name once (F ≪ N; bounded by distinct creators) so the
         ;; creator name is denormalized at scan time and served without a live `:creator` hydrate.
-        creator-id->name (if-let [ids (not-empty (into #{} (keep :creator_id) rows))]
+        creator-id->name (if-let [ids (not-empty (into #{} (keep :creator_id) (vals entity-attrs)))]
                            (t2/select-pk->fn :common_name :model/User :id [:in ids])
                            {})]
-    (for [{:keys [id model last_used_at created_at creator_id] entity-name :name} rows
+    (for [{:keys [id model last_used_at] entity-name :name} rows
           :let  [etype (model->entity-type model)]
-          :when etype]
+          :when etype
+          :let  [{:keys [created_at creator_id]} (get entity-attrs [model id])]]
       {:entity-type         etype
        :entity-id           id
        :finding-type        :stale

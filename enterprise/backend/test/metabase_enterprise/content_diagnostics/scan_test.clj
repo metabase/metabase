@@ -30,8 +30,8 @@
                      :model/Dashboard {s4 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
                      :model/Dashboard {s5 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
                      :model/Document  {s6 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
-                     ;; never-used arms: document never viewed (nil last_viewed_at, view_count 0) /
-                     ;; transform never ran — each + created before the cutoff
+                     ;; never-used arms: document never viewed (view_count 0; last_viewed_at is
+                     ;; creation-stamped) / transform never ran — each + created before the cutoff
                      :model/Document  {s7 :id} {:collection_id coll-id :created_at (stale-instant)}
                      ;; transforms live in the :transforms collection namespace, not regular collections —
                      ;; irrelevant to the instance-wide scan, so no collection at all
