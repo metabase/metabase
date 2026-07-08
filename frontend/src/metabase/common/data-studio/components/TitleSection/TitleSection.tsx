@@ -24,7 +24,7 @@ export function TitleSection({
           <Title order={4}>{label}</Title>
           {description != null && <Text c="text-secondary">{description}</Text>}
         </Stack>
-        {actions != null && actions}
+        {actions}
       </Group>
       <Card p={0} shadow="none" withBorder>
         {children}
