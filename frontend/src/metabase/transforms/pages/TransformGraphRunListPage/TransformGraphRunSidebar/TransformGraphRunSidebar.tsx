@@ -1,11 +1,14 @@
+import { useDisclosure } from "@mantine/hooks";
 import { memo, useState } from "react";
 import { t } from "ttag";
 
 import {
   useCancelCurrentTransformRunMutation,
   useCancelDagRunMutation,
+  useCancelJobRunMutation,
   useListTransformGraphRunMembersQuery,
 } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -30,11 +33,22 @@ import type {
 } from "metabase-types/api";
 
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
+import { getRunName } from "../TransformGraphRunTable";
 
 import { TransformGraphRunInfoSection } from "./TransformGraphRunInfoSection";
 import S from "./TransformGraphRunSidebar.module.css";
 
 const EMPTY_TRANSFORM_RUNS: TransformRunForJobRun[] = [];
+
+// Cancellation is offered for any in-progress run. The cancel call differs by type:
+// DAG uses the dag-run `id`; a standalone run uses its transform `entity_id`; a job
+// run uses its job `entity_id` (jobId) plus the run `id` (runId).
+function canCancelRun(run: TransformGraphRun): boolean {
+  if (run.status !== "started") {
+    return false;
+  }
+  return run.run_type === "dag" || run.entity_id != null;
+}
 
 type TransformGraphRunSidebarProps = {
   run: TransformGraphRun;
@@ -92,7 +106,10 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
         </Box>
         <Box className={S.scrollArea} flex={1} mih={0} p="lg">
           <Stack gap="xl">
-            <TransformGraphRunInfoSection run={run} />
+            <Stack gap="md">
+              <TransformGraphRunInfoSection run={run} />
+              {canCancelRun(run) && <CancelationSection run={run} />}
+            </Stack>
             <Stack gap="md">
               <Group gap="sm" wrap="nowrap">
                 <Badge variant="filled" bg="core-brand">
@@ -112,6 +129,61 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
     </SidebarResizableBox>
   );
 });
+
+type CancelationSectionProps = {
+  run: TransformGraphRun;
+};
+
+function CancelationSection({ run }: CancelationSectionProps) {
+  const [isModalOpen, { open: openModal, close: closeModal }] = useDisclosure();
+  const { sendErrorToast } = useMetadataToasts();
+  const [cancelDagRun, { isLoading: isCancelingDag }] =
+    useCancelDagRunMutation();
+  const [cancelJobRun, { isLoading: isCancelingJob }] =
+    useCancelJobRunMutation();
+  const [cancelTransformRun, { isLoading: isCancelingTransform }] =
+    useCancelCurrentTransformRunMutation();
+  const isCanceling = isCancelingDag || isCancelingJob || isCancelingTransform;
+
+  const handleCancel = async () => {
+    let error: unknown;
+    if (run.run_type === "dag") {
+      ({ error } = await cancelDagRun(run.id));
+    } else if (run.run_type === "job" && run.entity_id != null) {
+      ({ error } = await cancelJobRun({ jobId: run.entity_id, runId: run.id }));
+    } else if (run.run_type === "transform" && run.entity_id != null) {
+      ({ error } = await cancelTransformRun(run.entity_id));
+    }
+    closeModal();
+    if (error && !isResourceNotFoundError(error)) {
+      sendErrorToast(t`Failed to cancel run`);
+    }
+  };
+
+  return (
+    <>
+      <Group justify="flex-end">
+        <Button
+          variant="filled"
+          color="feedback-negative"
+          disabled={isCanceling}
+          onClick={openModal}
+        >
+          {t`Cancel run`}
+        </Button>
+      </Group>
+      <ConfirmModal
+        title={t`Cancel this run?`}
+        message={t`This stops the run and requests cancellation of any transforms still in progress. Transforms that have already finished won't be reverted.`}
+        confirmButtonText={t`Cancel run`}
+        closeButtonText={t`Keep running`}
+        opened={isModalOpen}
+        onClose={closeModal}
+        onConfirm={handleCancel}
+      />
+    </>
+  );
+}
 
 type TransformRunListProps = {
   transformRuns: TransformRunForJobRun[];
@@ -150,47 +222,18 @@ function TransformGraphRunSidebarHeader({
   run,
   onClose,
 }: TransformGraphRunSidebarHeaderProps) {
-  const [cancelDagRun] = useCancelDagRunMutation();
-  const [cancelTransformRun] = useCancelCurrentTransformRunMutation();
-  const { sendErrorToast } = useMetadataToasts();
-
-  // Job runs have no single-run cancel endpoint yet, so cancellation is offered
-  // only for DAG runs and standalone transform runs that are still in progress.
-  // For a DAG run `id` is the dag-run id; for a standalone run `entity_id` is the
-  // transform id.
-  const canCancel =
-    run.status === "started" &&
-    (run.run_type === "dag" ||
-      (run.run_type === "transform" && run.entity_id != null));
-
-  const handleCancel = async () => {
-    let error: unknown;
-    if (run.run_type === "dag") {
-      ({ error } = await cancelDagRun(run.id));
-    } else if (run.run_type === "transform" && run.entity_id != null) {
-      ({ error } = await cancelTransformRun(run.entity_id));
-    }
-    if (error && !isResourceNotFoundError(error)) {
-      sendErrorToast(t`Failed to cancel run`);
-    }
-  };
-
   return (
     <Group
       justify="space-between"
-      align="center"
+      align="start"
       wrap="nowrap"
+      gap="sm"
       data-testid="transform-graph-run-sidebar-header"
     >
-      <Title order={3}>{t`Run`}</Title>
-      <Group gap="sm" wrap="nowrap">
-        {canCancel && (
-          <Button size="xs" onClick={handleCancel}>{t`Cancel run`}</Button>
-        )}
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
-          <FixedSizeIcon name="close" />
-        </ActionIcon>
-      </Group>
+      <Title order={3}>{getRunName(run)}</Title>
+      <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <FixedSizeIcon name="close" />
+      </ActionIcon>
     </Group>
   );
 }

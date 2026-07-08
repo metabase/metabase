@@ -5,6 +5,7 @@ import {
   SORT_DIRECTIONS,
   TRANSFORM_GRAPH_RUN_SORT_COLUMNS,
   TRANSFORM_GRAPH_RUN_TYPES,
+  TRANSFORM_RUN_METHODS,
   TRANSFORM_RUN_STATUSES,
 } from "metabase-types/api";
 
@@ -22,6 +23,8 @@ export function getParsedParams(
     statuses,
     "transform-ids": transformIds,
     "start-time": startTime,
+    "end-time": endTime,
+    "run-methods": runMethods,
     "sort-column": sortColumn,
     "sort-direction": sortDirection,
   } = location.query;
@@ -36,6 +39,10 @@ export function getParsedParams(
     ),
     transformIds: Urls.parseListParam(transformIds, Urls.parseNumberParam),
     startTime: Urls.parseStringParam(startTime),
+    endTime: Urls.parseStringParam(endTime),
+    runMethods: Urls.parseListParam(runMethods, (v) =>
+      Urls.parseEnumParam(v, TRANSFORM_RUN_METHODS),
+    ),
     sortColumn: Urls.parseEnumParam(
       sortColumn,
       TRANSFORM_GRAPH_RUN_SORT_COLUMNS,
@@ -52,6 +59,8 @@ export function getFilterOptions(
     statuses: params.statuses,
     transformIds: params.transformIds,
     startTime: params.startTime,
+    endTime: params.endTime,
+    runMethods: params.runMethods,
   };
 }
 
@@ -62,7 +71,9 @@ export function hasFilterOptions(
     options.types != null ||
     options.statuses != null ||
     options.transformIds != null ||
-    options.startTime != null
+    options.startTime != null ||
+    options.endTime != null ||
+    options.runMethods != null
   );
 }
 

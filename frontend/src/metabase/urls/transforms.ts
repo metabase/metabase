@@ -215,6 +215,8 @@ export type TransformGraphRunListParams = {
   statuses?: TransformRunStatus[];
   transformIds?: TransformId[];
   startTime?: string;
+  endTime?: string;
+  runMethods?: TransformRunMethod[];
   sortColumn?: TransformGraphRunSortColumn;
   sortDirection?: SortDirection;
 };
@@ -225,6 +227,8 @@ export function transformGraphRunList({
   statuses,
   transformIds,
   startTime,
+  endTime,
+  runMethods,
   sortColumn,
   sortDirection,
 }: TransformGraphRunListParams = {}) {
@@ -244,6 +248,12 @@ export function transformGraphRunList({
   if (startTime != null) {
     searchParams.set("start-time", startTime);
   }
+  if (endTime != null) {
+    searchParams.set("end-time", endTime);
+  }
+  runMethods?.forEach((runMethod) => {
+    searchParams.append("run-methods", runMethod);
+  });
   if (sortColumn != null) {
     searchParams.set("sort-column", sortColumn);
   }

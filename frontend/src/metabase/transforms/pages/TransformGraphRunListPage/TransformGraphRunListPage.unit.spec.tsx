@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
+  setupCancelJobRunEndpoint,
   setupListTransformsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
@@ -9,6 +11,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 
@@ -33,48 +36,93 @@ function setup({ initialRoute = "/data-studio/transforms/runs" } = {}) {
 }
 
 describe("TransformGraphRunListPage", () => {
-  it("renders each run's name in the Run column and a Job/Transformation type", async () => {
-    setup();
+  // Filter by a single type so the table has ≤ 4 rows — the TreeTable virtualizes,
+  // so asserting on a filtered subset avoids off-screen rows being absent from the DOM.
 
-    // Run column: job/transform names as plain text, DAG runs as name + arrow.
-    expect(await screen.findByText("Hourly refresh")).toBeInTheDocument();
-    expect(screen.getByText("Upstream → Revenue by month")).toBeInTheDocument();
-    expect(screen.getByText("Orders cleaned → Downstream")).toBeInTheDocument();
-    expect(screen.getByText("Customers deduped")).toBeInTheDocument();
-
-    // Type column: "Job" for the two jobs, "Transformation" for the two DAG
-    // runs and the two standalone transform runs.
-    expect(screen.getAllByText("Job")).toHaveLength(2);
-    expect(screen.getAllByText("Transformation")).toHaveLength(4);
-  });
-
-  it("filters the runs by type from the URL", async () => {
+  it("filters to job runs (via the URL) and labels them Job", async () => {
     setup({ initialRoute: "/data-studio/transforms/runs?types=job" });
 
     expect(await screen.findByText("Hourly refresh")).toBeInTheDocument();
     expect(screen.getByText("Nightly rollups")).toBeInTheDocument();
+    expect(screen.getByText("Weekly archive")).toBeInTheDocument();
+    expect(screen.getByText("Monthly export")).toBeInTheDocument();
+    // Scope the type-cell count to the table (the filter chip also reads "Job").
+    const table = screen.getByRole("treegrid", { name: "Runs" });
+    expect(within(table).getAllByText("Job")).toHaveLength(4);
+    // Non-job runs are filtered out.
+    expect(screen.queryByText("Products normalized")).not.toBeInTheDocument();
+  });
+
+  it("renders DAG runs with directional names and a Transformation type", async () => {
+    setup({ initialRoute: "/data-studio/transforms/runs?types=dag" });
+
     expect(
-      screen.queryByText("Orders cleaned → Downstream"),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Customers deduped")).not.toBeInTheDocument();
+      await screen.findByText("Orders cleaned → Downstream"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Upstream → Revenue by month")).toBeInTheDocument();
+    expect(
+      screen.getByText("Upstream → Customers deduped"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Sessions enriched → Downstream"),
+    ).toBeInTheDocument();
+    const table = screen.getByRole("treegrid", { name: "Runs" });
+    expect(within(table).getAllByText("Transformation")).toHaveLength(4);
+  });
+
+  it("renders standalone transform runs by name", async () => {
+    setup({ initialRoute: "/data-studio/transforms/runs?types=transform" });
+
+    expect(await screen.findByText("Products normalized")).toBeInTheDocument();
+    expect(screen.getByText("Inventory snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Payments reconciled")).toBeInTheDocument();
+    expect(screen.getByText("Events deduped")).toBeInTheDocument();
+    const table = screen.getByRole("treegrid", { name: "Runs" });
+    expect(within(table).getAllByText("Transformation")).toHaveLength(4);
   });
 
   it("opens a sidebar with the member transforms when a DAG run is clicked", async () => {
-    setup();
+    setup({ initialRoute: "/data-studio/transforms/runs?types=dag" });
 
     await userEvent.click(
-      await screen.findByText("Upstream → Revenue by month"),
+      await screen.findByText("Upstream → Customers deduped"),
     );
 
     const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
-    // The upstream DAG run (dag-202) resolves to two member transform runs.
+    // The failed upstream DAG run resolves to its member transform runs.
     expect(
-      await within(sidebar).findByText("Revenue by month"),
+      await within(sidebar).findByText("Customers deduped"),
     ).toBeInTheDocument();
-    expect(within(sidebar).getByText("Orders cleaned")).toBeInTheDocument();
     // The failed member surfaces its error message.
     expect(
       within(sidebar).getByRole("region", { name: "Error" }),
     ).toBeInTheDocument();
+  });
+
+  it("cancels an in-progress job run via the job-run cancel endpoint", async () => {
+    // The started "Nightly rollups" job run is job id 2, run id 102 in the fixture.
+    setupCancelJobRunEndpoint(2, 102);
+    setup({ initialRoute: "/data-studio/transforms/runs?types=job" });
+
+    await userEvent.click(await screen.findByText("Nightly rollups"));
+
+    const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
+    await userEvent.click(
+      within(sidebar).getByRole("button", { name: "Cancel run" }),
+    );
+
+    // Confirm in the dialog (its confirm button is also labelled "Cancel run").
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel run" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/transform-job/2/runs/102/cancel",
+        ),
+      ).toBe(true);
+    });
   });
 });

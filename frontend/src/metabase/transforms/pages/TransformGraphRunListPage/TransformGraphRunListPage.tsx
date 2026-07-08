@@ -68,6 +68,8 @@ export function TransformGraphRunListPage({
       statuses: params.statuses,
       "transform-ids": params.transformIds,
       "start-time": params.startTime,
+      "end-time": params.endTime,
+      "run-methods": params.runMethods,
       "sort-column": params.sortColumn,
       "sort-direction": params.sortDirection,
     },

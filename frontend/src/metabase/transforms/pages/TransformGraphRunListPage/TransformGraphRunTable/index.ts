@@ -1,2 +1,2 @@
 export { TransformGraphRunTable } from "./TransformGraphRunTable";
-export { getRowKey } from "./utils";
+export { getRowKey, getRunName, getRunTypeLabel } from "./utils";

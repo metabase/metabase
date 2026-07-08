@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import type { RelativeIntervalDirection } from "metabase/querying/common/types";
+import { RunMethodFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/RunMethodFilterWidget";
 import { StatusFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/StatusFilterWidget";
 import { TimeFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/TimeFilterWidget";
 import { TransformFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/TransformFilterWidget";
@@ -9,6 +10,7 @@ import type {
   Transform,
   TransformGraphRunType,
   TransformId,
+  TransformRunMethod,
   TransformRunStatus,
 } from "metabase-types/api";
 
@@ -50,6 +52,14 @@ export function TransformGraphRunFilterBar({
     onFilterOptionsChange({ ...filterOptions, startTime });
   };
 
+  const handleEndTimeChange = (endTime: string | undefined) => {
+    onFilterOptionsChange({ ...filterOptions, endTime });
+  };
+
+  const handleRunMethodsChange = (runMethods: TransformRunMethod[]) => {
+    onFilterOptionsChange({ ...filterOptions, runMethods });
+  };
+
   return (
     <Group>
       <TypeFilterWidget
@@ -67,10 +77,20 @@ export function TransformGraphRunFilterBar({
         availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleStartTimeChange}
       />
+      <TimeFilterWidget
+        label={t`Ended at`}
+        value={filterOptions.endTime}
+        availableDirections={PAST_INTERVAL_DIRECTIONS}
+        onChange={handleEndTimeChange}
+      />
       <StatusFilterWidget
         label={t`Status`}
         statuses={filterOptions.statuses ?? []}
         onChange={handleStatusesChange}
+      />
+      <RunMethodFilterWidget
+        runMethods={filterOptions.runMethods ?? []}
+        onChange={handleRunMethodsChange}
       />
     </Group>
   );

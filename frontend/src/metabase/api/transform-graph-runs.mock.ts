@@ -16,7 +16,10 @@ import type {
   TransformRunForJobRun,
 } from "metabase-types/api";
 
+// Every run type (job / dag / transform) in every state (succeeded / started /
+// failed / timeout), so the UI can be exercised against all combinations.
 export const MOCK_TRANSFORM_GRAPH_RUNS: TransformGraphRun[] = [
+  // --- Job runs ---
   {
     run_type: "job",
     id: 101,
@@ -26,11 +29,54 @@ export const MOCK_TRANSFORM_GRAPH_RUNS: TransformGraphRun[] = [
     run_method: "cron",
     status: "succeeded",
     is_active: false,
-    start_time: "2026-07-07T09:00:00Z",
-    end_time: "2026-07-07T09:04:00Z",
+    start_time: "2026-07-08T09:00:00Z",
+    end_time: "2026-07-08T09:04:00Z",
     message: null,
     user_id: null,
   },
+  {
+    run_type: "job",
+    id: 102,
+    entity_id: 2,
+    name: "Nightly rollups",
+    direction: null,
+    run_method: "cron",
+    status: "started",
+    is_active: true,
+    start_time: "2026-07-08T08:50:00Z",
+    end_time: null,
+    message: null,
+    user_id: null,
+  },
+  {
+    run_type: "job",
+    id: 103,
+    entity_id: 3,
+    name: "Weekly archive",
+    direction: null,
+    run_method: "cron",
+    status: "failed",
+    is_active: false,
+    start_time: "2026-07-08T02:00:00Z",
+    end_time: "2026-07-08T02:12:00Z",
+    message: null,
+    user_id: null,
+  },
+  {
+    run_type: "job",
+    id: 104,
+    entity_id: 4,
+    name: "Monthly export",
+    direction: null,
+    run_method: "cron",
+    status: "timeout",
+    is_active: false,
+    start_time: "2026-07-07T23:00:00Z",
+    end_time: "2026-07-08T00:00:00Z",
+    message: null,
+    user_id: null,
+  },
+  // --- DAG-reprocess runs ---
   {
     run_type: "dag",
     id: 201,
@@ -38,10 +84,10 @@ export const MOCK_TRANSFORM_GRAPH_RUNS: TransformGraphRun[] = [
     name: "Orders cleaned",
     direction: "downstream",
     run_method: "manual",
-    status: "started",
-    is_active: true,
-    start_time: "2026-07-07T08:30:00Z",
-    end_time: null,
+    status: "succeeded",
+    is_active: false,
+    start_time: "2026-07-08T08:30:00Z",
+    end_time: "2026-07-08T08:34:00Z",
     message: null,
     user_id: 1,
   },
@@ -52,52 +98,95 @@ export const MOCK_TRANSFORM_GRAPH_RUNS: TransformGraphRun[] = [
     name: "Revenue by month",
     direction: "upstream",
     run_method: "manual",
-    status: "failed",
-    is_active: false,
-    start_time: "2026-07-06T18:15:00Z",
-    end_time: "2026-07-06T18:20:00Z",
+    status: "started",
+    is_active: true,
+    start_time: "2026-07-08T08:20:00Z",
+    end_time: null,
     message: null,
     user_id: 1,
   },
   {
-    run_type: "transform",
-    id: 301,
+    run_type: "dag",
+    id: 203,
     entity_id: 12,
     name: "Customers deduped",
+    direction: "upstream",
+    run_method: "manual",
+    status: "failed",
+    is_active: false,
+    start_time: "2026-07-07T18:15:00Z",
+    end_time: "2026-07-07T18:20:00Z",
+    message: null,
+    user_id: 1,
+  },
+  {
+    run_type: "dag",
+    id: 204,
+    entity_id: 13,
+    name: "Sessions enriched",
+    direction: "downstream",
+    run_method: "manual",
+    status: "timeout",
+    is_active: false,
+    start_time: "2026-07-07T16:00:00Z",
+    end_time: "2026-07-07T17:00:00Z",
+    message: null,
+    user_id: 1,
+  },
+  // --- Standalone transform runs ---
+  {
+    run_type: "transform",
+    id: 301,
+    entity_id: 20,
+    name: "Products normalized",
     direction: null,
     run_method: "manual",
     status: "succeeded",
     is_active: false,
-    start_time: "2026-07-06T12:00:00Z",
-    end_time: "2026-07-06T12:01:30Z",
+    start_time: "2026-07-08T07:00:00Z",
+    end_time: "2026-07-08T07:01:30Z",
     message: null,
     user_id: 1,
   },
   {
-    run_type: "job",
-    id: 102,
-    entity_id: 2,
-    name: "Nightly rollups",
+    run_type: "transform",
+    id: 302,
+    entity_id: 21,
+    name: "Inventory snapshot",
     direction: null,
-    run_method: "cron",
-    status: "failed",
-    is_active: false,
-    start_time: "2026-07-06T02:00:00Z",
-    end_time: "2026-07-06T02:12:00Z",
+    run_method: "manual",
+    status: "started",
+    is_active: true,
+    start_time: "2026-07-08T06:45:00Z",
+    end_time: null,
     message: null,
-    user_id: null,
+    user_id: 1,
   },
   {
     run_type: "transform",
-    id: 302,
-    entity_id: 13,
-    name: "Sessions enriched",
+    id: 303,
+    entity_id: 22,
+    name: "Payments reconciled",
     direction: null,
     run_method: "manual",
-    status: "canceled",
+    status: "failed",
     is_active: false,
-    start_time: "2026-07-05T22:45:00Z",
-    end_time: "2026-07-05T22:46:00Z",
+    start_time: "2026-07-07T12:00:00Z",
+    end_time: "2026-07-07T12:02:00Z",
+    message: null,
+    user_id: 1,
+  },
+  {
+    run_type: "transform",
+    id: 304,
+    entity_id: 23,
+    name: "Events deduped",
+    direction: null,
+    run_method: "manual",
+    status: "timeout",
+    is_active: false,
+    start_time: "2026-07-07T10:00:00Z",
+    end_time: "2026-07-07T10:30:00Z",
     message: null,
     user_id: 1,
   },
@@ -108,6 +197,9 @@ const MOCK_ERROR_MESSAGE = [
   "  Position: 42",
   "SQL: SELECT * FROM orders WHERE created_at >= {{checkpoint}}",
 ].join("\n");
+
+const MOCK_TIMEOUT_MESSAGE =
+  "Run exceeded the maximum allowed duration and was timed out.";
 
 function member(
   id: number,
@@ -126,105 +218,67 @@ function member(
     run_method: "manual",
     start_time,
     end_time,
-    // Failed runs carry an error log, mirroring the real transform-run payload.
-    message: status === "failed" ? MOCK_ERROR_MESSAGE : null,
+    // Failed / timed-out runs carry a log, mirroring the real transform-run payload.
+    message:
+      status === "failed"
+        ? MOCK_ERROR_MESSAGE
+        : status === "timeout"
+          ? MOCK_TIMEOUT_MESSAGE
+          : null,
   };
 }
 
-// The member transform runs for each graph run, keyed by `${run_type}-${id}`.
-const MOCK_TRANSFORM_GRAPH_RUN_MEMBERS: Record<
-  string,
-  TransformRunForJobRun[]
-> = {
-  "job-101": [
+// Member transform runs for a root run. A standalone transform run is its own
+// single member; job/DAG runs get a completed dependency plus a final member that
+// carries the root run's status (so failed/timeout runs surface an error log).
+function buildMembers(run: TransformGraphRun): TransformRunForJobRun[] {
+  const base = run.id * 10;
+  const name = run.name ?? "Transform";
+  const status = run.status ?? "succeeded";
+
+  if (run.run_type === "transform") {
+    return [
+      member(
+        base + 1,
+        run.entity_id ?? base,
+        name,
+        status,
+        run.start_time,
+        run.end_time,
+      ),
+    ];
+  }
+
+  return [
     member(
-      1101,
-      20,
-      "Orders raw",
+      base + 1,
+      800 + run.id,
+      `${name} dependency`,
       "succeeded",
-      "2026-07-07T09:00:00Z",
-      "2026-07-07T09:02:00Z",
+      run.start_time,
+      run.start_time,
     ),
     member(
-      1102,
-      10,
-      "Orders cleaned",
-      "succeeded",
-      "2026-07-07T09:02:00Z",
-      "2026-07-07T09:04:00Z",
+      base + 2,
+      run.entity_id ?? 900 + run.id,
+      name,
+      status,
+      run.start_time,
+      run.end_time,
     ),
-  ],
-  "job-102": [
-    member(
-      1201,
-      21,
-      "Revenue rollup",
-      "failed",
-      "2026-07-06T02:00:00Z",
-      "2026-07-06T02:12:00Z",
-    ),
-  ],
-  "dag-201": [
-    member(
-      2101,
-      10,
-      "Orders cleaned",
-      "succeeded",
-      "2026-07-07T08:30:00Z",
-      "2026-07-07T08:33:00Z",
-    ),
-    member(
-      2102,
-      22,
-      "Orders enriched",
-      "started",
-      "2026-07-07T08:33:00Z",
-      null,
-    ),
-  ],
-  "dag-202": [
-    member(
-      2201,
-      10,
-      "Orders cleaned",
-      "succeeded",
-      "2026-07-06T18:15:00Z",
-      "2026-07-06T18:17:00Z",
-    ),
-    member(
-      2202,
-      11,
-      "Revenue by month",
-      "failed",
-      "2026-07-06T18:17:00Z",
-      "2026-07-06T18:20:00Z",
-    ),
-  ],
-  "transform-301": [
-    member(
-      3101,
-      12,
-      "Customers deduped",
-      "succeeded",
-      "2026-07-06T12:00:00Z",
-      "2026-07-06T12:01:30Z",
-    ),
-  ],
-  "transform-302": [
-    member(
-      3201,
-      13,
-      "Sessions enriched",
-      "canceled",
-      "2026-07-05T22:45:00Z",
-      "2026-07-05T22:46:00Z",
-    ),
-  ],
-};
+  ];
+}
 
 function memberKey(run: Pick<TransformGraphRun, "run_type" | "id">): string {
   return `${run.run_type}-${run.id}`;
 }
+
+const MOCK_TRANSFORM_GRAPH_RUN_MEMBERS: Record<
+  string,
+  TransformRunForJobRun[]
+> = Object.fromEntries(
+  MOCK_TRANSFORM_GRAPH_RUNS.map((run) => [memberKey(run), buildMembers(run)]),
+);
 
 // The transform ids a root run "contains": its member transforms plus, for
 // dag/transform runs, the seed/target transform itself.
@@ -253,12 +307,15 @@ export function getMockTransformGraphRunsResponse(
     types,
     statuses,
     "transform-ids": transformIds,
+    "run-methods": runMethods,
     "sort-column": sortColumn = "start_time",
     "sort-direction": sortDirection = "desc",
     limit,
     offset = 0,
   } = params;
 
+  // NOTE: start-time / end-time are accepted but not applied here — the fixture is
+  // small and relative-date parsing lives on the backend; they narrow real results.
   const filtered = MOCK_TRANSFORM_GRAPH_RUNS.filter((run) => {
     if (types != null && types.length > 0 && !types.includes(run.run_type)) {
       return false;
@@ -267,6 +324,13 @@ export function getMockTransformGraphRunsResponse(
       statuses != null &&
       statuses.length > 0 &&
       (run.status == null || !statuses.includes(run.status))
+    ) {
+      return false;
+    }
+    if (
+      runMethods != null &&
+      runMethods.length > 0 &&
+      (run.run_method == null || !runMethods.includes(run.run_method))
     ) {
       return false;
     }

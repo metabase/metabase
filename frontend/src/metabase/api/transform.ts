@@ -1,5 +1,6 @@
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
+  CancelJobRunRequest,
   CreateTransformRequest,
   DagTransform,
   Dataset,
@@ -208,6 +209,18 @@ export const transformApi = Api.injectEndpoints({
           listTag("transform-run"),
         ]),
     }),
+    cancelJobRun: builder.mutation<void, CancelJobRunRequest>({
+      query: ({ jobId, runId }) => ({
+        method: "POST",
+        url: `/api/transform-job/${jobId}/runs/${runId}/cancel`,
+      }),
+      invalidatesTags: (_, error, { jobId }) =>
+        invalidateTags(error, [
+          idTag("transform-job", jobId),
+          listTag("transform-job"),
+          listTag("transform-run"),
+        ]),
+    }),
     listTransformGraphRuns: builder.query<
       ListTransformGraphRunsResponse,
       ListTransformGraphRunsRequest
@@ -345,6 +358,7 @@ export const {
   useListDagTransformsQuery,
   useListDagRunTransformRunsQuery,
   useCancelDagRunMutation,
+  useCancelJobRunMutation,
   useListTransformGraphRunsQuery,
   useListTransformGraphRunMembersQuery,
   useCancelCurrentTransformRunMutation,

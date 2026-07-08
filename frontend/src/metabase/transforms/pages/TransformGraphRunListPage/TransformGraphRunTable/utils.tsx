@@ -26,9 +26,9 @@ export function getRowKey(run: TransformGraphRun): string {
   return `${run.run_type}-${run.id}`;
 }
 
-// The "Run" cell — the run's identity. For DAG runs it reads as
+// The "Run" identity — also used as the sidebar title. For DAG runs it reads as
 // "Upstream → name" / "name → Downstream". Wording is provisional (design TBD).
-function getRunName(run: TransformGraphRun): string {
+export function getRunName(run: TransformGraphRun): string {
   const name = run.name ?? t`Deleted`;
   if (run.run_type === "dag") {
     return run.direction === "upstream"
@@ -38,7 +38,7 @@ function getRunName(run: TransformGraphRun): string {
   return name;
 }
 
-function getRunTypeLabel(run: TransformGraphRun): string {
+export function getRunTypeLabel(run: TransformGraphRun): string {
   // DAG runs are surfaced as plain "Transformation" for now (design TBD).
   return run.run_type === "job" ? t`Job` : t`Transformation`;
 }
@@ -171,11 +171,11 @@ export function getColumns(
   return [
     getRunColumn(),
     getTypeColumn(),
-    getStatusColumn(),
-    getRunMethodColumn(),
     getStartedAtColumn(systemTimezone),
     getEndedAtColumn(systemTimezone),
     getDurationColumn(),
+    getStatusColumn(),
+    getRunMethodColumn(),
   ];
 }
 
