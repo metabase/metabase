@@ -54,6 +54,20 @@
         (is (string? (get-in (first es) ["attributes" "ai/final-state"]))
             "the non-encodable value degraded to a string")))))
 
+(deftest emit-degrades-non-encodable-map-key-test
+  (testing "a map attribute with a non-scalar KEY still emits — json-safe must not itself throw"
+    (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
+      ;; A vector-keyed map is rejected by the JSON encoder AND by json-safe's value-only recursion
+      ;; before the fix — the re-encode would throw and drop the (root) span. The key must stringify.
+      (ait.log/emit! {:type :turn :name "agent.turn" :id "n" :parent-id nil
+                      :attributes {:ai/data {[1 2] "v"}} :events []
+                      :duration-ms 1.0 :start-epoch-nanos 1 :end-epoch-nanos 2}
+                     "sess-x")
+      (let [es (entries messages)]
+        (is (= 1 (count es)) "span still emitted despite the non-scalar map key")
+        (is (= "v" (get-in (first es) ["attributes" "ai/data" "[1 2]"]))
+            "the non-scalar key degraded to a string, value preserved")))))
+
 (deftest one-entry-per-span-test
   (testing "each finished span streams exactly one JSONL line, carrying the session id in the payload"
     (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]

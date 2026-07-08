@@ -38,8 +38,7 @@
   `metabase.ai-tracing.log`."
   (:require
    [metabase.ai-tracing.log :as ai-tracing.log]
-   [metabase.ai-tracing.settings :as ai-tracing.settings]
-   [metabase.tracing.core :as tracing]))
+   [metabase.ai-tracing.settings :as ai-tracing.settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -182,14 +181,6 @@
     (swap! *parent* update :attributes merge attrs))
   nil)
 
-(defn event!
-  "Append a point-in-time `event` map to the current eval span (a retrieval decision, a health
-  signal, a notable log line). No-op when inactive or outside a span."
-  [event]
-  (when (and (capture-active?) *parent*)
-    (swap! *parent* update :events conj event))
-  nil)
-
 ;;;; ----------------------------------------- Span macros --------------------------------------------------
 
 (defmacro spanning
@@ -268,7 +259,12 @@
 (defmacro capturing
   "In-process capture, UNCONDITIONAL (ignores the gate). Establishes a fresh capture, mints a
   session id if none is bound, and returns `{:result <body value> :trace <root spans>}`. Used by
-  [[capture-reducible]] and tests. The harness must fully realize any lazy result inside `body`."
+  [[capture-reducible]] and tests. The harness must fully realize any lazy result inside `body`.
+
+  This path is RETURN-VALUE-based, not file-routed: the trace comes back as `:trace`, and a session
+  id supplied to an inner [[with-eval-session]] (e.g. `:eval-session-id` threaded through
+  `run-agent-loop`) is IGNORED — capture is already active, so the inner form inherits this binding
+  rather than re-minting. Don't expect a `<supplied-id>.jsonl` on disk from here; read `:trace`."
   [& body]
   `(let [sink# (atom [])]
      (binding [*capture*    sink#
@@ -286,10 +282,3 @@
     (ai-tracing/capture-reducible (run-agent-loop opts))"
   [reducible]
   (capturing (into [] reducible)))
-
-;;;; ----------------------------------------- Helpers re-exported ------------------------------------------
-
-(def sanitize-sql
-  "Re-export of `metabase.tracing.core/best-effort-sanitize-sql` — use for any SQL placed in
-  span attributes so values become `?` placeholders."
-  tracing/best-effort-sanitize-sql)

@@ -14,7 +14,6 @@
       (is (= 42 (ait/with-agent-turn {:ai/profile-id "p"}
                   (reset! ran true)
                   (ait/record! {:ai/x 1})          ; no-op, must not throw
-                  (ait/event! {:event :note})       ; no-op, must not throw
                   42)))
       (is (true? @ran) "body ran"))
     (is (false? (ait/capture-active?)) "binding did not leak")))
@@ -43,19 +42,17 @@
         (is (= "tool.search" (:name tool)))
         (is (= {:q "x"} (get-in tool [:attributes :ai/tool-args])))))))
 
-(deftest ^:parallel record-and-event-test
-  (testing "record! merges attrs and event! appends events onto the current span"
+(deftest ^:parallel record-test
+  (testing "record! merges attrs onto the current span"
     (let [{:keys [trace]}
           (ait/capturing
            (ait/with-llm-call {:ai/model "m"}
              (ait/record! {:ai/output-text "a"})
              (ait/record! {:ai/iteration 2})
-             (ait/event! {:event :note :msg "hello"})
              :ok))
           llm (first trace)]
       (is (= "a" (get-in llm [:attributes :ai/output-text])))
-      (is (= 2 (get-in llm [:attributes :ai/iteration])))
-      (is (= [{:event :note :msg "hello"}] (:events llm))))))
+      (is (= 2 (get-in llm [:attributes :ai/iteration]))))))
 
 (deftest ^:parallel timing-fields-test
   (testing "finished spans carry duration + wall-clock epoch nanos for OTLP replay"

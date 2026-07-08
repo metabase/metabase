@@ -51,7 +51,13 @@
   encode throws, so it never touches values (UUIDs, dates, …) that already encode fine."
   [v]
   (cond
-    (map? v)        (update-vals v json-safe)
+    ;; Coerce KEYS too, not just values: the JSON encoder rejects a non-scalar map key (a vector/map
+    ;; key), so leaving it intact would let the fallback re-encode throw — orphaning the very root
+    ;; span this fallback exists to save.
+    (map? v)        (into {} (map (fn [[k val]]
+                                    [(if (or (string? k) (keyword? k) (number? k)) k (str k))
+                                     (json-safe val)]))
+                          v)
     (set? v)        (mapv json-safe v)
     (sequential? v) (mapv json-safe v)
     (or (nil? v) (string? v) (number? v) (boolean? v) (keyword? v) (symbol? v)) v
