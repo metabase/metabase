@@ -13,6 +13,7 @@
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.dag-run :as dag-run]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -102,6 +103,16 @@
 
 ;;; ------------------------------------------- Execution -------------------------------------------
 
+(defn- start-dag-run-unless-racing!
+  "Insert the DAG run row, or return nil if a concurrent trigger for the same seed transform won
+  the `(source_transform_id, is_active)` uniqueness race."
+  [transform-id direction user-id]
+  (try
+    (dag-run/start-dag-run! transform-id direction user-id)
+    (catch Exception e
+      (when-not (transforms.u/duplicate-key-violation? e)
+        (throw e)))))
+
 (defn run-dag!
   "Run all transforms in the dependency DAG rooted at `transform-id`, tracking progress in a
   `transform_dag_run` row. Blocks until the run finishes; runs are always manual.
@@ -113,8 +124,7 @@
   `:start-promise`, if provided, is delivered `[:started dag-run-id]` once the run row is created,
   `nil` if nothing was run (already running / empty closure), or a Throwable on a pre-start failure.
   Returns the dag-run-id, or nil if nothing was executed."
-  [transform-id {:keys [direction user-id skip-fresh-deps? start-promise]
-                 :or   {skip-fresh-deps? false}}]
+  [transform-id {:keys [direction user-id start-promise]}]
   (try
     (if (dag-run/running-run-for-source-transform-id transform-id)
       (do (log/info "Not executing DAG run for transform" (pr-str transform-id) "because one is already running")
@@ -125,20 +135,22 @@
           (do (log/info "Skipping DAG run for transform" (pr-str transform-id) "because no transforms found in closure")
               (some-> start-promise (deliver nil))
               nil)
-          (let [{run-id :id} (dag-run/start-dag-run! transform-id direction user-id)]
-            (some-> start-promise (deliver [:started run-id]))
-            (tracing/with-span :tasks "task.transform.run-dag" {:transform/id        transform-id
-                                                                :transform/direction (name direction)
-                                                                :transform/count     (count transform-ids)}
-              (jobs/execute-coordinated-run! :model/TransformDagRun run-id transform-ids
-                                             (format "DAG run for transform %s" (pr-str transform-id))
-                                             {:run-method       :manual
-                                              :user-id          user-id
-                                              :skip-fresh-deps? skip-fresh-deps?
-                                              :parent-run-type  :dag
-                                              :active-runs-atom dag-active-runs
-                                              :precomputed-plan plan}))
-            run-id))))
+          (if-let [{run-id :id} (start-dag-run-unless-racing! transform-id direction user-id)]
+            (do (some-> start-promise (deliver [:started run-id]))
+                (tracing/with-span :tasks "task.transform.run-dag" {:transform/id        transform-id
+                                                                    :transform/direction (name direction)
+                                                                    :transform/count     (count transform-ids)}
+                  (jobs/execute-coordinated-run! :model/TransformDagRun run-id transform-ids
+                                                 (format "DAG run for transform %s" (pr-str transform-id))
+                                                 {:run-method       :manual
+                                                  :user-id          user-id
+                                                  :parent-run-type  :dag
+                                                  :active-runs-atom dag-active-runs
+                                                  :precomputed-plan plan}))
+                run-id)
+            (do (log/info "Not executing DAG run for transform" (pr-str transform-id) "because one is already running")
+                (some-> start-promise (deliver nil))
+                nil)))))
     (catch Throwable t
       ;; unblock any caller waiting on the promise on a pre-start failure
       (some-> start-promise (deliver t))

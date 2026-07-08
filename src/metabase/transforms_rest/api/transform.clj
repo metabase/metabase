@@ -387,18 +387,16 @@
   - `downstream` — the seed transform plus all transforms that depend on it"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [direction skip_fresh_deps]} :- [:map
-                                           [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]
-                                           [:skip_fresh_deps {:default false} :boolean]]]
+   {:keys [direction]} :- [:map
+                           [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (check-feature-and-lock! (api/write-check :model/Transform id))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "DAG run started")
    :dag_run_id
    (fn [start-promise]
-     (transforms.core/run-dag! id {:direction        direction
-                                   :user-id          api/*current-user-id*
-                                   :skip-fresh-deps? skip_fresh_deps
-                                   :start-promise    start-promise}))))
+     (transforms.core/run-dag! id {:direction     direction
+                                   :user-id       api/*current-user-id*
+                                   :start-promise start-promise}))))
 
 (api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
                                                                     [:id pos-int?]

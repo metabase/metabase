@@ -218,6 +218,21 @@ databaseChangeLog:
             indexName: idx_transform_dag_run_active_runs
 
   - changeSet:
+      id: v64.wQe4Fn
+      author: bronsa
+      comment: >-
+        Unique constraint so at most one DAG run can be active per seed transform.
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_dag_run
+            constraintName: idx_unique_active_transform_dag_run
+            columnNames: source_transform_id, is_active
+      rollback:
+        - dropUniqueConstraint:
+            tableName: transform_dag_run
+            constraintName: idx_unique_active_transform_dag_run
+
+  - changeSet:
       id: v64.HUpfDD
       author: bronsa
       comment: >-

@@ -104,7 +104,7 @@
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
 
-(defn- duplicate-key-violation?
+(defn duplicate-key-violation?
   "Check if an exception is a duplicate key violation.
    Returns true for Postgres, MySQL/MariaDB, and H2 duplicate key errors."
   [e]
