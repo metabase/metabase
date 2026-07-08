@@ -18,7 +18,6 @@ module.exports = (env) => {
     },
     output: {
       ...base.output,
-      // Emit outside resources/ so the server bundle is never packaged into the main Metabase app.
       path: __dirname + "/target/static-viz-server",
     },
     plugins: base.plugins.filter(
