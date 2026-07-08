@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -20,6 +19,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
+import type { Route } from "metabase/router";
 import {
   Group,
   Button as NewButton,

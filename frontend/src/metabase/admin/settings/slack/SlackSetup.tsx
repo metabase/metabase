@@ -84,7 +84,10 @@ const SlackConnectionStatus = ({
           )}
         </Flex>
 
-        <Button c="danger" onClick={handleOpen}>{t`Disconnect`}</Button>
+        <Button
+          c="feedback-negative"
+          onClick={handleOpen}
+        >{t`Disconnect`}</Button>
       </Flex>
       <ConfirmModal
         opened={isOpened}

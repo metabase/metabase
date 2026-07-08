@@ -2,7 +2,6 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Menu } from "metabase/ui";
-import type { ChannelApiResponse } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -45,7 +44,7 @@ const setup = ({
   setupNotificationChannelsEndpoints({
     email: { configured: hasEmailSetup },
     slack: { configured: hasSlackSetup },
-  } as ChannelApiResponse["channels"]);
+  });
 
   renderWithProviders(
     <Menu opened>

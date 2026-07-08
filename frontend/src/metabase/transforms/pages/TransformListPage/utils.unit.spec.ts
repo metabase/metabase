@@ -185,16 +185,22 @@ describe("getSyncColorForEntities", () => {
     expect(getSyncColorForEntities([])).toBeUndefined();
   });
 
-  it("colors a created entity green (success)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("create")])).toBe("success");
+  it("colors a created entity green (feedback-positive)", () => {
+    expect(getSyncColorForEntities([dirtyEntity("create")])).toBe(
+      "feedback-positive",
+    );
   });
 
-  it("colors an updated entity amber (warning)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("update")])).toBe("warning");
+  it("colors an updated entity amber (feedback-warning)", () => {
+    expect(getSyncColorForEntities([dirtyEntity("update")])).toBe(
+      "feedback-warning",
+    );
   });
 
-  it("colors a removed entity red (danger)", () => {
-    expect(getSyncColorForEntities([dirtyEntity("removed")])).toBe("danger");
+  it("colors a removed entity red (feedback-negative)", () => {
+    expect(getSyncColorForEntities([dirtyEntity("removed")])).toBe(
+      "feedback-negative",
+    );
   });
 });
 
@@ -215,22 +221,26 @@ describe("getFolderSyncColor", () => {
   });
 
   it("colors a brand-new folder green", () => {
-    expect(getFolderSyncColor([collection(1, "create")], 1)).toBe("success");
+    expect(getFolderSyncColor([collection(1, "create")], 1)).toBe(
+      "feedback-positive",
+    );
   });
 
   it("colors a renamed or moved folder amber, not green", () => {
-    expect(getFolderSyncColor([collection(1, "update")], 1)).toBe("warning");
+    expect(getFolderSyncColor([collection(1, "update")], 1)).toBe(
+      "feedback-warning",
+    );
   });
 
   it("colors an existing folder amber when it only contains new children", () => {
     expect(getFolderSyncColor([childTransform(1, "create")], 1)).toBe(
-      "warning",
+      "feedback-warning",
     );
   });
 
   it("colors an existing folder amber when a child was removed", () => {
     expect(getFolderSyncColor([childTransform(1, "removed")], 1)).toBe(
-      "warning",
+      "feedback-warning",
     );
   });
 
@@ -240,7 +250,7 @@ describe("getFolderSyncColor", () => {
         [collection(1, "create"), childTransform(1, "create")],
         1,
       ),
-    ).toBe("success");
+    ).toBe("feedback-positive");
   });
 
   it("keeps nested brand-new folders green (new folder > new folder > new transform)", () => {
@@ -249,13 +259,13 @@ describe("getFolderSyncColor", () => {
       collection(2, "create"),
       childTransform(2, "create"),
     ];
-    expect(getFolderSyncColor(subtree, 1)).toBe("success");
+    expect(getFolderSyncColor(subtree, 1)).toBe("feedback-positive");
     expect(
       getFolderSyncColor(
         [collection(2, "create"), childTransform(2, "create")],
         2,
       ),
-    ).toBe("success");
+    ).toBe("feedback-positive");
   });
 });
 

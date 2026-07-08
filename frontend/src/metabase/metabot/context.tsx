@@ -90,9 +90,7 @@ export const defaultContext: MetabotCtx = {
   setSuggestionActions: () => {},
 };
 
-export const MetabotContext = createContext<MetabotCtx>(
-  defaultContext as MetabotCtx,
-);
+export const MetabotContext = createContext<MetabotCtx>(defaultContext);
 
 export const useMetabotContext = () => {
   const context = useContext(MetabotContext);

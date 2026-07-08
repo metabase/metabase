@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBookmarksEndpoints,
@@ -13,6 +11,7 @@ import { getDefaultTab } from "metabase/dashboard/actions";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,

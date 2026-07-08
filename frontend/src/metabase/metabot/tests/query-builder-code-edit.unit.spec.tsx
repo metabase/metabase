@@ -121,7 +121,7 @@ describe("query builder code edits from omnibot", () => {
         <QuerySuggestionProbe question={question} />
       </MetabotProvider>,
       {
-        storeInitialState: storeInitialState as any,
+        storeInitialState: storeInitialState,
       },
     );
     const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
