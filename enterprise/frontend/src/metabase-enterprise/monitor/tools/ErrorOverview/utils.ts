@@ -43,13 +43,7 @@ export const DEFAULT_SORTING: ErroringQuestionsSorting = {
   direction: "desc",
 };
 
-/**
- * The legacy audit "internal" query shape. It is not representable in the
- * DatasetQuery union (OpaqueDatasetQuery is branded), so queries are built with
- * this type and converted through the single `toDatasetQuery` boundary below.
- * `database` must be OMITTED entirely: internal queries are exempt from it, but
- * the QP schema rejects an explicit null.
- */
+// "internal" query shape, which is later converted to DatasetQuery (opaque type).
 type InternalDatasetQuery = {
   type: "internal";
   fn: string;
@@ -58,9 +52,8 @@ type InternalDatasetQuery = {
   offset?: number;
 };
 
-// Single documented cast site: an InternalDatasetQuery isn't assignable to the
-// branded DatasetQuery union, but `/api/dataset` accepts it. The typed input
-// keeps the payload shape honest; the cast is confined here.
+// Conversion of InternalDatasetQuery to the branded opaque DatasetQuery union,
+// which is required for `/api/dataset`.
 const toDatasetQuery = (query: InternalDatasetQuery): DatasetQuery =>
   query as unknown as DatasetQuery;
 
@@ -76,17 +69,6 @@ export function getErroringQuestionsQuery(
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
   });
-}
-
-/**
- * Total row count for the current filters. The `bad-table` audit query computes
- * it with `COUNT(*) OVER ()` and the API surfaces it as a top-level `total_count`
- * on the response (0 when the filtered set is empty). It isn't part of the shared
- * `Dataset` type, so it's read defensively.
- */
-export function getErroringQuestionsTotal(dataset: Dataset): number {
-  const value = (dataset as Dataset & { total_count?: unknown }).total_count;
-  return typeof value === "number" ? value : 0;
 }
 
 export function getErroringQuestions(dataset: Dataset): ErroringQuestion[] {
@@ -143,8 +125,6 @@ export function getSorting(
     };
   }
 
-  // TanStack's 3-state cycle emits an empty state when un-sorting the current
-  // column; the backend always sorts, so flip the direction instead.
   return {
     column: currentSorting.column,
     direction: currentSorting.direction === "desc" ? "asc" : "desc",

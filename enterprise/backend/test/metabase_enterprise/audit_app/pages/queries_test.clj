@@ -31,8 +31,6 @@
 
 (deftest bad-table-total-count-test
   (testing "bad-table carries a total_count matching the filtered set"
-    ;; audit internal queries read the app DB outside the with-temp transaction,
-    ;; so the fixtures must be committed for real
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Card {bad-card-id :id} {:name "Erroring card"}
                      :model/Card {ok-card-id :id}  {:name "Healthy card"}
@@ -40,9 +38,6 @@
                                                     {:card_id     bad-card-id
                                                      :executor_id (mt/user->id :crowberto)
                                                      :error       "unique-broken-table-xyz not found"})
-                     ;; different started_at from the erroring card's execution: the legacy
-                     ;; latest_qe CTE joined on started_at alone, so equal timestamps across
-                     ;; cards would duplicate rows
                      :model/QueryExecution _ (merge query-execution-defaults
                                                     {:card_id     ok-card-id
                                                      :executor_id (mt/user->id :crowberto)

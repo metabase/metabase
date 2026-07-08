@@ -147,6 +147,7 @@ export interface Dataset {
   cached?: string;
   /** A date in ISO 8601 format */
   started_at?: string;
+  total_count?: number;
 }
 
 export type DatasetError =

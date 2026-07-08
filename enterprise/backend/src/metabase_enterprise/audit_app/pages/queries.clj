@@ -16,9 +16,6 @@
     collection-filter
     sort-column
     sort-direction]
-   ;; The query appends COUNT(*) OVER () as the last column of every row. Rather than
-   ;; repeat the total on every row, `xform` strips it back off and surfaces the value
-   ;; once as a top-level `:total_count` on the response (used for FE pagination).
    (let [total-count (volatile! nil)]
      {:metadata [[:card_id         {:display_name "Card ID",            :base_type :type/Integer :remapped_to   :card_name}]
                  [:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
@@ -37,6 +34,7 @@
                  [:user_id         {:display_name "Created By ID",      :base_type :type/Integer :remapped_to   :user_name}]
                  [:user_name       {:display_name "Created By",         :base_type :type/Text    :remapped_from :user_id}]
                  [:updated_at      {:display_name "Updated At",         :base_type :type/DateTime}]]
+      ;; Append total_count to the root response rather than each row
       :xform (fn [rf]
                (fn
                  ([] (rf))

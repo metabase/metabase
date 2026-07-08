@@ -1,5 +1,5 @@
 import type { RowSelectionState } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useLazyGetCardQueryQuery } from "metabase/api";
@@ -10,7 +10,6 @@ import {
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { fetchDataOrError } from "metabase/dashboard/utils";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { type WithRouterProps, withRouter } from "metabase/router";
 import { Center, Flex, Stack } from "metabase/ui";
@@ -29,7 +28,6 @@ import {
   PAGE_SIZE,
   getErroringQuestions,
   getErroringQuestionsQuery,
-  getErroringQuestionsTotal,
   urlStateConfig,
 } from "./utils";
 
@@ -40,7 +38,9 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
   const [sorting, setSorting] =
     useState<ErroringQuestionsSorting>(DEFAULT_SORTING);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [isRerunning, setIsRerunning] = useState(false);
+  const [rerunningCardIds, setRerunningCardIds] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const query = useMemo(
     () => getErroringQuestionsQuery(filters, sorting, page),
@@ -54,7 +54,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     () => (data == null ? [] : getErroringQuestions(data)),
     [data],
   );
-  const total = data == null ? null : getErroringQuestionsTotal(data);
+  const total = data?.total_count ?? 0;
   const pageError = error ?? data?.error;
 
   const selectedCardIds = Object.entries(rowSelection)
@@ -73,16 +73,36 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     patchUrlState({ page: 0 });
   };
 
-  const handleRerunSelected = async () => {
-    setIsRerunning(true);
-    await Promise.all(
-      selectedCardIds.map((cardId) =>
-        fetchDataOrError(runCardQuery({ cardId }).unwrap()),
-      ),
-    );
-    setIsRerunning(false);
+  // Refresh the list once the last queued rerun settles: questions that now
+  // succeed drop off, ones that still error stay.
+  const wasRerunningRef = useRef(false);
+  useEffect(() => {
+    const isRerunning = rerunningCardIds.size > 0;
+    if (wasRerunningRef.current && !isRerunning) {
+      refetch();
+    }
+    wasRerunningRef.current = isRerunning;
+  }, [rerunningCardIds, refetch]);
+
+  const handleRerunSelected = () => {
+    const cardIds = selectedCardIds;
+    setRerunningCardIds((prev) => new Set([...prev, ...cardIds]));
+    // Close the bulk bar immediately and don't block: reruns proceed in the
+    // background so other questions can be queued while slow ones run.
     setRowSelection({});
-    refetch();
+    cardIds.forEach((cardId) => {
+      runCardQuery({ cardId })
+        .unwrap()
+        // a failed rerun is reflected by the question staying in the list
+        .catch(() => undefined)
+        .finally(() => {
+          setRerunningCardIds((prev) => {
+            const next = new Set(prev);
+            next.delete(cardId);
+            return next;
+          });
+        });
+    });
   };
 
   return (
@@ -110,6 +130,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
                 isLoading={isLoading}
                 sorting={sorting}
                 rowSelection={rowSelection}
+                rerunningCardIds={rerunningCardIds}
                 onSortingChange={handleSortingChange}
                 onRowSelectionChange={setRowSelection}
               />
@@ -141,7 +162,6 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
         )}
       >
         <BulkActionButton
-          disabled={isRerunning}
           onClick={handleRerunSelected}
         >{t`Rerun Selected`}</BulkActionButton>
       </BulkActionBar>

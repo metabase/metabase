@@ -9,7 +9,7 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { RowValue } from "metabase-types/api";
+import type { CardId, RowValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
@@ -20,7 +20,7 @@ import { ErrorOverview } from "./ErrorOverview";
 import { PAGE_SIZE } from "./utils";
 
 type QuestionRow = {
-  id: number;
+  id: CardId;
   name?: string;
   error?: string;
   collectionName?: string | null;
@@ -59,7 +59,6 @@ function createDatasetResponse(questions: QuestionRow[], total?: number) {
     "2026-06-30T10:00:00Z",
   ]);
 
-  // the audit query surfaces the full total as a top-level key, not a column
   return {
     ...createMockDataset({
       data: createMockDatasetData({
@@ -146,7 +145,6 @@ describe("ErrorOverview", () => {
     expect(within(row).getByText("Our Analytics")).toBeInTheDocument();
     expect(within(row).getByText("Sample Database")).toBeInTheDocument();
 
-    // single page of results → pagination is hidden (no separate count query)
     expect(getDatasetCalls()).toHaveLength(1);
     expect(
       screen.queryByRole("navigation", { name: "pagination" }),
@@ -168,10 +166,10 @@ describe("ErrorOverview", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("surfaces an internal-query error returned in the dataset body (200/202 with data.error)", async () => {
+  it("surfaces an internal-query error returned in the dataset body", async () => {
     mockGetBoundingClientRect({ width: 100, height: 100 });
     // the /api/dataset call succeeds at the HTTP layer but the internal audit
-    // query failed, so the error rides in the dataset body
+    // query failed - dataset.error is present.
     fetchMock.post(
       "path:/api/dataset",
       createMockDataset({
@@ -187,7 +185,6 @@ describe("ErrorOverview", () => {
     expect(
       await screen.findByText("Internal audit query blew up"),
     ).toBeInTheDocument();
-    // the filter bar and table are hidden in the error state
     expect(
       screen.queryByPlaceholderText("Error contents"),
     ).not.toBeInTheDocument();
@@ -196,8 +193,7 @@ describe("ErrorOverview", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("passes debounced filter values to the query and resets to the first page", async () => {
-    // start deep-linked on page 2 so the reset is observable
+  it("passes filter values to the query and resets to the first page", async () => {
     const { history } = await setup({
       questions: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
@@ -226,8 +222,6 @@ describe("ErrorOverview", () => {
       expect(query.args).toEqual(["timeout", "pg", "", "last_run_at", "desc"]);
     });
 
-    // filtering resets pagination: the rows query goes back to offset 0 and the
-    // page param is dropped from the URL
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
       expect(query.offset).toBe(0);
@@ -237,7 +231,7 @@ describe("ErrorOverview", () => {
     });
   });
 
-  it("sorts by column with a 2-state asc/desc toggle", async () => {
+  it("sorts by column with asc/desc toggle", async () => {
     await setup();
     await screen.findByTestId("erroring-question");
 
@@ -257,7 +251,6 @@ describe("ErrorOverview", () => {
       expect(query.args.slice(3)).toEqual(["card_name", "desc"]);
     });
 
-    // clicking the non-default direction again flips back instead of un-sorting
     await userEvent.click(
       screen.getByRole("columnheader", { name: /Question/ }),
     );
@@ -311,17 +304,32 @@ describe("ErrorOverview", () => {
   });
 
   it("recovers when one of the bulk rerun requests fails", async () => {
-    // card 7 fails, card 8 succeeds — the whole batch must still settle
+    mockGetBoundingClientRect({ width: 100, height: 100 });
     fetchMock.post("express:/api/card/7/query", {
       status: 500,
-      body: { message: "rerun boom" },
+      body: { message: "rerun failed" },
     });
     fetchMock.post("express:/api/card/8/query", createMockDataset());
-    await setup({ questions: [{ id: 7 }, { id: 8 }] });
 
-    await screen.findAllByTestId("erroring-question");
+    // the list reflects backend state: both cards error at first, but after the
+    // reruns card 8 succeeds (drops off bad-table) while card 7 fails (stays).
+    let rerunsAttempted = false;
+    fetchMock.post("path:/api/dataset", () =>
+      createDatasetResponse(
+        rerunsAttempted ? [{ id: 7 }] : [{ id: 7 }, { id: 8 }],
+      ),
+    );
+
+    renderWithProviders(<Route path="/" component={ErrorOverview} />, {
+      withRouter: true,
+    });
+
+    expect(await screen.findAllByTestId("erroring-question")).toHaveLength(2);
     await userEvent.click(screen.getByLabelText("Select all"));
     expect(await screen.findByText("2 questions selected")).toBeInTheDocument();
+
+    // from here on the refetch should see card 8 healthy
+    rerunsAttempted = true;
 
     await userEvent.click(
       screen.getByRole("button", { name: "Rerun Selected" }),
@@ -335,8 +343,8 @@ describe("ErrorOverview", () => {
       expect(rerunCalls).toHaveLength(2);
     });
 
-    // the UI recovers: the batch settles, selection clears and the bulk bar
-    // closes rather than staying stuck with a disabled button
+    // the bulk bar tears down: selection clears and the button disappears
+    // rather than staying stuck disabled
     await waitFor(() => {
       expect(
         screen.queryByText("2 questions selected"),
@@ -345,9 +353,124 @@ describe("ErrorOverview", () => {
     expect(
       screen.queryByRole("button", { name: "Rerun Selected" }),
     ).not.toBeInTheDocument();
+
+    // and the refetched table reflects reality: the successfully-rerun question
+    // (8) drops off, the one whose rerun failed (7) remains
+    await waitFor(() => {
+      expect(screen.queryByText("Question 8")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Question 7")).toBeInTheDocument();
+    expect(screen.getAllByTestId("erroring-question")).toHaveLength(1);
   });
 
-  it("paginates outside the table showing the total count and syncs the page to the URL", async () => {
+  it("shows a per-row loader while a rerun runs, freeing the bar to queue more", async () => {
+    mockGetBoundingClientRect({ width: 100, height: 100 });
+
+    const deferred = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>((res) => {
+        resolve = res;
+      });
+      return { promise, resolve };
+    };
+    const card7 = deferred();
+    const card8 = deferred();
+    fetchMock.post("express:/api/card/7/query", () =>
+      card7.promise.then(() => createMockDataset()),
+    );
+    fetchMock.post("express:/api/card/8/query", () =>
+      card8.promise.then(() => createMockDataset()),
+    );
+
+    await setup({ questions: [{ id: 7 }, { id: 8 }] });
+
+    const rowAt = (index: number) =>
+      screen.getAllByTestId("erroring-question")[index];
+
+    // rerun question 7 only
+    await userEvent.click(within(rowAt(0)).getByLabelText("Select row"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rerun Selected" }),
+    );
+
+    // the bulk bar closes immediately, even though 7's request is still pending
+    await waitFor(() => {
+      expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
+    });
+
+    // 7 shows a loader in place of its checkbox; 8 is untouched
+    await waitFor(() => {
+      expect(within(rowAt(0)).getByLabelText("Loading")).toBeInTheDocument();
+    });
+    expect(
+      within(rowAt(0)).queryByLabelText("Select row"),
+    ).not.toBeInTheDocument();
+    expect(within(rowAt(1)).getByLabelText("Select row")).toBeInTheDocument();
+
+    // the bar is free: question 8 can be queued while 7 is still running
+    await userEvent.click(within(rowAt(1)).getByLabelText("Select row"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rerun Selected" }),
+    );
+    await waitFor(() => {
+      expect(within(rowAt(1)).getByLabelText("Loading")).toBeInTheDocument();
+    });
+
+    // resolving 7 clears only its loader; 8 keeps running
+    card7.resolve();
+    await waitFor(() => {
+      expect(
+        within(rowAt(0)).queryByLabelText("Loading"),
+      ).not.toBeInTheDocument();
+    });
+    expect(within(rowAt(1)).getByLabelText("Loading")).toBeInTheDocument();
+
+    card8.resolve();
+    await waitFor(() => {
+      expect(
+        within(rowAt(1)).queryByLabelText("Loading"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("excludes rerunning rows from select all", async () => {
+    mockGetBoundingClientRect({ width: 100, height: 100 });
+
+    let resolveCard7!: () => void;
+    const card7 = new Promise<void>((resolve) => {
+      resolveCard7 = resolve;
+    });
+    fetchMock.post("express:/api/card/7/query", () =>
+      card7.then(() => createMockDataset()),
+    );
+
+    await setup({ questions: [{ id: 7 }, { id: 8 }, { id: 9 }] });
+
+    const rowAt = (index: number) =>
+      screen.getAllByTestId("erroring-question")[index];
+
+    // rerun question 7 -> it starts loading and is no longer selectable
+    await userEvent.click(within(rowAt(0)).getByLabelText("Select row"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rerun Selected" }),
+    );
+    await waitFor(() => {
+      expect(within(rowAt(0)).getByLabelText("Loading")).toBeInTheDocument();
+    });
+
+    // select all picks the two idle rows, skipping the rerunning one
+    await userEvent.click(screen.getByLabelText("Select all"));
+    expect(await screen.findByText("2 questions selected")).toBeInTheDocument();
+
+    resolveCard7();
+    await waitFor(() => {
+      expect(
+        within(rowAt(0)).queryByLabelText("Loading"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("paginates showing the total count and syncs the page to the URL", async () => {
     const { history } = await setup({
       questions: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,

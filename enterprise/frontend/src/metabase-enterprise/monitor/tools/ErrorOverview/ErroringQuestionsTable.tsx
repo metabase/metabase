@@ -36,6 +36,7 @@ type ErroringQuestionsTableProps = {
   isLoading: boolean;
   sorting: ErroringQuestionsSorting;
   rowSelection: RowSelectionState;
+  rerunningCardIds: Set<number>;
   onSortingChange: (sorting: ErroringQuestionsSorting) => void;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
 };
@@ -45,6 +46,7 @@ export const ErroringQuestionsTable = ({
   isLoading,
   sorting,
   rowSelection,
+  rerunningCardIds,
   onSortingChange,
   onRowSelectionChange,
 }: ErroringQuestionsTableProps) => {
@@ -52,6 +54,12 @@ export const ErroringQuestionsTable = ({
 
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(() => getSortingState(sorting), [sorting]);
+
+  // A rerunning question can't be selected, so "select all" skips it too.
+  const isRowSelectable = useCallback(
+    (row: Row<ErroringQuestion>) => !rerunningCardIds.has(row.original.id),
+    [rerunningCardIds],
+  );
 
   const handleRowActivate = useCallback(
     (row: Row<ErroringQuestion>) => {
@@ -75,7 +83,7 @@ export const ErroringQuestionsTable = ({
     sorting: sortingState,
     manualSorting: true,
     getNodeId: (question) => String(question.id),
-    enableRowSelection: true,
+    enableRowSelection: isRowSelectable,
     rowSelection,
     onRowSelectionChange,
     onRowActivate: handleRowActivate,
@@ -102,6 +110,7 @@ export const ErroringQuestionsTable = ({
           }
           headerCheckboxAriaLabel={t`Select all`}
           ariaLabel={t`Erroring questions`}
+          isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
           emptyState={
             <Stack p="xl" align="center">
               <Text c="text-disabled">{t`No results`}</Text>
