@@ -110,6 +110,8 @@
      eid-translation
      embedding
      enterprise/api
+     enterprise/harbormaster
+     enterprise/remote-sync
      enterprise/scim
      enterprise/serialization
      enterprise/sso
