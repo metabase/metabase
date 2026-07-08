@@ -1,6 +1,5 @@
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
 import { msgid, ngettext, t } from "ttag";
 
 import { useLazyGetCardQueryQuery } from "metabase/api";
@@ -13,6 +12,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { fetchDataOrError } from "metabase/dashboard/utils";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { type WithRouterProps, withRouter } from "metabase/router";
 import { Center, Flex, Stack } from "metabase/ui";
 
 import S from "./ErrorOverview.module.css";

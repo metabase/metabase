@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   mockGetBoundingClientRect,
@@ -9,6 +8,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { RowValue } from "metabase-types/api";
 import {
   createMockColumn,
