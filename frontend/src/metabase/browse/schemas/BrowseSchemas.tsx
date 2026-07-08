@@ -21,15 +21,9 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { CopyPermalinkButton } from "../components/CopyPermalinkButton";
 
 type Schema = { id: string; name: string };
-
-const DatabaseName = ({ id }: { id: DatabaseId | null | undefined }) => {
-  const { data: database } = useGetDatabaseQuery(
-    id != null ? { id } : skipToken,
-  );
-  return <>{database?.name ?? ""}</>;
-};
 
 const BrowseSchemasContainer = ({
   schemas,
@@ -40,6 +34,11 @@ const BrowseSchemasContainer = ({
   dbId: DatabaseId;
   params: any;
 }) => {
+  const isSingleSchema = schemas.length === 1;
+  const { data: database } = useGetDatabaseQuery(
+    isSingleSchema ? skipToken : { id: dbId },
+  );
+
   return (
     <Flex
       className={S.browseContainer}
@@ -52,7 +51,7 @@ const BrowseSchemasContainer = ({
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%" direction="column">
-          {schemas.length === 1 ? (
+          {isSingleSchema ? (
             <TableBrowser
               params={params}
               dbId={dbId}
@@ -66,7 +65,7 @@ const BrowseSchemasContainer = ({
                 <BrowserCrumbs
                   crumbs={[
                     { title: t`Databases`, to: "/browse/databases" },
-                    { title: <DatabaseName id={dbId} /> },
+                    { title: database?.name ?? "" },
                   ]}
                 />
               </Flex>
@@ -82,7 +81,13 @@ const BrowseSchemasContainer = ({
                       title={schema.name}
                       icon="folder"
                       to={Urls.browseSchemaBySlug(params.slug, schema.name)}
-                    />
+                    >
+                      {database && (
+                        <CopyPermalinkButton
+                          url={Urls.permalinkSchema(database, schema.name)}
+                        />
+                      )}
+                    </BrowseCard>
                   ))}
                 </BrowseGrid>
               )}
