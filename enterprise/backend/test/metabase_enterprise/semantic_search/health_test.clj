@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -130,3 +131,56 @@
                   semantic.embedding/get-embedding        (fn [& _] (throw (ex-info "connection refused" {})))]
       (is (=? {:reachable? false :error "connection refused"}
               (#'semantic.health/probe-embedding-service))))))
+
+;;; --------------------------------------- AI index metric shaping -----------------------------------------
+
+(deftest coverage-result-test
+  (testing "coverage health is the percentage; the ratio feeds the gauge"
+    (is (=? {:value 0.5 :health 50 :message #"5 of 10 expected items indexed \(50%\)\."}
+            (semantic.health/coverage-result 5 10))))
+  (testing "an empty candidate set is fully covered, not a divide-by-zero"
+    (is (=? {:value 1.0 :health 100 :message #"0 of 0 .*100%.*"} (semantic.health/coverage-result 0 0))))
+  (testing "over-count (indexed > expected, e.g. lag/garbage) clamps to 100"
+    (is (=? {:value 1.0 :health 100} (semantic.health/coverage-result 12 10)))))
+
+(deftest garbage-result-test
+  (is (=? {:value 0.0 :health 100 :message #"No orphaned items.*"} (semantic.health/garbage-result 0 10)))
+  (is (=? {:value 0.2 :health 80 :message #"2 of 10 indexed items are orphaned \(20%\)\."}
+          (semantic.health/garbage-result 2 10)))
+  (testing "an empty index has no garbage"
+    (is (=? {:value 0.0 :health 100} (semantic.health/garbage-result 0 0)))))
+
+(deftest staleness-result-test
+  (testing "at/under warn = healthy and reported current"
+    (is (=? {:value 0 :health 100 :message #"Index current\. more"} (semantic.health/staleness-result 0 60 600 "more")))
+    (is (=? {:health 100} (semantic.health/staleness-result 60 60 600 nil))))
+  (testing "at/over critical = 0, naming the age"
+    (is (=? {:health 0 :message #"Oldest pending change is 2\.8h old\."} (semantic.health/staleness-result 9999 60 600 nil))))
+  (testing "linear between warn and critical"
+    ;; warn 60, crit 600, age 330 = midpoint -> 50
+    (is (=? {:health 50} (semantic.health/staleness-result 330 60 600 nil)))))
+
+(deftest ^:sequential run-measure!-test
+  (let [calls (atom [])]
+    ;; capture the labelled gauge write without asserting on the (env-flaky) Prometheus registry value
+    (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+      (testing "a collector result sets the labelled gauge and returns the health row"
+        (is (= {:health 75 :message "ok"}
+               (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
+                                                :engine    :semantic
+                                                :collect   (constantly {:value 0.75 :health 75 :message "ok"})})))
+        (is (= [[:metabase-ai-index/coverage-ratio {:engine "semantic"} 0.75]] @calls)))
+      (testing "an N/A collector (nil) sets no gauge and returns nil"
+        (reset! calls [])
+        (is (nil? (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
+                                                   :engine    :semantic
+                                                   :collect   (constantly nil)})))
+        (is (empty? @calls))))))
+
+(deftest ^:sequential report-repair-orphans!-no-active-index-test
+  (testing "no active index -> no-op (no gauge write, no throw), so the hourly repair hook is always safe"
+    (let [calls (atom [])]
+      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
+          (is (nil? (semantic.health/report-repair-orphans! 3)))
+          (is (empty? @calls)))))))

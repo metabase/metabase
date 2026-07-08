@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.semantic-search.core :as semantic-search.core]
+   [metabase-enterprise.semantic-search.health :as semantic.health]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.task.core :as task]
@@ -24,7 +25,10 @@
     (log/with-context {:quartz-job-type 'SemanticIndexRepair}
       (try
         (log/info "Starting semantic search index repair")
-        (semantic-search.core/repair-index! (search.ingestion/searchable-documents))
+        ;; repair returns its lost-delete (orphan) count; feed the garbage health metric off it since repair
+        ;; already did the anti-join -- no need for a separate pull collector to recompute it.
+        (semantic.health/report-repair-orphans!
+         (semantic-search.core/repair-index! (search.ingestion/searchable-documents)))
         (log/info "Completed semantic search index repair")
         (catch Exception e
           (log/error e "Failed to complete semantic search index repair"))))))

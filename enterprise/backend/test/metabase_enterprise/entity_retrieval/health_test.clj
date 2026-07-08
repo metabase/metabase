@@ -58,3 +58,12 @@
   (testing "ready index + reachable embedder -> healthy 100"
     (is (=? {:health 100 :message #"NLQ curated retrieval available and serving\."}
             (check ready-status)))))
+
+(deftest nlq-metrics-omitted-when-unavailable-test
+  (testing "coverage/garbage/staleness skip (nil, so omitted) when unlicensed or the index is incompatible"
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.core/retrieval-status (constantly {:pgvector? true :licensed? false
+                                                           :index-compatible? false :populated? false})]
+      (is (nil? (#'entity-retrieval.health/nlq-coverage)))
+      (is (nil? (#'entity-retrieval.health/nlq-garbage)))
+      (is (nil? (#'entity-retrieval.health/nlq-staleness))))))

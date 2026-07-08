@@ -119,6 +119,13 @@
                                                   :schema_version :updated_at)
                        sql-format-quoted))))
 
+(defn touch-reconciled-at!
+  "Bump the meta row's `updated_at` to the pgvector clock, recording that a full reconcile just verified the
+  index against the appdb. Read by the NLQ staleness health metric as a 'time since the index was last
+  confirmed fresh' bound. A no-op before the meta row exists (nothing has been reconciled yet)."
+  [tx]
+  (jdbc/execute! tx [(format "UPDATE \"%s\" SET updated_at = now() WHERE id = 1" *meta-table*)]))
+
 (defn- create-tables! [tx dims]
   (jdbc/execute! tx (create-vectors-table-sql dims)))
 

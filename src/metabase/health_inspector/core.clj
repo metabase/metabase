@@ -48,6 +48,12 @@
   [name check-fn]
   (swap! checks assoc name check-fn))
 
+(defn enabled?
+  "Whether the health inspector is enabled -- the master switch for persisting runs. Metric emitters that also
+  feed Prometheus (independent of this setting) use it to gate only their appdb persistence."
+  []
+  (setting/health-inspector-enabled))
+
 (defn- run-check
   "Run one check in isolation: a throwing check reads as degraded rather than aborting the whole report."
   [check-name f]
@@ -84,21 +90,29 @@
   [check-name]
   (t2/select-one :health_inspector_runs :check_name (name check-name) {:order-by [[:run_at :desc]]}))
 
+(defn save-check-result!
+  "Persist a precomputed check `result` (a `{:health :message}` map, or nil to skip), deduplicated against the
+  check's most recent run so an unchanged result isn't re-persisted.
+  Does NOT gate on `health-inspector-enabled` -- callers that emit results outside a check run (e.g. a metric
+  refresh that also feeds Prometheus) gate themselves; the dedup keeps a flapping caller from flooding the table."
+  [check-name result]
+  (when (some? result)
+    (let [prev (latest-run check-name)]
+      (when-not (and prev
+                     (= (:health prev) (:health result))
+                     (= (:message prev) (:message result)))
+        (persist-check-result! check-name result)))))
+
 (defn run-and-save-check!
   "Run one registered check by name and persist its result, so a change can be surfaced immediately rather
   than at the next daily report.
   A no-op unless the health inspector is enabled and the named check is registered and applicable (non-nil).
-  Deduplicates against the check's most recent run: an unchanged result isn't re-persisted, so a flapping
-  caller (e.g. a circuit breaker cycling open/half-open) can't flood the table and bury other checks."
+  Deduplicates via [[save-check-result!]], so a flapping caller (e.g. a circuit breaker cycling open/half-open)
+  can't flood the table and bury other checks."
   [check-name]
   (when (setting/health-inspector-enabled)
     (when-let [f (get @checks check-name)]
-      (when-let [result (run-check check-name f)]
-        (let [prev (latest-run check-name)]
-          (when-not (and prev
-                         (= (:health prev) (:health result))
-                         (= (:message prev) (:message result)))
-            (persist-check-result! check-name result)))))))
+      (save-check-result! check-name (run-check check-name f)))))
 
 (defn list-runs
   "Return the most recent health inspector runs from the DB."

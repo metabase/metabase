@@ -360,6 +360,9 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
+    ;; Record that a full reconcile just verified the index against the appdb, so the NLQ staleness metric can
+    ;; report time-since-last-reconcile (a bound on undetected membership/name drift the write hooks miss).
+    (index-table/touch-reconciled-at! conn)
     ;; index-size after the writes feeds the document/entity gauges (full reconcile only).
     (merge (diff-result desired to-insert inserted (count to-delete))
            (index-size conn))))

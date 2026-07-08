@@ -15,9 +15,12 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.util.log :as log]
-   [next.jdbc :as jdbc]))
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (set! *warn-on-reflection* true)
 
@@ -105,3 +108,173 @@
             (healthy "Semantic search index active, fresh, and serving.")))))))
 
 (health-inspector/register-check! :semantic-search-index index-health-check)
+
+;;; ------------------------------------------- AI index metrics --------------------------------------------
+;;;
+;;; Coverage / garbage / staleness for the AI-search indexes, each computed once per engine and fed to BOTH a
+;;; labelled Prometheus gauge (engine = "semantic" | "nlq") and a health-inspector row. The gauge, threshold,
+;;; and message shaping live here so each engine supplies only raw collectors; the NLQ engine
+;;; ([[metabase-enterprise.entity-retrieval.health]]) registers through the same entry point.
+
+(def ^:private measure->gauge
+  {:coverage  :metabase-ai-index/coverage-ratio
+   :garbage   :metabase-ai-index/garbage-ratio
+   :staleness :metabase-ai-index/staleness-seconds})
+
+(defn- pct [ratio] (Math/round (* 100.0 (double ratio))))
+
+(defn coverage-result
+  "Uniform `{:value :health :message}` for a coverage measure over `indexed`/`expected` item counts.
+  Health is the coverage percentage; the ratio (0-1) feeds the Prometheus gauge."
+  [indexed expected]
+  (let [ratio (if (pos? expected) (min 1.0 (/ (double indexed) expected)) 1.0)]
+    {:value   ratio
+     :health  (pct ratio)
+     :message (format "%d of %d expected items indexed (%d%%)." indexed expected (pct ratio))}))
+
+(defn garbage-result
+  "Uniform result for a garbage measure: `orphans` of `indexed` rows should not be indexed.
+  Health is 100 minus the garbage percentage."
+  [orphans indexed]
+  (let [ratio (if (pos? indexed) (/ (double orphans) indexed) 0.0)]
+    {:value   ratio
+     :health  (pct (- 1.0 ratio))
+     :message (if (zero? orphans)
+                "No orphaned items in the index."
+                (format "%d of %d indexed items are orphaned (%d%%)." orphans indexed (pct ratio)))}))
+
+(defn- describe-age [seconds]
+  (let [s (long seconds)]
+    (cond
+      (>= s 3600) (format "%.1fh" (/ s 3600.0))
+      (>= s 60)   (format "%dm" (quot s 60))
+      :else       (format "%ds" s))))
+
+(defn staleness-result
+  "Uniform result for a staleness measure. `age-seconds` is the age of the oldest pending change (0/nil =
+  current). `warn`/`crit` (seconds) bound the health scale: 100 at/under warn, 0 at/over crit, linear between.
+  `detail` optionally appends a clause (e.g. a backlog size or a detection-bound caveat)."
+  [age-seconds warn crit detail]
+  (let [age    (long (or age-seconds 0))
+        health (cond
+                 (<= age warn) 100
+                 (>= age crit) 0
+                 :else         (Math/round (* 100.0 (/ (double (- crit age)) (- crit warn)))))
+        base   (if (zero? age)
+                 "Index current."
+                 (format "Oldest pending change is %s old." (describe-age age)))]
+    {:value   age
+     :health  health
+     :message (if detail (str base " " detail) base)}))
+
+(defonce ^:private index-measures
+  ;; descriptors for refresh-ai-index-metrics!, populated by register-index-check! at load time
+  (atom []))
+
+(defn- run-measure!
+  "Run one measure's collector, set its labelled Prometheus gauge (always -- Prometheus is independent of the
+  inspector setting), and return the `{:health :message}` result, or nil when the collector is N/A."
+  [{:keys [gauge-key engine collect]}]
+  (when-let [{:keys [value health message]} (collect)]
+    (analytics/set-gauge! gauge-key {:engine (name engine)} value)
+    {:health health :message message}))
+
+(defn register-index-check!
+  "Register an AI-index measure. `engine` is :semantic | :nlq, `measure` is :coverage | :garbage | :staleness,
+  and `collect` is a 0-arg fn returning nil (N/A) or a `{:value :health :message}` map (see [[coverage-result]]
+  et al.). Registers a health-inspector check `<engine>-<measure>` and records the measure so its Prometheus
+  gauge is refreshed alongside."
+  [engine measure collect]
+  (let [descriptor {:check-name (keyword (str (name engine) "-" (name measure)))
+                    :gauge-key  (measure->gauge measure)
+                    :engine     engine
+                    :measure    measure
+                    :collect    collect}]
+    (health-inspector/register-check! (:check-name descriptor) #(run-measure! descriptor))
+    (swap! index-measures conj descriptor)))
+
+(defn- emit-garbage!
+  "Set the labelled garbage gauge and persist the (deduplicated) health row (when the inspector is enabled)
+  for `engine`, from an `orphans`/`indexed` count already in hand."
+  [engine orphans indexed]
+  (let [{:keys [value health message]} (garbage-result orphans indexed)]
+    (analytics/set-gauge! (measure->gauge :garbage) {:engine (name engine)} value)
+    (when (health-inspector/enabled?)
+      (health-inspector/save-check-result! (keyword (str (name engine) "-garbage")) {:health health :message message}))))
+
+(defn refresh-ai-index-metrics!
+  "Recompute every registered AI-index measure once: always set its Prometheus gauge, and -- when the health
+  inspector is enabled -- persist the (deduplicated) health row. A measure whose feature is off is a cheap
+  no-op (its collector returns nil). Driven by the periodic task so gauges stay fresh between daily reports."
+  []
+  (doseq [{:keys [check-name] :as descriptor} @index-measures]
+    (let [result (try
+                   (run-measure! descriptor)
+                   (catch Throwable e
+                     (log/error e "AI index metric refresh errored" {:check check-name})
+                     nil))]
+      (when (and result (health-inspector/enabled?))
+        (health-inspector/save-check-result! check-name result)))))
+
+;;; ------------------------------------- semantic-search collectors ----------------------------------------
+
+(def ^:private staleness-warn-seconds     (* 60 60))       ; 1h -- indexer backlog under an hour reads healthy
+(def ^:private staleness-critical-seconds (* 6 60 60))     ; 6h -- a backlog this old means the indexer is stuck
+
+(defn- active-index
+  "Return `{:pgvector :state}` for the active semantic index, or nil when semantic search is unavailable/
+  disabled, there's no active index, or pgvector is unreachable. Never throws -- availability is the
+  `:semantic-search-index` check's job; the metrics just skip when there's nothing to measure."
+  []
+  (when (and (semantic.util/semantic-search-available?)
+             (semantic-settings/semantic-search-enabled))
+    (try
+      (let [pgvector (semantic.env/get-pgvector-datasource!)
+            state    (semantic.index-metadata/get-active-index-state pgvector (semantic.env/get-index-metadata))]
+        (when state {:pgvector pgvector :state state}))
+      (catch Throwable e
+        (log/debug e "semantic active-index lookup failed for a metric collector")
+        nil))))
+
+(defn- scalar-row [pgvector sql]
+  (jdbc/execute-one! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+
+(defn- semantic-coverage []
+  (when-let [{:keys [pgvector state]} (active-index)]
+    (let [table    (-> state :index :table-name)
+          indexed  (or (:n (scalar-row pgvector [(format "SELECT count(*) AS n FROM \"%s\"" table)])) 0)
+          ;; search-items-count is the indexer's own candidate set (per-model COUNT over each spec's :where);
+          ;; a genuinely-uncovered candidate model reads as coverage < 100, which is the signal we want.
+          expected (search.ingestion/search-items-count)]
+      (coverage-result indexed expected))))
+
+(defn- semantic-staleness []
+  (when-let [{:keys [pgvector state]} (active-index)]
+    (let [gate      (:gate-table-name (semantic.env/get-index-metadata))
+          watermark (-> state :metadata-row :indexer_last_seen)
+          ;; Oldest gate change past the indexer watermark. Content-hash-based: the gate suppresses no-op
+          ;; updated_at bumps, so this is real pending work, not spurious timestamp drift. Age is computed on
+          ;; the pgvector clock to match gated_at (set via clock_timestamp).
+          row       (scalar-row pgvector
+                                [(format "SELECT count(*) AS pending,
+                                                 EXTRACT(EPOCH FROM (now() - min(gated_at))) AS age
+                                          FROM \"%s\"
+                                          WHERE gated_at > COALESCE(?, '-infinity'::timestamptz)" gate)
+                                 watermark])
+          pending   (or (:pending row) 0)
+          detail    (when (pos? pending) (format "%d change(s) in the indexer backlog." pending))]
+      (staleness-result (:age row) staleness-warn-seconds staleness-critical-seconds detail))))
+
+(register-index-check! :semantic :coverage  semantic-coverage)
+(register-index-check! :semantic :staleness semantic-staleness)
+
+(defn report-repair-orphans!
+  "Feed the semantic-search garbage measure from the hourly repair job's lost-delete count. Repair already
+  computes the orphan set (find-lost-deletes) as part of its normal work, so this is a push -- far cheaper
+  than the standalone anti-join a pull collector would need, and correct for compound-id models. `orphans` is
+  repair's lost-delete count; the denominator is the live index size. A no-op when there's no active index."
+  [orphans]
+  (when-let [{:keys [pgvector state]} (active-index)]
+    (let [table   (-> state :index :table-name)
+          indexed (or (:n (scalar-row pgvector [(format "SELECT count(*) AS n FROM \"%s\"" table)])) 0)]
+      (emit-garbage! :semantic orphans indexed))))
