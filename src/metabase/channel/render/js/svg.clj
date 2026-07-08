@@ -1,8 +1,8 @@
 (ns metabase.channel.render.js.svg
   "Functions to render charts as svg strings by invoking the static-viz JavaScript bundle (built by `bun run
-  build-static-viz`) through [[metabase.channel.render.js.protocol]], which runs the JS on either a pooled in-process
-  GraalVM context or a one-shot Node process. This namespace has wrapper functions that JSON-encode their arguments,
-  call the corresponding interface function, and rasterize the resulting SVG to PNG bytes via Batik."
+  build-static-viz-graalvm`) through [[metabase.channel.render.js.protocol]], which runs the JS on either a pooled
+  in-process GraalVM context or a remote HTTP renderer. This namespace has wrapper functions that JSON-encode their
+  arguments, call the corresponding protocol function, and rasterize the resulting SVG to PNG bytes via Batik."
   (:require
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]

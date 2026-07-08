@@ -101,7 +101,7 @@
 
 ;; Built exactly once per process (defonce + delay) and shared by every context: the engine's code cache is keyed on
 ;; the `Source` instance, so this is what makes it hold ONE parsed copy of the bundle. Building a `Source` anywhere
-;; else reintroduces the leak/reparse this exists to fix — after a `bun run build-static-viz`, re-evaluate this
+;; else reintroduces the leak/reparse this exists to fix — after a `bun run build-static-viz-graalvm`, re-evaluate this
 ;; defonce (or restart the REPL) to pick the change up.
 (defonce ^:private bundle-source
   (delay (build-source "frontend_client/app/dist/lib-static-viz.bundle.js")))
