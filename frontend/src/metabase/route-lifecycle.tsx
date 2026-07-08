@@ -20,7 +20,7 @@ export function LoadCurrentUser({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    dispatch(loadCurrentUser()).then(() => {
+    dispatch(loadCurrentUser()).finally(() => {
       if (!cancelled) {
         setIsLoaded(true);
       }

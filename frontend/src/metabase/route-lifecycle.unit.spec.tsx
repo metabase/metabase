@@ -4,7 +4,10 @@ import { Route } from "react-router";
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import * as domUtils from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -23,7 +26,7 @@ jest.mock("metabase/home/components/HomePage", () => ({
 
 const stateWithSetup = (hasUserSetup: boolean) =>
   createMockState({
-    settings: { values: { "has-user-setup": hasUserSetup } } as any,
+    settings: createMockSettingsState({ "has-user-setup": hasUserSetup }),
   });
 
 describe("RedirectIfSetup", () => {
