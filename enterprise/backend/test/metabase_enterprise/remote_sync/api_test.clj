@@ -310,9 +310,14 @@
 
 (deftest import-requires-superuser-test
   (testing "POST /api/ee/remote-sync/import requires superuser permissions"
-    (mt/with-temporary-setting-values [remote-sync-enabled true]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "ee/remote-sync/import" {:expected_branch "main"}))))))
+    (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-branch "main"]
+      (testing "a non-admin cannot pull"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "ee/remote-sync/import" {:expected_branch "main"}))))
+      (testing "a non-admin cannot switch branches (branch != expected_branch)"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "ee/remote-sync/import"
+                                     {:branch "develop" :expected_branch "main"})))))))
 
 (deftest import-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/import errors when remote sync is disabled"

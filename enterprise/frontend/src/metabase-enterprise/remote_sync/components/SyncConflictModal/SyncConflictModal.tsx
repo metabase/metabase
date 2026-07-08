@@ -46,6 +46,8 @@ import {
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
+  /** switch-branch variant only: the branch to switch to once the chosen action resolves local changes. */
+  nextBranch?: string | null;
   onClose: VoidFunction;
   variant: RemoteSyncConflictVariant;
   /** Push variant only: whether a 3-way merge would apply cleanly (offers the Merge option). */
@@ -62,6 +64,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const {
     onClose,
     currentBranch,
+    nextBranch,
     variant,
     canMerge,
     conflicts,
@@ -156,9 +159,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "discard") {
-      // currentBranch is both the import target and the expected-branch assertion (caught if a stale tab
+      // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
+      // and reload the current branch. currentBranch is the expected-branch assertion (caught if a stale tab
       // switched under us).
-      await discardChangesAndImport(currentBranch, currentBranch, onClose);
+      await discardChangesAndImport(
+        nextBranch || currentBranch,
+        currentBranch,
+        onClose,
+      );
     }
   };
 

@@ -43,6 +43,11 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
       value: "new-branch",
       label: t`Create a new branch and push changes there`,
     };
+    const pushOption: OutOfSyncOption = {
+      value: "push",
+      label: c("{0} is the current GitHub branch name")
+        .t`Push changes to the current branch, ${currentBranch}`,
+    };
     const forcePushOption: OutOfSyncOption = {
       value: "force-push",
       label: c("{0} is the current GitHub branch name")
@@ -66,6 +71,8 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
         return canMerge
           ? [mergeOption, newBranchOption, forcePushOption]
           : [newBranchOption, forcePushOption];
+      case "switch-branch":
+        return [pushOption, newBranchOption, discardOption];
       case "setup":
         return isRemoteSyncReadOnly
           ? [discardOption]

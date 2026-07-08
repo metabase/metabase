@@ -1,17 +1,15 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useSelector } from "metabase/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
-  Box,
   Button,
   Combobox,
   Group,
   Icon,
-  List,
   Modal,
-  Stack,
   Text,
   useCombobox,
 } from "metabase/ui";
@@ -21,19 +19,22 @@ import type { RemoteSyncEntity } from "metabase-types/api";
 import { trackBranchSwitched } from "../../analytics";
 import { type SyncError, parseSyncError } from "../../utils";
 import { BranchDropdown } from "../GitSyncControls/BranchDropdown";
+import { SyncConflictModal } from "../SyncConflictModal";
 
 interface BranchSwitcherProps {
-  currentBranch: string;
-  /** Un-pushed local changes; when present, switching to an existing branch is blocked. */
+  /** May be undefined for non-admins, who can't read the admin-visibility branch setting. */
+  currentBranch?: string | null;
+  /** Un-pushed local changes; when present, switching prompts the admin to choose what to do with them. */
   dirty: RemoteSyncEntity[];
   disabled?: boolean;
 }
 
 /**
- * Read-write branch switching, surfaced only in the instance Settings panel behind destructive-action
- * guard rails (GHY-4019): a switch is hard-blocked while there are unsaved changes, and otherwise requires
- * an explicit destructive confirmation. Creating a new branch forks the current one (no reconcile), so it
- * is allowed even with unsaved changes — it is the safe way to keep local work.
+ * Read-write branch switching, surfaced only in the instance Settings panel. When the instance is clean
+ * the switch runs directly — everything is already pushed, so it is reversible. When there are
+ * unsaved changes, the admin is offered a choice (push them, stash to a new branch, or discard and switch)
+ * rather than a silent overwrite. Creating a new branch forks the current one (no reconcile), so it is
+ * allowed even with unsaved changes — it is the safe way to keep local work.
  */
 export const BranchSwitcher = ({
   currentBranch,
@@ -43,23 +44,36 @@ export const BranchSwitcher = ({
   const combobox = useCombobox();
   const [sendToast] = useToast();
   const [importChanges, { isLoading }] = useImportChangesMutation();
-  const { show: showConfirm, modalContent: confirmModal } = useConfirmation();
-  const [blockedChanges, setBlockedChanges] = useState<
-    RemoteSyncEntity[] | null
-  >(null);
+  // Switching goes through superuser-only endpoints, so only admins get the control.
+  const isAdmin = useSelector(getUserIsAdmin);
+  // Set to the target branch when there are unsaved changes, opening the choose-what-to-do modal.
+  const [pendingBranch, setPendingBranch] = useState<string | null>(null);
   const [branchMismatch, setBranchMismatch] = useState<string | null>(null);
+
+  // Switching is admin-only; show the section with a message rather than a control they can't use.
+  if (!isAdmin) {
+    return (
+      <Text c="text-secondary" size="sm">
+        {t`You need to be an admin to switch the sync branch.`}
+      </Text>
+    );
+  }
+  // Admins can read the branch setting; guard anyway so the rest can treat it as a definite string.
+  if (!currentBranch) {
+    return null;
+  }
 
   const performSwitch = async (branch: string) => {
     try {
-      // force is left false so the backend hard-blocks on unsaved changes and surfaces deletion conflicts
-      // rather than silently discarding local-only content.
+      // force is left false so the backend surfaces deletion conflicts rather than silently discarding
+      // local-only content.
       await importChanges({
         branch,
         expected_branch: currentBranch,
       }).unwrap();
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
     } catch (error) {
-      const { hasBranchMismatch, hasConflict, errorMessage } = parseSyncError(
+      const { hasBranchMismatch, errorMessage } = parseSyncError(
         error as SyncError,
       );
       if (hasBranchMismatch) {
@@ -68,14 +82,10 @@ export const BranchSwitcher = ({
         );
         return;
       }
-      // A conflict here means the instance became dirty between the guard check and the request.
       sendToast({
         icon: "warning",
         toastColor: "error",
-        message: hasConflict
-          ? (errorMessage ??
-            t`You have unsaved changes. Push or discard them before switching branches.`)
-          : (errorMessage ?? t`Sorry, we were unable to switch branches.`),
+        message: errorMessage ?? t`Sorry, we were unable to switch branches.`,
       });
     }
   };
@@ -90,86 +100,68 @@ export const BranchSwitcher = ({
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
       return;
     }
+    // With unsaved changes, let the admin choose what to do with them (push / stash / discard) instead of
+    // silently discarding.
     if (dirty.length > 0) {
-      setBlockedChanges(dirty);
+      setPendingBranch(branch);
       return;
     }
-    showConfirm({
-      title: t`Switch branches?`,
-      message: t`Switching to “${branch}” reconciles your synced collections to that branch. Content that only exists locally can be permanently deleted — even if you switch back. Do this rarely, and only when you understand the consequences.`,
-      confirmButtonText: t`Switch branch`,
-      confirmButtonProps: { variant: "filled", color: "danger" },
-      onConfirm: () => performSwitch(branch),
-    });
+    // Clean instance: everything is already pushed, so the switch is reversible (content missing from the
+    // target still lives on the remote and returns when you switch back). No confirmation needed.
+    performSwitch(branch);
   };
+
+  const dirtyCount = dirty.length;
 
   return (
     <>
-      <Combobox
-        store={combobox}
-        position="bottom-start"
-        width={320}
-        withinPortal
-      >
-        <Combobox.Target>
-          <Button
-            variant="default"
-            disabled={disabled || isLoading}
-            loading={isLoading}
-            onClick={() => combobox.toggleDropdown()}
-            leftSection={<Icon name="git_branch" size={14} />}
-            rightSection={<Icon name="chevrondown" size={10} />}
-            data-testid="settings-branch-switcher"
-            w="20rem"
-            styles={{ inner: { justifyContent: "space-between" } }}
-          >
-            {currentBranch}
-          </Button>
-        </Combobox.Target>
-        <BranchDropdown
-          baseBranch={currentBranch}
-          combobox={combobox}
-          onChange={handleSelect}
-          value={currentBranch}
-        />
-      </Combobox>
-
-      {confirmModal}
-
-      {blockedChanges && (
-        <Modal
-          opened
-          padding="xl"
-          title={t`Can't switch branches`}
-          onClose={() => setBlockedChanges(null)}
+      <Group gap="md" align="center">
+        <Combobox
+          store={combobox}
+          position="bottom-start"
+          width={320}
+          withinPortal
         >
-          <Stack gap="md" pt="sm">
-            <Text>
-              {t`You have unsaved changes in synced collections. Push or discard them before switching branches, or they may be lost.`}
-            </Text>
-            <Box>
-              <Text fw="bold" mb="xs">{t`Unsaved changes:`}</Text>
-              <List>
-                {blockedChanges.map((entity) => (
-                  <List.Item key={`${entity.model}-${entity.id}`}>
-                    {entity.name}{" "}
-                    <Text component="span" c="text-secondary">
-                      ({entity.model})
-                    </Text>
-                  </List.Item>
-                ))}
-              </List>
-            </Box>
-            <Group justify="end">
-              <Button
-                variant="filled"
-                onClick={() => setBlockedChanges(null)}
-              >
-                {t`Got it`}
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
+          <Combobox.Target>
+            <Button
+              variant="default"
+              disabled={disabled || isLoading}
+              loading={isLoading}
+              onClick={() => combobox.toggleDropdown()}
+              leftSection={<Icon name="git_branch" size={14} />}
+              rightSection={<Icon name="chevrondown" size={10} />}
+              data-testid="settings-branch-switcher"
+              w="20rem"
+              styles={{ inner: { justifyContent: "space-between" } }}
+            >
+              {currentBranch}
+            </Button>
+          </Combobox.Target>
+          <BranchDropdown
+            baseBranch={currentBranch}
+            combobox={combobox}
+            onChange={handleSelect}
+            value={currentBranch}
+          />
+        </Combobox>
+        {dirtyCount > 0 && (
+          <Text c="error" size="sm" data-testid="branch-switcher-dirty-warning">
+            {ngettext(
+              msgid`${dirtyCount} unsaved change`,
+              `${dirtyCount} unsaved changes`,
+              dirtyCount,
+            )}
+          </Text>
+        )}
+      </Group>
+
+      {pendingBranch && (
+        <SyncConflictModal
+          variant="switch-branch"
+          currentBranch={currentBranch}
+          nextBranch={pendingBranch}
+          onClose={() => setPendingBranch(null)}
+        />
       )}
 
       {branchMismatch && (

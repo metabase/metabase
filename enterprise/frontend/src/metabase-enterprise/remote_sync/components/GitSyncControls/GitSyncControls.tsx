@@ -45,7 +45,7 @@ export const GitSyncControls = () => {
   const dispatch = useDispatch();
   const conflictVariant = useSelector(getSyncConflictVariant);
   // Branch switching now lives in the instance Settings panel (behind destructive-action guard rails),
-  // so these controls show the current branch read-only and expose only Push/Pull. See GHY-4019.
+  // so these controls show the current branch read-only and expose only Push/Pull.
   const { isVisible, currentBranch } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =

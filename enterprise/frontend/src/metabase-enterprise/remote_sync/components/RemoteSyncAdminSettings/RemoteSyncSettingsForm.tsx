@@ -483,22 +483,17 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   field below, which triggers a reconciling import. */}
               {isRemoteSyncEnabled &&
                 values?.[TYPE_KEY] === "read-write" &&
-                !isModalVariant &&
-                currentBranch && (
+                !isModalVariant && (
                   <RemoteSyncSettingsSection
                     title={t`Sync branch`}
+                    description={t`Choose which branch to sync with git.`}
                     variant={variant}
                   >
-                    <Stack gap="md">
-                      <Text c="text-secondary" size="sm">
-                        {t`Switching branches reconciles your synced collections to the target branch and can permanently delete content that only exists locally. This is a rare, destructive operation — switch only when you understand the consequences.`}
-                      </Text>
-                      <BranchSwitcher
-                        currentBranch={currentBranch}
-                        dirty={dirtyData?.dirty ?? []}
-                        disabled={settingDetails?.[BRANCH_KEY]?.is_env_setting}
-                      />
-                    </Stack>
+                    <BranchSwitcher
+                      currentBranch={currentBranch}
+                      dirty={dirtyData?.dirty ?? []}
+                      disabled={settingDetails?.[BRANCH_KEY]?.is_env_setting}
+                    />
                   </RemoteSyncSettingsSection>
                 )}
 
