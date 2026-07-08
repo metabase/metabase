@@ -62,7 +62,7 @@ const isVerticalDraggedItem = (draggedItem: DraggedItem | null) => {
 
 interface VisualizerProps {
   className?: string;
-  onSave: (visualization: VisualizerVizDefinition) => void;
+  onSave: (visualization: VisualizerVizDefinition) => void | Promise<void>;
   onClose: () => void;
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
