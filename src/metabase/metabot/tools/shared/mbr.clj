@@ -467,4 +467,3 @@
   {:structured-output
    {:result-type :mbr-entity
     :entity      mbr}})
-
