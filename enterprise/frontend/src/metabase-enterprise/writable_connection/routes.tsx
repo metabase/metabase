@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { WritableConnectionInfoPage } from "./pages/WritableConnectionInfoPage";
 

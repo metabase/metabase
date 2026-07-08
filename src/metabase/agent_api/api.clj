@@ -1170,7 +1170,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body]
-  (let [card (api/check-404 (t2/select-one :model/Card id))]
+  (let [card (api/read-check :model/Card id)]
     (reject-parameterized-card! card)
     (qp.card/process-query-for-card
      card :api

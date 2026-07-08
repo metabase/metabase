@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import {
@@ -7,6 +6,7 @@ import {
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks/transform";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 import {

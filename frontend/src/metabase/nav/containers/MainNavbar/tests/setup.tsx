@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -26,6 +25,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
