@@ -1,11 +1,10 @@
 import { type Context, createContext } from "react";
-import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { metabaseReduxContext } from "metabase/redux/context";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
+import { Route, routerActions } from "metabase/router";
 
 import {
   IsAuthenticated,

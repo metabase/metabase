@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
@@ -12,6 +11,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Box,
   Button,
