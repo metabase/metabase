@@ -6,8 +6,7 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import type { TimelineCardProps } from "./TimelineCard";
-import TimelineCard from "./TimelineCard";
+import { TimelineCard, type TimelineCardProps } from "./TimelineCard";
 
 describe("TimelineCard", () => {
   it("should expand and collapse the card", async () => {
