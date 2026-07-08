@@ -146,9 +146,8 @@
                   pool-saturated?     (qp.error-type/connection-pool-saturated?
                                        (:error_type formatted-exception))]
               (when-not (or query-canceled? pool-saturated?)
-                (log/errorf "Error processing query: %s\n%s"
-                            (or (:error formatted-exception) "Error running query")
-                            (u/pprint-to-str formatted-exception)))
+                (log/errorf "Error processing query: %s"
+                            (or (:error formatted-exception) "Error running query")))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
               (let [result (update formatted-exception
                                    :error (fnil identity (trs "Error running query")))]
