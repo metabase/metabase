@@ -360,6 +360,10 @@
       :opts                 opts}
      (fn [{:keys [outputs db-id driver]}]
        (let [target-out (get outputs target-id)]
+         ;; The read-back SELECT is string-built, safe only because target-out is a
+         ;; system-generated scratch spec (never user input).
+         (assert (scratch/test-table-name? (:table target-out))
+                 "read-back target must be a system-generated scratch table")
          {:qp-result  (execute/read-back-output db-id driver target-out)
           :output-sql (str "SELECT * FROM " (scratch/spec->sql-ref driver target-out))
           :extra      {:output-table (:table target-out)}})))))

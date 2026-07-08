@@ -82,6 +82,9 @@
   `driver` is the driver keyword; `output-target` is a `{:schema :table :db}` spec
   as returned by `scratch-output-target`."
   [db-id driver output-target]
+  ;; The SELECT is string-built; it is injection-safe only because output-target is a
+  ;; system-generated scratch spec (never user input).
+  {:pre [(scratch/test-table-name? (:table output-target))]}
   (let [sql (str "SELECT * FROM " (scratch/spec->sql-ref driver output-target))]
     ;; format-rows renders temporals as report-timezone-shifted strings, which
     ;; would spuriously mismatch the fixtures' UTC-canonicalized wall times on
