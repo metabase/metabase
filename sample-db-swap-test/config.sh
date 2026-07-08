@@ -18,6 +18,9 @@ export MB_DB_FILE="${MB_DB_FILE:-${WORK_DIR}/metabase-appdb.db}"
 export MB_PLUGINS_DIR="${MB_PLUGINS_DIR:-${WORK_DIR}/plugins}"
 mkdir -p "${MB_PLUGINS_DIR}"
 
+# Don't pick up the repo's dev config.yml (the EE config-from-file boot step would load + choke on it).
+export MB_CONFIG_FILE_PATH="${MB_CONFIG_FILE_PATH:-${WORK_DIR}/no-such-config.yml}"
+
 export MB_JETTY_PORT="${MB_JETTY_PORT:-3000}"
 BASE_URL="${BASE_URL:-http://localhost:${MB_JETTY_PORT}}"
 READY_TIMEOUT="${READY_TIMEOUT:-300}"

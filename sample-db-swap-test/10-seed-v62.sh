@@ -25,15 +25,15 @@ mbql_card="$(jq -n --argjson db "${SAMPLE_DB_ID}" --argjson tid "${orders_id}" -
     query:{"source-table":$tid, aggregation:[["count"]],
            breakout:[["field",$fid,{"temporal-unit":"month"}]]}}}')"
 mbql_id="$(create_card "${mbql_card}")"
-echo ">> MBQL card id=${mbql_id}  ->  rows=$(run_card "${mbql_id}")"
+echo ">> MBQL card id=${mbql_id}  -> $(run_card "${mbql_id}")"
 
 echo "== create native question using an H2 date function (DATE_TRUNC) =="
 native_card="$(jq -n --argjson db "${SAMPLE_DB_ID}" '{
   name:"Native - orders by month (H2 DATE_TRUNC)", display:"table", visualization_settings:{},
   dataset_query:{database:$db, type:"native",
-    native:{query:"SELECT DATE_TRUNC('\''month'\'', CREATED_AT) AS month, COUNT(*) AS cnt FROM ORDERS GROUP BY 1 ORDER BY 1"}}}')"
+    native:{query:"SELECT DATE_TRUNC('\''month'\'', CREATED_AT) AS mth, COUNT(*) AS cnt FROM ORDERS GROUP BY DATE_TRUNC('\''month'\'', CREATED_AT) ORDER BY 1"}}}')"
 native_id="$(create_card "${native_card}")"
-echo ">> native card id=${native_id}  ->  rows=$(run_card "${native_id}")"
+echo ">> native card id=${native_id}  -> $(run_card "${native_id}")"
 
 save_state
 { echo "MBQL_CARD_ID=${mbql_id}"; echo "NATIVE_CARD_ID=${native_id}"; } >> "${STATE_FILE}"

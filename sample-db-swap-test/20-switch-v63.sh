@@ -17,7 +17,7 @@ echo "======================================================================"
 echo "== after the in-place swap =="
 echo "sample database engine: ${SAMPLE_ENGINE}   (expected: sqlite)"
 echo
-echo "MBQL card  ${MBQL_CARD_ID:-?}  ->  rows=$(run_card "${MBQL_CARD_ID:-0}")"
+echo "MBQL card  ${MBQL_CARD_ID:-?}  ->  $(run_card "${MBQL_CARD_ID:-0}")"
 echo "  (MBQL is engine-agnostic - the QP recompiles it for SQLite, so this should still work)"
 echo
 echo "native card ${NATIVE_CARD_ID:-?}  ->  $(run_card "${NATIVE_CARD_ID:-0}")"

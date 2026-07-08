@@ -7,7 +7,7 @@ start_jar() {   # start_jar <tag> <jar>
   [ -f "${jar}" ] || { echo "FATAL: jar not found: ${jar}"; exit 1; }
   echo ">> starting [${tag}]  ${jar}"
   echo ">>   log: ${log}"
-  ( cd "${REPO_DIR}" && exec java ${JAVA_ADDOPENS} -jar "${jar}" ) >"${log}" 2>&1 &
+  ( cd "${WORK_DIR}" && exec java ${JAVA_ADDOPENS} -jar "${jar}" ) >"${log}" 2>&1 &
   echo $! >"${PID_FILE}"
 }
 
@@ -73,7 +73,9 @@ sample_table_id() { api_get "/api/database/${SAMPLE_DB_ID}/metadata" | jq -r --a
 
 create_card() { api_post '/api/card' "$1" | jq -r '.id'; }   # arg = full card JSON; echoes id
 
-run_card() {  # run_card <id> -> "<rowcount>" or "ERROR: <msg>"
-  local out; out="$(api_post "/api/card/$1/query" '{}' || echo '{}')"
-  echo "${out}" | jq -r 'if .status=="completed" then (.data.rows|length|tostring) else ("ERROR: " + ((.error // "unknown")|tostring)) end'
+run_card() {  # run_card <id> -> "rows=N" or "FAILED: <msg>"  (no -f, so the error body survives HTTP 4xx)
+  local out; out="$(curl -s -H "X-Metabase-Session: ${SESSION}" -H 'Content-Type: application/json' \
+                         -X POST -d '{}' "${BASE_URL}/api/card/$1/query")"
+  echo "${out}" | jq -r 'if .status=="completed" then "rows=" + (.data.rows|length|tostring)
+                         else "FAILED: " + (((.error // .error_type // "unknown")|tostring)[0:200]) end'
 }
