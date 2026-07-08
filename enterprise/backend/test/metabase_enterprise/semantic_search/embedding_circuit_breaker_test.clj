@@ -20,7 +20,13 @@
     (are [e] (true? (outage? nil e))
       (java.net.ConnectException. "connection refused")
       (java.net.SocketTimeoutException. "read timed out")
+      (java.net.UnknownHostException. "embedder.internal")
+      (java.net.NoRouteToHostException. "no route to host")
+      (java.net.SocketException. "Connection reset")
+      (org.apache.http.conn.ConnectTimeoutException. "connect timed out")
       (ex-info "ai-service unavailable (connection refused)" {:status 502} (java.net.ConnectException.))
+      ;; the network fault can be buried more than one cause deep -- the whole chain is walked
+      (ex-info "embedding batch failed" {} (ex-info "http call failed" {} (java.net.UnknownHostException. "dns")))
       (ex-info "server error" {:status 503})))
   (testing "caller/config errors do NOT trip the breaker (they'd recur regardless of breaker state)"
     (are [e] (false? (outage? nil e))

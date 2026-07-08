@@ -63,7 +63,8 @@
   reachable; degraded (naming the failing conditions) otherwise."
   []
   ;; Mirror the engine's own gate (semantic-search core/supported?): beyond pgvector + license this respects
-  ;; the semantic-search-enabled kill switch, so a disabled instance neither records runs nor probes the embedder.
+  ;; the semantic-search-enabled kill switch, so a disabled instance neither records runs nor probes the
+  ;; embedder.
   (when (and (semantic.util/semantic-search-available?)
              (semantic-settings/semantic-search-enabled))
     ;; Datasource acquisition is inside the try: ensure-initialized-data-source! throws on a malformed
@@ -176,14 +177,16 @@
   (atom []))
 
 (defonce ^:private push-metric-clearers
-  ;; Thunks run by refresh-ai-index-metrics! to NaN a PUSH-only gauge (semantic garbage, pushed from the repair
-  ;; job) when its feature is off -- no push will clear it, whereas pull measures self-clear via run-measure!.
+  ;; Thunks run by refresh-ai-index-metrics! to NaN a PUSH-only gauge (semantic garbage, pushed from the
+  ;; repair job) when its feature is off -- no push will clear it, whereas pull measures self-clear via
+  ;; run-measure!.
   (atom []))
 
 (defn- run-measure!
-  "Run one measure's collector and always write its labelled Prometheus gauge (Prometheus is independent of the
-  inspector setting). An N/A collector (nil) writes NaN so a previously-emitted series doesn't keep exposing a
-  stale healthy value after the feature is turned off; PromQL treats NaN as no-data, so it won't false-alert.
+  "Run one measure's collector and always write its labelled Prometheus gauge (Prometheus is independent of
+  the inspector setting). An N/A collector (nil) writes NaN so a previously-emitted series doesn't keep
+  exposing a stale healthy value after the feature is turned off; PromQL treats NaN as no-data, so it won't
+  false-alert.
   Returns the `{:health :message}` result, or nil when N/A (so the health row is omitted)."
   [{:keys [gauge-key engine collect]}]
   (let [{:keys [value health message]} (collect)]
@@ -192,9 +195,9 @@
 
 (defn register-index-check!
   "Register an AI-index measure. `engine` is :semantic | :nlq, `measure` is :coverage | :garbage | :staleness,
-  and `collect` is a 0-arg fn returning nil (N/A) or a `{:value :health :message}` map (see [[coverage-result]]
-  et al.). Registers a health-inspector check `<engine>-<measure>` and records the measure so its Prometheus
-  gauge is refreshed alongside."
+  and `collect` is a 0-arg fn returning nil (N/A) or a `{:value :health :message}` map (see
+  [[coverage-result]] et al.). Registers a health-inspector check `<engine>-<measure>` and records the
+  measure so its Prometheus gauge is refreshed alongside."
   [engine measure collect]
   (let [descriptor {:check-name (keyword (str (name engine) "-" (name measure)))
                     :gauge-key  (measure->gauge measure)
@@ -233,7 +236,7 @@
 ;;; ------------------------------------- semantic-search collectors ----------------------------------------
 
 (def ^:private staleness-warn-seconds     (* 60 60))       ; 1h -- indexer backlog under an hour reads healthy
-(def ^:private staleness-critical-seconds (* 6 60 60))     ; 6h -- a backlog this old means the indexer is stuck
+(def ^:private staleness-critical-seconds (* 6 60 60))     ; 6h -- a backlog this old = the indexer is stuck
 ;; Absolute orphan counts. Repair clears garbage hourly, so a handful of in-flight orphans is normal; a large
 ;; count means repair isn't keeping up. Tunable (promotable to settings alongside the staleness thresholds).
 (def ^:private garbage-warn-count     50)
@@ -259,9 +262,10 @@
   share one get-active-index-state per refresh cycle instead of each issuing their own pgvector round-trip."
   (memoize/ttl active-index* :ttl/threshold (* 30 1000)))
 
-;; Semantic garbage is pushed from the hourly repair job (see report-repair-orphans!), so nothing updates its
-;; series once the feature is off -- the repair task stops running. Register a clearer so refresh NaNs the
-;; series when there's no active index; when the feature is on, repair owns the value and this leaves it alone.
+;; Semantic garbage is pushed from the hourly repair job (see report-repair-orphans!), so nothing updates
+;; its series once the feature is off -- the repair task stops running. Register a clearer so refresh NaNs
+;; the series when there's no active index; when the feature is on, repair owns the value and this leaves
+;; it alone.
 (swap! push-metric-clearers conj
        (fn []
          (when-not (active-index)
@@ -317,16 +321,21 @@
   "Feed the semantic-search garbage measure from the hourly repair job's active-orphan count. Repair already
   computes the orphan set as part of its normal work, so this is a push -- far cheaper than the standalone
   anti-join a pull collector would need, and correct for compound-id models. `orphans` is an absolute count.
+  `orphans` may be nil (the count query failed); the gauge is then cleared and the health-row write skipped.
   Never throws: this is a metric side-channel of the repair job (which gates on semantic-search-available?),
-  so a blip here must not make a successful repair look failed. `orphans` may be nil (the count query failed);
-  the push is then skipped, leaving the last value to age out rather than pushing a bogus reading."
+  so a blip here must not make a successful repair look failed."
   [orphans]
   (try
     ;; Gate the push on the same signal refresh-ai-index-metrics!'s clearer uses (active-index = available? +
     ;; the semantic-search-enabled kill switch + an actual active index). The repair job only checks
     ;; semantic-search-available?, which ignores the kill switch, so without this it would keep repopulating
     ;; garbage-count with the feature disabled, fighting the clearer that's NaN-ing it.
-    (when (and (some? orphans) (active-index))
-      (emit-garbage! :semantic orphans garbage-warn-count garbage-critical-count))
+    (when (active-index)
+      (if (some? orphans)
+        (emit-garbage! :semantic orphans garbage-warn-count garbage-critical-count)
+        ;; A gauge never ages out while the process is scraped, so a failed count NaNs the series (PromQL
+        ;; no-data) rather than leave a stale count standing until the next successful repair. No health
+        ;; row: no reading beats a bogus one.
+        (analytics/set-gauge! (measure->gauge :garbage) {:engine "semantic"} ##NaN)))
     (catch Throwable e
       (log/warn e "Failed to report semantic garbage metric"))))

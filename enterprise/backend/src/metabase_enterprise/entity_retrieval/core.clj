@@ -60,6 +60,15 @@
        (pgvector-configured?)
        (embedding/embedding-supported? (embedding/get-configured-model))))
 
+(defn- missing-table-error?
+  "Whether `e` (or one of its causes) is Postgres undefined_table (42P01), i.e. the index tables don't exist
+  yet -- expected before the first build or after a manual drop awaiting heal. The store answered, so this is
+  index absence, not a connectivity fault."
+  [e]
+  (boolean (some #(and (instance? SQLException %)
+                       (= "42P01" (.getSQLState ^SQLException %)))
+                 (u/full-exception-chain e))))
+
 (defn retrieval-status
   "Decomposed availability of the library entity index -- the single source of truth behind
   [[entity-retrieval-available?]] and the health check.
@@ -69,7 +78,8 @@
   (>= 1 document) are the readiness conditions, probed against pgvector only when enabled.
   `:probe-error` is the message of a pgvector failure during that probe (else nil) -- it distinguishes a
   store that is unreachable (probe threw) from an index that is genuinely absent/incompatible (probe
-  succeeded, answer negative), so a health check can name connectivity vs a pending rebuild.
+  succeeded, answer negative), so a health check can name connectivity vs a pending rebuild. A missing
+  index table (42P01: first build pending, or a manual drop) counts as absence, not a probe error.
   `probe-populated?` false skips the `:populated?` query for callers that only need compatibility (it then
   reads nil); a probe error still surfaces via `:probe-error`."
   ([] (retrieval-status true))
@@ -88,7 +98,13 @@
                   :populated?  (when probe-populated?
                                  (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1"
                                                                           index-table/*vectors-table*)]))))})
-               (catch Throwable e {:compatible? false :populated? false :probe-error (ex-message e)}))]
+               (catch Throwable e
+                 ;; Missing index tables are the ordinary absent-index state, not a store fault: report
+                 ;; incompatible with no :probe-error so the health check says "rebuild pending" rather
+                 ;; than "pgvector unreachable".
+                 (if (missing-table-error? e)
+                   {:compatible? false :populated? false :probe-error nil}
+                   {:compatible? false :populated? false :probe-error (ex-message e)})))]
          {:pgvector? true :licensed? true :index-compatible? compatible? :populated? populated?
           :probe-error probe-error})))))
 

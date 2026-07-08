@@ -184,11 +184,11 @@
         (is (Double/isNaN ^double (last (first @calls))) "the labelled series is cleared with NaN, not left stale")))))
 
 (deftest ^:sequential report-repair-orphans!-test
-  ;; health-inspector disabled (the default) so emit-garbage! skips the appdb persist and we assert on the gauge
+  ;; health-inspector disabled (the default): emit-garbage! skips the appdb persist; assert on the gauge
   (mt/with-temporary-setting-values [health-inspector-enabled false]
     (testing "with an active index, pushes the absolute orphan count to the labelled garbage-count gauge"
       (let [calls (atom [])]
-        ;; active-index truthy = available? + kill switch on + an actual active index; the repair push gates on it
+        ;; active-index truthy = available? + kill switch + an active index; the repair push gates on it
         (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
                       analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
           (semantic.health/report-repair-orphans! 3))
@@ -198,8 +198,17 @@
       (let [calls (atom [])]
         (with-redefs [semantic.health/active-index (constantly nil)
                       analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
-          (semantic.health/report-repair-orphans! 3))
+          (semantic.health/report-repair-orphans! 3)
+          (semantic.health/report-repair-orphans! nil))
         (is (= [] @calls))))
+    (testing "a nil count (the orphan query failed) with an active index NaNs the gauge rather than leaving a
+             stale count standing -- gauges don't age out while the process is scraped"
+      (let [calls (atom [])]
+        (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
+                      analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
+          (semantic.health/report-repair-orphans! nil))
+        (is (= [[:metabase-ai-index/garbage-count {:engine "semantic"}]] (mapv butlast @calls)))
+        (is (Double/isNaN ^double (last (first @calls))))))
     (testing "never throws -- a metric-sink error must not fail the repair job that calls it"
       (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
                     analytics/set-gauge!          (fn [& _] (throw (ex-info "boom" {})))]

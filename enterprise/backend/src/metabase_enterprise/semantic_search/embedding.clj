@@ -20,7 +20,8 @@
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
    [dev.failsafe CircuitBreakerOpenException FailsafeException]
-   [java.net ConnectException SocketTimeoutException]))
+   [java.net ConnectException SocketException SocketTimeoutException UnknownHostException]
+   [org.apache.http.conn ConnectTimeoutException]))
 
 (set! *warn-on-reflection* true)
 
@@ -207,19 +208,30 @@
 (def ^:private embedder-circuit-breaker-delay-ms
   "How long the breaker stays open before it allows a half-open trial call." 30000)
 
+(defn- network-outage-cause?
+  "Whether one throwable in a failure's cause chain says the service is unreachable at the network level:
+  refused / reset / no-route ([[SocketException]] covers [[ConnectException]] and friends), a DNS failure,
+  or a connect/read timeout ([[ConnectTimeoutException]] is Apache HttpClient's connect timeout, which does
+  not extend [[SocketTimeoutException]])."
+  [t]
+  (or (instance? SocketException t)
+      (instance? SocketTimeoutException t)
+      (instance? UnknownHostException t)
+      (instance? ConnectTimeoutException t)))
+
 (defn- embedder-outage?
   "Whether an embedding-call failure reflects the service being unreachable or server-erroring -- the only
   failures that should trip the breaker. A caller/config error (a 4xx on over-long or malformed input, a
   missing premium-embedding-token, a decode error) would recur regardless of the breaker and must NOT open
   the circuit, or one poison indexing batch would fast-fail every unrelated query for the open window.
+  The whole cause chain is walked: clj-http and our own wrapping can bury the network fault more than one
+  cause deep.
   Signature is diehard's `:fail-if` bipredicate `[result exception]`; result is ignored (only throws count)."
   [_result ^Throwable e]
   (boolean
    (when e
-     (let [status (:status (ex-data e))
-           root   (or (ex-cause e) e)]
-       (or (instance? ConnectException root)
-           (instance? SocketTimeoutException root)
+     (let [status (:status (ex-data e))]
+       (or (some network-outage-cause? (u/full-exception-chain e))
            ;; 5xx (incl. the wrapped 502 the connection-refused path throws) = service-side failure; a 4xx is
            ;; the caller's bad request and stays off the breaker.
            (and (integer? status) (>= (long status) 500)))))))

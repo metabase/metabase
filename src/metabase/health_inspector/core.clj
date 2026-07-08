@@ -95,8 +95,9 @@
 (defn save-check-result!
   "Persist a precomputed check `result` (a `{:health :message}` map, or nil to skip), deduplicated against the
   check's most recent run so an unchanged result isn't re-persisted.
-  Does NOT gate on `health-inspector-enabled` -- callers that emit results outside a check run (e.g. a metric
-  refresh that also feeds Prometheus) gate themselves; the dedup keeps a flapping caller from flooding the table."
+  Does NOT gate on `health-inspector-enabled` -- callers that emit results outside a check run (e.g. a
+  metric refresh that also feeds Prometheus) gate themselves; the dedup keeps a flapping caller from
+  flooding the table."
   [check-name result]
   (when (some? result)
     (let [prev (latest-run check-name)]
@@ -109,8 +110,8 @@
   "Run one registered check by name and persist its result, so a change can be surfaced immediately rather
   than at the next daily report.
   A no-op unless the health inspector is enabled and the named check is registered and applicable (non-nil).
-  Deduplicates via [[save-check-result!]], so a flapping caller (e.g. a circuit breaker cycling open/half-open)
-  can't flood the table and bury other checks."
+  Deduplicates via [[save-check-result!]], so a flapping caller (e.g. a circuit breaker cycling
+  open/half-open) can't flood the table and bury other checks."
   [check-name]
   (when (setting/health-inspector-enabled)
     (when-let [f (get @checks check-name)]

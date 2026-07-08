@@ -77,11 +77,11 @@
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;
 ;;; Coverage / garbage / staleness for the library entity index, at the distinct-entity grain (rows are per
-;;; (entity, doc)). Both sides are normalised through entity-class so a metric<->model relabel doesn't read as
-;;; both missing and garbage. Registered through the shared framework in semantic-search.health, which owns the
-;;; threshold/message/gauge shaping.
+;;; (entity, doc)). Both sides are normalised through entity-class so a metric<->model relabel doesn't read
+;;; as both missing and garbage. Registered through the shared framework in semantic-search.health, which
+;;; owns the threshold/message/gauge shaping.
 
-(def ^:private staleness-warn-seconds     (* 30 60))   ; 30m -- full reconcile runs every 15m; 30m = a missed cycle
+(def ^:private staleness-warn-seconds     (* 30 60))   ; 30m -- one missed ~15m full-reconcile cycle
 (def ^:private staleness-critical-seconds (* 60 60))   ; 60m -- reconcile clearly stalled
 ;; Absolute orphan counts. The curated library is a bounded, small tier, so tolerances are much lower than
 ;; semantic search; reconcile GCs orphans every ~15m. Tunable (promotable to settings).
@@ -150,8 +150,9 @@
                                                     index-table/*meta-table*)]
                                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (when age
-        (semantic.health/staleness-result age staleness-warn-seconds staleness-critical-seconds
-                                          "Membership/name changes not hooked are caught by the ~15m full reconcile.")))))
+        (semantic.health/staleness-result
+         age staleness-warn-seconds staleness-critical-seconds
+         "Membership/name changes not hooked are caught by the ~15m full reconcile.")))))
 
 (semantic.health/register-index-check! :nlq :coverage  nlq-coverage)
 (semantic.health/register-index-check! :nlq :garbage   nlq-garbage)

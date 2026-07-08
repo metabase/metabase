@@ -132,8 +132,8 @@
   (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = now() WHERE id = 1" *meta-table*)]))
 
 (defn- clear-reconciled-at!
-  "Null the meta row's `reconciled_at`, marking the index as not-reconciled-since-(re)build. A no-op before the
-  meta row exists (and harmless when already null)."
+  "Null the meta row's `reconciled_at`, marking the index as not-reconciled-since-(re)build. A no-op before
+  the meta row exists (and harmless when already null)."
   [tx]
   (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = NULL WHERE id = 1" *meta-table*)]))
 
@@ -190,10 +190,10 @@
                         :rebuilt)
 
                     :else
-                    ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals
-                    ;; itself, and report :created when it had actually gone missing — the recreated table is
-                    ;; empty, so a targeted reconcile must repopulate the whole library rather than fill it
-                    ;; with one entity.
+                    ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table
+                    ;; heals itself, and report :created when it had actually gone missing — the recreated
+                    ;; table is empty, so a targeted reconcile must repopulate the whole library rather than
+                    ;; fill it with one entity.
                     (let [existed? (vectors-table-exists? tx)]
                       (create-tables! tx dims)
                       (if existed? :ok :created)))]
