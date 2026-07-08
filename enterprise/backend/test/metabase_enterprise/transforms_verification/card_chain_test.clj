@@ -42,8 +42,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-verification.chain :as chain]
    [metabase-enterprise.transforms-verification.execute :as execute]
-   [metabase-enterprise.transforms-verification.scratch :as scratch]
    [metabase-enterprise.transforms-verification.test-util :as tu]
+   [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -280,27 +280,33 @@
               (str "Expected ::cannot-test-run; got: " (pr-str (ex-data @thrown)))))))))
 
 ;;; ===========================================================================
-;;; Cleanup runs inside with-transform-connection
+;;; Scratch DROPs run inside with-transform-connection (card target)
 ;;; ===========================================================================
 
 (deftest card-chain-cleanup-inside-transform-connection-test
-  (testing "all cleanup! calls occur inside with-transform-connection (card target)"
+  ;; cleanup! self-elevates, so every DROP TABLE it issues must see
+  ;; *connection-type* = :transform even though run-card-chain-test! runs in
+  ;; ambient :default. We observe driver/drop-table! (the DROP seam, reached only
+  ;; from inside the self-elevated scope).
+  (testing "all scratch DROPs occur inside with-transform-connection (card target)"
     (let [captured (atom [])]
       (with-card-chain [{:keys [t1 enriched-name db-id orders-id people-id]}]
-        (let [card (native-agg-card db-id enriched-name)]
-          (mt/with-dynamic-fn-redefs [scratch/cleanup!
-                                      (fn [& args]
-                                        (swap! captured conj @#'driver.conn/*connection-type*)
-                                        (apply (mt/original-fn #'scratch/cleanup!) args))]
+        (let [card (native-agg-card db-id enriched-name)
+              orig driver/drop-table!]
+          ;; driver/drop-table! is a multimethod → raw with-redefs (in-thread run).
+          (with-redefs [driver/drop-table!
+                        (fn [& args]
+                          (swap! captured conj @#'driver.conn/*connection-type*)
+                          (apply orig args))]
             (chain/run-card-chain-test!
              card #{(:id t1)}
              {orders-id tu/orders-rows people-id tu/people-rows}
              tu/correct-expected-csv {}
              (t2/select :model/Transform))))
         (is (pos? (count @captured))
-            "cleanup! should have been called at least once")
+            "drop-table! should have been called at least once")
         (is (every? #{:transform} @captured)
-            (str "every cleanup! call must see *connection-type* = :transform; "
+            (str "every DROP must see *connection-type* = :transform; "
                  "got: " (pr-str @captured)))))))
 
 ;;; ===========================================================================

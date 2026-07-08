@@ -18,9 +18,9 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-verification.api.util :as api-util]
+   [metabase-enterprise.transforms-verification.assertions :as assertions]
    [metabase-enterprise.transforms-verification.chain :as chain]
    [metabase-enterprise.transforms-verification.execute :as test-run.execute]
-   [metabase-enterprise.transforms-verification.scratch :as scratch]
    [metabase-enterprise.transforms-verification.test-util :as tu :refer [with-temp-csv-files]]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -29,6 +29,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.json :as json]
@@ -793,37 +794,96 @@
                  (api-util/parse-assertions "not json at all")))))
 
 ;;; ===========================================================================
-;;; Contract: cleanup! runs inside the transform connection context
+;;; Contract: scratch-table DDL runs inside the transform connection context;
+;;; read-back / assertion queries run on the ambient default connection.
 ;;; ===========================================================================
 
 (deftest chain-cleanup-runs-inside-transform-connection-test
-  ;; Every scratch/cleanup! call from run-chain-test! must run while
-  ;; *connection-type* is bound to :transform. On databases with separate
-  ;; write-data credentials, a cleanup! that fires after with-transform-connection
-  ;; unwinds would issue its DROP TABLE on read credentials, leaking scratch tables.
+  ;; Every DROP TABLE issued by run-chain-test! — the cleanup drops and the
+  ;; start-of-run sweep — must run while *connection-type* is :transform, because
+  ;; cleanup! / cleanup-all-test-tables! self-elevate. On databases with separate
+  ;; write-data credentials, a DROP issued on read credentials would leak scratch
+  ;; tables.
   ;;
   ;; The single-credential test DB makes this invisible at the table level; we
-  ;; observe it by intercepting scratch/cleanup! and capturing *connection-type*
-  ;; at each call, then asserting every capture equals :transform.
-  (testing "all cleanup! calls occur inside with-transform-connection (success path)"
+  ;; observe it by intercepting driver/drop-table! (the DROP seam, reached only
+  ;; from inside the self-elevated scope) and capturing *connection-type* at each
+  ;; call, then asserting every capture equals :transform.
+  (testing "all scratch DROPs occur inside with-transform-connection (success path)"
     (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id]}]
-      ;; Collect *connection-type* for every cleanup! call. run-chain-test!
-      ;; issues N+1 calls: one per node output + one for the leaf mapping.
-      (let [captured (atom [])]
-        (mt/with-dynamic-fn-redefs [scratch/cleanup!
-                                    (fn [& args]
-                                      (swap! captured conj @#'driver.conn/*connection-type*)
-                                      (apply (mt/original-fn #'scratch/cleanup!) args))]
+      (let [captured (atom [])
+            orig      driver/drop-table!]
+        ;; driver/drop-table! is a multimethod → raw with-redefs (in-thread run).
+        (with-redefs [driver/drop-table!
+                      (fn [& args]
+                        (swap! captured conj @#'driver.conn/*connection-type*)
+                        (apply orig args))]
           (chain/run-chain-test!
            (:id t2) #{(:id t1)}
            {orders-id tu/orders-rows people-id tu/people-rows}
            tu/correct-expected-csv {}
            (t2/select :model/Transform)))
         (is (pos? (count @captured))
-            "cleanup! should have been called at least once")
+            "drop-table! should have been called at least once")
         (is (every? #{:transform} @captured)
-            (str "every cleanup! call must see *connection-type* = :transform; "
+            (str "every DROP must see *connection-type* = :transform; "
                  "got: " (pr-str @captured)))))))
+
+(deftest run-test-connection-scoping-test
+  ;; The read-back and the user's assertion SQL must run on the ambient
+  ;; least-privilege :default (read) connection — never on write-data credentials.
+  ;; Only the DDL/DML seams self-elevate to :transform: seed (CREATE + INSERT) and
+  ;; each node CTAS. We capture *connection-type* at each phase's plain-defn seam
+  ;; and assert the split.
+  ;;
+  ;; Regression guard: fails if the read/write split ever collapses back into one
+  ;; connection scope for the whole run.
+  (testing "reads run under :default; seed + CTAS run under :transform"
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id target-name]}]
+      (let [captured (atom {})
+            record!  (fn [phase]
+                       (swap! captured update phase (fnil conj []) @#'driver.conn/*connection-type*))]
+        (mt/with-dynamic-fn-redefs
+          [transforms-base.u/create-table-from-schema!
+           (fn [& args]
+             (record! :seed)
+             (apply (mt/original-fn #'transforms-base.u/create-table-from-schema!) args))
+           test-run.execute/build-transform-details
+           (fn [& args]
+             (record! :ctas)
+             (apply (mt/original-fn #'test-run.execute/build-transform-details) args))
+           test-run.execute/read-back-output
+           (fn [& args]
+             (record! :read-back)
+             (apply (mt/original-fn #'test-run.execute/read-back-output) args))
+           assertions/run-assertions!
+           (fn [& args]
+             (record! :assertions)
+             (apply (mt/original-fn #'assertions/run-assertions!) args))]
+          (chain/run-chain-test!
+           (:id t2) #{(:id t1)}
+           {orders-id tu/orders-rows people-id tu/people-rows}
+           tu/correct-expected-csv
+           {:assertions [{:name     "revenue_nonneg"
+                          :sql      (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                          :severity :error}]}
+           (t2/select :model/Transform)))
+        (let [caps @captured]
+          (testing "every phase was observed"
+            (is (every? (set (keys caps)) [:seed :ctas :read-back :assertions])
+                (str "missing phase captures: " (pr-str caps))))
+          (testing "seed (CREATE + INSERT) runs under :transform"
+            (is (seq (:seed caps)))
+            (is (every? #{:transform} (:seed caps)) (pr-str caps)))
+          (testing "node CTAS runs under :transform"
+            (is (seq (:ctas caps)))
+            (is (every? #{:transform} (:ctas caps)) (pr-str caps)))
+          (testing "read-back runs under :default"
+            (is (seq (:read-back caps)))
+            (is (every? #{:default} (:read-back caps)) (pr-str caps)))
+          (testing "assertions run under :default"
+            (is (seq (:assertions caps)))
+            (is (every? #{:default} (:assertions caps)) (pr-str caps))))))))
 
 ;;; ===========================================================================
 ;;; Mid-slice failure: cleanup must cover partial state

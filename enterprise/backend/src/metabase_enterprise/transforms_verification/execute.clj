@@ -2,8 +2,9 @@
   "Execution helpers for transform test runs: translate a resolved artifact into a
   `driver/run-transform!` call, and read the output table back via the QP.
 
-  The driver-facing helpers assume they run inside
-  `driver.conn/with-transform-connection`."
+  `build-transform-details` captures the write-data conn-spec, so the CTAS caller
+  wraps it in `driver.conn/with-transform-connection`. `read-back-output` is a plain
+  read; it runs under the ambient (`:default`) connection."
   (:require
    [metabase-enterprise.transforms-verification.errors :as errors]
    [metabase-enterprise.transforms-verification.scratch :as scratch]

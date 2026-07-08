@@ -25,9 +25,10 @@
 
   ## Connection context
 
-  The write/DDL seams (`seed!`, `cleanup!`) assert they run inside
-  `driver.conn/with-transform-connection`; the orchestrator wraps the whole run.
-  Callers supply `db-id` and the `:model/Database` row obtained within that context."
+  The write/DDL seams (`seed!`, `cleanup!`, `cleanup-all-test-tables!`) self-elevate
+  to `driver.conn/with-transform-connection` around their DDL; callers otherwise run
+  under the ambient least-privilege `:default` connection. They supply `db-id` and
+  the `:model/Database` row."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms-verification.errors :as errors]
@@ -195,37 +196,39 @@
         catalog (driver.sql/db-slot-value driver db)
         created (atom [])
         mapping (atom {})]
-    (driver.conn/ensure-connection-type! :transform)
-    (try
-      ;; Create the target schema if absent — some warehouses (e.g. BigQuery) don't
-      ;; auto-create it, so a never-run transform's target schema may not exist yet.
-      (when (and (not (str/blank? schema))
-                 (not (driver/schema-exists? driver db-id schema)))
-        (driver/create-schema-if-needed! driver (driver/connection-spec driver db) schema))
-      (doseq [{:keys [table-info fixture]} seed-inputs]
-        (let [real-spec    {:schema (:schema table-info) :table (:name table-info)}
-              suffix       (str "in_" (:id table-info))
-              scratch-name (scratch-table-name nonce suffix)
-              tbl-schema   (table-schema-for-seed scratch-name schema table-info)]
-          (transforms-base.u/create-table-from-schema! driver db-id tbl-schema)
-          (swap! created conj {:schema schema :table scratch-name})
-          (driver/insert-from-source! driver db-id tbl-schema
-                                      {:type :rows
-                                       :data (:rows fixture)})
-          (swap! mapping assoc real-spec {:schema schema :table scratch-name :db catalog})))
-      @mapping
-      (catch Throwable e
-        ;; Best-effort drop of already-created tables
-        (doseq [{tbl-schema :schema tbl-name :table} @created]
-          (try
-            (driver/drop-table! driver db-id (keyword tbl-schema tbl-name))
-            (catch Exception drop-e
-              (log/warn drop-e "Failed to drop scratch table during seed! failure cleanup:"
-                        (keyword tbl-schema tbl-name)))))
-        (throw (errors/ex ::errors/seed-failed
-                          (str "Failed to seed scratch tables: " (ex-message e))
-                          {:created @created}
-                          e))))))
+    ;; Self-elevate: all DDL/DML below runs on write-data credentials via the
+    ;; :transform pool, regardless of the caller's ambient connection scope.
+    (driver.conn/with-transform-connection
+      (try
+        ;; Create the target schema if absent — some warehouses (e.g. BigQuery) don't
+        ;; auto-create it, so a never-run transform's target schema may not exist yet.
+        (when (and (not (str/blank? schema))
+                   (not (driver/schema-exists? driver db-id schema)))
+          (driver/create-schema-if-needed! driver (driver/connection-spec driver db) schema))
+        (doseq [{:keys [table-info fixture]} seed-inputs]
+          (let [real-spec    {:schema (:schema table-info) :table (:name table-info)}
+                suffix       (str "in_" (:id table-info))
+                scratch-name (scratch-table-name nonce suffix)
+                tbl-schema   (table-schema-for-seed scratch-name schema table-info)]
+            (transforms-base.u/create-table-from-schema! driver db-id tbl-schema)
+            (swap! created conj {:schema schema :table scratch-name})
+            (driver/insert-from-source! driver db-id tbl-schema
+                                        {:type :rows
+                                         :data (:rows fixture)})
+            (swap! mapping assoc real-spec {:schema schema :table scratch-name :db catalog})))
+        @mapping
+        (catch Throwable e
+          ;; Best-effort drop of already-created tables
+          (doseq [{tbl-schema :schema tbl-name :table} @created]
+            (try
+              (driver/drop-table! driver db-id (keyword tbl-schema tbl-name))
+              (catch Exception drop-e
+                (log/warn drop-e "Failed to drop scratch table during seed! failure cleanup:"
+                          (keyword tbl-schema tbl-name)))))
+          (throw (errors/ex ::errors/seed-failed
+                            (str "Failed to seed scratch tables: " (ex-message e))
+                            {:created @created}
+                            e)))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Cleanup
@@ -262,11 +265,13 @@
                                  (keyword schema table-name))
                        (swap! failures conj {:table (keyword schema table-name)
                                              :error (ex-message e)}))))]
-    (driver.conn/ensure-connection-type! :transform)
-    (doseq [{:keys [schema table]} (vals mapping)]
-      (drop! schema table))
-    (when output-spec
-      (drop! (:schema output-spec) (:table output-spec)))
+    ;; Self-elevate: the DROPs run on write-data credentials via the :transform
+    ;; pool even though the caller (run-test!'s finally) runs under ambient :default.
+    (driver.conn/with-transform-connection
+      (doseq [{:keys [schema table]} (vals mapping)]
+        (drop! schema table))
+      (when output-spec
+        (drop! (:schema output-spec) (:table output-spec))))
     (when (seq @failures)
       (log/warnf "cleanup! left %d scratch table(s) undropped on database %d: %s"
                  (count @failures) db-id (pr-str @failures)))
@@ -309,20 +314,24 @@
   [db-id db ^String schema {:keys [min-age-seconds] :or {min-age-seconds 3600}}]
   (let [driver   (keyword (:engine db))
         now-secs (quot (System/currentTimeMillis) 1000)]
-    (reduce
-     (fn [report tbl-name]
-       (if-let [parsed (parse-scratch-table-name tbl-name)]
-         (if (>= (- now-secs (:epoch-seconds parsed)) min-age-seconds)
-           (try
-             (driver/drop-table! driver db-id (keyword schema tbl-name))
-             (update report :dropped conj tbl-name)
-             (catch Exception e
-               (log/warn e "cleanup-all-test-tables! failed to drop" (keyword schema tbl-name))
-               (update report :drop-errors conj {:table tbl-name :error (ex-message e)})))
-           (update report :skipped-young conj tbl-name))
-         (update report :non-matching-count inc)))
-     {:dropped [] :skipped-young [] :non-matching-count 0 :drop-errors []}
-     (list-tables-in-schema db-id schema))))
+    ;; Self-elevate: the sweep's DROPs run on write-data credentials via the
+    ;; :transform pool. The information_schema enumeration is a fixed system query,
+    ;; not user SQL, so sharing that scope is harmless.
+    (driver.conn/with-transform-connection
+      (reduce
+       (fn [report tbl-name]
+         (if-let [parsed (parse-scratch-table-name tbl-name)]
+           (if (>= (- now-secs (:epoch-seconds parsed)) min-age-seconds)
+             (try
+               (driver/drop-table! driver db-id (keyword schema tbl-name))
+               (update report :dropped conj tbl-name)
+               (catch Exception e
+                 (log/warn e "cleanup-all-test-tables! failed to drop" (keyword schema tbl-name))
+                 (update report :drop-errors conj {:table tbl-name :error (ex-message e)})))
+             (update report :skipped-young conj tbl-name))
+           (update report :non-matching-count inc)))
+       {:dropped [] :skipped-young [] :non-matching-count 0 :drop-errors []}
+       (list-tables-in-schema db-id schema)))))
 
 (defn sweep-old-test-tables!
   "Reap old test scratch tables, best-effort. Never throws; returns nil.

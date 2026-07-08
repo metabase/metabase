@@ -21,9 +21,11 @@
 
 (set! *warn-on-reflection* true)
 
-;; scratch/seed! and scratch/cleanup! assert a :transform connection context. In
-;; production the orchestrator wraps the whole run in with-transform-connection;
-;; these tests exercise seed!/cleanup! directly, so establish the same context.
+;; scratch/seed!, scratch/cleanup!, and scratch/cleanup-all-test-tables! self-elevate
+;; to :transform around their DDL, so this fixture wrap is redundant for calls that
+;; go through them. Some tests here also call driver/drop-table! and
+;; create-table-from-schema! directly — those don't self-elevate, so the fixture
+;; still does real work for them.
 (use-fixtures :each (fn [thunk] (driver.conn/with-transform-connection (thunk))))
 
 ;;; ---------------------------------------------------------------------------
