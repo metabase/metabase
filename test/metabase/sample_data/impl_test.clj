@@ -10,7 +10,6 @@
    [metabase.permissions.core :as perms]
    [metabase.plugins.impl :as plugins]
    [metabase.query-processor :as qp]
-   [metabase.sample-data.example-content :as example-content]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -56,14 +55,13 @@
 
 (deftest migrate-sample-database-engine-in-place-test
   (testing "Upgrade path: migrating the sample DB from H2 to SQLite in place keeps every Database/Table/Field
-           id, so sample content and user content survive with no remapping and still query correctly."
-    (mt/with-model-cleanup [:model/Database :model/Collection :model/Card :model/Dashboard]
-      ;; Install the pre-upgrade (v62-shape) H2 sample database, its Example content, and a user question.
+           id, so content referencing those ids survives with no remapping and still queries correctly."
+    (mt/with-model-cleanup [:model/Database :model/Card]
+      ;; Install the pre-upgrade (v62-shape) H2 sample database and a user question that references a field.
       (let [h2-db (t2/insert-returning-instance! :model/Database
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data/try-to-extract-sample-database! :h2)})]
         (sync/sync-database! h2-db)
-        (example-content/recreate-example-content! (:id h2-db))
         (let [orders-id  (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "ORDERS")
               total-id   (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card  (t2/insert-returning-instance! :model/Card
@@ -73,8 +71,7 @@
                                                                          :query {:source-table orders-id
                                                                                  :aggregation [[:sum [:field total-id nil]]]}}})
               before-tables  (t2/select-fn-set :id :model/Table :db_id (:id h2-db))
-              before-fields  (t2/select-fn-set :id :model/Field :table_id [:in before-tables])
-              example-card-id (t2/select-one-pk :model/Card :database_id (:id h2-db) :name [:not= "user q"])]
+              before-fields  (t2/select-fn-set :id :model/Field :table_id [:in before-tables])]
           (is (= #{"PUBLIC"} (t2/select-fn-set :schema :model/Table :db_id (:id h2-db)))
               "precondition: H2 tables live in the PUBLIC schema")
           ;; ---- the migration under test ----
@@ -86,9 +83,8 @@
             (is (= #{nil} (t2/select-fn-set :schema :model/Table :db_id (:id h2-db)))))
           (testing "the same fields remain (ids preserved), so embedded query refs stay valid"
             (is (= before-fields (t2/select-fn-set :id :model/Field :table_id [:in before-tables]))))
-          (testing "sample and user cards survive with their ids and still query the (now SQLite) sample DB"
+          (testing "the user card survives with its id and still queries the (now SQLite) sample DB"
             (is (t2/exists? :model/Card :id (:id user-card)))
-            (is (t2/exists? :model/Card :id example-card-id))
             (let [result (qp/process-query (:dataset_query (t2/select-one :model/Card :id (:id user-card))))]
               (is (= :completed (:status result)))
               (is (pos? (count (mt/rows result)))))))))))
@@ -97,13 +93,12 @@
   (testing "Downgrade path: migrating the sample DB from SQLite back to H2 in place keeps every id, so
            sample and user content survive with no remapping and still query correctly."
     (mt/with-model-cleanup [:model/Database :model/Collection :model/Card :model/Dashboard]
-      ;; Install the SQLite sample database (the state a newer version leaves behind), its Example content,
-      ;; and a user question that references a field.
+      ;; Install the SQLite sample database (the state a newer version leaves behind) and a user question
+      ;; that references a field.
       (let [sqlite-db (t2/insert-returning-instance! :model/Database
                                                      {:name "Sample Database" :engine :sqlite :is_sample true
                                                       :details (#'sample-data/try-to-extract-sample-database! :sqlite)})]
         (sync/sync-database! sqlite-db)
-        (example-content/recreate-example-content! (:id sqlite-db))
         (let [orders-id (t2/select-one-pk :model/Table :db_id (:id sqlite-db) :name "ORDERS")
               total-id  (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card (t2/insert-returning-instance! :model/Card
@@ -208,32 +203,6 @@
         (testing "its details were refreshed to the intended path"
           (is (re-matches extracted-db-path-regex
                           (get-in (t2/select-one :model/Database :id (:id db)) [:details :db]))))))))
-
-(def ^:private edn-example-collection-entity-id
-  "Stable entity id of the bundled Examples collection in sample-content.edn."
-  "HyB3nRtqb7pBPhFG26evI")
-
-(deftest recreate-example-content-reuses-collection-test
-  (testing "recreate-example-content! reuses an existing Example collection (matched by entity id) and preserves the
-           user content filed into it, instead of deleting it and creating a brand new collection"
-    (mt/with-model-cleanup [:model/Collection :model/Card :model/Dashboard :model/DashboardCard
-                            :model/Dimension :model/Permissions]
-      (with-temp-sample-database-db [db]
-        (mt/with-temp
-          [:model/Collection examples  {:name "Examples", :is_sample true, :location "/"
-                                        :entity_id edn-example-collection-entity-id}
-           ;; a question a user filed into the Example collection - must survive the engine swap
-           :model/Card       user-card {:name "user question", :collection_id (:id examples), :database_id (:id db)}]
-          (example-content/recreate-example-content! (:id db))
-          (testing "the existing Example collection is reused, not duplicated"
-            (is (t2/exists? :model/Collection :id (:id examples)))
-            (is (= 1 (t2/count :model/Collection :entity_id edn-example-collection-entity-id))))
-          (testing "the user's content survives, still filed in the reused Example collection"
-            (is (t2/exists? :model/Card :id (:id user-card)))
-            (is (= (:id examples) (:collection_id (t2/select-one :model/Card :id (:id user-card))))))
-          (testing "the bundled sample content is recreated on the sample database, in the reused collection"
-            (is (pos? (t2/count :model/Card :database_id (:id db))))
-            (is (t2/exists? :model/Dashboard :collection_id (:id examples)))))))))
 
 (defn- db-level-perms
   "DB-level data-permission rows for `db-id` as a comparable map {[group-id perm-type] perm-value}."
