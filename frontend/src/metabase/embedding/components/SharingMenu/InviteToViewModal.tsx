@@ -1,5 +1,4 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { UserForm } from "metabase/admin/people/forms/UserForm";
@@ -13,6 +12,7 @@ import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 import { Button, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";

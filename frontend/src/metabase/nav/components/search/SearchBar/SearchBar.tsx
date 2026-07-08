@@ -6,7 +6,6 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
@@ -23,6 +22,7 @@ import type { SearchAwareLocation } from "metabase/common/search/types";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { useDispatch, useSelector } from "metabase/redux";
+import { withRouter } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";

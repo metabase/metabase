@@ -1,5 +1,4 @@
-import { Route } from "react-router";
-
+import { Route } from "metabase/router";
 import { TransformInspectorUpsellPage } from "metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/TransformInspectorUpsellPage";
 
 import { TransformInspectPage } from "./pages/TransformInspectPage";

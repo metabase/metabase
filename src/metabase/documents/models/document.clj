@@ -245,11 +245,29 @@
                                                 :else
                                                 nil))))))
 
-(defmethod serdes/dependencies "Document"
+(defmethod serdes/deserialization-dependencies "Document"
   [{:keys [collection_id] :as document}]
   (set (concat
         (document-deps document)
         (when collection_id #{[{:model "Collection" :id collection_id}]}))))
+
+(defmethod serdes/serialization-dependencies "Document"
+  ;; Embedded cards and smart-links become content references (each must be part of the export); the containing
+  ;; Collection is included too, though a selective export may legitimately omit it.
+  [_model-name {:keys [collection_id content_type] :as document}]
+  (set
+   (concat
+    (when collection_id [[{:model "Collection" :id collection_id}]])
+    (when (= content_type prose-mirror/prose-mirror-content-type)
+      (concat
+       (for [embedded-card-id (prose-mirror/card-ids document)]
+         [{:model "Card" :id embedded-card-id}])
+       (for [{model :model link-id :entityId}
+             (prose-mirror/collect-ast document
+                                       #(when (= prose-mirror/smart-link-type (:type %))
+                                          (:attrs %)))
+             :when (contains? model->serdes-model model)]
+         [{:model (model->serdes-model model) :id link-id}]))))))
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]

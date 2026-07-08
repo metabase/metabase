@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
@@ -10,6 +9,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Link } from "metabase/router";
 import { Box, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
