@@ -432,6 +432,15 @@
    driver db-id table-name column-names
    (map #(mapv temporal-bind->string %) values)))
 
+(defmethod driver/add-columns! :snowflake
+  [driver db-id table-name column-definitions & args]
+  ;; Snowflake rejects the postgres-style repeated `ADD COLUMN "a" ..., ADD COLUMN "b" ...` clauses the
+  ;; generic implementation generates ("syntax error ... unexpected 'COLUMN'"), so issue one statement per
+  ;; column instead.
+  (let [add-column! (get-method driver/add-columns! :sql-jdbc)]
+    (doseq [[column definition] column-definitions]
+      (apply add-column! driver db-id table-name {column definition} args))))
+
 (defmethod driver/allowed-promotions :snowflake
   [_driver]
   ;; Snowflake's `ALTER COLUMN` can only widen VARCHAR length or NUMBER precision; it cannot convert
