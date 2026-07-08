@@ -20,11 +20,11 @@
   `extra-columns`   — column names in the CSV header absent from the target schema."
   [missing-columns extra-columns csv-header schema-names]
   (throw (errors/ex ::errors/header-mismatch
-                    (str "CSV header does not match target schema. "
+                    (str (tru "CSV header does not match target schema.")
                          (when (seq missing-columns)
-                           (str "Missing columns: " (str/join ", " (sort missing-columns)) ". "))
+                           (str " " (tru "Missing columns: {0}." (str/join ", " (sort missing-columns)))))
                          (when (seq extra-columns)
-                           (str "Extra columns: " (str/join ", " (sort extra-columns)) ".")))
+                           (str " " (tru "Extra columns: {0}." (str/join ", " (sort extra-columns))))))
                     {:missing-columns (vec missing-columns)
                      :extra-columns   (vec extra-columns)
                      :csv-header      (vec csv-header)
@@ -38,9 +38,8 @@
   `raw-value`   — the original string from the CSV cell."
   [row-index column-name raw-value cause]
   (throw (errors/ex ::errors/unparseable-cell
-                    (str "Could not parse value " (pr-str raw-value)
-                         " in column " (pr-str column-name)
-                         " at row " row-index ".")
+                    (tru "Could not parse value {0} in column {1} at row {2}."
+                         (pr-str raw-value) (pr-str column-name) row-index)
                     {:row-index   row-index
                      :column-name column-name
                      :raw-value   raw-value}
@@ -52,8 +51,8 @@
   `row-index` — 0-based index into the data rows (not counting the header)."
   [row-index expected-cell-count actual-cell-count]
   (throw (errors/ex ::errors/ragged-row
-                    (str "CSV row " row-index " has " actual-cell-count " cell(s);"
-                         " the header has " expected-cell-count " column(s).")
+                    (tru "CSV row {0} has {1} cell(s); the header has {2} column(s)."
+                         row-index actual-cell-count expected-cell-count)
                     {:row-index           row-index
                      :expected-cell-count expected-cell-count
                      :actual-cell-count   actual-cell-count})))
@@ -76,8 +75,7 @@
     ;; Duplicates hide from the set comparison and misalign row values downstream.
     (when (seq dupes)
       (throw (errors/ex ::errors/header-mismatch
-                        (str "CSV header contains duplicate column names: "
-                             (str/join ", " dupes) ".")
+                        (tru "CSV header contains duplicate column names: {0}." (str/join ", " dupes))
                         {:duplicate-columns (vec dupes)
                          :csv-header        (vec header)})))
     (when (or (seq missing) (seq extra))

@@ -27,7 +27,8 @@
    [metabase-enterprise.transforms-verification.errors :as errors]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,7 +70,7 @@
         order
         (let [ready (sort (for [[n d] remaining :when (empty? d)] n))]
           (when (empty? ready)
-            (throw (errors/ex ::errors/cycle "Cycle detected in transform sub-graph"
+            (throw (errors/ex ::errors/cycle (tru "Cycle detected in transform sub-graph")
                               {:remaining (vec (keys remaining))})))
           (recur (into order ready)
                  (reduce (fn [m r]
@@ -191,9 +192,8 @@
         {:keys [slice order bad-sources]} (compute-slice deps source-ids #{target-id})]
     (when (seq bad-sources)
       (throw (errors/ex ::errors/sources-not-ancestors
-                        (str "Selected source transform(s) do not feed the target transform: "
-                             (pr-str (vec (sort bad-sources)))
-                             ". Every source must be an upstream dependency of the target.")
+                        (tru "Selected source transform(s) do not feed the target transform: {0}. Every source must be an upstream dependency of the target."
+                             (pr-str (vec (sort bad-sources))))
                         {:bad-sources bad-sources
                          :target-id   target-id})))
     (let [producer-of (ordering/dependency-producer-map all-transforms)]
@@ -246,11 +246,8 @@
         {:keys [slice order bad-sources]} (compute-slice deps source-ids seed-ids)]
     (when (seq bad-sources)
       (throw (errors/ex ::errors/sources-not-ancestors
-                        (str "Selected source transform(s) do not feed any of the card's producing"
-                             " transforms: "
-                             (pr-str (vec (sort bad-sources)))
-                             ". Every source must be an upstream dependency of a transform that"
-                             " produces a table the card reads.")
+                        (tru "Selected source transform(s) do not feed any of the card''s producing transforms: {0}. Every source must be an upstream dependency of a transform that produces a table the card reads."
+                             (pr-str (vec (sort bad-sources))))
                         {:bad-sources bad-sources
                          :card-id     (:id card)})))
     ;; fixtures = card's raw boundary tables + slice's leaf deps.

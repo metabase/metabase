@@ -11,6 +11,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.transforms-verification.errors :as errors]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -58,10 +59,8 @@
   (cond
     dep-transform
     (throw (errors/ex ::errors/transform-dep-not-supported
-                      (str "Cannot resolve transform dependency " dep-transform
-                           " — test runs do not support transforms that depend on another"
-                           " transform's output table (the target table has not yet been"
-                           " materialised into the app DB).")
+                      (tru "Cannot resolve transform dependency {0} — test runs do not support transforms that depend on another transform''s output table (the target table has not yet been materialised into the app DB)."
+                           dep-transform)
                       {:transform-id dep-transform}))
 
     dep-table
@@ -69,8 +68,8 @@
       (if row
         (table-row->table-info row)
         (throw (errors/ex ::errors/table-not-found
-                          (str "Cannot resolve table dependency: no synced Table with id "
-                               dep-table " found in the app DB. Has this table been synced?")
+                          (tru "Cannot resolve table dependency: no synced Table with id {0} found in the app DB. Has this table been synced?"
+                               dep-table)
                           {:table-id dep-table}))))
 
     table-ref
@@ -83,18 +82,14 @@
       (if row
         (table-row->table-info row)
         (throw (errors/ex ::errors/table-not-found
-                          (str "Cannot resolve table-ref dependency: no synced Table found"
-                               " for database_id=" database_id
-                               " schema=" (pr-str schema)
-                               " table=" (pr-str table)
-                               ". Has this table been synced?")
+                          (tru "Cannot resolve table-ref dependency: no synced Table found for database_id={0} schema={1} table={2}. Has this table been synced?"
+                               database_id (pr-str schema) (pr-str table))
                           {:table-ref table-ref}))))
 
     :else
     (throw (errors/ex ::errors/cannot-determine-inputs
-                      (str "Unrecognised dependency spec shape: " (pr-str {:table dep-table
-                                                                           :transform dep-transform
-                                                                           :table-ref table-ref}))
+                      (tru "Unrecognised dependency spec shape: {0}"
+                           (pr-str {:table dep-table :transform dep-transform :table-ref table-ref}))
                       {}))))
 
 ;;; ---------------------------------------------------------------------------
@@ -123,7 +118,7 @@
     (when (seq missing-ids)
       (let [id->tbl (into {} (map (juxt :id identity)) required-tables)]
         (throw (errors/ex ::errors/missing-fixtures
-                          (str "Missing fixture(s) for required input table(s): "
+                          (tru "Missing fixture(s) for required input table(s): {0}"
                                (str/join ", "
                                          (for [id   (sort missing-ids)
                                                :let [t (id->tbl id)]]
@@ -132,7 +127,7 @@
                           {:missing-tables (mapv id->tbl (sort missing-ids))}))))
     (when (seq unknown-keys)
       (throw (errors/ex ::errors/unknown-fixture-keys
-                        (str "Unknown fixture key(s) (no matching required input table): "
+                        (tru "Unknown fixture key(s) (no matching required input table): {0}"
                              (str/join ", " (sort unknown-keys)))
                         {:unknown-keys unknown-keys})))
     nil))

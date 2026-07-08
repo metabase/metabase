@@ -25,6 +25,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -127,9 +128,8 @@
   [driver sql mapping backend]
   (when-let [amb (seq (ambiguous-bare-refs driver sql mapping))]
     (cannot-test-run!
-     (str "This transform can't be test-run: unqualified reference(s) to "
-          (pr-str (vec amb)) " are ambiguous — the name is mapped in more than one"
-          " schema. Qualify the reference with a schema.")
+     (tru "This transform can''t be test-run: unqualified reference(s) to {0} are ambiguous — the name is mapped in more than one schema. Qualify the reference with a schema."
+          (pr-str (vec amb)))
      {:guard ::ambiguous-bare-ref :ambiguous (vec amb)}))
   (sql-tools/rewrite-table-refs
    driver sql (mapping->replacements driver mapping)
@@ -140,7 +140,7 @@
     :on-parse-error
     (fn [_sql e]
       (cannot-test-run!
-       (str "This transform can't be test-run: its SQL could not be parsed/rewritten. " (ex-message e))
+       (tru "This transform can''t be test-run: its SQL could not be parsed/rewritten. {0}" (ex-message e))
        {:guard ::rewrite :parser-backend backend} e))}))
 
 ;;; ---------------------------------------------------------------------------
@@ -229,8 +229,7 @@
                    ;; references is SQL whose dangling qualifiers we cannot rule out;
                    ;; swallowing to `#{}` here would let guard 3 pass vacuously.
                    (cannot-test-run!
-                    (str "This transform can't be test-run: the rewritten SQL"
-                         " could not be parsed for qualifier verification. " (ex-message e))
+                    (tru "This transform can''t be test-run: the rewritten SQL could not be parsed for qualifier verification. {0}" (ex-message e))
                     {:guard ::token-survival :sql sql} e)))]
     (into #{}
           (keep (fn [{:keys [type name]}]
@@ -290,14 +289,12 @@
                           ;; Fail closed: SQL we cannot enumerate refs for is SQL we
                           ;; cannot vouch for.
                           (cannot-test-run!
-                           (str "This transform can't be test-run: the rewritten SQL"
-                                " could not be parsed for verification. " (ex-message e))
+                           (tru "This transform can''t be test-run: the rewritten SQL could not be parsed for verification. {0}" (ex-message e))
                            {:guard ::non-empty-refs :sql final-sql} e)))]
      ;; Guard 1: non-empty refs (only when something is expected).
      (when (and (seq allowed-refs) (empty? refs))
        (cannot-test-run!
-        (str "This transform can't be test-run: the rewritten SQL has no resolvable"
-             " table references (it may have failed to parse).")
+        (tru "This transform can''t be test-run: the rewritten SQL has no resolvable table references (it may have failed to parse).")
         {:guard ::non-empty-refs :sql final-sql}))
      ;; Guard 2: every ref ∈ scratch targets OR a known-safe alias.
      (let [safe-lc (into #{} (map u/lower-case-en) safe-aliases)
@@ -308,9 +305,8 @@
                            refs)]
        (when (seq stray)
          (cannot-test-run!
-          (str "This transform can't be test-run: the rewritten SQL references"
-               " table(s) that are not allowed: "
-               (pr-str (mapv #(normalize-ref driver %) stray)) ".")
+          (tru "This transform can''t be test-run: the rewritten SQL references table(s) that are not allowed: {0}."
+               (pr-str (mapv #(normalize-ref driver %) stray)))
           {:guard      ::refs-subset-scratch
            :stray-refs (mapv #(normalize-ref driver %) stray)
            :allowed    allowed-refs})))
@@ -319,16 +315,14 @@
            dangling     (dangling-qualifier-tokens driver final-sql forbidden-lc)]
        (when-let [token (first dangling)]
          (cannot-test-run!
-          (str "This transform can't be test-run: the original table " (pr-str token)
-               " still appears as a dangling column qualifier (e.g. `" token ".col`)"
-               " in the rewritten SQL.")
+          (tru "This transform can''t be test-run: the original table {0} still appears as a dangling column qualifier (e.g. `{1}.col`) in the rewritten SQL."
+               (pr-str token) token)
           {:guard ::token-survival :surviving-token token :sql final-sql}))
        (doseq [token forbidden-lc]
          (when (token-as-cte-name? token final-sql)
            (cannot-test-run!
-            (str "This transform can't be test-run: a CTE in the rewritten SQL is"
-                 " named after the real table " (pr-str token) ", so the rewrite"
-                 " may have redirected references meant for the CTE.")
+            (tru "This transform can''t be test-run: a CTE in the rewritten SQL is named after the real table {0}, so the rewrite may have redirected references meant for the CTE."
+                 (pr-str token))
             {:guard ::token-survival :surviving-token token :sql final-sql}))))
      final-sql)))
 
@@ -373,8 +367,7 @@
   [transform mapping output-target {:keys [db input-tables]}]
   (when-not (transforms-base.u/query-transform? transform)
     (throw (errors/ex ::errors/unsupported-transform-type
-                      (str "This transform can't be test-run: only :query transforms"
-                           " (native SQL and MBQL) are supported.")
+                      (tru "This transform can''t be test-run: only :query transforms (native SQL and MBQL) are supported.")
                       {:source-type (-> transform :source :type keyword)})))
   (let [driver  (source-driver db)
         ;; Record the backend for error reporting and the artifact.

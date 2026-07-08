@@ -36,6 +36,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -65,9 +66,8 @@
                         slice)]
     (when (seq offenders)
       (throw (errors/ex ::errors/cross-database-subgraph
-                        (str "Chained test runs require all transforms in the sub-graph to use the"
-                             " same database. The target uses database " db-id
-                             " but these nodes do not: " (pr-str offenders) ".")
+                        (tru "Chained test runs require all transforms in the sub-graph to use the same database. The target uses database {0} but these nodes do not: {1}."
+                             db-id (pr-str offenders))
                         {:db-id     db-id
                          :offenders offenders})))))
 
