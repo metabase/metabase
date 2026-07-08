@@ -69,6 +69,9 @@
            (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
     (is (= "(string | number | { readonly __metabaseUnknownSchemaBranch: true })"
            (ts/schema->ts [:or :string :int [:fn {:typescript "unknown"} any?]]))))
+  (testing "unions preserve uncertainty from unevaluated predicate function forms"
+    (is (= "(string | { readonly __metabaseUnknownSchemaBranch: true })"
+           (ts/schema->ts [:or :string [:fn '(fn [x] (localized-string? x))]]))))
   (testing "duplicate types are removed"
     (is (= "string" (ts/schema->ts [:or :string :string])))
     (is (= "(string | number)" (ts/schema->ts [:or :string :int :string])))))
@@ -101,6 +104,26 @@
            (ts/schema->ts [:merge
                            [:map [:a :string]]
                            [:fn '(fn [m] (contains? m :a))]])))))
+
+(deftest predicate-fn-sanitizer-test
+  (testing "bare predicate function schemas become unknown"
+    (is (= "unknown"
+           (ts/schema->ts [:fn '(fn [x] (valid? x))]))))
+  (testing "map field predicate function schemas keep the field with unknown type"
+    (is (= "{\n\tvalue: unknown;\n\t[key: string]: unknown;\n}"
+           (ts/schema->ts [:map [:value [:fn '(fn [x] (valid? x))]]]))))
+  (testing "sequential element predicate function schemas become unknown arrays"
+    (is (= "unknown[]"
+           (ts/schema->ts [:sequential [:fn '(fn [x] (valid? x))]]))))
+  (testing "maybe predicate function schemas become unknown"
+    (is (= "unknown"
+           (ts/schema->ts [:maybe [:fn '(fn [x] (valid? x))]]))))
+  (testing "function argument predicate function schemas become unknown parameters"
+    (is (= "(arg0: unknown) => string"
+           (ts/schema->ts [:=> [:cat [:fn '(fn [x] (valid? x))]] :string]))))
+  (testing "catn predicate function schemas keep the parameter name with unknown type"
+    (is (= "(value: unknown) => string"
+           (ts/schema->ts [:=> [:catn [:value [:fn '(fn [x] (valid? x))]]] :string])))))
 
 (deftest structured-ref-test
   (testing "structured refs record registry refs without relying on generated TypeScript names"

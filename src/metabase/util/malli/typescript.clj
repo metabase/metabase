@@ -446,36 +446,108 @@
       :else
       ["unknown"])))
 
-(defn- predicate-fn-schema-form?
+(defn- fn-schema-props
+  [form]
+  (when (and (vector? form)
+             (= :fn (first form))
+             (map? (second form)))
+    (second form)))
+
+(defn- unrepresentable-predicate-fn-schema-form?
   [form]
   (and (vector? form)
-       (= :fn (first form))))
+       (= :fn (first form))
+       (not (:typescript (fn-schema-props form)))))
 
-(defn- drop-predicate-fn-constraints
-  "Drop Malli `:fn` predicate branches from structural `:and` and `:merge` forms before Malli parses the schema.
+(declare sanitize-predicate-fn-constraints)
+
+(defn- schema-form-parts
+  [form]
+  (let [schema-type (first form)
+        body        (rest form)
+        props       (when (map? (first body)) (first body))
+        children    (if props (rest body) body)]
+    {:schema-type schema-type
+     :props       props
+     :children    children}))
+
+(defn- with-schema-form-parts
+  [{:keys [schema-type props children]}]
+  (into (cond-> [schema-type] props (conj props)) children))
+
+(defn- sanitize-map-entry
+  [entry]
+  (cond
+    (and (vector? entry) (= 3 (count entry)))
+    (update entry 2 sanitize-predicate-fn-constraints)
+
+    (and (vector? entry) (= 2 (count entry)))
+    (update entry 1 sanitize-predicate-fn-constraints)
+
+    :else
+    entry))
+
+(defn- sanitize-sequence-entry
+  [entry]
+  (cond
+    (and (vector? entry) (= 3 (count entry)))
+    (update entry 2 sanitize-predicate-fn-constraints)
+
+    (and (vector? entry) (= 2 (count entry)))
+    (update entry 1 sanitize-predicate-fn-constraints)
+
+    :else
+    entry))
+
+(defn- sanitize-intersection-like-schema
+  [form]
+  (let [{:keys [children] :as parts} (schema-form-parts form)
+        sanitized-children          (map sanitize-predicate-fn-constraints children)
+        structural                  (remove unrepresentable-predicate-fn-schema-form? sanitized-children)]
+    (if (= (count structural) (count children))
+      (with-schema-form-parts (assoc parts :children sanitized-children))
+      (do
+        (record-weak-type! :unknown)
+        (if (seq structural)
+          (with-schema-form-parts (assoc parts :children structural))
+          :any)))))
+
+(defn- sanitize-predicate-fn-constraints
+  "Replace or drop unrepresentable Malli `:fn` predicate schemas before Malli parses schema forms.
 
   Shadow CLJS analyzer metadata can contain unevaluated predicate function source forms. Malli needs SCI to parse those
-  forms, but TypeScript cannot represent arbitrary predicate constraints anyway. Keep the structural branches so the
-  generator can still emit useful declarations instead of falling back to `unknown`."
+  forms, but TypeScript cannot represent arbitrary predicate constraints. Drop predicate-only branches from
+  intersection-like schemas where structural branches remain. In value positions, replace the predicate schema with
+  `:any` so generated TypeScript preserves the surrounding shape with `unknown`."
   [schema]
-  (walk/postwalk
-   (fn [form]
-     (if (and (vector? form)
-              (#{:and :merge} (first form)))
-       (let [schema-type (first form)
-             body        (rest form)
-             props       (when (map? (first body)) (first body))
-             children    (if props (rest body) body)
-             structural  (remove predicate-fn-schema-form? children)]
-         (if (= (count structural) (count children))
-           form
-           (do
-             (record-weak-type! :unknown)
-             (if (seq structural)
-               (into (cond-> [schema-type] props (conj props)) structural)
-               :any))))
-       form))
-   schema))
+  (cond
+    (unrepresentable-predicate-fn-schema-form? schema)
+    (do
+      (record-weak-type! :unknown)
+      :any)
+
+    (vector? schema)
+    (let [{:keys [schema-type children] :as parts} (schema-form-parts schema)]
+      (case schema-type
+        (:and :merge)
+        (sanitize-intersection-like-schema schema)
+
+        :map
+        (with-schema-form-parts (assoc parts :children (map sanitize-map-entry children)))
+
+        (:orn :multi)
+        (with-schema-form-parts (assoc parts :children (map sanitize-sequence-entry children)))
+
+        :catn
+        (with-schema-form-parts (assoc parts :children (map sanitize-sequence-entry children)))
+
+        (:or :vector :sequential :set :map-of :tuple :cat :repeat :* :+ :? :maybe :schema :=> :function)
+        (with-schema-form-parts (assoc parts :children (map sanitize-predicate-fn-constraints children)))
+
+        schema))
+
+    :else
+    schema))
 
 (defmethod -schema->ts :or
   [schema]
@@ -707,7 +779,7 @@
 (defn- schema->ts-impl
   "Core implementation of schema->ts (non-memoized)."
   [schema]
-  (let [schema (drop-predicate-fn-constraints schema)]
+  (let [schema (sanitize-predicate-fn-constraints schema)]
     (when (*seen* schema)
       (throw (ex-info "Circular schema reference" {::unsupported true
                                                    :schema       schema})))
@@ -1083,7 +1155,7 @@
     (let [fnname (name fqname)
           schema (->> schema
                       (resolve-var-refs (or ns fqname))
-                      drop-predicate-fn-constraints)
+                      sanitize-predicate-fn-constraints)
           arglists (if (= (first arglists) 'quote)
                      (second arglists)
                      arglists)]
@@ -1130,7 +1202,7 @@
     (let [constname (cljs-munge (name fqname))
           schema (->> schema
                       (resolve-var-refs (or ns fqname))
-                      drop-predicate-fn-constraints)]
+                      sanitize-predicate-fn-constraints)]
       (str (format-const-jsdoc doc schema)
            (format "export const %s: %s;" constname (schema->ts schema))
            "\n"))
@@ -1235,7 +1307,7 @@
             (try
               (let [resolved-schema (->> schema
                                          (resolve-var-refs (or ns fqname))
-                                         drop-predicate-fn-constraints)]
+                                         sanitize-predicate-fn-constraints)]
                 (into refs (collect-registry-refs resolved-schema)))
               (catch clojure.lang.ExceptionInfo e
                 (if (= :malli.core/sci-not-available (:type (ex-data e)))
