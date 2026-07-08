@@ -23,8 +23,7 @@
 ;;; ---------------------------------------------- Per-source subqueries ----------------------------------------------
 
 ;; Each branch must project the same columns in the same order for the UNION ALL to line up;
-;; `[nil :col]` fills in columns a table lacks (job runs have no `user_id`, only DAG runs have a
-;; `direction`, and DAG runs are always manual).
+;; `[nil :col]` fills in columns a table lacks.
 
 (defn- job-run-subquery [transform-ids]
   {:select [[[:inline "job"] :run_type]
@@ -125,9 +124,8 @@
      :total  (:count (first (t2/query (merge base {:select [[[:count :*] :count]]}))))}))
 
 (defn present-run-summaries
-  "Prepare raw summary rows for an API response: hydrate each row's `:name` (the job name for job
-  rows, else the transform name; nil when it was deleted), keywordize the discriminator columns, and
-  localize timestamps."
+  "Prepare raw summary rows for an API response: hydrate each row's `:name` (nil when the underlying
+  job/transform was deleted), keywordize the discriminator columns, and localize timestamps."
   [rows]
   (let [by-type     (group-by :run_type rows)
         job-ids     (seq (map :entity_id (get by-type "job")))

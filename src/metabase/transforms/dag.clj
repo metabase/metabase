@@ -109,21 +109,20 @@
   - `:upstream`   — the seed plus all transforms it transitively depends on
   - `:downstream` — the seed plus all transforms that transitively depend on it
 
-  `:start-promise`, if provided, is delivered `[:started dag-run-id]` once the run row is created (so
-  a caller can respond with the id without waiting for the run to finish), `nil` if nothing was run
-  (already running / empty closure), or a Throwable on a pre-start failure. Returns the dag-run-id,
-  or nil if nothing was executed."
+  `:start-promise`, if provided, is delivered `[:started dag-run-id]` once the run row is created,
+  `nil` if nothing was run (already running / empty closure), or a Throwable on a pre-start failure.
+  Returns the dag-run-id, or nil if nothing was executed."
   [transform-id {:keys [direction user-id skip-fresh-deps? start-promise]
                  :or   {skip-fresh-deps? false}}]
   (try
     (if (dag-run/running-run-for-source-transform-id transform-id)
       (do (log/info "Not executing DAG run for transform" (pr-str transform-id) "because one is already running")
-          (when start-promise (deliver start-promise nil))
+          (some-> start-promise (deliver nil))
           nil)
       (let [{:keys [transform-ids plan]} (dag-run-plan transform-id direction)]
         (if (empty? transform-ids)
           (do (log/info "Skipping DAG run for transform" (pr-str transform-id) "because no transforms found in closure")
-              (when start-promise (deliver start-promise nil))
+              (some-> start-promise (deliver nil))
               nil)
           (jobs/run-coordinated!
            {:start-run!        #(dag-run/start-dag-run! transform-id direction user-id)
@@ -143,8 +142,8 @@
             :fail!             #(coordinated-run/fail-started-run! :model/TransformDagRun %1 %2)
             :label             (format "DAG run for transform %s" (pr-str transform-id))}))))
     (catch Throwable t
-      ;; a pre-start failure (before the row was created) — unblock any caller waiting on the promise
-      (when start-promise (deliver start-promise t))
+      ;; unblock any caller waiting on the promise on a pre-start failure
+      (some-> start-promise (deliver t))
       (throw t))))
 
 (defn cancel-dag-run!

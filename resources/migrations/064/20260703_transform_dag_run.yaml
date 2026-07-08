@@ -103,10 +103,6 @@ databaseChangeLog:
         - dropTable:
             tableName: transform_dag_run
 
-  ## The source_transform_id index is created BEFORE its FK on purpose: MySQL/MariaDB require an
-  ## index backing a foreign key, and Liquibase rolls back in reverse changeset order. Creating the
-  ## index first means that on rollback the FK is dropped before the index, so dropping the index
-  ## never fails with "needed in a foreign key constraint".
   - changeSet:
       id: v64.btfmlX
       author: bronsa
@@ -152,7 +148,6 @@ databaseChangeLog:
             baseTableName: transform_dag_run
             constraintName: fk_transform_dag_run_source_transform_id
 
-  ## Index before the FK, same MySQL/MariaDB rollback reasoning as source_transform_id above.
   - changeSet:
       id: v64.yY6UC9
       author: bronsa

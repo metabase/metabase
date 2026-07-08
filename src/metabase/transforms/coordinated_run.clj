@@ -41,8 +41,8 @@
                       :is_active nil})))
 
 (defn cancel-started-run!
-  "Mark an active run as canceled. Returns the number of rows updated — 0 if the run had already
-  finished (the `is_active` guard means a completed run is never resurrected into a canceled state)."
+  "Mark an active run as canceled; a finished run is never resurrected into a canceled state.
+  Returns the number of rows updated — 0 if the run had already finished."
   [model run-id]
   (t2/update! model
               :id        run-id
@@ -53,12 +53,10 @@
                :message   "Canceled"}))
 
 (defn cancel!
-  "Cancel an in-progress coordinated run. Marks the run canceled (so its coordinator stops
-  dispatching once it observes the run is no longer active) and requests cancellation of each
-  still-running member transform run — signalling the in-process cancel channel and recording a
-  cancelation row so the cancel-runs task finalizes it cluster-wide. `member-fk` is the
-  `transform_run` column linking members to this run (`:job_run_id`/`:dag_run_id`). Returns true if
-  the run was active and is now canceled, false if it had already finished."
+  "Cancel an in-progress coordinated run: mark it canceled and request cancellation of its
+  still-active member transform runs — via the in-process cancel channel, plus a cancelation row so
+  the cancel-runs task reaches members running on other nodes. Returns true if the run was active
+  and is now canceled, false if it had already finished."
   [model member-fk run-id]
   (boolean
    (when (pos? (cancel-started-run! model run-id))

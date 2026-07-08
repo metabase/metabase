@@ -11,8 +11,7 @@
   "Launch `start!` — a fn of a start-promise — on a virtual thread and respond `202` as soon as the
   run row exists, without waiting for the run to finish. `start!` must deliver the promise
   `[:started run-id]` once the row is created, `nil` when nothing was run, or a Throwable on a
-  pre-start failure (rethrown here so the request fails). The response body is
-  `{:message message, <id-key> <run-id-or-nil>}`."
+  pre-start failure (rethrown). The response body is `{:message message, <id-key> <run-id-or-nil>}`."
   [message id-key start!]
   (let [start-promise (promise)]
     (u.jvm/in-virtual-thread*

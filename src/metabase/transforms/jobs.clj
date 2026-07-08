@@ -346,15 +346,12 @@
   Transforms pulled into the plan only as dependencies (not directly requested) are skipped while
   still fresh, unless `skip-fresh-deps?` is false.
 
-  `:parent-run-type` (`:job`/`:dag`, default `:job`) selects which coordinating table each member
-  `transform_run` links to (`transform_job_run` via `job_run_id`, or `transform_dag_run` via
-  `dag_run_id`).
+  `:parent-run-type` (`:job`/`:dag`, default `:job`) selects which coordinating run each member
+  `transform_run` links back to.
   `:active-runs-atom` (default `active-runs`) is the atom that tracks coordinator liveness for heartbeating.
-  `:add-run-activity!` is a zero-arg fn called after each successful transform execution to touch the
-  coordinating run's `updated_at`.
-  `:precomputed-plan` is an optional `{:order ... :deps ...}` plan (as returned by [[get-plan]]). When
-  supplied it is used as-is instead of computing one from `transform-ids-to-run` — callers that already
-  built the dependency graph (e.g. DAG reprocess) pass it to avoid recomputing `table-dependencies`.
+  `:add-run-activity!` is a zero-arg fn called after each successful transform execution.
+  `:precomputed-plan` optionally supplies the plan (as returned by [[get-plan]]) instead of computing
+  one — for callers that already built the dependency graph.
 
   Returns `{::status :succeeded}`, `{::status :failed ::failures [...]}`, or `{::status :aborted}`
   when the coordinating run was terminated externally (e.g. reaped) while this coordinator was still running."
@@ -477,7 +474,7 @@
     :as   opts}]
   (let [{run-id :id}           (start-run!)
         [span-name span-attrs] span]
-    (when start-promise (deliver start-promise [:started run-id]))
+    (some-> start-promise (deliver [:started run-id]))
     (tracing/with-span :tasks span-name span-attrs
       (wrap
        (fn []
@@ -566,12 +563,12 @@
   (try
     (if (transforms.job-run/running-run-for-job-id job-id)
       (do (log/info "Not executing transform job" (pr-str job-id) "because it is already running")
-          (when start-promise (deliver start-promise nil))
+          (some-> start-promise (deliver nil))
           nil)
       (let [transforms (job-transform-ids job-id)]
         (if (empty? transforms)
           (do (log/info "Skipping transform job" (pr-str job-id) "because it has no transforms to run")
-              (when start-promise (deliver start-promise nil))
+              (some-> start-promise (deliver nil))
               nil)
           (run-coordinated!
            {:start-run!        #(transforms.job-run/start-run! job-id run-method)
@@ -598,9 +595,8 @@
                                             (= :cron run-method))
                                    (notify-transform-failures job-id (::failures (ex-data t)))))}))))
     (catch Throwable t
-      ;; a pre-start failure (before the row was created) — unblock any caller waiting on the promise
-      ;; (no-op if the [:started run-id] delivery already happened)
-      (when start-promise (deliver start-promise t))
+      ;; unblock any caller waiting on the promise on a pre-start failure
+      (some-> start-promise (deliver t))
       (throw t))))
 
 (defn cancel-job-run!
