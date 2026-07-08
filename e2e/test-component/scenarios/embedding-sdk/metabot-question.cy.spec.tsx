@@ -29,11 +29,17 @@ const adHocQuestionPath = `/question#${btoa(
   }),
 )}`;
 
-const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
-const metabotResponseWithNavigateTo = `${metabotResponse}
-2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+const metabotResponse = H.createMetabotSSEBody(
+  H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+);
+const metabotResponseWithNavigateTo = H.createMetabotSSEBody(
+  H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+  H.metabotDataPart("navigate_to", adHocQuestionPath),
+);
 
-const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
+const metabotRetryResponse = H.createMetabotSSEBody(
+  H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),
+);
 
 // Captured navigate_to event verbatim from a real embedding Metabot response
 // (database id swapped from 2 to 1 to match this env's Sample Database).
