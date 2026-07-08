@@ -241,6 +241,11 @@
   (truthy-query-param? (or (query-param query-params :include-metric-library)
                            (query-param query-params :includeMetricLibrary))))
 
+(defn- query-include-models?
+  [query-params]
+  (truthy-query-param? (or (query-param query-params :include-models)
+                           (query-param query-params :includeModels))))
+
 (defn- query-question-collection-values
   [query-params]
   (query-comma-separated-values query-params [:question-collections
@@ -1032,18 +1037,23 @@
         library-scope              (library-scope query-params)
         database-ids               (database-ids-for-value (query-database-value query-params))
         question-collection-ids    (collection-scope question-collection-values)
+        include-models?            (query-include-models? query-params)
         models                     (cond
                                      database-ids
                                      (model-schemas database-ids)
 
-                                     question-collection-ids
-                                     (model-schemas nil question-collection-ids)
+                                     include-models?
+                                     (model-schemas nil)
 
                                      :else
                                      [])
         questions-only             (truthy-query-param? (query-param query-params :questions))]
     (cond
-      (or library-value library-collection-values library-scope question-collection-values)
+      (or library-value
+          library-collection-values
+          library-scope
+          question-collection-values
+          (and include-models? (nil? database-ids)))
       (let [questions           (if question-collection-values
                                   (question-schemas nil question-collection-ids)
                                   [])
