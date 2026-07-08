@@ -645,14 +645,13 @@
             actions))))
 
 (defn- model-schema
-  "A Metabase model (curated dataset) as an action namespace. Returns nil when
-  the model has no executable actions."
+  "A Metabase model (curated dataset) as an action namespace."
   [{:keys [id name] :as model}]
   (let [action-schemas (model-actions model)]
-    (when (seq action-schemas)
-      {:key              (generated-key name id)
-       :keyDisambiguator id
-       :actions          (keyed-map action-schemas)})))
+    (assoc-some
+     {:key              (generated-key name id)
+      :keyDisambiguator id}
+     :actions (some-> action-schemas not-empty keyed-map))))
 
 (defn- persisted-dimension->column
   [dimension]

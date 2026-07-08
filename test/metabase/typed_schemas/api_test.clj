@@ -140,7 +140,7 @@
             {:id             42
              :name           "Orders model"})))))
 
-(deftest model-schemas-includes-actionable-models-test
+(deftest model-schemas-includes-all-models-test
   (with-redefs [typed-schemas.api/select-cards
                 (fn [card-type database-ids collection-ids]
                   (is (= :model card-type))
@@ -155,7 +155,7 @@
                 (fn [model]
                   (when (= (:id model) 42)
                     [{:kind "action", :key "create", :id 5}]))]
-    (is (= #{"model42"}
+    (is (= #{"model42" "model43"}
            (->> (#'typed-schemas.api/model-schemas #{1})
                 (map :key)
                 set)))))
@@ -886,12 +886,13 @@
         (is (= #{10 42} (->> (:tables schema) vals (map :id) set)))
         (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
 
-(deftest include-models-schema-includes-actionable-models-test
+(deftest include-models-schema-includes-all-models-test
   (with-redefs [typed-schemas.api/model-schemas
                 (fn [database-ids]
                   (is (nil? database-ids))
                   [{:key     "actionableModel"
-                    :actions {"create" {:kind "action", :key "create", :id 1}}}])
+                    :actions {"create" {:kind "action", :key "create", :id 1}}}
+                   {:key "actionlessModel"}])
                 typed-schemas.api/question-schemas
                 (fn
                   ([_database-ids]
@@ -912,7 +913,8 @@
                    (is false "includeModels-only schemas should not load tables")))]
     (let [schema (#'typed-schemas.api/typed-schema {:includeModels "true"})]
       (is (= {} (:questions schema)))
-      (is (= {"actionableModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
+      (is (= {"actionableModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}
+              "actionlessModel" {}}
              (:models schema)))
       (is (= {} (:tables schema)))
       (is (= {} (:metrics schema))))))
