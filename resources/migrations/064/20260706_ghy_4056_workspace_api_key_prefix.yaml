@@ -3,7 +3,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v63.2026-07-06T19:46:54
+      id: v64.2026-07-06T19:46:54
       author: escherize
       comment: Add workspace.api_key_prefix to record the prefix of the api-key minted for the workspace's child instance.
       changes:

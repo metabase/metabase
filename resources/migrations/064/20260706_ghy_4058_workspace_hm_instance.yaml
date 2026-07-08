@@ -3,7 +3,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v63.2026-07-06T21:10:00
+      id: v64.2026-07-06T21:10:00
       author: escherize
       comment: Add workspace.hm_instance_id recording the Harbormaster instance backing this workspace.
       changes:
@@ -22,7 +22,7 @@ databaseChangeLog:
             columnName: hm_instance_id
 
   - changeSet:
-      id: v63.2026-07-06T21:10:01
+      id: v64.2026-07-06T21:10:01
       author: escherize
       comment: Add workspace.instance_url recording the child instance's public URL.
       changes:
