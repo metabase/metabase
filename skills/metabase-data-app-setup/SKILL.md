@@ -1,5 +1,5 @@
 ---
-name: create-data-app
+name: metabase-data-app-setup
 description: Scaffold a new Metabase data-app into the connected remote-sync repository's `data_apps/<app>/` directory from the `data-app-template`. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
 ---
 
@@ -64,7 +64,7 @@ The template ships **inside this skill** at `./template/` (installed alongside t
 ```bash
 APP_DIR="<repo>/data_apps/<slug>"
 # `<skill-dir>` = the directory this SKILL.md was loaded from
-# (e.g. `.claude/skills/create-data-app`); the template is its `template/` subfolder.
+# (e.g. `.claude/skills/metabase-data-app-setup`); the template is its `template/` subfolder.
 cp -R "<skill-dir>/template/." "$APP_DIR/"
 ```
 
