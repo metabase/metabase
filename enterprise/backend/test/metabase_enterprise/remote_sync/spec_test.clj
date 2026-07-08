@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.test :as mt]))
@@ -481,3 +482,35 @@
           "export-conditions falls back to :conditions for TransformTag")
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
+
+(deftest check-collection-deletion-conflicts-test
+  (testing "GHY-4019: unsynced local collection content absent from an import is flagged as a deletion conflict"
+    (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Card metric {:name "Local Metric" :type :metric :collection_id (:id coll)}
+                   :model/Card question {:name "Local Q" :collection_id (:id coll)}]
+      (testing "cards absent from the import are reported (metrics are Cards)"
+        (let [conflicts (spec/check-collection-deletion-conflicts {:by-entity-id {}})
+              card-conflict (first (filter #(= "Card" (:model %)) conflicts))]
+          (is (= 2 (:count card-conflict)))
+          (is (= #{"Local Metric" "Local Q"} (set (:names card-conflict))))
+          (is (= "Card" (:category card-conflict)))))
+      (testing "cards present in the import are not reported"
+        (is (empty? (spec/check-collection-deletion-conflicts
+                     {:by-entity-id {"Card" #{(:entity_id metric) (:entity_id question)}}}))))))
+
+  (testing "content already synced (present in RemoteSyncObject as 'synced') is not data loss and is excluded"
+    (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Card synced-card {:name "Pushed" :collection_id (:id coll)}
+                   :model/Card _local {:name "Never pushed" :type :metric :collection_id (:id coll)}
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id synced-card)
+                                              :status "synced" :status_changed_at (t/instant)
+                                              :model_name "Pushed"}]
+      (let [conflicts (spec/check-collection-deletion-conflicts {:by-entity-id {}})
+            card-conflict (first (filter #(= "Card" (:model %)) conflicts))]
+        (is (= 1 (:count card-conflict)))
+        (is (= ["Never pushed"] (:names card-conflict))))))
+
+  (testing "content in a non-synced collection is not scoped in, so nothing is flagged"
+    (mt/with-temp [:model/Collection coll {:name "Not synced" :is_remote_synced false :location "/"}
+                   :model/Card _card {:name "Local Q" :collection_id (:id coll)}]
+      (is (empty? (spec/check-collection-deletion-conflicts {:by-entity-id {}}))))))

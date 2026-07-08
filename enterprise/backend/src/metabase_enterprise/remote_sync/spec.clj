@@ -683,6 +683,54 @@
          (when (rs-settings/library-is-remote-synced?)
            (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
 
+(def ^:private max-conflict-names
+  "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
+   a whole collection's worth of content would be swept. The :count field always holds the true total."
+  100)
+
+(defn check-collection-deletion-conflicts
+  "Detects unsynced local entities in synced collections that an import would delete because they are absent
+   from it. Covers collection-scoped content (Cards/metrics, Dashboards, Documents, Timelines) —
+   [[check-deletion-conflicts]] does not, since these are not all-or-nothing setting-gated models.
+
+   An entity is a conflict when it lives in a syncable collection, its entity_id is not in the import, and it
+   has no RemoteSyncObject in 'synced' status (i.e. it holds local work not safely on any remote). Mirrors the
+   WHERE clause [[metabase-enterprise.remote-sync.impl/remove-unsynced!]] uses, so the count matches what the
+   import would actually delete.
+
+   Takes imported-data from [[extract-imported-entities]]. Returns a vector of conflict maps
+   ({:type :category :model :count :names :message}), one per affected model type."
+  [{:keys [by-entity-id]}]
+  (let [synced-collection-ids (all-syncable-collection-ids)]
+    (if (empty? synced-collection-ids)
+      []
+      (into []
+            (for [[model-key spec] (specs-for-deletion)
+                  :let [scope-key (get-in spec [:removal :scope-key])]
+                  :when (and (= :collection_id scope-key)
+                             (not (get-in spec [:removal :all-on-setting-disable])))
+                  :let [model-type   (:model-type spec)
+                        imported-ids (get by-entity-id model-type #{})
+                        conds        (cond-> [[:in scope-key synced-collection-ids]]
+                                       (seq imported-ids) (conj [:not-in :entity_id imported-ids])
+                                       :always            (into (removal-condition-clauses (removal-conditions spec))))
+                        candidates   (t2/select [model-key :id :name] {:where (into [:and] conds)})
+                        unsynced     (remove (fn [{:keys [id]}]
+                                               (t2/exists? :model/RemoteSyncObject
+                                                           :model_type model-type
+                                                           :model_id id
+                                                           :status "synced"))
+                                             candidates)
+                        n            (count unsynced)]
+                  :when (pos? n)]
+              {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
+               :category model-type
+               :model    model-type
+               :count    n
+               :names    (into [] (comp (map :name) (take max-conflict-names)) unsynced)
+               :message  (format "Import would delete %d unsynced local %s %s"
+                                 n model-type (if (= 1 n) "entity" "entities"))})))))
+
 (defmulti check-eligibility
   "Determines if a model instance should be tracked for remote sync.
    Dispatches on the eligibility type defined in the spec."

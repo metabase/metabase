@@ -70,6 +70,7 @@ import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
 import { SyncConflictModal } from "../SyncConflictModal";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
+import { BranchSwitcher } from "./BranchSwitcher";
 import { DevInstanceUpsell } from "./DevInstanceUpsell";
 import { PullChangesButton } from "./PullChangesButton";
 import { TestConnectionButton } from "./TestConnectionButton";
@@ -476,6 +477,30 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   />
                 )}
               </RemoteSyncSettingsSection>
+
+              {/* Branch switching (read-write): a rare, destructive operation kept out of the everyday sync
+                  controls and behind guard rails. Read-only mode changes the branch via the Sync branch
+                  field below, which triggers a reconciling import. */}
+              {isRemoteSyncEnabled &&
+                values?.[TYPE_KEY] === "read-write" &&
+                !isModalVariant &&
+                currentBranch && (
+                  <RemoteSyncSettingsSection
+                    title={t`Sync branch`}
+                    variant={variant}
+                  >
+                    <Stack gap="md">
+                      <Text c="text-secondary" size="sm">
+                        {t`Switching branches reconciles your synced collections to the target branch and can permanently delete content that only exists locally. This is a rare, destructive operation — switch only when you understand the consequences.`}
+                      </Text>
+                      <BranchSwitcher
+                        currentBranch={currentBranch}
+                        dirty={dirtyData?.dirty ?? []}
+                        disabled={settingDetails?.[BRANCH_KEY]?.is_env_setting}
+                      />
+                    </Stack>
+                  </RemoteSyncSettingsSection>
+                )}
 
               {/* Section 3: Branch to sync with (read-only only) */}
               {values?.[TYPE_KEY] === "read-only" && (

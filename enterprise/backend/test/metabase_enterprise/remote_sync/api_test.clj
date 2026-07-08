@@ -218,6 +218,46 @@
             (is (= "success" (:status response)))
             (is (remote-sync.task/successful? completed-task))))))))
 
+(deftest import-threads-force-deletion-test
+  (testing "GHY-4019: POST /import forwards force_deletion to async-import! as :force-deletion?"
+    (let [captured (atom nil)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [impl/async-import! (fn [_branch _force _args & kvs]
+                                                         (reset! captured (apply hash-map kvs))
+                                                         {:id 1})]
+          (testing "force_deletion true is forwarded so a caller can force past deletion conflicts explicitly"
+            (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                  {:branch "main" :expected_branch "main" :force_deletion true})
+            (is (true? (:force-deletion? @captured))))
+          (testing "omitting force_deletion forwards nil, so import! falls back to force? (backward compatible)"
+            (reset! captured nil)
+            (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                  {:branch "main" :expected_branch "main"})
+            (is (nil? (:force-deletion? @captured)))))))))
+
+(deftest import-dirty-guard-includes-dirty-objects-test
+  (testing "GHY-4019: a blocked (dirty, non-forced) import names the un-pushed changes it would discard"
+    (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Card card {:name "Local Metric" :type :metric :collection_id (:id coll)}
+                   :model/RemoteSyncObject _ {:model_type          "Card"
+                                              :model_id            (:id card)
+                                              :status              "create"
+                                              :status_changed_at   (t/instant)
+                                              :model_name          "Local Metric"
+                                              :model_collection_id (:id coll)}]
+      (let [mock-main (test-helpers/create-mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                           remote-sync-token  "test-token"
+                                           remote-sync-branch "main"]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import"
+                                             {:branch "develop" :expected_branch "main"})]
+              (is (true? (:conflicts resp)))
+              (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
+                  "the response lists the un-pushed local metric"))))))))
+
 (deftest import-rejects-expected-branch-mismatch-test
   (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
     (let [mock-main (test-helpers/create-mock-source)]
@@ -943,6 +983,50 @@
             (is (=? {:success true} response))
             (is (remote-sync.task/successful? task))))))))
 
+(deftest settings-rejects-read-write-branch-switch-test
+  (testing "GHY-4019: PUT /api/ee/remote-sync/settings guards branch changes"
+    (let [mock-main       (test-helpers/create-mock-source)
+          reject-message  "Switching the remote-sync branch is not allowed here. Use the branch switch action, which reconciles synced collections and guards against data loss."]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings!      (constantly nil)
+                                  source/source-from-settings       (constantly mock-main)]
+        (testing "rejects a branch switch in read-write mode (must use the guarded import)"
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            (is (= reject-message
+                   (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                         {:remote-sync-branch "develop"})))
+            (is (= "main" (settings/remote-sync-branch))
+                "the branch setting is left unchanged")))
+        (testing "allows an unchanged branch in read-write mode"
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            (is (=? {:success true}
+                    (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                          {:remote-sync-branch "main"})))))
+        (testing "allows setting the branch during first-time configuration (no current branch)"
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch ""
+                                             remote-sync-type   :read-write]
+            (is (=? {:success true}
+                    (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                          {:remote-sync-branch "develop"})))
+            (is (= "develop" (settings/remote-sync-branch)))))
+        (testing "allows a branch change in read-only mode (the change triggers a reconciling import)"
+          (mt/with-dynamic-fn-redefs [impl/finish-remote-config! (constantly nil)]
+            (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                               remote-sync-token  "test-token"
+                                               remote-sync-branch "main"
+                                               remote-sync-type   :read-only]
+              (is (=? {:success true}
+                      (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                            {:remote-sync-branch "develop" :remote-sync-type :read-only})))
+              (is (= "develop" (settings/remote-sync-branch))))))))))
+
 (deftest settings-requires-superuser-test
   (testing "PUT /api/ee/remote-sync/settings requires superuser permissions"
     (is (= "You don't have permissions to do that."
@@ -1495,6 +1579,8 @@
                 "Token should be preserved when not included in request")))))))
 
 (deftest settings-preserves-token-when-changing-branch-test
+  ;; Read-only mode: a branch change here is a declarative setting whose change triggers a reconciling import
+  ;; (in read-write, a branch switch must go through the guarded POST /import instead — GHY-4019).
   (testing "PUT /api/ee/remote-sync/settings preserves token when changing branch"
     (let [mock-source (test-helpers/create-mock-source)]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
@@ -1502,7 +1588,7 @@
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "secret-token-value"
                                            remote-sync-branch "main"
-                                           remote-sync-type :read-write]
+                                           remote-sync-type :read-only]
           (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                                  {:remote-sync-branch "develop"})]
             (wait-for-task-completion task_id)
@@ -1567,9 +1653,10 @@
                                            remote-sync-branch "main"
                                            remote-sync-type :read-write
                                            remote-sync-transforms true]
-          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
-                                                                 {:remote-sync-branch "develop"})]
-            (wait-for-task-completion task_id)
+          ;; Toggle an unrelated setting (auto-import) so no branch switch is attempted and no import runs
+          ;; that could itself re-toggle remote-sync-transforms; the point is transforms is left untouched.
+          (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                           {:remote-sync-auto-import true})]
             (is (=? {:success true} resp))
             (is (true? (settings/remote-sync-transforms))
                 "Transforms setting should be preserved when not included in request")))))))

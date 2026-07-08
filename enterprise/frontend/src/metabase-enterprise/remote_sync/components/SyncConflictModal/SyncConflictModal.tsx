@@ -46,7 +46,6 @@ import {
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
-  nextBranch?: string | null;
   onClose: VoidFunction;
   variant: RemoteSyncConflictVariant;
   /** Push variant only: whether a 3-way merge would apply cleanly (offers the Merge option). */
@@ -63,7 +62,6 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const {
     onClose,
     currentBranch,
-    nextBranch,
     variant,
     canMerge,
     conflicts,
@@ -158,13 +156,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "discard") {
-      // nextBranch is set on a switch-branch discard; currentBranch is the branch we're on now and is
-      // asserted against the setting to catch a stale tab.
-      await discardChangesAndImport(
-        nextBranch || currentBranch,
-        currentBranch,
-        onClose,
-      );
+      // currentBranch is both the import target and the expected-branch assertion (caught if a stale tab
+      // switched under us).
+      await discardChangesAndImport(currentBranch, currentBranch, onClose);
     }
   };
 

@@ -49,22 +49,6 @@ describe("OutOfSyncOptions", () => {
     });
   });
 
-  describe("switch-branch variant", () => {
-    it("shows correct options", () => {
-      setup({ variant: "switch-branch" });
-      expect(screen.getAllByRole("radio")).toHaveLength(3);
-      expect(
-        screen.getByLabelText(/Push changes to the current branch, main/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByLabelText(/Create a new branch and push changes there/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByLabelText(/Delete unsynced changes/),
-      ).toBeInTheDocument();
-    });
-  });
-
   describe("pull variant (default)", () => {
     it("shows correct options when remote sync is read-write", () => {
       setup({ variant: "pull", isRemoteSyncReadOnly: false });

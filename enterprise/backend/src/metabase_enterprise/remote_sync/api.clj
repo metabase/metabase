@@ -53,9 +53,13 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch force merge expected_branch]}
+   {:keys [branch force force_deletion merge expected_branch]}
    :- [:map [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
+       ;; Independent of `force`: when false, the import still surfaces deletion conflicts (unsynced local
+       ;; content the target branch lacks) even on a forced version/dirty override, so a switch can't
+       ;; silently sweep local-only work. Omitted -> defaults to `force` (backward compatible).
+       [:force_deletion {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
@@ -69,7 +73,8 @@
         {task-id :id}
         (impl/async-import!
          branch-name force {}
-         :merge?     (or merge false)
+         :merge?          (or merge false)
+         :force-deletion? force_deletion
          :on-success (fn [task-id _result]
                        (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
     {:status :success
@@ -248,6 +253,20 @@
        [:remote-sync-transforms {:optional true} [:maybe :boolean]]
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
+  ;; In read-write mode, changing the branch here would flip the setting without reconciling synced
+  ;; collections (the setting would silently disagree with local content), so a switch must go through the
+  ;; guarded import (POST /import), which blocks on unsaved changes and surfaces deletion conflicts. In
+  ;; read-only mode the branch is a declarative setting whose change triggers a reconciling import, so it is
+  ;; still allowed here. Setting the branch during first-time configuration (no current branch) is allowed.
+  (let [current-branch (settings/remote-sync-branch)
+        new-branch     (:remote-sync-branch settings)
+        effective-type (or remote-sync-type (settings/remote-sync-type))]
+    (api/check-400 (not (and (= :read-write effective-type)
+                             (not (str/blank? current-branch))
+                             (some? new-branch)
+                             (not (str/blank? new-branch))
+                             (not= new-branch current-branch)))
+                   "Switching the remote-sync branch is not allowed here. Use the branch switch action, which reconciles synced collections and guards against data loss."))
   (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
   ;; Filter out no-op collection changes before checking read-only mode or running bulk-set
