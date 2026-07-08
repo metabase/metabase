@@ -481,7 +481,10 @@
                    :let                      [v (value-for-tag metadata-providerable tag params)]]
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str tag-name) (u/pprint-to-str tag) (u/pprint-to-str v))
-                 (let [k' (or (lib/match-and-normalize-tag-name tag-name) tag-name)]
+                 (let [k' (or (lib/normalize ::lib.schema.template-tag/name tag-name)
+                              (do
+                                (log/warnf "Failed to normalize template tag name %s, it is likely invalid" (pr-str tag-name))
+                                tag-name))]
                    [k' v]))))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))

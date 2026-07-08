@@ -1555,8 +1555,6 @@
   parameter-target-template-tag-name
   update-parameter-target-dimension-options
   update-parameter-target-field-ref]
- [metabase.lib.parameters.parse
-  match-and-normalize-tag-name]
  [lib.parse
   parse]
  [lib.query

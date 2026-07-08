@@ -1,14 +1,15 @@
 (ns metabase.lib.schema.template-tag
-  (:refer-clojure :exclude [every?])
+  (:refer-clojure :exclude [empty? every?])
   (:require
-   #?@(:clj
-       ([flatland.ordered.map :as ordered-map]))
+   [clojure.string :as str]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every?]]))
+   [metabase.util.performance :refer [empty? every?]]))
 
 (mr/def ::widget-type
   "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
@@ -20,10 +21,97 @@
    {:decode/normalize common/normalize-keyword}
    :snippet :card :dimension :number :text :date :boolean :temporal-unit :table])
 
-(mr/def ::name
+(defn- normalize-variable-tag-name
+  "Matches and normalizes a variable tag like `{{my_var}}`. Returns normalized-name or nil if not a variable tag."
+  [tag-name]
+  (when (string? tag-name)
+    (when-let [[_ content] (re-matches #"\s*([A-Za-z0-9_\.]+)\s*" (str/replace tag-name #"-" "_"))]
+      content)))
+
+(mr/def ::name.common
   [:ref
    {:decode/normalize common/normalize-string-key}
    ::common/non-blank-string])
+
+(mr/def ::name.variable
+  [:and
+   [:ref ::name.common]
+   [:re
+    {:decode/normalize normalize-variable-tag-name
+     :error/message    "Variable template tag names can only contain letters, numbers, underscores, or periods"}
+    #"^[A-Za-z0-9_\.]+$"]])
+
+(defn tag-name->snippet-name
+  "Get a snippet name from a snippet template tag `:name`."
+  [tag-name]
+  (when (str/starts-with? tag-name "snippet:")
+    (str/trim (subs tag-name (count "snippet:")))))
+
+(defn- normalize-snippet-tag-name
+  "Normalizes a snippet tag like {{snippet: foo}}. E.g., 'snippet:  foo ' -> 'snippet: foo'.
+   Returns normalized string or nil if not a snippet tag."
+  [tag-name]
+  (when (string? tag-name)
+    ;; any spaces, snippet:, any spaces, name, any trailing spaces
+    (when-let [[_ content] (re-matches #"\s*(snippet:\s*[^}]*[^}\s])\s*" tag-name)]
+      (let [snippet-name (tag-name->snippet-name content)]
+        (str "snippet: " snippet-name)))))
+
+(mr/def ::name.snippet
+  [:and
+   [:ref ::name.common]
+   [:re
+    {:decode/normalize normalize-snippet-tag-name
+     :error/message    (str "Snippet template tag names must match the format 'snippet: <name>' where <name> is any"
+                            " character besides '}'; the last character cannot be a space")}
+    #"^snippet:\s[^}]*[^}\s]$"]])
+
+(defn tag-name->card-id
+  "Get the card id from a card template tag `:name`."
+  [tag-name]
+  (when-let [[_ id-str] (re-matches #"^#(\d+)(?:-[a-z0-9-]*)?$" tag-name)]
+    (parse-long id-str)))
+
+(defn- normalize-card-tag-name
+  "Matches and normalizes a card tag like {{#123}} or {{#123-slug}}.
+
+  Normalizes '#123-slug' -> '#123'.
+
+  TODO Cam (2026-07-07): no it doesn't???
+
+  TODO Ngoc (2024-02-29): see tech debt issue #39378 and [[metabase.lib.native-test/card-tag-test]]
+
+  Returns normalized-name or nil if not a card tag."
+  [tag-name]
+  (when (string? tag-name)
+    (when-let [[_ card-id slug-part] (re-matches #"\s*#([0-9]*)(-[a-z0-9-]*)?\s*" tag-name)]
+      ;; '0123' => '123'
+      (str \# (parse-long card-id) slug-part))))
+
+(mr/def ::name.card
+  [:and
+   [:ref ::name.common]
+   [:re
+    {:decode/normalize normalize-card-tag-name
+     :error/message    "Card template tag names must match the format '#<card-id>' or '#<card-id>-<slug>'"}
+    #"^#[1-9]\d*(?:-[a-z0-9-]*)?$"]])
+
+(defn- template-tag-name-type [tag-name]
+  (when (string? tag-name)
+    (let [tag-name (str/trim tag-name)]
+      (condp re-find tag-name
+        #"^\s*snippet" ::tag-name-type.snippet
+        #"^\s*#"       ::tag-name-type.card
+        ::tag-name-type.variable))))
+
+(mr/def ::name
+  [:and
+   [:ref ::name.common]
+   [:multi
+    {:dispatch template-tag-name-type}
+    [::tag-name-type.snippet ::name.snippet]
+    [::tag-name-type.card    ::name.card]
+    [::mc/default            ::name.variable]]])
 
 (mr/def ::id
   [:multi {:dispatch uuid?}
@@ -102,19 +190,45 @@
 ;;     :type         :snippet
 ;;     :snippet-name "select"
 ;;     :snippet-id   1}
+(mr/def ::snippet.name-should-agree-with-snippet-name
+  "Snippet template tag :name should be 'snippet: <snippet-name>'."
+  (letfn [(names-agree? [tag]
+            (when (map? tag)
+              (= (:snippet-name tag)
+                 (some-> tag :name tag-name->snippet-name))))]
+    [:fn
+     {:error/message    "Snippet template tag :name should be 'snippet: <snippet-name>'"
+      :decode/normalize (fn [{tag-name :name, :keys [snippet-name], :as tag}]
+                          (when (map? tag)
+                            (cond
+                              (names-agree? tag)
+                              tag
+
+                              snippet-name
+                              (assoc tag :name (str "snippet: " snippet-name))
+
+                              (some-> tag-name tag-name->snippet-name)
+                              (assoc tag :snippet-name (tag-name->snippet-name tag-name))
+
+                              :else
+                              tag)))}
+     names-agree?]))
+
 (mr/def ::snippet
   [:and
    [:merge
     [:ref ::common]
     [:map
      [:type         [:= :snippet]]
+     [:name         [:ref ::name.snippet]]
      [:snippet-name ::common/non-blank-string]
      ;; TODO (Cam 2026-05-28) why isn't this required? Parameter substitution fails if it's not
      ;; present (see [[metabase.query-processor.parameters.values-test/snippet-validation-test]]
      [:snippet-id {:optional true} ::id/snippet]
      ;; database to which this Snippet belongs. Doesn't always seem to be specified.
      [:database {:optional true} ::id/database]]]
-   [:ref ::disallow-dimension]])
+   [:ref ::disallow-dimension]
+   [:ref ::snippet.name-should-agree-with-snippet-name]])
 
 ;; Example:
 ;;
@@ -123,14 +237,41 @@
 ;;     :display-name "#1635"
 ;;     :type         :card
 ;;     :card-id      1635}
+(mr/def ::source-query.name-should-agree-with-card-id
+  "Snippet template tag :name should be 'snippet: <snippet-name>'."
+  (letfn [(name-agrees-with-card-id? [tag]
+            (when (map? tag)
+              (= (:card-id tag)
+                 (some-> tag :name tag-name->card-id))))]
+    [:fn
+     {:error/message    "Source Query (Card) template tag :name should be '#<card-id>"
+      :decode/normalize (fn [{tag-name :name, :keys [card-id], :as tag}]
+                          (when (map? tag)
+                            (cond
+                              (name-agrees-with-card-id? tag)
+                              tag
+
+                              card-id
+                              (assoc tag :name (str \# card-id))
+
+                              (some-> tag-name tag-name->card-id)
+                              (assoc tag :card-id (tag-name->card-id tag-name))
+
+                              :else
+                              tag)))}
+     name-agrees-with-card-id?]))
+
 (mr/def ::source-query
+  "A source query (type = :card) template tag."
   [:and
    [:merge
     [:ref ::common]
     [:map
      [:type    [:= :card]]
-     [:card-id ::id/card]]]
-   [:ref ::disallow-dimension]])
+     [:card-id ::id/card]
+     [:name    [:ref ::name.card]]]]
+   [:ref ::disallow-dimension]
+   [:ref ::source-query.name-should-agree-with-card-id]])
 
 (def allowed-source-filter-ops
   "Set of allowed source-filter ops"
@@ -222,29 +363,25 @@
   "If `template-tags` is a sequence, convert it to an (ordered) map."
   [template-tags]
   (letfn [(normalize-template-tag-sequence [tags]
-            (into #?(:clj (ordered-map/ordered-map) :cljs {}) ; NOCOMMIT -- consider whether ordered map is important.
+            ;; note that we're not making this an ordered map because order is generally only important for storing
+            ;; template tags, not for the general lookup we do with these maps. We never store them as a map (well,
+            ;; except for with Native Query Snippets... for now).
+            (into {}
                   (map (juxt :name identity))
                   tags))]
-    (cond
-      (sequential? template-tags)   (normalize-template-tag-sequence template-tags)
-      #?(:clj (map? template-tags)) #?(:clj (into (ordered-map/ordered-map) template-tags))
-      :else                         template-tags)))
+    (cond-> template-tags
+      (sequential? template-tags)
+      normalize-template-tag-sequence)))
 
-;; TODO -- make this schema JS-only
 (mr/def ::template-tag-map
   "Legacy way to store template tags... storing them as a map is problematic because having more than 8 template tags
   causes the map to switch to a hash map (in the JVM) and order gets lost (see #5136). For the sake of keeping things
   simple for the FE (which does not have this issue with JS Objects).
 
-  TODO NOCOMMIT FINISH DOCSTRING"
+  This is still used by a handful of functions to support easy lookup by tag name, so we'll leave the schema around
+  FOR NOW, but it would probably be better to remove this entirely and just introduce helper functions for looking
+  things up."
   [:and
-   ;; NOCOMMIT
-   ;; #?(:clj
-   ;;    [:schema
-   ;;     {:decode/normalize (fn [m]
-   ;;                          (when (map? m)
-   ;;                            (into (ordered-map/ordered-map) m)))}
-   ;;     (common/instance-of-class flatland.ordered.map.OrderedMap)])
    [:map-of
     {:decode/normalize normalize-template-tag-map}
     [:ref ::name]
@@ -263,13 +400,27 @@
     (cond-> template-tags
       (map? template-tags) normalize-map)))
 
-(mr/def ::template-tags
-  "Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.
+(mr/def ::distinct-template-tags
+  [:fn
+   {:error/message    "Template tags must have distinct :names"
+    :decode/normalize (fn [tags]
+                        (when (sequential? tags)
+                          (into [] (m/distinct-by :name) tags)))}
+   (fn [template-tags]
+     (and (sequential? template-tags)
+          (or (empty? template-tags)
+              (apply distinct? (map :name template-tags)))))])
 
-  NOCOMMIT Add more info."
-  [:sequential
-   {:decode/normalize normalize-template-tags}
-   [:ref ::template-tag]])
+(mr/def ::template-tags
+  "A list of `:template-tags` as attached to a native query stage. Each tag must have a distinct `:name`.
+
+  Prior to 63, template tags were stored as a map, but was changed to a list to preserve order with more than 8
+  template tags. [[normalize-template-tags]] converts maps automatically."
+  [:and
+   [:sequential
+    {:decode/normalize normalize-template-tags}
+    [:ref ::template-tag]]
+   [:ref ::distinct-template-tags]])
 
 (mr/def ::template-tag-map-or-sequence
   "TODO NOCOMMIT DOCSTRING"
