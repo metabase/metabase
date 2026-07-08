@@ -3,7 +3,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.2026-06-16T00:00:00
+      id: v64.ryvrr3
       author: yb
       comment: Content Diagnostics — content_diagnostics_finding (scan snapshot)
       changes:
@@ -61,9 +61,29 @@ databaseChangeLog:
                   name: invalidated_at
                   type: ${timestamp_type}
                   remarks: stamped when invalidated/superseded; null = active (drives the served-set filter)
+              - column:
+                  name: last_active_at
+                  type: ${timestamp_type}
+                  remarks: Entity's last activity at scan time (card last_used_at / dashboard last_viewed_at); null = never used/ran. Frozen verdict evidence; powers the threshold-days serve filter.
+              - column:
+                  name: entity_name
+                  type: varchar(254)
+                  remarks: Entity's name at scan time. Denormalized sort key (display still hydrates the live name).
+              - column:
+                  name: entity_created_at
+                  type: ${timestamp_type}
+                  remarks: Entity's created_at (immutable). Denormalized for sort + display.
+              - column:
+                  name: entity_creator_id
+                  type: int
+                  remarks: Entity's creator_id at scan time; no FK (polymorphic, mirrors entity_id). Sort key (groups by creator).
+              - column:
+                  name: entity_creator_name
+                  type: varchar(254)
+                  remarks: Creator's common_name at scan time (resolved from creator_id). Sort key for created-by + served in details.creator; display prefers this over live hydration.
 
   - changeSet:
-      id: v63.2026-06-16T00:00:01
+      id: v64.zncpq7
       author: yb
       comment: Content Diagnostics — unique finding per scan (dedup)
       changes:
@@ -73,7 +93,7 @@ databaseChangeLog:
             constraintName: idx_uniq_cd_finding
 
   - changeSet:
-      id: v63.2026-06-16T00:00:02
+      id: v64.k0fbrf
       author: yb
       comment: Content Diagnostics — index findings by scan + finding_type
       changes:
@@ -87,7 +107,7 @@ databaseChangeLog:
                   name: finding_type
 
   - changeSet:
-      id: v63.2026-06-16T00:00:03
+      id: v64.dc6ryp
       author: yb
       comment: Content Diagnostics — index findings by entity
       changes:
@@ -101,59 +121,7 @@ databaseChangeLog:
                   name: entity_id
 
   - changeSet:
-      id: v63.2026-06-16T00:00:04
-      author: yb
-      comment: Content Diagnostics — last_active_at (frozen staleness anchor, top-level + threshold filter)
-      changes:
-        - addColumn:
-            tableName: content_diagnostics_finding
-            columns:
-              - column:
-                  name: last_active_at
-                  type: ${timestamp_type}
-                  remarks: Entity's last activity at scan time (card last_used_at / dashboard last_viewed_at); null = never used/ran. Frozen verdict evidence; powers the threshold-days serve filter.
-
-  - changeSet:
-      id: v63.2026-06-16T00:00:05
-      author: yb
-      comment: Content Diagnostics — denormalized entity_name (sort key)
-      changes:
-        - addColumn:
-            tableName: content_diagnostics_finding
-            columns:
-              - column:
-                  name: entity_name
-                  type: varchar(254)
-                  remarks: Entity's name at scan time. Denormalized sort key (display still hydrates the live name).
-
-  - changeSet:
-      id: v63.2026-06-16T00:00:06
-      author: yb
-      comment: Content Diagnostics — denormalized entity_created_at (sort + display)
-      changes:
-        - addColumn:
-            tableName: content_diagnostics_finding
-            columns:
-              - column:
-                  name: entity_created_at
-                  type: ${timestamp_type}
-                  remarks: Entity's created_at (immutable). Denormalized for sort + display.
-
-  - changeSet:
-      id: v63.2026-06-16T00:00:07
-      author: yb
-      comment: Content Diagnostics — denormalized entity_creator_id (sort key)
-      changes:
-        - addColumn:
-            tableName: content_diagnostics_finding
-            columns:
-              - column:
-                  name: entity_creator_id
-                  type: int
-                  remarks: Entity's creator_id at scan time; no FK (polymorphic, mirrors entity_id). Sort key (groups by creator).
-
-  - changeSet:
-      id: v63.2026-06-16T00:00:08
+      id: v64.wvauho
       author: yb
       comment: Content Diagnostics — index findings by finding_type + entity_name
       changes:
@@ -167,7 +135,7 @@ databaseChangeLog:
                   name: entity_name
 
   - changeSet:
-      id: v63.2026-06-16T00:00:09
+      id: v64.4g0zeg
       author: yb
       comment: Content Diagnostics — index findings by finding_type + entity_created_at
       changes:
@@ -181,7 +149,7 @@ databaseChangeLog:
                   name: entity_created_at
 
   - changeSet:
-      id: v63.2026-06-16T00:00:10
+      id: v64.w9kr30
       author: yb
       comment: Content Diagnostics — index findings by finding_type + last_active_at
       changes:
@@ -195,20 +163,7 @@ databaseChangeLog:
                   name: last_active_at
 
   - changeSet:
-      id: v63.2026-06-16T00:00:11
-      author: yb
-      comment: Content Diagnostics — denormalized entity_creator_name (sort by creator name + display)
-      changes:
-        - addColumn:
-            tableName: content_diagnostics_finding
-            columns:
-              - column:
-                  name: entity_creator_name
-                  type: varchar(254)
-                  remarks: Creator's common_name at scan time (resolved from creator_id). Sort key for created-by + served in details.creator; display prefers this over live hydration.
-
-  - changeSet:
-      id: v63.2026-06-16T00:00:12
+      id: v64.s23vc8
       author: yb
       comment: Content Diagnostics — index findings by finding_type + entity_creator_name
       changes:
