@@ -1128,7 +1128,7 @@
             (is (= [""] (mapv :name items)))))
         (testing "the empty schema segment lists the NULL-schema tables"
           (let [{:keys [output]} (read-resource/read-resource
-                                  {:uris [(str "metabase://database/Schemaless%20DB/schema//tables")]})]
+                                  {:uris ["metabase://database/Schemaless%20DB/schema//tables"]})]
             (is (str/includes? output "EVENTS")
                 "nil-schema table must be listed via the schema// (empty segment) route")))))))
 
@@ -1154,7 +1154,9 @@
            does no writes). extract-as-user called directly is NOT inside with-cache."
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Dashboard {dash-eid :entity_id dash-id :id} {}
-                     :model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
+                     :model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (let [cached   (get-in (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-eid)]})
                                [:resources 0 :content :structured-output :entity])
