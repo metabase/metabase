@@ -1,5 +1,9 @@
 import { serve } from "@hono/node-server";
 
+// The polyfill installs the browser-like globals (document, window, ResizeObserver, …) the rendering
+// code needs but Node doesn't provide; it must load before ./app pulls in metabase/static-viz.
+import "metabase/static-viz/polyfill";
+
 import { app } from "./app";
 
 const HOST = process.env.HOST ?? "0.0.0.0";

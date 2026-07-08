@@ -2,7 +2,6 @@
 
 FROM clojure:temurin-21-tools-deps-bookworm AS builder
 
-# Install Node and Bun alongside the JVM/Clojure toolchain the base image already provides.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl unzip \
   && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
@@ -16,7 +15,6 @@ COPY . .
 
 ARG MB_EDITION=oss
 ENV MB_EDITION=${MB_EDITION}
-# Cypress isn't needed to build the bundle; skip its (large) binary download.
 ENV CYPRESS_INSTALL_BINARY=0
 RUN bun install --frozen-lockfile \
   && bun run build-release:cljs \

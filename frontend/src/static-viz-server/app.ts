@@ -1,7 +1,5 @@
 import { Hono } from "hono";
 
-import "metabase/static-viz/polyfill";
-
 import {
   type CellBackgroundColorsInput,
   type RenderChartInput,
