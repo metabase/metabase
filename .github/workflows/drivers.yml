@@ -1330,6 +1330,7 @@ jobs:
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
           - name: Upload Tests
             test-args: >-
               :only-tags [:mb/upload-tests]
