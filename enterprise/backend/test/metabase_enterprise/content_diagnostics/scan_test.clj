@@ -30,26 +30,29 @@
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Collection {coll-id :id} {}
                      ;; stale: last activity well past the threshold
-                     :model/Card      {s1 :id} {:collection_id coll-id :last_used_at (stale-instant)}
-                     :model/Card      {s2 :id} {:collection_id coll-id :last_used_at (stale-instant)}
-                     :model/Card      {s3 :id} {:collection_id coll-id :last_used_at (stale-instant)}
-                     :model/Dashboard {s4 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
-                     :model/Dashboard {s5 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
-                     :model/Document  {s6 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
+                     :model/Card      {stale-card-1 :id} {:collection_id coll-id :last_used_at (stale-instant)}
+                     :model/Card      {stale-card-2 :id} {:collection_id coll-id :last_used_at (stale-instant)}
+                     :model/Card      {stale-card-3 :id} {:collection_id coll-id :last_used_at (stale-instant)}
+                     :model/Dashboard {stale-dash-1 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
+                     :model/Dashboard {stale-dash-2 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
+                     :model/Document  {stale-doc :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
                      ;; never-used arms: document never viewed (view_count 0; last_viewed_at is
                      ;; creation-stamped) / transform never ran — each + created before the cutoff
-                     :model/Document  {s7 :id} {:collection_id coll-id :created_at (stale-instant)}
+                     :model/Document  {never-viewed-doc :id} {:collection_id coll-id :created_at (stale-instant)}
                      ;; transforms live in the :transforms collection namespace, not regular collections —
                      ;; irrelevant to the instance-wide scan, so no collection at all
-                     :model/Transform {s8 :id} {:created_at (stale-instant)}
+                     :model/Transform {never-ran-transform :id} {:created_at (stale-instant)}
                      ;; fresh: used just now (or, for the never-run transform, created just now) — must NOT be flagged
-                     :model/Card      {f1 :id} {:collection_id coll-id :last_used_at (fresh-instant)}
-                     :model/Dashboard {f2 :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}
-                     :model/Document  {f3 :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}
-                     :model/Transform {f4 :id} {}]
-        (let [stale-keys #{[:card s1] [:card s2] [:card s3] [:dashboard s4] [:dashboard s5]
-                           [:document s6] [:document s7] [:transform s8]}
-              fresh-keys #{[:card f1] [:dashboard f2] [:document f3] [:transform f4]}
+                     :model/Card      {fresh-card :id} {:collection_id coll-id :last_used_at (fresh-instant)}
+                     :model/Dashboard {fresh-dash :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}
+                     :model/Document  {fresh-doc :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}
+                     :model/Transform {fresh-transform :id} {}]
+        (let [stale-keys #{[:card stale-card-1] [:card stale-card-2] [:card stale-card-3]
+                           [:dashboard stale-dash-1] [:dashboard stale-dash-2]
+                           [:document stale-doc] [:document never-viewed-doc]
+                           [:transform never-ran-transform]}
+              fresh-keys #{[:card fresh-card] [:dashboard fresh-dash]
+                           [:document fresh-doc] [:transform fresh-transform]}
               result     (detect/scan!)
               rows       (t2/select :model/ContentDiagnosticsFinding :scan_id (:scan_id result))
               found-keys (set (map (juxt :entity_type :entity_id) rows))]
@@ -63,7 +66,7 @@
             (is (every? found-keys stale-keys))
             (is (empty? (set/intersection found-keys fresh-keys))))
           (testing "persisted findings carry finding_type + scope_collection_id + last_active_at + details"
-            (let [row (finding-for rows :card s1)]
+            (let [row (finding-for rows :card stale-card-1)]
               (is (=? {:finding_type        :stale
                        ;; scope_collection_id is stamped at scan time from the entity's collection
                        :scope_collection_id coll-id
@@ -75,18 +78,18 @@
               ;; details holds ONLY the threshold
               (is (= #{:threshold_days} (set (keys (:details row)))))))
           (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
-            (let [row (finding-for rows :dashboard s4)]
+            (let [row (finding-for rows :dashboard stale-dash-1)]
               (is (some? (:last_active_at row)))))
           (testing "never-used document (never viewed, created before the cutoff) lands with nil last_active_at"
-            (let [row (finding-for rows :document s7)]
+            (let [row (finding-for rows :document never-viewed-doc)]
               (is (some? row))
               (is (nil? (:last_active_at row)))))
           (testing "never-ran transform (created before the cutoff) lands with nil last_active_at"
-            (let [row (finding-for rows :transform s8)]
+            (let [row (finding-for rows :transform never-ran-transform)]
               (is (some? row))
               (is (nil? (:last_active_at row)))))
           (testing "denormalized columns (entity_name/created_at/creator_id/creator_name) are stamped at scan time"
-            (let [row (finding-for rows :card s1)]
+            (let [row (finding-for rows :card stale-card-1)]
               (is (=? {:entity_name         some?
                        :entity_created_at   some?
                        :entity_creator_id   some?

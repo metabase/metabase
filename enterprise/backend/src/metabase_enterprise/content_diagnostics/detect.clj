@@ -1,9 +1,6 @@
 (ns metabase-enterprise.content-diagnostics.detect
   "Content Diagnostics scan pipeline. A scan runs every registered *checker* instance-wide and writes
-  one `scan_id` batch of findings.
-
-  The `stale` checker reuses the EE stale module's candidate query via its instance-wide
-  (`:collection-ids :all`) arity — one source of truth for the staleness rule, no copy."
+  one `scan_id` batch of findings."
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
@@ -49,20 +46,17 @@
           [[model id] attrs])))
 
 (defn stale-checker
-  "Instance-wide stale candidates for every covered entity type as finding maps (reuses the EE stale
-  module). `:models` is passed explicitly (derived from [[entity-type->model]]) because `find-candidates`
-  defaults to Card+Dashboard only — Document and Transform are opt-in. Documents (never viewed + created
-  before the cutoff) and Transforms (never ran + created before the cutoff) can surface via their
-  never-used arms, arriving with a nil `last_used_at`."
+  "Instance-wide stale candidates for every covered entity type as finding maps. `:models` is passed
+  explicitly because `find-candidates` defaults to Card+Dashboard only; never-used documents and
+  transforms arrive with a nil `last_used_at`."
   []
   (let [threshold (cd.settings/content-diagnostics-stale-threshold-days)
         cutoff    (t/minus (t/local-date) (t/days threshold))
         {:keys [rows]} (stale.impl/find-candidates
                         {:collection-ids  :all
                          :models          (set (vals entity-type->model))
-                         ;; `name` + recency ride along from the stale query itself, keeping the
-                         ;; per-model recency source (card `last_used_at`, dashboard/document
-                         ;; `last_viewed_at`, transform latest run) single-sourced in the arms.
+                         ;; name + recency come from the stale query — the per-model recency source
+                         ;; stays single-sourced in the `find-stale-query` arms.
                          :include-columns #{:name :last_used_at}
                          :cutoff-date     cutoff
                          :limit           nil
@@ -82,12 +76,10 @@
       {:entity-type         entity-type
        :entity-id           id
        :finding-type        :stale
-       ;; freeze the scan-time activity anchor (D17): `last_used_at` for cards, `last_viewed_at` for
-       ;; dashboards (the stale query aliases both to `last_used_at`). `nil` ⇒ never used/ran. Top-level
-       ;; column (not in `details`) so it's served flat and SQL-filterable by the threshold-days param.
+       ;; scan-time activity anchor (the stale query aliases each model's recency column to
+       ;; `last_used_at`); nil ⇒ never used/ran
        :last-active-at      last_used_at
-       ;; denormalized entity attributes → native ORDER BY columns AND the served display values (name /
-       ;; created_at / creator). Preferred over live hydration; some drift between scans is acceptable.
+       ;; denormalized at scan time — sort/display keys; drift between scans is acceptable
        :entity-name         entity-name
        :entity-created-at   created_at
        :entity-creator-id   creator_id
@@ -144,8 +136,7 @@
           [[entity-type entity-id] (get id->coll entity-id)])))
 
 (defn- attach-scope-collection-ids
-  "Stamp each finding with `:scope-collection-id` — the collection the entity lived in at scan time.
-  Forward-compatible substrate for serve-time collection scoping; cheap (see [[scope-collection-id-lookup]])."
+  "Stamp each finding with `:scope-collection-id` — the collection the entity lived in at scan time."
   [findings]
   (let [lookup (scope-collection-id-lookup findings)]
     (mapv #(assoc % :scope-collection-id (get lookup [(:entity-type %) (:entity-id %)])) findings)))
@@ -187,13 +178,15 @@
         findings (attach-scope-collection-ids (detect))
         entities (count-scannable)]
     (insert-findings! scan-id findings)
-    ;; write-side resolution: supersede prior-scan findings the new batch didn't re-emit. Runs after
-    ;; the batch commits and only on success — a failed scan leaves prior findings served (last-known).
+    ;; write-side resolution: supersede prior-scan findings the new batch didn't re-emit. Only runs on
+    ;; success — a failed scan never invalidates prior findings, though already-committed chunks of the
+    ;; failed batch stay active alongside them.
     (finding/invalidate-superseded! scan-id (covered-finding-types))
-    (let [duration (u/since-ms timer)]
+    (let [duration      (u/since-ms timer)
+          finding-count (count findings)]
       (log/infof "Content Diagnostics scan %s: %d findings over %d entities in %.0f ms"
-                 scan-id (count findings) entities (double duration))
+                 scan-id finding-count entities (double duration))
       {:scan_id          scan-id
-       :finding_count    (count findings)
+       :finding_count    finding-count
        :entities_scanned entities
        :duration_ms      (long duration)})))

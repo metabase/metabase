@@ -269,9 +269,10 @@
              :sort-direction :asc})))))
 
 (deftest include-columns-adds-union-columns-to-rows
-  (mt/with-temp [:model/Dashboard {id :id} (stale-dashboard {:name          "My Stale Dashboard"
-                                                             :collection_id nil})]
-    (let [base {:collection-ids #{nil}
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Dashboard {id :id} (stale-dashboard {:name          "My Stale Dashboard"
+                                                             :collection_id col-id})]
+    (let [base {:collection-ids #{col-id}
                 :cutoff-date    (date-months-ago 6)
                 :limit          10
                 :offset         0
