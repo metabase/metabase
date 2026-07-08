@@ -1,4 +1,3 @@
-;; The GraalVM (in-process, pooled) static-viz backend.
 (ns metabase.channel.render.js.graal
   "The `:graalvm` [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS
   in-process on a pool of sandboxed GraalVM contexts.

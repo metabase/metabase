@@ -14,6 +14,9 @@ ENV PATH="/root/.bun/bin:${PATH}"
 WORKDIR /app
 COPY . .
 
+# Build the OSS bundle by default. For enterprise static-viz overrides, pass --build-arg MB_EDITION=ee.
+ARG MB_EDITION=oss
+ENV MB_EDITION=${MB_EDITION}
 # Cypress isn't needed to build the bundle; skip its (large) binary download.
 ENV CYPRESS_INSTALL_BINARY=0
 RUN bun install --frozen-lockfile \

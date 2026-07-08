@@ -301,8 +301,3 @@ defineGlobal(
     }
   },
 );
-
-class MockTextEncoder {
-  encode(): void {}
-}
-defineGlobal("TextEncoder", MockTextEncoder);
