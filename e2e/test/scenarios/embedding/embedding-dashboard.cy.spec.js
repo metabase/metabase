@@ -1121,6 +1121,102 @@ describe("scenarios > embedding > dashboard appearance", () => {
     });
   });
 
+  it("should shrink iframe height when navigating from a tall tab to a short tab (metabase#71512)", () => {
+    const TAB_TALL = { id: 1, name: "Tall tab" };
+    const TAB_SHORT = { id: 2, name: "Short tab" };
+
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+      tabs: [TAB_TALL, TAB_SHORT],
+    };
+
+    const questionDetails = {
+      name: "Line chart",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+        ],
+        limit: 5,
+      },
+      display: "bar",
+    };
+
+    H.createQuestion(questionDetails)
+      .then(({ body: { id: card_id } }) => {
+        H.createDashboardWithTabs({
+          ...dashboardDetails,
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              dashboard_tab_id: TAB_TALL.id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 20,
+            },
+            {
+              id: -2,
+              card_id,
+              dashboard_tab_id: TAB_SHORT.id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 2,
+            },
+          ],
+        });
+      })
+      .then((dashboard) => {
+        return H.getEmbeddedPageUrl({
+          resource: { dashboard: dashboard.id },
+          params: {},
+        });
+      })
+      .then((urlOptions) => {
+        const baseUrl = Cypress.config("baseUrl");
+        Cypress.config("baseUrl", null);
+        cy.visit(
+          `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${baseUrl + urlOptions.url}`,
+        );
+      });
+
+    H.getIframeBody().within(() => {
+      cy.findByText(questionDetails.name).should("exist");
+    });
+
+    // let the resizer settle on the tall tab before capturing the "grown" height
+    cy.wait(1000);
+
+    cy.get("#iframe")
+      .invoke("prop", "clientHeight")
+      .should("be.greaterThan", 1000)
+      .then((tallHeight) => {
+        H.getIframeBody().within(() => {
+          cy.findByRole("tab", { name: TAB_SHORT.name }).click();
+          cy.findByRole("tab", { name: TAB_SHORT.name }).should(
+            "have.attr",
+            "aria-selected",
+            "true",
+          );
+        });
+
+        // give iframe-resizer a chance to recompute after the tab switch
+        cy.wait(1000);
+
+        cy.get("#iframe")
+          .invoke("prop", "clientHeight")
+          .should("be.lessThan", tallHeight);
+      });
+  });
+
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
