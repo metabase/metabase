@@ -19,6 +19,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- check-native-query-perms!
   "Throw 403 unless the current user holds native create-queries permission on
   `db-id`. A test run executes raw SQL — rewritten transforms, compiled cards,

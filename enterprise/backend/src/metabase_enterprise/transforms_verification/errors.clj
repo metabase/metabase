@@ -4,6 +4,8 @@
   across the pipeline carries one of the [[all]] keywords under `:error-type`;
   untyped throws (no `:error-type`) use raw `ex-info`.")
 
+(set! *warn-on-reflection* true)
+
 (def all
   "The full set of `:error-type` keywords the test-run pipeline can throw."
   #{;; Fixture-CSV parsing.

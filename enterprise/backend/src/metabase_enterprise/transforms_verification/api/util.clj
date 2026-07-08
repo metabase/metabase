@@ -7,6 +7,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]))
 
+(set! *warn-on-reflection* true)
+
 (def test-run-error-http-status
   "Maps `:error-type` keywords to HTTP status codes.
 
