@@ -71,6 +71,7 @@
                               :collate                                true
                               :now                                    true
                               :database-routing                       true
+                              :uploads                                true
                               :metadata/table-existence-check         true
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/accurate-rows-affected      false
@@ -381,6 +382,25 @@
 (defmethod driver/type->database-type :snowflake
   [_driver base-type]
   (type->database-type base-type))
+
+(defmethod driver/upload-type->database-type :snowflake
+  [_driver upload-type]
+  ;; Data is loaded with multi-row `INSERT ... VALUES` (the generic `:sql-jdbc` path). Snowflake's fast bulk load
+  ;; path (`PUT` + `COPY INTO` from a stage) is intentionally unavailable because `enablePutGet=false` is enforced
+  ;; on every connection as a security measure (see `set-put-get`, originally #73578).
+  ;;
+  ;; `TIMESTAMP_NTZ` / `TIMESTAMP_TZ` mirror what `database-type->base-type` reads back, so inferred types round-trip
+  ;; cleanly through sync. `NUMBER IDENTITY(1, 1)` is Snowflake's auto-incrementing PK (a.k.a. `AUTOINCREMENT`).
+  (case upload-type
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1]]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp_ntz]
+    :metabase.upload/offset-datetime          [:timestamp_tz]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])

@@ -1734,3 +1734,42 @@
           (mt/with-native-query-testing-context query
             (is (some? (mt/rows (qp/process-query query)))
                 "Hour bucketing on a time field from a source query should not error")))))))
+
+(deftest upload-type->database-type-test
+  (testing "upload types map to Snowflake DDL specs"
+    ;; Two specs have load-bearing shapes:
+    ;;   - `[[:varchar 255]]` is double-nested so it renders as `VARCHAR(255)`; a single-nested
+    ;;     `[:varchar 255]` would wrongly render as `VARCHAR 255`.
+    ;;   - `[:number [:identity 1 1]]` renders as `NUMBER IDENTITY(1, 1)`, Snowflake's auto-incrementing PK
+    ;;     (a.k.a. AUTOINCREMENT). `TIMESTAMP_NTZ` / `TIMESTAMP_TZ` mirror what `database-type->base-type`
+    ;;     reads back, so inferred types round-trip cleanly through sync.
+    ;;
+    ;; This is a pure unit test (no live Snowflake); the end-to-end create/append/replace/delete paths are
+    ;; covered by the shared `metabase.upload.impl-test` suite, which runs against any :uploads driver.
+    (are [upload-type expected] (= expected
+                                   (driver/upload-type->database-type :snowflake upload-type))
+      :metabase.upload/varchar-255              [[:varchar 255]]
+      :metabase.upload/text                     [:text]
+      :metabase.upload/int                      [:bigint]
+      :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1]]
+      :metabase.upload/float                    [:double]
+      :metabase.upload/boolean                  [:boolean]
+      :metabase.upload/date                     [:date]
+      :metabase.upload/datetime                 [:timestamp_ntz]
+      :metabase.upload/offset-datetime          [:timestamp_tz])
+    (testing "the specs render to valid Snowflake DDL via the generic create-table! path"
+      (let [sql (@#'driver.sql-jdbc/create-table!-sql
+                 :snowflake
+                 "PUBLIC.test_uploads"
+                 (array-map
+                  :_mb_row_id (driver/upload-type->database-type :snowflake :metabase.upload/auto-incrementing-int-pk)
+                  :name       (driver/upload-type->database-type :snowflake :metabase.upload/varchar-255)
+                  :created    (driver/upload-type->database-type :snowflake :metabase.upload/datetime))
+                 :primary-key [:_mb_row_id])]
+        (is (str/includes? sql "\"_mb_row_id\" NUMBER IDENTITY(1, 1)")
+            "auto-pk renders as a Snowflake NUMBER IDENTITY column")
+        (is (str/includes? sql "\"name\" VARCHAR(255)")
+            "varchar-255 renders parenthesized")
+        (is (str/includes? sql "\"created\" TIMESTAMP_NTZ"))
+        (is (str/includes? sql "PRIMARY KEY(\"_mb_row_id\")")
+            "auto-pk is declared as the primary key")))))
