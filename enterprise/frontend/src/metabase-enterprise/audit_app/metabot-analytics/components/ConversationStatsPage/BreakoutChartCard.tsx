@@ -15,7 +15,7 @@ const CLICKABLE_MODE: ClickActionsMode = {
 };
 
 type Props = {
-  title: string;
+  title?: string;
   rawSeries: any[] | null;
   isFetching: boolean;
   display: VisualizationDisplay;
@@ -49,9 +49,11 @@ export function BreakoutChartCard({
       pb={display === "row" ? "md" : "0"}
       h={h}
     >
-      <Text fw="bold" mb="md">
-        {title}
-      </Text>
+      {title && (
+        <Text fw="bold" mb="md">
+          {title}
+        </Text>
+      )}
       <Visualization
         rawSeries={rawSeries}
         isDashboard
