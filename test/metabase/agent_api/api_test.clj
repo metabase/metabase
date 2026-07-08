@@ -36,6 +36,13 @@
                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
       (lib/aggregate (lib/count))))
 
+(defn- orders-limit-query
+  "A simple unaggregated orders query with a row limit, built via lib."
+  [n]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/limit n))))
+
 ;;; ------------------------------------------------- Session Auth Tests ------------------------------------------------
 
 (deftest agent-api-session-token-auth-test
@@ -636,6 +643,101 @@
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
 
+;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
+
+(deftest construct-native-query-test
+  (testing "Wraps SQL into a base64-encoded MBQL 5 native query (same shape as /v2/construct-query output)"
+    (let [resp    (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
+                                        {:database_id (mt/id)
+                                         :sql         "SELECT 1 AS n"})
+          decoded (-> resp :query u/decode-base64 json/decode+kw)]
+      (is (=? {:database (mt/id)
+               :lib/type "mbql/query"
+               :stages   [{:lib/type "mbql.stage/native" :native "SELECT 1 AS n"}]}
+              decoded))))
+  (testing "Returns 403 when the caller cannot access the target database"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/user-http-request :rasta :post 403 "agent/v1/construct-native-query"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1"})))
+  (testing "Returns 404 for a non-existent database"
+    (mt/user-http-request :crowberto :post 404 "agent/v1/construct-native-query"
+                          {:database_id Integer/MAX_VALUE
+                           :sql         "SELECT 1"})))
+
+(deftest create-native-question-test
+  (testing "Saves a native SQL query (from construct_native_query) as a question"
+    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
+                                               {:database_id (mt/id)
+                                                :sql         "SELECT 1 AS n"})
+          create-resp    (mt/user-http-request :crowberto :post 200 "agent/v1/question"
+                                               {:name  "Native Agent Question"
+                                                :query (:query construct-resp)})]
+      (is (=? {:id pos? :name "Native Agent Question" :display "table"} create-resp))
+      (let [card (t2/select-one :model/Card :id (:id create-resp))]
+        (is (= :native (:query_type card)))
+        (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1 AS n"}]}
+                (:dataset_query card))))
+      (t2/delete! :model/Card :id (:id create-resp))))
+  (testing "Returns 403 when the caller lacks native-query permission"
+    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
+                                               {:database_id (mt/id)
+                                                :sql         "SELECT 1 AS n"})]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                              {:name  "Should Not Save Native"
+                               :query (:query construct-resp)})))))
+
+;;; ----------------------------------------------- Execute Question ------------------------------------------------
+
+(deftest execute-question-test
+  (testing "Runs a saved question and returns rows + column metadata"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-limit-query 5)}]
+      ;; Streaming response returns 202 (accepted) like the other execute endpoints.
+      (let [resp (mt/user-http-request :crowberto :post 202 (format "agent/v1/question/%d/query" card-id))]
+        (is (=? {:status    "completed"
+                 :row_count 5
+                 :data      {:cols (fn [cols] (and (seq cols) (every? :name cols) (every? :base_type cols)))
+                             :rows (fn [rows] (= 5 (count rows)))}}
+                resp)))))
+  (testing "Returns 404 for a non-existent card"
+    (mt/user-http-request :crowberto :post 404
+                          (format "agent/v1/question/%d/query" Integer/MAX_VALUE)))
+  (testing "Returns 403 when the caller lacks read permission on the card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "No-Read Coll"}
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :dataset_query (orders-limit-query 5)}]
+        (mt/user-http-request :rasta :post 403
+                              (format "agent/v1/question/%d/query" card-id))))))
+
+(deftest execute-question-rejects-parameterized-test
+  (testing "Refuses a card with a native template-tag variable (400)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query         "SELECT {{n}} AS n"
+                                               :template-tags {:n {:id "n" :name "n"
+                                                                   :display-name "N" :type :number}}}}}]
+      (is (re-find #"takes parameters"
+                   (str (mt/user-http-request :crowberto :post 400
+                                              (format "agent/v1/question/%d/query" card-id)))))))
+  (testing "Refuses a card with a configured parameter widget (400)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (orders-limit-query 5)
+                    :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
+      (is (re-find #"takes parameters"
+                   (str (mt/user-http-request :crowberto :post 400
+                                              (format "agent/v1/question/%d/query" card-id)))))))
+  (testing "Read-check runs before the parameterized rejection, so an unreadable parameterized card is 403 — it does not leak that the card exists or is parameterized"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "No-Read Coll"}
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :dataset_query (orders-limit-query 5)
+                                                      :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
+        (mt/user-http-request :rasta :post 403
+                              (format "agent/v1/question/%d/query" card-id))))))
+
 (deftest create-question-explicit-null-collection-test
   (testing "An explicit null collection_id saves to the root collection, not the personal default"
     (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -690,6 +792,199 @@
           ;; the point is that the unreadable middle parent never appears.
           (is (= "Visible Parent / Leaf Coll" (:collection_path create-resp)))
           (t2/delete! :model/Card :id (:id create-resp)))))))
+
+;;; ------------------------------------------------ Create Metric Tests --------------------------------------------
+
+(deftest create-metric-test
+  (testing "Omitting collection_id saves a metric to the caller's personal collection, not root"
+    (let [personal-id    (:id (collection/user->personal-collection (mt/user->id :rasta)))
+          personal-name  (collection/user->personal-collection-name (mt/user->id :rasta) :user)
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :aggregation [["count" {}]])})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/metric"
+                                               {:name  "Agent Test Metric"
+                                                :query (:query construct-resp)})]
+      (is (=? {:id              pos?
+               :name            "Agent Test Metric"
+               :display         "scalar"
+               :collection_id   personal-id
+               :collection_path personal-name
+               :description     nil}
+              create-resp))
+      (is (=? {:type :metric} (t2/select-one :model/Card :id (:id create-resp))))
+      (t2/delete! :model/Card :id (:id create-resp))))
+  (testing "Creates a metric with optional fields"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Metric Collection"}]
+      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                 {:query (orders-query :aggregation [["count" {}]])})
+            create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/metric"
+                                                 {:name          "Agent Metric With Options"
+                                                  :query         (:query construct-resp)
+                                                  :display       "line"
+                                                  :description   "A test metric"
+                                                  :collection_id coll-id})]
+        (is (=? {:id              pos?
+                 :name            "Agent Metric With Options"
+                 :display         "line"
+                 :collection_id   coll-id
+                 :collection_path "Our analytics / Agent Metric Collection"
+                 :description     "A test metric"}
+                create-resp))
+        (t2/delete! :model/Card :id (:id create-resp))))))
+
+(deftest create-metric-rejects-invalid-metric-test
+  (testing "Returns 400 when the query is not a valid metric (no aggregation)"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 10)})]
+      (is (str/includes?
+           (mt/user-http-request :rasta :post 400 "agent/v1/metric"
+                                 {:name  "Not A Metric"
+                                  :query (:query construct-resp)})
+           "metric")))))
+
+(deftest create-metric-permission-checks-test
+  (testing "Returns 403 when caller cannot run the proposed query"
+    (mt/with-restored-data-perms!
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {writable-id :id} {:name "Writable For Create-Metric"}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable-id)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                     {:query (orders-query :aggregation [["count" {}]])})]
+            (mt/user-http-request :rasta :post 403 "agent/v1/metric"
+                                  {:name          "Should Not Save"
+                                   :query         (:query construct-resp)
+                                   :collection_id writable-id}))))))
+  (testing "Returns 403 when caller cannot write to target collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-id :id} {:name "Locked For Create-Metric"}]
+        (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                   {:query (orders-query :aggregation [["count" {}]])})]
+          (mt/user-http-request :rasta :post 403 "agent/v1/metric"
+                                {:name          "Should Not Save"
+                                 :query         (:query construct-resp)
+                                 :collection_id locked-id}))))))
+
+(deftest create-metric-explicit-null-collection-test
+  (testing "An explicit null collection_id saves the metric to the root collection, not the personal default"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :aggregation [["count" {}]])})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/metric"
+                                               {:name          "Agent Root Metric"
+                                                :query         (:query construct-resp)
+                                                :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              create-resp))
+      (t2/delete! :model/Card :id (:id create-resp)))))
+
+;;; ------------------------------------------------ Update Metric Tests --------------------------------------------
+
+(deftest update-metric-patch-fields-test
+  (testing "Patches simple fields (name, description) on a metric"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Agent Update Metric Original"
+                                              :type          :metric
+                                              :dataset_query (orders-count-query)
+                                              :display       :scalar}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                       {:name        "Renamed Metric"
+                                        :description "Set by agent"})]
+        (is (=? {:id          card-id
+                 :name        "Renamed Metric"
+                 :description "Set by agent"
+                 :archived    false}
+                resp)))
+      (is (= "Renamed Metric" (t2/select-one-fn :name :model/Card :id card-id))))))
+
+(deftest update-metric-move-test
+  (testing "Moving a metric sets collection_id"
+    (mt/with-temp [:model/Collection {dest-coll-id :id} {:name "Agent Metric Move Dest"}
+                   :model/Card       {card-id :id}      {:name          "Metric To Move"
+                                                         :type          :metric
+                                                         :dataset_query (orders-count-query)
+                                                         :display       :scalar}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                       {:collection_id dest-coll-id})]
+        (is (=? {:collection_id   dest-coll-id
+                 :collection_path "Our analytics / Agent Metric Move Dest"}
+                resp)))
+      (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+
+(deftest update-metric-archive-test
+  (testing "Archiving a metric also sets :archived_directly so it lands in the Trash"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Metric To Archive"
+                                              :type          :metric
+                                              :dataset_query (orders-count-query)
+                                              :display       :scalar}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                       {:archived true})]
+        (is (true? (:archived resp))))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+
+(deftest update-metric-replace-query-test
+  (testing "Replacing the underlying query via :query keeps a valid metric"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Metric To Re-query"
+                                              :type          :metric
+                                              :dataset_query (orders-count-query)
+                                              :display       :scalar}]
+      (let [products-id  (mt/id :products)
+            construct    (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query {:lib/type "mbql/query"
+                                                        :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                    :source-table [(db-name) "PUBLIC" "PRODUCTS"]
+                                                                    :aggregation  [["count" {}]]}]}})
+            _resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                               {:query (:query construct)})
+            persisted    (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            source-table (some :source-table (:stages persisted))]
+        (is (some? persisted))
+        (is (= products-id source-table)
+            (str "Expected persisted dataset_query :source-table to be the products table id "
+                 products-id ", got " source-table))))))
+
+(deftest update-metric-rejects-non-metric-query-test
+  (testing "Returns 400 when a replacement query is not a valid metric (no aggregation)"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Metric With Bad Requery"
+                                              :type          :metric
+                                              :dataset_query (orders-count-query)
+                                              :display       :scalar}]
+      (let [construct (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                            {:query (orders-query :limit 5)})]
+        (is (str/includes?
+             (mt/user-http-request :rasta :put 400 (str "agent/v1/metric/" card-id)
+                                   {:query (:query construct)})
+             "metric"))
+        ;; query untouched after the rejected update — still the original count aggregation
+        (is (seq (:aggregation (first (:stages (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))))
+
+(deftest update-metric-rejects-non-metric-card-test
+  (testing "Returns 400 when the target card is not a metric"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Just A Question"
+                                              :type          :question
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (is (str/includes?
+           (mt/user-http-request :rasta :put 400 (str "agent/v1/metric/" card-id)
+                                 {:name "Rename Attempt"})
+           "not a metric")))))
+
+(deftest update-metric-not-found-test
+  (testing "Returns 404 when metric does not exist"
+    (mt/user-http-request :rasta :put 404 "agent/v1/metric/999999"
+                          {:name "doesn't matter"})))
+
+(deftest update-metric-write-perm-test
+  (testing "Returns 403 when caller lacks write access on the metric"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {locked-coll-id :id} {:name "Locked Metric Coll"}
+                     :model/Card       {card-id :id}        {:name          "Hidden Metric"
+                                                             :type          :metric
+                                                             :dataset_query (orders-count-query)
+                                                             :display       :scalar
+                                                             :collection_id locked-coll-id}]
+        (mt/user-http-request :rasta :put 403 (str "agent/v1/metric/" card-id)
+                              {:name "Forbidden Rename"})))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 

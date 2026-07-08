@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   fireEvent,
   render,
@@ -7,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import type { PaletteActionImpl } from "../types";
 
@@ -83,10 +82,10 @@ describe("Mouse/keyboard interactions", () => {
     pathname: "/",
   };
 
-  describe("The 'Search documentation for...' command palette item", () => {
+  describe("The 'Search Metabase's docs for...' command palette item", () => {
     const searchDocs: Partial<PaletteActionImpl> = {
       id: "search_docs",
-      name: 'Search documentation for "hedgehogs"',
+      name: 'Search Metabase\'s docs for "hedgehogs"',
       section: "docs",
       keywords: "hedgehogs",
       icon: "document",

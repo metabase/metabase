@@ -7,7 +7,6 @@
 
   Javadocs: https://www.graalvm.org/truffle/javadoc/overview-summary.html"
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [metabase.util.i18n :refer [trs]])
   (:import
@@ -23,7 +22,7 @@
   (reify java.util.function.Predicate
     (test [_ _] false)))
 
-(defn- new-js-engine
+(defn- create-engine
   "Build a JS `Engine` to be shared across contexts. We run JS interpreted (no Graal compiler on a stock JDK), so
   `engine.WarnInterpreterOnly` is silenced here on the engine (it's an engine-level option)."
   ^Engine []
@@ -33,28 +32,18 @@
       (build)))
 
 (defonce ^:private
-  ^{:doc "GraalVM `Engine` shared by every sandboxed JS context (static-viz, color selector, untrusted custom-viz
-          plugins). The engine owns the Truffle runtime + parsed-source cache, so contexts (and pool recycles) reuse
-          one engine instead of each standing up its own. The engine is a process-lifetime singleton (intentionally
-          never closed)."}
+  ^{:doc "The process-lifetime GraalVM `Engine` shared by every sandboxed JS context. The engine owns the Truffle
+          runtime and the parsed-source code cache, so contexts (and pool recycles) reuse one parsed copy of any
+          `Source` instance they share instead of each standing up their own. Intentionally never closed."}
   shared-sandboxed-js-engine
-  (delay (new-js-engine)))
+  (delay (create-engine)))
 
-(defn threadlocal-fifo-memoizer
-  "Returns a memoizer that is unique to each thread."
-  [thunk threshold]
-  (memoize/fifo
-   (with-meta thunk {::memoize/args-fn (fn [_]
-                                         [(.getId (Thread/currentThread))])})
-   :fifo/threshold threshold))
-
-(defn context
-  "Create a sandboxed org.graalvm.polyglot.Context for evaluating untrusted javascript
-  (e.g. custom viz plugins). No host access, no class lookup, no filesystem I/O.
-  All data must be passed as JSON strings and parsed in JS."
+(defn create-context
+  "Create a sandboxed org.graalvm.polyglot.Context (on the process-shared engine) for evaluating javascript. No host
+  access, no class lookup, no filesystem I/O. All data must be passed as JSON strings and parsed in JS."
   ^Context []
   (.. (Context/newBuilder (into-array String ["js"]))
-      (engine @shared-sandboxed-js-engine)
+      (engine ^Engine @shared-sandboxed-js-engine)
       (option "js.intl-402" "true")
       (allowHostAccess HostAccess/NONE)
       (allowHostClassLookup no-host-class-lookup)
@@ -68,14 +57,21 @@
   [^Context context ^String string-src ^String src-name]
   (.eval context (.buildLiteral (Source/newBuilder "js" string-src src-name))))
 
-(defn load-resource
-  "Load a resource into the js context"
-  [^Context context source]
-  (let [resource (io/resource source)]
+(defn build-source
+  "Build a `Source` from a classpath resource path. Evaluating the SAME `Source` instance in several contexts that
+  share an engine makes the engine's code cache reuse one parsed copy; a fresh instance per context makes the engine
+  parse (and retain) a separate copy each time — so callers that create many contexts should build once and share."
+  ^Source [source-path]
+  (let [resource (io/resource source-path)]
     (when (nil? resource)
-      (throw (ex-info (trs "Javascript resource not found: {0}" source)
-                      {:source source})))
-    (.eval context (.build (Source/newBuilder "js" resource)))))
+      (throw (ex-info (trs "Javascript resource not found: {0}" source-path)
+                      {:source source-path})))
+    (.build (Source/newBuilder "js" ^java.net.URL resource))))
+
+(defn eval-source
+  "Evaluate an already-built `Source` in the js context."
+  [^Context context ^Source source]
+  (.eval context source))
 
 (defn execute-fn-name
   "Executes `js-fn-name` in js context with args"

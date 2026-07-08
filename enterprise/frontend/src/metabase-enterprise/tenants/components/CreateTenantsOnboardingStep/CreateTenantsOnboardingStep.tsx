@@ -100,7 +100,7 @@ export const CreateTenantsOnboardingStep = ({
 
       sendToast({
         icon: "check",
-        toastColor: "success",
+        toastColor: "feedback-positive",
         message: t`Tenants created successfully`,
       });
 
@@ -109,7 +109,7 @@ export const CreateTenantsOnboardingStep = ({
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: getErrorMessage(error, t`Failed to create tenants`),
       });
     }

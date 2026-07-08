@@ -35,7 +35,7 @@
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
     ;; available? is false, so search returns [] and the write-path nudge no-ops rather than throwing.
-    (mt/with-premium-features #{:semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (mirror/search "anything" 10)))
         (is (nil? (mirror/request-entity-sync! "table" 1)))))))
@@ -48,7 +48,7 @@
       (reset! dirty #{["table" 7] ["metric" 9]})
       (mt/with-dynamic-fn-redefs
         [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
-         semantic.embedding/get-configured-model                (constantly ::model)
+         semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
          reconcile/reconcile-entity!                            (fn [_ds _model entity-type entity-local-id]
                                                                   (swap! reconciled conj [entity-type entity-local-id])
                                                                   {:inserted 1 :deleted 0 :unchanged 0})]
@@ -58,7 +58,7 @@
 
 (deftest request-entity-sync-is-fire-and-forget-test
   (testing "request-entity-sync! returns nil without throwing on the calling thread, even if the reconcile fails"
-    (mt/with-premium-features #{:semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
         (let [tc    @#'entity-retrieval.core/targeted-current
               tn    @#'entity-retrieval.core/targeted-next
@@ -66,7 +66,7 @@
           (reset! tc nil) (reset! tn nil) (reset! dirty #{})
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
-             semantic.embedding/get-configured-model                (constantly ::model)
+             semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
              reconcile/reconcile-entity!                            (fn [& _] (throw (ex-info "boom" {})))]
             (is (nil? (entity-retrieval.core/request-entity-sync! "table" 1)))
             ;; let the fire-and-forget drain settle so its logged error doesn't bleed into later tests
@@ -75,7 +75,7 @@
 
 (deftest force-reconcile-coalescing-test
   (testing "force-reconcile! never joins the in-flight run, queues one shared follow-up, and reports index + timing"
-    (mt/with-premium-features #{:semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
         (let [current @#'entity-retrieval.core/full-current
@@ -83,7 +83,7 @@
               calls   (atom 0)]
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
-             semantic.embedding/get-configured-model                (constantly ::model)
+             semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)
              reconcile/reconcile!                                   (fn [_ds _resolve-model]
                                                                       (swap! calls inc)
                                                                       {:inserted 3 :deleted 1 :unchanged 2})]
@@ -112,24 +112,43 @@
 
 (deftest force-reconcile-unavailable-returns-nil-test
   (testing "force-reconcile! is nil (so the API can 400) when pgvector isn't configured"
-    (mt/with-premium-features #{:semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (nil? (entity-retrieval.core/force-reconcile!)))))))
 
-(deftest pgvector-configured-decoupled-from-feature-test
-  (testing "scheduling gates on pgvector config, not the feature flag, so a post-boot license still syncs"
-    ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
-    (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
-      (mt/with-premium-features #{}
-        (is (true? (entity-retrieval.core/pgvector-configured?)))
-        (is (false? (entity-retrieval.core/available?))))
-      (mt/with-premium-features #{:semantic-search}
-        (is (true? (entity-retrieval.core/available?)))))))
+(deftest available?-gates-test
+  (testing "available? requires pgvector + :library + :library-retrieval + a configured embedder; each gate alone is decisive"
+    ;; The mock model's provider is "mock" -> embedding-supported? true, so these cases isolate the other gates.
+    ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required for it.
+    (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly semantic.tu/mock-embedding-model)]
+      (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+        (mt/with-premium-features #{}
+          (is (true?  (entity-retrieval.core/pgvector-configured?))
+              "scheduling gates on pgvector config, not the license, so a post-boot license still syncs")
+          (is (false? (entity-retrieval.core/available?))))
+        (mt/with-premium-features #{:library-retrieval}
+          (is (false? (entity-retrieval.core/available?))
+              ":library-retrieval alone is not enough — retrieval also requires the :library feature"))
+        (mt/with-premium-features #{:library}
+          (is (false? (entity-retrieval.core/available?))
+              ":library without :library-retrieval does not entitle the tool"))
+        (mt/with-premium-features #{:library :library-retrieval}
+          (is (true? (entity-retrieval.core/available?)))))
+      ;; pgvector unconfigured -> unavailable regardless of license
+      (with-redefs [semantic.db.datasource/db-url nil]
+        (mt/with-premium-features #{:library :library-retrieval}
+          (is (false? (entity-retrieval.core/available?))))))
+    (testing "fully licensed + pgvector, but no way to compute embeddings -> unavailable"
+      (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+        (mt/with-premium-features #{:library :library-retrieval}
+          ;; an unrecognized provider hits embedding-supported?'s :default (false)
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model (constantly {:provider "no-embedder"})]
+            (is (false? (entity-retrieval.core/available?)))))))))
 
 (deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
   (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"
     (when semantic.db.datasource/db-url
-      (mt/with-premium-features #{:library :semantic-search}
+      (mt/with-premium-features #{:library :library-retrieval}
         (let [suffix (System/nanoTime)
               ds     (semantic.db.datasource/ensure-initialized-data-source!)]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
@@ -163,7 +182,7 @@
 (deftest ^:sequential ranks-by-similarity-test
   (testing "search ranks library documents by cosine similarity, nearest first"
     (when semantic.db.datasource/db-url
-      (mt/with-premium-features #{:library :semantic-search}
+      (mt/with-premium-features #{:library :library-retrieval}
         (let [suffix (System/nanoTime)
               ds     (semantic.db.datasource/ensure-initialized-data-source!)
               q      "the query"]
@@ -206,7 +225,7 @@
     ;; deterministic, no network) against isolated temp tables, with the reconciler run directly in
     ;; place of the background Quartz job.
     (when semantic.db.datasource/db-url
-      (mt/with-premium-features #{:library :semantic-search}
+      (mt/with-premium-features #{:library :library-retrieval}
         (let [suffix  (System/nanoTime)
               ds      (semantic.db.datasource/ensure-initialized-data-source!)
               q       "monthly revenue per region"
@@ -258,7 +277,7 @@
 (deftest ^:sequential doc-type-boost-breaks-ties-test
   (testing "on a distance tie, a name match outranks a synonym match (blended ORDER BY, not raw NN)"
     (when semantic.db.datasource/db-url
-      (mt/with-premium-features #{:library :semantic-search}
+      (mt/with-premium-features #{:library :library-retrieval}
         (let [suffix  (System/nanoTime)
               ds      (semantic.db.datasource/ensure-initialized-data-source!)
               q       "the query"
@@ -295,7 +314,7 @@
   ;; until the next reconcile rebuilds it; search must degrade to [] rather than throw in that window.
   (testing "an index/query vector dimension mismatch degrades search to [] instead of throwing"
     (when semantic.db.datasource/db-url
-      (mt/with-premium-features #{:library :semantic-search}
+      (mt/with-premium-features #{:library :library-retrieval}
         (let [suffix (System/nanoTime)
               ds     (semantic.db.datasource/ensure-initialized-data-source!)]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model

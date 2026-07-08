@@ -27,13 +27,11 @@ import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
-import { api } from "metabase/api/client";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
@@ -41,10 +39,12 @@ import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { useRouterHistory } from "metabase/router";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { getBasename, setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
@@ -56,14 +56,11 @@ import { RouterProvider } from "./router";
 import { getStore } from "./store";
 import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
-// remove trailing slash
-const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
-
-api.basename = BASENAME;
+setBasename(window.MetabaseRoot);
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
 const browserHistory = useRouterHistory(createHistory)({
-  basename: BASENAME,
+  basename: getBasename(),
 });
 
 initializePlugins();
@@ -75,10 +72,7 @@ function _init(reducers, getRoutes, callback) {
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
-    beforeSend: (_type, payload) => ({
-      ...payload,
-      data: { ...payload.data, user_id: getUserId(store.getState()) },
-    }),
+    getUserId: () => getUserId(store.getState()),
   });
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.

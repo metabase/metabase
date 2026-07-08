@@ -1,8 +1,7 @@
-import type { WithRouterProps } from "react-router";
-
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useLocationSync } from "metabase/dashboard/hooks";
 import type { RefreshPeriod } from "metabase/dashboard/types";
+import type { WithRouterProps } from "metabase/router";
 
 export const useDashboardLocationSync = ({
   location,

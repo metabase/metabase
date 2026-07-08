@@ -181,6 +181,11 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
+(defn- ai-proxy-unsupported-ex []
+  (ex-info (tru "AI proxy is not supported for OpenAI")
+           {:api-error  true
+            :error-code :proxy-unsupported}))
+
 (defn- openai-error-msg
   "Canonical, status-specific OpenAI error message."
   [res]
@@ -193,30 +198,55 @@
       500 (tru "OpenAI API is not working but not saying why")
       (tru "OpenAI API error (HTTP {0})" status))))
 
+(def ^:private supported-models
+  "OpenAI chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"gpt-5.5"      "GPT-5.5"
+   "gpt-5.5-pro"  "GPT-5.5 Pro"
+   "gpt-5.4"      "GPT-5.4"
+   "gpt-5.4-pro"  "GPT-5.4 Pro"
+   "gpt-5.4-mini" "GPT-5.4 Mini"
+   "gpt-5"        "GPT-5"})
+
+(defn- supported-model?
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
+  [{:keys [id]}]
+  (contains? supported-models id))
+
+(defn- list-all-models
+  "Fetch the full OpenAI model catalog (`GET /v1/models`).
+  `:ai-proxy?` is not supported for OpenAI and throws when true."
+  [{:keys [credentials ai-proxy?]}]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
+  (when (and credentials (str/blank? (:api-key credentials)))
+    (throw (core/missing-api-key-ex "OpenAI")))
+  (try
+    (let [auth (core/resolve-auth "openai" "OpenAI"
+                                  (when-let [k (or (not-empty (:api-key credentials))
+                                                   (not-empty (llm/llm-openai-api-key)))]
+                                    {:url     (llm/llm-openai-api-base-url)
+                                     :headers {"Authorization" (str "Bearer " k)}})
+                                  ai-proxy?)
+          res  (core/request auth {:method  :get
+                                   :url     "/v1/models"
+                                   :as      :json
+                                   :headers {"Content-Type" "application/json"}})]
+      (get-in res [:body :data]))
+    (catch Exception e
+      (core/rethrow-api-error! "openai" openai-error-msg e))))
+
 (defn list-models
-  "List available OpenAI models.
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  "List the OpenAI chat models supported by this adapter (see [[supported-models]]).
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  `:ai-proxy?` is not supported for OpenAI and throws when true."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy?]}]
-   (when (and credentials (str/blank? (:api-key credentials)))
-     (throw (core/missing-api-key-ex "OpenAI")))
-   (try
-     (let [auth (core/resolve-auth "openai" "OpenAI"
-                                   (when-let [k (or (not-empty (:api-key credentials))
-                                                    (not-empty (llm/llm-openai-api-key)))]
-                                     {:url     (llm/llm-openai-api-base-url)
-                                      :headers {"Authorization" (str "Bearer " k)}})
-                                   ai-proxy?)
-           res  (core/request auth {:method  :get
-                                    :url     "/v1/models"
-                                    :as      :json
-                                    :headers {"Content-Type" "application/json"}})]
-       {:models (mapv (fn [model]
-                        {:id           (:id model)
-                         :display_name (:id model)})
-                      (reverse (sort-by :created (get-in res [:body :data]))))})
-     (catch Exception e
-       (core/rethrow-api-error! "openai" openai-error-msg e)))))
+  ([opts]
+   {:models (->> (list-all-models opts)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id]}]
+                         {:id id :display_name (supported-models id)})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
@@ -230,7 +260,7 @@
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+    :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
                         [{:type        "function"
@@ -254,9 +284,12 @@
       (assoc :temperature temperature))))
 
 (mu/defn openai-raw
-  "Perform a streaming request to OpenAI Responses API."
+  "Perform a streaming request to OpenAI Responses API.
+  `:ai-proxy?` is not supported for OpenAI and throws when true."
   [{:keys [model ai-proxy?] :as opts
-    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+    :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
   (let [req (openai-request-body opts)]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))

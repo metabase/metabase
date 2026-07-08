@@ -180,7 +180,7 @@ export const GitSyncControls = () => {
         }
         sendToast({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message: t`Sorry, we were unable to switch branches.`,
         });
       }

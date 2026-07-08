@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
-import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -11,6 +10,7 @@ import { useToast } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { useDispatch } from "metabase/redux";
+import type { WithRouterProps } from "metabase/router";
 import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -408,7 +408,7 @@ export function DataComplexityHeader() {
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: getErrorMessage(
           error,
           t`Could not recompute data complexity.`,

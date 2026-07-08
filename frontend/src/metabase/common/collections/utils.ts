@@ -429,7 +429,7 @@ export function getCollectionIcon(
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
   return type
     ? {
-        name: type.icon as unknown as IconName,
+        name: type.icon,
         color: type.color ? color(type.color) : undefined,
         tooltip: type.tooltips?.[tooltip],
       }

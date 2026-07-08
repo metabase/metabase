@@ -127,7 +127,7 @@
   [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (match/match-many x
                        [:field
-                        (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
+                        (opts :guard (and (map? opts) (not (and (:base-type opts) (:effective-type opts)))))
                         (id :guard (and (integer? id) (pos? id)))]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]

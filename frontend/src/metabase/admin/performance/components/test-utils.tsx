@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -14,6 +13,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import {
@@ -106,9 +106,9 @@ export const changeInput = async (
   expectedPlaceholder: number,
   value: number,
 ) => {
-  const input = (await screen.findByRole("spinbutton", {
+  const input = await screen.findByRole("spinbutton", {
     name: new RegExp(label),
-  })) as HTMLInputElement;
+  });
   expect(input).toHaveAttribute("placeholder", expectedPlaceholder.toString());
   act(() => {
     fireEvent.change(input, { target: { value } });

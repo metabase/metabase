@@ -15,7 +15,7 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -297,13 +297,38 @@ describe("fetchDashboard", () => {
 
     const result = await store.dispatch(
       fetchDashboard({
-        dashId: token as unknown as DashboardId,
+        dashId: token,
         queryParams: {},
         options: {},
       }),
     );
 
     expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
+  });
+
+  it("uses a prefetched dashboard instead of re-fetching it", async () => {
+    const dashboard = createMockDashboard({ id: 1, name: "Prefetched" });
+
+    // setup() mocks GET /api/dashboard/1, so reaching it here would succeed —
+    // the assertion below proves the prefetched path skips it entirely.
+    const store = setup({ dashboards: [dashboard] });
+
+    const result = await store.dispatch(
+      fetchDashboard({
+        dashId: 1,
+        queryParams: {},
+        options: { prefetchedDashboard: dashboard },
+      }),
+    );
+
+    expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
+    expect(result.payload).toMatchObject({
+      dashboardId: 1,
+      dashboard: { id: 1, name: "Prefetched" },
+    });
+    expect(
+      fetchMock.callHistory.called("path:/api/dashboard/1", { method: "GET" }),
+    ).toBe(false);
   });
 });
 

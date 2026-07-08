@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { assocIn } from "icepick";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMessages, metabotReducer } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { Menu } from "metabase/ui";
 
 import { NewMenuItemAIExploration } from "./NewMenuItemAIExploration";

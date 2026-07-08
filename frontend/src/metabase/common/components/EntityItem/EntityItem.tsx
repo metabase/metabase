@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
@@ -26,6 +25,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import { Link } from "metabase/router";
 import type { IconProps } from "metabase/ui";
 import {
   ActionIcon,

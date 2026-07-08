@@ -27,6 +27,7 @@
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -305,6 +306,48 @@
   (let [query (evaluate-external-query-for-execution body)]
     (cond-> {:query (-> query json/encode u/encode-base64)}
       prompt (assoc :prompt prompt))))
+
+;;; --------------------------------------------- Construct Native Query ---------------------------------------------
+
+(mr/def ::construct-native-query-request
+  "Request body for /v1/construct-native-query: a target database and a raw SQL string."
+  [:map {:closed true}
+   [:database_id {:tool/description "Numeric id of the database to run the SQL against."}
+    ms/PositiveInt]
+   [:sql {:tool/description "The raw SQL query text."}
+    ms/NonBlankString]])
+
+(api.macros/defendpoint :post "/v1/construct-native-query" :- ::construct-query-response
+  "Construct a native (raw SQL) query against a database.
+
+  Wraps `sql` into a serialized native query and returns it base64-encoded — the same
+  `{\"query\": <base64>}` shape as /v2/construct-query — so it can be saved as a question via
+  /v1/question (the MCP layer swaps the base64 for a `query_handle`).
+
+  This endpoint does NOT execute the SQL; to run native SQL ad hoc use /v1/execute-sql. The
+  MBQL execution endpoints (/v1/execute, /v2/query) reject native queries by design, so a
+  handle produced here is for saving, not for /v2/query execution."
+  {:scope metabot/agent-sql-construct
+   :tool  {:name "construct_native_query"
+           :description (str "Construct a native (raw SQL) query for the given database. Returns "
+                             "`{\"query_handle\": \"<uuid>\"}` to feed `create_question` and save it "
+                             "as a question. Use this ONLY for native SQL — for MBQL use "
+                             "`construct_query`. This does NOT run the SQL; to execute SQL ad hoc "
+                             "use `execute_sql`. Saving the resulting question requires native-query "
+                             "permission on the target database.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [_route-params
+   _query-params
+   {:keys [database_id sql]} :- ::construct-native-query-request]
+  ;; Construction does not run the query, but require the caller to at least be able to see the
+  ;; target database so a bogus/inaccessible database_id fails here rather than at save time.
+  (api/read-check :model/Database database_id)
+  ;; Emit MBQL 5 (via `lib/native-query` + `prepare-for-serialization`, same as `construct_query`)
+  (let [mp (lib-be/application-database-metadata-provider database_id)]
+    {:query (-> (lib/native-query mp sql)
+                lib/prepare-for-serialization
+                json/encode
+                u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
@@ -740,6 +783,147 @@
   [:enum "table" "bar" "line" "pie" "scatter" "area" "row" "combo" "pivot"
    "scalar" "smartscalar" "gauge" "progress" "funnel" "map" "waterfall" "sankey"])
 
+;;; ------------------------------------------- Card mutation helpers ------------------------------------------------
+;;
+;; `create_question`/`create_metric` and `update_question`/`update_metric` share the same
+;; permission-mirroring stack and response shape; only the card `:type`, the default display, and
+;; (for metrics) an extra query-shape validation differ. These helpers hold that common logic so the
+;; two pairs can't drift.
+
+(defn- card->base-response
+  "The card fields both the create and update tools report back."
+  [card]
+  {:id              (:id card)
+   :name            (:name card)
+   :display         (name (:display card))
+   :collection_id   (:collection_id card)
+   :collection_path (collection-path (:collection_id card))
+   :description     (:description card)})
+
+(defn- create-card-response
+  "Response body for the create-card tools — the shared fields plus the saved card's URL."
+  [card]
+  (assoc (card->base-response card)
+         :url (frontend-url (channel.urls/card-path (:id card)))))
+
+(defn- update-card-response
+  "Response body for the update-card tools — the shared fields plus archived state."
+  [card]
+  (assoc (card->base-response card)
+         :archived (boolean (:archived card))))
+
+(defn- create-card-from-agent!
+  "Shared body for `create_question` / `create_metric`. Decodes the base64 `:query`, resolves the
+  target collection (absent → personal, explicit `null` → root), mirrors REST `POST /api/card/`
+  permission pre-checks, creates the card, and returns the create response.
+
+  `opts`: `:card-type` (`:question` / `:metric`), `:default-display` (used when the caller omits
+  `:display`), and optional `:validate-query!` (a metric-shape check run before the permission
+  checks).
+
+  Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`. `create-card!`
+  itself does NOT run permissions checks; without these mirroring the REST endpoint, an LLM caller
+  could (a) save a card whose query references data the user cannot run, and (b) plant the card in a
+  collection they cannot write to.
+
+  TODO (Bryan 2026-05-20): extract REST's create-card pre-check stack into a shared
+  `metabase.queries.*` helper so REST + agent-api can't drift. This helper only dedups the two
+  agent-api create endpoints; the next person who adds a REST check will probably still miss the
+  agent side unless we dedup against REST too."
+  [{:keys [query display description visualization_settings] card-name :name :as body}
+   {:keys [card-type default-display validate-query!]}]
+  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
+        ;; `nil` means the root collection, so only default to the personal collection when the
+        ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
+        collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))]
+    (when validate-query!
+      (validate-query! dataset-query))
+    (query-perms/check-run-permissions-for-query dataset-query)
+    (api/create-check :model/Card {:collection_id collection_id})
+    (create-card-response
+     (queries/create-card!
+      {:name                   card-name
+       :type                   card-type
+       :dataset_query          dataset-query
+       :display                (keyword (or display default-display))
+       :description            description
+       :collection_id          collection_id
+       :visualization_settings (or visualization_settings {})}
+      {:id api/*current-user-id*}))))
+
+(defn- apply-agent-card-patch!
+  "Shared body for `update_question` / `update_metric`. `card-before-update` is the card the caller
+  has already `write-check`ed. Builds the patch from `body` over the common field allowlist, mirrors
+  REST's update-card permission pre-checks, applies it, and returns the update response.
+
+  `opts` may carry `:validate-query!` — a metric-shape check run on the normalized replacement query
+  before anything is written.
+
+  TODO (Bryan 2026-05-20): see the matching TODO on `create-card-from-agent!`. The pre-check stack
+  mirrored here (collection move, run-permissions, cycle detection) is also duplicated against REST's
+  update-card path; extracting a shared `metabase.queries.*` helper is the larger fix that stops REST
+  + agent-api from drifting."
+  [card-before-update body {:keys [validate-query!]}]
+  (let [id        (:id card-before-update)
+        ;; Normalize a replacement query like the REST update path so downstream helpers (metric
+        ;; validation, cycle detection, permission check) see the canonical MBQL shape regardless of
+        ;; whether the LLM sent legacy or MBQL 5.
+        new-query   (when (contains? body :query)
+                      (-> (:query body) u/decode-base64 json/decode+kw lib-be/normalize-query))
+        _           (when (and new-query validate-query!)
+                      (validate-query! new-query))
+        raw-updates (cond-> {}
+                      (contains? body :name)
+                      (assoc :name (:name body))
+
+                      (contains? body :description)
+                      (assoc :description (:description body))
+
+                      (contains? body :collection_id)
+                      (assoc :collection_id (:collection_id body))
+
+                      (contains? body :display)
+                      (assoc :display (some-> (:display body) keyword))
+
+                      (contains? body :visualization_settings)
+                      (assoc :visualization_settings (:visualization_settings body))
+
+                      (contains? body :archived)
+                      (assoc :archived (boolean (:archived body)))
+
+                      new-query
+                      (assoc :dataset_query new-query))
+        ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived). The
+        ;; REST endpoint runs this in `update-card!` on every update; we need it too so LLM-archived
+        ;; cards behave the same as UI-archived ones.
+        card-updates (api/updates-with-archived-directly card-before-update raw-updates)]
+    ;; A move (or archive that retargets the collection) requires write on BOTH the source and the
+    ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
+    ;; Mirror the REST endpoint's `check-allowed-to-move` gate.
+    (collection/check-allowed-to-change-collection card-before-update card-updates)
+    ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
+    ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
+    ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
+    (when (api/column-will-change? :dataset_query card-before-update card-updates)
+      (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
+      ;; Reject cycles. `lib/check-card-overwrite` throws if the new query references this card
+      ;; transitively. Mirror REST's wrapping that promotes it to HTTP 400 instead of a 500.
+      (try
+        (lib/check-card-overwrite id (:dataset_query card-updates))
+        (catch clojure.lang.ExceptionInfo e
+          ;; Don't downgrade a more specific status if the throwing fn ever starts setting one
+          ;; (e.g. a 404 for a missing card).
+          (let [data (ex-data e)]
+            (throw (ex-info (ex-message e)
+                            (assoc data :status-code (or (:status-code data) 400))))))))
+    (queries/update-card! {:card-before-update    card-before-update
+                           :card-updates          card-updates
+                           :actor                 @api/*current-user*
+                           :delete-old-dashcards? false})
+    (update-card-response (t2/select-one :model/Card :id id))))
+
 (mr/def ::create-question-request
   [:map
    [:name                   ms/NonBlankString]
@@ -762,16 +946,20 @@
 (api.macros/defendpoint :post "/v1/question" :- ::create-question-response
   "Save a previously constructed query as a named question (card).
 
-  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,
-  or a base64-encoded MBQL string. MCP callers should always use the handle.
+  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query` (MBQL) or
+  `construct_native_query` (native SQL), or a base64-encoded query string. MCP callers should
+  always use the handle.
   Optionally specify display type, description, collection, and visualization settings.
   If `collection_id` is omitted the question is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
-  The response `collection_path` is the saved location."
+  The response `collection_path` is the saved location.
+
+  Saving a native (raw SQL) query requires native-query permission on the target database."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
-                             "Pass the `query_handle` returned by `construct_query`. "
+                             "Pass the `query_handle` returned by `construct_query` (MBQL) or "
+                             "`construct_native_query` (native SQL). "
                              "Optionally set display type (table, bar, line, pie, etc.), "
                              "description, and target collection. "
                              "If you omit collection_id it's saved to the user's personal collection; "
@@ -779,44 +967,128 @@
                              "Report the saved location from the response `collection_path`.")}}
   [_route-params
    _query-params
-   {:keys [query display description visualization_settings]
-    question-name :name
-    :as body}
-   :- ::create-question-request]
-  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        ;; `nil` means the root collection, so only default to the personal collection when the
-        ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
-        collection_id (if (contains? body :collection_id)
-                        (:collection_id body)
-                        (personal-collection-id))]
-    ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
-    ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
-    ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
-    ;; user cannot run, and (b) plant the card in a collection they cannot write to.
-    ;; (REST also calls `check-if-card-can-be-saved`, which only fires for `card-type :metric`;
-    ;; this endpoint always creates a question, so we omit it.)
-    ;;
-    ;; TODO (Bryan 2026-05-20): extract REST's create-card pre-check stack into a shared
-    ;; `metabase.queries.*` helper so REST + agent-api can't drift. Branch review caught
-    ;; this gap; the next person who adds a REST check will probably miss the agent side
-    ;; again unless we dedup.
-    (query-perms/check-run-permissions-for-query dataset-query)
-    (api/create-check :model/Card {:collection_id collection_id})
-    (let [card (queries/create-card!
-                {:name                   question-name
-                 :dataset_query          dataset-query
-                 :display                (keyword (or display "table"))
-                 :description            description
-                 :collection_id          collection_id
-                 :visualization_settings (or visualization_settings {})}
-                {:id api/*current-user-id*})]
-      {:id              (:id card)
-       :name            (:name card)
-       :url             (frontend-url (channel.urls/card-path (:id card)))
-       :display         (name (:display card))
-       :collection_id   (:collection_id card)
-       :collection_path (collection-path (:collection_id card))
-       :description     (:description card)})))
+   body :- ::create-question-request]
+  ;; REST also calls `check-if-card-can-be-saved`, which only fires for `card-type :metric`; this
+  ;; endpoint always creates a question, so no `:validate-query!` is passed.
+  (create-card-from-agent! body {:card-type :question, :default-display "table"}))
+
+;;; -------------------------------------------------- Create Metric -------------------------------------------------
+
+(mr/def ::create-metric-request
+  [:map
+   [:name                   ms/NonBlankString]
+   [:query                  ms/NonBlankString]
+   [:display                {:optional true} [:maybe ::card-display]]
+   [:description            {:optional true} [:maybe :string]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:visualization_settings {:optional true} [:maybe :map]]])
+
+(mr/def ::create-metric-response
+  [:map
+   [:id              ms/PositiveInt]
+   [:name            ms/NonBlankString]
+   [:url             :string]
+   [:display         :string]
+   [:collection_id   [:maybe ms/PositiveInt]]
+   [:collection_path :string]
+   [:description     [:maybe :string]]])
+
+(defn- check-metric-query-can-be-saved!
+  "Throw a 400 unless `dataset-query` is a valid metric definition. Mirrors REST's
+  `check-if-card-can-be-saved` for `:metric` cards: a metric needs a single stage, exactly one
+  aggregation, and at most one date/datetime breakout (see `lib/can-run-method`). The base64
+  payload stored by `construct_query` is stripped of its metadata provider, so re-hydrate one
+  before calling `lib/can-save?` (its breakout type-check reads field metadata)."
+  [dataset-query]
+  (let [mp    (lib-be/application-database-metadata-provider (:database dataset-query))
+        query (lib/query mp dataset-query)]
+    (when-not (lib/can-save? query :metric)
+      (throw (ex-info (str "This query can't be saved as a metric. A metric needs exactly one "
+                           "aggregation and at most one date/datetime grouping. Construct a query "
+                           "with a single summarize (e.g. count, sum) before saving it as a metric.")
+                      {:status-code 400})))))
+
+(api.macros/defendpoint :post "/v1/metric" :- ::create-metric-response
+  "Save a previously constructed query as a named metric.
+
+  A metric is a reusable aggregation (a `Card` of type `metric`): the underlying query must have
+  exactly one aggregation and at most one date/datetime grouping. The `query` parameter accepts a
+  `query_handle` (UUID) returned by `construct_query`, or a base64-encoded MBQL string. MCP callers
+  should always use the handle.
+  Optionally specify display type, description, collection, and visualization settings.
+  If `collection_id` is omitted the metric is saved to the caller's personal collection.
+  Pass an explicit `null` to save it to the root collection.
+  The response `collection_path` is the saved location."
+  {:scope metabot/agent-metric-create
+   :tool  {:name "create_metric"
+           :description (str "Save a query as a reusable metric in Metabase. "
+                             "Pass the `query_handle` returned by `construct_query`. "
+                             "The query must have exactly one aggregation (e.g. count, sum, average) "
+                             "and at most one date/datetime grouping — build it with `construct_query` first. "
+                             "Optionally set display type, description, and target collection. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
+                             "Report the saved location from the response `collection_path`.")}}
+  [_route-params
+   _query-params
+   body :- ::create-metric-request]
+  (create-card-from-agent! body {:card-type        :metric
+                                 :default-display  "scalar"
+                                 :validate-query!  check-metric-query-can-be-saved!}))
+
+;;; -------------------------------------------------- Update Metric -------------------------------------------------
+
+(mr/def ::update-metric-request
+  "Patch shape for `update_metric`. Every field is optional; only the fields the caller
+  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
+  resolved upstream in the MCP layer) and must still describe a valid metric."
+  [:map
+   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:description            {:optional true} [:maybe :string]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:display                {:optional true} [:maybe ::card-display]]
+   [:visualization_settings {:optional true} [:maybe :map]]
+   [:archived               {:optional true} [:maybe :boolean]]
+   [:query                  {:optional true} [:maybe ms/NonBlankString]]])
+
+(mr/def ::update-metric-response
+  "Returned by `update_metric` - the fields the LLM is most likely to want to read back
+  after an update. Excludes the full dataset_query, which the caller can re-fetch via
+  `read_resource` if needed."
+  [:map
+   [:id              ms/PositiveInt]
+   [:name            ms/NonBlankString]
+   [:display         :string]
+   [:collection_id   [:maybe ms/PositiveInt]]
+   [:collection_path :string]
+   [:description     [:maybe :string]]
+   [:archived        :boolean]])
+
+(api.macros/defendpoint :put "/v1/metric/:id" :- ::update-metric-response
+  "Update a saved metric. Patch semantics - only fields that you pass are changed.
+
+  Set `collection_id` to move the metric to a different collection. Set `archived: true` to archive.
+  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying
+  query; the replacement must still be a valid metric (exactly one aggregation, at most one
+  date/datetime grouping). The target card must be a metric — use `update_question` for questions."
+  {:scope metabot/agent-metric-update
+   :tool  {:name "update_metric"
+           :description (str "Update a saved metric. Patch semantics - only fields you pass are changed. "
+                             "To move a metric to a different collection, set collection_id. "
+                             "To archive, set archived true. To replace the underlying query, pass query "
+                             "(a query_handle from construct_query) - it must still have exactly one "
+                             "aggregation and at most one date/datetime grouping. The target must be a "
+                             "metric; use update_question for regular questions.")}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- ::update-metric-request]
+  (let [card-before-update (api/write-check :model/Card id)]
+    ;; This is the metric endpoint: refuse to touch questions/models so an LLM can't silently force a
+    ;; non-metric card's query through the metric-shape validation (and vice-versa via update_question).
+    (api/check-400 (= :metric (:type card-before-update))
+                   (str "Card " id " is not a metric. Use update_question to update questions."))
+    (apply-agent-card-patch! card-before-update body
+                             {:validate-query! check-metric-query-can-be-saved!})))
 
 ;;; ------------------------------------------------- Update Question ------------------------------------------------
 
@@ -850,87 +1122,60 @@
   "Update a saved question (card). Patch semantics - only fields that you pass are changed.
 
   Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.
-  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying query."
+  Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
+  string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
+  native-query permission on the target database."
   {:scope metabot/agent-question-update
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
                              "To archive, set archived true. To replace the underlying query, pass query "
-                             "(a query_handle from construct_query).")}}
+                             "(a query_handle from construct_query or construct_native_query).")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
-  (let [card-before-update (api/write-check :model/Card id)
-        raw-updates        (cond-> {}
-                             (contains? body :name)
-                             (assoc :name (:name body))
+  (apply-agent-card-patch! (api/write-check :model/Card id) body nil))
 
-                             (contains? body :description)
-                             (assoc :description (:description body))
+;;; ------------------------------------------------ Execute Question -----------------------------------------------
 
-                             (contains? body :collection_id)
-                             (assoc :collection_id (:collection_id body))
+(defn- reject-parameterized-card!
+  "Agent execution does not yet supply parameter values, so refuse to run a card that declares
+   user-facing parameters or input template tags (field filters / variables). Snippet and
+   card-reference template tags don't count — those need no runtime input. Returns a 400 so the
+   limitation surfaces clearly rather than silently running the card with defaults."
+  [card]
+  (when (seq (qp.card/combined-parameters-and-template-tags card))
+    (throw (ex-info (str "This question takes parameters, which agent execution does not yet "
+                         "support. Run it in Metabase, or save a parameterless version.")
+                    {:status-code 400 :card-id (:id card)}))))
 
-                             (contains? body :display)
-                             (assoc :display (some-> (:display body) keyword))
+(api.macros/defendpoint :post "/v1/question/:id/query"
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
+  "Run a saved question (card) and return its results.
 
-                             (contains? body :visualization_settings)
-                             (assoc :visualization_settings (:visualization_settings body))
+  Executes the query stored on the card under the caller's permissions and returns rows +
+  column metadata — the same response shape as /v1/execute.
 
-                             (contains? body :archived)
-                             (assoc :archived (boolean (:archived body)))
-
-                             (contains? body :query)
-                             (assoc :dataset_query
-                                    ;; Normalize like the REST update path so downstream
-                                    ;; helpers (cycle detection, permission check) see the
-                                    ;; canonical MBQL shape regardless of whether the LLM
-                                    ;; sent legacy or MBQL 5.
-                                    (-> (:query body)
-                                        u/decode-base64
-                                        json/decode+kw
-                                        lib-be/normalize-query)))
-        ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived).
-        ;; The REST endpoint runs this in `update-card!` on every update; we need it too so
-        ;; LLM-archived cards behave the same as UI-archived ones.
-        card-updates       (api/updates-with-archived-directly card-before-update raw-updates)
-        ;; A move (or archive that retargets the collection) requires write on BOTH the source
-        ;; and the target collection. `api/write-check :model/Card` above only covered the source
-        ;; entity. Mirror the REST endpoint's `check-allowed-to-move` gate.
-        _                  (collection/check-allowed-to-change-collection card-before-update card-updates)
-        ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires
-        ;; data perms to run the *new* query, otherwise a user with collection write on a card
-        ;; can repoint it at data they cannot query. `queries/update-card!` does NOT run this
-        ;; check itself, so we have to run it before calling in.
-        ;;
-        ;; TODO (Bryan 2026-05-20): see matching TODO above `create_question`. Extract REST's
-        ;; update-card pre-check stack so REST + agent-api can't drift; this single check is
-        ;; only the most recent gap we noticed.
-        _                  (when (api/column-will-change? :dataset_query card-before-update card-updates)
-                             (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
-                             ;; Reject cycles. `lib/check-card-overwrite` throws if the new query
-                             ;; references this card transitively. Mirror REST's wrapping that
-                             ;; promotes it to HTTP 400 instead of a 500.
-                             (try
-                               (lib/check-card-overwrite id (:dataset_query card-updates))
-                               (catch clojure.lang.ExceptionInfo e
-                                 ;; Don't downgrade a more specific status if the throwing fn
-                                 ;; ever starts setting one (e.g. a 404 for a missing card).
-                                 (let [data (ex-data e)]
-                                   (throw (ex-info (ex-message e)
-                                                   (assoc data :status-code (or (:status-code data) 400))))))))
-        _                  (queries/update-card! {:card-before-update    card-before-update
-                                                  :card-updates          card-updates
-                                                  :actor                 @api/*current-user*
-                                                  :delete-old-dashcards? false})
-        updated            (t2/select-one :model/Card :id id)]
-    {:id              (:id updated)
-     :name            (:name updated)
-     :display         (clojure.core/name (:display updated))
-     :collection_id   (:collection_id updated)
-     :collection_path (collection-path (:collection_id updated))
-     :description     (:description updated)
-     :archived        (boolean (:archived updated))}))
+  Parameterized questions are NOT supported: if the card declares parameters or input
+  template tags (field filters / variables), this returns a 400. Run it in Metabase, or
+  save a parameterless version."
+  {:scope metabot/agent-question-execute
+   :tool  {:name "execute_question"
+           :description (str "Run a saved question by id and return its rows with column metadata, "
+                             "row count, and execution time. Use this to get the current results of "
+                             "an existing saved question. Does NOT support parameterized questions — "
+                             "if the question takes parameters or template-tag input, this returns an "
+                             "error.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body]
+  (let [card (api/read-check :model/Card id)]
+    (reject-parameterized-card! card)
+    (qp.card/process-query-for-card
+     card :api
+     :context    :question
+     :middleware {:process-viz-settings? false})))
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 

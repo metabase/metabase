@@ -69,13 +69,16 @@
 (defn- in-report-timezone
   [expr]
   (let [report-timezone (get-report-timezone-id-safely)
-        lower           (u/lower-case-en (h2x/database-type expr))
-        db-type         (remove-low-cardinality-and-nullable lower)]
-    (if (and report-timezone (string? db-type) (str/starts-with? db-type "datetime"))
-      (let [timezone (extract-datetime-timezone db-type)]
-        (if (not (= timezone (u/lower-case-en report-timezone)))
-          [:'toTimeZone expr (h2x/literal report-timezone)]
-          expr))
+        db-type (-> (h2x/database-type expr)
+                    remove-low-cardinality-and-nullable)
+        report-tz-db-tz-differ (and (string? db-type)
+                                    (str/starts-with? db-type "datetime")
+                                    (not= (extract-datetime-timezone db-type)
+                                          (u/lower-case-en report-timezone)))
+        no-db-type-dt-eff-type (and (not db-type)
+                                    (isa? (h2x/effective-type expr) :type/DateTime))]
+    (if (and report-timezone (or report-tz-db-tz-differ no-db-type-dt-eff-type))
+      [:'toTimeZone expr (h2x/literal report-timezone)]
       expr)))
 
 (defmethod sql.qp/date [:clickhouse :default]
@@ -429,7 +432,9 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :clickhouse
   [_ dt amount unit]
-  (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))]))
+  (let [type-info (h2x/type-info dt)]
+    (cond-> (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))])
+      type-info (h2x/with-type-info type-info))))
 
 (defn- clickhouse-string-fn
   [fn-name field value options]

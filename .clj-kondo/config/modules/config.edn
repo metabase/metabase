@@ -180,6 +180,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -702,6 +703,7 @@
            audit-app
            collections
            config
+           embedding
            events
            lib
            models
@@ -712,6 +714,7 @@
            query-processor
            search
            settings
+           staleness
            sync
            util}
    :model-exports #{:model/Dashboard
@@ -1224,13 +1227,17 @@
    :api  #{metabase.mcp.api
            metabase.mcp.callback-api
            metabase.mcp.core
-           metabase.mcp.init}
+           metabase.mcp.init
+           metabase.mcp.usage}
+   :model-exports #{:model/McpSessionLog
+                    :model/McpToolCallLog}
    :uses #{agent-api
            api
            app-db
            config
            llm
            oauth-server
+           premium-features
            request
            server
            session
@@ -1718,6 +1725,7 @@
            content-verification
            dashboards
            documents
+           embedding
            events
            graph
            lib
@@ -1733,6 +1741,8 @@
            query-processor
            request
            search
+           settings
+           staleness
            sync
            util
            view-log
@@ -2197,6 +2207,10 @@
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
+  staleness
+  {:team "UX West"
+   :api  #{metabase.staleness.core}}
+
   startup
   {:team "DevEx"
    :api  #{metabase.startup.core}
@@ -2298,6 +2312,7 @@
            config
            lib
            lib-be
+           mcp
            permissions
            premium-features
            search
@@ -2487,7 +2502,8 @@
                     :model/QueryExecution
                     :model/Segment
                     :model/Table}
-   :uses #{lib
+   :uses #{app-db
+           lib
            lib-be
            models
            settings
@@ -2862,7 +2878,6 @@
            app-db
            audit-app
            classloader
-           config
            driver
            lib
            models
@@ -3244,6 +3259,18 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
+  enterprise/mcp
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.mcp.init}
+   :uses    #{analytics
+              mcp
+              metabot
+              premium-features
+              task
+              util}
+   :model-imports #{:model/McpSessionLog
+                    :model/McpToolCallLog}}
+
   enterprise/memoize-monitor
   {:team "Graphy"
    :api  #{metabase-enterprise.memoize-monitor.init}
@@ -3505,7 +3532,6 @@
            app-db
            appearance
            collections
-           config
            events
            lib
            logger
@@ -3558,11 +3584,11 @@
    :uses #{analytics
            api
            collections
-           embedding
            premium-features
            queries
            request
            settings
+           staleness
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
@@ -3601,7 +3627,9 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.transforms.api}
    :uses #{premium-features
-           enterprise/transforms-inspector}}
+           util
+           enterprise/transforms-inspector}
+   :model-imports #{:model/Transform}}
 
   enterprise/transforms-inspector
   {:team "Gadget"

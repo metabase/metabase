@@ -150,7 +150,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "⚠️ Embedding SDK bundle size increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%). Please contact Embedding team."
+          message: "⚠️ Embedding SDK chunked bundle size (gzipped) increased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch (threshold: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}%). Please contact Embedding team."
           include-log: false
 
       - name: Send notification to Slack via Zapier
@@ -165,7 +165,7 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           curl -s -X POST "$ZAPIER_WEBHOOK_URL" \
-            -d "⚠️ Embedding SDK bundle size increased by ${SIZE_CHANGE_PERCENT}% (threshold: ${BUNDLE_SIZE_THRESHOLD_PERCENT}%)
+            -d "⚠️ Embedding SDK chunked bundle size (gzipped) increased by ${SIZE_CHANGE_PERCENT}% (threshold: ${BUNDLE_SIZE_THRESHOLD_PERCENT}%)
 
           PR #${PR_NUMBER} ${PR_TITLE} (${PR_URL})"
 
@@ -175,7 +175,7 @@ jobs:
         with:
           remove-previous-comment: true
           add-new-comment: true
-          message: "🎉 Embedding SDK bundle size decreased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch. Nice work!"
+          message: "🎉 Embedding SDK chunked bundle size (gzipped) decreased by ${{ steps.compare.outputs.size_change_percent }}% compared to the ${{ github.base_ref }} branch. Nice work!"
           include-log: false
 
   embedding-sdk-tests-result:

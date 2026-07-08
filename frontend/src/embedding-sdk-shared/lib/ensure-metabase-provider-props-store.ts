@@ -83,7 +83,7 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
           ...state.internalProps,
           ...internalProps,
         },
-      } as MetabaseProviderPropsStoreState;
+      };
 
       listeners.forEach((callback) => callback());
     },

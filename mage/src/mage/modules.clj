@@ -145,6 +145,7 @@
      setup
      slackbot
      sso
+     staleness
      startup
      system
      task

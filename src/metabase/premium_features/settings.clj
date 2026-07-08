@@ -276,6 +276,11 @@
   "Should we enable the semantic search backend?"
   :semantic-search)
 
+(define-premium-feature ^{:added "0.63.0"} enable-library-retrieval?
+  "Should we enable the Metabot library entity-retrieval tool (retrieve_library_entities)?
+  Independent of `:semantic-search`: this gates only that tool, not the general semantic search engine."
+  :library-retrieval)
+
 (define-premium-feature ^{:added "0.57.0"} table-data-editing?
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
@@ -390,6 +395,7 @@
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
    :library                        (enable-library?)
+   :library_retrieval              (enable-library-retrieval?)
    :dependencies                   (enable-dependencies?)
    :schema-viewer                  (enable-schema-viewer?)
    :development_mode               (development-mode?)

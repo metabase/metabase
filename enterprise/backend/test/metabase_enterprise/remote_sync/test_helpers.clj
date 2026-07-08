@@ -99,7 +99,6 @@ serdes/meta:
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.54.4-SNAPSHOT (c6780bb)
 source_card_id: null
 type: %s
 document_id: null
@@ -197,26 +196,29 @@ width: fixed
   (open-commit [_this]
     (let [upserts      (atom [])
           deletes      (atom #{})
-          replace-all? (atom false)]
+          replace-all? (atom false)
+          apply-staged (fn [current]
+                         (let [managed (if @replace-all? (set managed-dirs) #{})]
+                           (as-> (or current {}) files
+                             (into {} (remove (fn [[p _]] (or (managed (top-level-dir p))
+                                                              (contains? @deletes p))))
+                                   files)
+                             (into files (comp (remove #(str/blank? (:path %))) (map (juxt :path :content)))
+                                   @upserts))))]
       (reify source.p/CommitBuilder
         (stage-upsert! [_ file-spec] (swap! upserts conj file-spec) nil)
         (stage-delete! [_ path] (swap! deletes conj path) nil)
         (replace-all! [_] (reset! replace-all? true) nil)
+        (empty-commit? [_]
+          (let [current (get @files-atom branch)]
+            (= current (apply-staged current))))
         (finish-commit! [_ _message]
           (case fail-mode
             :write-files-error   (throw (Exception. "Failed to write files"))
             :store-error         (throw (Exception. "Store failed"))
             :apply-changes-error (throw (Exception. "Failed to apply changes"))
             :network-error       (throw (java.net.UnknownHostException. "Remote host not found"))
-            (let [managed (if @replace-all? (set managed-dirs) #{})]
-              (swap! files-atom update branch
-                     (fn [current]
-                       (as-> (or current {}) files
-                         (into {} (remove (fn [[p _]] (or (managed (top-level-dir p))
-                                                          (contains? @deletes p))))
-                               files)
-                         (into files (comp (remove #(str/blank? (:path %))) (map (juxt :path :content)))
-                               @upserts))))))
+            (swap! files-atom update branch apply-staged))
           ;; version string discriminates a wholesale replace (replace-all!) from an incremental patch
           (if @replace-all? "write-files-version" "apply-changes-version"))
         (abort-commit! [_] nil))))
@@ -308,21 +310,25 @@ width: fixed
                         (open-commit [_]
                           (let [staged-upserts (atom [])
                                 staged-deletes (atom #{})
-                                replace-all?   (atom false)]
+                                replace-all?   (atom false)
+                                staged-tree    (fn []
+                                                 (let [replace-dirs (if @replace-all? managed #{})] ; `managed` = (set managed-dirs)
+                                                   (as-> (get-in @state [:trees version] {}) t
+                                                     (into {} (remove (fn [[p _]] (or (replace-dirs (top-level-dir p))
+                                                                                      (contains? @staged-deletes p)))) t)
+                                                     (into t (comp (remove #(str/blank? (:path %)))
+                                                                   (map (juxt :path :content)))
+                                                           @staged-upserts))))]
                             (reify source.p/CommitBuilder
                               (stage-upsert! [_ file-spec] (swap! staged-upserts conj file-spec) nil)
                               (stage-delete! [_ path] (swap! staged-deletes conj path) nil)
                               (replace-all! [_] (reset! replace-all? true) nil)
+                              (empty-commit? [_]
+                                (= (get-in @state [:trees version] {}) (staged-tree)))
                               (finish-commit! [_ _message]
-                                (let [replace-dirs (if @replace-all? managed #{}) ; `managed` = (set managed-dirs)
-                                      n            (:counter (swap! state update :counter inc))
+                                (let [n           (:counter (swap! state update :counter inc))
                                       new-version (str "written-" n)
-                                      tree        (as-> (get-in @state [:trees version] {}) t
-                                                    (into {} (remove (fn [[p _]] (or (replace-dirs (top-level-dir p))
-                                                                                     (contains? @staged-deletes p)))) t)
-                                                    (into t (comp (remove #(str/blank? (:path %)))
-                                                                  (map (juxt :path :content)))
-                                                          @staged-upserts))]
+                                      tree        (staged-tree)]
                                   (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
                                   new-version))
                               (abort-commit! [_] nil))))

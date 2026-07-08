@@ -42,7 +42,7 @@ const createMockStateWithPermissions = ({
     }),
   });
 
-  return state as unknown as State;
+  return state;
 };
 
 describe("TenantCollectionPermissionsPage selectors", () => {

@@ -19,7 +19,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log.capture :as log.capture]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
@@ -610,7 +609,7 @@
                     derived-measure))
             (is (= #{[{:id "my-db", :model "Database"}]
                      [{:id (:entity_id @msr1s), :model "Measure"}]}
-                   (serdes/mbql-deps (:definition derived-measure))))))
+                   (serdes/mbql-deps false (:definition derived-measure))))))
         (testing "deserializing adjusts the measure IDs properly"
           (ts/with-db dest-db
             (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
@@ -1994,32 +1993,6 @@
       (testing "absent :entity_id also works"
         (serdes.load/load-metabase! (ingestion-in-memory [(dissoc coll-ser :entity_id)]))
         (is (= 4 (coll-count)))))))
-
-(deftest warn-if-version-mismatch-test
-  (ts/with-dbs [source-db dest-db dest-db2 dest-db3]
-    (ts/with-db source-db
-      (mt/with-temp [:model/Collection _ {:name "col-1"}]
-        (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
-          (ts/with-db dest-db
-            (testing "logs a warning when version in serdes/meta differs from current version"
-              (let [old-version-extract (map #(assoc % :metabase_version "v1.0.0 (oldcommit)") extract)]
-                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
-                  (serdes.load/load-metabase! (ingestion-in-memory old-version-extract))
-                  (is (some #(str/includes? % "Version mismatch loading") (messages)))
-                  (is (= 1 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
-                      "Should log a version mismatch warning only once per load")))))
-          (ts/with-db dest-db2
-            (testing "No warnings when version in serdes/meta matches current version"
-              (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
-                (serdes.load/load-metabase! (ingestion-in-memory extract))
-                (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages))))))))
-          (ts/with-db dest-db3
-            (testing "No warnings when entities have no :metabase_version (eg. legacy exports or Settings)"
-              (let [no-version-extract (map #(dissoc % :metabase_version) extract)]
-                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
-                  (serdes.load/load-metabase! (ingestion-in-memory no-version-extract))
-                  (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
-                      "Missing :metabase_version should be treated as unknown, not as a mismatch"))))))))))
 
 (deftest import-published-table-with-existing-database-test
   (testing "Importing a published table works when database already exists on target"

@@ -51,9 +51,13 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" database-name)
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
@@ -203,7 +207,7 @@
        (apply f stmt args)))))
 
 (defn- drop-old-datasets!
-  "Drop test datasets (databases) prefixed by `sha_` that are >2 days old."
+  "Drop test datasets (databases) prefixed by `sha_` that too old."
   []
   (when-let [old-datasets (not-empty (old-dataset-names))]
     (with-write-stmt!
@@ -272,7 +276,7 @@
 
 (defn- delete-old-test-data!
   "Delete old test data:
-   - Datasets (databases) prefixed by sha_ that are two days ago or older
+   - Datasets (databases) prefixed by sha_ that haven't been accessed in a while
    - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old
    - Isolation users prefixed by mb__isolation_ that are more than 3 hours old
    - Isolation roles prefixed by MB_ISOLATION_ROLE_ that are more than 3 hours old
@@ -382,19 +386,6 @@
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
     nil))
 
-(defn- dataset-tracked?!
-  [conn driver db-def]
-  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                       driver
-                                       conn
-                                       "SELECT true as tracked FROM metabase_test_tracking.PUBLIC.datasets WHERE hash = ? and name = ?"
-                                       [(tx/hash-dataset db-def) (qualified-db-name db-def)])
-              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-    (some-> rs
-            resultset-seq
-            first
-            :tracked)))
-
 (defn- database-exists?!
   [conn driver db-def]
   (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
@@ -432,11 +423,8 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (setup-tracking-db! conn driver)
-     (and
-      (dataset-tracked?! conn driver db-def)
-      (database-exists?! conn driver db-def)
-      (dataset-rows-ok?! conn db-def)))))
+     (and (database-exists?! conn driver db-def)
+          (dataset-rows-ok?! conn db-def)))))
 
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
@@ -445,6 +433,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
+     (setup-tracking-db! conn driver)
      (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                           driver
                                           conn

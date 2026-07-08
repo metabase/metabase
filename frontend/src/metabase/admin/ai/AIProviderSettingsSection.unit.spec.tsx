@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -16,6 +15,7 @@ import {
   type MetabotApiKeyProvider,
 } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
+import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type {
   BedrockCredentials,
@@ -89,10 +89,10 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     ],
   },
   openai: {
-    value: "openai/gpt-4.1-mini",
+    value: "openai/gpt-5.4",
     models: [
-      { id: "gpt-4.1-mini", display_name: "GPT-4.1 mini" },
-      { id: "gpt-4.1", display_name: "GPT-4.1" },
+      { id: "gpt-5.4", display_name: "gpt-5.4" },
+      { id: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
     ],
   },
   openrouter: {
@@ -472,8 +472,7 @@ async function setup({
       }
 
       if (key === "llm-metabot-provider") {
-        sessionProperties["llm-metabot-provider"] =
-          (nextValue as string | null) ?? null;
+        sessionProperties["llm-metabot-provider"] = nextValue ?? null;
         sessionProperties["llm-metabot-configured?"] = Boolean(nextValue);
       }
     });
@@ -575,7 +574,7 @@ describe("AIProviderSettingsSection", () => {
     expect(anthropicOption).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("shows Coming soon for non-Anthropic providers and disables them", async () => {
+  it("shows OpenAI as selectable in the provider dropdown", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
     await userEvent.click(screen.getByLabelText("Provider"));
@@ -583,14 +582,21 @@ describe("AIProviderSettingsSection", () => {
     const openaiOption = await screen.findByRole("option", {
       name: /OpenAI/,
     });
-    expect(openaiOption).toHaveAttribute("data-combobox-disabled");
+    expect(openaiOption).toBeInTheDocument();
+    expect(openaiOption).not.toHaveAttribute("data-combobox-disabled");
+  });
+
+  it("shows Coming soon for unsupported providers and disables them", async () => {
+    await setup({ savedProviderValue: null, isConfigured: false });
+
+    await userEvent.click(screen.getByLabelText("Provider"));
 
     const openrouterOption = await screen.findByRole("option", {
       name: /OpenRouter/,
     });
     expect(openrouterOption).toHaveAttribute("data-combobox-disabled");
 
-    expect(screen.getAllByText("Coming soon")).toHaveLength(2);
+    expect(screen.getAllByText("Coming soon")).toHaveLength(1);
   });
 
   it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {
@@ -1523,6 +1529,89 @@ describe("AIProviderSettingsSection", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("connects to OpenAI by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { openai: null },
+      updateResponse: {
+        value: "openai/gpt-5.4",
+        models: DEFAULT_RESPONSES.openai.models,
+      },
+    });
+
+    await selectProvider("OpenAI");
+    await userEvent.type(screen.getByLabelText("API key"), "sk-openai-test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+    });
+
+    const connectRequest = fetchMock.callHistory
+      .calls("path:/api/metabot/settings", { method: "PUT" })
+      .at(-1);
+    expect(connectRequest?.options?.body).toBe(
+      JSON.stringify({ provider: "openai", "api-key": "sk-openai-test" }),
+    );
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("gpt-5.4"));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toHaveLength(2);
+    });
+
+    const modelRequest = fetchMock.callHistory
+      .calls("path:/api/metabot/settings", { method: "PUT" })
+      .at(-1);
+    expect(modelRequest?.options?.body).toBe(
+      JSON.stringify({ provider: "openai", model: "gpt-5.4" }),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects OpenAI by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "openai/gpt-5.4",
+      isConfigured: true,
+      apiKeyValues: { openai: "**********ey" },
+    });
+
+    await screen.findByText("Connected to OpenAI");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", {
+          method: "PUT",
+          body: {
+            "llm-metabot-provider": null,
+            "llm-openai-api-key": null,
+          },
+        }),
+      ).toBe(true);
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
   it("disconnects an API-key provider by clearing both the provider and API key settings", async () => {
     await setup();
 
@@ -1644,10 +1733,8 @@ describe("AIProviderSettingsSection", () => {
 
     const callHistory = fetchMock.callHistory.calls();
 
-    expect(
-      callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
-    ).toBeLessThan(
-      callHistory.indexOf(request as (typeof callHistory)[number]),
+    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
+      callHistory.indexOf(request),
     );
   });
 
@@ -1697,10 +1784,8 @@ describe("AIProviderSettingsSection", () => {
 
     const callHistory = fetchMock.callHistory.calls();
 
-    expect(
-      callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
-    ).toBeLessThan(
-      callHistory.indexOf(request as (typeof callHistory)[number]),
+    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
+      callHistory.indexOf(request),
     );
   });
 

@@ -1,6 +1,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
+import { getBasename } from "metabase/utils/basename";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
@@ -28,15 +29,13 @@ import {
 const MAX_RETRIES = 10;
 
 export class ApiClient extends EventEmitter<EventMap> {
-  basename = "";
-
   private buildUrl(
     template: string,
     data: Record<string, unknown>,
     body?: Record<string, unknown>,
   ): URL {
     const relativePath = substituteUrlTags(template, data, body);
-    return new URL(this.basename.concat(relativePath), location.origin);
+    return new URL(getBasename().concat(relativePath), location.origin);
   }
 
   private getClientHeaders(
@@ -111,7 +110,7 @@ export class ApiClient extends EventEmitter<EventMap> {
 
       if (!init.noEvent && (status === 401 || status === 403)) {
         // Strip basename so listeners (app-main.js) see the relative path.
-        this.emit(status, relativeUrl(this.basename, init.url));
+        this.emit(status, relativeUrl(getBasename(), init.url));
       }
 
       if (!ok) {

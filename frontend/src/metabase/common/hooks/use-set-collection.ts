@@ -34,7 +34,6 @@ import type {
   Collection,
   CollectionItem,
   Dashboard,
-  DashboardId,
   Document,
   NativeQuerySnippet,
   Table,
@@ -141,7 +140,7 @@ export function useSetCollection() {
                   archived,
                 }
               : {
-                  dashboard_id: destination.id as DashboardId,
+                  dashboard_id: destination.id,
                   archived: false,
                   delete_old_dashcards: true,
                 };
