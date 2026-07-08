@@ -4,9 +4,7 @@
   "HoneySQL for a CTE to get latest QueryExecution for a Card."
   [:latest_qe {:select   [:query_execution.card_id :error :query_execution.started_at]
                :from     [:query_execution]
-               ;; Join on BOTH card_id and started_at. Matching on started_at alone
-               ;; fans out whenever executions across cards share a timestamp,
-               ;; producing duplicate/incorrect card rows.
+               ;; Join on BOTH card_id and started_at, because some cards share the same timestamp.
                :join     [[{:select [:card_id [:%max.started_at :started_at]]
                             :from [:query_execution]
                             :group-by [:card_id]} :inner_qe]

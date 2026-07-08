@@ -46,9 +46,6 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     () => getErroringQuestionsQuery(filters, sorting, page),
     [filters, sorting, page],
   );
-  // The previous page's request is aborted when the query changes; `data` is
-  // retained across changes so the table keeps showing results (no skeleton
-  // flash) while the next request runs.
   const { data, error, isFetching, isLoading, refetch } =
     useAbortableAdhocQuery(query);
   const [runCardQuery] = useLazyGetCardQueryQuery();
@@ -57,8 +54,6 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     () => (data == null ? [] : getErroringQuestions(data)),
     [data],
   );
-  // The total for the current filters rides on the rows response as a
-  // `COUNT(*) OVER ()` column, so pagination needs no separate count query.
   const total = data == null ? null : getErroringQuestionsTotal(data);
   const pageError = error ?? data?.error;
 

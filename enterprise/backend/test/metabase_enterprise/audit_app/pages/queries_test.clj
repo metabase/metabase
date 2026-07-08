@@ -24,11 +24,10 @@
                                additional-query-params)))))
 
 (defn- bad-table-total
-  "The `COUNT(*) OVER ()` total that rides on the bad-table rows as the last
-  column (0 when the filtered set is empty and no rows come back)."
+  "The `COUNT(*) OVER ()` total, surfaced as a top-level `:total_count` on the
+  bad-table response (0 when the filtered set is empty)."
   [& args]
-  (let [rows (mt/rows (run-query ::queries/bad-table :args (vec args)))]
-    (if (seq rows) (last (first rows)) 0)))
+  (:total_count (run-query ::queries/bad-table :args (vec args))))
 
 (deftest bad-table-total-count-test
   (testing "bad-table carries a total_count matching the filtered set"

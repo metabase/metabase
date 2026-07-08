@@ -79,18 +79,13 @@ export function getErroringQuestionsQuery(
 }
 
 /**
- * Total row count for the current filters, read from the `total_count`
- * `COUNT(*) OVER ()` column that rides on the `bad-table` rows response.
- * An empty result set carries no rows, so the total is 0.
+ * Total row count for the current filters. The `bad-table` audit query computes
+ * it with `COUNT(*) OVER ()` and the API surfaces it as a top-level `total_count`
+ * on the response (0 when the filtered set is empty). It isn't part of the shared
+ * `Dataset` type, so it's read defensively.
  */
 export function getErroringQuestionsTotal(dataset: Dataset): number {
-  const index = dataset.data.cols.findIndex(
-    (col) => col.name === "total_count",
-  );
-  if (index === -1 || dataset.data.rows.length === 0) {
-    return 0;
-  }
-  const value = dataset.data.rows[0][index];
+  const value = (dataset as Dataset & { total_count?: unknown }).total_count;
   return typeof value === "number" ? value : 0;
 }
 

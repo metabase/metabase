@@ -41,12 +41,9 @@ const COLUMN_NAMES = [
   "num_dashboards",
   "user_name",
   "updated_at",
-  // COUNT(*) OVER () — the full total for the current filters rides on each row
-  "total_count",
 ];
 
 function createDatasetResponse(questions: QuestionRow[], total?: number) {
-  const totalCount = total ?? questions.length;
   const rows: RowValue[][] = questions.map((question) => [
     question.id,
     question.name ?? `Question ${question.id}`,
@@ -60,16 +57,19 @@ function createDatasetResponse(questions: QuestionRow[], total?: number) {
     2,
     "John Doe",
     "2026-06-30T10:00:00Z",
-    totalCount,
   ]);
 
-  return createMockDataset({
-    data: createMockDatasetData({
-      cols: COLUMN_NAMES.map((name) => createMockColumn({ name })),
-      rows,
+  // the audit query surfaces the full total as a top-level key, not a column
+  return {
+    ...createMockDataset({
+      data: createMockDatasetData({
+        cols: COLUMN_NAMES.map((name) => createMockColumn({ name })),
+        rows,
+      }),
+      row_count: rows.length,
     }),
-    row_count: rows.length,
-  });
+    total_count: total ?? questions.length,
+  };
 }
 
 const getDatasetCalls = () => fetchMock.callHistory.calls("path:/api/dataset");
