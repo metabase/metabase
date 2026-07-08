@@ -23,7 +23,10 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { getNextSorting, getSortingState } from "metabase/utils/sorting";
+import {
+  getNextOptionalSorting,
+  getSortingState,
+} from "metabase/utils/sorting";
 import type { CardId } from "metabase-types/api";
 
 import {
@@ -31,6 +34,7 @@ import {
   type ErroringQuestionsSorting,
   SORT_COLUMNS,
 } from "./types";
+import { DEFAULT_SORTING } from "./utils";
 
 const COLUMN_WIDTHS = [
   0.14, 0.16, 0.1, 0.08, 0.06, 0.08, 0.09, 0.06, 0.06, 0.09, 0.08,
@@ -92,9 +96,12 @@ export const ErroringQuestionsTable = ({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingChange(getNextSorting(newSortingState, SORT_COLUMNS, sorting));
+      onSortingChange(
+        getNextOptionalSorting(newSortingState, SORT_COLUMNS) ??
+          DEFAULT_SORTING,
+      );
     },
-    [sortingState, sorting, onSortingChange],
+    [sortingState, onSortingChange],
   );
 
   const treeTableInstance = useTreeTableInstance<ErroringCard>({
@@ -243,7 +250,7 @@ function getColumns(): TreeTableColumnDef<ErroringCard>[] {
       width: "auto",
       minWidth: 130,
       enableSorting: true,
-      sortDescFirst: false,
+      sortDescFirst: true,
       accessorFn: (card) => card.last_run_at,
       cell: ({ row }) =>
         row.original.last_run_at != null ? (
