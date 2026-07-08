@@ -1,4 +1,5 @@
 import type { DataAppTestEnv } from "e2e/support/assets/data-apps/renders-interactive-question/src/test-env";
+import { DATA_APP_API_ROOT, dataApp } from "metabase/urls/data-apps";
 
 import { getIframeBody } from "./e2e-embedding-helpers";
 
@@ -60,11 +61,16 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
     const app = dataAppMeta(slug, displayName, allowedHosts);
 
-    cy.intercept("GET", "/api/data-app/repo-status", { configured: true });
-    cy.intercept("GET", "/api/data-app", [app]);
-    cy.intercept({ method: "GET", pathname: `/api/data-app/${slug}` }, app);
+    cy.intercept("GET", `${DATA_APP_API_ROOT}/repo-status`, {
+      configured: true,
+    });
+    cy.intercept("GET", DATA_APP_API_ROOT, [app]);
     cy.intercept(
-      { method: "GET", pathname: `/api/data-app/${slug}/bundle` },
+      { method: "GET", pathname: `${DATA_APP_API_ROOT}/${slug}` },
+      app,
+    );
+    cy.intercept(
+      { method: "GET", pathname: `${DATA_APP_API_ROOT}/${slug}/bundle` },
       {
         statusCode: 200,
         headers: {
@@ -80,7 +86,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
 };
 
 export function openDataApp(slug: string) {
-  return cy.visit(`/data-app/${slug}`);
+  return cy.visit(dataApp(slug));
 }
 
 export function dataAppIframe(displayName: string) {

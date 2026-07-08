@@ -1,3 +1,5 @@
+import { DATA_APP_EMBED_PREFIX } from "metabase/urls";
+
 import { makeDistortionCallback } from "./distortions";
 
 // A minimal stand-in for the iframe window the data-app sandbox is built on.
@@ -9,7 +11,7 @@ const fakeWindow = () =>
     fetch: function nativeFetch() {},
     XMLHttpRequest: class NativeXHR {},
     location: {
-      href: "https://mb.example.com/embed/data-app/sales",
+      href: `https://mb.example.com${DATA_APP_EMBED_PREFIX}/sales`,
       origin: "https://mb.example.com",
     },
   }) as unknown as Window & typeof globalThis;

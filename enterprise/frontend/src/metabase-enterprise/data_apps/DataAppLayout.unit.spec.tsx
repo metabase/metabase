@@ -3,6 +3,11 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Link, Route } from "metabase/router";
+import {
+  DATA_APP_API_ROOT,
+  DATA_APP_ROOT_URL,
+  dataApp,
+} from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
@@ -30,11 +35,11 @@ afterEach(() => {
 });
 
 const setup = (apps: DataApp[], name = "sales") => {
-  fetchMock.get("path:/api/data-app", apps);
+  fetchMock.get(`path:${DATA_APP_API_ROOT}`, apps);
 
   return renderWithProviders(
-    <Route path="/data-app/:name" component={LayoutRoute} />,
-    { withRouter: true, initialRoute: `/data-app/${name}` },
+    <Route path={`${DATA_APP_ROOT_URL}/:name`} component={LayoutRoute} />,
+    { withRouter: true, initialRoute: dataApp(name) },
   );
 };
 
@@ -144,7 +149,7 @@ describe("DataAppLayout", () => {
       const listbox = await screen.findByRole("listbox");
       await userEvent.click(within(listbox).getByText("Ops"));
 
-      expect(history?.getCurrentLocation().pathname).toBe("/data-app/ops");
+      expect(history?.getCurrentLocation().pathname).toBe(dataApp("ops"));
     });
   });
 });

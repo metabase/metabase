@@ -1,5 +1,10 @@
 import type { DataAppTestEnv } from "e2e/support/assets/data-apps/renders-interactive-question/src/test-env";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  DATA_APP_ADMIN_URL,
+  DATA_APP_API_ROOT,
+  dataApp,
+} from "metabase/urls/data-apps";
 import type { DataApp } from "metabase-types/api";
 
 const { H } = cy;
@@ -52,7 +57,7 @@ describe("scenarios > data apps", () => {
         testEnv: TEST_ENV,
       });
 
-      cy.visit("/admin/settings/data-apps");
+      cy.visit(DATA_APP_ADMIN_URL);
       cy.findByRole("link", { name: APP_DISPLAY_NAME }).should("be.visible");
 
       H.openDataApp(APP_NAME);
@@ -70,12 +75,12 @@ describe("scenarios > data apps", () => {
     });
 
     it("shows an empty state when no repository is connected", () => {
-      cy.intercept("GET", "/api/data-app/repo-status", {
+      cy.intercept("GET", `${DATA_APP_API_ROOT}/repo-status`, {
         configured: false,
       }).as("repoStatus");
-      cy.intercept("GET", "/api/data-app", []);
+      cy.intercept("GET", DATA_APP_API_ROOT, []);
 
-      cy.visit("/admin/settings/data-apps");
+      cy.visit(DATA_APP_ADMIN_URL);
       cy.wait("@repoStatus");
 
       cy.findByTestId("admin-layout-content")
@@ -88,10 +93,12 @@ describe("scenarios > data apps", () => {
     });
 
     it("shows an empty state when the connected repository has no apps", () => {
-      cy.intercept("GET", "/api/data-app/repo-status", { configured: true });
-      cy.intercept("GET", "/api/data-app", []).as("apps");
+      cy.intercept("GET", `${DATA_APP_API_ROOT}/repo-status`, {
+        configured: true,
+      });
+      cy.intercept("GET", DATA_APP_API_ROOT, []).as("apps");
 
-      cy.visit("/admin/settings/data-apps");
+      cy.visit(DATA_APP_ADMIN_URL);
       cy.wait("@apps");
 
       cy.findByTestId("admin-layout-content")
@@ -100,23 +107,25 @@ describe("scenarios > data apps", () => {
     });
 
     it("lists an enabled app with an Open link and a working enable toggle", () => {
-      cy.intercept("GET", "/api/data-app/repo-status", { configured: true });
-      cy.intercept("GET", "/api/data-app", [fakeApp()]);
-      cy.intercept("PUT", `/api/data-app/${APP_NAME}`, {
+      cy.intercept("GET", `${DATA_APP_API_ROOT}/repo-status`, {
+        configured: true,
+      });
+      cy.intercept("GET", DATA_APP_API_ROOT, [fakeApp()]);
+      cy.intercept("PUT", `${DATA_APP_API_ROOT}/${APP_NAME}`, {
         statusCode: 200,
         body: fakeApp({ enabled: false }),
       }).as("setEnabled");
 
-      cy.visit("/admin/settings/data-apps");
+      cy.visit(DATA_APP_ADMIN_URL);
 
       // An enabled app links to its route and shows its path + an Open link.
       cy.findByRole("link", { name: APP_DISPLAY_NAME }).should("be.visible");
       cy.findByTestId("admin-layout-content")
-        .findByText(`/data-app/${APP_NAME}`)
+        .findByText(dataApp(APP_NAME))
         .should("be.visible");
       cy.findByRole("link", { name: /Open/ })
         .should("have.attr", "href")
-        .and("contain", `/data-app/${APP_NAME}`);
+        .and("contain", dataApp(APP_NAME));
 
       // Toggling the switch off issues the disable mutation. The Mantine Switch
       // input is visually hidden, so click it with `force`.
@@ -129,10 +138,12 @@ describe("scenarios > data apps", () => {
     });
 
     it("unlinks the name and disables Open for a disabled app", () => {
-      cy.intercept("GET", "/api/data-app/repo-status", { configured: true });
-      cy.intercept("GET", "/api/data-app", [fakeApp({ enabled: false })]);
+      cy.intercept("GET", `${DATA_APP_API_ROOT}/repo-status`, {
+        configured: true,
+      });
+      cy.intercept("GET", DATA_APP_API_ROOT, [fakeApp({ enabled: false })]);
 
-      cy.visit("/admin/settings/data-apps");
+      cy.visit(DATA_APP_ADMIN_URL);
 
       // A disabled app isn't reachable, so its name is plain text (not a link)
       // and the Open control has no href (not a link).
@@ -144,10 +155,12 @@ describe("scenarios > data apps", () => {
     });
 
     it("shows the setup section: install command and the Git sync link", () => {
-      cy.intercept("GET", "/api/data-app/repo-status", { configured: false });
-      cy.intercept("GET", "/api/data-app", []);
+      cy.intercept("GET", `${DATA_APP_API_ROOT}/repo-status`, {
+        configured: false,
+      });
+      cy.intercept("GET", DATA_APP_API_ROOT, []);
 
-      cy.visit("/admin/settings/data-apps");
+      cy.visit(DATA_APP_ADMIN_URL);
 
       // Remote-sync link points at the Git sync settings page.
       cy.findByRole("link", {
@@ -210,7 +223,7 @@ describe("scenarios > data apps", () => {
     it("shows a not-found state for a disabled or missing app", () => {
       // A disabled or non-existent app 404s from the metadata endpoint; the host
       // renders a not-found state rather than a broken iframe.
-      cy.intercept("GET", `/api/data-app/${APP_NAME}`, {
+      cy.intercept("GET", `${DATA_APP_API_ROOT}/${APP_NAME}`, {
         statusCode: 404,
         body: {},
       }).as("meta");
@@ -242,7 +255,7 @@ describe("scenarios > data apps", () => {
 
       // The iframe's client-side navigation is mirrored to the parent's URL bar
       // (via replaceState), so the top-level path reflects the nested route.
-      cy.location("pathname").should("eq", `/data-app/${APP_NAME}/details`);
+      cy.location("pathname").should("eq", `${dataApp(APP_NAME)}/details`);
     });
   });
 
@@ -358,7 +371,7 @@ describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
   });
 
   it("shows the data-apps upsell instead of the management UI", () => {
-    cy.visit("/admin/settings/data-apps");
+    cy.visit(DATA_APP_ADMIN_URL);
 
     H.main().within(() => {
       cy.findByText("Build apps on your data").should("be.visible");
@@ -367,7 +380,7 @@ describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
   });
 
   it("marks the Data apps settings nav item with an upsell gem", () => {
-    cy.visit("/admin/settings/data-apps");
+    cy.visit(DATA_APP_ADMIN_URL);
 
     cy.findByRole("link", { name: /Data apps/ }).within(() => {
       cy.findByTestId("upsell-gem").should("exist");

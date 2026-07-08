@@ -1,6 +1,7 @@
 import { act } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { DATA_APP_EMBED_PREFIX } from "metabase/urls";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
@@ -62,7 +63,7 @@ describe("AppView", () => {
 
     const iframe = screen.getByTitle("Sales");
     expect(iframe).toBeInTheDocument();
-    expect(iframe).toHaveAttribute("src", "/embed/data-app/sales");
+    expect(iframe).toHaveAttribute("src", `${DATA_APP_EMBED_PREFIX}/sales`);
   });
 
   /** Post a `message` event as if it came from `source`. */

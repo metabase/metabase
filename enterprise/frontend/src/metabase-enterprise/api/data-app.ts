@@ -1,3 +1,4 @@
+import { DATA_APP_API_ROOT } from "metabase/urls";
 import type {
   DataApp,
   DataAppRepoStatus,
@@ -16,7 +17,7 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     listDataApps: builder.query<DataApp[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/data-app",
+        url: DATA_APP_API_ROOT,
       }),
       providesTags: (apps = []) => [
         listTag("data-app"),
@@ -26,21 +27,21 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
     getDataApp: builder.query<DataApp, string>({
       query: (name) => ({
         method: "GET",
-        url: `/api/data-app/${encodeURIComponent(name)}`,
+        url: `${DATA_APP_API_ROOT}/${encodeURIComponent(name)}`,
       }),
       providesTags: (_, __, name) => [idTag("data-app", name)],
     }),
     getDataAppRepoStatus: builder.query<DataAppRepoStatus, void>({
       query: () => ({
         method: "GET",
-        url: "/api/data-app/repo-status",
+        url: `${DATA_APP_API_ROOT}/repo-status`,
       }),
       providesTags: () => [REPO_STATUS_TAG],
     }),
     setDataAppEnabled: builder.mutation<DataApp, SetDataAppEnabledRequest>({
       query: ({ name, enabled }) => ({
         method: "PUT",
-        url: `/api/data-app/${encodeURIComponent(name)}`,
+        url: `${DATA_APP_API_ROOT}/${encodeURIComponent(name)}`,
         body: { enabled },
       }),
       invalidatesTags: (_, error, { name }) =>

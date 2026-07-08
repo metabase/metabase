@@ -100,17 +100,17 @@
 
 (deftest data-app-frame-ancestors-test
   (testing "the internal data-app iframe is framable only by the same-origin host"
-    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/data-app/sales")))
-    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/data-app/sales/sub/route")))
-    (is (= "SAMEORIGIN" (get (headers-for-uri "/embed/data-app/sales") "X-Frame-Options"))))
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales")))
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales/sub/route")))
+    (is (= "SAMEORIGIN" (get (headers-for-uri "/embed/apps/sales") "X-Frame-Options"))))
   (testing "other /embed and /public pages keep open framing (unchanged)"
     (doseq [uri ["/embed/dashboard/abc" "/public/question/abc"]]
       (is (= "frame-ancestors *" (frame-ancestors-for uri)))
       (is (nil? (get (headers-for-uri uri) "X-Frame-Options")))))
-  (testing "the top-level /data-app page itself is not framable"
+  (testing "the top-level /apps page itself is not framable"
     (mt/with-temporary-setting-values [enable-embedding-interactive false]
-      (is (= "frame-ancestors 'none'" (frame-ancestors-for "/data-app/sales")))
-      (is (= "DENY" (get (headers-for-uri "/data-app/sales") "X-Frame-Options"))))))
+      (is (= "frame-ancestors 'none'" (frame-ancestors-for "/apps/sales")))
+      (is (= "DENY" (get (headers-for-uri "/apps/sales") "X-Frame-Options"))))))
 
 (defn- csp-directive-for [uri directive]
   (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
@@ -120,16 +120,16 @@
 (deftest data-app-form-action-test
   (testing "with no allowed_hosts, native <form action> submits are blocked (client-side onSubmit still works)"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
-      (is (= "form-action 'none'" (csp-directive-for "/embed/data-app/sales" "form-action")))
+      (is (= "form-action 'none'" (csp-directive-for "/embed/apps/sales" "form-action")))
       (is (= "form-action 'none'"
-             (csp-directive-for "/embed/data-app/sales/sub/route" "form-action")))))
+             (csp-directive-for "/embed/apps/sales/sub/route" "form-action")))))
   (testing "form-action mirrors the app's allowed_hosts (like connect-src)"
     (with-redefs [mw.security/data-app-connect-src-hosts
                   (constantly ["https://api.example.com" "https://*.trusted.test"])]
       (is (= "form-action https://api.example.com https://*.trusted.test"
-             (csp-directive-for "/embed/data-app/sales" "form-action")))))
+             (csp-directive-for "/embed/apps/sales" "form-action")))))
   (testing "other documents leave form-action unset (falls through to no restriction)"
-    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc" "/data-app/sales"]]
+    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc" "/apps/sales"]]
       (is (nil? (csp-directive-for uri "form-action"))))))
 
 (deftest data-app-frame-src-test
@@ -140,7 +140,7 @@
       (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
         ;; Both the top page and the iframe doc: the top page's `frame-src` gates
         ;; what the iframe below it may navigate to.
-        (doseq [uri ["/data-app/sales" "/embed/data-app/sales"]]
+        (doseq [uri ["/apps/sales" "/embed/apps/sales"]]
           (let [frame-src (csp-directive-for uri "frame-src")]
             (is (str/includes? frame-src "'self'") uri)
             (is (str/includes? frame-src "https://example.com") uri)
@@ -148,7 +148,7 @@
                 (str uri " must not include the instance-wide iframe hosts")))))))
   (testing "with no allowed_hosts, a data app can only frame 'self'"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
-      (is (= "frame-src 'self'" (csp-directive-for "/embed/data-app/sales" "frame-src")))))
+      (is (= "frame-src 'self'" (csp-directive-for "/embed/apps/sales" "frame-src")))))
   (testing "non-data-app documents keep the instance-wide iframe hosts, not app hosts"
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
       (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
@@ -161,9 +161,9 @@
     (mt/with-temporary-setting-values [site-url "https://mymetabase.example"]
       (with-redefs [mw.security/data-app-connect-src-hosts
                     (constantly ["https://mymetabase.example" "https://api.allowed.test"])]
-        (let [form-action (csp-directive-for "/embed/data-app/sales" "form-action")
-              frame-src   (csp-directive-for "/embed/data-app/sales" "frame-src")
-              connect-src (csp-directive-for "/embed/data-app/sales" "connect-src")]
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
           (testing "the genuinely-external host survives"
             (is (str/includes? form-action "https://api.allowed.test"))
             (is (str/includes? frame-src "https://api.allowed.test"))
@@ -176,18 +176,18 @@
 (deftest data-app-connect-src-test
   (testing "a data app's allowed_hosts are added to the iframe document's connect-src"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
-      (is (str/includes? (csp-directive-for "/embed/data-app/sales" "connect-src")
+      (is (str/includes? (csp-directive-for "/embed/apps/sales" "connect-src")
                          "https://api.example.com"))))
   (testing "with no allowed_hosts, the iframe connect-src has no app hosts (same as any doc)"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
-      (is (= (csp-directive-for "/embed/data-app/sales" "connect-src")
+      (is (= (csp-directive-for "/embed/apps/sales" "connect-src")
              (csp-directive-for "/embed/dashboard/abc" "connect-src")))))
   (testing "the top-level /data-app page keeps a tight connect-src — hosts go to the iframe doc, not here"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
-      (is (not (str/includes? (csp-directive-for "/data-app/sales" "connect-src")
+      (is (not (str/includes? (csp-directive-for "/apps/sales" "connect-src")
                               "https://api.example.com")))
       ;; ...but the top page still gets them in frame-src (it gates the iframe's nav).
-      (is (str/includes? (csp-directive-for "/data-app/sales" "frame-src")
+      (is (str/includes? (csp-directive-for "/apps/sales" "frame-src")
                          "https://api.example.com"))))
   (testing "non-data-app documents don't get app hosts in connect-src"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
@@ -230,7 +230,7 @@
                                               :headers {}}
                                              identity
                                              identity)
-            data-response   (wrapped-handler {:uri "/embed/data-app/boba"
+            data-response   (wrapped-handler {:uri "/embed/apps/boba"
                                               :headers {}}
                                              identity
                                              identity)
@@ -258,9 +258,9 @@
                               (-> (wrapped-handler {:uri uri :headers {}} identity identity)
                                   (csp-directive-from-response "script-src")))]
         (is (not (str/includes? (script-src-for "/") "'unsafe-eval'")))
-        (is (str/includes? (script-src-for "/embed/data-app/boba") "'unsafe-eval'"))
+        (is (str/includes? (script-src-for "/embed/apps/boba") "'unsafe-eval'"))
         ;; sub-routes under the data-app entrypoint are the same SPA shell
-        (is (str/includes? (script-src-for "/embed/data-app/boba/sub/route") "'unsafe-eval'"))))))
+        (is (str/includes? (script-src-for "/embed/apps/boba/sub/route") "'unsafe-eval'"))))))
 
 (deftest data-app-blob-img-csp-test
   (testing "Only data-app iframe responses allow the blob: scheme in img-src"
@@ -272,8 +272,8 @@
                               (-> (wrapped-handler {:uri uri :headers {}} identity identity)
                                   (csp-directive-from-response "img-src")))]
         (is (not (str/includes? (img-src-for "/") "blob:")))
-        (is (str/includes? (img-src-for "/embed/data-app/boba") "blob:"))
-        (is (str/includes? (img-src-for "/embed/data-app/boba/sub/route") "blob:"))))))
+        (is (str/includes? (img-src-for "/embed/apps/boba") "blob:"))
+        (is (str/includes? (img-src-for "/embed/apps/boba/sub/route") "blob:"))))))
 
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"

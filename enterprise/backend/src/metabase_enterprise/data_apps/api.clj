@@ -1,10 +1,10 @@
 (ns metabase-enterprise.data-apps.api
-  "Data-app endpoints, mounted at `/api/data-app`.
+  "Data-app endpoints, mounted at `/api/apps`.
 
    Data apps come from the repository connected via the remote-sync feature. The
    repo's `data_apps/<dir>/data_app.yml` files are discovered on sync and each is
    materialized as one `data_app` row, caching the app's bundle. Users navigate to
-   `/data-app/:slug`, which fetches `/api/data-app/:slug/bundle` and evaluates the
+   `/apps/:slug`, which fetches `/api/apps/:slug/bundle` and evaluates the
    bytes inside a Near Membrane sandbox.
 
    Note: we can't use `/app/...` for the frontend or `/api/app/...` for the API
@@ -147,5 +147,5 @@
       (raise e))))
 
 (def routes
-  "`/api/data-app` routes."
+  "`/api/apps` routes."
   (api.macros/ns-handler *ns* +auth))

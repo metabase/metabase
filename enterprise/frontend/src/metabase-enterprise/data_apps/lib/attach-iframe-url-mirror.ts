@@ -1,4 +1,4 @@
-import { DATA_APP_EMBED_PREFIX } from "../constants";
+import { DATA_APP_EMBED_PREFIX, dataApp } from "metabase/urls";
 
 import { isCrossOriginError } from "./is-cross-origin-error";
 
@@ -31,7 +31,7 @@ export function attachIframeUrlMirror(
   parentName: string,
 ): () => void {
   const iframePrefix = `${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`;
-  const parentPrefix = `/data-app/${encodeURIComponent(parentName)}`;
+  const parentPrefix = dataApp(parentName);
 
   const mirror = () => {
     const iframePath = iframeWindow.location.pathname;

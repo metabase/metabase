@@ -29,17 +29,17 @@
                                      :enabled       true
                                      :allowed_hosts ["https://api.example.com" "https://*.acme.com"]}]
       (testing "the data-app iframe document's connect-src includes the app's allowed_hosts (and keeps 'self')"
-        (let [cs (connect-src-for! "/embed/data-app/boba")]
+        (let [cs (connect-src-for! "/embed/apps/boba")]
           (is (str/includes? cs "https://api.example.com"))
           (is (str/includes? cs "https://*.acme.com"))
           (is (str/includes? cs "'self'"))))
       (testing "a deeper sub-route of the same app gets them too"
-        (is (str/includes? (connect-src-for! "/embed/data-app/boba/sub/route")
+        (is (str/includes? (connect-src-for! "/embed/apps/boba/sub/route")
                            "https://api.example.com")))
       (testing "the main app's connect-src does NOT include them"
         (is (not (str/includes? (connect-src-for! "/") "https://api.example.com"))))
       (testing "an unknown app contributes no hosts"
-        (is (not (str/includes? (connect-src-for! "/embed/data-app/nope")
+        (is (not (str/includes? (connect-src-for! "/embed/apps/nope")
                                 "api.example.com")))))))
 
 (deftest data-app-connect-src-hosts-fn-test

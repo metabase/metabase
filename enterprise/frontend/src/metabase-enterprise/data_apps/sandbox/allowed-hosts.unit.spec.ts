@@ -1,3 +1,5 @@
+import { DATA_APP_EMBED_PREFIX } from "metabase/urls";
+
 import {
   isHostAllowed,
   makeSandboxFetch,
@@ -78,7 +80,7 @@ describe("isHostAllowed", () => {
 });
 
 describe("makeSandboxFetch", () => {
-  const base = "https://mb.example.com/embed/data-app/sales";
+  const base = `https://mb.example.com${DATA_APP_EMBED_PREFIX}/sales`;
   const origin = "https://mb.example.com";
 
   const fakeWindow = (fetch: jest.Mock) =>
