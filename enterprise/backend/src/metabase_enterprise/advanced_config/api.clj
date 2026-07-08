@@ -53,10 +53,11 @@
   "DESTRUCTIVE. Wipe ALL existing content from this instance — databases,
   collections, questions, dashboards, permissions, and (almost) all settings —
   then initialize it from the uploaded `config.yml`, as if the file had been
-  applied to a brand-new instance. Users, sessions, permission groups, and
-  memberships survive (so the caller stays logged in), though all permission
-  grants are reset to fresh-instance defaults. Instance identity survives too:
-  the premium token, site-url, site-uuid, and encryption bookkeeping.
+  applied to a brand-new instance. Users (with their login credentials),
+  sessions, API keys, permission groups, and memberships survive (so the caller
+  stays logged in and can call again), though all permission grants are reset
+  to fresh-instance defaults. Instance identity survives too: the premium
+  token, site-url, site-uuid, and encryption bookkeeping.
 
   Like `POST /`, `{{env VAR}}` templates are NOT expanded.
 

@@ -3,9 +3,11 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.advanced-config.reset :as reset]
    [metabase-enterprise.remote-sync.impl :as remote-sync.impl]
+   [metabase.api-keys.core :as api-keys]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
+   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,6 +25,12 @@
         _          (t2/insert! :model/Session {:id         session-id
                                                :key_hashed "unsafe-init-test-hash"
                                                :user_id    user-id})
+        api-key-id (t2/insert-returning-pk! :model/ApiKey
+                                            {:user_id       user-id
+                                             :creator_id    user-id
+                                             :updated_by_id user-id
+                                             :name          "Parent key"
+                                             ::api-keys/unhashed-key (api-keys/generate-key)})
         group-id   (t2/insert-returning-pk! :model/PermissionsGroup {:name "Custom Group"})
         _          (perms/add-user-to-group! user-id group-id)
         _          (t2/insert! :model/Permissions {:group_id group-id, :object "/collection/root/"})
@@ -35,7 +43,8 @@
     ;; raw row: the real setter validates the token against the store
     (t2/insert! :model/Setting {:key "premium-embedding-token" :value "fake-token"})
     (t2/insert! :model/Setting {:key "some-wiped-setting" :value "gone"})
-    {:user-id user-id, :session-id session-id, :group-id group-id, :coll-id coll-id, :db-id db-id}))
+    {:user-id user-id, :session-id session-id, :api-key-id api-key-id
+     :group-id group-id, :coll-id coll-id, :db-id db-id}))
 
 (deftest wipe-and-initialize-validates-before-wiping-test
   (mt/with-empty-h2-app-db!
@@ -47,7 +56,7 @@
 
 (deftest wipe-and-initialize-test
   (mt/with-empty-h2-app-db!
-    (let [{:keys [user-id session-id group-id coll-id]} (seed-content!)
+    (let [{:keys [user-id session-id api-key-id group-id coll-id]} (seed-content!)
           all-users-id (:id (perms/all-users-group))
           admin-id     (:id (perms/admin-group))]
       (reset/wipe-and-initialize! {:version 1
@@ -61,6 +70,13 @@
         (is (t2/exists? :model/Session :id session-id))
         (is (t2/exists? :model/PermissionsGroup :id group-id))
         (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))
+      (testing "password login credentials survive and still verify"
+        (let [{:keys [password_hash password_salt]}
+              (:credentials (t2/select-one :model/AuthIdentity :user_id user-id :provider "password"))]
+          (is (some? password_hash))
+          (is (u.password/verify-password "keep-me-password-123" password_salt password_hash))))
+      (testing "API keys survive, so the caller can init again"
+        (is (t2/exists? :model/ApiKey :id api-key-id)))
       (testing "permission grants are reset to fresh-instance defaults"
         (is (not (t2/exists? :model/Permissions :group_id group-id)))
         (is (= all-users-id (:id (perms/all-users-group))))

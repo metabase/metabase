@@ -8,10 +8,13 @@
 
   What survives a wipe:
 
-  - users, sessions, permission groups, and group memberships — so the calling
-    admin stays logged in. Permissions themselves are erased; the magic groups
-    get their fresh-instance default grants re-seeded, custom groups keep no
-    grants. Personal collections are wiped and lazily recreated on access.
+  - users, their login credentials (`auth_identity`), sessions, API keys,
+    permission groups, and group memberships — so the calling admin stays
+    logged in, everyone's password keeps working, and the API key used to
+    trigger the wipe keeps authenticating. Permissions themselves are erased;
+    the magic groups get their fresh-instance default grants re-seeded, custom
+    groups keep no grants. Personal collections are wiped and lazily recreated
+    on access.
   - instance identity, licensing, and encryption settings ([[preserved-settings]])
   - infrastructure tables: the Liquibase changelog, Quartz, and the cluster lock
 
@@ -47,12 +50,14 @@
    "settings-last-updated"])
 
 (def ^:private preserved-tables
-  "App-DB tables the bulk wipe never touches: users and their sessions, groups
-  and memberships (plus `tenant`, which users belong to), migration and cluster
-  infrastructure, and `setting`, which gets a selective delete of its own.
-  Quartz tables are matched by their `qrtz` prefix instead."
+  "App-DB tables the bulk wipe never touches: users with their login
+  credentials, sessions, and API keys (`auth_identity` is where password
+  authentication actually lives, and `core_session` has an FK to it that would
+  cascade), groups and memberships (plus `tenant`, which users belong to),
+  migration and cluster infrastructure, and `setting`, which gets a selective
+  delete of its own. Quartz tables are matched by their `qrtz` prefix instead."
   #{"databasechangelog" "databasechangeloglock" "metabase_cluster_lock"
-    "setting" "core_user" "core_session" "tenant"
+    "setting" "core_user" "core_session" "auth_identity" "api_key" "tenant"
     "permissions_group" "permissions_group_membership"})
 
 (defn- preserved-table? [table-name]
