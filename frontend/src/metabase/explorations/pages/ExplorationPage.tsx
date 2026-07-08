@@ -21,6 +21,7 @@ import * as Urls from "metabase/urls";
 import type {
   DocumentId,
   Exploration,
+  ExplorationBlockNode,
   ExplorationPageNode,
   ExplorationPageNodeId,
   ExplorationQuery,
@@ -387,6 +388,7 @@ export function ExplorationPage({
       page: ExplorationPageNode;
       thread: ExplorationThread;
       queries: ExplorationQuery[];
+      block: ExplorationBlockNode;
     }
   > = useMemo(() => {
     const map = new Map<
@@ -395,6 +397,7 @@ export function ExplorationPage({
         page: ExplorationPageNode;
         thread: ExplorationThread;
         queries: ExplorationQuery[];
+        block: ExplorationBlockNode;
       }
     >();
     for (const thread of exploration?.threads ?? []) {
@@ -404,7 +407,7 @@ export function ExplorationPage({
           const queries = page.query_ids
             .map((id) => queriesById.get(id))
             .filter((q): q is ExplorationQuery => q !== undefined);
-          map.set(String(page.id), { page, thread, queries });
+          map.set(String(page.id), { page, thread, queries, block });
         }
       }
     }
@@ -555,6 +558,7 @@ export function ExplorationPage({
               explorationId={exploration.id}
               page={selectedPage.page}
               queries={selectedPage.queries}
+              blockType={selectedPage.block.type}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}

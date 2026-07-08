@@ -36,7 +36,8 @@
 (def ^:private other-bucket-label
   "Label used for the rollup bucket in `top-n-other`. Plain string so the case
   expression doesn't need localization parametrization — the bucket name is the
-  same regardless of which categorical dim is being grouped."
+  same regardless of which categorical dim is being grouped.
+  Keep in sync with frontend OTHER_BUCKET_LABEL."
   "(Other)")
 
 (def ^:private default-max-rows

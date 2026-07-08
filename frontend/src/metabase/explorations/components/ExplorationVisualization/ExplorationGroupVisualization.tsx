@@ -36,6 +36,7 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   Comment,
+  ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
@@ -66,6 +67,7 @@ interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
   queries: ExplorationQuery[];
+  blockType: ExplorationBlockNodeType;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
@@ -157,6 +159,7 @@ function ExplorationGroupVisualizationChart({
   explorationId,
   page,
   queries,
+  blockType,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
@@ -445,6 +448,8 @@ function ExplorationGroupVisualizationChart({
             explorationId={explorationId}
             page={page}
             clicked={clicked}
+            blockType={blockType}
+            queryType={queries[0].query_type}
             onClose={() => setClicked(null)}
           />
         )}

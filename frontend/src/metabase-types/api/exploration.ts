@@ -282,9 +282,11 @@ export interface ExplorationPageNode {
   starred: boolean;
 }
 
+export type ExplorationBlockNodeType = "metric" | "dimension";
+
 export interface ExplorationBlockNode {
   id: number;
-  type: "metric" | "dimension";
+  type: ExplorationBlockNodeType;
   name: string | null;
   position: number;
   pages: ExplorationPageNode[];

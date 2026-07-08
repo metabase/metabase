@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
-import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import {
+  OTHER_BUCKET_LABEL,
+  TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD,
+} from "metabase/explorations/constants";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
@@ -19,8 +22,10 @@ import type {
   CardDisplayType,
   Dataset,
   DatasetColumn,
+  ExplorationBlockNodeType,
   ExplorationExploreFilter,
   ExplorationQuery,
+  ExplorationQueryType,
   RowValue,
   RowValues,
   SeriesSettings,
@@ -505,10 +510,19 @@ export function getMostInterestingTimelineId(
   return best?.id ?? null;
 }
 
+export function getColumnsAndValuesFromClicked(
+  clicked: ClickObject,
+): { column: DatasetColumn; value: RowValue }[] {
+  return (clicked.dimensions ?? []).map(({ column, value }) => {
+    return { column, value };
+  });
+}
+
 export function getExploreFurtherFilters(
   clicked: ClickObject,
 ): ExplorationExploreFilter[] {
-  return (clicked.dimensions ?? [])
+  const columnsAndValues = getColumnsAndValuesFromClicked(clicked);
+  return columnsAndValues
     .map(({ column, value }) => {
       if (column.field_ref != null) {
         return {
@@ -519,6 +533,31 @@ export function getExploreFurtherFilters(
       return undefined;
     })
     .filter((f) => f != null);
+}
+
+export function canExploreFurther(
+  clicked: ClickObject,
+  blockType: ExplorationBlockNodeType,
+  queryType: ExplorationQueryType,
+): boolean {
+  const columnsAndValues = getColumnsAndValuesFromClicked(clicked);
+  if (columnsAndValues.length === 0) {
+    return false;
+  }
+  // disable for dimension blocks - every query in a dimension block is cut by the same dimension
+  // so filtering on a single dimension value doesn't provide a new view of the data
+  if (blockType === "dimension") {
+    return false;
+  }
+  // OTHER_BUCKET_LABEL is not a real dimension value, so filtering on it won't return anything
+  if (
+    queryType === "top-n-other" &&
+    columnsAndValues.length === 1 &&
+    columnsAndValues[0].value === OTHER_BUCKET_LABEL
+  ) {
+    return false;
+  }
+  return true;
 }
 
 /**

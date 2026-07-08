@@ -17,18 +17,22 @@ import {
 import type { ClickObject } from "metabase/visualizations/types";
 import type {
   DocumentContent,
+  ExplorationBlockNodeType,
   ExplorationId,
   ExplorationPageNode,
+  ExplorationQueryType,
   IconName,
 } from "metabase-types/api";
 
 import S from "./ChartClickPopover.module.css";
-import { getExploreFurtherFilters } from "./utils";
+import { canExploreFurther, getExploreFurtherFilters } from "./utils";
 
 interface ChartClickPopoverProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
   clicked: ClickObject;
+  blockType: ExplorationBlockNodeType;
+  queryType: ExplorationQueryType;
   onClose: () => void;
 }
 
@@ -36,6 +40,8 @@ export function ChartClickPopover({
   explorationId,
   page,
   clicked,
+  blockType,
+  queryType,
   onClose,
 }: ChartClickPopoverProps) {
   const [mode, setMode] = useState<"menu" | "comment">("menu");
@@ -44,6 +50,12 @@ export function ChartClickPopover({
   const [sendToast] = useToast();
 
   const pageId = String(page.id);
+
+  const isExploreFurtherEnabled = canExploreFurther(
+    clicked,
+    blockType,
+    queryType,
+  );
 
   const exploreFilters = getExploreFurtherFilters(clicked);
 
@@ -129,12 +141,14 @@ export function ChartClickPopover({
       <Popover.Dropdown p={mode === "menu" ? "xs" : "sm"}>
         {mode === "menu" ? (
           <Stack gap={2} miw="12rem">
-            <MenuRow
-              icon="breakout"
-              label={t`Explore further`}
-              disabled={isLoading}
-              onClick={handleExploreFurther}
-            />
+            {isExploreFurtherEnabled && (
+              <MenuRow
+                icon="breakout"
+                label={t`Explore further`}
+                disabled={isLoading}
+                onClick={handleExploreFurther}
+              />
+            )}
             <MenuRow
               icon="add_comment"
               label={t`Comment`}
