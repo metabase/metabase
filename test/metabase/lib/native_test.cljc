@@ -289,11 +289,7 @@
                  :display-name "Myid"}]]
               ((juxt lib/raw-native-query lib/template-tags) query)))
       (is (=? ["select * from venues where id = {{myid}} and x = {{y}}"
-               ;; TODO (Cam 2026-07-06) not really sure why this is the order we get when we change the native query,
-               ;; previously it was indeterminate because tags were stored as a map... I guess new tags are currently
-               ;; getting added at the beginning. This behavior is more or less unintentional so if it seems wrong we
-               ;; should fix it.
-               [{:name "y"} {:name "myid"}]]
+               [{:name "myid"} {:name "y"}]]
               (-> query
                   (lib/with-native-query "select * from venues where id = {{myid}} and x = {{y}}")
                   ((juxt lib/raw-native-query lib/template-tags)))))
