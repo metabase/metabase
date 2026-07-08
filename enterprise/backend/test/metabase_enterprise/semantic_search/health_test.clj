@@ -194,3 +194,18 @@
     (testing "never throws -- a metric-sink error must not fail the repair job that calls it"
       (with-redefs [analytics/set-gauge! (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (semantic.health/report-repair-orphans! 3)))))))
+
+(deftest ^:sequential refresh-clears-push-garbage-when-disabled-test
+  (testing "refresh NaNs the push-only semantic garbage series when there's no active index, since no repair
+           run will (pull measures self-clear)"
+    (let [calls (atom [])]
+      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        (mt/with-temporary-setting-values [health-inspector-enabled false]
+          (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
+            (semantic.health/refresh-ai-index-metrics!))))
+      (is (some (fn [[gauge labels value]]
+                  (and (= gauge :metabase-ai-index/garbage-count)
+                       (= labels {:engine "semantic"})
+                       (double? value) (Double/isNaN ^double value)))
+                @calls)
+          "the semantic garbage-count series is cleared with NaN"))))

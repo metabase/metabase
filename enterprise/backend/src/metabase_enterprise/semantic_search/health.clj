@@ -175,6 +175,11 @@
   ;; descriptors for refresh-ai-index-metrics!, populated by register-index-check! at load time
   (atom []))
 
+(defonce ^:private push-metric-clearers
+  ;; Thunks run by refresh-ai-index-metrics! to NaN a PUSH-only gauge (semantic garbage, pushed from the repair
+  ;; job) when its feature is off -- no push will clear it, whereas pull measures self-clear via run-measure!.
+  (atom []))
+
 (defn- run-measure!
   "Run one measure's collector and always write its labelled Prometheus gauge (Prometheus is independent of the
   inspector setting). An N/A collector (nil) writes NaN so a previously-emitted series doesn't keep exposing a
@@ -220,7 +225,10 @@
                      (log/error e "AI index metric refresh errored" {:check check-name})
                      nil))]
       (when (and result (health-inspector/enabled?))
-        (health-inspector/save-check-result! check-name result)))))
+        (health-inspector/save-check-result! check-name result))))
+  ;; Pull measures NaN-cleared themselves above; clear push-only gauges whose feature is now off.
+  (doseq [clear! @push-metric-clearers]
+    (try (clear!) (catch Throwable e (log/error e "AI index push-metric clear errored")))))
 
 ;;; ------------------------------------- semantic-search collectors ----------------------------------------
 
@@ -250,6 +258,14 @@
   "TTL-memoized [[active-index*]] so the semantic coverage + staleness collectors (and the repair reporter)
   share one get-active-index-state per refresh cycle instead of each issuing their own pgvector round-trip."
   (memoize/ttl active-index* :ttl/threshold (* 30 1000)))
+
+;; Semantic garbage is pushed from the hourly repair job (see report-repair-orphans!), so nothing updates its
+;; series once the feature is off -- the repair task stops running. Register a clearer so refresh NaNs the
+;; series when there's no active index; when the feature is on, repair owns the value and this leaves it alone.
+(swap! push-metric-clearers conj
+       (fn []
+         (when-not (active-index)
+           (analytics/set-gauge! (measure->gauge :garbage) {:engine "semantic"} ##NaN))))
 
 (defn- scalar-row [pgvector sql]
   (jdbc/execute-one! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
