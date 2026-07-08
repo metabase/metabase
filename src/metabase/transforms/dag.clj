@@ -8,6 +8,7 @@
    [clojure.set :as set]
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.jobs :as jobs]
@@ -124,23 +125,20 @@
           (do (log/info "Skipping DAG run for transform" (pr-str transform-id) "because no transforms found in closure")
               (some-> start-promise (deliver nil))
               nil)
-          (jobs/run-coordinated!
-           {:start-run!        #(dag-run/start-dag-run! transform-id direction user-id)
-            :transform-ids     transform-ids
-            :start-promise     start-promise
-            :run-opts          {:run-method       :manual
-                                :user-id          user-id
-                                :skip-fresh-deps? skip-fresh-deps?
-                                :parent-run-type  :dag
-                                :active-runs-atom dag-active-runs
-                                :precomputed-plan plan}
-            :add-run-activity! #(coordinated-run/add-run-activity! :model/TransformDagRun %)
-            :span              ["task.transform.run-dag" {:transform/id        transform-id
-                                                          :transform/direction (name direction)
-                                                          :transform/count     (count transform-ids)}]
-            :succeed!          #(coordinated-run/succeed-started-run! :model/TransformDagRun %)
-            :fail!             #(coordinated-run/fail-started-run! :model/TransformDagRun %1 %2)
-            :label             (format "DAG run for transform %s" (pr-str transform-id))}))))
+          (let [{run-id :id} (dag-run/start-dag-run! transform-id direction user-id)]
+            (some-> start-promise (deliver [:started run-id]))
+            (tracing/with-span :tasks "task.transform.run-dag" {:transform/id        transform-id
+                                                                :transform/direction (name direction)
+                                                                :transform/count     (count transform-ids)}
+              (jobs/execute-coordinated-run! :model/TransformDagRun run-id transform-ids
+                                             (format "DAG run for transform %s" (pr-str transform-id))
+                                             {:run-method       :manual
+                                              :user-id          user-id
+                                              :skip-fresh-deps? skip-fresh-deps?
+                                              :parent-run-type  :dag
+                                              :active-runs-atom dag-active-runs
+                                              :precomputed-plan plan}))
+            run-id))))
     (catch Throwable t
       ;; unblock any caller waiting on the promise on a pre-start failure
       (some-> start-promise (deliver t))

@@ -437,59 +437,32 @@
                       (::message failure))))
        (str/join "\n\n")))
 
-(defn- finalize-coordinated-run!
-  "Move the coordinating run `run-id` to its terminal state based on the `result` of
-  [[run-transforms!]], the same way for job and DAG runs. `succeed!`/`fail!` are the run-type's
-  lifecycle fns (of `run-id`, resp. `run-id`+properties); `label` names the run in logs; `on-failed`,
-  when supplied, is called with the failures after the row is failed (e.g. to notify)."
-  [run-id result {:keys [succeed! fail! label on-failed]}]
-  (case (::status result)
-    :succeeded (succeed! run-id)
-    ;; terminated externally (e.g. reaped): the row is already terminal and any terminator already
-    ;; notified, so just log
-    :aborted   (log/warnf "%s %s was terminated externally; coordinator aborted." label (pr-str run-id))
-    :failed    (try
-                 (fail! run-id {:message (compile-transform-failure-messages (::failures result))})
-                 (when on-failed (on-failed (::failures result)))
-                 (catch Exception e
-                   (log/errorf e "Error when failing %s %s." label (pr-str run-id))))))
-
-(defn run-coordinated!
-  "Create a coordinated run row and drive it to completion: run `transform-ids` via
-  [[run-transforms!]], then move the row to its terminal state — failing it if execution throws.
-
-  - `:start-run!`        thunk that inserts and returns the run row
-  - `:transform-ids`     the member transform ids to run
-  - `:run-opts`          options passed through to [[run-transforms!]]
-  - `:add-run-activity!` fn of run-id, called after each successful member execution
-  - `:span`              `[span-name attrs]` for the tracing span around execution
-  - `:wrap`              optional fn of a thunk, wrapped around execution (e.g. timing instrumentation)
-  - `:on-crash`          optional fn of the throwable, called after the row is failed on an unexpected throw
-  - `:start-promise`     optional promise, delivered `[:started run-id]` as soon as the row exists
-  - `:succeed!`/`:fail!`/`:label`/`:on-failed` as in [[finalize-coordinated-run!]]
-
-  Returns the run id."
-  [{:keys [start-run! transform-ids run-opts add-run-activity! span wrap on-crash start-promise fail! label]
-    :or   {wrap (fn [thunk] (thunk))}
-    :as   opts}]
-  (let [{run-id :id}           (start-run!)
-        [span-name span-attrs] span]
-    (some-> start-promise (deliver [:started run-id]))
-    (tracing/with-span :tasks span-name span-attrs
-      (wrap
-       (fn []
-         (try
-           (let [result (run-transforms! run-id transform-ids
-                                         (assoc run-opts :add-run-activity! #(add-run-activity! run-id)))]
-             (finalize-coordinated-run! run-id result (select-keys opts [:succeed! :fail! :label :on-failed])))
-           (catch Throwable t
-             (try
-               (fail! run-id {:message (ex-message t)})
-               (when on-crash (on-crash t))
-               (catch Exception e
-                 (log/errorf e "Error when failing %s." label)))
-             (throw t))))))
-    run-id))
+(defn execute-coordinated-run!
+  "Run `transform-ids` as the members of the coordinated run `run-id` (a row of `model`) and move
+  the row to its terminal state, failing it if execution throws (the throwable is rethrown).
+  `label` names the run in logs; `run-opts` are passed through to [[run-transforms!]]. Returns the
+  [[run-transforms!]] result so callers can act on failures."
+  [model run-id transform-ids label run-opts]
+  (try
+    (let [result (run-transforms! run-id transform-ids
+                                  (assoc run-opts
+                                         :add-run-activity! #(coordinated-run/add-run-activity! model run-id)))]
+      (case (::status result)
+        :succeeded (coordinated-run/succeed-started-run! model run-id)
+        ;; terminated externally (e.g. reaped): the row is already terminal, just log
+        :aborted   (log/warnf "%s %s was terminated externally; coordinator aborted." label (pr-str run-id))
+        :failed    (try
+                     (coordinated-run/fail-started-run! model run-id
+                                                        {:message (compile-transform-failure-messages (::failures result))})
+                     (catch Exception e
+                       (log/errorf e "Error when failing %s %s." label (pr-str run-id)))))
+      result)
+    (catch Throwable t
+      (try
+        (coordinated-run/fail-started-run! model run-id {:message (ex-message t)})
+        (catch Exception e
+          (log/errorf e "Error when failing %s." label)))
+      (throw t))))
 
 (defn- active-users-to-edit-transform
   "Return the users that edited the transform, in reverse chron.
@@ -570,30 +543,32 @@
           (do (log/info "Skipping transform job" (pr-str job-id) "because it has no transforms to run")
               (some-> start-promise (deliver nil))
               nil)
-          (run-coordinated!
-           {:start-run!        #(transforms.job-run/start-run! job-id run-method)
-            :transform-ids     transforms
-            :start-promise     start-promise
-            :run-opts          (-> opts
-                                   (dissoc :start-promise)
-                                   (assoc :parent-run-type :job :active-runs-atom active-runs))
-            :add-run-activity! transforms.job-run/add-run-activity!
-            :span              ["task.transform.run-job" {:transform.job/id         job-id
-                                                          :transform.job/run-method (name run-method)
-                                                          :transform.job/count      (count transforms)}]
-            :wrap              (fn [thunk]
-                                 (transforms.instrumentation/with-job-timing [job-id run-method]
-                                   (thunk)))
-            :succeed!          transforms.job-run/succeed-started-run!
-            :fail!             transforms.job-run/fail-started-run!
-            :label             (format "Transform job run for job %s" (pr-str job-id))
-            :on-failed         (when (= :cron run-method)
-                                 #(notify-transform-failures job-id %))
-            ;; catastrophic (= cron) job failures are included in the digest
-            :on-crash          (fn [t]
-                                 (when (and (::transform-failure (ex-data t))
-                                            (= :cron run-method))
-                                   (notify-transform-failures job-id (::failures (ex-data t)))))}))))
+          (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)
+                ;; failed cron runs are included in the failure digest
+                notify!      (fn [failures]
+                               (when (= :cron run-method)
+                                 (try
+                                   (notify-transform-failures job-id failures)
+                                   (catch Exception e
+                                     (log/errorf e "Error notifying failures of transform job %s" (pr-str job-id))))))]
+            (some-> start-promise (deliver [:started run-id]))
+            (tracing/with-span :tasks "task.transform.run-job" {:transform.job/id         job-id
+                                                                :transform.job/run-method (name run-method)
+                                                                :transform.job/count      (count transforms)}
+              (transforms.instrumentation/with-job-timing [job-id run-method]
+                (try
+                  (let [result (execute-coordinated-run! :model/TransformJobRun run-id transforms
+                                                         (format "Transform job run for job %s" (pr-str job-id))
+                                                         (-> opts
+                                                             (dissoc :start-promise)
+                                                             (assoc :parent-run-type :job :active-runs-atom active-runs)))]
+                    (when (= (::status result) :failed)
+                      (notify! (::failures result))))
+                  (catch Throwable t
+                    (when (::transform-failure (ex-data t))
+                      (notify! (::failures (ex-data t))))
+                    (throw t)))))
+            run-id))))
     (catch Throwable t
       ;; unblock any caller waiting on the promise on a pre-start failure
       (some-> start-promise (deliver t))
