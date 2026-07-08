@@ -429,6 +429,15 @@
    driver db-id table-name column-names
    (map #(mapv temporal-bind->string %) values)))
 
+(defmethod driver/allowed-promotions :snowflake
+  [_driver]
+  ;; Snowflake's `ALTER COLUMN` can only widen VARCHAR length or NUMBER precision; it cannot convert
+  ;; `NUMBER(38,0)` to `DOUBLE`, so the default int -> float promotion would fail mid-append with a raw SQL
+  ;; error.
+  ;;
+  ;; An empty map instead rejects such files upfront with a friendly message (same as Redshift).
+  {})
+
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])
