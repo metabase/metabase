@@ -209,12 +209,6 @@ function RenderChart(
   );
 }
 
-// Public rendering API. These are plain typed functions; the JSON boundary lives in the entry
-// adapters that call them (static-viz-graalvm for GraalVM, static-viz-server for HTTP).
-
-// Renders any chart. Most display types go through the isomorphic RenderChart; legacy funnel and gauge
-// are folded in here via LegacyRenderChart (the isomorphic renderer can't render gauge, and its
-// `funnel` is a different chart). The input's `kind` selects the path.
 export function renderChart(input: RenderChartInput): RenderedChart {
   let content: string;
   switch (input.kind) {
@@ -253,8 +247,6 @@ function buildCellBackgroundGetter(
   }
 }
 
-// Computes the background color of each requested table cell, positionally (a CSS color string, or
-// null when no rule matches).
 export function getCellBackgroundColors({
   rows,
   cols,
