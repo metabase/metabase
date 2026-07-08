@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCancelJobRunEndpoint,
@@ -14,6 +13,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import { TransformGraphRunListPage } from "./TransformGraphRunListPage";
 
@@ -97,6 +97,10 @@ describe("TransformGraphRunListPage", () => {
     expect(
       within(sidebar).getByRole("region", { name: "Error" }),
     ).toBeInTheDocument();
+    // Header links to the seed transform (entity id 12 in the fixture).
+    expect(
+      within(sidebar).getByRole("link", { name: "View this transform" }),
+    ).toHaveAttribute("href", "/data-studio/transforms/12");
   });
 
   it("cancels an in-progress job run via the job-run cancel endpoint", async () => {
@@ -107,6 +111,11 @@ describe("TransformGraphRunListPage", () => {
     await userEvent.click(await screen.findByText("Nightly rollups"));
 
     const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
+    // Header links to the job details page (job id 2 in the fixture).
+    expect(
+      within(sidebar).getByRole("link", { name: "View this job" }),
+    ).toHaveAttribute("href", "/data-studio/transforms/jobs/2");
+
     await userEvent.click(
       within(sidebar).getByRole("button", { name: "Cancel run" }),
     );

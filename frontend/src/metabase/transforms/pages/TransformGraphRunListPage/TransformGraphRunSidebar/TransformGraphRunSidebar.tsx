@@ -9,9 +9,11 @@ import {
   useListTransformGraphRunMembersQuery,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import {
@@ -25,7 +27,9 @@ import {
   Group,
   Stack,
   Title,
+  Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   TransformGraphRun,
@@ -231,9 +235,66 @@ function TransformGraphRunSidebarHeader({
       data-testid="transform-graph-run-sidebar-header"
     >
       <Title order={3}>{getRunName(run)}</Title>
-      <ActionIcon aria-label={t`Close`} onClick={onClose}>
-        <FixedSizeIcon name="close" />
-      </ActionIcon>
+      <Group gap="xs" wrap="nowrap">
+        <HeaderEntityActions run={run} />
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <FixedSizeIcon name="close" />
+        </ActionIcon>
+      </Group>
     </Group>
+  );
+}
+
+// Links to the run's underlying entity — the job for a job run, or the seed/target
+// transform for a DAG or standalone transform run — plus a dependency-graph link for
+// transforms. Mirrors the individual transform-run sidebar's header actions.
+function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
+  const { entity_id } = run;
+  if (entity_id == null) {
+    return null;
+  }
+
+  if (run.run_type === "job") {
+    return (
+      <Tooltip label={t`View this job`}>
+        <ActionIcon
+          component={ForwardRefLink}
+          to={Urls.transformJob(entity_id)}
+          target="_blank"
+          aria-label={t`View this job`}
+        >
+          <FixedSizeIcon name="external" />
+        </ActionIcon>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <>
+      <Tooltip label={t`View this transform`}>
+        <ActionIcon
+          component={ForwardRefLink}
+          to={Urls.transform(entity_id)}
+          target="_blank"
+          aria-label={t`View this transform`}
+        >
+          <FixedSizeIcon name="external" />
+        </ActionIcon>
+      </Tooltip>
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Tooltip label={t`View in dependency graph`}>
+          <ActionIcon
+            component={ForwardRefLink}
+            to={Urls.dependencyGraph({
+              entry: { id: entity_id, type: "transform" },
+            })}
+            target="_blank"
+            aria-label={t`View in dependency graph`}
+          >
+            <FixedSizeIcon name="dependencies" />
+          </ActionIcon>
+        </Tooltip>
+      )}
+    </>
   );
 }
