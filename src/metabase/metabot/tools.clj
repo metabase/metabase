@@ -141,7 +141,7 @@
   the skill registry (`metabase.metabot.skills`) and are surfaced as a manifest
   in the system prompt, with full bodies loaded on demand via the `load_skill`
   tool."
-  [tools memory-atom metabot-id profile-id conversation-id]
+  [tools memory-atom {:keys [metabot-id profile-id conversation-id]}]
   (reduce-kv
    (fn [acc tool-name tool-var]
      (let [m          (meta tool-var)

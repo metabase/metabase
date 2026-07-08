@@ -37,6 +37,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import {
@@ -69,17 +70,13 @@ export function MetabotInlineChart({
   );
   const siteUrl = useSetting("site-url");
 
-  // Editing (or deleting) the saved card severs its provenance link, so verify
-  // the recorded save against the card itself. Subscribing via RTK Query means
-  // an in-app edit invalidates the card tag and this flips back to unsaved
-  // immediately. Only positive evidence unsaves: while loading, stay optimistic.
   const { data: savedCard, error: savedCardError } = useGetCardQuery(
     recordedCardId != null
       ? { id: recordedCardId, ignore_error: true }
       : skipToken,
   );
   const isLinkSevered =
-    savedCardError != null ||
+    isResourceNotFoundError(savedCardError) ||
     (savedCard != null && savedCard.metabot_chart_id !== entityId);
   const savedCardId = isLinkSevered ? undefined : recordedCardId;
 
@@ -207,7 +204,6 @@ function SaveChartAction({
     newQuestion: Question,
     options?: { dashboardTabId?: DashboardTabId },
   ) => {
-    // One request creates the card AND stamps its Metabot provenance columns.
     const created = await saveMetabotEntity({
       conversation_id: conversationId,
       entity_id: entityId,

@@ -79,7 +79,6 @@ export type SavedEntityLocation =
 export type EntitySavedValue = {
   entity_id: string;
   card_id: number;
-  name: string;
   location: SavedEntityLocation;
 };
 

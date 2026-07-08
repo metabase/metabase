@@ -485,7 +485,6 @@ export const sendAgentRequest = createAsyncThunk<
                     cardId: part.data.card_id,
                   }),
                 );
-                // Render the "Chart X saved to Y" confirmation block.
                 pushDataPart({ type: "data_part", part });
               })
               .with(

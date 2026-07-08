@@ -1,6 +1,10 @@
+import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
-import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
+import {
+  setupCardEndpoints,
+  setupCollectionByIdEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   MetabotAgentChatMessage,
@@ -10,7 +14,11 @@ import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { thumbsDown, thumbsUp } from "metabase/metabot/tests/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import {
@@ -111,6 +119,7 @@ describe("AgentMessage", () => {
           createMockCollection({ id: 5, name: "Personal Collection" }),
         ],
       });
+      setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
       setup({
         id: "s1",
         role: "agent",
@@ -120,7 +129,6 @@ describe("AgentMessage", () => {
           data: {
             entity_id: "chart-1",
             card_id: 99,
-            name: "Accounts by Day",
             location: { type: "collection", id: 5 },
           },
         },
@@ -129,7 +137,30 @@ describe("AgentMessage", () => {
       expect(
         await screen.findByText("Personal Collection"),
       ).toBeInTheDocument();
-      expect(screen.getByText("Accounts by Day")).toBeInTheDocument();
+      expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+    });
+
+    it("renders a plain 'saved' row when the container can't be loaded", async () => {
+      fetchMock.get("path:/api/collection/5", { status: 404 });
+      setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "entity_saved",
+          version: 1,
+          value: {
+            entity_id: "chart-1",
+            card_id: 99,
+            location: { type: "collection", id: 5 },
+          },
+        },
+      });
+
+      expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+      expect(screen.getByText(/saved/)).toBeInTheDocument();
+      expect(screen.queryByText(/saved to/)).not.toBeInTheDocument();
     });
   });
 
