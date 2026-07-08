@@ -1,8 +1,8 @@
 (ns ^:mb/driver-tests metabase.transforms.index-test
   "End-to-end: indexes declared on a transform target reach the physical table when the transform runs, across
   re-runs and failures, for both transform kinds (SQL builds the table with a CTAS, Python with `create-table!`).
-  Per-driver cases and helpers live in [[metabase.transforms.index-test-util]]. Each test stubs
-  [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
+  Per-driver cases and helpers live in [[metabase.transforms.index-test-util]]. Each test persists real
+  `:model/TableIndex` rows for its case, so the run reads them exactly like user-created requests."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -35,9 +35,19 @@
    :source-tables   [(transforms.tu/source-table-entry "transforms_products" (mt/id :transforms_products))]
    :body            "def transform(transforms_products):\n    return transforms_products"})
 
+(defn- create-index-requests!
+  "Persist `indexes` as `:model/TableIndex` rows for `transform-id`, so the run picks them up like real user-created
+  requests. Cleaned up with the transform (FK cascade)."
+  [transform-id indexes]
+  (when (seq indexes)
+    (t2/insert! :model/TableIndex (for [index indexes]
+                                    {:transform_id transform-id
+                                     :index_name   (or (:name index) (name (:kind index)))
+                                     :structured   index}))))
+
 (defn- test-declared-indexes!
-  "Run a transform (source from the 0-arg `make-source`) with the driver's `:indexes` hydrated onto its target, then
-  assert `:physical-indexes` reads `:expected` from the catalog. Runs twice to check they survive a rebuild."
+  "Run a transform (source from the 0-arg `make-source`) with the driver's `:indexes` persisted as its index requests,
+  then assert `:physical-indexes` reads `:expected` from the catalog. Runs twice to check they survive a rebuild."
   [{:keys [indexes expected physical-indexes]} make-source]
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     (with-transform-cleanup! [{table-name :name :as target}
@@ -48,14 +58,14 @@
       (mt/with-temp [:model/Transform transform {:name   "index-transform"
                                                  :source (make-source)
                                                  :target target}]
-        (with-redefs [transforms.execute/hydrate-transform-indexes (constantly indexes)]
-          (testing "a full run applies the declared indexes to the physical table"
-            (transforms.execute/execute! transform {:run-method :manual})
-            (transforms.tu/wait-for-table table-name 10000)
-            (is (= expected (physical-indexes (mt/db) schema table-name))))
-          (testing "a re-run rebuilds the table and the indexes come back the same"
-            (transforms.execute/execute! transform {:run-method :manual})
-            (is (= expected (physical-indexes (mt/db) schema table-name)))))))))
+        (create-index-requests! (:id transform) indexes)
+        (testing "a full run applies the declared indexes to the physical table"
+          (transforms.execute/execute! transform {:run-method :manual})
+          (transforms.tu/wait-for-table table-name 10000)
+          (is (= expected (physical-indexes (mt/db) schema table-name))))
+        (testing "a re-run rebuilds the table and the indexes come back the same"
+          (transforms.execute/execute! transform {:run-method :manual})
+          (is (= expected (physical-indexes (mt/db) schema table-name))))))))
 
 (deftest ^:synchronized declared-indexes-applied-and-replayed-test
   (mt/test-drivers (index-util/index-test-drivers)
@@ -76,7 +86,7 @@
 
 (deftest ^:synchronized managed-indexes-verified-against-warehouse-after-run-test
   (testing "real managed index rows are created by the run and then verified :succeeded against the warehouse"
-    ;; Reuses the driver create-index cases, but instead of stubbing hydrate-transform-indexes it persists real
+    ;; Reuses the driver create-index cases, but instead of stubbing select-applicable-for-transform it persists real
     ;; :model/TableIndex rows. The run reads them (real hydrate), applies them, and verify-managed-indexes! confirms
     ;; each landed via fetch-table-indexes -- the whole create-then-verify loop on a live warehouse.
     (mt/test-drivers (index-util/index-test-drivers)
@@ -88,10 +98,7 @@
             (mt/with-temp [:model/Transform {tid :id :as transform} {:name   "index-verify-transform"
                                                                      :source (query-source)
                                                                      :target target}]
-              (doseq [idx indexes]
-                (t2/insert! :model/TableIndex {:transform_id tid
-                                               :index_name   (or (:name idx) (name (:kind idx)))
-                                               :structured   idx}))
+              (create-index-requests! tid indexes)
               (transforms.execute/execute! transform {:run-method :manual})
               (transforms.tu/wait-for-table table-name 10000)
               (testing "every managed row is verified succeeded"
@@ -118,15 +125,15 @@
                 (mt/with-temp [:model/Transform transform {:name   "index-fail-transform"
                                                            :source (query-source)
                                                            :target target}]
-                  (with-redefs [transforms.execute/hydrate-transform-indexes (constantly bogus)]
-                    (testing "execute! throws"
-                      (is (thrown? Throwable
-                                   (transforms.execute/execute! transform {:run-method :manual}))))
-                    (testing "and the run is recorded as failed"
-                      (is (= :failed
-                             (t2/select-one-fn :status :model/TransformRun
-                                               :transform_id (:id transform)
-                                               {:order-by [[:id :desc]]}))))))))))))))
+                  (create-index-requests! (:id transform) bogus)
+                  (testing "execute! throws"
+                    (is (thrown? Throwable
+                                 (transforms.execute/execute! transform {:run-method :manual}))))
+                  (testing "and the run is recorded as failed"
+                    (is (= :failed
+                           (t2/select-one-fn :status :model/TransformRun
+                                             :transform_id (:id transform)
+                                             {:order-by [[:id :desc]]})))))))))))))
 
 (deftest ^:synchronized declared-index-creation-is-idempotent-test
   (testing "re-applying a target's indexes is a no-op (CREATE INDEX IF NOT EXISTS), not an error"
@@ -147,14 +154,14 @@
                 (mt/with-temp [:model/Transform transform {:name   "index-idempotent-transform"
                                                            :source (query-source)
                                                            :target target}]
-                  (with-redefs [transforms.execute/hydrate-transform-indexes (constantly indexes)]
-                    (transforms.execute/execute! transform {:run-method :manual})
-                    (transforms.tu/wait-for-table table-name 10000)
-                    (is (= expected (physical-indexes db schema table-name)) "indexes present after the run")
-                    (testing "re-applying the same indexes leaves the catalog unchanged and does not throw"
-                      (transforms-base.u/apply-target-indexes!
-                       (assoc-in transform [:target :indexes] indexes))
-                      (is (= expected (physical-indexes db schema table-name))))))))))))))
+                  (create-index-requests! (:id transform) indexes)
+                  (transforms.execute/execute! transform {:run-method :manual})
+                  (transforms.tu/wait-for-table table-name 10000)
+                  (is (= expected (physical-indexes db schema table-name)) "indexes present after the run")
+                  (testing "re-applying the same indexes leaves the catalog unchanged and does not throw"
+                    (transforms-base.u/apply-target-indexes!
+                     (assoc-in transform [:target :indexes] indexes))
+                    (is (= expected (physical-indexes db schema table-name)))))))))))))
 
 (defn- fetch-schema
   "Schema the fetch-correctness suite creates its table in and passes to fetch-table-indexes. nil for sql-jdbc drivers
@@ -210,24 +217,6 @@
   (testing "fetch-table-indexes has no safe default: its method throws for such a driver"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-table-indexes is not implemented for driver :h2"
                           (driver/fetch-table-indexes :h2 nil "public" "t")))))
-
-(deftest ^:parallel hydrate-transform-indexes-test
-  (testing "returns the structured defs of a transform's managed indexes, ordered by name"
-    (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
-                                               :source             {:type "query"}
-                                               :source_database_id (mt/id)
-                                               :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
-                   :model/TableIndex {b-id :id} {:transform_id tid :index_name "b_idx"
-                                                 :structured {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
-                   :model/TableIndex {a-id :id} {:transform_id tid :index_name "a_idx"
-                                                 :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}
-                   :model/TableIndex _ {:transform_id tid :index_name "deleted_idx"
-                                        :status :delete-pending
-                                        :structured {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}]
-      (is (= ["a_idx" "b_idx"]
-             (map :name (transforms.execute/hydrate-transform-indexes {:id tid}))))
-      (is (= [a-id b-id]
-             (transforms.execute/hydrate-transform-index-ids {:id tid}))))))
 
 (deftest ^:synchronized verify-managed-indexes!-test
   (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)

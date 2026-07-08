@@ -90,7 +90,12 @@
             ["ALTER TABLE `events` MATERIALIZE INDEX `idx_a`"]]
            (driver/compile-create-index :clickhouse nil "events"
                                         {:name "idx_a" :columns [{:name "a"}] :type :minmax :granularity 4
-                                         :if-not-exists true})))))
+                                         :if-not-exists true}))))
+  (testing "backticks and backslashes in identifiers are escaped, so a hostile name cannot break out"
+    (is (= [["ALTER TABLE `events` ADD INDEX `idx\\`; DROP TABLE x; --` (`a\\\\\\`b`) TYPE minmax GRANULARITY 1"]
+            ["ALTER TABLE `events` MATERIALIZE INDEX `idx\\`; DROP TABLE x; --`"]]
+           (driver/compile-create-index :clickhouse nil "events"
+                                        {:name "idx`; DROP TABLE x; --" :columns [{:name "a\\`b"}] :type :minmax})))))
 
 ;;; --------------------------------------- Live execute path ----------------------------------------
 

@@ -1,4 +1,4 @@
-(ns metabase.indexes.api-test
+(ns metabase.indexes-rest.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver]
@@ -113,6 +113,20 @@
                    (mt/user-http-request :crowberto :post 400 "index/request"
                                          {:transform_id transform-id :structured btree}))))))
 
+(deftest malformed-structured-rejected-test
+  (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+    (testing "an unknown :kind is rejected before it can reach the DB"
+      (mt/user-http-request :crowberto :post 400 "index/request"
+                            {:transform_id transform-id :structured (assoc btree :kind "not_a_kind")}))
+    (testing "a name over the 63-char limit is rejected"
+      (mt/user-http-request :crowberto :post 400 "index/request"
+                            {:transform_id transform-id
+                             :structured   (assoc btree :name (apply str (repeat 64 "a")))}))
+    (testing "a 63-char name is accepted (boundary)"
+      (mt/user-http-request :crowberto :post 200 "index/request"
+                            {:transform_id transform-id
+                             :structured   (assoc btree :name (apply str (repeat 63 "a")))}))))
+
 (deftest put-cannot-change-index-key-test
   (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
     (let [created (mt/user-http-request :crowberto :post 200 "index/request"
@@ -139,23 +153,25 @@
 (deftest incremental-mutations-force-next-run-to-rebuild-test
   (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)
                                                             :last_checkpoint_value "100")]
-    (testing "POST clears the checkpoint so the new index can be applied"
-      (let [created (mt/user-http-request :crowberto :post 200 "index/request"
-                                          {:transform_id transform-id :structured btree})]
-        (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id)))
-        (testing "PUT clears the checkpoint so the changed structure can be applied"
-          (t2/update! :model/Transform transform-id {:last_checkpoint_value "200"})
-          (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))
-                                {:structured (assoc btree :columns [{:name "price"}])})
-          (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
-        (testing "DELETE clears the checkpoint so the old index can be dropped by the rebuild"
-          (t2/update! :model/Transform transform-id {:last_checkpoint_value "300"})
-          (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
-          (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
-        (testing "pending index status still forces a full rebuild if an in-flight run saves a checkpoint"
-          (t2/update! :model/Transform transform-id {:last_checkpoint_value "400"})
-          (is (#'transforms-base.u/full-incremental-run?
-               (t2/select-one :model/Transform transform-id))))))))
+    (letfn [(full-run? []
+              (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform transform-id)))]
+      (testing "no index changes: the watermark alone decides, so the next run appends"
+        (is (not (full-run?))))
+      (testing "POST leaves the watermark alone; the pending row forces the rebuild"
+        (let [created (mt/user-http-request :crowberto :post 200 "index/request"
+                                            {:transform_id transform-id :structured btree})]
+          (is (= "100" (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id)))
+          (is (full-run?))
+          (testing "PUT keeps forcing it (update-pending)"
+            (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))
+                                  {:structured (assoc btree :columns [{:name "price"}])})
+            (is (full-run?)))
+          (testing "DELETE keeps forcing it (delete-pending), so the rebuild can drop the old index"
+            (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
+            (is (full-run?)))
+          (testing "once the request settles, runs go back to appending"
+            (t2/update! (t2/table-name :model/TableIndex) (:id created) {:status "succeeded"})
+            (is (not (full-run?)))))))))
 
 (deftest inline-kind-index-name-test
   (testing "an inline kind with no :name gets its index_name from :kind"
