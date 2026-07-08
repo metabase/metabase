@@ -727,10 +727,9 @@
    ({:type :category :model :count :names :message}), one per affected model type."
   [{:keys [by-entity-id]}]
   (let [synced-collection-ids (all-syncable-collection-ids)]
-    (if (empty? synced-collection-ids)
-      []
-      (into []
-            (for [[model-key spec] (specs-for-deletion)
+    (cond-> []
+      (seq synced-collection-ids)
+      (into (for [[model-key spec] (specs-for-deletion)
                   :let [scope-key (get-in spec [:removal :scope-key])]
                   :when (and (= :collection_id scope-key)
                              (not (get-in spec [:removal :all-on-setting-disable])))
