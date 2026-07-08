@@ -37,12 +37,42 @@ const VALID_CASES = [
     name: "inline comment before nested cast",
     code: `doThing(/* safe */ value as Foo);`,
   },
-  // Comment above a statement that wraps a nested cast.
+  // Comment above a statement wrapping a cast that sits on the statement's
+  // first line — the comment is directly above the cast's line.
   {
-    name: "comment above statement wrapping nested cast",
+    name: "comment above statement wrapping same-line cast",
     code: `
       // reason
       return callback(value as Foo);
+    `,
+  },
+  // Comment directly above a cast nested deep inside a multiline statement.
+  {
+    name: "comment above a nested cast on its own line",
+    code: `
+      const obj = {
+        // reason
+        a: value as Foo,
+      };
+    `,
+  },
+  // Comment above a cast that is the arrow function's returned value.
+  {
+    name: "comment above an arrow-returned cast",
+    code: `
+      const getGraph = () =>
+        // reason
+        ({ a: value }) as Foo;
+    `,
+  },
+  // Comment above a cast used as a function-call argument property.
+  {
+    name: "comment above a cast in a call argument property",
+    code: `
+      foo({
+        // reason
+        id: value as unknown as number,
+      });
     `,
   },
   // as const never requires a comment.
@@ -115,6 +145,37 @@ const INVALID_CASES = [
       const b = two as Bar;
     `,
     errors: [{ message: errorMessage }, { message: errorMessage }],
+  },
+  // A comment above the enclosing statement does NOT justify a cast that lives
+  // several lines below it — the comment must sit next to the cast's line.
+  {
+    name: "comment above statement but not above the nested cast line",
+    code: `
+      // reason
+      const obj = {
+        a: value as Foo,
+      };
+    `,
+    errors: [{ message: errorMessage }],
+  },
+  {
+    name: "comment above the arrow declaration but not above the returned cast",
+    code: `
+      // reason
+      const getGraph = () =>
+        ({ a: value }) as Foo;
+    `,
+    errors: [{ message: errorMessage }],
+  },
+  {
+    name: "comment above the call but not above the cast argument",
+    code: `
+      // reason
+      foo({
+        id: value as unknown as number,
+      });
+    `,
+    errors: [{ message: errorMessage }],
   },
 ];
 

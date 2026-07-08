@@ -8,15 +8,6 @@
 const ERROR_MESSAGE =
   "Type casts (`as T`) must be preceded by a comment explaining why the cast is necessary.";
 
-const STATEMENT_CONTAINER_TYPES = new Set([
-  "BlockStatement",
-  "Program",
-  "SwitchCase",
-  "StaticBlock",
-  "ClassBody",
-  "TSModuleBlock",
-]);
-
 module.exports = {
   meta: {
     type: "problem",
@@ -45,7 +36,7 @@ module.exports = {
 
         if (
           hasLeadingComment(sourceCode, node) ||
-          hasLeadingComment(sourceCode, getEnclosingStatement(node))
+          hasLeadingComment(sourceCode, getLineStartToken(sourceCode, node))
         ) {
           return;
         }
@@ -85,15 +76,14 @@ function hasLeadingComment(sourceCode, anchor) {
   return commentEndLine === anchorLine || commentEndLine === anchorLine - 1;
 }
 
-function getEnclosingStatement(node) {
-  let current = node;
+function getLineStartToken(sourceCode, node) {
+  let token = sourceCode.getFirstToken(node);
+  let previous = sourceCode.getTokenBefore(token);
 
-  while (
-    current.parent != null &&
-    !STATEMENT_CONTAINER_TYPES.has(current.parent.type)
-  ) {
-    current = current.parent;
+  while (previous != null && previous.loc.end.line === token.loc.start.line) {
+    token = previous;
+    previous = sourceCode.getTokenBefore(token);
   }
 
-  return current;
+  return token;
 }
