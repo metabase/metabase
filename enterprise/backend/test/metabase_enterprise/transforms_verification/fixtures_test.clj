@@ -8,6 +8,7 @@
   These tests are pure/driver-free — no database required."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-verification.errors :as errors]
    [metabase-enterprise.transforms-verification.fixtures :as fixtures])
   (:import
    (java.io File)))
@@ -185,10 +186,13 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest target-schema-required-test
-  (testing "parse-fixture requires a non-empty target schema"
+  (testing "parse-fixture rejects an empty target schema with a typed ::empty-target-schema error"
     (let [csv (write-csv-file! "id\n1\n")]
-      (is (thrown? AssertionError (fixtures/parse-fixture csv nil)))
-      (is (thrown? AssertionError (fixtures/parse-fixture csv []))))))
+      (doseq [empty-schema [nil []]]
+        (let [e (try (fixtures/parse-fixture csv empty-schema) nil
+                     (catch clojure.lang.ExceptionInfo ex ex))]
+          (is (= ::errors/empty-target-schema (:error-type (ex-data e)))
+              (str "empty-schema " (pr-str empty-schema) " must throw typed error")))))))
 
 (deftest column-order-preserved-test
   (testing "Row values are in the same order as :columns"

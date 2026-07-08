@@ -4,7 +4,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.transforms-verification.errors :as errors]
-   [metabase.upload.core :as upload]))
+   [metabase.upload.core :as upload]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -109,6 +110,7 @@
   or nil. Blank cells — empty or whitespace-only — parse to nil (SQL NULL).
 
   Throws (all via `ex-info` with typed `:error-type` in ex-data):
+  - `::empty-target-schema` — `target-schema` is empty (the table has no columns).
   - `::header-mismatch`   — CSV header ≠ schema column names (case-sensitive,
                             exact match; ex-data includes `:missing-columns` and
                             `:extra-columns`), or the header contains duplicate
@@ -120,7 +122,12 @@
                             ex-data includes `:row-index` (0-based), `:column-name`,
                             and `:raw-value`."
   [csv-file target-schema]
-  {:pre [(seq target-schema)]}
+  (when (empty? target-schema)
+    ;; A zero-column leaf must surface as a typed 4xx, not a bare 500 — hence a
+    ;; typed throw here instead of a `:pre` precondition.
+    (throw (errors/ex ::errors/empty-target-schema
+                      (tru "Cannot build a fixture: the target table has no columns.")
+                      {})))
   (let [header->columns
         (fn [header]
           (validate-header! header target-schema)

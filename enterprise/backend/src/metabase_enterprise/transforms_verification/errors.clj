@@ -10,6 +10,7 @@
     ::header-mismatch             ; CSV header does not match the target table's columns (exact match), or contains duplicates.
     ::unparseable-cell           ; A CSV cell cannot be parsed as its column's type.
     ::ragged-row                 ; A CSV data row has more or fewer cells than the header.
+    ::empty-target-schema        ; The target/leaf table has no columns.
     ;; Diff options.
     ::unknown-ignore-columns     ; `:ignore-columns` names a column not present in the actual result.
     ;; Diff canonicalization.

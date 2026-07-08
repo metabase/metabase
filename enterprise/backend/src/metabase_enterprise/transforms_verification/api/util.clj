@@ -21,6 +21,7 @@
    ::errors/header-mismatch             400
    ::errors/unparseable-cell            400
    ::errors/ragged-row                  400
+   ::errors/empty-target-schema         422
    ;; Diff errors — 400: caller supplied bad options.
    ::errors/unknown-ignore-columns      400
    ;; Canonicalization — 422: a fixture or output value we cannot compare.
