@@ -34,7 +34,8 @@
                {:type :text :text string?}
                {:type  :usage
                 :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                        :completionTokens pos-int?
+                        :cacheReadTokens  nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-tool-calls-conv-test
@@ -51,7 +52,8 @@
                 (take 2 parts)))
         (is (=? {:type  :usage
                  :usage {:promptTokens     pos-int?
-                         :completionTokens pos-int?}}
+                         :completionTokens pos-int?
+                         :cacheReadTokens  nat-int?}}
                 (last parts)))))))
 
 (deftest ^:parallel openai-structured-output-conv-test
@@ -70,7 +72,8 @@
                {:type :text :text string?}
                {:type  :usage
                 :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                        :completionTokens pos-int?
+                        :cacheReadTokens  nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-text-and-tool-calls-conv-test
@@ -89,7 +92,8 @@
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
                {:type  :usage
                 :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                        :completionTokens pos-int?
+                        :cacheReadTokens  nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-reasoning-items-are-ignored-test
@@ -113,7 +117,8 @@
                  {:type :text :text string?}
                  {:type  :usage
                   :usage {:promptTokens     pos-int?
-                          :completionTokens pos-int?}}]
+                          :completionTokens pos-int?
+                          :cacheReadTokens  nat-int?}}]
                 (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
 
 (deftest ^:parallel openai-response-failed-surfaces-error-test
@@ -176,7 +181,8 @@
                {:type :text :text string?}
                {:type  :usage
                 :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?}}]
+                        :completionTokens pos-int?
+                        :cacheReadTokens  nat-int?}}]
               parts))
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
@@ -185,27 +191,44 @@
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel openai-usage-strips-nested-details-test
-  (testing "nested *_details maps from reasoning models are stripped"
-    (let [raw-chunks (fixture "openai-text"
-                              {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
-          ;; Patch the last chunk to include nested usage details like reasoning models return
-          patched    (mapv (fn [chunk]
-                             (if (= (:type chunk) "response.completed")
-                               (assoc-in chunk [:response :usage]
-                                         {:input_tokens          20
-                                          :output_tokens         8
-                                          :total_tokens          28
-                                          :input_tokens_details  {:cached_tokens 5 :audio_tokens 0}
-                                          :output_tokens_details {:reasoning_tokens 3 :audio_tokens 0}})
-                               chunk))
-                           raw-chunks)
-          parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)
-          usage      (:usage (last parts))]
-      ;; no nested maps — safe for merge-with + in accumulate-usage-xf
-      (is (= {:promptTokens 20
-              :completionTokens 8}
-             usage)))))
+(defn- usage-from-patched-fixture
+  "Run the openai-text fixture through the full pipeline with its terminal
+  `response.completed` usage replaced by `usage`, and return the final
+  AISDK `:usage` map."
+  [usage]
+  (let [raw-chunks (fixture "openai-text"
+                            {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+        patched    (mapv (fn [chunk]
+                           (cond-> chunk
+                             (= (:type chunk) "response.completed")
+                             (assoc-in [:response :usage] usage)))
+                         raw-chunks)
+        parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
+    (:usage (last parts))))
+
+(deftest ^:parallel openai-usage-reports-cached-tokens-test
+  (testing "cached tokens from input_tokens_details (Responses API shape) are reported as :cacheReadTokens"
+    (is (= {:promptTokens     2006
+            :completionTokens 300
+            :cacheReadTokens  1920}
+           (usage-from-patched-fixture
+            {:input_tokens          2006
+             :output_tokens         300
+             :total_tokens          2306
+             :input_tokens_details  {:cached_tokens 1920}
+             :output_tokens_details {:reasoning_tokens 0}})))))
+
+(deftest ^:parallel openai-usage-zero-cached-tokens-test
+  (testing "input_token_details missing :cached_tokens reports zero :cacheReadTokens"
+    (is (= {:promptTokens     20
+            :completionTokens 8
+            :cacheReadTokens  0}
+           (usage-from-patched-fixture
+            {:input_tokens          20
+             :output_tokens         8
+             :total_tokens          28
+             :input_tokens_details  {}
+             :output_tokens_details {:reasoning_tokens 3}})))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->openai-input tests
