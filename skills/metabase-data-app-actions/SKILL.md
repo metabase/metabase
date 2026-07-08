@@ -12,14 +12,15 @@ A Metabase **action** is a server-defined write operation against the data wareh
 Actions belong to a model. They mutate that model's rows. Concretely:
 
 - Every action has a parent model. In the schema it appears as `schema.models.<modelName>.actions.<actionName>`.
+- Model entries are included here only to catalog actions. Do not render models as questions, pass model ids to `InteractiveQuestion`, or fetch model rows; use semantic-layer queries/questions for read views.
 - An action's `type` is either `"implicit"` (CRUD on the model) or `"query"` (custom SQL the user authored).
 - Implicit actions have an `implicitKind` that says what they do: `"row/create"`, `"row/update"`, `"row/delete"`, or `"bulk/*"` variants.
 - Each action publishes a `parameters` list. Each parameter has a `slug` (the key the Data App sends), a `jsType` (`"string"` / `"number"` / `"Date"` / `"boolean"` / `"unknown"`), and an optional `required` flag.
-- The action does **not** carry a `columns` list of its own. The response row shape is loosely typed as `Record<string, RowValue>` — read individual fields off `result["created-row"]` after a `row/create` and trust the schema for the field names. If you need richer per-field typing in your own code, reach into the parent model's `columns` via `schema.models.<modelName>.columns`.
+- The action response row shape is loosely typed as `Record<string, RowValue>` — read individual fields off `result["created-row"]` after a `row/create`, but after a successful action refresh the existing table/question/query data already used by the page; do not fetch or render the parent model itself.
 
 ## What's in the schema (and what isn't)
 
-Before writing any action-invoking code, look at the schema and enumerate what's available under `schema.models.<m>.actions` across the models the app cares about. The schema is your **complete** catalog of actions for the instance. If a model's `actions` entry has `create`, `update`, `delete`, those are the actions invokable. Anything not present doesn't exist as far as the Data App is concerned.
+Before writing any action-invoking code, look at the schema and enumerate what's available under `schema.models.<m>.actions` across the models the app cares about. The schema is your **complete** catalog of actions for the instance, not a catalog of model data to display. If a model's `actions` entry has `create`, `update`, `delete`, those are the actions invokable. Anything not present doesn't exist as far as the Data App is concerned.
 
 ## The hook
 
@@ -97,16 +98,6 @@ function AddPersonForm({ onCreated }: { onCreated: () => void }) {
     </form>
   );
 }
-```
-
-## Rendering the parent model
-
-Actions belong to models, but model ids are not `MetabaseCard` objects. Do not render a model with `card={{ type: "model", id: model.id }}` or any other handcrafted `card` shape; `MetabaseCard` accepts generated query objects, not `{ type, id }`. When the UI needs to show the parent model itself, render it as an existing card with `questionId={schema.models.<model>.id}`:
-
-```tsx
-<InteractiveQuestion questionId={schema.models.people.id} title={false}>
-  <InteractiveQuestion.QuestionVisualization height="300px" />
-</InteractiveQuestion>
 ```
 
 ## Showing the error message
