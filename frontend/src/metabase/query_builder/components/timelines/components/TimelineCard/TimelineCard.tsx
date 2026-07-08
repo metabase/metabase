@@ -39,7 +39,7 @@ const TimelineCardInner = ({
   const events = getEvents(timeline.events);
   const isEventSelected = events.some((e) => selectedEventIds.includes(e.id));
   const hasSelection = selectedEventIds.length > 0;
-  const hadSelectionRef = useRef(hasSelection);
+  const prevHasSelectionRef = useRef(hasSelection);
   const [isExpanded, setIsExpanded] = useState(
     hasSelection ? isEventSelected : Boolean(isDefault),
   );
@@ -76,12 +76,12 @@ const TimelineCardInner = ({
   );
 
   useEffect(() => {
-    const hadSelection = hadSelectionRef.current;
-    hadSelectionRef.current = hasSelection;
+    const prevHasSelection = prevHasSelectionRef.current;
+    prevHasSelectionRef.current = hasSelection;
 
     if (hasSelection) {
       setIsExpanded(isEventSelected);
-    } else if (hadSelection) {
+    } else if (prevHasSelection) {
       setIsExpanded(Boolean(isDefault));
     }
   }, [hasSelection, isEventSelected, isDefault, selectedEventIds]);
