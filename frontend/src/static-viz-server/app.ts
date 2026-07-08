@@ -1,4 +1,4 @@
-import { type IncomingMessage, type ServerResponse, createServer } from "http";
+import "metabase/static-viz/polyfill";
 
 import { getCellBackgroundColors, renderChart } from "metabase/static-viz";
 

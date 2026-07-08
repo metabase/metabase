@@ -1,3 +1,5 @@
+import "metabase/static-viz/polyfill";
+
 import {
   getCellBackgroundColors as getCellBackgroundColorsImpl,
   renderChart as renderChartImpl,
