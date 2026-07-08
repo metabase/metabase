@@ -18,6 +18,7 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
+import { CopyPermalinkButton } from "../components/CopyPermalinkButton";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
@@ -71,7 +72,9 @@ export const BrowseDatabases = () => {
                   title={database.name}
                   icon="database"
                   size="lg"
-                />
+                >
+                  <CopyPermalinkButton url={Urls.permalinkDatabase(database)} />
+                </BrowseCard>
               ))}
             {isAdmin && <AddDatabaseCard />}
           </BrowseGrid>
