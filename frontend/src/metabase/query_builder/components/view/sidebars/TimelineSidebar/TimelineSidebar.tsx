@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import TimelinePanel from "metabase/query_builder/components/timelines/containers/TimelinePanel";
 import {
   getTimeseriesDataInterval,
   getUiControls,
@@ -10,7 +11,6 @@ import {
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { onOpenTimelines } from "metabase/redux/query-builder";
-import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
 import { Box, Button, Icon } from "metabase/ui";
 import type { CartesianChartDateTimeAbsoluteUnit } from "metabase/visualizations/echarts/cartesian/model/types";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";

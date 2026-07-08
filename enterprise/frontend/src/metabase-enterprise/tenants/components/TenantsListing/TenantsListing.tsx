@@ -100,7 +100,7 @@ export const TenantsListing = ({
                 gap="md"
               >
                 <UserAvatar
-                  user={{ first_name: tenant.name }}
+                  user={{ name: tenant.name }}
                   bg={tenantIdToColor(tenant.id)}
                 />
                 <Box component="span" fw={700} c="core-brand">
