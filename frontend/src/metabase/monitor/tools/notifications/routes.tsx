@@ -1,4 +1,4 @@
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute, Route } from "metabase/router";
 
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
 

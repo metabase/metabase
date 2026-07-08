@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -15,6 +14,7 @@ import {
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
 import { trackSearchClick } from "metabase/common/search/analytics";
+import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
 import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
