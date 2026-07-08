@@ -61,8 +61,8 @@
           (testing "returns 404 for a non-existent DAG run"
             (mt/user-http-request :lucky :get 404 "transform-dag-run/999999/transform-runs")))))))
 
-(deftest get-dag-run-transform-runs-requires-data-analyst-test
-  (testing "GET /api/transform-dag-run/:run-id/transform-runs requires the data-analyst role"
+(deftest get-dag-run-transform-runs-requires-read-permission-test
+  (testing "GET /api/transform-dag-run/:run-id/transform-runs requires read permission on the seed transform"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {seed-id :id} {:name "Seed"}
                      :model/TransformDagRun {run-id :id} {:source_transform_id seed-id
@@ -113,8 +113,8 @@
         (testing "returns 404 for a non-existent DAG run"
           (mt/user-http-request :lucky :post 404 "transform-dag-run/999999/cancel"))))))
 
-(deftest cancel-dag-run-requires-data-analyst-test
-  (testing "POST /api/transform-dag-run/:run-id/cancel requires the data-analyst role"
+(deftest cancel-dag-run-requires-write-permission-test
+  (testing "POST /api/transform-dag-run/:run-id/cancel requires write permission on the seed transform"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {seed-id :id} {:name "Seed"}
                      :model/TransformDagRun {run-id :id} {:source_transform_id seed-id
