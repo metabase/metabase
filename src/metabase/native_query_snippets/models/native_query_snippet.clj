@@ -190,10 +190,16 @@
   (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
-(defmethod serdes/dependencies "NativeQuerySnippet"
+(defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
   (when collection_id
     [[{:model "Collection" :id collection_id}]]))
+
+(defmethod serdes/serialization-dependencies "NativeQuerySnippet"
+  [_model-name {:keys [collection_id]}]
+  ;; A snippet only references its containing Collection, which a selective export may legitimately omit.
+  (when collection_id
+    #{[{:model "Collection" :id collection_id}]}))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   (serdes/storage-default-collection-path snippet ctx "snippets"))

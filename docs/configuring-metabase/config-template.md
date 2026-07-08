@@ -171,6 +171,8 @@ config:
     humanization-strategy: simple
     index-update-thread-count: 2
     install-analytics-database: true
+    jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
+    jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
     jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email

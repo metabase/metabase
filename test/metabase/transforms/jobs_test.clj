@@ -6,6 +6,7 @@
    [clojure.tools.logging :as log]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.seed :as notification.seed]
@@ -362,7 +363,8 @@
                                  ;; depends on faulty transform
                                  :model/Transform t2 {:name "transform2"
                                                       :source {:type :query
-                                                               :query (lib/native-query mp (str/replace sql (:name table) (:name target1)))}
+                                                               :query (lib/native-query mp (format "SELECT * FROM %s"
+                                                                                                   (sql.u/quote-name driver/*driver* :table (:schema target1) (:name target1))))}
                                                       :creator_id (mt/user->id :crowberto)
                                                       :target target2}
                                  :model/TransformTransformTag _tag2 {:transform_id (:id t2)
