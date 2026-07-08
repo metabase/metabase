@@ -72,7 +72,7 @@ describe("TransformIndexesPage", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      await screen.findByText(
+      screen.getByText(
         "Index the key columns of your transforms to make them faster and more efficient.",
       ),
     ).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe("TransformIndexesPage", () => {
     });
     await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("idx_orders_id")).toBeInTheDocument();
+    expect(screen.getByText("idx_orders_id")).toBeInTheDocument();
     expect(screen.getByText("idx_orders_total")).toBeInTheDocument();
   });
 
@@ -115,7 +115,7 @@ describe("TransformIndexesPage", () => {
     });
     await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("idx_city_country")).toBeInTheDocument();
+    expect(screen.getByText("idx_city_country")).toBeInTheDocument();
     expect(screen.getByText("btree")).toBeInTheDocument();
     expect(screen.getByText("City name, Country")).toBeInTheDocument();
     expect(screen.getByText("Managed")).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe("TransformIndexesPage", () => {
     });
     await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Never")).toBeInTheDocument();
+    expect(screen.getByText("Never")).toBeInTheDocument();
   });
 
   it("falls back to the index kind when the index has no name", async () => {
@@ -164,6 +164,6 @@ describe("TransformIndexesPage", () => {
     await waitForLoaderToBeRemoved();
 
     // The kind appears in both the Name (fallback) and Type columns.
-    expect(await screen.findAllByText("distkey")).toHaveLength(2);
+    expect(screen.getAllByText("distkey")).toHaveLength(2);
   });
 });
