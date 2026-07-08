@@ -1,5 +1,4 @@
 import { type ComponentType, useEffect, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -24,6 +23,7 @@ import {
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { connect, useSelector } from "metabase/redux";
+import { withRouter } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";

@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
-import { Route } from "react-router";
 
 import { setupOAuthAuthorizationsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { ListOAuthAuthorizationsResponse } from "metabase-types/api";
 import {
   createMockListOAuthAuthorizationsResponse,

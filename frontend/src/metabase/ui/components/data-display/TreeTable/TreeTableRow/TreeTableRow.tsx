@@ -3,8 +3,9 @@ import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
-import { Link } from "react-router";
 
+// eslint-disable-next-line boundaries/element-types -- this UI-library row renders a routing Link; it predates the metabase/router facade and should move out of metabase/ui
+import { Link } from "metabase/router";
 import { Flex } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";

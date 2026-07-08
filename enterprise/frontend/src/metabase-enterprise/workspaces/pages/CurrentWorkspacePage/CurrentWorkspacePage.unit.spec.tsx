@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import {
   setupDatabasesEndpoints,
   setupGetCurrentWorkspaceEndpoint,
   setupListTableRemappingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { TableRemapping } from "metabase-types/api";
 import {
   createMockCurrentWorkspace,

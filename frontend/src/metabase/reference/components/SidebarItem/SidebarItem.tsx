@@ -1,6 +1,6 @@
 import { memo } from "react";
-import { Link } from "react-router";
 
+import { Link } from "metabase/router";
 import type { IconName } from "metabase-types/api";
 
 import { LabelIcon } from "../LabelIcon";

@@ -1,5 +1,3 @@
-import { IndexRoute, Route } from "react-router";
-
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
 import { createTenantsRouteGuard } from "metabase/admin/utils";
@@ -11,6 +9,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { IndexRoute, Route } from "metabase/router";
 import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {
   createMockTokenFeatures,

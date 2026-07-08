@@ -1,5 +1,4 @@
 import type { ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
 
 import { PublishedTableMeasureDependenciesPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
 import { PublishedTableMeasureDetailPage } from "metabase/data-studio/measures/pages/PublishedTableMeasureDetailPage";
@@ -10,6 +9,7 @@ import { PublishedTableSegmentDependenciesPage } from "metabase/data-studio/segm
 import { PublishedTableSegmentDetailPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentDetailPage";
 import { PublishedTableSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/PublishedTableSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { IndexRoute, Route } from "metabase/router";
 
 import { TableDependenciesPage } from "./pages/TableDependenciesPage";
 import { TableFieldsPage } from "./pages/TableFieldsPage";
