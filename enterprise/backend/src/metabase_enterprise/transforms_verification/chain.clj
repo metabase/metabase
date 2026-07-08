@@ -46,7 +46,7 @@
 ;;; Constants
 ;;; ---------------------------------------------------------------------------
 
-(def default-test-run-timeout-ms
+(def ^:private default-test-run-timeout-ms
   "Statement-level timeout for a test-run execution. Override via `:timeout-ms`
   in `opts`."
   (u/minutes->ms 5))
@@ -402,9 +402,10 @@
   ```
 
   Security: the card is executed via raw `qp/process-query` (no card-caching
-  middleware, no sandbox re-evaluation against scratch tables). The caller is
-  responsible for `read-check :model/Card` before calling this fn. `resolve/verify`
-  rejects the SQL if any non-scratch table reference survives.
+  middleware, no sandbox re-evaluation against scratch tables). Callers that expose
+  this over an authenticated surface should `read-check :model/Card` first (the HTTP
+  endpoint does). `resolve/verify` rejects the SQL if any non-scratch table
+  reference survives.
 
   MBQL card precondition: the card's source tables must be materialized and synced
   so `id->override` can map them by table id.

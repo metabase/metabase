@@ -112,19 +112,16 @@
         (contains? reserved k)
         acc
 
-        ;; input-<positive-int> pattern.
-        (re-matches #"input-(\d+)" k)
-        (let [[_ id-str] (re-matches #"input-(\d+)" k)
-              table-id   (parse-long id-str)
-              tempfile   (when (map? v) (:tempfile v))
-              _          (validate-table-id! table-id)
-              _          (validate-tempfile! tempfile)]
-          (assoc acc table-id tempfile))
-
-        ;; Anything else is unknown.
         :else
-        (throw-400! (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
-                    {:part-name k})))))
+        (if-let [[_ id-str] (re-matches #"input-(\d+)" k)]
+          (let [table-id (parse-long id-str)
+                tempfile (when (map? v) (:tempfile v))]
+            (validate-table-id! table-id)
+            (validate-tempfile! tempfile)
+            (assoc acc table-id tempfile))
+          ;; Anything else is unknown.
+          (throw-400! (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', ''assertions'', or ''input-<table-id>''." k)
+                      {:part-name k}))))))
 
 (defn parse-input-table-ids
   "Extract input fixture files from the multipart params.
@@ -262,12 +259,17 @@
 (def TestRunResponse
   "Malli schema for the test-run HTTP response body.
 
-  Covers three shapes:
-  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>, :assertions [...]}
-  - error:         {:status \"error\",             :error <map>}"
+  Covers two shapes, left open since each carries keys absent from the other:
+  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>|nil, :assertions [...]|nil}
+  - error:         {:status \"error\", :message <string>, :error {:type <string>, :message <string>}}"
   [:map {:closed false}
    [:status     [:enum "passed" "failed" "error"]]
-   [:assertions {:optional true} [:maybe [:sequential :any]]]])
+   [:diff       {:optional true} [:maybe :map]]
+   [:assertions {:optional true} [:maybe [:sequential :any]]]
+   [:message    {:optional true} :string]
+   [:error      {:optional true} [:map
+                                  [:type :string]
+                                  [:message :string]]]])
 
 (def InputTableResponse
   "Malli schema for a single entry in the inputs response.

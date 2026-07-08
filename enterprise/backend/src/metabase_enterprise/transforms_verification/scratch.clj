@@ -216,15 +216,14 @@
       @mapping
       (catch Throwable e
         ;; Best-effort drop of already-created tables
-        (let [driver* driver]
-          (doseq [{tbl-schema :schema tbl-name :table} @created]
-            (try
-              (driver/drop-table! driver* db-id (keyword tbl-schema tbl-name))
-              (catch Exception drop-e
-                (log/warn drop-e "Failed to drop scratch table during seed! failure cleanup:"
-                          (keyword tbl-schema tbl-name))))))
+        (doseq [{tbl-schema :schema tbl-name :table} @created]
+          (try
+            (driver/drop-table! driver db-id (keyword tbl-schema tbl-name))
+            (catch Exception drop-e
+              (log/warn drop-e "Failed to drop scratch table during seed! failure cleanup:"
+                        (keyword tbl-schema tbl-name)))))
         (throw (errors/ex ::errors/seed-failed
-                          (str "Failed to seed scratch tables: " (.getMessage e))
+                          (str "Failed to seed scratch tables: " (ex-message e))
                           {:created @created}
                           e))))))
 
@@ -319,7 +318,7 @@
              (update report :dropped conj tbl-name)
              (catch Exception e
                (log/warn e "cleanup-all-test-tables! failed to drop" (keyword schema tbl-name))
-               (update report :drop-errors conj {:table tbl-name :error (.getMessage e)})))
+               (update report :drop-errors conj {:table tbl-name :error (ex-message e)})))
            (update report :skipped-young conj tbl-name))
          (update report :non-matching-count inc)))
      {:dropped [] :skipped-young [] :non-matching-count 0 :drop-errors []}

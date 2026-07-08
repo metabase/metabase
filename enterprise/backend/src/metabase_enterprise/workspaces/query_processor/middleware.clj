@@ -138,10 +138,12 @@
    identifiers in the compiled SQL.
 
    Phase 1 is **not** the security boundary — Phase 2 is. Phase 1 exists for *pipeline
-   coherence*: middleware like sandboxing, permission checks, and cache-key generation may
-   read `:schema`/`:name` off table metadata and make decisions on them. Without Phase 1
-   those decisions would be made against canonical names, which is invisible bug-bait. With
-   Phase 1, the whole pipeline sees the same identifiers Phase 2 will emit.
+   coherence*: middleware that reads `:schema`/`:name` off table metadata *after this pass*
+   (e.g. cache-key generation and HoneySQL compilation) sees the identifiers Phase 2 will
+   emit rather than canonical ones. Phase 1 runs late in preprocess — **after** both
+   sandboxing passes and impersonation — so those passes still operate on canonical
+   `:schema`/`:name`. That is safe because Phase 2 is the authoritative isolation boundary;
+   Phase 1 does not retroactively feed sandboxing/impersonation.
 
    Native queries are intentionally untouched here — see the namespace docstring for why.
 

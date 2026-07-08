@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms-verification.errors :as errors]
    [metabase.upload.core :as upload]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -105,7 +106,14 @@
   `:columns` are in CSV column order.  `:rows` are vectors of plain Clojure
   values, one per data row, in the same column order. Cell values are one of:
   String, Double, BigInteger, Boolean, LocalDate, LocalDateTime, OffsetDateTime,
-  or nil. Blank cells — empty or whitespace-only — parse to nil (SQL NULL).
+  or nil.
+
+  Two representational quirks:
+  - Blank cells — empty or whitespace-only — parse to nil (SQL NULL). An
+    intentional empty string `\"\"` is indistinguishable from NULL and unrepresentable.
+  - When a run uses `ignore_columns`, the expected CSV must still carry a header
+    and a parseable dummy value for each ignored column: `parse-fixture` validates
+    and parses the full schema before the diff drops the ignored columns.
 
   Throws (all via `ex-info` with typed `:error-type` in ex-data):
   - `::empty-target-schema` — `target-schema` is empty (the table has no columns).
@@ -130,7 +138,7 @@
         (fn [header]
           (validate-header! header target-schema)
           ;; Re-order the schema to match the CSV column order.
-          (let [name->col (into {} (map (juxt :name identity)) target-schema)]
+          (let [name->col (u/index-by :name target-schema)]
             (mapv name->col header)))]
     (try
       (upload/parse-csv csv-file header->columns)

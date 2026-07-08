@@ -58,7 +58,7 @@
         (recur (conj seen x) (into (rest queue) (adj x))))
       seen)))
 
-(defn topo-order
+(defn- topo-order
   "Kahn topological sort of `node-set` using dependency map `deps` (id -> #{upstream}).
   Dependencies outside `node-set` are ignored (the slice is run hermetically).
   Ties are broken by `id` ascending for determinism. Throws on a cycle."

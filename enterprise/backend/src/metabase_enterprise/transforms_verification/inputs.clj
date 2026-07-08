@@ -11,6 +11,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.transforms-verification.errors :as errors]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -116,7 +117,7 @@
         missing-ids   (set/difference required-ids provided-fixture-keys)
         unknown-keys  (set/difference provided-fixture-keys required-ids)]
     (when (seq missing-ids)
-      (let [id->tbl (into {} (map (juxt :id identity)) required-tables)]
+      (let [id->tbl (u/index-by :id required-tables)]
         (throw (errors/ex ::errors/missing-fixtures
                           (tru "Missing fixture(s) for required input table(s): {0}"
                                (str/join ", "

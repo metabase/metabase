@@ -151,7 +151,8 @@
 
 (defn- run-one-assertion!
   "Run a single prepared assertion. Returns a raw result map
-  `{:name :failing-count :sample?}`. Captures QP errors as an `:error` entry."
+  `{:name :failing-count :sample}` (`:sample` holds sample failing rows, or nil).
+  Captures QP errors as an `:error` entry."
   [db-id output-sql {:keys [name rewritten-sql] :as pa}]
   (try
     (let [clean-sql  (strip-trailing-semicolon rewritten-sql)
