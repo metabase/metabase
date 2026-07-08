@@ -360,10 +360,7 @@
                                  :model/TransformTransformTag _tag1 {:transform_id (:id t1)
                                                                      :tag_id (:id tag)
                                                                      :position 0}
-                                 ;; depends on faulty transform. name target1 directly instead of
-                                 ;; str/replace-ing the compiled query: redshift's test harness embeds the
-                                 ;; dataset name in physical table names, so the replace leaks the prefix and
-                                 ;; desyncs the dep from t1 (GDGT-2522).
+                                 ;; depends on faulty transform
                                  :model/Transform t2 {:name "transform2"
                                                       :source {:type :query
                                                                :query (lib/native-query mp (format "SELECT * FROM %s"
