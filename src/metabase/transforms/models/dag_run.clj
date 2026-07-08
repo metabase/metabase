@@ -6,7 +6,7 @@
   via `transform_run.dag_run_id`."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.transforms.models.coordinated-run :as coordinated-run]
+   [metabase.transforms.coordinated-run :as coordinated-run]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -49,12 +49,6 @@
   [run-id properties]
   (coordinated-run/fail-started-run! :model/TransformDagRun run-id properties))
 
-(defn cancel-started-run!
-  "Mark an active run as canceled. Returns the number of rows updated — 0 if the run had already
-  finished (the `is_active` guard means a completed run is never resurrected into a canceled state)."
-  [run-id]
-  (coordinated-run/cancel-started-run! :model/TransformDagRun run-id))
-
 (defn reap-orphaned-runs!
   "Time out active DAG runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
   process is presumed dead). Returns the rows that were timed out so callers can notify."
@@ -67,11 +61,6 @@
   (t2/select-one :model/TransformDagRun
                  :source_transform_id source-transform-id
                  :is_active           true))
-
-(defn active-transform-run-ids-for-dag-run
-  "Ids of the member transform runs of `dag-run-id` that are still active."
-  [dag-run-id]
-  (t2/select-pks-vec :model/TransformRun :dag_run_id dag-run-id :is_active true))
 
 (defn transform-runs-for-dag-run
   "Return the transform runs that were part of the given DAG run, ordered by start time."

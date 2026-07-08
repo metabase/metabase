@@ -1,10 +1,12 @@
-(ns metabase.transforms.models.coordinated-run
+(ns metabase.transforms.coordinated-run
   "Shared lifecycle operations for the two coordinated-run models, `transform_job_run` and
   `transform_dag_run`. Both track a multi-transform run with the same status/heartbeat lifecycle and
   differ only in their extra columns and member-run FK; helpers here are parameterized by the Toucan
   `model`."
   (:require
    [metabase.run-tracking.core :as rt]
+   [metabase.transforms.canceling :as canceling]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -49,6 +51,21 @@
                :is_active nil
                :end_time  :%now
                :message   "Canceled"}))
+
+(defn cancel!
+  "Cancel an in-progress coordinated run. Marks the run canceled (so its coordinator stops
+  dispatching once it observes the run is no longer active) and requests cancellation of each
+  still-running member transform run — signalling the in-process cancel channel and recording a
+  cancelation row so the cancel-runs task finalizes it cluster-wide. `member-fk` is the
+  `transform_run` column linking members to this run (`:job_run_id`/`:dag_run_id`). Returns true if
+  the run was active and is now canceled, false if it had already finished."
+  [model member-fk run-id]
+  (boolean
+   (when (pos? (cancel-started-run! model run-id))
+     (doseq [member-run-id (t2/select-pks-vec :model/TransformRun member-fk run-id :is_active true)]
+       (transform-run-cancelation/mark-cancel-started-run! member-run-id)
+       (canceling/chan-signal-cancel! member-run-id))
+     true)))
 
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active run-ids."

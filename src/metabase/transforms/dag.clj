@@ -8,13 +8,10 @@
    [clojure.set :as set]
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
-   [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as ordering]
-   [metabase.transforms.canceling :as canceling]
+   [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.jobs :as jobs]
-   [metabase.transforms.models.coordinated-run :as coordinated-run]
    [metabase.transforms.models.dag-run :as dag-run]
-   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -128,31 +125,23 @@
           (do (log/info "Skipping DAG run for transform" (pr-str transform-id) "because no transforms found in closure")
               (when start-promise (deliver start-promise nil))
               nil)
-          (let [{run-id :id} (dag-run/start-dag-run! transform-id direction user-id)]
-            (when start-promise (deliver start-promise [:started run-id]))
-            (tracing/with-span :tasks "task.transform.run-dag" {:transform/id        transform-id
-                                                                :transform/direction (name direction)
-                                                                :transform/count     (count transform-ids)}
-              (try
-                (let [result (jobs/run-transforms! run-id transform-ids
-                                                   {:run-method        :manual
-                                                    :user-id           user-id
-                                                    :skip-fresh-deps?  skip-fresh-deps?
-                                                    :parent-run-type   :dag
-                                                    :active-runs-atom  dag-active-runs
-                                                    :precomputed-plan  plan
-                                                    :add-run-activity! #(dag-run/add-run-activity! run-id)})]
-                  (jobs/finalize-coordinated-run! run-id result
-                                                  {:succeed! dag-run/succeed-started-run!
-                                                   :fail!    dag-run/fail-started-run!
-                                                   :label    (format "DAG run for transform %s" (pr-str transform-id))}))
-                (catch Throwable t
-                  (try
-                    (dag-run/fail-started-run! run-id {:message (ex-message t)})
-                    (catch Exception e
-                      (log/error e "Error when failing a DAG run.")))
-                  (throw t))))
-            run-id))))
+          (jobs/run-coordinated!
+           {:start-run!        #(dag-run/start-dag-run! transform-id direction user-id)
+            :transform-ids     transform-ids
+            :start-promise     start-promise
+            :run-opts          {:run-method       :manual
+                                :user-id          user-id
+                                :skip-fresh-deps? skip-fresh-deps?
+                                :parent-run-type  :dag
+                                :active-runs-atom dag-active-runs
+                                :precomputed-plan plan}
+            :add-run-activity! dag-run/add-run-activity!
+            :span              ["task.transform.run-dag" {:transform/id        transform-id
+                                                          :transform/direction (name direction)
+                                                          :transform/count     (count transform-ids)}]
+            :succeed!          dag-run/succeed-started-run!
+            :fail!             dag-run/fail-started-run!
+            :label             (format "DAG run for transform %s" (pr-str transform-id))}))))
     (catch Throwable t
       ;; a pre-start failure (before the row was created) — unblock any caller waiting on the promise
       (when (and start-promise (not (realized? start-promise)))
@@ -160,18 +149,10 @@
       (throw t))))
 
 (defn cancel-dag-run!
-  "Cancel an in-progress DAG run. Marks the coordinating run canceled (so its coordinator stops
-  dispatching once it observes the run is no longer active) and requests cancellation of each
-  still-running member transform run — signalling the in-process cancel channel for promptness and
-  recording a cancelation row so the cancel-runs task finalizes it cluster-wide. Returns true if the
-  run was active and is now canceled, false if it had already finished."
+  "Cancel an in-progress DAG run and request cancellation of its still-running member transform runs.
+  Returns true if the run was active and is now canceled, false if it had already finished."
   [run-id]
-  (boolean
-   (when (pos? (dag-run/cancel-started-run! run-id))
-     (doseq [member-run-id (dag-run/active-transform-run-ids-for-dag-run run-id)]
-       (transform-run-cancelation/mark-cancel-started-run! member-run-id)
-       (canceling/chan-signal-cancel! member-run-id))
-     true)))
+  (coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id))
 
 ;;; ------------------------------------------- Heartbeat / reaping -------------------------------------------
 

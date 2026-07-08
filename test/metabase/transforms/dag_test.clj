@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.dag :as dag]
    [metabase.transforms.models.dag-run :as dag-run]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -69,9 +70,9 @@
     (testing "cancel-started-run! cancels an active run but is a no-op once terminal"
       (let [{run-id :id} (dag-run/start-dag-run! tid :downstream nil)]
         (try
-          (is (= 1 (dag-run/cancel-started-run! run-id)))
+          (is (= 1 (coordinated-run/cancel-started-run! :model/TransformDagRun run-id)))
           (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))
-          (is (zero? (dag-run/cancel-started-run! run-id))
+          (is (zero? (coordinated-run/cancel-started-run! :model/TransformDagRun run-id))
               "a finished run is never resurrected into a canceled state")
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))
@@ -95,11 +96,16 @@
         (let [{active-run :id} (transform-run/start-run! tid-a {:dag_run_id run-id :run_method :manual})
               {done-run :id}   (transform-run/start-run! tid-b {:dag_run_id run-id :run_method :manual})]
           (transform-run/succeed-started-run! done-run)
-          (testing "active-transform-run-ids-for-dag-run returns only still-active member runs"
-            (is (= [active-run] (dag-run/active-transform-run-ids-for-dag-run run-id))))
           (testing "transform-runs-for-dag-run returns all member runs"
             (is (= #{active-run done-run}
-                   (set (map :id (dag-run/transform-runs-for-dag-run run-id)))))))
+                   (set (map :id (dag-run/transform-runs-for-dag-run run-id))))))
+          (testing "cancel! cancels the run and requests cancelation of only the still-active members"
+            (is (true? (coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id)))
+            (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))
+            (is (t2/exists? :model/TransformRunCancelation :run_id active-run))
+            (is (not (t2/exists? :model/TransformRunCancelation :run_id done-run)))
+            (is (false? (coordinated-run/cancel! :model/TransformDagRun :dag_run_id run-id))
+                "canceling an already-terminal run is a no-op")))
         (finally
           (t2/delete! :model/TransformRun :dag_run_id run-id)
           (t2/delete! :model/TransformDagRun :id run-id))))))
