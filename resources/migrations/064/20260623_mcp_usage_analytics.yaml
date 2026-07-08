@@ -11,10 +11,10 @@
 ## the instrumentation ticket.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/063_update_migrations.yaml
+  - logicalFilePath: migrations/064_update_migrations.yaml
 
   - changeSet:
-      id: v63.2026-06-23T00:00:00
+      id: v64.2026-06-23T00:00:00
       author: sfragnaud
       comment: Create mcp_session_log table
       changes:
@@ -83,7 +83,7 @@ databaseChangeLog:
             tableName: mcp_session_log
 
   - changeSet:
-      id: v63.2026-06-23T00:00:01
+      id: v64.2026-06-23T00:00:01
       author: sfragnaud
       comment: Index on mcp_session_log.user_id
       changes:
@@ -96,7 +96,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v63.2026-06-23T00:00:02
+      id: v64.2026-06-23T00:00:02
       author: sfragnaud
       comment: Index on mcp_session_log.created_at
       changes:
@@ -109,7 +109,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v63.2026-06-23T00:00:03
+      id: v64.2026-06-23T00:00:03
       author: sfragnaud
       comment: Create mcp_tool_call_log table
       changes:
@@ -209,7 +209,7 @@ databaseChangeLog:
             tableName: mcp_tool_call_log
 
   - changeSet:
-      id: v63.2026-06-23T00:00:04
+      id: v64.2026-06-23T00:00:04
       author: sfragnaud
       comment: Index on mcp_tool_call_log.user_id
       changes:
@@ -222,7 +222,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v63.2026-06-23T00:00:06
+      id: v64.2026-06-23T00:00:06
       author: sfragnaud
       comment: Index on mcp_tool_call_log.created_at
       changes:
