@@ -3804,6 +3804,52 @@
                     (is (= "You don't have permissions to do that."
                            (mt/user-http-request :rasta :post 403 (url))))))))))))))
 
+(deftest dashboard-card-query-metric-sourced-from-inaccessible-model-test
+  (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query with a metric sourced from a model"
+    (testing "runs for a user without collection access to the source model"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection    model-coll {}
+                       :model/Collection    dash-coll  {}
+                       :model/Card          model      {:type          :model
+                                                        :collection_id (u/the-id model-coll)
+                                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                                         (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
+                       :model/Card          metric     {:type          :metric
+                                                        :collection_id (u/the-id dash-coll)
+                                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                                         (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
+                                                                             (lib/aggregate (lib/count))))}
+                       :model/Dashboard     dashboard  {:collection_id (u/the-id dash-coll)}
+                       :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard)
+                                                        :card_id      (u/the-id metric)}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) dash-coll)
+          (is (= [[18760]]
+                 (mt/rows (mt/user-http-request :rasta :post 202
+                                                (dashboard-card-query-url
+                                                 (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))
+    (testing "runs for a user without query-building data perms"
+      (mt/with-temp [:model/Collection    coll      {}
+                     :model/Card          model     {:type          :model
+                                                     :collection_id (u/the-id coll)
+                                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                                      (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
+                     :model/Card          metric    {:type          :metric
+                                                     :collection_id (u/the-id coll)
+                                                     :dataset_query (let [mp (mt/metadata-provider)]
+                                                                      (-> (lib/query mp (lib.metadata/card mp (u/the-id model)))
+                                                                          (lib/aggregate (lib/count))))}
+                     :model/Dashboard     dashboard {:collection_id (u/the-id coll)}
+                     :model/DashboardCard dashcard  {:dashboard_id (u/the-id dashboard)
+                                                     :card_id      (u/the-id metric)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (is (= [[18760]]
+                 (mt/rows (mt/user-http-request :rasta :post 202
+                                                (dashboard-card-query-url
+                                                 (u/the-id dashboard) (u/the-id metric) (u/the-id dashcard)))))))))))
+
 ;; see also [[metabase.query-processor.dashboard-test]]
 (deftest dashboard-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
