@@ -13,7 +13,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.log :as log])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -123,9 +124,15 @@
   (let [base-controller (Pools/utilizationController 1.0 1 1)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               [(load-viz-bundle (js.engine/untrusted-plugin-context js.engine/pool-max-cpu-time))
-                (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
+               ;; Cold-parses the ~16MB static-viz bundle into a fresh isolate; logged with timing because this
+               ;; is the dominant per-context cost and explains slow first/regenerated renders.
+               (let [start (System/nanoTime)
+                     ctx   (load-viz-bundle (js.engine/untrusted-plugin-context js.engine/pool-max-cpu-time))]
+                 (log/infof "custom-viz: generated untrusted static-viz isolate context (cold-parsed bundle) in %.0fms"
+                            (/ (- (System/nanoTime) start) 1e6))
+                 [ctx (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))]))
              (destroy [_ _ [^Context ctx _expiry]]
+               (log/debug "custom-viz: disposing untrusted static-viz isolate context")
                (try
                  (.close ctx true) ;; force close - can't wait for running code
                  (catch Exception _))))
@@ -168,6 +175,8 @@
                 ;; regenerates a fresh one rather than handing a dead context to the next render.
                 (when (or (.isCancelled e) (.isResourceExhausted e))
                   (vreset! disposed? true)
+                  (log/warnf "custom-viz: untrusted static-viz context hit a sandbox limit (cancelled=%s resource-exhausted=%s); disposing and regenerating. %s"
+                             (.isCancelled e) (.isResourceExhausted e) (.getMessage e))
                   (.dispose untrusted-static-viz-context-pool :engines tuple))
                 (throw e))
               (finally
@@ -412,20 +421,33 @@
                                           :height (:height *chart-size*)
                                           :fitWithinBounds (boolean (:fit-within? *chart-size*)))))
         custom-viz? (seq custom-viz-bundles)
+        ids         (mapv :identifier custom-viz-bundles)
         run         (fn [context]
                       (when custom-viz?
                         ;; initialize_context applies EE overrides so the custom-viz registry is active
                         ;; before we register plugins; built-in charts don't need it (RenderChart handles setup).
-                        (js.engine/execute-fn-name context "initialize_context" options)
-                        (doseq [{:keys [identifier source]} custom-viz-bundles]
-                          (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
-                          (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier)))
-                      (.asString (js.engine/execute-fn-name context "javascript_visualization"
-                                                            (json/encode cards-with-data)
-                                                            (json/encode dashcard-viz-settings)
-                                                            options)))
+                        (let [start (System/nanoTime)]
+                          (js.engine/execute-fn-name context "initialize_context" options)
+                          (doseq [{:keys [identifier source]} custom-viz-bundles]
+                            (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
+                            (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier))
+                          (log/debugf "custom-viz: registered plugin(s) %s in %.0fms"
+                                      ids (/ (- (System/nanoTime) start) 1e6))))
+                      (let [start  (System/nanoTime)
+                            result (.asString (js.engine/execute-fn-name context "javascript_visualization"
+                                                                         (json/encode cards-with-data)
+                                                                         (json/encode dashcard-viz-settings)
+                                                                         options))]
+                        (when custom-viz?
+                          (log/debugf "custom-viz: executed javascript_visualization for %s in %.0fms (output %d chars)"
+                                      ids (/ (- (System/nanoTime) start) 1e6) (count result)))
+                        result))
         response    (if custom-viz?
-                      (with-untrusted-static-viz-context context (run context))
+                      (let [start (System/nanoTime)]
+                        (log/infof "custom-viz: static-rendering plugin(s) %s" ids)
+                        (u/prog1 (with-untrusted-static-viz-context context (run context))
+                          (log/infof "custom-viz: static-rendered %s in %.0fms (incl. context acquire/generation)"
+                                     ids (/ (- (System/nanoTime) start) 1e6))))
                       (with-static-viz-context context (run context)))]
     (-> response
         json/decode+kw

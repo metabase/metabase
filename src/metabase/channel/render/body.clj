@@ -500,10 +500,13 @@
   "If the card has a custom:* display type, resolve the plugin's JS bundle for static rendering."
   [card]
   (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (when-let [content (some-> (custom-viz-plugin/resolve-enabled-plugin identifier)
-                               custom-viz-plugin/resolve-bundle
-                               :content)]
-      [{:identifier identifier :source content}])))
+    (if-let [content (some-> (custom-viz-plugin/resolve-enabled-plugin identifier)
+                             custom-viz-plugin/resolve-bundle
+                             :content)]
+      (do (log/debugf "custom-viz: resolved bundle for plugin %s (%d chars)" identifier (count content))
+          [{:identifier identifier :source content}])
+      (log/warnf "custom-viz: no enabled plugin/bundle found for %s; static render will fall back to table"
+                 identifier))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -522,7 +525,8 @@
     ;; empty string. Fall back to table rendering.
     (if (and (render.util/custom-viz-display? (:display card))
              (str/blank? content))
-      (render :table render-type timezone-id card dashcard data)
+      (do (log/debugf "custom-viz: plugin %s produced no static output; falling back to table" (:display card))
+          (render :table render-type timezone-id card dashcard data))
       (javascript-visualization->rendered-part render-type result))))
 
 (mu/defmethod render :region_map :- ::RenderedPartCard
