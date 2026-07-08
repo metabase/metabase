@@ -484,6 +484,23 @@
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
 
+(deftest check-deletion-conflicts-test
+  (testing "unsynced transform-family content absent from an import is flagged; synced content is excluded"
+    (mt/with-temporary-setting-values [remote-sync-transforms true]
+      (mt/with-temp [:model/TransformTag unsynced {:name "Unsynced Tag"}
+                     :model/TransformTag synced   {:name "Synced Tag"}
+                     :model/RemoteSyncObject _ {:model_type "TransformTag" :model_id (:id synced)
+                                                :status "synced" :status_changed_at (t/instant)
+                                                :model_name "Synced Tag"}]
+        (testing "the unsynced tag is flagged; the already-synced one is not counted as data loss"
+          (let [tconf (first (filter #(= "Transforms" (:category %))
+                                     (spec/check-deletion-conflicts {:by-entity-id {}})))]
+            (is (= "Import would delete 1 unsynced local Transforms entity" (:message tconf)))))
+        (testing "tags present in the import are not flagged"
+          (is (empty? (filter #(= "Transforms" (:category %))
+                              (spec/check-deletion-conflicts
+                               {:by-entity-id {"TransformTag" #{(:entity_id unsynced) (:entity_id synced)}}})))))))))
+
 (deftest check-collection-deletion-conflicts-test
   (testing "GHY-4019: unsynced local collection content absent from an import is flagged as a deletion conflict"
     (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}

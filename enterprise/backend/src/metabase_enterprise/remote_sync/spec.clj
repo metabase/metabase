@@ -618,6 +618,23 @@
         (seq entity-ids) (conj [:not-in :entity_id entity-ids])
         :always          (into (removal-condition-clauses (removal-conditions spec)))))))
 
+(defn- model-id-column
+  "The qualified id column of a model's own table (e.g. :report_card.id), for correlating a subquery."
+  [model-key]
+  (keyword (str (name (t2/table-name model-key)) ".id")))
+
+(defn- unsynced-anti-join
+  "A [:not [:exists ...]] HoneySQL fragment keeping only rows with no RemoteSyncObject in 'synced' status —
+   i.e. unsynced local work (an already-synced entity's removal is a normal reconcile, not data loss).
+   `id-col` is the qualified id column of the model's own table (see [[model-id-column]])."
+  [model-type id-col]
+  [:not [:exists {:select [1]
+                  :from   [:remote_sync_object]
+                  :where  [:and
+                           [:= :remote_sync_object.model_type model-type]
+                           [:= :remote_sync_object.model_id id-col]
+                           [:= :remote_sync_object.status "synced"]]}]])
+
 (defn check-deletion-conflicts
   "Detects local entities of all-or-nothing models (specs with :all-on-setting-disable) that an import
    would wholesale-delete because they are absent from it, but which hold unsaved local work — i.e. they
@@ -634,18 +651,12 @@
               :when setting-kw
               :let [model-type   (:model-type spec)
                     imported-ids (get by-entity-id model-type #{})
-                    conds        (cond-> []
-                                   (seq imported-ids) (conj [:not-in :entity_id imported-ids])
-                                   :always            (into (removal-condition-clauses (removal-conditions spec))))
-                    candidates   (if (seq conds)
-                                   (t2/select [model-key :id] {:where (into [:and] conds)})
-                                   (t2/select [model-key :id]))
-                    n-unsynced   (count (remove (fn [{:keys [id]}]
-                                                  (t2/exists? :model/RemoteSyncObject
-                                                              :model_type model-type
-                                                              :model_id id
-                                                              :status "synced"))
-                                                candidates))]
+                    ;; These models are unscoped (no :scope-key), so removal-where-clauses just yields the
+                    ;; not-in-import + removal-condition clauses; the anti-join keeps the unsynced ones.
+                    where        (-> [:and]
+                                     (into (removal-where-clauses spec nil imported-ids))
+                                     (conj (unsynced-anti-join model-type (model-id-column model-key))))
+                    n-unsynced   (t2/count model-key {:where where})]
               :when (pos? n-unsynced)
               :let [category (setting->category setting-kw)]]
           {:type    (keyword (str (u/lower-case-en category) "-conflict"))
@@ -725,20 +736,12 @@
                              (not (get-in spec [:removal :all-on-setting-disable])))
                   :let [model-type   (:model-type spec)
                         imported-ids (get by-entity-id model-type #{})
-                        ;; Qualified id column of the model's own table, to correlate the anti-join subquery.
-                        id-col       (keyword (str (name (t2/table-name model-key)) ".id"))
-                        ;; Same base predicate remove-unsynced! deletes by, plus an anti-join keeping only rows
-                        ;; with no 'synced' RemoteSyncObject — the unsynced local work the import would delete
-                        ;; (an already-synced entity's removal is a normal reconcile, not data loss). Done in SQL
-                        ;; so we never materialize a whole collection's worth of rows just to count/sample them.
+                        ;; Same base predicate remove-unsynced! deletes by, plus an anti-join keeping only the
+                        ;; unsynced rows the import would delete. Done in SQL so we never materialize a whole
+                        ;; collection's worth of rows just to count/sample them.
                         where        (-> [:and]
                                          (into (removal-where-clauses spec synced-collection-ids imported-ids))
-                                         (conj [:not [:exists {:select [1]
-                                                               :from   [:remote_sync_object]
-                                                               :where  [:and
-                                                                        [:= :remote_sync_object.model_type model-type]
-                                                                        [:= :remote_sync_object.model_id id-col]
-                                                                        [:= :remote_sync_object.status "synced"]]}]]))
+                                         (conj (unsynced-anti-join model-type (model-id-column model-key))))
                         n            (t2/count model-key {:where where})]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
