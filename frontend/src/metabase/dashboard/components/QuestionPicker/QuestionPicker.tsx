@@ -152,7 +152,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
                     }}
                     rightIcon="chevronright"
                     onSelect={(collectionId) =>
-                      setCurrentCollectionId(collectionId as CollectionId)
+                      setCurrentCollectionId(collectionId)
                     }
                   />
                 );

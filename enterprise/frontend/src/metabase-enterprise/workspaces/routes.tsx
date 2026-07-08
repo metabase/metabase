@@ -1,4 +1,4 @@
-import { IndexRoute, Route, type RouteComponent } from "react-router";
+import { IndexRoute, Route, type RouteComponent } from "metabase/router";
 
 import { AdminConnectionInfoPage } from "./pages/AdminConnectionInfoPage";
 import { WorkspaceIndexPage } from "./pages/WorkspaceIndexPage";

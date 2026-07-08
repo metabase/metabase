@@ -22,7 +22,7 @@ import {
 
 export const getOurAnalytics = (): MiniPickerCollectionFolderItem => ({
   model: "collection",
-  id: "root" as any, // cmon typescript
+  id: "root",
   name: t`Our analytics`,
   here: ["collection"],
   below: [

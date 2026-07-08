@@ -104,9 +104,9 @@ const setup = async ({
 };
 
 const getCheckboxes = () => {
-  return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
-    "checkbox",
-  ) as HTMLInputElement[];
+  return within(
+    screen.getByTestId("type-filter-checkbox-group"),
+  ).getAllByRole<HTMLInputElement>("checkbox");
 };
 
 describe("TypeFilterContent", () => {

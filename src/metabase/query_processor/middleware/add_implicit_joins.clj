@@ -129,7 +129,7 @@
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
                                     (match/match-one clause
-                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (id :guard integer?)]
+                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (_id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)
@@ -180,7 +180,7 @@
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
         (let [stage' (match/replace stage
-                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) id-or-name]
+                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
                                               (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"

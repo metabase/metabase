@@ -1,5 +1,4 @@
 import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
-import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
 import App from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
@@ -66,6 +65,7 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import { IndexRedirect, IndexRoute, Redirect, Route } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";

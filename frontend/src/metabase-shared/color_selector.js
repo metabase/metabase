@@ -12,7 +12,7 @@ global.console = {
   error: print,
 };
 
-global.makeCellBackgroundGetter = function (rowsJSON, colsJSON, settingsJSON) {
+function buildGetter(rowsJSON, colsJSON, settingsJSON) {
   const rows = JSON.parse(rowsJSON);
   const cols = JSON.parse(colsJSON);
   const settings = settingsJSON ? JSON.parse(settingsJSON) : {};
@@ -27,4 +27,18 @@ global.makeCellBackgroundGetter = function (rowsJSON, colsJSON, settingsJSON) {
     print("ERROR", e);
     return () => null;
   }
+}
+
+// Colors many cells in one host call, so the JVM side never holds a context-bound function value
+// across a render. `cellsJSON` is an array of [value, rowIndex, colName] triples; returns a JSON
+// array of color strings (or null), positionally.
+global.getCellBackgroundColors = function (
+  rowsJSON,
+  colsJSON,
+  settingsJSON,
+  cellsJSON,
+) {
+  const getter = buildGetter(rowsJSON, colsJSON, settingsJSON);
+  const cells = JSON.parse(cellsJSON);
+  return JSON.stringify(cells.map((cell) => getter(cell[0], cell[1], cell[2])));
 };

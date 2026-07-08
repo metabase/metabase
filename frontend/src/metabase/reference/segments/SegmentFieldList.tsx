@@ -3,8 +3,6 @@ import { useFormik } from "formik";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
@@ -15,6 +13,8 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
 import * as actions from "metabase/reference/reference";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {

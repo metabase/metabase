@@ -10,7 +10,6 @@ import type {
   GetFieldValuesResponse,
   ParameterValue,
   ParameterValues,
-  StructuredQuery,
   User,
 } from "metabase-types/api";
 
@@ -115,7 +114,7 @@ const ordersJoinedToProducts: StructuredQuestionDetails = {
     aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
     breakout: [["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }]],
     "source-table": ORDERS_ID,
-  } as StructuredQuery,
+  },
 };
 
 const ordersImplicitlyJoinedToProducts: StructuredQuestionDetails = {

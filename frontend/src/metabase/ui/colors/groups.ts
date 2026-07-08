@@ -70,8 +70,12 @@ export const getDarkAccentColors = (
 
 export const getStatusColorRanges = (): string[][] => {
   return [
-    [color("error"), "transparent", color("success")],
-    [color("error"), color("warning"), color("success")],
+    [color("feedback-negative"), "transparent", color("feedback-positive")],
+    [
+      color("feedback-negative"),
+      color("feedback-warning"),
+      color("feedback-positive"),
+    ],
   ];
 };
 
@@ -87,7 +91,7 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
     case "accepted":
     case "active":
     case "profit":
-      return color("success", palette);
+      return color("feedback-positive", palette);
     case "cancel":
     case "canceled":
     case "cancelled":
@@ -103,12 +107,12 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
     case "cost":
     case "deleted":
     case "pending":
-      return color("error", palette);
+      return color("feedback-negative", palette);
     case "warn":
     case "warning":
     case "incomplete":
     case "unstable":
-      return color("warning", palette);
+      return color("feedback-warning", palette);
     case "count":
       return color("accent0", palette);
     case "sum":

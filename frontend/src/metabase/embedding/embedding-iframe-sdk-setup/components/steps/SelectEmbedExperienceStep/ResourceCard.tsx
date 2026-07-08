@@ -46,7 +46,7 @@ export const ResourceCard = () => {
 
   const { data: selectedCollection } = useGetCollectionQuery(
     experience === "browser" && selectedItemId != null
-      ? { id: selectedItemId as CollectionId }
+      ? { id: selectedItemId }
       : skipToken,
   );
 
@@ -106,7 +106,7 @@ export const ResourceCard = () => {
       });
     } else if (experience === "browser") {
       updateSettings({
-        initialCollection: id as CollectionId,
+        initialCollection: id,
       });
     }
   };

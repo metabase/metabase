@@ -46,3 +46,17 @@ export type CustomVizEvent =
   | CustomVizPluginToggledEvent
   | CustomVizPluginRefreshedEvent
   | CustomVizSelectedEvent;
+
+export type UserInvitedEvent = ValidateEvent<{
+  event: "user_invited";
+  triggered_from: "admin" | "setup" | "dashboard" | "question";
+  target_id: number | null;
+  result: "success" | "failure";
+  event_detail: "new_user" | "existing_user" | null;
+}>;
+
+export type InviteToViewOpenedEvent = ValidateEvent<{
+  event: "invite_to_view_opened";
+  triggered_from: "dashboard" | "question";
+  target_id: number | null;
+}>;

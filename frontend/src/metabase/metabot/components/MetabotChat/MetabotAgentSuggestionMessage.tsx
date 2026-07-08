@@ -236,7 +236,10 @@ export const AgentSuggestionMessage = ({
               align="center"
               gap="sm"
             >
-              <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
+              <Text
+                mb="1px"
+                c="feedback-negative"
+              >{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
@@ -278,7 +281,9 @@ export const AgentSuggestionMessage = ({
                 variant="subtle"
                 fw="normal"
                 fz="sm"
-                c={canApply && !readonly ? "success" : "text-disabled"}
+                c={
+                  canApply && !readonly ? "feedback-positive" : "text-disabled"
+                }
                 disabled={!canApply || readonly}
                 onClick={handleApply}
               >

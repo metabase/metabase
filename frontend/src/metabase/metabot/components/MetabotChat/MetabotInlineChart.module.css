@@ -14,7 +14,7 @@
   text-decoration: none;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     text-decoration: none;
   }
 }

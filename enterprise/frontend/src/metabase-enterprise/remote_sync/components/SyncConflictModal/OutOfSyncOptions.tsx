@@ -129,7 +129,7 @@ const OptionGroup = ({ title, options, destructive }: OptionGroupProps) => (
     <Text
       size="sm"
       fw="bold"
-      c={destructive ? "error" : "text-secondary"}
+      c={destructive ? "feedback-negative" : "text-secondary"}
       mb="sm"
     >
       {title}

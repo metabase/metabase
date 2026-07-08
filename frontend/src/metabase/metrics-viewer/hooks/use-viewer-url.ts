@@ -145,7 +145,7 @@ export function useViewerUrl(
       setInitialLoadComplete(true);
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`There was a problem restoring the page state`,
       });
     }

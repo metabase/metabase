@@ -309,6 +309,7 @@
 (defmethod semantic.embedding/get-embedding        "mock" [_ text & {:as _opts}] (get-mock-embedding text))
 (defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts & {:as _opts}] (get-mock-embeddings-batch texts))
 (defmethod semantic.embedding/pull-model           "mock" [_])
+(defmethod semantic.embedding/embedding-supported? "mock" [_] true)
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-index [search-context]
