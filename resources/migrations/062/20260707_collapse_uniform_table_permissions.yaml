@@ -76,9 +76,9 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:01
       author: ranquild
       comment: Stage the surviving data_permissions rows before collapsing the redundant ones (#76077)
+      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
-            dbms: postgresql,mysql,mariadb
             sql: >-
               CREATE TABLE data_permissions_collapse_keep AS
               SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
@@ -95,9 +95,9 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:02
       author: ranquild
       comment: Empty data_permissions before reloading only the surviving rows (#76077)
+      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
-            dbms: postgresql,mysql,mariadb
             sql: TRUNCATE TABLE data_permissions;
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
@@ -105,9 +105,9 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:03
       author: ranquild
       comment: Reload the surviving data_permissions rows (#76077)
+      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
-            dbms: postgresql,mysql,mariadb
             sql: >-
               INSERT INTO data_permissions (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
               SELECT id, group_id, perm_type, db_id, schema_name, table_id, perm_value
@@ -118,9 +118,9 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:04
       author: ranquild
       comment: Drop the staging table used to collapse data_permissions (#76077)
+      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
-            dbms: postgresql,mysql,mariadb
             sql: DROP TABLE data_permissions_collapse_keep;
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
@@ -128,9 +128,9 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:05
       author: ranquild
       comment: On H2, delete the redundant table-level data_permissions rows directly (#76077)
+      dbms: h2
       changes:
         - sql:
-            dbms: h2
             sql: >-
               DELETE FROM data_permissions
               WHERE perm_type = 'perms/view-data'
