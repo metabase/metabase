@@ -4,8 +4,7 @@ import { AppView } from "./AppView";
 import { DataAppLayout } from "./DataAppLayout";
 
 /**
- * Data-app host routes. The caller mounts these under an admin route guard;
- * the backend bundle endpoint is additionally superuser-only.
+ * Data-app host routes. Open to any signed-in user.
  *
  * Path can't be `/app/:name` because the server reserves `/app/*` for static
  * asset serving.

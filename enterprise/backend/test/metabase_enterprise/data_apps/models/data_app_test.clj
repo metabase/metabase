@@ -56,13 +56,14 @@
       (is (= ["https://a.com" "https://b.com"]
              (:allowed_hosts (t2/select-one :model/DataApp :name "n")))))))
 
-(deftest permissions-are-superuser-only-test
-  (testing "read/write/create are granted only to superusers"
+(deftest permissions-test
+  (testing "a superuser can read, write, and create"
     (binding [api/*is-superuser?* true]
       (is (mi/can-read? :model/DataApp 1))
       (is (mi/can-write? :model/DataApp 1))
-      (is (mi/can-create? :model/DataApp {})))
+      (is (mi/can-create? :model/DataApp {}))))
+  (testing "any signed-in user can read (view), but write/create stay superuser-only"
     (binding [api/*is-superuser?* false]
-      (is (not (mi/can-read? :model/DataApp 1)))
+      (is (mi/can-read? :model/DataApp 1))
       (is (not (mi/can-write? :model/DataApp 1)))
       (is (not (mi/can-create? :model/DataApp {}))))))
