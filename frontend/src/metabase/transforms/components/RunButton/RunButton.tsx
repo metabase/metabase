@@ -151,7 +151,7 @@ function getRunButtonInfo({
   if (run.status === "succeeded") {
     return {
       label: t`Ran successfully`,
-      color: "success",
+      color: "feedback-positive",
       leftSection: <Icon name="check" aria-hidden />,
       isDisabled,
     };
@@ -160,15 +160,15 @@ function getRunButtonInfo({
   if (run.status === "canceled") {
     return {
       label: t`Canceled`,
-      color: "warning",
-      leftSection: <Icon name="close" c="white" aria-hidden />,
+      color: "feedback-warning",
+      leftSection: <Icon name="close" c="core-white" aria-hidden />,
       isDisabled,
     };
   }
 
   return {
     label: t`Run failed`,
-    color: "error",
+    color: "feedback-negative",
     leftSection: <Icon name="warning" aria-hidden />,
     isDisabled,
   };

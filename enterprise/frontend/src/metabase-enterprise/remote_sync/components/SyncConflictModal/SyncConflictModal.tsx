@@ -243,7 +243,9 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
             {t`Cancel`}
           </Button>
           <Button
-            color={optionValue === "discard" ? "error" : "core-brand"}
+            color={
+              optionValue === "discard" ? "feedback-negative" : "core-brand"
+            }
             disabled={isButtonDisabled}
             leftSection={
               optionValue === "force-push" ? <Icon name="warning" /> : undefined

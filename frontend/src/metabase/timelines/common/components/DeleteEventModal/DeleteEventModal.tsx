@@ -34,7 +34,7 @@ const DeleteEventModal = ({
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
           variant="filled"
-          color="error"
+          color="feedback-negative"
           onClick={handleSubmit}
         >{t`Delete`}</Button>
       </ModalFooter>

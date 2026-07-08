@@ -154,7 +154,7 @@ function ActionsPopover({
           <Menu.Item onClick={() => onEditGroupClicked(group)}>
             {t`Edit Name`}
           </Menu.Item>
-          <Menu.Item c="danger" onClick={openModal}>
+          <Menu.Item c="feedback-negative" onClick={openModal}>
             {t`Remove Group`}
           </Menu.Item>
         </Menu.Dropdown>

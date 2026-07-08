@@ -1,6 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import type { WithRouterProps } from "react-router";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -18,6 +16,8 @@ import type {
 } from "metabase/common/components/Pickers";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import type { WithRouterProps } from "metabase/router";
+import { withRouter } from "metabase/router";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";

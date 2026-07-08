@@ -488,7 +488,7 @@ export function SettingsOIDCForm() {
                         </Button>
                         <Button
                           variant="filled"
-                          color="danger"
+                          color="feedback-negative"
                           onClick={deleteModal.open}
                         >
                           {t`Delete configuration`}

@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   fireEvent,
   render,
@@ -7,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import type { PaletteActionImpl } from "../types";
 

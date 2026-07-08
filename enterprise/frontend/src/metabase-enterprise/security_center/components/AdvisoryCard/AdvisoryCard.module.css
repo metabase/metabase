@@ -1,21 +1,21 @@
 .severityCritical {
-  background-color: var(--mb-color-error);
-  color: var(--mb-color-white);
+  background-color: var(--mb-color-feedback-negative);
+  color: var(--mb-color-core-white);
 }
 
 .severityHigh {
-  background-color: var(--mb-color-warning);
-  color: var(--mb-color-white);
+  background-color: var(--mb-color-feedback-warning);
+  color: var(--mb-color-core-white);
 }
 
 .severityMedium {
-  background-color: var(--mb-color-gold);
+  background-color: var(--mb-color-feedback-warning);
   color: var(--mb-color-text-primary);
 }
 
 .severityLow {
-  background-color: var(--mb-color-success);
-  color: var(--mb-color-white);
+  background-color: var(--mb-color-feedback-positive);
+  color: var(--mb-color-core-white);
 }
 
 .severityNeutral {

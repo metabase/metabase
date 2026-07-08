@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupGetTransformJobEndpoint,
@@ -16,6 +15,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import type {
   TransformJobRun,
