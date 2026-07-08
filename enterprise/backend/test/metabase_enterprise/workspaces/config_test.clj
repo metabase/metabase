@@ -266,11 +266,11 @@
                                                :creator_id (mt/user->id :crowberto)}]
     (testing "no :api-keys section without the mint-time opts (the parent cannot reproduce the key)"
       (is (not (contains? (:config (config/build-workspace-config ws-id)) :api-keys))))
-    (testing "create orchestration supplies the freshly-minted key -> all-users api-keys entry"
+    (testing "create orchestration supplies the freshly-minted key -> admin api-keys entry (GHY-4078)"
       (is (= [{:name    "workspace gitty agent key"
                :key     "mb_0123456789abcdef"
                :creator "admin@child.test"
-               :group   "all-users"}]
+               :group   "admin"}]
              (get-in (config/build-workspace-config ws-id {:api-key       "mb_0123456789abcdef"
                                                            :creator-email "admin@child.test"})
                      [:config :api-keys]))))))

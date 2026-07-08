@@ -132,14 +132,17 @@
 
 (defn- api-keys-section
   "The child's `api-keys:` section registering the parent-minted agent key.
-   `all-users` group per the GHY-4061 audit: the agent must not be a child admin
-   (kills db-connection-host swap and remote-sync repoint). `creator` must be an
-   admin user that exists on the child at boot."
+   `admin` group: deliberate v0 reversal of the GHY-4061 all-users call
+   (GHY-4078 has the reasoning). The exfil paths admin opens are bounded —
+   the child holds only the disposable workspace-user warehouse cred, dropped
+   at destroy — and all-users cannot transform at all (no boot-grant mechanism
+   exists yet). Revisit at GA/multi-user, where child-admin gets real teeth.
+   `creator` must be an admin user that exists on the child at boot."
   [ws api-key creator-email]
   [{:name    (str "workspace " (:name ws) " agent key")
     :key     api-key
     :creator creator-email
-    :group   "all-users"}])
+    :group   "admin"}])
 
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
