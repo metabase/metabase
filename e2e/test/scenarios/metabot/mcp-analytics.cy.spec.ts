@@ -80,7 +80,10 @@ describe("scenarios > metabot > mcp analytics", () => {
     cy.log(
       "The Usage tab surfaces an Errors section once there are failed calls",
     );
-    H.main().findByRole("heading", { name: "Errors" }).should("be.visible");
+    H.main()
+      .findByRole("heading", { name: "Errors" })
+      .scrollIntoView()
+      .should("be.visible");
 
     cy.log(
       "The Tool calls table shows the derived error type and gated message",
@@ -88,9 +91,9 @@ describe("scenarios > metabot > mcp analytics", () => {
     H.main().findByRole("tab", { name: "Tool calls" }).click();
     cy.wait("@dataset");
     H.main().within(() => {
-      cy.findByText(SEED_ERROR_TOOL).should("be.visible");
-      cy.findByText(SEED_ERROR_TYPE).should("be.visible");
-      cy.findByText(SEED_ERROR_MESSAGE).should("be.visible");
+      cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
+      cy.findByText(SEED_ERROR_TYPE).scrollIntoView().should("be.visible");
+      cy.findByText(SEED_ERROR_MESSAGE).scrollIntoView().should("be.visible");
     });
   });
 

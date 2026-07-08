@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import type { WithRouterProps } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -7,6 +6,7 @@ import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import type { WithRouterProps } from "metabase/router";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
