@@ -6,6 +6,7 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
+import { type ComponentType, useEffect, useState } from "react";
 
 import { getTestEnv } from "./test-env";
 
@@ -66,8 +67,59 @@ function Details() {
   );
 }
 
+// Exercises the Near-Membrane sandbox: a blocked DOM API, a fetch to a host that
+// is NOT in `allowed_hosts` (rejected), and a fetch to a host that IS in
+// `allowed_hosts` (reaches the network). Each outcome is rendered so a test can
+// assert it. The sandbox surfaces blocks as a synchronous throw (blocked API)
+// or a promise rejection (blocked fetch); the thrown value may not be an
+// instance of the guest realm's `Error`, so read `.message` defensively.
+function Sandbox() {
+  const { sandbox } = getTestEnv();
+  const [blockedApi, setBlockedApi] = useState("pending");
+  const [blockedFetch, setBlockedFetch] = useState("pending");
+  const [allowedFetch, setAllowedFetch] = useState("pending");
+
+  useEffect(() => {
+    const describe = (err: unknown) =>
+      (err as { message?: string })?.message ?? String(err);
+
+    try {
+      // Plain elements are fine; creating a <script> is blocked by the sandbox.
+      document.createElement("script");
+      setBlockedApi("ok: created");
+    } catch (err) {
+      setBlockedApi(`blocked: ${describe(err)}`);
+    }
+
+    if (sandbox) {
+      fetch(sandbox.blockedUrl)
+        .then((res) => setBlockedFetch(`ok: ${res.status}`))
+        .catch((err) => setBlockedFetch(`blocked: ${describe(err)}`));
+
+      fetch(sandbox.allowedUrl)
+        .then((res) => setAllowedFetch(`ok: ${res.status}`))
+        .catch((err) => setAllowedFetch(`blocked: ${describe(err)}`));
+    }
+  }, [sandbox]);
+
+  return (
+    <div data-testid="data-app-sandbox" style={{ padding: 24 }}>
+      <h1 style={{ margin: "0 0 16px" }}>Sandbox</h1>
+      <div data-testid="blocked-api-result">{blockedApi}</div>
+      <div data-testid="blocked-fetch-result">{blockedFetch}</div>
+      <div data-testid="allowed-fetch-result">{allowedFetch}</div>
+    </div>
+  );
+}
+
+const ROUTES: Record<string, ComponentType> = {
+  "/details": Details,
+  "/sandboxing": Sandbox,
+};
+
 function Shell() {
   const { pathname } = useDataAppLocation();
+  const Page = ROUTES[pathname] ?? Overview;
 
   return (
     <div style={{ fontFamily: "sans-serif" }}>
@@ -81,9 +133,10 @@ function Shell() {
       >
         <DataAppLink to="/">Overview</DataAppLink>
         <DataAppLink to="/details">Details</DataAppLink>
+        <DataAppLink to="/sandboxing">Sandbox</DataAppLink>
       </nav>
 
-      {pathname === "/details" ? <Details /> : <Overview />}
+      <Page />
     </div>
   );
 }

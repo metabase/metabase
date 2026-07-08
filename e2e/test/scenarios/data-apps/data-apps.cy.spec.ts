@@ -245,6 +245,58 @@ describe("scenarios > data apps", () => {
       cy.location("pathname").should("eq", `/data-app/${APP_NAME}/details`);
     });
   });
+
+  describe("sandboxing", () => {
+    const ALLOWED_ORIGIN = "https://allowed.data-app.test";
+    const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
+    const BLOCKED_URL = "https://blocked.data-app.test/ping";
+
+    it("blocks disallowed APIs and cross-origin fetch, but permits allowed_hosts", () => {
+      // The allowed host is stubbed with a CORS header so the sandbox's real
+      // network call resolves; the blocked host is never intercepted because the
+      // sandbox rejects it before it reaches the network.
+      cy.intercept("GET", ALLOWED_URL, {
+        statusCode: 200,
+        headers: { "access-control-allow-origin": "*" },
+        body: "pong",
+      });
+
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        allowedHosts: [ALLOWED_ORIGIN],
+        testEnv: {
+          ...TEST_ENV,
+          sandbox: { allowedUrl: ALLOWED_URL, blockedUrl: BLOCKED_URL },
+        },
+      });
+
+      H.openDataApp(APP_NAME);
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Orders overview" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: "Sandbox" }).click();
+
+        // A blocked DOM API throws synchronously inside the sandbox.
+        cy.findByTestId("blocked-api-result", { timeout: 30000 }).should(
+          "contain",
+          "blocked createElement: script",
+        );
+
+        // A fetch to a host not in allowed_hosts is rejected by the sandbox.
+        cy.findByTestId("blocked-fetch-result", { timeout: 30000 }).should(
+          "contain",
+          "not in allowed_hosts",
+        );
+
+        // A fetch to a host in allowed_hosts reaches the (stubbed) network.
+        cy.findByTestId("allowed-fetch-result", { timeout: 30000 }).should(
+          "have.text",
+          "ok: 200",
+        );
+      });
+    });
+  });
 });
 
 describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
