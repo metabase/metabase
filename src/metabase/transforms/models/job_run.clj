@@ -61,6 +61,12 @@
   [run-id properties]
   (coordinated-run/fail-started-run! :model/TransformJobRun run-id properties))
 
+(defn cancel-started-run!
+  "Mark an active run as canceled. Returns the number of rows updated — 0 if the run had already
+  finished (the `is_active` guard means a completed run is never resurrected into a canceled state)."
+  [run-id]
+  (coordinated-run/cancel-started-run! :model/TransformJobRun run-id))
+
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active job-run-ids."
   [run-ids]
@@ -95,6 +101,11 @@
                                            params
                                            (transforms.models.u/run-order-by sort-column sort-direction)
                                            where)))
+
+(defn active-transform-run-ids-for-job-run
+  "Ids of the member transform runs of `job-run-id` that are still active."
+  [job-run-id]
+  (t2/select-pks-vec :model/TransformRun :job_run_id job-run-id :is_active true))
 
 (defn transform-runs-for-job-run
   "Return transform runs that were part of the given job run, ordered by start time."

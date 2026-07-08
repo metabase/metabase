@@ -60,6 +60,7 @@
   get-transform-cycle]
  [metabase.transforms.jobs
   run-job!
+  cancel-job-run!
   job-transforms]
  [metabase.transforms.dag
   run-dag!

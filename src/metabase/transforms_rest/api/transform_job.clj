@@ -25,7 +25,7 @@
    [:id pos-int?]
    [:job_id pos-int?]
    [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout]]
+   [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
    [:end_time {:optional true} [:maybe :any]]
@@ -291,7 +291,7 @@
    [:id pos-int?]
    [:job_id pos-int?]
    [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout]]
+   [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
    [:end_time {:optional true} [:maybe :any]]
@@ -328,7 +328,7 @@
   "Get paginated run history for a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
    query-params :- [:map
-                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout"]]]
+                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
                     [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]
                     [:start-time {:optional true} [:maybe ms/NonBlankString]]
                     [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
@@ -351,6 +351,16 @@
   (let [runs (transforms.core/transform-runs-for-job-run run-id)]
     (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
          (map transforms-base.u/present-run))))
+
+(api.macros/defendpoint :post "/:job-id/runs/:run-id/cancel" :- :nil
+  "Cancel an in-progress job run and request cancellation of its still-running transforms."
+  [{:keys [job-id run-id]} :- [:map
+                               [:job-id ms/PositiveInt]
+                               [:run-id ms/PositiveInt]]]
+  (api/write-check :model/TransformJob job-id)
+  (api/check-404 (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))
+  (api/check-400 (transforms.core/cancel-job-run! run-id))
+  nil)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-job` routes."

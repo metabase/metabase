@@ -18,6 +18,7 @@
    [metabase.transforms.models.coordinated-run :as coordinated-run]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
@@ -556,6 +557,20 @@
                       (log/error e "Error when failing a transform job run.")))
                   (throw t)))))
           run-id)))))
+
+(defn cancel-job-run!
+  "Cancel an in-progress job run. Marks the coordinating run canceled (so its coordinator stops
+  dispatching once it observes the run is no longer active) and requests cancellation of each
+  still-running member transform run — signalling the in-process cancel channel and recording a
+  cancelation row so the cancel-runs task finalizes it cluster-wide. Returns true if the run was
+  active and is now canceled, false if it had already finished."
+  [run-id]
+  (boolean
+   (when (pos? (transforms.job-run/cancel-started-run! run-id))
+     (doseq [member-run-id (transforms.job-run/active-transform-run-ids-for-job-run run-id)]
+       (transform-run-cancelation/mark-cancel-started-run! member-run-id)
+       (canceling/chan-signal-cancel! member-run-id))
+     true)))
 
 ;;; ------------------------------------------- Orphan reaping -------------------------------------------
 
