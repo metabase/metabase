@@ -1327,7 +1327,10 @@
   (testing "with-field-values? false suppresses field-value fetching (correct ?-suffixed key)"
     ;; get-metric-details reads :with-field-values? (with the ?). The old code passed
     ;; :with-field-values (no ?), so the option was silently ignored. If the ? key is honored,
-    ;; field-values-fn is swapped for identity and no queryable dimension carries :field-values.
+    ;; field-values-fn is swapped for identity and no queryable dimension carries sample values.
+    ;; NOTE: the emitted key is :field_values (underscore) — `->result-column`
+    ;; (metabot/tools/util.clj) renames the intermediate hyphenated :field-values on the way out.
+    ;; Asserting the hyphen key would be vacuous (it never reaches the output).
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {id :id} {:type :metric :dataset_query (metric-query)}]
         (let [so   (get-in (read-resource/read-resource
@@ -1335,8 +1338,13 @@
                            [:resources 0 :content :structured-output])
               dims (:queryable-dimensions so)]
           (is (seq dims) "metric should expose queryable dimensions")
-          (is (every? #(not (contains? % :field-values)) dims)
-              "no dimension may carry :field-values when with-field-values? is false"))))))
+          ;; Positive control: CATEGORY is a low-cardinality field with cached field-values,
+          ;; so a broken suppression WOULD populate :field_values on it — this keeps the
+          ;; absence assertion below from passing merely because no dimension ever carries values.
+          (is (some #(= "CATEGORY" (:name %)) dims)
+              "the value-bearing CATEGORY dimension must be present for the suppression check to bite")
+          (is (every? #(not (contains? % :field_values)) dims)
+              "no dimension may carry :field_values when with-field-values? is false"))))))
 
 (deftest card-fields-routes-metric-to-dimensions-test
   (testing "metabase://card/{metric_eid}/fields routes a :metric card to its dimensions (not table-details)"
