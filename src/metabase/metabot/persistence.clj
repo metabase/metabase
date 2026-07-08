@@ -367,9 +367,8 @@
       (cond-> {:id   (str (random-uuid))
                :role "agent"
                :type "data_part"
-               :part {:type    (subs part-type 5)
-                      :version 1
-                      :value   (:data part)}}
+               :part {:type part-type
+                      :data (:data part)}}
         external-id (assoc :externalId external-id))
 
       :else nil)))
