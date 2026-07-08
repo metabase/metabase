@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
@@ -9,8 +9,6 @@ import { Box, Button, Group, Icon, Paper, Select } from "metabase/ui";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 
 import S from "./DataAppLayout.module.css";
-
-const DATA_APPS_SETTINGS_PATH = "/admin/settings/data-apps";
 
 interface DataAppLayoutProps {
   params: { name: string };
@@ -24,6 +22,7 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
   const [hovered, setHovered] = useState(false);
   const [selectOpened, setSelectOpened] = useState(false);
 
+  const canGoBack = useRef(window.history.length > 1).current;
   const expanded = hovered || selectOpened;
 
   const collapse = useCallback(() => {
@@ -57,7 +56,7 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
   );
 
   const handleGoBack = () => {
-    dispatch(push(DATA_APPS_SETTINGS_PATH));
+    dispatch(goBack());
   };
 
   const handleSelectApp = (nextName: string) => {
@@ -91,13 +90,15 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
           bg="background-primary"
         >
           <Group gap="sm" wrap="nowrap">
-            <Button
-              variant="subtle"
-              leftSection={<Icon name="arrow_left" />}
-              onClick={handleGoBack}
-            >
-              {t`Go back`}
-            </Button>
+            {canGoBack && (
+              <Button
+                variant="subtle"
+                leftSection={<Icon name="arrow_left" />}
+                onClick={handleGoBack}
+              >
+                {t`Go back`}
+              </Button>
+            )}
             <Select
               data={appOptions}
               value={name}
