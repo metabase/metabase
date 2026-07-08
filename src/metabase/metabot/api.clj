@@ -15,6 +15,7 @@
    [metabase.lib.core :as lib]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -170,15 +171,18 @@
   `:external-id` is the assistant row's `external_id`, emitted as the SSE
   `start` event's `messageId` so the client can correlate streamed messages
   with feedback. `:user-external-id` is the turn's user row `external_id`,
-  emitted as the `start` event's `messageMetadata.userMessageId`."
+  emitted as the `start` event's `messageMetadata.userMessageId`.
+  `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
+  it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
            eval-session-id assistant-msg-id external-id user-external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
-      (let [parts-atom (atom [])
-            canceled?  (volatile! false)
+      (let [parts-atom  (atom [])
+            memory-atom (atom nil)
+            canceled?   (volatile! false)
             ;; Captures throwables that escape the agent loop's own `catch Exception`
             ;; (e.g. setup-phase throws before the reducible is constructed, `Error`
             ;; subclasses, or failures from the agent's recovery `rf` write). Without
@@ -199,6 +203,7 @@
                                :profile-id      (keyword profile-id)
                                :context         enriched-context
                                :eval-session-id eval-session-id
+                               :memory-atom     memory-atom
                                :tracking-opts   {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
@@ -242,10 +247,11 @@
                                      thrown-ex (metabot.persistence/throwable->error-payload thrown-ex)
                                      :else (:error (u/seek #(= :error (:type %)) combined-parts)))]
                 (metabot.persistence/finalize-assistant-turn!
-                 conversation-id assistant-msg-id combined-parts
+                 assistant-msg-id combined-parts
                  :profile-id profile-id
                  :finished?  (not aborted?)
-                 :error      error-data))
+                 :error      error-data
+                 :turn-state (some-> @memory-atom memory/turn-state)))
               (catch Exception e
                 (log/error e "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
@@ -259,7 +265,7 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context conversation_id state debug eval_session_id parent_message_id retry_message_id]} request-info]
+  [{:keys [metabot_id profile_id message context conversation_id debug eval_session_id parent_message_id retry_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -278,7 +284,9 @@
                                              :hostname hostname
                                              :pii-info pii-info
                                              :delete-message-ids message-ids))
-          history (metabot.persistence/history conversation_id)]
+          messages  (metabot.persistence/live-messages conversation_id)
+          history   (metabot.persistence/history messages)
+          state     (metabot.persistence/conversation-state messages)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
@@ -332,10 +340,6 @@
             [:conversation_id ms/UUIDString]
             [:parent_message_id {:optional true} [:maybe ms/UUIDString]]
             [:retry_message_id {:optional true} [:maybe ms/UUIDString]]
-            [:state [:map
-                     [:queries {:optional true} [:map-of :string :any]]
-                     [:charts {:optional true} [:map-of :string :any]]
-                     [:chart-configs {:optional true} [:map-of :string :any]]]]
             ;; eval-only: lets the benchmark harness name the per-session trace file it will read back.
             ;; Length + charset enforced at this HTTP boundary so a bad id 400s cleanly instead of
             ;; throwing deep in `ait/checked-session-id` and surfacing as a generic agent error.

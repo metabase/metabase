@@ -1,0 +1,91 @@
+# Per-message partial conversation state, merged across live rows to reconstruct
+# the full state server-side (replaces the metabot_conversation.state blob).
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-06T00:00:00
+      author: sloansparger
+      comment: Add state to metabot_message for per-turn partial conversation state
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: state
+                  remarks: Partial conversation state produced by this assistant turn
+                  type: ${text.type}
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: state
+
+  - changeSet:
+      id: v64.2026-07-06T00:00:01
+      author: sloansparger
+      comment: Move each conversation's legacy state blob onto its earliest replayable assistant message
+      changes:
+        - sql:
+            # The blob is cumulative across every turn, so it belongs on the
+            # earliest replayable assistant row: it merges first during reconstruction
+            # and retrying a later turn cannot delete state it did not produce.
+            sql: >-
+              UPDATE metabot_message
+              SET state = (SELECT c.state
+                           FROM metabot_conversation c
+                           WHERE c.id = metabot_message.conversation_id)
+              WHERE metabot_message.state IS NULL
+                AND metabot_message.id IN (SELECT first_id
+                                           FROM (SELECT id AS first_id,
+                                                        ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY created_at, id) AS row_num
+                                                 FROM metabot_message
+                                                 WHERE role = 'assistant'
+                                                   AND deleted_at IS NULL
+                                                   AND error IS NULL
+                                                   AND finished IS NOT NULL) AS firsts
+                                           WHERE row_num = 1)
+                AND metabot_message.conversation_id IN (SELECT id
+                                                        FROM metabot_conversation
+                                                        WHERE state IS NOT NULL);
+      rollback: # restored when metabot_conversation.state is re-added below
+
+  - changeSet:
+      id: v64.2026-07-06T00:00:02
+      author: sloansparger
+      comment: Drop metabot_conversation.state now that state lives on metabot_message
+      changes:
+        - dropColumn:
+            tableName: metabot_conversation
+            columnName: state
+      rollback:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: state
+                  remarks: Metabot conversation state
+                  type: ${text.type}
+        - sql:
+            # Best-effort rollback: upgraded conversations have their full legacy
+            # blob on the earliest replayable message. New post-upgrade per-turn
+            # partials are not losslessly mergeable in portable SQL.
+            sql: >-
+              UPDATE metabot_conversation
+              SET state = (SELECT m.state
+                           FROM metabot_message m
+                           WHERE m.conversation_id = metabot_conversation.id
+                             AND m.state IS NOT NULL
+                             AND m.role = 'assistant'
+                             AND m.deleted_at IS NULL
+                             AND m.error IS NULL
+                             AND m.finished IS NOT NULL
+                           ORDER BY m.created_at, m.id
+                           LIMIT 1)
+              WHERE metabot_conversation.state IS NULL
+                AND EXISTS (SELECT 1
+                            FROM metabot_message m
+                            WHERE m.conversation_id = metabot_conversation.id
+                              AND m.state IS NOT NULL
+                              AND m.role = 'assistant'
+                              AND m.deleted_at IS NULL
+                              AND m.error IS NULL
+                              AND m.finished IS NOT NULL);

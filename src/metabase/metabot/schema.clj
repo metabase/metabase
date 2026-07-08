@@ -21,3 +21,12 @@
 
 (mr/def ::messages
   [:sequential ::message])
+
+(mr/def ::state
+  [:map
+   [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:todos {:optional true} [:sequential :map]]
+   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]])

@@ -148,7 +148,6 @@ export type MetabotCodeEdit = {
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  state: MetabotStateContext;
   conversation_id: string; // uuid
   parent_message_id?: string;
   retry_message_id?: string;
@@ -158,7 +157,7 @@ export type MetabotAgentRequest = {
 
 export type MetabotAgentResponse = {
   conversation_id: string;
-  state: any;
+  state?: MetabotStateContext;
 };
 
 export type MetabotProvider =

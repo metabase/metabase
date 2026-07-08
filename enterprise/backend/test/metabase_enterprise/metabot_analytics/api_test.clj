@@ -9,13 +9,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- insert-conversation!
-  [{:keys [conversation-id user-id created-at summary state slack-team-id slack-channel-id slack-thread-ts ip-address]}]
+  [{:keys [conversation-id user-id created-at summary slack-team-id slack-channel-id slack-thread-ts ip-address]}]
   (t2/insert! :model/MetabotConversation
               (cond-> {:id      conversation-id
                        :user_id user-id}
                 created-at (assoc :created_at created-at)
                 summary (assoc :summary summary)
-                state (assoc :state state)
                 slack-team-id (assoc :slack_team_id slack-team-id)
                 slack-channel-id (assoc :slack_channel_id slack-channel-id)
                 slack-thread-ts (assoc :slack_thread_ts slack-thread-ts)
@@ -94,8 +93,7 @@
           (insert-conversation! {:conversation-id convo-1
                                  :user-id         test-user-id
                                  :created-at      jan-1
-                                 :summary         "First conversation"
-                                 :state           {:step "one"}})
+                                 :summary         "First conversation"})
           (insert-conversation! {:conversation-id convo-2
                                  :user-id         test-user-id
                                  :created-at      jan-2
@@ -411,8 +409,7 @@
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
-                                 :summary         "Conversation detail"
-                                 :state           {:foo "bar"}})
+                                 :summary         "Conversation detail"})
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-1
                             :role            "user"

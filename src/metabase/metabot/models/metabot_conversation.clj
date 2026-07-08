@@ -12,9 +12,6 @@
 (doto :model/MetabotConversation
   (derive :metabase/model))
 
-(t2/deftransforms :model/MetabotConversation
-  {:state mi/transform-json})
-
 (defn participant?
   "True if `user-id` has sent at least one message in `conversation-id`."
   [conversation-id user-id]

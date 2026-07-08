@@ -3,21 +3,21 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.memory :as memory]))
 
-(deftest initialize-test
-  (testing "initializes memory with messages and state"
+(deftest ^:parallel initialize-test
+  (testing "seeds the working state and starts an empty turn-state"
     (let [messages [{:role :user :content "Hello"}]
-          state {:queries {} :charts {}}
+          state {:queries {"q1" {:id "q1"}} :charts {}}
           mem (memory/initialize messages state)]
       (is (= messages (:input-messages mem)))
-      (is (= state (:state mem)))
+      (is (= state (memory/get-state mem)))
+      (is (= {} (:turn-state mem)))
       (is (= [] (:steps-taken mem)))))
-  (testing "initializes with default state when nil"
-    (let [messages [{:role :user :content "Hello"}]
-          mem (memory/initialize messages nil)]
+  (testing "defaults the working state when nil"
+    (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
       (is (= {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}
-             (:state mem))))))
+             (memory/get-state mem))))))
 
-(deftest add-step-test
+(deftest ^:parallel add-step-test
   (testing "adds step to memory"
     (let [mem (memory/initialize [] {})
           parts [{:type :text :text "Response"}
@@ -36,25 +36,29 @@
       (is (= parts1 (-> mem' :steps-taken first :parts)))
       (is (= parts2 (-> mem' :steps-taken second :parts))))))
 
-(deftest get-state-test
-  (testing "retrieves state from memory"
-    (let [state {:queries {"q1" {:id "q1"}} :charts {}}
-          mem (memory/initialize [] state)]
-      (is (= state (memory/get-state mem))))))
+(deftest ^:parallel writers-update-state-and-turn-delta-test
+  (testing "a writer applies to the working state and records the same into the turn delta"
+    (let [mem  (memory/initialize [] {:queries {"q1" {:id "q1"}}})
+          mem' (-> mem
+                   (memory/set-query "q2" {:id "q2"})
+                   (memory/set-todos [{:id "b"}]))]
+      (testing "working state carries the seeded baseline plus this turn's writes"
+        (is (= {:queries {"q1" {:id "q1"} "q2" {:id "q2"}} :todos [{:id "b"}]}
+               (memory/get-state mem'))))
+      (testing "turn delta carries only this turn's writes — not the seeded baseline"
+        (is (= {:queries {"q2" {:id "q2"}} :todos [{:id "b"}]}
+               (memory/turn-state mem'))))))
+  (testing "turn-state is nil until this turn writes something"
+    (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
+      (is (nil? (memory/turn-state mem))))))
 
-(deftest update-state-test
-  (testing "updates state with new values"
-    (let [mem (memory/initialize [] {:queries {}})
-          mem' (memory/update-state mem {:charts {"c1" {:id "c1"}}})]
-      (is (= {:queries {} :charts {"c1" {:id "c1"}}}
-             (memory/get-state mem')))))
-  (testing "merges state updates"
-    (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})
-          mem' (memory/update-state mem {:charts {"c1" {:id "c1"}}})]
-      (is (= {:queries {"q1" {:id "q1"}} :charts {"c1" {:id "c1"}}}
-             (memory/get-state mem'))))))
+(deftest ^:parallel merge-states-test
+  (testing "map entries merge; scalar/vector entries take the later value"
+    (is (= {:queries {:q1 1 :q2 2} :todos [{:id "b"}]}
+           (memory/merge-states {:queries {:q1 1} :todos [{:id "a"}]}
+                                {:queries {:q2 2} :todos [{:id "b"}]})))))
 
-(deftest get-steps-test
+(deftest ^:parallel get-steps-test
   (testing "retrieves all steps"
     (let [parts1 [{:type :tool-input}]
           parts2 [{:type :text}]
@@ -65,14 +69,14 @@
       (is (= parts1 (-> mem memory/get-steps first :parts)))
       (is (= parts2 (-> mem memory/get-steps second :parts))))))
 
-(deftest get-input-messages-test
+(deftest ^:parallel get-input-messages-test
   (testing "retrieves input messages"
     (let [messages [{:role :user :content "Hello"}
                     {:role :assistant :content "Hi"}]
           mem (memory/initialize messages {})]
       (is (= messages (memory/get-input-messages mem))))))
 
-(deftest iteration-count-test
+(deftest ^:parallel iteration-count-test
   (testing "counts number of steps"
     (let [mem (-> (memory/initialize [] {})
                   (memory/add-step [{:type :tool-input}])

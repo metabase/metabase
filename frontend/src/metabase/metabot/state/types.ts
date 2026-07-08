@@ -3,6 +3,7 @@ import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
+  MetabotStateContext,
   MetabotSuggestedTransform,
   MetabotTransformInfo,
 } from "metabase-types/api";
@@ -114,7 +115,8 @@ export interface MetabotConverstationState {
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;
-  state: any;
+  state: MetabotStateContext;
+  stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;

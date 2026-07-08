@@ -245,7 +245,6 @@ export const getProfile = createSelector(
 
 export const getAgentRequestMetadata = createSelector(
   [
-    getMetabotRequestState,
     getProfile,
     getLastAgentMessageExternalId,
     (
@@ -254,8 +253,7 @@ export const getAgentRequestMetadata = createSelector(
       retryMessageId: string | undefined,
     ) => retryMessageId,
   ],
-  (state, profile, parentMessageId, retryMessageId) => ({
-    state,
+  (profile, parentMessageId, retryMessageId) => ({
     // a retry regenerates the response to an existing message, so it carries
     // retry_message_id in place of parent_message_id — never both
     ...(retryMessageId
