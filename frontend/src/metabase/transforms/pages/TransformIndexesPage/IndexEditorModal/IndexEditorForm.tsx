@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Form, FormSubmitButton } from "metabase/forms";
 import {
   Button,
+  type ComboboxItem,
   Group,
   Select,
   SelectItemWithDescription,
@@ -12,13 +13,13 @@ import type { IndexField, IndexKind } from "metabase-types/api";
 
 import { IndexFieldInput } from "./IndexFieldInput";
 import { getIndexTypeDescription } from "./constants";
-import type { ColumnOption, IndexKindOption } from "./types";
+import type { IndexKindOption } from "./types";
 
 type IndexEditorFormProps = {
   kind: IndexKind;
   kindOptions: IndexKindOption[];
   fields: IndexField[];
-  columnOptions: ColumnOption[];
+  columnOptions: ComboboxItem[];
   isEditing: boolean;
   submitLabel: string;
   onKindChange: (kind: IndexKind) => void;

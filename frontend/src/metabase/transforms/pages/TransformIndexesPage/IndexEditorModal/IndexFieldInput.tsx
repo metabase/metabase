@@ -6,14 +6,14 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
+import type { ComboboxItem } from "metabase/ui";
 import type { IndexField } from "metabase-types/api";
 
 import { ColumnsField } from "./ColumnsField";
-import type { ColumnOption } from "./types";
 
 type IndexFieldInputProps = {
   field: IndexField;
-  columnOptions: ColumnOption[];
+  columnOptions: ComboboxItem[];
   disabled?: boolean;
   autoFocus?: boolean;
 };

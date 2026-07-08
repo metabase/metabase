@@ -11,7 +11,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { FormProvider } from "metabase/forms";
-import { Modal } from "metabase/ui";
+import { type ComboboxItem, Modal } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type {
   IndexField,
@@ -23,7 +23,7 @@ import type {
 } from "metabase-types/api";
 
 import { IndexEditorForm } from "./IndexEditorForm";
-import type { ColumnOption, IndexKindOption } from "./types";
+import type { IndexKindOption } from "./types";
 import {
   type IndexFormValues,
   buildInitialValues,
@@ -137,7 +137,7 @@ function getFields(
   return requestableIndexes?.[kind]?.fields ?? [];
 }
 
-function getColumnOptions(table: Table | undefined): ColumnOption[] {
+function getColumnOptions(table: Table | undefined): ComboboxItem[] {
   if (!table?.fields) {
     return [];
   }

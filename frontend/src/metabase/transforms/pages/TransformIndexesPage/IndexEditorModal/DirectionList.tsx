@@ -1,13 +1,18 @@
 import { t } from "ttag";
 
-import { Card, Group, SegmentedControl, Stack, Text } from "metabase/ui";
+import {
+  Card,
+  type ComboboxItem,
+  Group,
+  SegmentedControl,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { IndexColumn, IndexColumnDirection } from "metabase-types/api";
-
-import type { ColumnOption } from "./types";
 
 type DirectionListProps = {
   columns: IndexColumn[];
-  options: ColumnOption[];
+  options: ComboboxItem[];
   onChange: (columnName: string, direction: IndexColumnDirection) => void;
   disabled?: boolean;
 };
@@ -40,7 +45,7 @@ export function DirectionList({
   );
 }
 
-function getColumnLabel(columns: ColumnOption[], columnName: string) {
+function getColumnLabel(columns: ComboboxItem[], columnName: string) {
   return (
     columns.find((option) => option.value === columnName)?.label ?? columnName
   );

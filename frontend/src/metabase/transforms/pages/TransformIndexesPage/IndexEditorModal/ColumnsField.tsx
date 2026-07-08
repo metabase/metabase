@@ -2,17 +2,16 @@ import { useField } from "formik";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Input, MultiSelect, Stack } from "metabase/ui";
+import { type ComboboxItem, Input, MultiSelect, Stack } from "metabase/ui";
 import type { IndexColumn, IndexColumnDirection } from "metabase-types/api";
 
 import { DirectionList } from "./DirectionList";
-import type { ColumnOption } from "./types";
 
 type ColumnsFieldProps = {
   name: string;
   label?: ReactNode;
   description?: ReactNode;
-  options: ColumnOption[];
+  options: ComboboxItem[];
   supportsDirections: boolean;
   disabled?: boolean;
 };
