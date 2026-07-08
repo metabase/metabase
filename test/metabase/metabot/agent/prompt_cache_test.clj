@@ -58,7 +58,8 @@
     (is (seq (snippet-files)))))
 
 (def ^:private system-templates-with-breakpoint
-  ["internal.selmer"
+  ["document-generate-content.selmer"
+   "internal.selmer"
    "embedding-next.selmer"
    "natural-language-querying-fallback.selmer"
    "natural-language-querying-only.selmer"

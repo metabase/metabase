@@ -198,3 +198,11 @@
           tools {}
           content (prompts/build-system-message-content profile context tools [])]
       (is (str/includes? content "<recently_viewed>my question</recently_viewed>")))))
+
+(deftest ^:parallel build-system-message-content-test-13
+  (testing "document-generate-content template includes runtime context"
+    (let [profile {:prompt-template "document-generate-content.selmer"}
+          context {:current_time "2024-01-15 14:30:00"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (str/includes? content "Current date and time: 2024-01-15 14:30:00")))))
