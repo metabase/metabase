@@ -59,22 +59,24 @@ databaseChangeLog:
                  AND COUNT(DISTINCT CASE WHEN mt.active = TRUE THEN dp.table_id END) = tc.n;
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
+  # The rows to keep are every data_permissions row EXCEPT the table-level view-data rows that a db-level
+  # row of the same (group, db, value) has made redundant — the anti-join below. Deleting the redundant rows
+  # directly scales super-linearly on a table ballooned to tens of millions of rows (each delete maintains
+  # six index trees), so instead of a DELETE we stage the few thousand survivors, empty the table, and
+  # reload them. Migrations run before the instance serves traffic, so the brief window in which
+  # data_permissions is empty is never observed; the survivors persist in the staging table until the reload
+  # finishes (each step is its own changeSet, so a failure resumes from the incomplete step with the staging
+  # table still present), and because the table is only truncated — never dropped — its indexes and foreign
+  # keys stay in place. The steps are split into one changeSet each because the migration linter allows only
+  # a single change per changeSet (or one per distinct dbms).
+  #
+  # H2 backs only embedded, single-node instances, which never reach the sizes that make the delete
+  # expensive, so there the redundant rows are simply deleted (the last changeSet).
   - changeSet:
       id: v62.2026-07-07T00:00:01
       author: ranquild
-      comment: Drop table-level data_permissions rows made redundant by an equal-value db-level row, keeping only the surviving rows (#76077)
+      comment: Stage the surviving data_permissions rows before collapsing the redundant ones (#76077)
       changes:
-        # The rows to keep are every data_permissions row EXCEPT the table-level view-data rows that a
-        # db-level row of the same (group, db, value) has made redundant — the anti-join below. Deleting the
-        # redundant rows directly scales super-linearly on a table ballooned to tens of millions of rows
-        # (each delete maintains six index trees), so instead of a DELETE we stage the few thousand
-        # survivors, empty the table, and reload them.
-        #
-        # Migrations run before the instance serves traffic, so the brief window in which data_permissions is
-        # empty is never observed, and the survivors are safe in the staging table until the reload finishes.
-        # Because the table is only truncated (never dropped) its indexes and foreign keys stay in place, so
-        # no schema is rebuilt. On Postgres, where DDL is transactional, the whole changeSet also runs
-        # atomically and TRUNCATE keeps the id sequence.
         - sql:
             dbms: postgresql,mysql,mariadb
             sql: >-
@@ -87,20 +89,46 @@ databaseChangeLog:
                AND dbp.perm_type = dp.perm_type AND dbp.perm_value = dp.perm_value
                AND dbp.table_id IS NULL
               WHERE dbp.id IS NULL;
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:02
+      author: ranquild
+      comment: Empty data_permissions before reloading only the surviving rows (#76077)
+      changes:
         - sql:
             dbms: postgresql,mysql,mariadb
             sql: TRUNCATE TABLE data_permissions;
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:03
+      author: ranquild
+      comment: Reload the surviving data_permissions rows (#76077)
+      changes:
         - sql:
             dbms: postgresql,mysql,mariadb
             sql: >-
               INSERT INTO data_permissions (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
               SELECT id, group_id, perm_type, db_id, schema_name, table_id, perm_value
               FROM data_permissions_collapse_keep;
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:04
+      author: ranquild
+      comment: Drop the staging table used to collapse data_permissions (#76077)
+      changes:
         - sql:
             dbms: postgresql,mysql,mariadb
             sql: DROP TABLE data_permissions_collapse_keep;
-        # H2 backs only embedded, single-node instances, which never reach the sizes that make the delete
-        # expensive, so keep the straightforward delete.
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:05
+      author: ranquild
+      comment: On H2, delete the redundant table-level data_permissions rows directly (#76077)
+      changes:
         - sql:
             dbms: h2
             sql: >-
