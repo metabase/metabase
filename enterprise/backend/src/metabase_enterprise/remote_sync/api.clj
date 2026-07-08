@@ -258,13 +258,14 @@
   ;; guarded import (POST /import), which blocks on unsaved changes and surfaces deletion conflicts. In
   ;; read-only mode the branch is a declarative setting whose change triggers a reconciling import, so it is
   ;; still allowed here. Setting the branch during first-time configuration (no current branch) is allowed.
+  ;; Blanking the branch is also blocked in read-write — otherwise it would reset the guard and let a
+  ;; follow-up call switch freely.
   (let [current-branch (settings/remote-sync-branch)
         new-branch     (:remote-sync-branch settings)
         effective-type (or remote-sync-type (settings/remote-sync-type))]
     (api/check-400 (not (and (= :read-write effective-type)
                              (not (str/blank? current-branch))
                              (some? new-branch)
-                             (not (str/blank? new-branch))
                              (not= new-branch current-branch)))
                    "Switching the remote-sync branch is not allowed here. Use the branch switch action, which reconciles synced collections and guards against data loss."))
   (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))

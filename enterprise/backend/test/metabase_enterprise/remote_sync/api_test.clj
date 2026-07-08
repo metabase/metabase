@@ -991,7 +991,9 @@
 (deftest settings-rejects-read-write-branch-switch-test
   (testing "GHY-4019: PUT /api/ee/remote-sync/settings guards branch changes"
     (let [mock-main       (test-helpers/create-mock-source)
-          reject-message  "Switching the remote-sync branch is not allowed here. Use the branch switch action, which reconciles synced collections and guards against data loss."]
+          reject-message  (str "Switching the remote-sync branch is not allowed here. "
+                               "Use the branch switch action, which reconciles synced "
+                               "collections and guards against data loss.")]
       (mt/with-dynamic-fn-redefs [settings/check-git-settings!      (constantly nil)
                                   source/source-from-settings       (constantly mock-main)]
         (testing "rejects a branch switch in read-write mode (must use the guarded import)"
@@ -1004,6 +1006,16 @@
                                          {:remote-sync-branch "develop"})))
             (is (= "main" (settings/remote-sync-branch))
                 "the branch setting is left unchanged")))
+        (testing "rejects blanking the branch in read-write mode (would otherwise reset the guard)"
+          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                             remote-sync-token  "test-token"
+                                             remote-sync-branch "main"
+                                             remote-sync-type   :read-write]
+            (is (= reject-message
+                   (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                         {:remote-sync-branch ""})))
+            (is (= "main" (settings/remote-sync-branch))
+                "the branch cannot be blanked to bypass the guard, then switched freely")))
         (testing "allows an unchanged branch in read-write mode"
           (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                              remote-sync-token  "test-token"

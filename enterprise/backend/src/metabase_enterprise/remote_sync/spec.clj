@@ -595,14 +595,28 @@
                                category category)}))))
 
 (defn- removal-condition-clauses
-  "Converts a spec's removal-conditions map into HoneySQL where-fragments, matching the semantics
-   [[metabase-enterprise.remote-sync.impl/build-entity-id-where-clause]] uses: an :entity_id entry
-   whose value is an [op value] pair becomes [op :entity_id value]; any other entry becomes [:= key value]."
+  "Converts a spec's removal-conditions map into HoneySQL where-fragments: an :entity_id entry whose value is
+   an [op value] pair becomes [op :entity_id value]; any other entry becomes [:= key value]."
   [removal-conds]
   (for [[k v] removal-conds]
     (if (and (= k :entity_id) (vector? v))
       (let [[op value] v] [op :entity_id value])
       [:= k v])))
+
+(defn removal-where-clauses
+  "The AND-clauses selecting the rows an import reconcile removes for one entity-id `spec`: rows scoped to
+   `synced-collection-ids` (when the spec has a `:scope-key`), minus the imported `entity-ids`, honoring the
+   spec's removal conditions.
+
+   Returns nil for a scoped model with no synced collections (removes nothing); an empty vector means no
+   predicate (a global, unconditioned delete)."
+  [spec synced-collection-ids entity-ids]
+  (let [scope-key (get-in spec [:removal :scope-key])]
+    (when-not (and scope-key (empty? synced-collection-ids))
+      (cond-> []
+        scope-key        (conj [:in scope-key synced-collection-ids])
+        (seq entity-ids) (conj [:not-in :entity_id entity-ids])
+        :always          (into (removal-condition-clauses (removal-conditions spec)))))))
 
 (defn check-deletion-conflicts
   "Detects local entities of all-or-nothing models (specs with :all-on-setting-disable) that an import
@@ -711,23 +725,27 @@
                              (not (get-in spec [:removal :all-on-setting-disable])))
                   :let [model-type   (:model-type spec)
                         imported-ids (get by-entity-id model-type #{})
-                        conds        (cond-> [[:in scope-key synced-collection-ids]]
-                                       (seq imported-ids) (conj [:not-in :entity_id imported-ids])
-                                       :always            (into (removal-condition-clauses (removal-conditions spec))))
-                        candidates   (t2/select [model-key :id :name] {:where (into [:and] conds)})
-                        unsynced     (remove (fn [{:keys [id]}]
-                                               (t2/exists? :model/RemoteSyncObject
-                                                           :model_type model-type
-                                                           :model_id id
-                                                           :status "synced"))
-                                             candidates)
-                        n            (count unsynced)]
+                        ;; Qualified id column of the model's own table, to correlate the anti-join subquery.
+                        id-col       (keyword (str (name (t2/table-name model-key)) ".id"))
+                        ;; Same base predicate remove-unsynced! deletes by, plus an anti-join keeping only rows
+                        ;; with no 'synced' RemoteSyncObject — the unsynced local work the import would delete
+                        ;; (an already-synced entity's removal is a normal reconcile, not data loss). Done in SQL
+                        ;; so we never materialize a whole collection's worth of rows just to count/sample them.
+                        where        (into [:and] (conj (vec (removal-where-clauses spec synced-collection-ids imported-ids))
+                                                        [:not [:exists {:select [1]
+                                                                        :from   [:remote_sync_object]
+                                                                        :where  [:and
+                                                                                 [:= :remote_sync_object.model_type model-type]
+                                                                                 [:= :remote_sync_object.model_id id-col]
+                                                                                 [:= :remote_sync_object.status "synced"]]}]]))
+                        n            (t2/count model-key {:where where})]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
                :category model-type
                :model    model-type
                :count    n
-               :names    (into [] (comp (map :name) (take max-conflict-names)) unsynced)
+               ;; A bounded sample of names for the UI; :count above is the true total.
+               :names    (t2/select-fn-vec :name model-key {:where where :limit max-conflict-names})
                :message  (format "Import would delete %d unsynced local %s %s"
                                  n model-type (if (= 1 n) "entity" "entities"))})))))
 

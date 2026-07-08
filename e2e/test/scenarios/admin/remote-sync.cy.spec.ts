@@ -329,7 +329,7 @@ describe("Remote Sync", () => {
         // Attempt to go back to main from Settings. Wait for the unsaved-changes indicator so the switch
         // opens the choose-what-to-do modal rather than switching directly.
         H.visitRemoteSyncSettings();
-        cy.findByTestId("branch-switcher-dirty-warning").should("exist");
+        cy.findByTestId("branch-switcher-dirty-warning").should("be.visible");
         H.getSettingsBranchSwitcher().click();
         H.popover()
           .findByPlaceholderText("Find or create a branch...")

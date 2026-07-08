@@ -5,7 +5,8 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -512,3 +513,33 @@
     (mt/with-temp [:model/Collection coll {:name "Not synced" :is_remote_synced false :location "/"}
                    :model/Card _card {:name "Local Q" :collection_id (:id coll)}]
       (is (empty? (spec/check-collection-deletion-conflicts {:by-entity-id {}}))))))
+
+(deftest removal-where-clauses-parity-test
+  (testing "GHY-4019: the deletion-conflict warning is exactly the unsynced subset of what an import removes"
+    ;; Both the delete path (remove-unsynced!) and the warning build their WHERE from
+    ;; spec/removal-where-clauses, so they can't diverge. This locks in that relationship: the rows the
+    ;; predicate removes (absent from the import, in a synced collection) minus the already-synced ones are
+    ;; exactly the rows the warning flags.
+    (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
+                   :model/Card _unsynced {:name "Unsynced" :collection_id (:id coll)}
+                   :model/Card synced    {:name "Synced pushed" :collection_id (:id coll)}
+                   :model/Card imported {:name "In import" :collection_id (:id coll)}
+                   :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id synced) :status "synced"
+                                              :status_changed_at (t/instant) :model_name "Synced pushed"}]
+      (let [imported-eids #{(:entity_id imported)}
+            imported-data {:by-entity-id {"Card" imported-eids}}
+            synced-ids    (spec/all-syncable-collection-ids)
+            card-spec     (spec/spec-for-model-key :model/Card)
+            ;; what remove-unsynced! would delete for Card (its predicate, run as a SELECT rather than a delete)
+            would-delete  (t2/select-fn-set :name :model/Card
+                                            {:where (into [:and] (spec/removal-where-clauses
+                                                                  card-spec synced-ids imported-eids))})
+            flagged       (into #{}
+                                (comp (filter #(= "Card" (:model %))) (mapcat :names))
+                                (spec/check-collection-deletion-conflicts imported-data))]
+        (is (= #{"Unsynced" "Synced pushed"} would-delete)
+            "the import removes everything in the synced collection that is absent from it")
+        (is (= #{"Unsynced"} flagged)
+            "the warning covers only the unsynced subset (the potential data loss)")
+        (is (set/subset? flagged would-delete)
+            "everything the warning flags would indeed be removed")))))
