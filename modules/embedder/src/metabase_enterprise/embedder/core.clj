@@ -17,9 +17,10 @@
 (set! *warn-on-reflection* true)
 
 (def default-model-descriptor
-  "Identity of the bundled default model.
-  Single source of truth for callers wiring this embedder into provider/model metadata, so their labels
-  can't drift from what the JVM actually loads."
+  "Identity of the bundled default model — callers wiring this embedder into provider/model metadata
+  should read it from here rather than restating it.
+  `:model-dimensions` is maintained by hand; the integration test checks it against the loaded model's
+  actual output width."
   {:provider         "in-process"
    :model-name       embedder.model/default-model-name
    :model-dimensions 384})

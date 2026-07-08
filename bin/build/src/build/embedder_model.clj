@@ -15,6 +15,7 @@
    [metabuild-common.core :as u])
   (:import
    (java.io File)
+   (java.net URL)
    (java.security DigestInputStream MessageDigest)
    (java.util.zip ZipEntry ZipOutputStream)))
 
@@ -66,8 +67,12 @@
   (let [url (format "https://huggingface.co/%s/resolve/%s/%s" hf-repo revision repo-path)]
     (u/announce "Downloading %s" url)
     (io/make-parents dest)
-    (with-open [in (io/input-stream (io/as-url url))]
-      (io/copy in dest))))
+    ;; Explicit timeouts: URLConnection defaults to none, and a stalled fetch would hang the build silently.
+    (let [conn (doto (.openConnection ^URL (io/as-url url))
+                 (.setConnectTimeout 10000)
+                 (.setReadTimeout 30000))]
+      (with-open [in (.getInputStream conn)]
+        (io/copy in dest)))))
 
 (defn- fetch-file!
   "Return the local file for `repo-path`, downloading it unless a hash-verified copy is cached."

@@ -12,7 +12,7 @@ per-model — each additional model only adds its weights (~25 MB for a MiniLM-c
 
 ## Using it
 
-```
+```sh
 MB_EE_EMBEDDING_PROVIDER=in-process
 MB_EE_EMBEDDING_MODEL=all-MiniLM-L6-v2
 MB_EE_EMBEDDING_MODEL_DIMENSIONS=384
@@ -50,7 +50,7 @@ HF-qualified names are distinct models (repos are namespace-scoped) and need the
 
 `MB_EMBEDDER_MODEL_SOURCES` is an EDN map of model name → source:
 
-```
+```sh
 MB_EMBEDDER_MODEL_SOURCES='{"my-model" {:path "/models/my-model"}
                             "other"    {:url "s3://bucket/other.zip"
                                         :model-file-name "weights"
@@ -68,7 +68,7 @@ pgvector index is labeled and sized from the settings.
 
 ## Building the plugin jar
 
-```
+```sh
 ./bin/build-embedder-plugin.sh
 # → modules/embedder/target/metabase-embedder-plugin.jar
 ```
