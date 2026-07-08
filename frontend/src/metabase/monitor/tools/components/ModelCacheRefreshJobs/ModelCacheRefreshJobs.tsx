@@ -186,7 +186,8 @@ function getColumns(
       width: "auto",
       minWidth: 120,
       maxAutoWidth: 320,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: false,
       accessorFn: (job) => job.state,
       cell: ({ row }) => <ModelCacheStatus job={row.original} />,
     },
@@ -195,7 +196,8 @@ function getColumns(
       header: t`Last run at`,
       width: "auto",
       minWidth: 130,
-      enableSorting: false,
+      enableSorting: true,
+      sortDescFirst: true,
       accessorFn: (job) => job.refresh_begin,
       cell: ({ row }) => (
         <Tooltip label={<DateTime value={row.original.refresh_begin} />}>
@@ -211,8 +213,9 @@ function getColumns(
       width: "auto",
       minWidth: 110,
       maxAutoWidth: 200,
-      enableSorting: false,
-      accessorFn: (job) => job.creator?.common_name,
+      enableSorting: true,
+      sortDescFirst: false,
+      accessorFn: (job) => job.creator?.common_name ?? t`Automatic`,
       cell: ({ row }) => row.original.creator?.common_name || t`Automatic`,
     },
     {
