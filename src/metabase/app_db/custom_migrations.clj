@@ -1330,16 +1330,9 @@
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
 
-;; The bundled sample database moved from H2 to SQLite. Both the H2 -> SQLite upgrade and the
-;; SQLite -> H2 downgrade are now handled at startup in metabase.sample-data.impl, which migrates the
-;; sample database's engine in place (flip the Database engine/details + the tables' schema, then
-;; re-sync) so every Database/Table/Field id - and thus all sample and user content - is preserved.
-;; A downgrade must therefore LEAVE the SQLite sample database in place for the older (H2) version to
-;; convert on its next launch, so this migration does nothing. It is kept as a no-op placeholder
-;; because an earlier build shipped a delete-based rollback under this changeset id.
-(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade
-  (log/info "No forward migration for MigrateAwayFromSqliteSampleDatabaseOnDowngrade")
-  (log/info "No rollback for MigrateAwayFromSqliteSampleDatabaseOnDowngrade; the SQLite sample database is migrated in place at startup by the downgraded version"))
+;; No-op. The SQLite <-> H2 sample database engine swap is handled in place at startup
+;; (metabase.sample-data.impl). Kept because a shipped v63 build ran a delete-based rollback here.
+(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade nil nil)
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same

@@ -1,13 +1,10 @@
-## No-op. Both the H2 -> SQLite upgrade and the SQLite -> H2 downgrade are handled at startup in
-## metabase.sample-data.impl (the sample database's engine is migrated in place, preserving all ids and
-## content). A downgrade leaves the SQLite sample database in place for the older H2 version to convert on
-## its next launch. Kept only because an earlier build shipped a delete-based rollback under this changeset.
+## No-op; superseded by the in-place sample-database engine swap at startup (metabase.sample-data.impl).
 
 databaseChangeLog:
   - changeSet:
       id: v63.2026-06-08T00:00:00
       author: bgrabow
-      comment: No-op; SQLite <-> H2 sample database engine migration is handled at startup
+      comment: No-op; sample database engine swap is handled at startup
       validCheckSum: ANY
       changes:
         - customChange:
