@@ -7,7 +7,6 @@ import { UpsellGem } from "metabase/common/components/upsells/components/UpsellG
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Box,
