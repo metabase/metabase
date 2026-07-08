@@ -75,16 +75,21 @@ databaseChangeLog:
                 AND dbp.table_id IS NULL
                 AND dp.table_id IS NOT NULL;
         - sql:
+            # STRAIGHT_JOIN with the db-level rows (dbp) listed first forces MySQL/MariaDB to drive the
+            # self-join from the handful of db-level rows and look up their redundant table-level rows via
+            # idx_data_permissions_group_id_db_id_table_id_perm_value. Left to itself the optimizer drives
+            # from the multi-million-row table side and re-probes it per row, which is orders of magnitude
+            # slower on the large instances this migration exists to fix (#76077).
             dbms: mysql,mariadb
             sql: >-
-              DELETE dp FROM data_permissions dp
-              JOIN data_permissions dbp
+              DELETE dp FROM data_permissions dbp
+              STRAIGHT_JOIN data_permissions dp
                 ON dbp.group_id = dp.group_id
                AND dbp.db_id = dp.db_id
                AND dbp.perm_type = dp.perm_type
                AND dbp.perm_value = dp.perm_value
-               AND dbp.table_id IS NULL
-              WHERE dp.perm_type = 'perms/view-data'
+              WHERE dbp.perm_type = 'perms/view-data'
+                AND dbp.table_id IS NULL
                 AND dp.table_id IS NOT NULL;
         - sql:
             dbms: h2
