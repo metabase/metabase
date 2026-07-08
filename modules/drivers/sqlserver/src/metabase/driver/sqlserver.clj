@@ -1056,6 +1056,16 @@
   (h2x/maybe-cast (sql.qp/integer-dbtype driver)
                   [:round (sql.qp/->float driver value) 0]))
 
+(defmethod sql.qp/order-by-clause :sqlserver
+  [driver direction field-clause]
+  (let [field-hsql (sql.qp/->honeysql driver field-clause)]
+    (if (sql.qp/temporal-field? field-clause)
+      ;; For temporal columns, always put nulls last
+      ;; SQL Server workaround: ORDER BY CASE WHEN col IS NULL THEN 1 ELSE 0 END, col ASC/DESC
+      [[[:case [:= field-hsql nil] [:inline 1] :else [:inline 0]]]
+       [field-hsql direction]]
+      [[field-hsql direction]])))
+
 (defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
   (= (sql-jdbc/get-sql-state e) "HY008"))
 

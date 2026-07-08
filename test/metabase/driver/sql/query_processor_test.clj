@@ -808,7 +808,7 @@
                                 SUM (CHECKINS.VENUE_ID)                                          AS sum_2]
                      :from     [CHECKINS]
                      :group-by [DATE_TRUNC ("month" CHECKINS.DATE)]
-                     :order-by [DATE_TRUNC ("month" CHECKINS.DATE) ASC]}
+                     :order-by [DATE_TRUNC ("month" CHECKINS.DATE) ASC NULLS LAST]}
                     AS __mb_source]
            :where  [__mb_source.sum > 300]
            :limit  [2]}
@@ -1452,7 +1452,7 @@
                           "    GROUP BY"
                           "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\")"
                           "    ORDER BY"
-                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") ASC"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") ASC NULLS LAST"
                           "  ) AS \"__mb_source\""
                           "GROUP BY"
                           "  \"__mb_source\".\"count\""
@@ -1766,7 +1766,7 @@
               "        GROUP BY"
               "          CAST(PUBLIC.ORDERS.CREATED_AT AS date)"
               "        ORDER BY"
-              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) ASC"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) ASC NULLS LAST"
               "      ) AS __mb_source"
               "    GROUP BY"
               "      extract("
@@ -1781,10 +1781,32 @@
               "        from"
               "          __mb_source.CREATED_AT"
               "      ) ASC,"
-              "      DATE_TRUNC('month', __mb_source.CREATED_AT) ASC"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT) ASC NULLS LAST"
               "  ) AS __mb_source"]
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :h2))
                  (str/replace #"\"" "")
                  str/split-lines))))))
+
+(deftest ^:parallel temporal-field?-test
+  (testing "temporal-field? correctly identifies temporal columns by base-type"
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/Date}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/DateTime}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/DateTimeWithTZ}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/Time}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/TimeWithTZ}]))))
+  (testing "temporal-field? correctly identifies temporal columns by effective-type"
+    (is (true? (sql.qp/temporal-field? [:field 1 {:effective-type :type/Date}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:effective-type :type/DateTime}]))))
+  (testing "temporal-field? prefers effective-type over base-type"
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/Text :effective-type :type/Date}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Date :effective-type :type/Text}]))))
+  (testing "temporal-field? returns false for non-temporal types"
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Integer}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Text}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Boolean}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Float}]))))
+  (testing "temporal-field? returns false when no type info available"
+    (is (not (sql.qp/temporal-field? [:field 1 {}])))
+    (is (not (sql.qp/temporal-field? [:field 1 nil])))))

@@ -982,3 +982,19 @@
                    (lib/expression "diff-minutes" diff-minutes)
                    (qp/process-query)
                    (mt/rows))))))))
+
+(deftest ^:parallel order-by-temporal-nulls-last-test
+  (testing "SQL Server order-by-clause uses CASE workaround for temporal columns"
+    (mt/test-driver :sqlserver
+      (qp.store/with-metadata-provider (mt/metadata-provider)
+        (let [temporal-field [:field (mt/id :orders :created_at) {:base-type :type/DateTimeWithTZ}]
+              non-temporal-field [:field (mt/id :orders :id) {:base-type :type/BigInteger}]]
+          (testing "ascending order on temporal field generates two clauses"
+            (let [result (sql.qp/order-by-clause :sqlserver :asc temporal-field)]
+              (is (= 2 (count result)) "Should return two ORDER BY clauses for SQL Server temporal NULLS LAST workaround")))
+          (testing "descending order on temporal field generates two clauses"
+            (let [result (sql.qp/order-by-clause :sqlserver :desc temporal-field)]
+              (is (= 2 (count result)) "Should return two ORDER BY clauses for SQL Server temporal NULLS LAST workaround")))
+          (testing "non-temporal field uses single clause"
+            (let [result (sql.qp/order-by-clause :sqlserver :asc non-temporal-field)]
+              (is (= 1 (count result)) "Non-temporal fields should use standard single ORDER BY clause"))))))))

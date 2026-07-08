@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -628,6 +629,29 @@
 (defmethod sql.qp/datetime-diff [:mysql :hour]    [_driver _unit x y] (timestampdiff :hour x y))
 (defmethod sql.qp/datetime-diff [:mysql :minute]  [_driver _unit x y] (timestampdiff :minute x y))
 (defmethod sql.qp/datetime-diff [:mysql :second]  [_driver _unit x y] (timestampdiff :second x y))
+
+(defmethod sql.qp/order-by-clause :mysql
+  [driver direction field-clause]
+  (let [field-hsql (sql.qp/->honeysql driver field-clause)]
+    (if (sql.qp/temporal-field? field-clause)
+      [[[:is field-hsql nil]]
+       [field-hsql direction]]
+      [[field-hsql direction]])))
+
+(defmethod sql.qp/apply-top-level-clause [:mysql :order-by]
+  [driver _ honeysql-form {subclauses :order-by}]
+  (let [has-group-by? (seq (:group-by honeysql-form))
+        order-by-clauses (mapcat (partial sql.qp/->honeysql driver) subclauses)
+        ;; When GROUP BY exists, collect IS NULL expressions from temporal order-by clauses
+        ;; and add them to GROUP BY so MySQL's ONLY_FULL_GROUP_BY accepts them
+        null-check-exprs (when has-group-by?
+                           (keep (fn [[_dir field-clause]]
+                                   (when (sql.qp/temporal-field? field-clause)
+                                     [:is (sql.qp/->honeysql driver field-clause) nil]))
+                                 subclauses))]
+    (cond-> (reduce sql.helpers/order-by honeysql-form order-by-clauses)
+      (seq null-check-exprs)
+      (update :group-by into null-check-exprs))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

@@ -2049,17 +2049,47 @@
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
+(defn temporal-field?
+  "Returns true if the field clause represents a temporal (date/time/datetime) column."
+  [[_ second-arg third-arg :as _field-clause]]
+  ;; Handle both MBQL5 [:field opts id] and MBQL4 [:field id opts]
+  (let [options (if (and (map? second-arg) (:lib/uuid second-arg))
+                  second-arg   ; MBQL5: opts is second
+                  third-arg)   ; MBQL4: opts is third
+        field-type (when (map? options)
+                     (or (:effective-type options) (:base-type options)))]
+    (and field-type (isa? field-type :type/Temporal))))
+
+(defmulti order-by-clause
+  "Converts an order-by subclause to HoneySQL. For temporal columns in descending order,
+   ensures nulls are sorted last. Override for databases that don't support NULLS LAST syntax."
+  {:arglists '([driver direction field-clause])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod order-by-clause :sql
+  [driver direction field-clause]
+  (let [field-hsql (->honeysql driver field-clause)]
+    (if (temporal-field? field-clause)
+      ;; For temporal columns, always put nulls last
+      (case direction
+        :asc  [[field-hsql :asc-nulls-last]]
+        :desc [[field-hsql :desc-nulls-last]])
+      ;; For non-temporal columns, use default behavior
+      [[field-hsql direction]])))
+
 (defmethod ->honeysql [:sql :asc]
-  [driver [direction field]]
-  [(->honeysql driver field) direction])
+  [driver [_direction field-clause]]
+  (order-by-clause driver :asc field-clause))
 
 (defmethod ->honeysql [:sql :desc]
-  [driver [direction field]]
-  [(->honeysql driver field) direction])
+  [driver [_direction field-clause]]
+  (order-by-clause driver :desc field-clause))
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce sql.helpers/order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
+  (let [order-by-clauses (mapcat (partial ->honeysql driver) subclauses)]
+    (reduce sql.helpers/order-by honeysql-form order-by-clauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
