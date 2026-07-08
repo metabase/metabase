@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
@@ -18,6 +17,7 @@ import {
   isDbModifiable,
 } from "metabase/common/utils/database";
 import type { WorkspaceDatabaseSectionProps } from "metabase/plugins/oss/workspaces";
+import { Link } from "metabase/router";
 import {
   Alert,
   Box,
@@ -52,7 +52,7 @@ export function WorkspaceDatabaseSection({
     if (error) {
       sendToast({
         message: t`Failed to enable Workspaces`,
-        toastColor: "error",
+        toastColor: "feedback-negative",
         icon: "warning",
       });
     }
@@ -71,7 +71,7 @@ export function WorkspaceDatabaseSection({
         if (error) {
           sendToast({
             message: t`Failed to remove connection`,
-            toastColor: "error",
+            toastColor: "feedback-negative",
           });
         }
       },
@@ -137,7 +137,11 @@ export function WorkspaceDatabaseSection({
                     : t`Add admin connection`}
                 </Button>
                 {hasAdminConnection && (
-                  <Button variant="filled" color="error" onClick={handleRemove}>
+                  <Button
+                    variant="filled"
+                    color="feedback-negative"
+                    onClick={handleRemove}
+                  >
                     {t`Remove admin connection`}
                   </Button>
                 )}

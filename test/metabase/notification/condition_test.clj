@@ -1,7 +1,12 @@
 (ns metabase.notification.condition-test
   (:require
    [clojure.test :refer :all]
-   [metabase.notification.condition :refer [evaluate-expression]]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.condition :refer [evaluate-expression]]
+   [metabase.notification.payload.impl.card :as payload.card]
+   [metabase.query-processor.test :as qp]
+   [metabase.test :as mt]))
 
 #_{:clj-kondo/ignore [:equals-true]}
 (deftest evaluate-literal-values-test
@@ -139,3 +144,14 @@
              ["=" ["context" "status"] "active"]
              [">" ["context" "score"] 90]]
       {:status "inactive", :score 85})))
+
+(deftest goal-condition-evaluates-without-crashing-for-multi-series-card-test
+  (testing "goal_above evaluation doesn't crash for a card with multiple breakout series"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (lib.metadata/field mp (mt/id :orders :quantity)))
+                    (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month)))
+          card  {:display :line, :visualization_settings {:graph.goal_value 10}}
+          card-part {:card card, :result (qp/process-query query)}]
+      (is (boolean? (#'payload.card/goal-met? {:send_condition :goal_above} card-part))))))

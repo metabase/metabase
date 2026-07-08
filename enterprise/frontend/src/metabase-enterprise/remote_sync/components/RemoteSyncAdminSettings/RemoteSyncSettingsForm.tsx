@@ -297,7 +297,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
           confirmButtonText: t`Continue`,
           confirmButtonProps: {
             variant: "filled",
-            color: "danger",
+            color: "feedback-negative",
           },
           onConfirm: async () => {
             if (pendingConfirmationSettingsRef.current) {
@@ -333,7 +333,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
       confirmButtonText: t`Disable`,
       confirmButtonProps: {
         variant: "filled",
-        color: "danger",
+        color: "feedback-negative",
       },
       onConfirm: async () => {
         try {
@@ -575,7 +575,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   {isRemoteSyncEnabled &&
                     !settingDetails?.[REMOTE_SYNC_KEY]?.is_env_setting && (
                       <Button
-                        c="error"
+                        c="feedback-negative"
                         variant="subtle"
                         size="md"
                         w="12rem"

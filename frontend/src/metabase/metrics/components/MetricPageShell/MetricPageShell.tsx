@@ -47,7 +47,7 @@ export function MetricPageShell({
           onMove={(collection: CollectionPickerValueItem) =>
             updateCard({
               id: card.id,
-              collection_id: collection.id as number,
+              collection_id: collection.id,
               archived: false,
             })
           }

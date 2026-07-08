@@ -1049,8 +1049,8 @@ export function formatDateTimeRangeWithUnit(
   // Use custom format specs for week unit when date_style is provided
   if (unit === "week" && options.date_style && options.type === "cell") {
     const customSpecs = getWeekFormatSpecsWithDateStyle(
-      options.date_style as string,
-      (options.date_separator as string) || "/",
+      options.date_style,
+      options.date_separator || "/",
     );
     specs = customSpecs;
   }
@@ -1328,7 +1328,8 @@ export function formatDateTimeWithUnit(
   if (unit === "week") {
     if (
       (options.type === "tooltip" || options.type === "cell") &&
-      !options.noRange
+      !options.noRange &&
+      options.column?.source !== "native"
     ) {
       // tooltip show range like "January 1 - 7, 2017"
       return formatDateTimeRangeWithUnit([String(value)], unit, options);
@@ -1349,7 +1350,7 @@ export function formatDateTimeWithUnit(
     dateFormat = getDateFormatFromStyle(
       options.date_style as string,
       unit,
-      options.date_separator as string,
+      options.date_separator,
       options.weekday_enabled,
     );
   }

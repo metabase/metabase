@@ -120,12 +120,20 @@ export const getUrlWithUtm = createSelector(
 interface DocsUrlProps {
   page?: string;
   anchor?: string;
+  searchQuery?: string;
   utm?: UtmProps;
 }
 
 export const getDocsUrl = (state: State, props: DocsUrlProps) => {
-  const version = getSetting(state, "version");
-  const url = getDocsUrlForVersion(version, props.page, props.anchor);
+  const url = props.searchQuery
+    ? `https://www.metabase.com/search?${new URLSearchParams({
+        query: props.searchQuery,
+      })}`
+    : getDocsUrlForVersion(
+        getSetting(state, "version"),
+        props.page,
+        props.anchor,
+      );
 
   if (!props.utm) {
     return url;
@@ -133,9 +141,6 @@ export const getDocsUrl = (state: State, props: DocsUrlProps) => {
 
   return getUrlWithUtm(state, { url, ...props.utm });
 };
-
-export const getDocsSearchUrl = (query: Record<string, string>) =>
-  `https://www.metabase.com/search?${new URLSearchParams(query)}`;
 
 export const getDocsUrlForVersion = (
   version: Version | undefined,

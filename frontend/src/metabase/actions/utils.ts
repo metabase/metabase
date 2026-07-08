@@ -250,7 +250,7 @@ export const getForm = (
   fieldSettings: Record<string, FieldSettings> = {},
 ): ActionFormProps => {
   const sortedParams = [...parameters].sort(
-    sortActionParams({ fields: fieldSettings } as ActionFormSettings),
+    sortActionParams({ fields: fieldSettings }),
   );
   return {
     fields: sortedParams
@@ -310,14 +310,15 @@ export const getSubmitButtonColor = (
   action: WritebackAction,
 ): ButtonProps["color"] => {
   if (isImplicitDeleteAction(action)) {
-    return "error";
+    return "feedback-negative";
   }
 
   return match(action.visualization_settings?.submitButtonColor)
     .returnType<ButtonProps["color"]>()
-    .with("danger", () => "error")
-    .with("success", "warning", (color) => color)
-    .otherwise(() => "brand");
+    .with("danger", () => "feedback-negative")
+    .with("success", () => "feedback-positive")
+    .with("warning", () => "feedback-warning")
+    .otherwise(() => "core-brand");
 };
 
 export const getSubmitButtonLabel = (action: WritebackAction): string => {

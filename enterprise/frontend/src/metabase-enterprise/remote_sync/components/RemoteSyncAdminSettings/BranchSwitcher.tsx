@@ -84,7 +84,7 @@ export const BranchSwitcher = ({
       }
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: errorMessage ?? t`Sorry, we were unable to switch branches.`,
       });
     }
@@ -145,7 +145,7 @@ export const BranchSwitcher = ({
           />
         </Combobox>
         {dirtyCount > 0 && (
-          <Text c="error" size="sm" data-testid="branch-switcher-dirty-warning">
+          <Text c="feedback-negative" size="sm" data-testid="branch-switcher-dirty-warning">
             {ngettext(
               msgid`${dirtyCount} unsaved change`,
               `${dirtyCount} unsaved changes`,
