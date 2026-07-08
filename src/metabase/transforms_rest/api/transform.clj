@@ -276,11 +276,7 @@
                                                   :types  (map keyword (:types query-params))
                                                   :offset (request/offset)
                                                   :limit  (request/limit)))
-      (update :data (fn [rows]
-                      (->> rows
-                           transforms.core/hydrate-run-names
-                           (map (comp transforms-base.u/localize-run-timestamps
-                                      transforms.core/present-run-summary)))))))
+      (update :data transforms.core/present-run-summaries)))
 
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."

@@ -10,6 +10,7 @@
   `entity_id` is the id of the associated job/transform."
   (:require
    [medley.core :as m]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.models.util :as transforms.models.u]
    [toucan2.core :as t2]))
 
@@ -87,7 +88,7 @@
 
 (defn paged-run-summaries
   "Return a page of root runs as a `{:data :limit :offset :total}` envelope. Rows are raw — see
-  [[hydrate-run-names]] and [[present-run-summary]].
+  [[present-run-summaries]].
 
   Options (filter semantics match [[metabase.transforms.models.transform-run/paged-runs]]):
   - `:types`          subset of [[run-types]] to include; nil/empty means all three
@@ -123,26 +124,24 @@
      :offset offset
      :total  (:count (first (t2/query (merge base {:select [[[:count :*] :count]]}))))}))
 
-(defn hydrate-run-names
-  "Assoc a `:name` on each raw summary row: the job name for job runs, else the transform name. Nil
-  when the underlying job/transform was deleted."
+(defn present-run-summaries
+  "Prepare raw summary rows for an API response: hydrate each row's `:name` (the job name for job
+  rows, else the transform name; nil when it was deleted), keywordize the discriminator columns, and
+  localize timestamps."
   [rows]
-  (let [by-type   (group-by :run_type rows)
-        job-ids   (seq (map :entity_id (get by-type "job")))
-        xform-ids (seq (map :entity_id (concat (get by-type "dag") (get by-type "transform"))))
+  (let [by-type     (group-by :run_type rows)
+        job-ids     (seq (map :entity_id (get by-type "job")))
+        transform-ids   (seq (map :entity_id (concat (get by-type "dag") (get by-type "transform"))))
         job->name   (when job-ids   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
-        xform->name (when xform-ids (t2/select-pk->fn :name :model/Transform :id [:in xform-ids]))]
+        transform->name (when transform-ids (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))]
     (map (fn [{:keys [run_type entity_id] :as row}]
-           (assoc row :name (if (= run_type "job")
+           (-> row
+               (assoc :name (if (= run_type "job")
                               (get job->name entity_id)
-                              (get xform->name entity_id))))
+                              (get transform->name entity_id)))
+               (update :run_type keyword)
+               (update :status keyword)
+               (m/update-existing :run_method #(some-> % keyword))
+               (m/update-existing :direction #(some-> % keyword))
+               transforms-base.u/localize-run-timestamps))
          rows)))
-
-(defn present-run-summary
-  "Keywordize the discriminator columns of a raw summary row."
-  [row]
-  (-> row
-      (update :run_type keyword)
-      (update :status keyword)
-      (m/update-existing :run_method #(some-> % keyword))
-      (m/update-existing :direction #(some-> % keyword))))

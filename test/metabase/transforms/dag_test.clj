@@ -61,7 +61,7 @@
           (testing "running-run-for-source-transform-id finds the active run"
             (is (= run-id (:id (dag-run/running-run-for-source-transform-id tid)))))
           (testing "succeed-started-run! makes it terminal and inactive"
-            (is (= 1 (dag-run/succeed-started-run! run-id)))
+            (is (= 1 (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)))
             (is (= :succeeded (:status (t2/select-one :model/TransformDagRun :id run-id))))
             (is (nil? (:is_active (t2/select-one :model/TransformDagRun :id run-id))))
             (is (nil? (dag-run/running-run-for-source-transform-id tid))))
@@ -79,7 +79,7 @@
     (testing "fail-started-run! records the failure message"
       (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
         (try
-          (dag-run/fail-started-run! run-id {:message "boom"})
+          (coordinated-run/fail-started-run! :model/TransformDagRun run-id {:message "boom"})
           (let [row (t2/select-one :model/TransformDagRun :id run-id)]
             (is (= :failed (:status row)))
             (is (= "boom" (:message row))))

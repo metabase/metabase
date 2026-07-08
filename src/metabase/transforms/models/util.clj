@@ -2,8 +2,7 @@
   (:require
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,18 +36,3 @@
       :end_time   [[:end_time sort-direction nulls-sort]]
       [[:start_time sort-direction]
        [:end_time   sort-direction nulls-sort]])))
-
-(defn paged-run-listing
-  "Run a paged listing of `model` filtered by `where` (a HoneySQL clause or nil) and ordered by
-  `order-by`, returning the FE-conventional `{:data :limit :offset :total}` envelope. `offset`
-  defaults to 0 and `limit` to 20."
-  [model {:keys [offset limit]} order-by where]
-  (let [offset     (or offset 0)
-        limit      (or limit 20)
-        query-opts (cond-> {:order-by order-by :offset offset :limit limit}
-                     where (assoc :where where))
-        count-opts (if where {:where where} {})]
-    {:data   (t2/select model query-opts)
-     :limit  limit
-     :offset offset
-     :total  (t2/count model count-opts)}))

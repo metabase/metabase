@@ -61,11 +61,6 @@
   [run-id properties]
   (coordinated-run/fail-started-run! :model/TransformJobRun run-id properties))
 
-(defn heartbeat-runs!
-  "Stamp `last_heartbeat = now` on the given still-active job-run-ids."
-  [run-ids]
-  (coordinated-run/heartbeat-runs! :model/TransformJobRun run-ids))
-
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
   process is presumed dead). Returns the rows that were timed out so callers can notify."
@@ -83,18 +78,24 @@
   "Return a page of the list of job runs.
 
   Follows the conventions used by the FE."
-  [{:keys [sort-column sort-direction job-id status run-method start-time] :as params}]
-  (let [where-cond (cond-> []
+  [{:keys [sort-column sort-direction job-id status run-method start-time offset limit]}]
+  (let [offset     (or offset 0)
+        limit      (or limit 20)
+        where-cond (cond-> []
                      job-id               (conj [:= :job_id job-id])
                      status               (conj [:= :status status])
                      (= status "started") (conj [:= :is_active true])
                      run-method           (conj [:= :run_method run-method])
                      start-time           (conj (transforms.models.u/timestamp-constraint :start_time start-time)))
         where      (when (seq where-cond) (into [:and] where-cond))]
-    (transforms.models.u/paged-run-listing :model/TransformJobRun
-                                           params
-                                           (transforms.models.u/run-order-by sort-column sort-direction)
-                                           where)))
+    {:data   (t2/select :model/TransformJobRun
+                        (cond-> {:order-by (transforms.models.u/run-order-by sort-column sort-direction)
+                                 :offset   offset
+                                 :limit    limit}
+                          where (assoc :where where)))
+     :limit  limit
+     :offset offset
+     :total  (t2/count :model/TransformJobRun (if where {:where where} {}))}))
 
 (defn transform-runs-for-job-run
   "Return transform runs that were part of the given job run, ordered by start time."

@@ -135,12 +135,12 @@
                                 :parent-run-type  :dag
                                 :active-runs-atom dag-active-runs
                                 :precomputed-plan plan}
-            :add-run-activity! dag-run/add-run-activity!
+            :add-run-activity! #(coordinated-run/add-run-activity! :model/TransformDagRun %)
             :span              ["task.transform.run-dag" {:transform/id        transform-id
                                                           :transform/direction (name direction)
                                                           :transform/count     (count transform-ids)}]
-            :succeed!          dag-run/succeed-started-run!
-            :fail!             dag-run/fail-started-run!
+            :succeed!          #(coordinated-run/succeed-started-run! :model/TransformDagRun %)
+            :fail!             #(coordinated-run/fail-started-run! :model/TransformDagRun %1 %2)
             :label             (format "DAG run for transform %s" (pr-str transform-id))}))))
     (catch Throwable t
       ;; a pre-start failure (before the row was created) — unblock any caller waiting on the promise
@@ -164,7 +164,7 @@
 (defn- reap-orphaned-runs!
   "Reap DAG runs whose coordinator process died (stale heartbeat)."
   []
-  (dag-run/reap-orphaned-runs! dag-heartbeat-stale-minutes))
+  (coordinated-run/reap-orphaned-runs! :model/TransformDagRun "dag" dag-heartbeat-stale-minutes))
 
 (defmethod task/init! ::TransformDagRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))

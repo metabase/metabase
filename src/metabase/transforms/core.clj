@@ -86,8 +86,7 @@
   transform-runs-for-dag-run]
  [metabase.transforms.run-listing
   paged-run-summaries
-  hydrate-run-names
-  present-run-summary]
+  present-run-summaries]
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.transforms.models.transform-job

@@ -6,7 +6,6 @@
   via `transform_run.dag_run_id`."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.transforms.coordinated-run :as coordinated-run]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,29 +30,6 @@
                                   :user_id             user-id
                                   :status              :started
                                   :is_active           true}))
-
-(defn add-run-activity!
-  "Note that a run has had activity (touches `updated_at`)."
-  [run-id]
-  (coordinated-run/add-run-activity! :model/TransformDagRun run-id))
-
-(defn succeed-started-run!
-  "Mark a started run as successfully completed."
-  ([run-id]
-   (succeed-started-run! run-id {}))
-  ([run-id properties]
-   (coordinated-run/succeed-started-run! :model/TransformDagRun run-id properties)))
-
-(defn fail-started-run!
-  "Mark the started active run as failed and inactive."
-  [run-id properties]
-  (coordinated-run/fail-started-run! :model/TransformDagRun run-id properties))
-
-(defn reap-orphaned-runs!
-  "Time out active DAG runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
-  process is presumed dead). Returns the rows that were timed out so callers can notify."
-  [stale-minutes]
-  (coordinated-run/reap-orphaned-runs! :model/TransformDagRun "dag" stale-minutes))
 
 (defn running-run-for-source-transform-id
   "Return the single active DAG run seeded from `source-transform-id`, or nil."
