@@ -320,7 +320,7 @@ const elements = [
   createElement({
     type: "shared",
     name: "redux-store",
-    pattern: "frontend/src/metabase/store.js",
+    pattern: "frontend/src/metabase/store.ts",
     mode: "full",
   }),
 ];
