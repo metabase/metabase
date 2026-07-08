@@ -8,9 +8,11 @@ import type {
   StructuredIndex,
 } from "metabase-types/api";
 
-export type IndexFormValues = Record<string, unknown>;
+export type IndexFieldValue = string | number | boolean | IndexColumn[] | null;
 
-function defaultFieldValue(field: IndexField) {
+export type IndexFormValues = Record<string, IndexFieldValue>;
+
+function defaultFieldValue(field: IndexField): IndexFieldValue {
   switch (field.type) {
     case "boolean":
       return false;
@@ -29,7 +31,7 @@ export function buildInitialValues(
   fields: IndexField[],
   structured?: StructuredIndex,
 ): IndexFormValues {
-  const source: IndexFormValues | undefined = structured;
+  const source = structured as Record<string, IndexFieldValue> | undefined;
   return Object.fromEntries(
     fields.map((field) => [
       field.name,
@@ -75,17 +77,16 @@ export function toStructured(
   fields: IndexField[],
   values: IndexFormValues,
 ): StructuredIndex {
-  const structured: Record<string, unknown> = { kind };
+  const structured: Record<string, IndexFieldValue> = { kind };
   for (const field of fields) {
     const value = values[field.name];
-    if (field.type === "columns") {
-      const columns = (value as IndexColumn[] | undefined) ?? [];
+    if (field.type === "columns" && Array.isArray(value)) {
       structured[field.name] = field.directions
-        ? columns.map((column) => ({
+        ? value.map((column) => ({
             name: column.name,
             direction: column.direction ?? "asc",
           }))
-        : columns.map((column) => ({ name: column.name }));
+        : value.map((column) => ({ name: column.name }));
     } else {
       structured[field.name] = value;
     }
