@@ -10,10 +10,9 @@ const ruleTester = new RuleTester({
   },
 });
 
-const errorMessage = /Type casts .* must be preceded by a comment/;
+const message = /Type casts .* must be preceded by a comment/;
 
 const VALID_CASES = [
-  // Comment on the line above the statement.
   {
     name: "line comment above statement",
     code: `
@@ -28,7 +27,6 @@ const VALID_CASES = [
       const x = value as Foo;
     `,
   },
-  // Inline comment immediately before the cast expression.
   {
     name: "inline block comment before cast",
     code: `const x = /* safe */ value as Foo;`,
@@ -37,8 +35,6 @@ const VALID_CASES = [
     name: "inline comment before nested cast",
     code: `doThing(/* safe */ value as Foo);`,
   },
-  // Comment above a statement wrapping a cast that sits on the statement's
-  // first line — the comment is directly above the cast's line.
   {
     name: "comment above statement wrapping same-line cast",
     code: `
@@ -46,7 +42,6 @@ const VALID_CASES = [
       return callback(value as Foo);
     `,
   },
-  // Comment directly above a cast nested deep inside a multiline statement.
   {
     name: "comment above a nested cast on its own line",
     code: `
@@ -56,7 +51,6 @@ const VALID_CASES = [
       };
     `,
   },
-  // Comment above a cast that is the arrow function's returned value.
   {
     name: "comment above an arrow-returned cast",
     code: `
@@ -65,7 +59,6 @@ const VALID_CASES = [
         ({ a: value }) as Foo;
     `,
   },
-  // Comment above a cast used as a function-call argument property.
   {
     name: "comment above a cast in a call argument property",
     code: `
@@ -75,7 +68,15 @@ const VALID_CASES = [
       });
     `,
   },
-  // as const never requires a comment.
+  {
+    name: "comment above the grouping paren of a parenthesized cast",
+    code: `
+      // reason
+      (
+        value as Foo
+      ).doThing();
+    `,
+  },
   {
     name: "as const literal",
     code: `const x = { a: 1 } as const;`,
@@ -84,7 +85,6 @@ const VALID_CASES = [
     name: "as const on array",
     code: `const x = [1, 2, 3] as const;`,
   },
-  // Chained casts only need one comment (on the outermost).
   {
     name: "chained cast with single comment",
     code: `
@@ -92,7 +92,6 @@ const VALID_CASES = [
       const x = value as unknown as Foo;
     `,
   },
-  // No casts at all.
   {
     name: "no cast",
     code: `const x = value;`,
@@ -107,27 +106,27 @@ const INVALID_CASES = [
   {
     name: "simple cast without comment",
     code: `const x = value as Foo;`,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "cast in call argument without comment",
     code: `doThing(value as Foo);`,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "return cast without comment",
     code: `function f() { return value as Foo; }`,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "chained cast reported once",
     code: `const x = value as unknown as Foo;`,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "trailing comment does not justify the cast",
     code: `const x = value as Foo; // this comment is after the cast`,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "comment separated by a blank line does not justify",
@@ -136,7 +135,7 @@ const INVALID_CASES = [
 
       const x = value as Foo;
     `,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "two independent casts each need a comment",
@@ -144,10 +143,8 @@ const INVALID_CASES = [
       const a = one as Foo;
       const b = two as Bar;
     `,
-    errors: [{ message: errorMessage }, { message: errorMessage }],
+    errors: [{ message }, { message }],
   },
-  // A comment above the enclosing statement does NOT justify a cast that lives
-  // several lines below it — the comment must sit next to the cast's line.
   {
     name: "comment above statement but not above the nested cast line",
     code: `
@@ -156,7 +153,7 @@ const INVALID_CASES = [
         a: value as Foo,
       };
     `,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "comment above the arrow declaration but not above the returned cast",
@@ -165,7 +162,7 @@ const INVALID_CASES = [
       const getGraph = () =>
         ({ a: value }) as Foo;
     `,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
   },
   {
     name: "comment above the call but not above the cast argument",
@@ -175,7 +172,16 @@ const INVALID_CASES = [
         id: value as unknown as number,
       });
     `,
-    errors: [{ message: errorMessage }],
+    errors: [{ message }],
+  },
+  {
+    name: "parenthesized cast without a comment",
+    code: `
+      (
+        value as Foo
+      ).doThing();
+    `,
+    errors: [{ message }],
   },
 ];
 

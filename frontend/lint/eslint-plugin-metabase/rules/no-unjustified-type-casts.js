@@ -36,7 +36,8 @@ module.exports = {
 
         if (
           hasLeadingComment(sourceCode, node) ||
-          hasLeadingComment(sourceCode, getLineStartToken(sourceCode, node))
+          hasLeadingComment(sourceCode, getLineStartToken(sourceCode, node)) ||
+          hasLeadingComment(sourceCode, getGroupingStartToken(sourceCode, node))
         ) {
           return;
         }
@@ -76,8 +77,20 @@ function hasLeadingComment(sourceCode, anchor) {
   return commentEndLine === anchorLine || commentEndLine === anchorLine - 1;
 }
 
-function getLineStartToken(sourceCode, node) {
-  let token = sourceCode.getFirstToken(node);
+function getGroupingStartToken(sourceCode, node) {
+  let token = getLineStartToken(sourceCode, sourceCode.getFirstToken(node));
+  let previous = sourceCode.getTokenBefore(token);
+
+  while (previous != null && isGroupingParen(sourceCode, previous)) {
+    token = getLineStartToken(sourceCode, previous);
+    previous = sourceCode.getTokenBefore(token);
+  }
+
+  return token;
+}
+
+function getLineStartToken(sourceCode, startToken) {
+  let token = startToken;
   let previous = sourceCode.getTokenBefore(token);
 
   while (previous != null && previous.loc.end.line === token.loc.start.line) {
@@ -86,4 +99,25 @@ function getLineStartToken(sourceCode, node) {
   }
 
   return token;
+}
+
+function isGroupingParen(sourceCode, token) {
+  if (token.type !== "Punctuator" || token.value !== "(") {
+    return false;
+  }
+
+  const before = sourceCode.getTokenBefore(token);
+
+  if (before == null) {
+    return true;
+  }
+
+  if (before.type === "Identifier" || before.type === "PrivateIdentifier") {
+    return false;
+  }
+
+  return !(
+    before.type === "Punctuator" &&
+    (before.value === ")" || before.value === "]" || before.value === "?.")
+  );
 }
