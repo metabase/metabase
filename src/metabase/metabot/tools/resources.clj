@@ -33,7 +33,9 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.shared.mbr :as mbr]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.transforms.core :as transforms]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -172,15 +174,11 @@
     nil))
 
 (defn- recent-model->toucan
-  "Activity-feed recent `:model` keyword -> Toucan model."
+  "Activity-feed recent `:model` keyword -> Toucan model. Derived from
+   [[recent-model->mbr-model]] (MBR model names equal Toucan model names by
+   construction) so the two mappings can't drift out of sync."
   [model]
-  (case model
-    (:card :dataset :metric :model) :model/Card
-    :dashboard                      :model/Dashboard
-    :table                          :model/Table
-    :collection                     :model/Collection
-    :document                       :model/Document
-    nil))
+  (some->> (recent-model->mbr-model model) (keyword "model")))
 
 (defn- fetch-user-recents []
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
@@ -189,14 +187,15 @@
         ;; Extract each recent as MBR. An entry whose `:model` we can't map
         ;; (e.g. a snippet) is dropped by `keep` — the mapped set is exhaustive
         ;; for the MBR entity types, so only genuinely-unsupported models vanish.
-        items   (->> recents
-                     (keep (fn [{:keys [id model timestamp]}]
-                             (when-let [tm (recent-model->toucan model)]
-                               (when-let [inst (t2/select-one tm id)]
-                                 (when (mi/can-read? inst)
-                                   (-> (mbr/->mbr (recent-model->mbr-model model) inst)
-                                       (assoc :_recently_viewed_at timestamp)))))))
-                     vec)]
+        items   (u/keepv (fn [{:keys [id model timestamp]}]
+                           (when-let [tm (recent-model->toucan model)]
+                             (when-let [inst (t2/select-one tm id)]
+                               (when (mi/can-read? inst)
+                                 ;; `->mbr` can return nil (an extract-query policy may exclude the
+                                 ;; instance); guard so we never assoc onto nil and emit a junk item.
+                                 (when-some [mbr (mbr/->mbr (recent-model->mbr-model model) inst)]
+                                   (assoc mbr :_recently_viewed_at timestamp))))))
+                         recents)]
     (mbr/list-result :recent-items (paginate-items items nil))))
 
 ;; ----- Database drill-down -----
@@ -233,15 +232,16 @@
                   :from            [:metabase_table]
                   :where           [:and [:= :db_id (:id db)] [:= :active true]]
                   :order-by        [[:schema :asc]]})
-        schemas (->> rows
-                     (keep :schema)
-                     (mapv (fn [s]
-                             ;; Schema is not a Toucan-modeled entity — return a
-                             ;; minimal MBR-flavored shape that matches the FK
-                             ;; tuple form so the agent can drill in.
-                             {:type        "schema"
-                              :name        s
-                              :database    (:name db)})))]
+        schemas (mapv (fn [{:keys [schema]}]
+                        ;; Schema is not a Toucan-modeled entity — return a
+                        ;; minimal MBR-flavored shape that matches the FK
+                        ;; tuple form so the agent can drill in. A schemaless
+                        ;; DB (Mongo & friends) stores NULL — surface it as ""
+                        ;; so the `schema//tables` drill-down is discoverable.
+                        {:type     "schema"
+                         :name     (or schema "")
+                         :database (:name db)})
+                      rows)]
     (mbr/list-result :database-schemas (paginate-items schemas (:page query-params)))))
 
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
@@ -249,7 +249,9 @@
         _      (api/read-check db)
         tables (t2/select :model/Table
                           :db_id  (:id db)
-                          :schema schema-name
+                          ;; Schemaless tables are stored with :schema NULL; the empty URI
+                          ;; segment (`schema//tables`) must match them, not the literal "".
+                          :schema (when-not (str/blank? schema-name) schema-name)
                           :active true
                           {:order-by [[:%lower.name :asc]]})]
     (mbr/list-result :database-schema-tables (mbr/extract-readable "Table" tables {:page (:page query-params)}))))
@@ -276,14 +278,13 @@
                                   :location (str (:location coll) coll-id "/")
                                   :archived false
                                   {:order-by [[:%lower.name :asc]]})
-        ;; This list mixes three models, so it can't page through one
-        ;; extract-readable call. Hydrate each sub-list fully (bare 2-arity, no
-        ;; paging), concat, then paginate the combined item vector — keeping
-        ;; `:total` honest across all three.
-        items          (concat (mbr/extract-readable "Collection" subcollections)
-                               (mbr/extract-readable "Card" cards)
-                               (mbr/extract-readable "Dashboard" dashboards))]
-    (mbr/list-result :collection-items (paginate-items items (:page query-params)))))
+        ;; This list mixes three models. Tag each instance with its model, concat
+        ;; in display order, then slice the page BEFORE hydrating — so a 500-item
+        ;; collection extracts 25 rows, not 500. `:total` stays honest across all three.
+        pairs          (concat (map #(vector "Collection" %) subcollections)
+                               (map #(vector "Card" %) cards)
+                               (map #(vector "Dashboard" %) dashboards))]
+    (mbr/list-result :collection-items (mbr/extract-tagged-page pairs (:page query-params)))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
   (let [coll    (mbr/resolve-user-entity :model/Collection id-str)
@@ -350,11 +351,10 @@
                                      :source_database_id db-id
                                      {:order-by [[:%lower.name :asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))))
-        ;; Mixes Card + Transform, so hydrate each fully (no paging), concat, then
-        ;; paginate the combined vector.
-        items      (concat (mbr/extract-readable "Card" cards)
-                           (mbr/extract-readable "Transform" (or transforms [])))]
-    (mbr/list-result :table-derived (paginate-items items (:page query-params)))))
+        ;; Mixes Card + Transform. Tag, concat, then slice the page before hydrating.
+        pairs      (concat (map #(vector "Card" %) cards)
+                           (map #(vector "Transform" %) (or transforms [])))]
+    (mbr/list-result :table-derived (mbr/extract-tagged-page pairs (:page query-params)))))
 
 (defn- fetch-table-derived [id-str query-params]
   (fetch-table-derived* (mbr/resolve-table-legacy id-str) query-params))
@@ -416,7 +416,7 @@
         ;; the canonical "card" segment through verbatim would throw.
         ;;
         ;; NOTE (pre-existing, separate from this PR): unlike the card *body* (whose
-        ;; :dataset_query/:result_metadata go through redact-sandboxed), the /fields
+        ;; :dataset_query/:result_metadata go through redact-mbr), the /fields
         ;; path emits column names via get-table-details' user-aware metadata
         ;; provider. Whether that provider sandbox-filters the field list for a
         ;; column-sandboxed user is unverified here; if it doesn't, /fields could
@@ -495,11 +495,30 @@
 
 ;; ----- Measure / Segment -----
 
+(defn- resolve-entity-id-or-404
+  "Resolve a URI segment to the numeric id a downstream `get-*-details` fn consumes,
+   for an entity_id-bearing `model` (derives `:hook/entity-id`). A NanoID segment
+   resolves via [[mbr/resolve-user-entity]]; a numeric segment passes through verbatim,
+   leaving the existence/perm decision downstream. `label` names the model in the 404.
+   Mirrors [[resolve-transform-id-or-404]]. Returns the numeric id or a 404 map."
+  [model label id-str]
+  (if (some-> id-str parse-long)
+    (parse-long id-str)
+    (if-let [instance (mbr/resolve-user-entity model id-str)]
+      (:id instance)
+      {:status-code 404 :output (str label " " id-str " not found")})))
+
 (defn- fetch-measure [id-str]
-  (entity-details/get-measure-details {:measure-id (parse-long id-str)}))
+  (let [id (resolve-entity-id-or-404 :model/Measure "Measure" id-str)]
+    (if (map? id)
+      id
+      (entity-details/get-measure-details {:measure-id id}))))
 
 (defn- fetch-segment [id-str]
-  (entity-details/get-segment-details {:segment-id (parse-long id-str)}))
+  (let [id (resolve-entity-id-or-404 :model/Segment "Segment" id-str)]
+    (if (map? id)
+      id
+      (entity-details/get-segment-details {:segment-id id}))))
 
 ;; ----- Transform -----
 
@@ -544,9 +563,12 @@
                                                      (t2/select :model/Table
                                                                 :id [:in (set source-table-ids)])))
             db-id            (:source_database_id transform)
+            ;; Gate the source Database like the tables: reading the transform must not expand
+            ;; an unreadable database's metadata (name/engine/...) from what was an opaque id.
             db               (when db-id (t2/select-one :model/Database db-id))
+            db-mbr           (when (and db (mi/can-read? db)) (mbr/->mbr "Database" db))
             items            (cond-> []
-                               db     (conj (mbr/->mbr "Database" db))
+                               db-mbr (conj db-mbr)
                                tables (into tables))]
         (mbr/list-result :transform-sources (paginate-items items (:page query-params)))))))
 
@@ -563,10 +585,13 @@
                            (when (mi/can-read? tt)
                              (t2/select-one :model/Table (:id tt))))
             db-id        (:target_db_id transform)
+            ;; Gate the target Database the same way as the target table above.
             db           (when db-id (t2/select-one :model/Database db-id))
+            db-mbr       (when (and db (mi/can-read? db)) (mbr/->mbr "Database" db))
+            table-mbr    (when target-table (mbr/->mbr "Table" target-table))
             items        (cond-> []
-                           db           (conj (mbr/->mbr "Database" db))
-                           target-table (conj (mbr/->mbr "Table" target-table)))]
+                           db-mbr    (conj db-mbr)
+                           table-mbr (conj table-mbr))]
         (mbr/list-result :transform-target (paginate-items items nil))))))
 
 ;; ----- Dashboard -----
@@ -736,7 +761,13 @@
   [{:keys [uris]}]
   (log/info "Reading resources" {:uri-count (count uris)})
 
-  ;; Validate URI count
+  ;; Validate URI count. An empty call is always a caller bug (mangled array, empty
+  ;; tool args); a silent empty success would read to the agent as "nothing exists",
+  ;; so error with a corrective example instead.
+  (when (empty? uris)
+    (throw (ex-info
+            "No URIs provided. Pass at least one metabase:// URI, e.g. metabase://databases."
+            {:uri-count 0})))
   (when (> (count uris) max-concurrent-uris)
     (throw (ex-info
             (str "Too many URIs provided (" (count uris) "). "
@@ -744,8 +775,17 @@
                  "Be more selective and focus on the most relevant items for the current task or fetch them in batches.")
             {:uri-count (count uris) :max max-concurrent-uris})))
 
-  ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
-  (let [resources (mapv fetch-single-uri uris)
+  ;; Fetch all URIs (sequentially for now, could parallelize with pmap).
+  ;; One serdes/with-cache spans the whole call so FK/table/database resolution is memoized
+  ;; across every handler and every URI (a dashboard + its cards reuse the same lookups),
+  ;; instead of the hundreds of uncached point-selects a bare extract-all issues per page.
+  ;; with-cache does NOT memoize the per-field-ref field-hierarchy query (deliberately
+  ;; unbounded for full exports), so also memoize *export-field-fk* request-scoped — a page
+  ;; is ≤5 URIs, so the map is tiny and a card reuses the same field id across
+  ;; dataset_query / result_metadata / viz settings.
+  (let [resources (serdes/with-cache
+                    (binding [serdes/*export-field-fk* (memoize serdes/*export-field-fk*)]
+                      (mapv fetch-single-uri uris)))
         formatted (format-resources resources)]
     (log/info "Fetched resources" {:total      (count resources)
                                    :successful (count (filter :content resources))

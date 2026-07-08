@@ -14,7 +14,7 @@ Base path: /api/agent
   (e.g., "Total Revenue"). Metrics are stored in collections and can be used
   as a data source in the API. They have a fixed aggregation, but can be
   filtered and grouped by their queryable dimensions. Read
-  `metabase://metric/{id}/dimensions` via POST /v1/read-resource to inspect a
+  `metabase://metric/{id}/dimensions` via GET /v1/read-resource to inspect a
   metric's dimensions, and POST /v2/construct-query with a program whose
   `source` is `{"type": "metric", "id": <id>}` to query one.
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
@@ -22,7 +22,7 @@ Base path: /api/agent
   not standalone queries - they are building blocks that can be referenced in
   table queries via `["measure", id]` inside an `aggregate` operation. Discover
   available measures by reading `metabase://table/{id}/fields` via
-  POST /v1/read-resource.
+  GET /v1/read-resource.
 - **Segments**: Pre-defined filter conditions (e.g., "Active Users") that can
   be applied to queries via `["filter", ["segment", id]]`.
 - **Field IDs**: Integer identifiers for database columns. These are the real
@@ -101,19 +101,24 @@ Health check.
 
 Response: `{"message": "pong"}`
 
-### POST /v1/read-resource
+### GET /v1/read-resource
 
 Read one or more Metabase entities by `metabase://` URI. Replaces the older
 per-entity GET endpoints (`/v1/table/{id}`, `/v1/metric/{id}`, the
 `*_field_values` endpoints, and various GET browse endpoints) with a single
 unified surface.
 
-Request:
+Request: `uris` rides as a repeated query param. Some clients serialize array
+args through a string layer, so a JSON-array-in-a-string is also accepted.
 
-```json
-{
-  "uris": ["metabase://table/42", "metabase://metric/10/dimensions"]
-}
+```
+GET /v1/read-resource?uris=metabase://table/42&uris=metabase://metric/10/dimensions
+```
+
+or, equivalently:
+
+```
+GET /v1/read-resource?uris=["metabase://table/42","metabase://metric/10/dimensions"]
 ```
 
 Up to 5 URIs per call. List endpoints (e.g. `metabase://databases`,
@@ -575,7 +580,7 @@ Response:
 ## Typical workflow
 
 1. **Search** - POST /v1/search to find relevant tables, metrics, cards, or dashboards
-2. **Navigate** - POST /v1/read-resource with `metabase://` URIs to drill into
+2. **Navigate** - GET /v1/read-resource with `metabase://` URIs to drill into
    databases, schemas, tables, fields, collections, dashboards, etc.
 3. **Build query** - POST /v2/construct-query with a representations JSON
    payload (`{"query": <external-query-object>}`); see the

@@ -686,14 +686,21 @@
   may rebind this to `true` to keep the H2 databases in the extract."
   false)
 
+(def ^:dynamic *include-sample-in-extract?*
+  "When false (the default), [[serdes/extract-query]] skips the Sample Database — exports never include it.
+  Read-only consumers of the extract pipeline that must surface every reachable database (read_resource MBR)
+  may rebind this to `true`."
+  false)
+
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
   (t2/reducible-select (keyword "model" model-name)
                        {:where (cond-> [:and
                                         (or where true)
-                                        [:= :router_database_id nil]
-                                        ;; never export the sample database, regardless of its driver
-                                        [:not= :is_sample true]]
+                                        [:= :router_database_id nil]]
+                                 (not *include-sample-in-extract?*)
+                                 ;; never export the sample database, regardless of its driver
+                                 (conj [:not= :is_sample true])
                                  (not *include-h2-in-extract?*)
                                  (conj [:not= :engine "h2"]))}))
 

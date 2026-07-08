@@ -323,6 +323,16 @@
   ;; becomes available
   false)
 
+(defenterprise any-enforced-sandbox?
+  "Like [[sandboxed-user?]] but gated `:feature :none` so it fails closed on token loss. Use at restriction decision
+  points where a `false` would relax a restriction. In OSS this is always false. Throws if no current user is bound."
+  metabase-enterprise.sandbox.api.util
+  []
+  (when-not api/*current-user-id*
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  false)
+
 (defenterprise card-query-touches-sandboxed-table?
   "True when the current user has an enforced sandbox (column- or row-level) on any source table of `card`'s
   `:dataset_query`. Lets callers that bypass the query processor — e.g. `read_resource` MBR extraction, which goes

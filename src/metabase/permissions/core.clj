@@ -127,6 +127,7 @@
   user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
   PathSchema
+  any-enforced-sandbox?
   card-query-touches-sandboxed-table?
   check-revision-numbers
   impersonated-user?

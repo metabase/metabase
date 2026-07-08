@@ -107,6 +107,23 @@
        (throw (ex-info (str (tru "No current user found"))
                        {:status-code 403}))))))
 
+(defenterprise any-enforced-sandbox?
+  "Like `sandboxed-user?`, but gated `:feature :none` so it fails CLOSED on a lost/expired token: the router would
+  otherwise fall back to the OSS body (`false`) and, at a *restriction decision point*, downgrade a sandboxed user
+  to unrestricted. `enforced-sandboxes-for-user` is `:none` for the same reason, so the per-request sandbox cache
+  this reads is populated regardless of token state.
+
+  Use this (not `sandboxed-user?`) where a `false` result relaxes a restriction — e.g. read_resource's Dashboard
+  MBR redaction gate. Throws if no current user is bound."
+  :feature :none
+  []
+  (boolean
+   (when-not *is-superuser?*
+     (if *current-user-id*
+       (seq (perms/sandboxes-for-user))
+       (throw (ex-info (str (tru "No current user found"))
+                       {:status-code 403}))))))
+
 (defenterprise card-query-touches-sandboxed-table?
   "True when the current user has an enforced sandbox that could redact `card`'s query. Superusers are never sandboxed.
 
@@ -118,21 +135,36 @@
   Toucan's `:out` transform). `lib/all-source-table-ids` has a pMBQL input schema and will throw under Malli
   instrumentation if handed a raw legacy `{:type :query ...}` map — don't call this with a hand-built legacy query.
 
-  Two detection modes:
-  - MBQL: `lib/all-source-table-ids` yields the structural source tables; check for an enforced sandbox on any.
-  - Native: `all-source-table-ids` returns nil (it only sees `:source-table` refs), so fall back to a database-level
-    check — any enforced sandbox on the card's database is treated as touching it, since we can't know which tables the
-    raw SQL reads."
-  :feature :sandboxes
+  Three detection modes:
+  - Fully enumerable MBQL: `lib/all-source-table-ids` yields the structural source tables and the query has no
+    `:source-card` / `:metric` / template-tag card refs — check for an enforced sandbox on any of those tables.
+  - Card/metric/native refs: `lib/all-source-table-ids` can't see through a `:source-card` (or `:metric`, or a
+    native template-tag card), so its table set is incomplete. Rather than resolve those cards recursively we
+    over-approximate: gate on any enforced sandbox in the card's database. Native queries land here too (no source
+    tables at all).
+  - No database: fail CLOSED (treat as sandboxed) rather than expose the query.
+
+  Gated with `:feature :none` (not `:sandboxes`) because this is a restriction *decision point*: when the token is
+  lost or expired the router falls back to the OSS body (which returns `false`), and a `false` here would silently
+  emit an unredacted card MBR to a sandboxed user. `enforced-sandboxes-for-user` is `:none` for the same reason, so
+  the per-request sandbox cache is populated regardless of token state."
+  :feature :none
   [card]
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (if-let [table-ids (some-> card :dataset_query not-empty lib/all-source-table-ids not-empty)]
-         (seq (enforced-sandboxes-for-tables table-ids))
-         ;; Native (or otherwise source-table-less) query: can't enumerate tables, so gate on any sandbox in the card's db.
-         (when-let [db-id (:database_id card)]
-           (sandboxed-user-for-db? db-id)))
+       (let [query      (some-> card :dataset_query not-empty)
+             table-ids  (some-> query lib/all-source-table-ids not-empty)
+             card-refs? (boolean (some-> query lib/all-source-card-ids seq))]
+         (cond
+           ;; A directly-referenced source table is sandboxed.
+           (seq (enforced-sandboxes-for-tables table-ids)) true
+           ;; Fully enumerable: only real source tables, none sandboxed.
+           (and table-ids (not card-refs?))                false
+           ;; Card/metric/native refs we can't enumerate: gate on any sandbox in the card's db.
+           :else                                           (if-let [db-id (:database_id card)]
+                                                             (boolean (sandboxed-user-for-db? db-id))
+                                                             true)))
        ;; No *current-user-id* bound: can't check sandboxes, so throw rather than return false for a user who may be sandboxed.
        (throw (ex-info (str (tru "No current user found"))
                        {:status-code 403}))))))

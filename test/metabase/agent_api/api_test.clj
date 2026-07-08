@@ -1322,6 +1322,11 @@
   (testing "Returns 400 when too many URIs"
     (mt/user-http-request :crowberto :get 400 "agent/v1/read-resource"
                           :uris (vec (repeat 10 "metabase://databases"))))
+  (testing "Returns 400 when no URIs are provided — an empty call is a caller bug, not an empty success"
+    ;; JSON-array-in-a-string form: coerce-query-list parses "[]" to [], which must
+    ;; hit the zero-URIs guard rather than return {:resources []}.
+    (mt/user-http-request :crowberto :get 400 "agent/v1/read-resource"
+                          :uris "[]"))
   (testing "Reports a per-URI error rather than failing the whole call"
     (let [resp (mt/user-http-request :crowberto :get 200 "agent/v1/read-resource"
                                      :uris ["metabase://nonsense/path"])]

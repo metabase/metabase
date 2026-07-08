@@ -12,9 +12,13 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.shared.mbr :as mbr]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest parse-uri-test
@@ -583,6 +587,33 @@
         (is (contains? eids (:entity_id personal))
             "crowberto's readable personal collection must appear in the tree list")))))
 
+(deftest read-personal-collection-detail-test
+  (testing "a single read of the user's own personal collection returns the entity, not null"
+    ;; ->mbr must scope Collection extraction via :collection-set (extract-opts) —
+    ;; a raw :where would trip extract-query's `personal_owner_id IS NULL` filter
+    ;; and extract to nothing, returning a successful null entity.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [personal (collection/user->personal-collection (mt/user->id :crowberto))
+            result   (read-resource/read-resource {:uris [(str "metabase://collection/" (:entity_id personal))]})
+            entity   (get-in result [:resources 0 :content :structured-output :entity])]
+        (is (some? entity) "personal collection MBR must not be nil")
+        (is (= (:entity_id personal) (:entity_id entity)))))))
+
+(deftest read-user-recents-personal-collection-test
+  (testing "a recently-viewed personal collection appears as a real item, never a junk {:_recently_viewed_at} map"
+    (let [uid (mt/user->id :crowberto)]
+      (mt/with-current-user uid
+        (let [personal (collection/user->personal-collection uid)]
+          (recent-views/update-users-recent-views! uid :model/Collection (:id personal) :view)
+          (let [result (read-resource/read-resource {:uris ["metabase://user/recent-items"]})
+                items  (get-in result [:resources 0 :content :structured-output :items])]
+            (is (some #(= (:entity_id personal) (:entity_id %)) items)
+                "the personal collection appears in recents with its identity")
+            (is (not-any? #(and (contains? % :_recently_viewed_at)
+                                (nil? (:entity_id %)))
+                          items)
+                "no timestamp-only junk item (assoc onto a nil ->mbr result)")))))))
+
 (deftest canonical-card-type-and-entity-id-fields-test
   ;; Two regressions on the card /fields drill-down, exercised together because
   ;; both need a real-query card:
@@ -682,11 +713,10 @@
                     "target table name must NOT appear when user lacks read perms")
                 (is (not (str/includes? output "\"model\":\"Table\",\"id\":\"TARGET-TABLE\""))
                     "target table MBR must NOT appear when user lacks read perms")
-                ;; The target *database* MBR is still surfaced — that's intentional, the
-                ;; entity carries no extra metadata and any read_resource call on its
-                ;; URI will enforce its own auth.
-                (is (str/includes? output "\"model\":\"Database\",\"id\":\"TT-DB\"")
-                    "target database MBR is informational and remains visible")))))))))
+                ;; The target *database* is gated the same way: reading the transform must
+                ;; not expand an unreadable database's metadata (name/engine/...).
+                (is (not (str/includes? output "\"model\":\"Database\",\"id\":\"TT-DB\""))
+                    "target database MBR must NOT appear when user lacks read perms")))))))))
 
 (deftest read-databases-list-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -840,6 +870,16 @@
               (testing "rendered XML carries the measure name and a portable entity id"
                 (is (str/includes? output "Order Revenue"))
                 (is (str/includes? output "portable_entity_id=")))))
+          (testing "metabase://measure/{entity_id} resolves to the same measure as the numeric id"
+            (let [eid        (t2/select-one-fn :entity_id :model/Measure measure-id)
+                  by-eid     (read-resource/read-resource {:uris [(str "metabase://measure/" eid)]})
+                  by-id      (read-resource/read-resource {:uris [(str "metabase://measure/" measure-id)]})]
+              (is (= (get-in by-id [:resources 0 :content :structured-output])
+                     (get-in by-eid [:resources 0 :content :structured-output]))
+                  "entity_id and numeric id URIs return identical bodies")))
+          (testing "returns a 404 for an unknown NanoID"
+            (is (=? {:resources [{:error #".*not found.*"}]}
+                    (read-resource/read-resource {:uris ["metabase://measure/AAAAAAAAAAAAAAAAAAAAA"]}))))
           (testing "returns an error for an unknown measure"
             (is (=? {:resources [{:error string?}]}
                     (read-resource/read-resource {:uris ["metabase://measure/99999"]}))))
@@ -871,6 +911,16 @@
               (testing "rendered XML carries the segment name and a portable entity id"
                 (is (str/includes? output "Big Orders"))
                 (is (str/includes? output "portable_entity_id=")))))
+          (testing "metabase://segment/{entity_id} resolves to the same segment as the numeric id"
+            (let [eid    (t2/select-one-fn :entity_id :model/Segment segment-id)
+                  by-eid (read-resource/read-resource {:uris [(str "metabase://segment/" eid)]})
+                  by-id  (read-resource/read-resource {:uris [(str "metabase://segment/" segment-id)]})]
+              (is (= (get-in by-id [:resources 0 :content :structured-output])
+                     (get-in by-eid [:resources 0 :content :structured-output]))
+                  "entity_id and numeric id URIs return identical bodies")))
+          (testing "returns a 404 for an unknown NanoID"
+            (is (=? {:resources [{:error #".*not found.*"}]}
+                    (read-resource/read-resource {:uris ["metabase://segment/AAAAAAAAAAAAAAAAAAAAA"]}))))
           (testing "returns an error for an unknown segment"
             (is (=? {:resources [{:error string?}]}
                     (read-resource/read-resource {:uris ["metabase://segment/99999"]}))))
@@ -957,6 +1007,58 @@
           (is (str/includes? output "\"model\":\"Database\",\"id\":\"Detail DB\""))
           (is (str/includes? output "\"engine\":\"h2\"")))))))
 
+(deftest read-database-detail-drops-settings-test
+  (testing "Database MBR never carries :settings — serdes copies it verbatim and the mi/to-json
+           visibility filter (can-read-setting?) doesn't fire on plain maps, so redact-mbr drops
+           it uniformly instead"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:name     "Settings DB"
+                                                  :engine   :h2
+                                                  :settings {:database-enable-actions true}}]
+        (testing "single entity read"
+          (let [result (read-resource/read-resource {:uris [(str "metabase://database/" db-id)]})
+                entity (get-in result [:resources 0 :content :structured-output :entity])]
+            (is (some? entity))
+            (is (not (contains? entity :settings)))))
+        (testing "list read"
+          (let [result (read-resource/read-resource {:uris ["metabase://databases"]})
+                items  (get-in result [:resources 0 :content :structured-output :items])
+                db     (u/seek #(= "Settings DB" (:name %)) items)]
+            (is (some? db))
+            (is (not (contains? db :settings)))))))))
+
+(deftest read-dashboard-scrubs-unreadable-card-dashcards-test
+  (testing "a non-admin reading a Dashboard MBR gets dashcards scrubbed when the embedded card lives
+           in a collection they cannot read — serdes exports field refs by NAME, so an unreadable
+           card's viz settings / parameter mappings must not ride along (OSS collection perms,
+           independent of sandboxing)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {open-id :id}       {:name "Open Coll"}
+                     :model/Collection {restricted-id :id} {:name "Restricted Coll"}
+                     :model/Dashboard  {dash-eid :entity_id dash-id :id} {:collection_id open-id}
+                     :model/Card       {open-card :id}     {:name "OPEN-CARD" :collection_id open-id}
+                     :model/Card       {hidden-card :id}   {:name "HIDDEN-CARD" :collection_id restricted-id}
+                     :model/DashboardCard _ {:dashboard_id           dash-id
+                                             :card_id                open-card
+                                             :visualization_settings {:title "open viz"}}
+                     :model/DashboardCard _ {:dashboard_id           dash-id
+                                             :card_id                hidden-card
+                                             :visualization_settings {:title "hidden viz"}}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result    (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-eid)]})
+                entity    (get-in result [:resources 0 :content :structured-output :entity])
+                open-eid  (t2/select-one-fn :entity_id :model/Card open-card)
+                hidden-eid (t2/select-one-fn :entity_id :model/Card hidden-card)
+                by-card   (fn [eid] (u/seek #(= eid (:card_id %)) (:dashcards entity)))]
+            (is (some? entity) "dashboard itself is readable")
+            (is (contains? (by-card open-eid) :visualization_settings)
+                "dashcard of a readable card keeps its viz settings (no over-scrub)")
+            (is (some? (by-card hidden-eid))
+                "the unreadable card's dashcard still appears (layout/FK only)")
+            (is (not (contains? (by-card hidden-eid) :visualization_settings))
+                "dashcard of an unreadable card is scrubbed")))))))
+
 (deftest read-database-models-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id}    {}
@@ -995,6 +1097,70 @@
           (is (str/includes? output "PUB-TABLE"))
           (is (str/includes? output "\"model\":\"Table\",\"id\":\"PUB-TABLE\""))
           (is (not (str/includes? output "PRIV-TABLE"))))))))
+
+(deftest read-sample-database-test
+  (testing "a database flagged is_sample extracts to a real MBR — exports exclude it, reads must not"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:name "Sample-Flag DB" :engine :h2 :is_sample true}]
+        (testing "single read returns the entity, not null"
+          (let [result (read-resource/read-resource {:uris [(str "metabase://database/" db-id)]})
+                entity (get-in result [:resources 0 :content :structured-output :entity])]
+            (is (some? entity) "sample database MBR must not be nil")
+            (is (= "Sample-Flag DB" (:name entity)))))
+        (testing "list counts it in :total AND includes it in :items (no silent mismatch)"
+          (let [result (read-resource/read-resource {:uris ["metabase://databases"]})
+                so     (get-in result [:resources 0 :content :structured-output])]
+            (is (= (:total so) (count (:items so))))
+            (is (some #(= "Sample-Flag DB" (:name %)) (:items so)))))
+        (testing "real serdes exports still exclude it (default binding pinned)"
+          (is (not-any? #(= "Sample-Flag DB" (:name %))
+                        (into [] (serdes/extract-all "Database" {})))))))))
+
+(deftest read-schemaless-database-test
+  (testing "a schemaless (nil-schema) database is navigable: /schemas surfaces the nil schema as \"\"
+           and the schema//tables list route matches NULL-schema tables"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:name "Schemaless DB"}
+                     :model/Table    _           {:db_id db-id :schema nil :name "EVENTS" :active true}]
+        (testing "/schemas lists the nil schema as an empty-name entry"
+          (let [result (read-resource/read-resource {:uris [(str "metabase://database/" db-id "/schemas")]})
+                items  (get-in result [:resources 0 :content :structured-output :items])]
+            (is (= [""] (mapv :name items)))))
+        (testing "the empty schema segment lists the NULL-schema tables"
+          (let [{:keys [output]} (read-resource/read-resource
+                                  {:uris [(str "metabase://database/Schemaless%20DB/schema//tables")]})]
+            (is (str/includes? output "EVENTS")
+                "nil-schema table must be listed via the schema// (empty segment) route")))))))
+
+(deftest read-table-path-form-with-numeric-db-id-test
+  (testing "the db segment resolves identically in every route: a legacy numeric db id that works
+           in database/{id}/tables also works in the path-form table URI"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:name "NumSeg DB"}
+                     :model/Table    _           {:db_id db-id :schema "PUBLIC" :name "ORDERS-N" :active true}]
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://database/" db-id "/schema/PUBLIC/table/ORDERS-N")]})]
+          (is (str/includes? output "ORDERS-N")
+              "numeric db segment must resolve in the path-form table route"))))))
+
+(deftest read-resource-rejects-empty-uris-test
+  (testing "zero URIs throws (caller bug) rather than returning a silent empty success"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No URIs provided"
+                          (read-resource/read-resource {:uris []})))))
+
+(deftest read-resource-serdes-cache-is-transparent-test
+  (testing "wrapping extraction in serdes/with-cache is memoization only — the cached read_resource
+           output equals the uncached MBR from a bare extract-as-user (no staleness, read_resource
+           does no writes). extract-as-user called directly is NOT inside with-cache."
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-eid :entity_id dash-id :id} {}
+                     :model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (let [cached   (get-in (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-eid)]})
+                               [:resources 0 :content :structured-output :entity])
+              uncached (mbr/extract-as-user "Dashboard" (t2/select-one :model/Dashboard dash-id))]
+          (is (= uncached cached)
+              "cached and uncached MBR are identical"))))))
 
 (deftest read-database-schema-tables-with-slash-in-schema-name-test
   (testing "schema names containing '/' (which Postgres/Snowflake/etc. allow) survive URI round-trip"
