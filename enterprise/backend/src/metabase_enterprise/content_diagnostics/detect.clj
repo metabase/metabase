@@ -46,9 +46,7 @@
           [[model id] attrs])))
 
 (defn stale-checker
-  "Instance-wide stale candidates for every covered entity type as finding maps. `:models` is passed
-  explicitly because `find-candidates` defaults to Card+Dashboard only; never-used documents and
-  transforms arrive with a nil `last_used_at`."
+  "Instance-wide stale candidates for every covered entity type as finding maps."
   []
   (let [threshold (cd.settings/content-diagnostics-stale-threshold-days)
         cutoff    (t/minus (t/local-date) (t/days threshold))
