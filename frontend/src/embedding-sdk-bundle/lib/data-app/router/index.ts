@@ -1,4 +1,4 @@
-import { browserHistory } from "react-router";
+import { browserHistory } from "metabase/router";
 
 import {
   DATA_APP_EMBED_PREFIX,

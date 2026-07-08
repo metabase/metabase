@@ -14,6 +14,7 @@ export {
   Redirect,
   Route,
   Router,
+  browserHistory,
   createMemoryHistory,
   useRouterHistory,
   withRouter,

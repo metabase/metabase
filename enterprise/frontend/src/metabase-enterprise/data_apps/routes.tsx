@@ -1,4 +1,4 @@
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute, Route } from "metabase/router";
 
 import { AppView } from "./AppView";
 import { DataAppLayout } from "./DataAppLayout";
