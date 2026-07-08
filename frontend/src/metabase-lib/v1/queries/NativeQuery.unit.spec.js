@@ -67,7 +67,7 @@ function makeMongoQuery(query, templateTags, metadata = METADATA) {
 
 const query = makeQuery("");
 
-describe.only("NativeQuery", () => {
+describe("NativeQuery", () => {
   describe("You can access the metadata for the database a query has been written against", () => {
     describe("tables()", () => {
       it("Tables should return multiple tables", () => {
@@ -177,7 +177,7 @@ describe.only("NativeQuery", () => {
     });
   });
 
-  describe.only("Native Queries support Templates and Parameters", () => {
+  describe("Native Queries support Templates and Parameters", () => {
     describe("You can get the number of parameters via templateTags()", () => {
       it("Non templated queries don't have parameters", () => {
         const newQuery = makeQuery().setQueryText("SELECT 1");
@@ -246,7 +246,7 @@ describe.only("NativeQuery", () => {
       });
     });
 
-    describe.only("snippet template tags", () => {
+    describe("snippet template tags", () => {
       it("should parse snippet tags", () => {
         const q = makeQuery().setQueryText("{{ snippet: foo }}");
         const [
