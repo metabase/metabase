@@ -1,11 +1,11 @@
 import { useElementSize } from "@mantine/hooks";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { useGetTasksInfoQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import type { WithRouterProps } from "metabase/router";
 import { Center, Code, Flex, Stack } from "metabase/ui";
 
 import S from "./JobInfoApp.module.css";

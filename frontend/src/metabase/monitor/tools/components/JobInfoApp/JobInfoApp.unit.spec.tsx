@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupTasksInfoEndpoint } from "__support__/server-mocks";
 import {
@@ -10,6 +9,7 @@ import {
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TaskInfo } from "metabase-types/api";
 import {
