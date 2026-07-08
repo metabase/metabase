@@ -297,6 +297,56 @@ describe("scenarios > data apps", () => {
       });
     });
   });
+
+  describe("isolation", () => {
+    const openIsolationPage = () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+      H.openDataApp(APP_NAME);
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Orders overview" }).should(
+          "be.visible",
+        );
+        cy.findByRole("link", { name: "Isolation" }).click();
+      });
+    };
+
+    it("keeps the app's CSS inside the iframe", () => {
+      openIsolationPage();
+
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        // The injected <style> applies to the app's own document.
+        cy.findByTestId("css-injected").should("have.text", "ok");
+        cy.findByTestId("isolation-css-probe").should(
+          "have.css",
+          "color",
+          "rgb(0, 128, 0)",
+        );
+      });
+
+      // The aggressive `body` rule injected in the iframe does not reach the
+      // parent document.
+      cy.get("body").should(
+        "not.have.css",
+        "background-color",
+        "rgb(0, 128, 0)",
+      );
+    });
+
+    it("keeps the app's JS globals out of the parent realm (near-membrane)", () => {
+      openIsolationPage();
+
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        // The app set the global in its own realm and read it back.
+        cy.findByTestId("js-marker").should("have.text", "in-app");
+      });
+
+      // The parent window never sees the app's global.
+      cy.window().should("not.have.property", "__DATA_APP_ISOLATION_MARKER__");
+    });
+  });
 });
 
 describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
