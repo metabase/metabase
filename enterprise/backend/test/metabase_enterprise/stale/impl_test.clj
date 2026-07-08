@@ -268,6 +268,51 @@
              :sort-column    :name
              :sort-direction :asc})))))
 
+(deftest collection-ids-all-searches-instance-wide
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Dashboard {in-coll-id :id} (stale-dashboard {:name "A" :collection_id col-id})
+                 :model/Dashboard {at-root-id :id} (stale-dashboard {:name "B" :collection_id nil})
+                 :model/Dashboard {fresh-id :id} {:name           "C"
+                                                  :collection_id  col-id
+                                                  :last_viewed_at (datetime-months-ago 1)}]
+    (let [ids (into #{}
+                    (map :id)
+                    (:rows (stale/find-candidates
+                            {:collection-ids :all
+                             :cutoff-date    (date-months-ago 6)
+                             :limit          nil
+                             :offset         nil
+                             :sort-column    :name
+                             :sort-direction :asc
+                             :models         #{:model/Dashboard}})))]
+      (testing ":all finds stale content both in collections and at the root"
+        (is (contains? ids in-coll-id))
+        (is (contains? ids at-root-id)))
+      (testing "content used since the cutoff is still excluded"
+        (is (not (contains? ids fresh-id)))))))
+
+(deftest collection-set-with-nil-member-includes-root-content
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Collection {other-col-id :id} {}
+                 :model/Dashboard {in-coll-id :id} (stale-dashboard {:name "A" :collection_id col-id})
+                 :model/Dashboard {at-root-id :id} (stale-dashboard {:name "B" :collection_id nil})
+                 :model/Dashboard {elsewhere-id :id} (stale-dashboard {:name "C" :collection_id other-col-id})]
+    (let [ids (into #{}
+                    (map :id)
+                    (:rows (stale/find-candidates
+                            {:collection-ids #{col-id nil}
+                             :cutoff-date    (date-months-ago 6)
+                             :limit          nil
+                             :offset         nil
+                             :sort-column    :name
+                             :sort-direction :asc
+                             :models         #{:model/Dashboard}})))]
+      (testing "a nil member selects root-level content alongside the named collection"
+        (is (contains? ids in-coll-id))
+        (is (contains? ids at-root-id)))
+      (testing "collections outside the set are excluded"
+        (is (not (contains? ids elsewhere-id)))))))
+
 (deftest cutoff-date-is-taken-into-account
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard _ {:name           "A"

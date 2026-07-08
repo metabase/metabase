@@ -8,7 +8,10 @@
 
 (def ^:private FindStaleContentArgs
   [:map
-   [:collection-ids [:set {:doc "The set of collection IDs to search for stale content."} [:maybe :int]]]
+   [:collection-ids [:or
+                     {:doc "Collection IDs to search: a set (a nil member means the root), or :all for instance-wide."}
+                     [:= :all]
+                     [:set [:maybe :int]]]]
    [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
@@ -52,8 +55,8 @@
 
   Arguments are defined by [[FindStaleContentArgs]]:
 
-  - `collection-ids`: the set of collection IDs to look for stale content in. Non-recursive, the exact set you pass in
-  will be searched
+  - `collection-ids`: the set of collection IDs to look for stale content in (a nil member means root-level
+  content), or `:all` to search the whole instance. Non-recursive, the exact set you pass in will be searched
 
   - `cutoff-date`: if something was last accessed before this date, it is 'stale'
 
@@ -70,7 +73,8 @@
   - `:total` (the total count of stale elements that could be found if you iterated through all pages)
   "
   [{:keys [collection-ids] :as args} :- FindStaleContentArgs]
-  (when (contains? collection-ids :root) (throw (ex-info "not implemented." {:collection-ids collection-ids})))
+  (when (and (set? collection-ids) (contains? collection-ids :root))
+    (throw (ex-info "not implemented." {:collection-ids collection-ids})))
   {:rows (into []
                (comp
                 (map #(select-keys % [:id :model]))
