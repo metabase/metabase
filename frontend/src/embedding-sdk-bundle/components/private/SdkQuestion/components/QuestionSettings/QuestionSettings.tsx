@@ -46,7 +46,7 @@ const QuestionSettingsContent = ({
   ) => {
     await updateQuestion(
       (nextQuestion ?? question).updateSettings(settings).lockDisplay(),
-      { run: !!nextQuestion },
+      { run: Boolean(nextQuestion) },
     );
   };
 
