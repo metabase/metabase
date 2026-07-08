@@ -251,7 +251,7 @@
                           :db_id  (:id db)
                           ;; Schemaless tables are stored with :schema NULL; the empty URI
                           ;; segment (`schema//tables`) must match them, not the literal "".
-                          :schema (when-not (str/blank? schema-name) schema-name)
+                          :schema (u/non-blank schema-name)
                           :active true
                           {:order-by [[:%lower.name :asc]]})]
     (mbr/list-result :database-schema-tables (mbr/extract-readable "Table" tables {:page (:page query-params)}))))

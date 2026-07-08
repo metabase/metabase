@@ -19,7 +19,6 @@
   Each segment is URL-encoded. JSON-unfolded / nested fields are out of scope
   for v1."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -79,7 +78,7 @@
   [db-name schema table-name]
   (when (and db-name table-name)
     (let [db-id  (:id (resolve-database db-name))
-          schema (when (and schema (not (str/blank? schema))) schema)]
+          schema (u/non-blank schema)]
       (when db-id
         (t2/select-one :model/Table
                        :db_id db-id
