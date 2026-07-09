@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 import { getRoutePathnames, resolveTo } from "./resolve-to";
 import type { NavigateFunction, NavigateOptions, To } from "./types";
@@ -30,6 +30,13 @@ import { useRouter } from "./use-router";
 export function useNavigate(): NavigateFunction {
   const { router, location, routes } = useRouter();
 
+  // Read through a ref rather than listed as a dependency: v3 rebuilds `routes`
+  // on every transition, including a push to the pathname already showing. As a
+  // dependency it would hand back a new `navigate` after such a push, so a
+  // mounted `<Navigate>` would re-run its effect and push its target forever.
+  const routesRef = useRef(routes);
+  routesRef.current = routes;
+
   return useCallback(
     (to: To | number, options: NavigateOptions = {}) => {
       if (typeof to === "number") {
@@ -39,7 +46,7 @@ export function useNavigate(): NavigateFunction {
 
       const path = resolveTo(
         to,
-        getRoutePathnames(routes, location.pathname),
+        getRoutePathnames(routesRef.current, location.pathname),
         location.pathname,
         options.relative === "path",
       );
@@ -51,6 +58,6 @@ export function useNavigate(): NavigateFunction {
         router.push(descriptor);
       }
     },
-    [router, routes, location.pathname],
+    [router, location.pathname],
   );
 }
