@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -8,6 +7,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as domUtils from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
