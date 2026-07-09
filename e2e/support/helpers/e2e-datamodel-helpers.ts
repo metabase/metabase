@@ -805,13 +805,31 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      cy.findByTestId("header-cell").realHover();
+      hoverHeaderCell();
     }
   });
 
   if (description != null) {
     hovercard().should("contain.text", description);
   }
+}
+
+// Open the preview's column-description hovercard. After `cy.wait("@dataset")`
+// the table re-renders on a microtask (fetch resolution), so a single
+// `.realHover()` / `.trigger("mouseover")` chained off an earlier find can land
+// on a stale DOM node. On top of that, Chrome v133+ headless hit-tests CDP
+// mouse events (what `realHover` uses) differently and the HoverCard wouldn't
+// open. Re-query for each dispatch, and fire both `mouseover` (bubbles → React
+// 18 synthetic onMouseEnter for any wrapper) and `mouseenter` (for native
+// useEventListener handlers Mantine attaches directly).
+function hoverHeaderCell() {
+  const headerCell = () =>
+    cy
+      .findByTestId("header-cell")
+      .findByTestId("cell-data")
+      .should("be.visible");
+  headerCell().trigger("mouseenter", { force: true });
+  headerCell().trigger("mouseover", { force: true });
 }
 
 function verifyObjectDetailPreview({
