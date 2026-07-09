@@ -344,7 +344,7 @@ function expectSuccess(response: Cypress.Response<unknown>) {
 }
 
 function enableTableEditing() {
-  cy.findByLabelText("Editable tables").scrollIntoView().click();
+  cy.findByLabelText("Editable tables").scrollIntoView().click({ force: true });
 }
 
 function performTableEdit() {

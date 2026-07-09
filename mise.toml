@@ -35,6 +35,9 @@
 # Automatically install tools when entering the project directory
 auto_install = true
 
+# Uses the version in the tool's version file when installing
+idiomatic_version_file_enable_tools = ["bun"]
+
 [env]
 # Add bin/ to PATH so mage and other project scripts are available
 _.path = ["{{ config_root }}/bin"]
@@ -52,8 +55,7 @@ COREPACK_ENABLE_AUTO_PIN = "0"
 # This should match .nvmrc for compatibility with other version managers.
 node = "22.13.1"
 
-# Bun - for package management and running scripts
-bun = "1.3.14"
+# Bun - for package management and running scripts, installed with the version specified in package.json
 
 # Java - for Clojure backend
 # We require Eclipse *Temurin* (AdoptOpenJDK successor) for consistency.

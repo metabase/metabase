@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -10,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { PERMISSION_ERROR } from "__support__/server-mocks/constants";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,

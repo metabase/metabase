@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/router";
 import { Anchor, Badge, Flex, Loader, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -63,20 +63,7 @@ export const NotificationRunSummaryLog = ({
             </Text>
           </Tooltip>
           <Tooltip label={run.error} disabled={!hasError}>
-            <Badge
-              color={isFailing ? "feedback-negative" : undefined}
-              variant={isFailing ? "light" : "outline"}
-              radius="lg"
-              tt="none"
-              fw="normal"
-              c={isFailing ? undefined : "text-secondary"}
-              bd={
-                isFailing
-                  ? undefined
-                  : "1px solid var(--mb-color-border-neutral)"
-              }
-              style={hasError ? { cursor: "pointer" } : undefined}
-            >
+            <Badge color={isFailing ? "negative" : "positive"} variant="light">
               {isFailing ? t`Failed` : t`Successful`}
             </Badge>
           </Tooltip>

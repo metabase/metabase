@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/common/components/OnboardingStepper/types";
+import { Link } from "metabase/router";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { AddEndpointStep } from "./AddEndpointStep";
