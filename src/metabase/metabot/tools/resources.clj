@@ -614,13 +614,15 @@
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
         items        (into []
-                           (keep (fn [{:keys [id card_id action_id] :as dashcard}]
+                           (keep (fn [{:keys [id card_id action_id dashboard_tab_id] :as dashcard}]
                                    ;; action_id wins over card_id: an action button may reference
                                    ;; its backing model through card_id but renders as a button.
-                                   (if (and card_id (not action_id))
-                                     (when-let [card (get readable card_id)]
-                                       (assoc (present-card card) :dashcard_id id))
-                                     (present-non-question-dashcard dashcard))))
+                                   (when-let [item (if (and card_id (not action_id))
+                                                     (when-let [card (get readable card_id)]
+                                                       (assoc (present-card card) :dashcard_id id))
+                                                     (present-non-question-dashcard dashcard))]
+                                     (cond-> item
+                                       dashboard_tab_id (assoc :tab_id dashboard_tab_id)))))
                            dashcards)]
     (list-result :dashboard-items items query-params)))
 

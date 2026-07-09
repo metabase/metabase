@@ -610,6 +610,8 @@
    Matches Python Dashboard.llm_representation exactly."
   [{:keys [id name description verified collection dashcards]}]
   ;; Group cards by tab and sort
+  ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
+  ;; resources/fetch-dashboard-items; align on position
   (let [tabs (group-by :dashboard_tab_id dashcards)
         sorted-tabs (sort-by first tabs)
         tabs-xml (when (seq dashcards)
@@ -859,7 +861,7 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :dashcard_id :name :uri :database_id :collection_id :table_id
+  [:type :id :dashcard_id :tab_id :name :uri :database_id :collection_id :table_id
    :schema :display_name :authority_level :is_personal :path :location
    :engine :timestamp])
 

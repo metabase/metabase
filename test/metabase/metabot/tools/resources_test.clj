@@ -681,7 +681,10 @@
       (testing "items group by tab (in position order) before row/col, so tabs don't interleave"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
           (is (< (str/index-of output "First Tab Heading")
-                 (str/index-of output "Second Tab Heading"))))))))
+                 (str/index-of output "Second Tab Heading")))
+          (testing "each item carries the tab_id that add mutations accept"
+            (is (str/includes? output (str "tab_id=\"" tab1-id "\"")))
+            (is (str/includes? output (str "tab_id=\"" tab2-id "\"")))))))))
 
 (deftest read-dashboard-items-includes-virtual-dashcards-test
   (mt/with-current-user (mt/user->id :crowberto)

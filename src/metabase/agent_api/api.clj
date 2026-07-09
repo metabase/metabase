@@ -1204,6 +1204,18 @@
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:question_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
+(mr/def ::dashboard-tab
+  [:map
+   [:id   ms/PositiveInt]
+   [:name :string]])
+
+(defn- dashboard-tabs
+  "The dashboard's tabs as `{:id :name}` in display order, [] when it has none."
+  [dashboard-id]
+  (mapv #(select-keys % [:id :name])
+        (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
+                   {:order-by [[:position :asc]]})))
+
 (mr/def ::create-dashboard-response
   [:map
    [:id              ms/PositiveInt]
@@ -1212,7 +1224,8 @@
    [:collection_id   [:maybe ms/PositiveInt]]
    [:collection_path :string]
    [:description     [:maybe :string]]
-   [:dashcard_ids    [:sequential ms/PositiveInt]]])
+   [:dashcard_ids    [:sequential ms/PositiveInt]]
+   [:tabs            [:sequential ::dashboard-tab]]])
 
 (api.macros/defendpoint :post "/v1/dashboard" :- ::create-dashboard-response
   "Create a new dashboard, optionally populated with saved questions.
@@ -1274,10 +1287,11 @@
        :collection_id   (:collection_id dash)
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
-       ;; `vec` because `select-fn-vec` returns nil (not []) when the dashboard has no cards, and
-       ;; the response schema wants a sequence.
-       :dashcard_ids    (vec (t2/select-fn-vec :id :model/DashboardCard :dashboard_id (:id dash)
-                                               {:order-by [[:row :asc] [:col :asc]]}))})))
+       ;; select-fn-vec returns nil, not [], when there are no rows
+       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id (:id dash)
+                                              {:order-by [[:row :asc] [:col :asc]]})
+                            [])
+       :tabs            (dashboard-tabs (:id dash))})))
 
 ;;; ------------------------------------------------- Update Dashboard -----------------------------------------------
 
@@ -1329,7 +1343,8 @@
 
 (mr/def ::update-dashboard-response
   "Returned by `update_dashboard`. `:dashcard_ids` is the post-mutation list of dashcard
-  ids in row/col order so the LLM can confirm what landed on the dashboard."
+  ids in row/col order so the LLM can confirm what landed on the dashboard. `:tabs` lists
+  the dashboard's tabs in display order — the ids a mutation's `tab_id` accepts."
   [:map
    [:id              ms/PositiveInt]
    [:name            ms/NonBlankString]
@@ -1337,7 +1352,8 @@
    [:collection_path :string]
    [:description     [:maybe :string]]
    [:archived        :boolean]
-   [:dashcard_ids    [:sequential ms/PositiveInt]]])
+   [:dashcard_ids    [:sequential ms/PositiveInt]]
+   [:tabs            [:sequential ::dashboard-tab]]])
 
 (defn- insert-new-dashcard!
   "Insert a new dashcard at `position-fields` on `tab-id` and record it in the mutation `state`.
@@ -1510,7 +1526,8 @@
                              "side; a full-width heading always starts its own row, so lead each "
                              "section with add_heading to build a sectioned layout. "
                              "Add actions take an optional tab_id; omitted, new cards land on the "
-                             "dashboard's first tab. "
+                             "dashboard's first tab. The response tabs lists the dashboard's tabs "
+                             "in display order. "
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
@@ -1573,10 +1590,11 @@
        :collection_path (collection-path (:collection_id updated))
        :description     (:description updated)
        :archived        (boolean (:archived updated))
-       ;; `vec` for the same nil-when-empty reason as the create_dashboard response, and here the
-       ;; empty case is real: a `remove` mutation can clear the dashboard.
-       :dashcard_ids    (vec (t2/select-fn-vec :id :model/DashboardCard :dashboard_id id
-                                               {:order-by [[:row :asc] [:col :asc]]}))})))
+       ;; select-fn-vec returns nil, not [], when there are no rows
+       :dashcard_ids    (or (t2/select-fn-vec :id :model/DashboardCard :dashboard_id id
+                                              {:order-by [[:row :asc] [:col :asc]]})
+                            [])
+       :tabs            (dashboard-tabs id)})))
 
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 

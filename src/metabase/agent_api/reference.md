@@ -516,7 +516,8 @@ Response:
   "name": "Revenue Dashboard",
   "collection_id": 7,
   "description": "...",
-  "dashcard_ids": [101, 102]
+  "dashcard_ids": [101, 102],
+  "tabs": []
 }
 ```
 
@@ -537,7 +538,8 @@ Dashcard mutations go under `dashcards` and are applied in order:
 - `move` moves a dashcard by `dashcard_id` to `position` `"top"` or `"bottom"`
 
 The add actions also take an optional `tab_id` (a tab on this dashboard);
-omitted, new cards land on the dashboard's first tab.
+omitted, new cards land on the dashboard's first tab. The response `tabs`
+lists the dashboard's tabs in display order.
 
 New cards are auto-placed into the first free grid slot, scanning
 left-to-right then top-to-bottom, so two half-width cards can end up side by
@@ -572,7 +574,8 @@ mutations, in row/col order — new headings and text cards included):
   "collection_path": "Our analytics / Finance",
   "description": "...",
   "archived": false,
-  "dashcard_ids": [103, 102, 104]
+  "dashcard_ids": [103, 102, 104],
+  "tabs": [{ "id": 9, "name": "Overview" }, { "id": 10, "name": "Detail" }]
 }
 ```
 

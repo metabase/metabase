@@ -1460,8 +1460,11 @@
                    :model/Card          {card-id :id} {:name "on tab two" :dataset_query (orders-count-query) :display :table}
                    :model/DashboardCard _             {:dashboard_id dash-id :dashboard_tab_id tab2-id :card_id card-id
                                                        :row 0 :col 0 :size_x 24 :size_y 4}]
-      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
-                            {:dashcards [{:action "add_heading" :text "Tab one section"}]})
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add_heading" :text "Tab one section"}]})]
+        (is (=? {:tabs [{:id tab1-id :name "One"} {:id tab2-id :name "Two"}]}
+                resp)
+            "the response lists the tabs in display order"))
       (is (=? {:dashboard_tab_id tab1-id
                ;; the full-width card on tab 2 must not block row 0 of tab 1
                :row              0}
