@@ -385,20 +385,13 @@
 
 (defmethod driver/upload-type->database-type :snowflake
   [_driver upload-type]
-  ;; Data is loaded with multi-row `INSERT ... VALUES` (the generic `:sql-jdbc` path); Snowflake's fast bulk
-  ;; path (`PUT` + `COPY INTO` from a stage) is unavailable because [[set-put-get]] enforces
-  ;; `enablePutGet=false` on every connection (#73578).
-  ;;
-  ;; `TIMESTAMP_NTZ` / `TIMESTAMP_TZ` mirror what [[database-type->base-type]] reads back, so inferred
-  ;; types round-trip through sync.
-  ;;
-  ;; `NUMBER IDENTITY(1, 1) ORDER` is Snowflake's auto-incrementing PK. `ORDER` keeps generated ids
-  ;; sequential in insertion order; the default (`NOORDER`) hands out values from per-cluster ranges,
-  ;; leaving large gaps between separate inserts (e.g. appends jump from 1 to 101).
   (case upload-type
     :metabase.upload/varchar-255              [[:varchar 255]]
     :metabase.upload/text                     [:text]
     :metabase.upload/int                      [:bigint]
+    ;; `_mb_row_id` must follow insertion order, but the default `NOORDER` allocates ids from per-cluster
+    ;; ranges, leaving gaps or even out-of-order values between inserts. `ORDER` fixes that by serializing
+    ;; id generation -- an acceptable cost, since uploads insert from a single connection.
     :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1] :order]
     :metabase.upload/float                    [:double]
     :metabase.upload/boolean                  [:boolean]
@@ -428,26 +421,23 @@
 
 (defmethod driver/insert-into! :snowflake
   [driver db-id table-name column-names values]
+  ;; Snowflake's fast bulk path (`PUT` + `COPY INTO` from a stage) is unavailable because [[set-put-get]]
+  ;; enforces `enablePutGet=false` on every connection (#73578), so use the generic multi-row `INSERT`.
   ((get-method driver/insert-into! :sql-jdbc)
    driver db-id table-name column-names
    (map #(mapv temporal-bind->string %) values)))
 
 (defmethod driver/add-columns! :snowflake
   [driver db-id table-name column-definitions & args]
-  ;; Snowflake rejects the postgres-style repeated `ADD COLUMN "a" ..., ADD COLUMN "b" ...` clauses the
-  ;; generic implementation generates ("syntax error ... unexpected 'COLUMN'"), so issue one statement per
-  ;; column instead.
+  ;; Snowflake doesn't support adding multiple columns in one statement, so add them one at a time
   (let [add-column! (get-method driver/add-columns! :sql-jdbc)]
     (doseq [[column definition] column-definitions]
       (apply add-column! driver db-id table-name {column definition} args))))
 
 (defmethod driver/allowed-promotions :snowflake
   [_driver]
-  ;; Snowflake's `ALTER COLUMN` can only widen VARCHAR length or NUMBER precision; it cannot convert
-  ;; `NUMBER(38,0)` to `DOUBLE`, so the default int -> float promotion would fail mid-append with a raw SQL
-  ;; error.
-  ;;
-  ;; An empty map instead rejects such files upfront with a friendly message (same as Redshift).
+  ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
+  ;; to a different one, so no promotions are possible
   {})
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
