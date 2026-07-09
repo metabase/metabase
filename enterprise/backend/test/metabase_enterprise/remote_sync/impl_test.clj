@@ -117,20 +117,16 @@
                   "exist on this instance. Make sure all referenced databases and other dependencies are set up "
                   "before importing.")
              (impl/source-error-message e)))))
-  (testing "trailing whitespace in a referenced name is visible because names are backtick-quoted (GHY-3992)"
-    (let [e (ex-info "Database 'My Database ' was not found"
-                     {:path  "Database My Database "
-                      :model "Database"
-                      :id    "My Database "
-                      :error :metabase-enterprise.serialization.v2.load/not-found})]
-      (is (str/includes? (impl/source-error-message e) "Database (`My Database `)"))))
-  (testing "trailing whitespace in a referenced name is visible because names are backtick-quoted (GHY-3992)"
-    (let [e (ex-info "Database 'My Database ' was not found"
-                     {:path  "Database My Database "
-                      :model "Database"
-                      :id    "My Database "
-                      :error :metabase-enterprise.serialization.v2.load/not-found})]
-      (is (str/includes? (impl/source-error-message e) "Database (`My Database `)")))))
+  (testing "surrounding whitespace in a referenced name is visible because names are backtick-quoted (GHY-3992)"
+    (doseq [db-name ["My Database " " My Database" "My Database"]]
+      (let [e (ex-info (format "Database '%s' was not found" db-name)
+                       {:path  (str "Database " db-name)
+                        :model "Database"
+                        :id    db-name
+                        :error :metabase-enterprise.serialization.v2.load/not-found})]
+        (is (str/includes? (impl/source-error-message e)
+                           (format "Database (`%s`)" db-name))
+            (format "expected %s to be quoted verbatim" (pr-str db-name)))))))
 
 (deftest source-error-message-database-not-found-test
   (testing "source-error-message names the card and the missing database for FK database-not-found errors"

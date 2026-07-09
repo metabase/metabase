@@ -123,7 +123,7 @@
     entity-name (str " " (quoted entity-name))
     id          (str " (" (quoted id) ")")))
 
-(defn missing-reference-message
+(defn- missing-reference-message
   "Renders the user-facing message for an import that references content absent from this instance.
 
   `missing` is `{:model :id :name}` describing the content that could not be found; `referrer` is the same shape
@@ -141,7 +141,7 @@
     (cond-> s
       (not (str/ends-with? s ".")) (str "."))))
 
-(defn load-failure-message
+(defn- load-failure-message
   "Renders the user-facing message for content that could not be written to the appdb.
 
   `entity` is `{:model :id :name}` describing the content that failed; `reason` is the underlying error text, and

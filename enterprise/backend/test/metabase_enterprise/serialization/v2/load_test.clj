@@ -1247,20 +1247,18 @@
                                                  :entity_id     "0123456789abcdef_0123"
                                                  :name          "Some card"
                                                  :table_id      ["bad-db" nil "CUSTOMERS"]
-                                                 :visualization_settings {}}])]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"was not found"
-                                  (serdes.load/load-metabase! ingestion)))
+                                                 :visualization_settings {}}])
+                e         (try
+                            (serdes.load/load-metabase! ingestion)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e e))]
+            (is (some? e))
+            (is (re-find #"was not found" (ex-message e)))
             (testing "the not-found error names the entity holding the dangling reference (GHY-3992)"
-              (let [e (try
-                        (serdes.load/load-metabase! ingestion)
-                        nil
-                        (catch clojure.lang.ExceptionInfo e e))]
-                (is (some? e))
-                (is (= {:model "Database" :id "bad-db"}
-                       (select-keys (ex-data e) [:model :id])))
-                (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
-                       (:referrer (ex-data e))))))))
+              (is (= {:model "Database" :id "bad-db"}
+                     (select-keys (ex-data e) [:model :id])))
+              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                     (:referrer (ex-data e)))))))
         ;; `result-metadata-deps` derives deps only from each entry's `:field_ref`, never from its `:table_id`.
         ;; So a result_metadata `:table_id` naming an absent database gets past dependency resolution and only
         ;; fails inside `serdes/load-one!`, where `import-table-fk` raises ::database-not-found. (The Card's own
