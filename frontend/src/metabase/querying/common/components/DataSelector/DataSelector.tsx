@@ -456,14 +456,8 @@ export class UnconnectedDataSelector extends Component<
         ...this.state,
         ...newState,
       });
-      // This is a partial state update that React merges into the current
-      // state. The cast is needed only because `Partial` widens the id fields
-      // with `undefined`, which callers never actually pass.
       this.setState(
-        { ...newState, ...computedState } as Pick<
-          DataSelectorState,
-          keyof DataSelectorState
-        >,
+        (prevState) => ({ ...prevState, ...newState, ...computedState }),
         resolve,
       );
     });
