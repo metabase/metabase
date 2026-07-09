@@ -38,7 +38,7 @@
   (testing "post retries a failing http call and returns once one succeeds"
     (let [calls (atom 0)]
       (binding [retry/*test-time-config-hook*
-                (fn [config] (assoc config :max-retries 3 :initial-interval-millis 1 :max-interval-millis 1))]
+                (fn [config] (assoc config :max-retries 3 :initial-interval-millis 1 :max-interval-millis 10))]
         (mt/with-dynamic-fn-redefs [http/post (fn [_ _]
                                                 (if (< (swap! calls inc) 3)
                                                   (throw (ex-info "boom" {:status 503}))
