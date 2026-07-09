@@ -199,6 +199,12 @@
   []
   (workspace/list-workspaces))
 
+(defn workspaces-enabled-database-ids
+  "IDs of all databases eligible for workspaces (see
+   [[workspace-database/database-eligible-for-workspaces?]]), sorted."
+  []
+  (workspace-database/workspaces-enabled-database-ids))
+
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
 
 (defn create-workspace!

@@ -6,7 +6,6 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import {
   Form,
   FormCheckbox,
-  FormCheckboxGroup,
   FormErrorMessage,
   FormProvider,
   FormSelect,
@@ -15,12 +14,14 @@ import {
 } from "metabase/forms";
 import {
   Alert,
+  Box,
   Button,
-  Checkbox,
+  FixedSizeIcon,
   Group,
   Icon,
   Modal,
   Stack,
+  Text,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
@@ -69,21 +70,18 @@ export function NewWorkspaceModal({
 
 type NewWorkspaceFormValues = {
   name: string;
-  database_ids: string[];
   instance_id: string | undefined;
   initialize_instance: boolean;
 };
 
 const NEW_WORKSPACE_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
-  database_ids: Yup.array().of(Yup.string()).min(1, Errors.required),
   instance_id: Yup.string(),
   initialize_instance: Yup.boolean(),
 });
 
 const INITIAL_VALUES: NewWorkspaceFormValues = {
   name: "",
-  database_ids: [],
   instance_id: undefined,
   initialize_instance: true,
 };
@@ -108,13 +106,11 @@ function NewWorkspaceForm({
 
   const handleSubmit = async ({
     name,
-    database_ids,
     instance_id,
     initialize_instance,
   }: NewWorkspaceFormValues) => {
     const workspace = await createWorkspace({
       name,
-      database_ids: database_ids.map(Number),
       instance_id: instance_id ? Number(instance_id) : undefined,
     }).unwrap();
     await fetchWorkspaces();
@@ -151,17 +147,7 @@ function NewWorkspaceForm({
             placeholder={t`My workspace`}
             data-autofocus
           />
-          <FormCheckboxGroup name="database_ids" label={t`Databases`}>
-            <Stack gap="sm" mt="sm">
-              {databases.map((database) => (
-                <Checkbox
-                  key={database.id}
-                  value={String(database.id)}
-                  label={database.name}
-                />
-              ))}
-            </Stack>
-          </FormCheckboxGroup>
+          <DatabasesSection databases={databases} />
           {instances.length > 0 && (
             <InstanceSection instances={instances} workspaces={workspaces} />
           )}
@@ -173,6 +159,29 @@ function NewWorkspaceForm({
         </Stack>
       </Form>
     </FormProvider>
+  );
+}
+
+type DatabasesSectionProps = {
+  databases: Database[];
+};
+
+function DatabasesSection({ databases }: DatabasesSectionProps) {
+  return (
+    <Stack gap="sm" role="group" aria-label={t`Databases`}>
+      <Box>
+        <Text fw="bold">{t`Databases`}</Text>
+        <Text c="text-secondary" fz="sm">
+          {t`Every database with workspaces enabled will be added to this workspace.`}
+        </Text>
+      </Box>
+      {databases.map((database) => (
+        <Group key={database.id} gap="xs" wrap="nowrap" c="text-secondary">
+          <FixedSizeIcon name="database" aria-hidden />
+          <Text c="inherit">{database.name}</Text>
+        </Group>
+      ))}
+    </Stack>
   );
 }
 

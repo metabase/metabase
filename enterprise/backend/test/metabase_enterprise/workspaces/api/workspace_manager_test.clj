@@ -94,6 +94,26 @@
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
 
+(deftest create-workspace-defaults-to-enabled-databases-test
+  (testing "POST / without database_ids attaches every database with workspaces enabled"
+    (mt/with-temp [:model/Database {enabled-1-id :id} {:engine   :postgres
+                                                       :details  {}
+                                                       :settings {:database-enable-workspaces true}}
+                   :model/Database {enabled-2-id :id} {:engine   :postgres
+                                                       :details  {}
+                                                       :settings {:database-enable-workspaces true}}
+                   :model/Database _ {:engine :postgres :details {}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (is (=? {:databases [{:database_id enabled-1-id :status "provisioned"}
+                               {:database_id enabled-2-id :status "provisioned"}]}
+                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                        {:name "All enabled"})))))))
+  (testing "POST / without database_ids is rejected when no database has workspaces enabled"
+    (mt/with-temp [:model/Database _ {:engine :postgres :details {}}]
+      (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                            {:name "Nope"}))))
+
 (deftest metadata-export-test
   (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"
     (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}

@@ -50,7 +50,8 @@ export type Workspace = {
 
 export type CreateWorkspaceRequest = {
   name: string;
-  database_ids: DatabaseId[];
+  // when omitted, the workspace gets every database with workspaces enabled
+  database_ids?: DatabaseId[];
   instance_id?: WorkspaceInstanceId | null;
 };
 

@@ -29,7 +29,8 @@
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]
+   ;; when omitted, the workspace gets every database with workspaces enabled
+   [:database_ids {:optional true} [:sequential {:min 1} ::lib.schema.id/database]]
    [:instance_id  {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private UpdateWorkspaceParams
@@ -155,19 +156,24 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces), provision it (blocking), and assign it to the child instance
-   with `instance_id`, if given (404 when the instance doesn't exist — checked
-   before any provisioning work). An instance already hosting another workspace
-   is re-pointed at the new one."
+   for workspaces) — or, when `database_ids` is omitted, to every database with
+   workspaces enabled — provision it (blocking), and assign it to the child
+   instance with `instance_id`, if given (404 when the instance doesn't exist —
+   checked before any provisioning work). An instance already hosting another
+   workspace is re-pointed at the new one."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (let [instance-id (:instance_id params)]
+  (let [instance-id  (:instance_id params)
+        database-ids (or (:database_ids params)
+                         (ws/workspaces-enabled-database-ids))]
+    (api/check-400 (seq database-ids) "No databases have workspaces enabled.")
     (when instance-id
       (ws.instances/check-instance-exists! instance-id))
     (let [workspace (ws/create-workspace!
                      (-> params
                          (dissoc :instance_id)
-                         (assoc :creator_id api/*current-user-id*)))]
+                         (assoc :database_ids database-ids
+                                :creator_id api/*current-user-id*)))]
       (when instance-id
         (ws.instances/assign-to-workspace! instance-id (:id workspace)))
       (present-workspace (ws/get-workspace (:id workspace))))))
