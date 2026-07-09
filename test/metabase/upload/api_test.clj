@@ -48,6 +48,17 @@
                                      {:file oversized})))
         (is (zero? @calls) "the endpoint body should never run")))))
 
+(deftest csv-upload-at-size-cap-test
+  (testing "POST /api/upload/csv accepts a file of exactly the size cap, guarding against an off-by-one"
+    (let [at-cap (byte-array upload/max-upload-size-bytes)
+          calls  (atom 0)]
+      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200, :body 1})]
+        (mt/user-http-request :crowberto :post 200 "upload/csv"
+                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                              [[:collection_id "root"]
+                               [:file at-cap]])
+        (is (= 1 @calls) "the endpoint body should run")))))
+
 (deftest csv-upload-too-many-parts-test
   (testing "POST /api/upload/csv rejects requests with too many multipart parts with a 413, before the body reaches the handler"
     (let [calls (atom 0)]

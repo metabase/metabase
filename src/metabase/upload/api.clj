@@ -47,7 +47,7 @@
    {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
    :- [:map
        [:multipart-params
-        [:map
+        [:map {:closed true}
          ["collection_id" [:maybe
                            {:decode/api (fn [collection-id]
                                           (when-not (= collection-id "root")

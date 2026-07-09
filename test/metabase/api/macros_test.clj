@@ -98,7 +98,7 @@
             (neat))
     {:route {:path "/move/:id", :regexes {:id #"[abc]{4}"}}}))
 
-(deftest ^:parallel multipart-tempfile-cleanup-test
+(deftest ^:parallel multipart-tempfile-cleanup-on-throw-test
   (testing "tempfiles are deleted when the handler throws, e.g. on a param validation 400"
     (let [file-1  (java.io.File/createTempFile "cleanup-test" nil)
           file-2  (java.io.File/createTempFile "cleanup-test" nil)
@@ -111,7 +111,23 @@
                      (throw (ex-info "Invalid request" {:status-code 400}))))]
       (is (thrown-with-msg? Exception #"Invalid request" (handler request)))
       (is (not (.exists file-1)))
-      (is (not (.exists file-2)))))
+      (is (not (.exists file-2))))))
+
+(deftest ^:parallel multipart-tempfile-cleanup-on-raise-test
+  (testing "async arity: tempfiles are deleted when the handler raises"
+    (let [file    (java.io.File/createTempFile "cleanup-test" nil)
+          request {:multipart-params {"file" {:filename "a.csv", :tempfile file}}}
+          raised  (atom nil)
+          handler (api.macros/wrap-multipart-tempfile-cleanup
+                   (fn [_request _respond raise]
+                     (raise (ex-info "Invalid request" {:status-code 400}))))]
+      (handler request
+               (fn [_response] (is false "respond should not be called"))
+               (fn [e] (reset! raised e)))
+      (is (some? @raised))
+      (is (not (.exists file))))))
+
+(deftest ^:parallel multipart-tempfile-preserved-on-success-test
   (testing "tempfiles are left alone when the handler completes (it owns and deletes what it consumes)"
     (let [file    (java.io.File/createTempFile "cleanup-test" nil)
           request {:multipart-params {"file" {:filename "a.csv", :tempfile file}}}
