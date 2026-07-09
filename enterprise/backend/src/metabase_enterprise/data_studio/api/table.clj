@@ -7,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collection]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
@@ -129,12 +128,7 @@
       (when (seq table-ids-to-update)
         (t2/update! :model/Table :id [:in table-ids-to-update]
                     {:collection_id nil
-                     :is_published  false})
-        ;; Publish events for audit log and remote sync tracking
-        (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
-          (doseq [table updated-tables]
-            (events/publish-event! :event/table-unpublish {:object  table
-                                                           :user-id api/*current-user-id*})))))))
+                     :is_published  false})))))
 
 ;;; ------------------------------------------------ Response Schemas ------------------------------------------------
 
@@ -177,12 +171,7 @@
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in table-ids-to-update]
                   {:collection_id (:id target-collection)
-                   :is_published  true})
-      ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-publish {:object  table
-                                                       :user-id api/*current-user-id*}))))
+                   :is_published  true}))
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
@@ -202,12 +191,7 @@
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in table-ids-to-update]
                   {:collection_id nil
-                   :is_published  false})
-      ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-unpublish {:object  table
-                                                         :user-id api/*current-user-id*}))))
+                   :is_published  false}))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes
