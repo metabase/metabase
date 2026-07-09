@@ -1,8 +1,14 @@
-import type { ResizableProps } from "react-resizable";
+import type { ResizableProps, ResizeCallbackData } from "react-resizable";
 
 import { act, render, screen } from "__support__/ui";
 
 import { SidebarResizableBox } from "./SidebarResizableBox";
+
+const RESIZE_CALLBACK_DATA: ResizeCallbackData = {
+  size: { width: 600, height: 0 },
+  node: document.createElement("div"),
+  handle: "w",
+};
 
 let latestResizableBoxProps: ResizableProps | null = null;
 
@@ -32,11 +38,10 @@ describe("SidebarResizableBox", () => {
 
     expect(screen.getByTestId("resizable-box")).toBeInTheDocument();
     act(() => {
-      latestResizableBoxProps?.onResize?.({} as React.SyntheticEvent, {
-        size: { width: 600, height: 0 },
-        node: {} as HTMLElement,
-        handle: "w",
-      });
+      latestResizableBoxProps?.onResize?.(
+        {} as React.SyntheticEvent,
+        RESIZE_CALLBACK_DATA,
+      );
     });
 
     rerender(
@@ -67,5 +72,43 @@ describe("SidebarResizableBox", () => {
     );
 
     expect(latestResizableBoxProps?.width).toBe(560);
+  });
+
+  it("disables text selection on body while resizing", () => {
+    const onResizeStart = jest.fn();
+    const onResizeStop = jest.fn();
+
+    render(
+      <SidebarResizableBox
+        containerWidth={1200}
+        defaultWidth={512}
+        onResizeStart={onResizeStart}
+        onResizeStop={onResizeStop}
+      >
+        <div>{"Sidebar content"}</div>
+      </SidebarResizableBox>,
+    );
+
+    expect(document.body.className).toBe("");
+
+    act(() => {
+      latestResizableBoxProps?.onResizeStart?.(
+        {} as React.SyntheticEvent,
+        RESIZE_CALLBACK_DATA,
+      );
+    });
+
+    expect(document.body.className).not.toBe("");
+    expect(onResizeStart).toHaveBeenCalled();
+
+    act(() => {
+      latestResizableBoxProps?.onResizeStop?.(
+        {} as React.SyntheticEvent,
+        RESIZE_CALLBACK_DATA,
+      );
+    });
+
+    expect(document.body.className).toBe("");
+    expect(onResizeStop).toHaveBeenCalled();
   });
 });

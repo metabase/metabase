@@ -33,6 +33,16 @@ export function SidebarResizableBox({
     setSidebarWidth(data.size.width);
   };
 
+  const handleResizeStart = () => {
+    document.body.classList.add(S.noSelect);
+    onResizeStart?.();
+  };
+
+  const handleResizeStop = () => {
+    document.body.classList.remove(S.noSelect);
+    onResizeStop?.();
+  };
+
   return (
     <ResizableBox
       className={S.resizableBox}
@@ -42,9 +52,9 @@ export function SidebarResizableBox({
       axis="x"
       resizeHandles={["w"]}
       handle={<ResizeHandle handleAxis="w" />}
-      onResizeStart={onResizeStart}
+      onResizeStart={handleResizeStart}
       onResize={handleResize}
-      onResizeStop={onResizeStop}
+      onResizeStop={handleResizeStop}
     >
       {children}
     </ResizableBox>
