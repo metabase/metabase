@@ -256,7 +256,7 @@
                                                   (str/join ", " (sort (map name (keys-to-strip ingested)))))
                                           ""))
                                 (-> (path-error-data ::load-failure expanding path)
-                                    (assoc :referrer (entity-reference rebuilt-path ingested))
+                                    (assoc :entity (entity-reference rebuilt-path ingested))
                                     (cond-> stripped? (assoc :stripped-keys (keys-to-strip ingested))))
                                 e))))))))))
 

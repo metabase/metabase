@@ -1294,9 +1294,9 @@
             (testing "the root cause carries the missing database name"
               (is (some? root))
               (is (= "absent-db" (:db-name (ex-data root)))))
-            (testing "the outer load-failure names the referring card"
+            (testing "the outer load-failure names the card that failed to load"
               (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
-                     (:referrer (ex-data e)))))))))))
+                     (:entity (ex-data e)))))))))))
 
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)

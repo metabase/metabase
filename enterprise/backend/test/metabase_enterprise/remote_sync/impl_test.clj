@@ -139,8 +139,8 @@
                           :db-name  "clickhouse"
                           :error    :metabase.models.serialization.resolve.db/database-not-found})
           e     (ex-info "Failed to load into database for Card abc123"
-                         {:path     "Card abc123"
-                          :referrer {:model "Card" :id "abc123" :name "Some card"}}
+                         {:path   "Card abc123"
+                          :entity {:model "Card" :id "abc123" :name "Some card"}}
                          cause)]
       (is (= (str "Import failed: Card `Some card` (`abc123`) references Database (`clickhouse`), which does not "
                   "exist on this instance. Make sure all referenced databases and other dependencies are set up "
@@ -153,6 +153,57 @@
           middle (ex-info "wrapped by an intervening helper" {} root)
           e      (ex-info "Failed to load into database for Card abc123" {:path "Card abc123"} middle)]
       (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)")))))
+
+(deftest source-error-message-load-failure-test
+  (testing "source-error-message names the entity and the underlying reason (GHY-3992)"
+    (let [cause (ex-info "NOT NULL constraint failed: report_card.display" {})
+          e     (ex-info "Failed to load into database for Card abc123"
+                         {:path   "Card abc123"
+                          :entity {:model "Card" :id "abc123" :name "Orders by Month"}
+                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (= (str "Import failed: could not save Card `Orders by Month` (`abc123`). "
+                  "NOT NULL constraint failed: report_card.display.")
+             (impl/source-error-message e)))))
+  (testing "a reason that already ends in a period is not double-punctuated"
+    (let [e (ex-info "Failed to load into database for Card abc123"
+                     {:entity {:model "Card" :id "abc123" :name "Orders by Month"}
+                      :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                     (ex-info "Something went wrong." {}))]
+      (is (str/ends-with? (impl/source-error-message e) "went wrong."))))
+  (testing "a load-failure with no cause omits the reason clause"
+    (let [e (ex-info "Failed to load into database for Card abc123"
+                     {:entity {:model "Card" :id "abc123" :name "Orders by Month"}
+                      :error  :metabase-enterprise.serialization.v2.load/load-failure})]
+      (is (= "Import failed: could not save Card `Orders by Month` (`abc123`)."
+             (impl/source-error-message e)))))
+  (testing "stripped keys are reported, since a partial row may have been committed (GHY-3992)"
+    (let [cause (ex-info "some db error" {})
+          e     (ex-info "Failed to load into database for Dashboard xyz"
+                         {:path          "Dashboard xyz"
+                          :entity        {:model "Dashboard" :id "xyz" :name "Sales"}
+                          :stripped-keys #{:parameters :dashcards}
+                          :error         :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (= (str "Import failed: could not save Dashboard `Sales` (`xyz`). some db error. "
+                  "It may have been saved without: `dashcards`, `parameters`.")
+             (impl/source-error-message e)))))
+  (testing "a database-not-found cause still wins over the generic load-failure branch"
+    (let [cause (ex-info "table id present, but database not found: [ch nil t]"
+                         {:db-name "ch"
+                          :error   :metabase.models.serialization.resolve.db/database-not-found})
+          e     (ex-info "Failed to load into database for Card abc123"
+                         {:entity {:model "Card" :id "abc123" :name "Some card"}
+                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (str/includes? (impl/source-error-message e) "references Database (`ch`)"))))
+  (testing "a tenant-collection cause still wins over the generic load-failure branch"
+    (let [cause (ex-info "Can't create a tenant collection without tenants enabled" {})
+          e     (ex-info "Failed to load into database for Collection abc"
+                         {:entity {:model "Collection" :id "abc"}
+                          :error  :metabase-enterprise.serialization.v2.load/load-failure}
+                         cause)]
+      (is (str/includes? (impl/source-error-message e) "tenants feature is disabled")))))
 
 (deftest source-error-message-ingest-errors-test
   (testing "source-error-message lists each unreadable file with its parse reason (GHY-3887)"

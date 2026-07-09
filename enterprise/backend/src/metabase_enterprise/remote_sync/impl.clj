@@ -134,6 +134,28 @@
             (format "%s references %s, which" (describe-entity referrer) (describe-entity missing))
             (describe-entity missing))))
 
+(defn- sentence
+  "Terminates `s` with a period unless it already ends with one. Returns nil for blank input."
+  [s]
+  (when (seq s)
+    (cond-> s
+      (not (str/ends-with? s ".")) (str "."))))
+
+(defn load-failure-message
+  "Renders the user-facing message for content that could not be written to the appdb.
+
+  `entity` is `{:model :id :name}` describing the content that failed; `reason` is the underlying error text, and
+  may be nil. `stripped-keys`, when present, names the keys that were removed to break a circular dependency —
+  a partial row for `entity` may have been committed."
+  [{:keys [entity reason stripped-keys]}]
+  (->> [(format "Import failed: could not save %s." (describe-entity entity))
+        (sentence reason)
+        (when (seq stripped-keys)
+          (format "It may have been saved without: %s."
+                  (str/join ", " (map (comp quoted name) (sort stripped-keys)))))]
+       (remove nil?)
+       (str/join " ")))
+
 (defn- cause-with-error
   "Returns the first exception in `e`'s cause chain whose ex-data `:error` is `error-type`, or nil."
   [e error-type]
@@ -175,9 +197,16 @@
         (missing-reference-message {:missing  {:model model :id id}
                                     :referrer referrer}))
 
+      ;; the entity that failed to load is the one holding the reference to the absent database
       missing-db
       (missing-reference-message {:missing  {:model "Database" :id (:db-name (ex-data missing-db))}
-                                  :referrer (:referrer (ex-data e))})
+                                  :referrer (:entity (ex-data e))})
+
+      (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/load-failure)
+      (let [{:keys [entity stripped-keys]} (ex-data e)]
+        (load-failure-message {:entity        entity
+                               :reason        (some-> e ex-cause ex-message)
+                               :stripped-keys stripped-keys}))
 
       (seq (:ingest-errors (ex-data e)))
       (let [ingest-errors (:ingest-errors (ex-data e))]
