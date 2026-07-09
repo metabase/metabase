@@ -71,7 +71,7 @@ export const BugReportModal = ({
               data-autofocus
               placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
               minRows={5}
-              mb="lg"
+              mb="md"
             />
             <Box
               bg={"accent-gray-light"}

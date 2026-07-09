@@ -58,7 +58,7 @@ export const DownloadDiagnosticModal = ({
           data-autofocus
           placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
           minRows={5}
-          mb="lg"
+          mb="md"
         />
         <Text>
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}

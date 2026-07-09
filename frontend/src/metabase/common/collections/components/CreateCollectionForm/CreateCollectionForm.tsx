@@ -140,7 +140,7 @@ function CreateCollectionForm({
               label={t`Description`}
               placeholder={t`It's optional but oh, so helpful`}
               minRows={5}
-              mb="lg"
+              mb="md"
               nullable
             />
             {showCollectionPicker && (

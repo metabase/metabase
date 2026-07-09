@@ -90,7 +90,7 @@ function SnippetFormInner({
             autosize={false}
             resize="vertical"
             rows={5}
-            mb="lg"
+            mb="md"
           />
           <FormInput
             name="name"
