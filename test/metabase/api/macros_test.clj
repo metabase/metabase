@@ -96,6 +96,29 @@
             (neat))
     {:route {:path "/move/:id", :regexes {:id #"[abc]{4}"}}}))
 
+(deftest ^:parallel multipart-tempfile-cleanup-test
+  (testing "tempfiles are deleted when the handler throws, e.g. on a param validation 400"
+    (let [file-1  (java.io.File/createTempFile "cleanup-test" nil)
+          file-2  (java.io.File/createTempFile "cleanup-test" nil)
+          request {:multipart-params {"file"     {:filename "a.csv", :tempfile file-1}
+                                      ;; duplicate part names arrive as a vector of values
+                                      "sneaky"   [{:filename "b.csv", :tempfile file-2}]
+                                      "some_id"  "123"}}
+          handler (api.macros/wrap-multipart-tempfile-cleanup
+                   (fn [_request]
+                     (throw (ex-info "Invalid request" {:status-code 400}))))]
+      (is (thrown-with-msg? Exception #"Invalid request" (handler request)))
+      (is (not (.exists file-1)))
+      (is (not (.exists file-2)))))
+  (testing "tempfiles are left alone when the handler completes (it owns and deletes what it consumes)"
+    (let [file    (java.io.File/createTempFile "cleanup-test" nil)
+          request {:multipart-params {"file" {:filename "a.csv", :tempfile file}}}
+          handler (api.macros/wrap-multipart-tempfile-cleanup (fn [_request] :ok))]
+      (try
+        (is (= :ok (handler request)))
+        (is (.exists file))
+        (finally (.delete file))))))
+
 (deftest ^:parallel parse-args-metadata-test
   (testing "metadata map is parsed correctly"
     (are [args expected] (= expected

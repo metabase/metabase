@@ -1239,12 +1239,14 @@
 (deftest update-csv-smuggled-file-part-test
   (let [calls (atom 0)]
     (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
-      (doseq [endpoint ["append-csv" "replace-csv"]]
-        (testing (format "POST /api/table/:id/%s rejects a second file part smuggled under another part name" endpoint)
+      (doseq [endpoint  ["append-csv" "replace-csv"]
+              ;; collection_id is caught by its :string constraint, unknown names by the closed map
+              part-name [:collection_id :unexpected_part]]
+        (testing (format "POST /api/table/:id/%s rejects a second file part smuggled as %s" endpoint (name part-name))
           (mt/user-http-request :crowberto :post 400 (format "table/%d/%s" (mt/id :venues) endpoint)
                                 {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                 [[:file (byte-array [97 44 98 10 49 44 50])]
-                                 [:collection_id (byte-array [99 44 100 10 51 44 52])]])))
+                                 [part-name (byte-array [99 44 100 10 51 44 52])]])))
       (is (zero? @calls) "the endpoint bodies should never run"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -15,6 +15,7 @@
   On that note please don't add any unrelated macros to this namespace! Do cleanup first."
   (:require
    [clojure.core.specs.alpha]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clout.core :as clout]
@@ -584,6 +585,37 @@
         (when-not (instance? org.eclipse.jetty.ee9.nested.HttpInput body)
           body))))
 
+(defn- delete-multipart-tempfiles!
+  [request]
+  (doseq [v     (vals (:multipart-params request))
+          v     (if (sequential? v) v [v])
+          :when (map? v)
+          :let  [f (:tempfile v)]
+          :when f]
+    (io/delete-file f :silently)))
+
+(defn wrap-multipart-tempfile-cleanup
+  "Middleware, applied inside [[ring.middleware.multipart-params/wrap-multipart-params]], that deletes the parsed
+  multipart tempfiles when the handler throws, e.g. when param validation rejects the request.
+  Without it rejected uploads sit on disk until Ring's temp-file store expires them an hour later.
+  Handlers that complete normally own the tempfiles they consume and must delete them themselves."
+  [handler]
+  (fn
+    ([request]
+     (try
+       (handler request)
+       (catch Throwable e
+         (delete-multipart-tempfiles! request)
+         (throw e))))
+    ([request respond raise]
+     (try
+       (handler request respond (fn [e]
+                                  (delete-multipart-tempfiles! request)
+                                  (raise e)))
+       (catch Throwable e
+         (delete-multipart-tempfiles! request)
+         (throw e))))))
+
 (mu/defn- middleware-forms
   "Middleware to apply to base handler. Supports:
 
@@ -603,9 +635,10 @@
         multipart        (:multipart metadata)]
     (cond-> (vec scope-middleware)
       multipart
-      (conj (if (map? multipart)
-              `(fn [handler#] (ring.middleware.multipart-params/wrap-multipart-params handler# ~multipart))
-              'ring.middleware.multipart-params/wrap-multipart-params)))))
+      (conj `(fn [handler#]
+               (ring.middleware.multipart-params/wrap-multipart-params
+                (wrap-multipart-tempfile-cleanup handler#)
+                ~(if (map? multipart) multipart {})))))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler
