@@ -344,6 +344,9 @@
     (testing "known engine that this instance does not support"
       (is (= "Search engine semantic is not supported on this instance"
              (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "semantic"))))
+    (testing "a malformed engine value is rejected, not treated as absent"
+      (is (= "Unknown search engine: search.engine/"
+             (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "search.engine/"))))
     (testing "supported engine that is neither the default nor an additional engine"
       ;; Checked below the HTTP layer: this namespace's :each fixture pins the default engine to appdb,
       ;; so no engine can be made inactive in a real request here.

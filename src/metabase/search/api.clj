@@ -60,12 +60,12 @@
 
 (defn- param->engine
   "Parse a search_engine param or cookie value into an engine keyword, nil when blank.
-  Tolerates the fully qualified form the API returns in the :engine response field, and legacy engine names."
+  Tolerates the fully qualified form the API returns in the :engine response field, and legacy engine names.
+  Malformed non-blank values parse to an unknown engine rather than nil, so explicit requests 400."
   [value]
   (when-not (str/blank? value)
     (let [engine-name (str/replace value #"^search\.engine/" "")]
-      (when-not (str/blank? engine-name)
-        (search.engine/canonical-engine engine-name)))))
+      (search.engine/canonical-engine (if (str/blank? engine-name) value engine-name)))))
 
 (defn- check-engine-serves!
   "400 when an explicitly requested engine cannot serve searches, naming the cause."
