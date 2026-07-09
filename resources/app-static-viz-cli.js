@@ -25,14 +25,16 @@ rl.on("line", (line) => {
   if (!trimmed) {
     return;
   }
-  let response;
+  let out;
   try {
     const { fn, arg } = JSON.parse(trimmed);
-    response = { ok: true, result: staticViz[fn](arg) };
+    // Serialize inside the try so a non-serializable result throws here and becomes an error response,
+    // rather than an uncaught exception that kills the process.
+    out = JSON.stringify({ ok: true, result: staticViz[fn](arg) });
   } catch (e) {
-    response = { ok: false, error: String(e?.stack ?? e) };
+    out = JSON.stringify({ ok: false, error: String(e?.stack ?? e) });
   }
-  process.stdout.write(JSON.stringify(response) + "\n");
+  process.stdout.write(out + "\n");
 });
 // Exit cleanly when the pool closes our stdin.
 rl.on("close", () => process.exit(0));
