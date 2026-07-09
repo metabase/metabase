@@ -326,6 +326,11 @@
 (defn- write-check-metric! [id]
   (api/write-check (t2/select-one :model/Card :id id :type "metric")))
 
+;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
+;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
+(derive ::dimensions-event :metabase/event)
+(derive :event/metric-dimensions-update ::dimensions-event)
+
 (defn- notify-dimensions-changed!
   "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."
   [id]

@@ -1187,4 +1187,130 @@ describe("getComparableDimensionMapping", () => {
       }),
     ).toEqual({ 0: "dim-user-name", 1: "dim-user-name" });
   });
+
+  it("prefers the other slot's same-type default dimension over curated order", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Status",
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Status",
+        dimensionMapping: { 0: "dim-revenue-status" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Priority",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Priority",
+                  dimensionMapping: { 1: "dim-priority" },
+                },
+              },
+              {
+                icon: "label",
+                name: "Level",
+                isDefault: true,
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Level",
+                  dimensionMapping: { 1: "dim-level" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({ 0: "dim-revenue-status", 1: "dim-level" });
+  });
+
+  it("disables slots without a dimension of the picked type", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Status",
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Status",
+        dimensionMapping: { 0: "dim-revenue-status" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "calendar",
+                name: "Created At",
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "dim-orders-created-at" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout,
+      }),
+    ).toEqual({ 0: "dim-revenue-status", 1: null });
+  });
+
+  it("keeps a deselected slot disabled when refining the same type", () => {
+    const selectedItem = {
+      icon: "label",
+      name: "Status",
+      dimensionBreakoutInfo: {
+        type: "category" as const,
+        label: "Status",
+        dimensionMapping: { 0: "dim-revenue-status" },
+      },
+    } as const;
+
+    expect(
+      getComparableDimensionMapping({
+        item: selectedItem,
+        sections: [
+          { items: [selectedItem], sourceId: REVENUE_SOURCE_ID },
+          {
+            items: [
+              {
+                icon: "label",
+                name: "Status",
+                dimensionBreakoutInfo: {
+                  type: "category",
+                  label: "Status",
+                  dimensionMapping: { 1: "dim-orders-status" },
+                },
+              },
+            ],
+            sourceId: ORDERS_SOURCE_ID,
+          },
+        ],
+        metricSlots,
+        activeDimensionBreakout: {
+          ...activeDimensionBreakout,
+          type: "category",
+          display: "bar",
+          dimensionMapping: { 0: "dim-revenue-other", 1: null },
+        },
+      }),
+    ).toEqual({ 0: "dim-revenue-status", 1: null });
+  });
 });

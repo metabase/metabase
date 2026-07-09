@@ -8,7 +8,6 @@ import {
   type DimensionPickerSidebarCategory,
   getComparableDimensionKey,
   getDimensionBreakoutConfig,
-  getDimensionBreakoutTypeLabel,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 
@@ -77,7 +76,6 @@ function buildSidebarCategory(
   };
 }
 
-/** Type-keyed aggregate categories reselect their fixed breakout across related fields. */
 function isTypeKeyedAggregateCategory(
   key: string,
   config: DimensionBreakoutTypeDefinition,
@@ -85,7 +83,7 @@ function isTypeKeyedAggregateCategory(
   DimensionBreakoutTypeDefinition,
   { matchMode: "aggregate" }
 > {
-  return config.matchMode === "aggregate" && key.startsWith("type:");
+  return config.matchMode === "aggregate" && key === `type:${config.type}`;
 }
 
 function shouldShowInDefaultSidebar(item: DimensionPickerItem) {
@@ -124,11 +122,19 @@ function sortSidebarCategories(
 function getSidebarCategoryName(item: DimensionPickerItem) {
   const type = item.dimensionBreakoutInfo.type;
 
+  if (type === "time") {
+    return t`Time`;
+  }
+
   if (type === "geo" && item.geoSubtype === "country") {
     return t`Country`;
   }
 
-  return getDimensionBreakoutTypeLabel(type) ?? item.name;
+  if (type === "geo" && item.geoSubtype === "state") {
+    return t`State`;
+  }
+
+  return item.name;
 }
 
 function hasMappingForEverySlot(

@@ -147,14 +147,8 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         metricSlots,
         activeDimensionBreakout,
       });
-      const dimensionBreakoutId = getDimensionBreakoutId(item);
-      const dimensionBreakoutConfig = getDimensionBreakoutConfig(
-        item.dimensionBreakoutInfo.type,
-      );
-      if (
-        activeDimensionBreakout.type === item.dimensionBreakoutInfo.type &&
-        dimensionBreakoutConfig.matchMode === "aggregate"
-      ) {
+
+      if (activeDimensionBreakout.type === item.dimensionBreakoutInfo.type) {
         updateActiveDimensionBreakout((prev) => ({
           ...prev,
           dimensionMapping,
@@ -164,6 +158,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         return;
       }
 
+      const dimensionBreakoutId = getDimensionBreakoutId(item);
       onSelectDimensionBreakout(
         {
           ...item.dimensionBreakoutInfo,

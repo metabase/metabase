@@ -10,8 +10,15 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS_ID,
+  ORDERS,
+  PRODUCTS_ID,
+  PRODUCTS,
+  ACCOUNTS_ID,
+  FEEDBACK_ID,
+  PEOPLE_ID,
+} = SAMPLE_DATABASE;
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
@@ -486,6 +493,14 @@ describe("scenarios > metrics > explorer", () => {
     cy.signInAsAdmin();
     createMetrics(ALL_MODELS);
     createTestMeasure();
+    cy.then(() => {
+      const ordersMetricId = createdMetricIds[ORDERS_SCALAR_METRIC.name];
+      seedMetricDimensions(ordersMetricId);
+      addConnectionDimension(ordersMetricId, "Product", "Category");
+      addConnectionDimension(ordersMetricId, "User", "Source");
+      addConnectionDimension(ordersMetricId, "User", "State");
+      addConnectionDimension(ordersMetricId, "User", "Birth Date");
+    });
     H.snapshot(SNAPSHOT_NAME);
   });
 
@@ -1348,28 +1363,28 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.openDimensionPickerSidebar().within(() => {
           cy.findByRole("button", { name: "See all" }).click();
           cy.findByRole("heading", { name: "All fields" }).should("be.visible");
-          cy.findByRole("button", { name: "Address" }).should("be.visible");
-          cy.findByRole("button", { name: "City" }).should("be.visible");
-          cy.findByRole("button", { name: "Address" }).click();
+          cy.findByRole("button", { name: "Category" }).should("be.visible");
+          cy.findByRole("button", { name: "Source" }).should("be.visible");
+          cy.findByRole("button", { name: "Category" }).click();
         });
         cy.wait("@dataset");
 
         H.MetricsViewer.dimensionPickerSidebar().within(() => {
-          cy.findByRole("button", { name: "Address" })
+          cy.findByRole("button", { name: "Category" })
             .scrollIntoView()
             .should("be.visible");
-          cy.findByRole("button", { name: "City" })
+          cy.findByRole("button", { name: "Source" })
             .scrollIntoView()
             .should("be.visible");
-          cy.findByRole("button", { name: "City" }).click();
+          cy.findByRole("button", { name: "Source" }).click();
         });
         cy.wait("@dataset");
 
         H.MetricsViewer.dimensionPickerSidebar().within(() => {
-          cy.findByRole("button", { name: "Address" })
+          cy.findByRole("button", { name: "Category" })
             .scrollIntoView()
             .should("be.visible");
-          cy.findByRole("button", { name: "City" })
+          cy.findByRole("button", { name: "Source" })
             .scrollIntoView()
             .should("be.visible");
         });
@@ -1390,6 +1405,8 @@ describe("scenarios > metrics > explorer", () => {
 
         H.MetricsViewer.dimensionPickerSidebar().within(() => {
           cy.findByRole("heading", { name: "All fields" }).should("be.visible");
+          cy.log("unshared fields live in the collapsed per-metric accordion");
+          cy.findByRole("button", { name: "Count of feedback" }).click();
           cy.findAllByRole("button", { name: "Rating" }).should(
             "have.length.at.least",
             1,
@@ -2363,8 +2380,359 @@ describe("scenarios > metrics > explorer > BigInt filters", () => {
   });
 });
 
+describe("scenarios > metrics > explorer > shared dimensions", () => {
+  const SHARED_DIMENSIONS_SNAPSHOT = "shared-dimensions-snapshot";
+
+  const PEOPLE_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
+    name: "Count of people",
+    type: "metric",
+    description: "A metric",
+    query: {
+      "source-table": PEOPLE_ID,
+      aggregation: [["count"]],
+    },
+    display: "scalar",
+  };
+
+  const createSeededMetric = (details: StructuredQuestionDetailsWithName) =>
+    H.createQuestion(details).then(({ body }) =>
+      seedMetricDimensions(body.id as number),
+    );
+
+  const assertSerializedDimensionBreakout = (
+    check: (
+      dimensionBreakout: NonNullable<CompactMetricsViewerUrlState["t"]>[0],
+    ) => void,
+  ) => {
+    cy.location("hash").should((hash) => {
+      const [dimensionBreakout] = decodeMetricsViewerUrlHash(hash).t ?? [];
+      expect(dimensionBreakout, "a serialized dimension breakout").to.exist;
+      if (dimensionBreakout) {
+        check(dimensionBreakout);
+      }
+    });
+  };
+
+  const metricIds: Record<string, number> = {};
+
+  const createFixtureMetric = (
+    name: string,
+    details: StructuredQuestionDetailsWithName,
+    curate?: (metricId: number) => void,
+  ) =>
+    createSeededMetric({ ...details, name }).then((metricId) => {
+      metricIds[name] = metricId;
+      curate?.(metricId);
+    });
+
+  // The formula is built through the URL state instead of the search picker:
+  // fixture metrics share the app db with the sample content, so the picker's
+  // top suggestions are not guaranteed to include them.
+  let viewerVisitCount = 0;
+
+  const visitViewerWithMetrics = (names: string[]) => {
+    const state = JSON.stringify({
+      f: names.map((name) => ({ t: "metric", i: metricIds[name] })),
+    });
+    const hash = btoa(state)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    // A unique query string forces a full document load; visiting only with a
+    // changed hash would hand the new state to the previous test's stale app.
+    viewerVisitCount += 1;
+    cy.visit(`/explore?visit=${viewerVisitCount}#${hash}`);
+    H.MetricsViewer.searchBarPills().should("have.length", names.length);
+    H.MetricsViewer.getAllMetricVisualizations().should(
+      "have.length.at.least",
+      1,
+    );
+  };
+
+  before(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    createFixtureMetric(
+      "Orders with product category",
+      ORDERS_SCALAR_METRIC,
+      (metricId) =>
+        addConnectionDimension(
+          metricId,
+          "Product",
+          "Category",
+          "Product Category",
+        ),
+    );
+    createFixtureMetric("Plain products", PRODUCTS_SCALAR_METRIC);
+    createFixtureMetric(
+      "People with renamed source",
+      PEOPLE_SCALAR_METRIC,
+      (metricId) => renameCuratedDimension(metricId, "Source", "Category"),
+    );
+    createFixtureMetric("Accounts by country", ACCOUNTS_SCALAR_METRIC);
+    createFixtureMetric("People by state", PEOPLE_SCALAR_METRIC);
+    createFixtureMetric(
+      "Orders with user state",
+      ORDERS_SCALAR_METRIC,
+      (metricId) => addConnectionDimension(metricId, "User", "State"),
+    );
+    createFixtureMetric(
+      "Orders with user source",
+      ORDERS_SCALAR_METRIC,
+      (metricId) =>
+        addConnectionDimension(metricId, "User", "Source", "Category"),
+    );
+    createFixtureMetric("Plain orders", ORDERS_SCALAR_METRIC);
+
+    H.snapshot(SHARED_DIMENSIONS_SNAPSHOT);
+  });
+
+  beforeEach(() => {
+    H.restore(SHARED_DIMENSIONS_SNAPSHOT as any);
+    cy.signInAsAdmin();
+    interceptDatasetQuery();
+  });
+
+  describe("Shared dimension matching", () => {
+    it("shares dimensions with the same source column under the first metric's dimension name", () => {
+      visitViewerWithMetrics([
+        "Orders with product category",
+        "Plain products",
+      ]);
+
+      H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+        cy.findByText("Shared dimensions").should("be.visible");
+        cy.findByRole("button", { name: "Time" }).should("be.visible");
+        cy.log(
+          "Orders' added connection dimension and Products' own Category read the same column, so they merge into one option",
+        );
+        cy.findByRole("button", { name: "Category" }).should("not.exist");
+        cy.findByRole("button", { name: "Product Category" }).click();
+      });
+      cy.wait(["@dataset", "@dataset"]);
+
+      assertSerializedDimensionBreakout((dimensionBreakout) => {
+        expect(dimensionBreakout.t).to.equal("category");
+        expect(dimensionBreakout.D).to.have.length(2);
+        expect(
+          dimensionBreakout.D?.every((entry) => entry.d != null),
+          "every metric mapped",
+        ).to.be.true;
+      });
+    });
+
+    it("does not share same-named dimensions from different source columns", () => {
+      visitViewerWithMetrics(["People with renamed source", "Plain products"]);
+
+      H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+        cy.findByRole("button", { name: "Time" }).should("be.visible");
+        cy.log(
+          "People's renamed Source and Products' Category share a name but not a source column",
+        );
+        cy.findByRole("button", { name: "Category" }).should("not.exist");
+      });
+    });
+
+    it("does not mix country and state geo dimensions", () => {
+      visitViewerWithMetrics(["Accounts by country", "People by state"]);
+
+      H.MetricsViewer.openDimensionPickerSidebar().within(() => {
+        cy.findByRole("button", { name: "Time" }).should("be.visible");
+        cy.findByRole("button", { name: "Country" }).should("not.exist");
+        cy.findByRole("button", { name: "State" }).should("not.exist");
+      });
+    });
+
+    it("offers a State option when every metric has a state dimension", () => {
+      visitViewerWithMetrics(["People by state", "Orders with user state"]);
+
+      selectDimensionBreakout("State");
+
+      H.MetricsViewer.assertAllVizTypes("Map", 2);
+      assertSerializedDimensionBreakout((dimensionBreakout) => {
+        expect(dimensionBreakout.t).to.equal("geo");
+        expect(dimensionBreakout.D).to.have.length(2);
+      });
+    });
+
+    it("re-maps other metrics by dimension name when switching breakout type from All fields", () => {
+      visitViewerWithMetrics(["Orders with user source", "Plain products"]);
+
+      getCuratedDimensionId(
+        metricIds["Orders with user source"],
+        "Category",
+      ).as("ordersCategoryId");
+      getCuratedDimensionId(metricIds["Plain products"], "Category").as(
+        "productsCategoryId",
+      );
+      getCuratedDimensionId(metricIds["Plain products"], "Vendor").as(
+        "productsVendorId",
+      );
+
+      cy.log("switch from the default Time breakout to a category dimension");
+      H.MetricsViewer.openDimensionPickerSidebar();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "See all" })
+        .click();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "Category" })
+        .click();
+      cy.wait(["@dataset", "@dataset"]);
+
+      cy.log(
+        "Products maps to its own Category by name, even though Title comes first in its curated list",
+      );
+      cy.then(function () {
+        assertSerializedDimensionBreakout((dimensionBreakout) => {
+          expect(dimensionBreakout.t).to.equal("category");
+          expect(
+            dimensionBreakout.D?.find((entry) => entry.i === 0)?.d,
+          ).to.equal(this.ordersCategoryId);
+          expect(
+            dimensionBreakout.D?.find((entry) => entry.i === 1)?.d,
+          ).to.equal(this.productsCategoryId);
+        });
+      });
+
+      cy.log("a same-type pick under one metric changes only that metric");
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "Plain products" })
+        .click();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "Vendor" })
+        .click();
+      cy.wait("@dataset");
+
+      cy.then(function () {
+        assertSerializedDimensionBreakout((dimensionBreakout) => {
+          expect(
+            dimensionBreakout.D?.find((entry) => entry.i === 0)?.d,
+          ).to.equal(this.ordersCategoryId);
+          expect(
+            dimensionBreakout.D?.find((entry) => entry.i === 1)?.d,
+          ).to.equal(this.productsVendorId);
+        });
+      });
+    });
+
+    it("disables metrics without a dimension of the picked type", () => {
+      visitViewerWithMetrics(["Plain orders", "Plain products"]);
+
+      H.MetricsViewer.openDimensionPickerSidebar();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "See all" })
+        .click();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "Plain products" })
+        .click();
+      H.MetricsViewer.dimensionPickerSidebar()
+        .findByRole("button", { name: "Category" })
+        .click();
+      cy.wait("@dataset");
+
+      cy.log("Orders has no category dimensions, so it is excluded");
+      assertSerializedDimensionBreakout((dimensionBreakout) => {
+        expect(dimensionBreakout.t).to.equal("category");
+        expect(dimensionBreakout.D?.find((entry) => entry.i === 0)?.d).to.be
+          .undefined;
+        expect(dimensionBreakout.D?.find((entry) => entry.i === 1)?.d).to.not.be
+          .undefined;
+      });
+      verifyMetricCount(2);
+      H.echartsContainer().should("be.visible");
+    });
+  });
+});
+
+const createdMetricIds: Record<string, number> = {};
+
 function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
-  metrics.forEach((metric) => H.createQuestion(metric));
+  metrics.forEach((metric) =>
+    H.createQuestion(metric).then(({ body }) => {
+      createdMetricIds[metric.name] = body.id;
+    }),
+  );
+}
+
+type CuratedDimension = {
+  id: string;
+  display_name: string;
+};
+
+type CuratedDimensionsResponse = {
+  added: CuratedDimension[];
+  addable: Array<{
+    group: { display_name: string; type: string };
+    dimensions: CuratedDimension[];
+  }>;
+};
+
+// Reading a metric seeds its curated dimension list with the self-table
+// columns.
+function seedMetricDimensions(metricId: number) {
+  return cy.request("GET", `/api/metric/${metricId}`).then(() => metricId);
+}
+
+function addConnectionDimension(
+  metricId: number,
+  groupName: string,
+  dimensionName: string,
+  displayName = dimensionName,
+) {
+  return cy
+    .request<CuratedDimensionsResponse>(
+      "GET",
+      `/api/metric/${metricId}/dimension?with_addable=true`,
+    )
+    .then(({ body }) => {
+      const group = body.addable.find(
+        (addableGroup) => addableGroup.group.display_name === groupName,
+      );
+      const dimension = group?.dimensions.find(
+        (addableDimension) => addableDimension.display_name === dimensionName,
+      );
+      expect(dimension, `addable dimension ${groupName} → ${dimensionName}`).to
+        .exist;
+      cy.request("POST", `/api/metric/${metricId}/dimension/add`, {
+        dimensions: [{ ...dimension, display_name: displayName }],
+      });
+    });
+}
+
+function renameCuratedDimension(
+  metricId: number,
+  dimensionName: string,
+  displayName: string,
+) {
+  return cy
+    .request<CuratedDimensionsResponse>(
+      "GET",
+      `/api/metric/${metricId}/dimension`,
+    )
+    .then(({ body }) => {
+      const dimension = body.added.find(
+        (addedDimension) => addedDimension.display_name === dimensionName,
+      );
+      expect(dimension, `curated dimension ${dimensionName}`).to.exist;
+      cy.request("POST", `/api/metric/${metricId}/dimension/${dimension?.id}`, {
+        display_name: displayName,
+      });
+    });
+}
+
+function getCuratedDimensionId(metricId: number, dimensionName: string) {
+  return cy
+    .request<CuratedDimensionsResponse>(
+      "GET",
+      `/api/metric/${metricId}/dimension`,
+    )
+    .then(
+      ({ body }) =>
+        body.added.find(
+          (addedDimension) => addedDimension.display_name === dimensionName,
+        )?.id,
+    );
 }
 
 function createTestMeasure(

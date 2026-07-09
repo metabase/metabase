@@ -110,7 +110,7 @@ describe("useDimensionPickerSidebarCategories", () => {
     expect(result.current.map((category) => category.name)).toEqual([
       "Time",
       "Category",
-      "Boolean",
+      "Is Active",
     ]);
     expect(result.current.find((category) => category.name === "Time")).toEqual(
       expect.objectContaining({
@@ -319,7 +319,6 @@ describe("useDimensionPickerSidebarCategories", () => {
           expect.objectContaining({ name: "User Country" }),
         ],
         dimensionBreakoutInfo: expect.objectContaining({
-          id: "geo",
           type: "geo",
           label: "Country",
           dimensionMapping: {
@@ -331,7 +330,7 @@ describe("useDimensionPickerSidebarCategories", () => {
     ]);
   });
 
-  it("groups category fields from different tables under one Category option", () => {
+  it("does not share same-named category fields from different source columns", () => {
     const { result } = setup({
       availableDimensions: {
         shared: [],
@@ -373,19 +372,10 @@ describe("useDimensionPickerSidebarCategories", () => {
       ],
     });
 
-    expect(result.current).toEqual([
-      expect.objectContaining({
-        name: "Category",
-        dimensionBreakoutInfo: expect.objectContaining({
-          type: "category",
-          label: "Category",
-          dimensionMapping: { 0: "dim-user-name", 1: "dim-product-name" },
-        }),
-      }),
-    ]);
+    expect(result.current).toEqual([]);
   });
 
-  it("groups different-named category fields under one Category option", () => {
+  it("does not share different-named category fields across metrics", () => {
     const { result } = setup({
       availableDimensions: {
         shared: [],
@@ -425,55 +415,39 @@ describe("useDimensionPickerSidebarCategories", () => {
       ],
     });
 
-    expect(result.current).toEqual([
-      expect.objectContaining({
-        name: "Category",
-        targetItems: [
-          expect.objectContaining({ name: "Plan Type" }),
-          expect.objectContaining({ name: "Status" }),
-        ],
-        dimensionBreakoutInfo: expect.objectContaining({
-          type: "category",
-          label: "Category",
-          dimensionMapping: { 0: "dim-plan-type", 1: "dim-status" },
-        }),
-      }),
-    ]);
+    expect(result.current).toEqual([]);
   });
 
-  it("prefers same-named fields when auto-assigning the Category option", () => {
+  it("prefers a time field name that covers more slots when merging the Time option", () => {
     const { result } = setup({
       availableDimensions: {
         shared: [],
         bySource: {
           [REVENUE_SOURCE_ID]: [
             {
-              icon: "label",
-              isPreferred: true,
+              icon: "calendar",
               dimensionBreakoutInfo: {
-                type: "category",
-                label: "Source",
-                dimensionMapping: { 0: "dim-revenue-source" },
+                type: "time",
+                label: "Updated At",
+                dimensionMapping: { 0: "dim-revenue-updated-at" },
               },
             },
             {
-              icon: "label",
-              isPreferred: true,
+              icon: "calendar",
               dimensionBreakoutInfo: {
-                type: "category",
-                label: "Category",
-                dimensionMapping: { 0: "dim-revenue-category" },
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-revenue-created-at" },
               },
             },
           ],
           [ORDERS_SOURCE_ID]: [
             {
-              icon: "label",
-              isPreferred: true,
+              icon: "calendar",
               dimensionBreakoutInfo: {
-                type: "category",
-                label: "Category",
-                dimensionMapping: { 1: "dim-orders-category" },
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 1: "dim-orders-created-at" },
               },
             },
           ],
@@ -490,46 +464,45 @@ describe("useDimensionPickerSidebarCategories", () => {
       ],
     });
 
-    // "Category" covers both slots, so it wins over the curated-first "Source".
+    // "Created At" covers both slots, so it wins over the curated-first
+    // "Updated At".
     expect(result.current).toEqual([
       expect.objectContaining({
-        name: "Category",
+        name: "Time",
         dimensionBreakoutInfo: expect.objectContaining({
           dimensionMapping: {
-            0: "dim-revenue-category",
-            1: "dim-orders-category",
+            0: "dim-revenue-created-at",
+            1: "dim-orders-created-at",
           },
         }),
       }),
     ]);
   });
 
-  it("shows exact same table and column category fields across all metrics", () => {
+  it("groups state fields across tables when every metric slot has one", () => {
     const { result } = setup({
       availableDimensions: {
         shared: [],
         bySource: {
           [REVENUE_SOURCE_ID]: [
             {
-              icon: "label",
-              group: { id: "users", type: "main", displayName: "Users" },
-              isPreferred: true,
+              icon: "location",
+              geoSubtype: "state",
               dimensionBreakoutInfo: {
-                type: "category",
-                label: "Name",
-                dimensionMapping: { 0: "dim-user-name" },
+                type: "geo",
+                label: "Billing State",
+                dimensionMapping: { 0: "dim-billing-state" },
               },
             },
           ],
           [ORDERS_SOURCE_ID]: [
             {
-              icon: "label",
-              group: { id: "users", type: "main", displayName: "Users" },
-              isPreferred: true,
+              icon: "location",
+              geoSubtype: "state",
               dimensionBreakoutInfo: {
-                type: "category",
-                label: "Name",
-                dimensionMapping: { 1: "dim-user-name" },
+                type: "geo",
+                label: "User State",
+                dimensionMapping: { 1: "dim-user-state" },
               },
             },
           ],
@@ -548,10 +521,54 @@ describe("useDimensionPickerSidebarCategories", () => {
 
     expect(result.current).toEqual([
       expect.objectContaining({
-        name: "Category",
+        name: "State",
+        dimensionBreakoutInfo: expect.objectContaining({
+          type: "geo",
+          label: "State",
+          dimensionMapping: {
+            0: "dim-billing-state",
+            1: "dim-user-state",
+          },
+        }),
+      }),
+    ]);
+  });
+
+  it("shares category fields with the same source column across metrics", () => {
+    const { result } = setup({
+      availableDimensions: {
+        // Same-source-column dimensions arrive merged into one shared entry.
+        shared: [
+          {
+            icon: "label",
+            group: { id: "users", type: "main", displayName: "Users" },
+            isPreferred: true,
+            dimensionBreakoutInfo: {
+              type: "category",
+              label: "Name",
+              dimensionMapping: { 0: "dim-user-name", 1: "dim-user-name" },
+            },
+          },
+        ],
+        bySource: {},
+      },
+      sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [ORDERS_SOURCE_ID]: { type: "metric", name: "Orders" },
+      },
+      metricSlots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+      ],
+    });
+
+    expect(result.current).toEqual([
+      expect.objectContaining({
+        name: "Name",
         dimensionBreakoutInfo: expect.objectContaining({
           type: "category",
-          label: "Category",
+          label: "Name",
           dimensionMapping: { 0: "dim-user-name", 1: "dim-user-name" },
         }),
       }),

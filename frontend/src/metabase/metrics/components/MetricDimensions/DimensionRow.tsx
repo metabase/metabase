@@ -52,6 +52,7 @@ export function DimensionRow({
               component="span"
               ref={dragHandleRef}
               className={S.grabber}
+              data-testid="dimension-drag-handle"
               {...dragHandleListeners}
             >
               <Icon name="grabber" c="text-secondary" />
