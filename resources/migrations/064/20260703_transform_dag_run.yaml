@@ -301,10 +301,9 @@ databaseChangeLog:
       id: v64.cH9mZs
       author: bronsa
       comment: >-
-        Snapshot the job's name/entity_id on transform_job_run at run start, as transform_run does
-        for its transform. transform_job_run.job_id has no FK, so job runs already outlive their
-        job — but namelessly; the snapshot keeps them displayable in run history after the job is
-        deleted. Backfilled from the live jobs since this table predates the branch.
+        Snapshot the job's name on transform_job_run at run start, as transform_run does for its
+        transform. transform_job_run.job_id has no FK, so job runs already outlive their job — but
+        namelessly; the snapshot keeps them displayable in run history after the job is deleted.
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -319,19 +318,44 @@ databaseChangeLog:
                   name: job_name
                   type: ${text.type}
                   remarks: Name of the job at run start, preserved after its deletion
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: job_name
+
+  - changeSet:
+      id: v64.gW3nQd
+      author: bronsa
+      comment: Snapshot the job's entity_id on transform_job_run at run start, for potential reconnection when a deleted job is recreated
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: job_entity_id
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
               - column:
                   name: job_entity_id
                   type: char(21)
                   remarks: entity_id of the job at run start, for potential reconnection when it is recreated
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: job_entity_id
+
+  - changeSet:
+      id: v64.aY5kXm
+      author: bronsa
+      comment: Backfill the job name/entity_id snapshots on existing transform_job_run rows from their live jobs (this table predates the branch)
+      changes:
         - sql:
             sql: >-
               UPDATE transform_job_run
               SET job_name = (SELECT name FROM transform_job WHERE transform_job.id = transform_job_run.job_id),
                   job_entity_id = (SELECT entity_id FROM transform_job WHERE transform_job.id = transform_job_run.job_id)
       rollback:
-        - dropColumn:
-            tableName: transform_job_run
-            columnName: job_name
-        - dropColumn:
-            tableName: transform_job_run
-            columnName: job_entity_id
+        - sql:
+            sql: UPDATE transform_job_run SET job_name = NULL, job_entity_id = NULL
