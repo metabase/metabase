@@ -18,6 +18,21 @@ function treemapBreadcrumb() {
   return cy.findByTestId("treemap-breadcrumb");
 }
 
+// The treemap re-renders shortly after mount to apply measured label layouts,
+// and ECharts occasionally drops the click that lands during that transition,
+// so the drill-down never fires and the breadcrumb stays on the overview. The
+// drill is client-side (no request to wait on), so retry the click until the
+// breadcrumb shows a back button, confirming we've drilled in.
+function drillIntoGroup(groupName: string, attemptsLeft = 5) {
+  H.echartsContainer().findByText(groupName).should("be.visible").click();
+  treemapBreadcrumb().then(($breadcrumb) => {
+    const hasDrilled = $breadcrumb.find("button").length > 0;
+    if (!hasDrilled && attemptsLeft > 1) {
+      drillIntoGroup(groupName, attemptsLeft - 1);
+    }
+  });
+}
+
 describe("scenarios > visualizations > treemap", () => {
   beforeEach(() => {
     H.restore();
@@ -88,7 +103,7 @@ describe("scenarios > visualizations > treemap", () => {
       .and("contain", "Nuts");
 
     cy.log("Clicking a group drills into it");
-    H.echartsContainer().findByText("Legumes").click();
+    drillIntoGroup("Legumes");
 
     treemapBreadcrumb()
       .findByRole("button", { name: "Legumes" })
