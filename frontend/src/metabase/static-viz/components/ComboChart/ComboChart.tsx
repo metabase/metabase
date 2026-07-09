@@ -76,7 +76,6 @@ export const ComboChart = ({
   const option = getCartesianChartOption(
     chartModel,
     chartLayout,
-    false,
     null,
     [],
     settings,
@@ -88,6 +87,9 @@ export const ComboChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  // Free the ECharts/zrender instance; SSR instances are otherwise never released, leaking ~MBs per
+  // render in a long-lived renderer process.
+  chart.dispose();
   const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
     chartModel,
     settings,

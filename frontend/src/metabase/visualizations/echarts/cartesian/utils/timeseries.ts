@@ -24,12 +24,29 @@ import type { ShowWarning } from "../../types";
 import type { ChartLayout } from "../layout/types";
 import { getPaddedAxisLabel } from "../option/utils";
 
+// NOTE(bench): the chart pipeline calls tryGetDate on the same raw values many times; the `.isValid()`
+// check on each call is a large residual cost. Cache the date-or-null result. Unbounded — throwaway.
+const tryGetDateCache = new Map<string, Dayjs | null>();
 export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   if (typeof rowValue === "boolean") {
     return null;
   }
+  const key =
+    typeof rowValue === "string" || typeof rowValue === "number"
+      ? `${typeof rowValue} ${rowValue}`
+      : null;
+  if (key !== null) {
+    const cached = tryGetDateCache.get(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+  }
   const date = parseTimestamp(rowValue);
-  return date.isValid() ? date : null;
+  const result = date.isValid() ? date : null;
+  if (key !== null) {
+    tryGetDateCache.set(key, result);
+  }
+  return result;
 };
 
 export const msToDays = (ms: number) => ms / (24 * 60 * 60 * 1000);
@@ -363,17 +380,24 @@ const OFFSET_PATTERN = /^([+-])(\d{2}):(\d{2})$/;
 const tryParseOffsetMinutes = (maybeOffset: string): number | undefined => {
   const match = maybeOffset.match(OFFSET_PATTERN);
 
-  if (!match) {
-    return undefined;
+  if (match) {
+    const [, sign, hours, minutes] = match;
+    const offsetSign = sign === "+" ? 1 : -1;
+    const offsetHours = parseInt(hours, 10);
+    const offsetMinutes = parseInt(minutes, 10);
+    return (offsetHours * 60 + offsetMinutes) * offsetSign;
   }
 
-  const [, sign, hours, minutes] = match;
-  const offsetSign = sign === "+" ? 1 : -1;
-  const offsetHours = parseInt(hours, 10);
-  const offsetMinutes = parseInt(minutes, 10);
-  const totalOffsetMinutes = (offsetHours * 60 + offsetMinutes) * offsetSign;
-
-  return totalOffsetMinutes;
+  // Named IANA zone (e.g. "America/Los_Angeles"): resolve it to a single numeric offset once so
+  // callers can shift by a fixed amount instead of paying dayjs `.tz()` per row — that per-row
+  // conversion is ~half the render time of a large time-series chart. Only imprecise across DST
+  // transitions that fall within the chart's data range.
+  try {
+    const resolved = dayjs().tz(maybeOffset).utcOffset();
+    return Number.isFinite(resolved) ? resolved : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 // We should always have results_timezone, but just in case we fallback to UTC
@@ -403,8 +427,14 @@ export function getTimezoneOrOffset(
       ? tryParseOffsetMinutes(results_timezone)
       : undefined;
 
-  const timezone =
-    offsetMinutes == null ? results_timezone || DEFAULT_TIMEZONE : undefined;
+  // Keep the IANA zone name (never a fixed-offset string, which dayjs `.tz()` can't consume) so
+  // consumers that need real per-instant DST math still have it — e.g. weekly-bucket interpolation
+  // across DST boundaries. Axis-value conversion prefers the numeric `offsetMinutes` above for speed.
+  const isFixedOffset =
+    results_timezone != null && OFFSET_PATTERN.test(results_timezone);
+  const timezone = isFixedOffset
+    ? undefined
+    : results_timezone || DEFAULT_TIMEZONE;
 
   return {
     timezone,

@@ -678,12 +678,38 @@ const interpolateTimeSeriesData = (
       : date.isBefore(end, unit);
   };
 
+  // NOTE(bench): fast path for fixed-length units (day and smaller, not weekly-in-timezone). The gap
+  // loop then runs in integer epoch-ms with no dayjs allocation per step — this loop is a big share of
+  // a business-day-gapped chart's render cost. `Math.floor(ms / unitMs)` reproduces dayjs `startOf(unit)`
+  // for UTC-aligned values (which type/Date timestamps are), so `isBefore(end, unit)` becomes a bucket
+  // comparison. Variable units (month/quarter/year) and weekly-in-timezone keep the dayjs path.
+  const SINGLE_UNIT_MS: Partial<Record<string, number>> = {
+    ms: 1,
+    second: 1000,
+    minute: 60_000,
+    hour: 3_600_000,
+    day: 86_400_000,
+  };
+  const fastUnitMs = isWeeklyIntervalInTimezone ? undefined : SINGLE_UNIT_MS[unit];
+
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
     result.push(datum);
 
     if (i === dataset.length - 1) {
       break;
+    }
+
+    if (fastUnitMs != null) {
+      const stepMs = fastUnitMs * count;
+      const endMs = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]).valueOf();
+      const endBucket = Math.floor(endMs / fastUnitMs);
+      let ms = parseTimestamp(datum[X_AXIS_DATA_KEY]).valueOf() + stepMs;
+      while (Math.floor(ms / fastUnitMs) < endBucket) {
+        result.push({ [X_AXIS_DATA_KEY]: new Date(ms).toISOString() });
+        ms += stepMs;
+      }
+      continue;
     }
 
     const end = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]);
