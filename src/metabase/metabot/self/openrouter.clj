@@ -148,12 +148,14 @@
    "anthropic/claude-sonnet-4.6" "Claude Sonnet 4.6"
    "anthropic/claude-sonnet-4.5" "Claude Sonnet 4.5"
    "anthropic/claude-haiku-4.5"  "Claude Haiku 4.5"
+   "openai/gpt-5.6-sol"          "GPT-5.6 Sol"
+   "openai/gpt-5.6-terra"        "GPT-5.6 Terra"
+   "openai/gpt-5.6-luna"         "GPT-5.6 Luna"
    "openai/gpt-5.5"              "GPT-5.5"
    "openai/gpt-5.5-pro"          "GPT-5.5 Pro"
    "openai/gpt-5.4"              "GPT-5.4"
    "openai/gpt-5.4-pro"          "GPT-5.4 Pro"
-   "openai/gpt-5.4-mini"         "GPT-5.4 Mini"
-   "openai/gpt-5"                "GPT-5"})
+   "openai/gpt-5.4-mini"         "GPT-5.4 Mini"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
