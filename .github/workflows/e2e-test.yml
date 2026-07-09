@@ -216,9 +216,8 @@ jobs:
           run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
       - name: Quarantine gate
-        # always(), unlike backend/frontend: the run step is continue-on-error
-        # (Trunk governs its outcome), so its result can't gate on real failures.
-        if: always()
+        # Only one of the two run steps executes; the other reports `skipped`. Only gate on actual failure.
+        if: ${{ !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure') }}
         continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
         timeout-minutes: 3
         uses: ./.github/actions/quarantine-gate

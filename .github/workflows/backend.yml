@@ -215,7 +215,7 @@ jobs:
           adapter: backend
 
       - name: Quarantine gate
-        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
+        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
         continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
         timeout-minutes: 3
         uses: ./.github/actions/quarantine-gate
