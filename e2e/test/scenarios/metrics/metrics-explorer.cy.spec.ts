@@ -223,15 +223,18 @@ const addMetric = (
 };
 
 const runFormula = () => {
-  cy.log("Make sure mini picker is closed before clicking Run");
   H.MetricsViewer.runButton().should("be.visible");
-  cy.get("body").then(($body) => {
-    if ($body.find('[data-testid="mini-picker"]').length > 0) {
-      cy.realPress("Escape");
-      cy.get('[data-testid="mini-picker"]').should("not.exist");
-    }
-  });
-
+  // The mini picker can still be open (or mid-transition) after a metric was
+  // just selected. While it's open it intercepts the Run click, so the formula
+  // never runs and the editor stays stuck in edit mode — the pills never
+  // re-render and the search input never disappears, which are the two dominant
+  // flakes on this spec. Escape only closes the picker (it never exits the
+  // editor), so dismiss it unconditionally and wait for it to actually leave
+  // the DOM before clicking Run, rather than snapshotting the DOM once with a
+  // non-retrying `if`.
+  cy.log("Make sure mini picker is closed before clicking Run");
+  cy.realPress("Escape");
+  H.miniPicker().should("not.exist");
   H.MetricsViewer.runButton().should("not.be.disabled").click();
 };
 
