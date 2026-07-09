@@ -569,8 +569,9 @@
       {:structured-output (assoc dashboard :result-type :entity)}
       {:status-code 404 :output (:output result)})))
 
-(defn- present-cardless-dashcard
-  "Dashcards with no backing Card — virtual cards (headings, text, links, ...) and action buttons.
+(defn- present-non-question-dashcard
+  "Dashcards not rendered as a saved question — virtual cards (headings, text, links, ...) and
+   action buttons (which may reference a backing model via `card_id` but render as a button).
    They carry their `dashcard_id` — the handle `update_dashboard` remove/move mutations take. The
    card's text (when it has any) renders as the item body via `:description`."
   [{:keys [id action_id visualization_settings]}]
@@ -604,11 +605,13 @@
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
         items        (into []
-                           (keep (fn [{:keys [id card_id] :as dashcard}]
-                                   (if card_id
+                           (keep (fn [{:keys [id card_id action_id] :as dashcard}]
+                                   ;; action_id wins over card_id: an action button may reference
+                                   ;; its backing model through card_id but renders as a button.
+                                   (if (and card_id (not action_id))
                                      (when-let [card (get readable card_id)]
                                        (assoc (present-card card) :dashcard_id id))
-                                     (present-cardless-dashcard dashcard))))
+                                     (present-non-question-dashcard dashcard))))
                            dashcards)]
     (list-result :dashboard-items items query-params)))
 

@@ -701,6 +701,19 @@
                                                          {:virtual_card {:display "action"}}}]
           (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
             (is (str/includes? output "type=\"action\""))
+            (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
+  (testing "an action dashcard that also references its backing model card still reads as an action"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-actions [{model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                        {:keys [action-id]} {:type :query :visualization_settings {}}]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
+                                                         :card_id model-id
+                                                         :action_id action-id
+                                                         :row 0 :col 0 :size_x 4 :size_y 1
+                                                         :visualization_settings {}}]
+          (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+            (is (str/includes? output "type=\"action\""))
             (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))))))))
 
 (deftest read-user-recents-test
