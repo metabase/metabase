@@ -8,6 +8,7 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
+import { SsoReload } from "metabase/auth/components/SsoReload";
 import {
   BrowseDatabases,
   BrowseMetrics,
@@ -34,6 +35,7 @@ import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
@@ -46,6 +48,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
+import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import type { State } from "metabase/redux/store";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -64,9 +67,11 @@ import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuesti
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import { IndexRedirect, IndexRoute, Redirect, Route } from "metabase/router";
 import { SearchApp } from "metabase/search/containers/SearchApp";
+import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
+import { LoadCurrentUser } from "./LoadCurrentUser";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -77,14 +82,6 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
-import {
-  CardHashRedirect,
-  LandingPageRedirect,
-  LoadCurrentUser,
-  QuestionHashRedirect,
-  RedirectIfSetup,
-  SsoReload,
-} from "./route-lifecycle";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
 
 type AppStore = Store<State> & {
@@ -372,7 +369,7 @@ export const getRoutes = (store: AppStore) => {
       {/* DEPRECATED */}
       {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
       <Route path="/q" component={QuestionHashRedirect} />
-      <Route path="/card/:slug" component={CardHashRedirect} />
+      <Route path="/card/:slug" component={QuestionHashRedirect} />
       <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
       <Redirect
         from="/collections/permissions"
