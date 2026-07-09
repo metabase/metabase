@@ -83,11 +83,12 @@ export const ComboChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
+
   const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
     chartModel,
     settings,
   );
-
   const totalHeight = height + legendHeight;
 
   return (
