@@ -55,6 +55,7 @@ const TimelineForm = ({
             label={t`Name`}
             placeholder={t`Product releases`}
             autoFocus
+            mb="md"
           />
           <FormTextarea
             name="description"

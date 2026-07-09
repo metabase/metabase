@@ -96,12 +96,14 @@ function SnippetFormInner({
             name="name"
             label={t`Give your snippet a name`}
             placeholder={t`Current Customers`}
+            mb="md"
           />
           <FormTextInput
             name="description"
             label={t`Add a description`}
             placeholder={t`It's optional but oh, so helpful`}
             nullable
+            mb="md"
           />
           {hasManyCollections && (
             <FormCollectionPicker

@@ -64,6 +64,7 @@ function CreateActionForm({
             label={t`Name`}
             placeholder={t`My new fantastic action`}
             data-autofocus
+            mb="md"
           />
           <FormTextarea
             name="description"

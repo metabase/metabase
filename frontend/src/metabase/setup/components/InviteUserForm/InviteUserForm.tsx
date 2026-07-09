@@ -9,6 +9,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import type { InviteInfo, UserInfo } from "metabase/redux/store";
+import { Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import S from "./InviteUserForm.module.css";
@@ -49,7 +50,7 @@ export const InviteUserForm = ({
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form data-testid="invite-user-form">
+      <Form as={Stack} gap="md" data-testid="invite-user-form">
         <div className={S.UserFieldGroup}>
           <FormTextInput
             name="first_name"

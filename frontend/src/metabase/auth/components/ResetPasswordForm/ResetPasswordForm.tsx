@@ -10,6 +10,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { passwordComplexityDescription } from "metabase/utils/password";
 
@@ -69,7 +70,7 @@ export const ResetPasswordForm = ({
         validationContext={validationContext}
         onSubmit={onSubmit}
       >
-        <Form>
+        <Form as={Stack} gap="md">
           <FormTextInput
             name="password"
             type="password"

@@ -11,7 +11,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import type { UserInfo } from "metabase/redux/store";
-import { Flex } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import { UserFieldGroup } from "./UserForm.styled";
@@ -58,7 +58,7 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
       validationContext={validationContext}
       onSubmit={onSubmit}
     >
-      <Form mt="md">
+      <Form as={Stack} gap="md" mt="md">
         <UserFieldGroup>
           <FormTextInput
             name="first_name"
