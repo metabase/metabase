@@ -155,8 +155,9 @@
   "List the search engines that are supported, in order of usage preference.
    The configured engine comes first, if it is supported."
   []
-  (let [potential-engines (cond->> default-engine-precedence
-                            (configured-engine) (cons (configured-engine)))]
+  (let [configured        (configured-engine)
+        potential-engines (cond->> default-engine-precedence
+                            configured (cons configured))]
     ;; known-engine? first: before the engine implementations load (e.g. the search-engine setting getter
     ;; running during startup) the precedence entries are unregistered, and supported-engine? would throw.
     (distinct (filter supported-engine? (filter known-engine? potential-engines)))))

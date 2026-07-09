@@ -100,7 +100,7 @@
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
   (search.engine/log-resolution!)
-  (when (supports-index?)
+  (when-let [engines (seq (search.engine/active-engines))]
     (log/info "Initializing search indexes")
     (tracing/with-span :search "search.init-index" {}
       (lib-be/with-metadata-provider-cache
@@ -109,7 +109,7 @@
           (let [timer    (u/start-timer)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e (search.engine/active-engines)]
+                                 (for [e engines]
                                    (search.engine/init! e opts)))
                 duration (u/since-ms timer)]
             (if (seq report)
@@ -126,7 +126,7 @@
             (throw e)))))))
 
 (defn- reindex-logic! [opts]
-  (when (supports-index?)
+  (when-let [engines (seq (search.engine/active-engines))]
     (tracing/with-span :search "search.reindex" {}
       (lib-be/with-metadata-provider-cache
         (try
@@ -134,7 +134,7 @@
           (let [timer    (u/start-timer)
                 report   (reduce (partial merge-with max)
                                  nil
-                                 (for [e (search.engine/active-engines)]
+                                 (for [e engines]
                                    (search.engine/reindex! e opts)))
                 duration (u/since-ms timer)]
             (analytics/inc! :metabase-search/index-reindex-ms duration)
