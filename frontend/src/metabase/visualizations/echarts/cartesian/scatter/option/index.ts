@@ -27,14 +27,14 @@ import { buildEChartsScatterSeries } from "./series";
 export function getScatterPlotOption(
   chartModel: ScatterPlotModel,
   chartLayout: ChartLayout,
+  hasTimelineEvents: boolean,
   timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
+  selectedTimelineEventIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption {
-  const hasTimelineEvents = timelineEventsModel != null;
   const isSplitPanels = chartLayout.panelHeight != null;
 
   const visibleSeries = chartModel.seriesModels.filter(
@@ -59,7 +59,7 @@ export function getScatterPlotOption(
     chartModel,
     chartLayout,
     timelineEventsModel,
-    selectedTimelineEventsIds,
+    selectedTimelineEventIds,
     settings,
     renderingContext,
     dataSeriesOptions,

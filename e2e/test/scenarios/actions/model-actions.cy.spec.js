@@ -486,7 +486,7 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
+          cy.findByLabelText("Required").uncheck({ force: true });
         });
 
         cy.findByRole("button", { name: "Update" }).click();
@@ -520,7 +520,7 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").check();
+          cy.findByLabelText("Required").check({ force: true });
         });
         cy.findByRole("button", { name: "Update" }).click();
 
@@ -654,7 +654,7 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
+          cy.findByLabelText("Required").uncheck({ force: true });
         });
 
         cy.findByRole("button", { name: "Update" }).click();

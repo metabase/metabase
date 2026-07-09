@@ -76,6 +76,7 @@ export const ComboChart = ({
   const option = getCartesianChartOption(
     chartModel,
     chartLayout,
+    false,
     null,
     [],
     settings,
