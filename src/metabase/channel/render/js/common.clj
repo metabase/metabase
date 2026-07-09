@@ -1,0 +1,44 @@
+(ns metabase.channel.render.js.common
+  "Shared helpers for the pooled static-viz renderers ([[metabase.channel.render.js.graal]] and
+  [[metabase.channel.render.js.node]]): the built-bundle resource path, the test-init guard, and the
+  dirigiste worker-pool factory they both use."
+  (:require
+   [metabase.config.core :as config])
+  (:import
+   (io.aleph.dirigiste IPool$Generator Pool Pools)
+   (java.util.concurrent TimeUnit)))
+
+(set! *warn-on-reflection* true)
+
+(def bundle-resource-path
+  "Classpath path of the built static-viz bundle both renderers load."
+  "frontend_client/app/dist/lib-static-viz.bundle.js")
+
+(defn assert-tests-not-initializing!
+  "Guard against loading the static-viz bundle as a side effect of loading namespaces: it might not have
+  been built yet. If it hasn't, we want a meaningful error (see the fixture in
+  [[metabase.channel.render.js.svg-test]]) rather than a meaningless failure at test-runner startup."
+  []
+  (when config/tests-available?
+    ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)")))
+
+(defn make-pool
+  "Build a dirigiste `Pool` of up to two static-viz workers, each held exclusively per render (so at most
+  two renders run at once). The utilization controller targets 100% utilization with a max of 2 and a min
+  of 0, so when nothing is rendering the pool shrinks to 0 and `destroy` is called on each idle worker; it
+  rechecks every 10 minutes, so a worker lingers up to ~10 minutes before being reaped (keeping it warm
+  through gaps between renders). `(generate)` mints a worker; `(destroy worker)` tears one down. The other
+  constructor args (queue size, sampling interval) don't matter much."
+  ^Pool [generate destroy]
+  (let [max-pool-size       2
+        max-queued-acquires 65000
+        sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
+        control-period-ms   (.toMillis TimeUnit/MINUTES 10)]
+    (Pool. (reify IPool$Generator
+             (generate [_ _] (generate))
+             (destroy [_ _ worker] (destroy worker)))
+           (Pools/utilizationController 1.0 max-pool-size max-pool-size)
+           max-queued-acquires
+           sample-period-ms
+           control-period-ms
+           TimeUnit/MILLISECONDS)))

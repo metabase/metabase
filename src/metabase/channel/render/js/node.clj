@@ -12,29 +12,20 @@
   Requires a `node` binary on the host's PATH."
   (:require
    [clojure.java.io :as io]
+   [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
-   [metabase.config.core :as config]
    [metabase.util.json :as json])
   (:import
-   (io.aleph.dirigiste IPool$Generator Pool Pools)
+   (io.aleph.dirigiste Pool)
    (java.io BufferedReader BufferedWriter InputStreamReader OutputStreamWriter)
    (java.lang ProcessBuilder$Redirect)
    (java.nio.charset StandardCharsets)
    (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
-   (java.util.concurrent TimeUnit)))
+   (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bundle-resource-path "frontend_client/app/dist/lib-static-viz.bundle.js")
 (def ^:private cli-resource-path "app-static-viz-cli.js")
-
-(defn- assert-tests-not-initializing!
-  "Guard against spawning a render process (and loading the bundle) as a side effect of loading
-  namespaces during test-runner startup, when the bundle might not have been built yet."
-  []
-  (when config/tests-available?
-    ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)")))
 
 (def ^:private working-dir
   "Temp directory holding the two files the render process needs — the static-viz bundle and the CLI entry
@@ -42,7 +33,7 @@
   (delay
     (let [dir (.toFile (Files/createTempDirectory "mb-static-viz-node" (into-array FileAttribute [])))]
       (.deleteOnExit dir)
-      (doseq [[resource filename] [[bundle-resource-path "lib-static-viz.bundle.js"]
+      (doseq [[resource filename] [[common/bundle-resource-path "lib-static-viz.bundle.js"]
                                    [cli-resource-path "app-static-viz-cli.js"]]]
         (let [resource-url (io/resource resource)]
           (when (nil? resource-url)
@@ -61,7 +52,7 @@
   "Copy the files (first use only), spawn `node app-static-viz-cli.js`, and block until it reports it has
   loaded the bundle. The process's stderr is inherited (for debugging); stdout carries the line protocol."
   ^NodeProcess []
-  (assert-tests-not-initializing!)
+  (common/assert-tests-not-initializing!)
   (let [cli     (.getAbsolutePath (io/file ^java.io.File @working-dir "app-static-viz-cli.js"))
         process (.. (ProcessBuilder. (into-array String ["node" cli]))
                     (redirectError ProcessBuilder$Redirect/INHERIT)
@@ -103,24 +94,10 @@
   :static-viz-node)
 
 (def ^:private ^Pool node-process-pool
-  "A pool of up to two static-viz Node.js processes, each held exclusively per render. The utilization
-  controller targets 100% utilization with a max of 2 and a min of 0, so when nothing is rendering it
-  shrinks to 0 and the generator's `destroy` kills the process. It rechecks every 10 minutes, so an idle
-  process lingers up to ~10 minutes before being reaped (keeping it warm through gaps between renders)."
-  (let [max-pool-size       2
-        max-queued-acquires 65000
-        sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
-        control-period-ms   (.toMillis TimeUnit/MINUTES 10)]
-    (Pool. (reify IPool$Generator
-             (generate [_ _]
-               (start-process!))
-             (destroy [_ _ node-process]
-               (stop-process! node-process)))
-           (Pools/utilizationController 1.0 max-pool-size max-pool-size)
-           max-queued-acquires
-           sample-period-ms
-           control-period-ms
-           TimeUnit/MILLISECONDS)))
+  "A pool of up to two static-viz Node.js processes, each held exclusively per render; when idle it shrinks
+  to 0 and the generator's `destroy` kills the process. See
+  [[metabase.channel.render.js.common/make-pool]]."
+  (common/make-pool start-process! stop-process!))
 
 (defn- call-node
   "Run static-viz bundle function `fn-name` with `arg` (a Clojure data structure) on a pooled Node process,
