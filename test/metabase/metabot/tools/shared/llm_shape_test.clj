@@ -99,7 +99,30 @@
     (let [metric {:id 1 :name "Test" :verified false}
           xml (llm-shape/metric->xml metric)]
       (is (str/includes? xml "is_verified=\"false\""))
-      (is (not (str/includes? xml "### Dimensions"))))))
+      (is (not (str/includes? xml "### Dimensions")))))
+  (testing "surfaces join-required (FK-less join) dimensions with the pasteable join clause (BOT-1612)"
+    (let [metric {:id 42 :name "Order Count by Campaign" :verified true
+                  :join-required-dimensions
+                  [{:join_alias   "Campaign"
+                    :target_table "CAMPAIGNS"
+                    :join         {"lib/type" "mbql/join" "strategy" "left-join" "alias" "Campaign"
+                                   "stages" [{"lib/type" "mbql.stage/mbql"
+                                              "source-table" ["Sample" "PUBLIC" "CAMPAIGNS"]}]}
+                    :dimensions   [{:name "NAME" :field_id 301 :type "string"
+                                    :portable_fk ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]
+                                    :reference   ["field" {"join-alias" "Campaign"}
+                                                  ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]}]}]}
+          xml    (llm-shape/metric->xml metric)]
+      (is (str/includes? xml "### Dimensions that require an explicit join"))
+      (is (str/includes? xml "no foreign key"))
+      (testing "the exact join clause is embedded as JSON for the LLM to paste"
+        (is (str/includes? xml "\"mbql/join\""))
+        (is (str/includes? xml "\"source-table\"")))
+      (testing "the per-dimension Reference is the ALIAS-QUALIFIED field clause, not a bare FK"
+        (is (str/includes? xml "NAME"))
+        ;; the pasteable form carries the join-alias; a bare `[db,schema,table,field]` here would
+        ;; dead-end on :no-fk-path (BOT-1612)
+        (is (str/includes? xml "[\"field\",{\"join-alias\":\"Campaign\"},[\"Sample\",\"PUBLIC\",\"CAMPAIGNS\",\"NAME\"]]"))))))
 
 (deftest ^:parallel format-metric-dimensions-table-test
   (testing "dimensions carry their source table + a copy-paste portable FK, disambiguating
