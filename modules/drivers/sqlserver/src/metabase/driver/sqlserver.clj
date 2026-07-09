@@ -902,43 +902,38 @@
 ;;
 ;; - Add a max-results `:limit` to source queries if there's not already one
 
-(defn- fix-order-bys [inner-query]
-  (letfn [;; `in-source-query?` = whether the DIRECT parent is `:source-query`. This is only called on maps that have
-          ;; `:limit`, and the only two possible parents there are `:query` (for top-level queries) or `:source-query`.
-          (in-source-query? [path]
-            (= (last path) :source-query))
-          ;; `in-join-source-query?` = whether the parent is `:source-query`, and the grandparent is `:joins`, i.e. we
-          ;; are a source query being joined against. In this case it's apparently ok to remove the ORDER BY.
-          ;;
-          ;; What about source-query in source-query in Join? Not sure about that case. Probably better to be safe and
-          ;; not do the aggressive optimizations. See
-          ;; https://github.com/metabase/metabase/pull/19384#discussion_r787002558 for more details.
-          (in-join-source-query? [path]
-            (and (in-source-query? path)
-                 (= (last (butlast path)) :joins)))
-          (has-order-by-without-limit? [m]
-            (and (map? m)
-                 (:order-by m)
-                 (not (:limit m))))
-          (remove-order-by? [path m]
-            (and (has-order-by-without-limit? m)
-                 (in-join-source-query? path)))
-          (add-limit? [path m]
-            (and (has-order-by-without-limit? m)
-                 (not (in-join-source-query? path))
-                 (in-source-query? path)))]
-    (match/replace inner-query
-      ;; remove order by and then recurse in case we need to do more transformations at another level
-      (m :guard (remove-order-by? &parents m))
-      (fix-order-bys (dissoc m :order-by))
+(defn- has-order-by-without-limit? [stage]
+  (and (:order-by stage)
+       (not (:limit stage))))
 
-      (m :guard (add-limit? &parents m))
-      (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
+(defn- fix-order-bys
+  [stages join-source?]
+  (let [n (count stages)]
+    (vec
+     (map-indexed
+      (fn [i stage]
+        (let [last? (= i (dec n))
+              ;; recurse into any joins first — each join's own `:stages` is a fresh derived table
+              stage (cond-> stage
+                      (:joins stage)
+                      (update :joins (fn [joins]
+                                       (mapv #(update % :stages fix-order-bys true) joins))))]
+          (cond
+            ;; last stage of a join = the derived table directly under JOIN → dropping the ORDER BY is fine
+            (and last? join-source? (has-order-by-without-limit? stage))
+            (dissoc stage :order-by)
+
+            ;; any non-final subquery stage → make the ORDER BY legal by giving it a TOP
+            (and (not last?) (has-order-by-without-limit? stage))
+            (assoc stage :limit driver-api/absolute-max-results)
+
+            :else stage)))
+      stages))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
   (let [parent-method (get-method sql.qp/preprocess :sql-mbql5)]
-    (fix-order-bys (parent-method driver inner-query))))
+    (fix-order-bys (parent-method driver inner-query) false)))
 
 ;; SQL server only supports setting holdability at the connection level, not the statement level, as per
 ;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15

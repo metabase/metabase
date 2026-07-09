@@ -27,7 +27,26 @@
       driver-api/add-alias-info
       :stages))
 
-(defn- stage->honeysql [driver stage]
+(defn- desired-col-alias-ident [col]
+  (h2x/identifier :field (:lib/desired-column-alias col)))
+
+(defn- stage-source-form
+  [driver hsql stage]
+  (let [table-alias      (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
+        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
+    (cond
+      (nil? hsql)
+      {}
+
+      (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
+      {:with [[[sql.qp/source-query-alias {:columns (mapv desired-col-alias-ident columns-metadata)}]
+               hsql]]
+       :from [[table-alias]]}
+
+      :else
+      {:from [[hsql [table-alias]]]})))
+
+(defn- stage->honeysql [driver prev-from stage]
   (cond
     (:persisted-info/native stage)
     (sql.qp/sql-source-query (:persisted-info/native stage) nil)
@@ -37,28 +56,14 @@
 
     :else
     (binding [sql.qp/*inner-query* stage]
-      (#'sql.qp/apply-top-level-clauses driver {} stage))))
+      (#'sql.qp/apply-top-level-clauses driver prev-from stage))))
 
 (defn- stages->honeysql [driver stages]
   (first
    (reduce
     (fn [[prev-hsql prev-stage] stage]
-      (let [stage-hsql (stage->honeysql driver stage)]
-        (if prev-hsql
-          (let [table-alias (sql.qp/->honeysql driver (h2x/identifier :table-alias sql.qp/source-query-alias))
-                columns-metadata (get-in prev-stage [:lib/stage-metadata :columns])
-                desired-aliases (mapv :lib/desired-column-alias columns-metadata)
-                cur-hsql (cond-> (assoc stage-hsql :from [[prev-hsql [table-alias]]])
-                           (sql.qp/needs-cte-for-duplicate-cols? columns-metadata)
-                           (assoc :with [[[sql.qp/source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
-                                          prev-hsql]]
-                                  :from [[table-alias]])
-
-                           ;; Clear the default select if it's just :* so add-default-select can recompute it
-                           (= (:select stage-hsql) [[:*]])
-                           (dissoc :select))]
-            [(#'sql.qp/add-default-select driver cur-hsql) stage])
-          [stage-hsql stage])))
+      (let [prev-from (stage-source-form driver prev-hsql prev-stage)]
+        [(stage->honeysql driver prev-from stage) stage]))
     [nil nil]
     stages)))
 
