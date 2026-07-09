@@ -348,8 +348,19 @@
    params-type :- ::param-type]
   (get-in args [:params params-type :binding] '_))
 
+(defn- redact-files
+  "Replace [[java.io.File]] values (multipart tempfiles) so validation errors don't leak server temp paths."
+  [x]
+  (cond
+    (instance? java.io.File x) "<redacted File>"
+    (map? x)                   (update-vals x redact-files)
+    (sequential? x)            (mapv redact-files x)
+    :else x))
+
 (defn- invalid-params-specific-errors [explanation]
   (-> explanation
+      (update :value redact-files)
+      (update :errors (partial mapv #(update % :value redact-files)))
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 

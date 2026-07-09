@@ -1,6 +1,7 @@
 (ns metabase.upload.api-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.upload.api :as upload.api]
@@ -94,8 +95,10 @@
   (testing "POST /api/upload/csv rejects a second file part smuggled as collection_id"
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
-        (mt/user-http-request :crowberto :post 400 "upload/csv"
-                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                              [[:file (byte-array [97 44 98 10 49 44 50])]
-                               [:collection_id (byte-array [99 44 100 10 51 44 52])]])
+        (let [response (mt/user-http-request :crowberto :post 400 "upload/csv"
+                                             {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                             [[:file (byte-array [97 44 98 10 49 44 50])]
+                                              [:collection_id (byte-array [99 44 100 10 51 44 52])]])]
+          (testing "the validation error does not leak the tempfile path"
+            (is (not (str/includes? (pr-str response) "ring-multipart-")))))
         (is (zero? @calls) "the endpoint body should never run")))))
