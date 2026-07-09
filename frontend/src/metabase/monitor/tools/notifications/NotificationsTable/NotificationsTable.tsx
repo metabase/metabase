@@ -231,14 +231,26 @@ export const NotificationsTable = ({
 
   if (isLoading || error !== undefined) {
     return (
-      <Card withBorder p="lg" data-testid="notifications-admin-table">
+      <Card
+        flex="0 1 auto"
+        mih={0}
+        withBorder
+        p="lg"
+        data-testid="notifications-admin-table"
+      >
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Card>
     );
   }
 
   return (
-    <Card withBorder p={0} data-testid="notifications-admin-table">
+    <Card
+      flex="0 1 auto"
+      mih={0}
+      p={0}
+      withBorder
+      data-testid="notifications-admin-table"
+    >
       <TreeTable
         instance={instance}
         hierarchical={false}
