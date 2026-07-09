@@ -199,7 +199,7 @@
   []
   (if-let [default (default-engine)]
     (->> (concat [default] (additional-engines))
-         (mapcat #(cons % (filter supported-engine? (dependencies %))))
+         (mapcat #(cons % (filter supported-engine? (filter known-engine? (dependencies %)))))
          distinct
          (remove #{:search.engine/in-place}))
     []))

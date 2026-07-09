@@ -84,12 +84,10 @@
 
 (defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
-  (let [e (keyword "search.engine" engine)]
-    ;; Serving or maintained: the resolved default, or an engine whose index we keep up to date.
-    (if (or (= e (search.engine/default-engine))
-            (contains? (set (search.engine/active-engines)) e))
-      1
-      0)))
+  ;; Can the engine serve queries: in-place always can, indexed engines only while their index is maintained.
+  (if (= :ok (search.engine/engine-status (keyword "search.engine" engine)))
+    1
+    0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"

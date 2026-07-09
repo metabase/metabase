@@ -63,7 +63,9 @@
   Tolerates the fully qualified form the API returns in the :engine response field, and legacy engine names."
   [value]
   (when-not (str/blank? value)
-    (search.engine/canonical-engine (last (str/split value #"/")))))
+    (let [engine-name (str/replace value #"^search\.engine/" "")]
+      (when-not (str/blank? engine-name)
+        (search.engine/canonical-engine engine-name)))))
 
 (defn- check-engine-serves!
   "400 when an explicitly requested engine cannot serve searches, naming the cause."
