@@ -17,9 +17,9 @@
 
 (defn- reset-throttlers! []
   (doseq [throttler (concat (vals @#'mfa.api/verify-throttlers)
+                            (vals @#'mfa.management/throttlers)
                             (vals @#'api.session/login-throttlers)
-                            [@#'api.session/reset-password-throttler
-                             @#'mfa.management/regenerate-throttler])]
+                            [@#'api.session/reset-password-throttler])]
     (reset! (:attempts throttler) nil)))
 
 (use-fixtures :each (fn [f] (reset-throttlers!) (f)))

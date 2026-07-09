@@ -3,7 +3,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import {
+  PLUGIN_IS_PASSWORD_USER,
+  PLUGIN_MULTI_FACTOR_AUTH,
+} from "metabase/plugins";
 import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
@@ -31,6 +34,9 @@ export const AccountHeader = ({
       { name: t`Profile`, value: "/account/profile" },
       ...(hasPasswordChange
         ? [{ name: t`Password`, value: "/account/password" }]
+        : []),
+      ...(PLUGIN_MULTI_FACTOR_AUTH.isEnabled()
+        ? [{ name: t`Security`, value: "/account/security" }]
         : []),
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },

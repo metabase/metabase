@@ -92,7 +92,10 @@ export {
   type MetabaseAIProviderSetupProps,
 } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
-export { PLUGIN_MULTI_FACTOR_AUTH } from "./oss/multi-factor-auth";
+export {
+  PLUGIN_MULTI_FACTOR_AUTH,
+  type MfaChallengeFormProps,
+} from "./oss/multi-factor-auth";
 export {
   PLUGIN_MODERATION,
   type RevisionOrModerationEvent,

@@ -3328,12 +3328,15 @@
    :api  #{metabase-enterprise.mfa.init
            metabase-enterprise.mfa.routes}
    :uses #{api
+           appearance
            auth-identity
+           channel
            config
            events
            premium-features
            request
            settings
+           sso
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
 

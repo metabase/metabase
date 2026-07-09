@@ -19,7 +19,15 @@
    [metabase-enterprise.mfa.challenge :as challenge]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :refer [defenterprise]]))
+
+(defn- available-methods
+  "Second-factor methods the challenge UI may offer. Email OTP is a fallback to TOTP, advertised
+  only when the instance can actually send email."
+  []
+  (cond-> ["totp"]
+    (channel.settings/email-configured?) (conj "email")))
 
 (def ^:private challenged-providers
   #{:provider/password :provider/ldap})
@@ -49,6 +57,7 @@
                :mfa-pending? true
                :mfa-required true
                :mfa-method   (name method)
+               :mfa-methods  (available-methods)
                :mfa-token    (challenge/issue-challenge-token user-id provider))
 
         (contains? session-suppressed-providers provider)

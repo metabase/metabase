@@ -1,0 +1,101 @@
+(ns metabase-enterprise.mfa.email-otp-test
+  (:require
+   [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase-enterprise.mfa.api :as mfa.api]
+   [metabase-enterprise.mfa.enrollment :as enrollment]
+   [metabase-enterprise.mfa.totp :as totp]
+   [metabase.channel.email :as channel.email]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.session.api :as api.session]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+(defn- reset-throttlers! []
+  (doseq [throttler (concat (vals @#'mfa.api/verify-throttlers)
+                            (vals @#'api.session/login-throttlers)
+                            [@#'mfa.api/email-otp-send-throttler])]
+    (reset! (:attempts throttler) nil)))
+
+(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+
+(defn- fresh-jti [] (str (random-uuid)))
+
+(deftest email-otp-round-trip-test
+  (let [secret (totp/generate-secret)]
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/AuthIdentity _ {:user_id     user-id
+                                          :provider    "totp"
+                                          :credentials {:secret secret :confirmed_at (t/instant)}}]
+      (let [code (enrollment/set-email-otp! user-id)]
+        (is (re-matches #"\d{6}" code))
+        (is (true? (enrollment/verify-attempt! user-id code (fresh-jti))))
+        (testing "single-use"
+          (is (false? (enrollment/verify-attempt! user-id code (fresh-jti)))))))))
+
+(deftest email-otp-requires-confirmed-enrollment-test
+  (mt/with-temp [:model/User {user-id :id} {}
+                 :model/AuthIdentity _ {:user_id     user-id
+                                        :provider    "totp"
+                                        :credentials {:secret (totp/generate-secret)}}]
+    (is (nil? (enrollment/set-email-otp! user-id)))))
+
+(deftest expired-email-otp-rejected-test
+  (let [secret (totp/generate-secret)]
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/AuthIdentity {ai-id :id} {:user_id     user-id
+                                                    :provider    "totp"
+                                                    :credentials {:secret secret :confirmed_at (t/instant)}}]
+      (let [code (enrollment/set-email-otp! user-id)]
+        ;; back-date the expiry
+        (let [ai (t2/select-one :model/AuthIdentity :id ai-id)]
+          (t2/update! :model/AuthIdentity ai-id
+                      {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
+                                              (- (quot (System/currentTimeMillis) 1000) 1))}))
+        (is (false? (enrollment/verify-attempt! user-id code (fresh-jti))))))))
+
+(deftest send-email-otp-e2e-test
+  (mt/with-premium-features #{:multi-factor-auth}
+    (mt/with-temporary-setting-values [mfa-enabled true]
+      (let [secret (totp/generate-secret)
+            sent   (atom nil)]
+        (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
+                                         :provider    "totp"
+                                         :credentials {:secret secret :confirmed_at (t/instant)}})
+        (try
+          (with-redefs [channel.settings/email-configured? (constantly true)
+                        channel.email/send-message!        (fn [& {:as msg}] (reset! sent msg) msg)]
+            (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+              (testing "the challenge advertises the email method when email is configured"
+                (is (= ["totp" "email"] (:methods challenge))))
+              (is (true? (:success (mt/client :post 200 "ee/mfa/send-email-otp"
+                                              {:mfa_token (:mfa_token challenge)}))))
+              (let [[_ code] (re-find #"code is: (\d{6})" (:message @sent))]
+                (is (some? code) "the email contains the code")
+                (testing "the emailed code completes the login"
+                  (is (=? {:id string?}
+                          (mt/client :post 200 "ee/mfa/verify"
+                                     {:mfa_token (:mfa_token challenge) :code code})))))))
+          (testing "a bogus challenge token cannot trigger a send"
+            (mt/client :post 401 "ee/mfa/send-email-otp" {:mfa_token "bogus"}))
+          (finally
+            (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+
+(deftest send-email-otp-requires-configured-email-test
+  (mt/with-premium-features #{:multi-factor-auth}
+    (mt/with-temporary-setting-values [mfa-enabled true]
+      (let [secret (totp/generate-secret)]
+        (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
+                                         :provider    "totp"
+                                         :credentials {:secret secret :confirmed_at (t/instant)}})
+        (try
+          (with-redefs [channel.settings/email-configured? (constantly false)]
+            (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+              (testing "the challenge does not advertise email"
+                (is (= ["totp"] (:methods challenge))))
+              (mt/client :post 400 "ee/mfa/send-email-otp" {:mfa_token (:mfa_token challenge)})))
+          (finally
+            (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))

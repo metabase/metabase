@@ -19,6 +19,19 @@ export interface SessionResponse {
   id: string;
 }
 
+export interface MfaChallengeResponse {
+  mfa_required: true;
+  method: string;
+  methods?: string[];
+  mfa_token: string;
+}
+
+export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
+
+export const isMfaChallenge = (
+  response: CreateSessionResponse,
+): response is MfaChallengeResponse => "mfa_required" in response;
+
 export interface GoogleAuthData {
   token: string;
   remember?: boolean;
@@ -35,7 +48,7 @@ export interface SsoLogoutResponse {
 
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    createSession: builder.mutation<SessionResponse, LoginData>({
+    createSession: builder.mutation<CreateSessionResponse, LoginData>({
       query: (body) => ({
         method: "POST",
         url: "/api/session",

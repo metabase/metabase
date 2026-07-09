@@ -2,24 +2,152 @@
   "/api/ee/mfa endpoints that require a signed-in user (mounted behind auth in
   `metabase-enterprise.mfa.routes`).
 
-  Not premium-feature-gated: these manage an *existing* enrollment, and per the fail-closed
-  license-lapse semantics a lapsed license must never strand an enrolled user."
+  Feature gating follows the fail-closed license-lapse split: *starting* an enrollment requires
+  the `:multi-factor-auth` feature (setup), while disable, status, and recovery-code regeneration
+  never do — a lapsed license must not strand an enrolled user.
+
+  Re-auth model: enroll with the factor you have (your password — local hash for password users,
+  LDAP bind for LDAP users); disable/regenerate with the factor you're managing (a fresh TOTP or
+  recovery code), so a stolen password alone can never remove or weaken 2FA."
   (:require
    [metabase-enterprise.mfa.enrollment :as enrollment]
+   [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase-enterprise.mfa.totp :as totp]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.appearance.core :as appearance]
+   [metabase.channel.email :as email]
    [metabase.config.core :as config]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.sso.core :as sso]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [throttle.core :as throttle]))
+   [metabase.util.password :as u.password]
+   [throttle.core :as throttle]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private regenerate-throttler
-  ;; re-auth takes a 6-digit code, so this path needs brute-force limits like /verify
-  (throttle/make-throttler :user-id, :attempts-threshold 5))
+;;; -------------------------------------------------- Helpers --------------------------------------------------
+
+(def ^:private throttlers
+  ;; second-factor re-auth takes a 6-digit code, so these paths need brute-force limits like /verify
+  {:enroll     (throttle/make-throttler :user-id, :attempts-threshold 5)
+   :regenerate (throttle/make-throttler :user-id, :attempts-threshold 5)
+   :disable    (throttle/make-throttler :user-id, :attempts-threshold 5)})
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
+
+(defn- throttle-check [key]
+  (when-not throttling-disabled?
+    (throttle/check (throttlers key) api/*current-user-id*)))
+
+(defn- verify-user-password
+  "Re-verify the signed-in user's first-factor password, dispatched by how they authenticate:
+  against the local hash for password users, by LDAP bind for LDAP-only users."
+  [user-id password]
+  (boolean
+   (or (when-let [{:keys [password_hash password_salt]}
+                  (:credentials (t2/select-one :model/AuthIdentity :user_id user-id :provider "password"))]
+         (and password_hash (u.password/verify-password password password_salt password_hash)))
+       (when (sso/ldap-enabled)
+         (when-let [email (t2/select-one-fn :email :model/User user-id)]
+           (when-let [user-info (sso/find-user email)]
+             (sso/verify-password user-info password)))))))
+
+(defn- notify! [user-id subject message event-topic]
+  (try
+    (when-let [email (t2/select-one-fn :email :model/User user-id)]
+      (email/send-message! {:subject      subject
+                            :recipients   [email]
+                            :message-type :text
+                            :message      message}))
+    (catch Throwable e
+      (log/warn e "Failed to send MFA notification email")))
+  (events/publish-event! event-topic {:object (t2/select-one :model/User user-id)}))
+
+(defn- invalid-code-ex []
+  (ex-info (str (deferred-tru "Invalid authentication code.")) {:status-code 401}))
+
+;;; -------------------------------------------------- Enrollment --------------------------------------------------
+
+(api.macros/defendpoint :post "/enroll" :- [:map
+                                            [:secret      ms/NonBlankString]
+                                            [:otpauth_uri ms/NonBlankString]]
+  "Start TOTP enrollment for the current user. Requires the account password (LDAP users re-bind
+  against the directory) and the `:multi-factor-auth` feature. Returns the Base32 `secret` and an
+  `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code."
+  [_route-params
+   _query-params
+   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+  (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
+  (when-not (mfa.settings/mfa-enabled)
+    (throw (ex-info (str (deferred-tru "Two-factor authentication is not enabled on this instance."))
+                    {:status-code 400})))
+  (throttle-check :enroll)
+  (when-not (verify-user-password api/*current-user-id* password)
+    (throw (ex-info (str (deferred-tru "Invalid password.")) {:status-code 401})))
+  (let [secret (or (enrollment/start-enrollment! api/*current-user-id*)
+                   (throw (ex-info (str (deferred-tru "Two-factor authentication is already set up. Disable it before re-enrolling."))
+                                   {:status-code 400})))
+        email  (t2/select-one-fn :email :model/User api/*current-user-id*)]
+    {:secret      secret
+     :otpauth_uri (totp/otpauth-uri {:issuer (or (appearance/site-name) "Metabase")
+                                     :account email
+                                     :secret  secret})}))
+
+(api.macros/defendpoint :post "/enroll/confirm" :- [:map
+                                                    [:recovery_codes [:sequential ms/NonBlankString]]]
+  "Confirm TOTP enrollment by verifying a code from the authenticator app. Activates the second
+  factor and returns the single-use recovery codes — the only time they exist in plaintext."
+  [_route-params
+   _query-params
+   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+  (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
+  (throttle-check :enroll)
+  (let [codes (or (enrollment/confirm-enrollment! api/*current-user-id* code)
+                  (throw (invalid-code-ex)))]
+    (notify! api/*current-user-id*
+             (str (deferred-tru "Two-factor authentication was enabled on your Metabase account"))
+             (str (deferred-tru "Two-factor authentication is now required when you sign in. If you did not do this, reset your password and contact your administrator immediately."))
+             :event/mfa-enrolled)
+    {:recovery_codes codes}))
+
+(api.macros/defendpoint :post "/disable"
+  "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a
+  TOTP code or an unused recovery code — never just the password."
+  [_route-params
+   _query-params
+   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+  (throttle-check :disable)
+  (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
+    (throw (invalid-code-ex)))
+  (enrollment/disable! api/*current-user-id*)
+  (notify! api/*current-user-id*
+           (str (deferred-tru "Two-factor authentication was disabled on your Metabase account"))
+           (str (deferred-tru "Two-factor authentication was turned off for your account. If you did not do this, contact your administrator immediately."))
+           :event/mfa-disabled)
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :get "/status" :- [:map
+                                           [:mfa_enabled              :boolean]
+                                           [:enrolled                 :boolean]
+                                           [:pending                  :boolean]
+                                           [:method                   [:maybe :string]]
+                                           [:recovery_codes_remaining :int]]
+  "The current user's MFA status, for the account-settings UI."
+  []
+  (let [user-id api/*current-user-id*
+        method  (enrollment/enrolled-method user-id)]
+    {:mfa_enabled              (mfa.settings/mfa-enabled)
+     :enrolled                 (boolean method)
+     :pending                  (enrollment/pending? user-id)
+     :method                   (some-> method name)
+     :recovery_codes_remaining (enrollment/recovery-codes-remaining user-id)}))
+
+;;; -------------------------------------------------- Recovery codes --------------------------------------------------
 
 (api.macros/defendpoint :post "/recovery-codes" :- [:map [:codes [:sequential ms/NonBlankString]]]
   "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a
@@ -28,9 +156,7 @@
   [_route-params
    _query-params
    {:keys [code]} :- [:map [:code ms/NonBlankString]]]
-  (when-not throttling-disabled?
-    (throttle/check regenerate-throttler api/*current-user-id*))
+  (throttle-check :regenerate)
   (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
-    (throw (ex-info (str (deferred-tru "Invalid authentication code."))
-                    {:status-code 401})))
+    (throw (invalid-code-ex)))
   {:codes (enrollment/reset-recovery-codes! api/*current-user-id*)})

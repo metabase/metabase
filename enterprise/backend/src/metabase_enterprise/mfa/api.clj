@@ -10,10 +10,12 @@
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase.api.macros :as api.macros]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.channel.email :as channel.email]
+   [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
@@ -24,6 +26,10 @@
   ;; Codes are 6 digits, so slow brute-force limits are load-bearing.
   {:user-id    (throttle/make-throttler :user-id, :attempts-threshold 5)
    :ip-address (throttle/make-throttler :ip-address, :attempts-threshold 50)})
+
+(def ^:private email-otp-send-throttler
+  ;; sending is expensive and spammable — much tighter than verification
+  (throttle/make-throttler :user-id, :attempts-threshold 3))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -69,3 +75,30 @@
                                {:object (t2/select-one :model/User :id user-id)})
         (throw (ex-info (str (deferred-tru "Invalid authentication code."))
                         {:status-code 401}))))))
+
+(api.macros/defendpoint :post "/send-email-otp" :- [:map [:success [:= true]]]
+  "Email a one-time code as a fallback second factor (for a user who lost their authenticator but
+  still has recovery codes disabled or unavailable). Requires a valid challenge token from
+  `POST /api/session`; the code is single-use with a 10-minute expiry and is accepted by
+  `POST /verify` like any other code."
+  [_route-params
+   _query-params
+   {:keys [mfa_token]} :- [:map [:mfa_token ms/NonBlankString]]]
+  (let [claims  (or (challenge/verify-challenge-token mfa_token)
+                    (throw (invalid-token-ex)))
+        user-id (:user-id claims)]
+    (throttle-check email-otp-send-throttler user-id)
+    (when-not (channel.settings/email-configured?)
+      (throw (ex-info (str (deferred-tru "Email is not configured on this instance."))
+                      {:status-code 400})))
+    (let [code  (or (enrollment/set-email-otp! user-id)
+                    (throw (invalid-token-ex)))
+          email (t2/select-one-fn :email :model/User :id user-id)]
+      (channel.email/send-message!
+       {:subject      (tru "Your Metabase sign-in code")
+        :recipients   [email]
+        :message-type :text
+        :message      (str (tru "Your one-time sign-in code is: {0}" code)
+                           "\n\n"
+                           (tru "It expires in 10 minutes. If you didn''t try to sign in, contact your administrator."))})
+      {:success true})))
