@@ -42,6 +42,6 @@
                  (triggers/for-job scan-job-key)
                  (triggers/with-schedule
                   (cron/schedule
-                   (cron/cron-schedule "0 0 3 * * ? *")
+                   (cron/cron-schedule "0 0 4 * * ? *")
                    (cron/with-misfire-handling-instruction-fire-and-proceed))))]
     (task/schedule-task! job trigger)))
