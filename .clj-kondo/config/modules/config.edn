@@ -1884,7 +1884,8 @@
            settings
            sync
            util}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Database
+                    :model/Table}}
 
   search
   {:team "UX West"
