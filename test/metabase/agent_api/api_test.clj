@@ -1478,6 +1478,22 @@
         (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
                               {:dashcards [{:action "add_heading" :text "Nope" :tab_id 999999}]})))))
 
+(deftest update-dashboard-dashcards-nil-tab-collision-test
+  (testing "A nil-tab dashcard on a tabbed dashboard blocks first-tab placement (it renders there)"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Nil Tab Collision"}
+                   :model/DashboardTab  {tab1-id :id} {:dashboard_id dash-id :name "One" :position 0}
+                   :model/DashboardTab  _             {:dashboard_id dash-id :name "Two" :position 1}
+                   :model/Card          {card-id :id} {:name "legacy" :dataset_query (orders-count-query) :display :table}
+                   ;; predates the tabs: no dashboard_tab_id, but the frontend renders it on tab 1
+                   :model/DashboardCard _             {:dashboard_id dash-id :dashboard_tab_id nil :card_id card-id
+                                                       :row 0 :col 0 :size_x 24 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text "Below the legacy card"}]})
+      (is (=? {:dashboard_tab_id tab1-id
+               :row              4}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil))
+          "the heading must land below the nil-tab card, not on top of it"))))
+
 (deftest update-dashboard-lifecycle-checks-test
   (testing "dashcard mutations on an archived dashboard are rejected"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Archived Dash" :archived true}

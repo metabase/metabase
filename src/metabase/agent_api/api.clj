@@ -1380,7 +1380,10 @@
                            (:id (api/check-404 (t2/select-one [:model/DashboardTab :id]
                                                               :id tab-id :dashboard_id dashboard-id)))
                            default-tab-id))
-        on-tab         (fn [placed tab-id] (filterv #(= (:dashboard_tab_id %) tab-id) placed))
+        ;; Dashcards with a nil tab id still render on a tabbed dashboard's first tab, so for
+        ;; collision/reflow purposes they count as first-tab cards.
+        effective-tab  (fn [dashcard] (or (:dashboard_tab_id dashcard) default-tab-id))
+        on-tab         (fn [placed tab-id] (filterv #(= (effective-tab %) tab-id) placed))
         state          (atom {:placed  (vec current)
                               :added   []
                               :removed []
@@ -1433,8 +1436,9 @@
                            (t2/select-one :model/DashboardCard
                                           :id dashcard_id :dashboard_id dashboard-id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
-                ;; and the move-to-top reflow must not touch cards on other tabs.
-                same-tab? #(= (:dashboard_tab_id %) (:dashboard_tab_id existing))
+                ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
+                ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.
+                same-tab? #(= (effective-tab %) (effective-tab existing))
                 ;; Strip the moved card from the placed list while we recompute its position,
                 ;; otherwise autoplace will treat it as still occupying its old slot.
                 others     (vec (remove (comp #{dashcard_id} :id) (:placed @state)))
