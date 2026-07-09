@@ -130,6 +130,11 @@ sigils.
 (lib/query mp (lib.metadata/table mp (mt/id :venues)))
 ```
 
+Dotted **table** symbols (schema-qualified / odd table names, e.g.
+`(mt/run-mbql-query objects.stuff)` in `postgres_test.clj:205`): in table position
+the whole symbol is the table name — the port is `(mt/id :objects.stuff)`. Verify by
+running; if `mt/id` resolution fails, flag the test as a manual case.
+
 **R4 — Build inside the same dynamic scope the macro ran in.** Sigils expanded to
 runtime `(mt/id ...)` calls, so `mbql-query` inside `mt/dataset`, `mt/with-db`,
 `mt/with-temp-copy-of-db`, or `mt/test-drivers` targeted the DB bound *there*. The
@@ -152,11 +157,16 @@ construction and execution, this file is a manual-review case — flag it (§4.7
 ;; OLD                          ;; NEW
 $price                          (lib.metadata/field mp (mt/id :venues :price))
 $categories.name                (lib.metadata/field mp (mt/id :categories :name))
+;; nested (3+ segments, Mongo/BigQuery nested columns):
+$tips.source.username           (lib.metadata/field mp (mt/id :tips :source :username))
 ```
 
 Column metadata is accepted directly by every filter/aggregation/breakout/order-by
 builder — no explicit `:field` clause needed. Bind each field once at the top of the
-`let`, named after the column (§8).
+`let`, named after the column (§8). Nested field sigils like `$tips.source.username`
+work because `mt/id` takes nested field names variadically
+(`test/metabase/test/data.clj:245-246`) and nested fields are real Field rows, so
+the ID lookup resolves.
 
 **R7 — `$$table` → table metadata (or raw `(mt/id :table)` in raw contexts).**
 
@@ -178,20 +188,33 @@ was used to hand-attach options to a ref — `[:field %price {:binning {...}}]` 
 the corresponding builder instead (`lib/with-binning`, R24; `lib/with-temporal-bucket`,
 R23) applied to the column metadata from R6.
 
-**R9 — `*field` (name-based ref, resolved from app DB) → column metadata found by
-name.** Do NOT port this to `lib.metadata/field` by ID: the result-metadata code
-preserves whether the original ref was by-ID or by-name
-(`src/metabase/lib/metadata/result_metadata.cljc:309-325`), so an ID-based port
-changes `:field_ref`/`:cols` expectations. Instead find the column by `:name` in the
-appropriate column list:
+**R9 — `*field` (name-based ref, resolved from app DB): split by stage.** The
+result-metadata code preserves whether the original ref was by-ID or by-name
+(`src/metabase/lib/metadata/result_metadata.cljc:309-325`), so the goal is to keep
+emitting a *name* ref. How you get one depends on where the column comes from:
 
-```clojure
-;; OLD: :breakout [*name]        (a name ref into the source)
-;; NEW:
-(as-> (lib/query mp ...) q
-  (lib/breakout q (m/find-first #(= (:name %) "NAME")   ; H2 upper-cases names
-                                (lib/breakoutable-columns q))))
-```
+- **Column from a previous stage or a source card (inherited column)** — this is
+  R10's case: find the column by `:name` in `lib/breakoutable-columns` /
+  `lib/filterable-columns` etc. and pass the metadata to the builder. `lib/ref` on
+  an inherited column produces a name ref, so ref style is preserved.
+- **Stage-0 column of a plain `:source-table` query** — the name lookup does NOT
+  preserve ref style: the column metadata carries an `:id`, and
+  `column-metadata->field-ref` prefers `:id` for non-inherited columns
+  (`src/metabase/lib/field.cljc:461-475` — `((some-fn :id ...) metadata)`), so
+  `lib/ref` emits `[:field {} 123]` and the port causes exactly the
+  `:field_ref`/`:cols` change this rule exists to avoid. **Policy:** hand-write the
+  MBQL-5 name-ref clause (options-first, driver-cased name — the old macro emitted
+  `[:field "NAME" {:base-type ...}]` via `mbql_query_impl.cljc:126-136`):
+
+  ```clojure
+  ;; OLD: :breakout [*name]      (stage-0 name ref into the source table)
+  ;; NEW (raw MBQL-5 clause; builders accept it):
+  (lib/breakout q (lib/expression-clause :field ["NAME"] {:base-type :type/Text}))
+  ;; equivalently: [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text} "NAME"]
+  ```
+
+  If the surrounding test makes this awkward, treat the test as a §4.5 manual case
+  rather than silently switching to an ID ref.
 
 Remember `*field`'s resolved name was **driver-cased** (H2 = upper case, via
 `mt/format-name`). Any file using `*field` sigils must be run and its `:cols`
@@ -247,6 +270,25 @@ tests, e.g. `test/metabase/query_processor/explicit_joins_test.clj:1586-1595`):
 `lib/with-join-alias` is re-exported at `src/metabase/lib/core.cljc:1106` (docstring
 flags it "Leak" — sanctioned for this test port).
 
+**Composed sigils.** The sigils wrap recursively
+(`test/metabase/test/data.clj:120-123`; impl
+`mbql_query_impl.cljc:166-184` re-parses the inner token), and real files use the
+composed forms (`explicit_joins_test.clj:331,354,498-499`; mongo
+`query_processor_test.clj` `&Tips.$tips.source.categories`):
+
+- `&alias.$table.field` — the `$` is just explicit; port as R12 as-is.
+- `&alias.*table.field` (join alias over a NAME ref) — do NOT use the
+  `lib.metadata/field` + `with-join-alias` fallback (that emits an ID ref). Build
+  the name-based ref per R9 — preferably find the joined column by `:name`
+  (driver-cased) among `lib/visible-columns` / the join's RHS columns, which for
+  columns inherited from a joined source query preserves the name ref — then apply
+  `(lib/with-join-alias col "alias")` if the alias is not already on the column.
+- `&alias.*name/Type` — same, via the R10 previous-stage/name lookup.
+- `!unit.*field` — R9 name-based ref, then `lib/with-temporal-bucket`.
+- `!unit.&alias.field` / `&alias.!unit.field` — compose R12 + R23.
+
+Files using composed sigils go on the §4.5 run-to-verify list.
+
 ### Filters
 
 **R13 — `:filter` clause → `lib/filter` + constructor.**
@@ -258,14 +300,26 @@ flags it "Leak" — sanctioned for this test port).
 ```
 
 Constructors (all verified in `src/metabase/lib/filter.cljc:374-398`, re-exported
-from `lib`): `and or not = != in not-in < <= > >= between inside is-null not-null
-is-empty not-empty starts-with ends-with contains does-not-contain
-relative-time-interval time-interval during segment`.
+from `lib` per `src/metabase/lib/core.cljc:713-730`): `and or not = != in not-in
+< <= > >= between inside is-null not-null is-empty not-empty starts-with ends-with
+contains does-not-contain relative-time-interval time-interval segment`.
+`during` is NOT re-exported — call it as `lib.filter/during` (requires
+`[metabase.lib.filter :as lib.filter]`); `lib/during` is a compile error.
 
-**R14 — Legacy `[:and ...]` / `[:or ...]` →** either `(lib/and c1 c2 ...)` /
-`(lib/or c1 c2 ...)`, or for top-level `:and` simply multiple `lib/filter` calls
-(they AND together). Prefer `lib/and` when the old test had an explicit `[:and ...]`
-so the compiled SQL shape stays closest.
+Multi-value comparison filters are ported **arg-for-arg** — `=`, `!=`, `in`,
+`not-in`, `starts-with`, `ends-with`, `contains`, `does-not-contain` are variadic
+(`filter.cljc:377-394`): `[:= $x "a" "b"]` → `(lib/= x "a" "b")`. Do NOT rewrite as
+`(lib/or (lib/= x "a") (lib/= x "b"))` — that compiles to different SQL than the
+old `IN`-style clause.
+
+**R14 — Legacy `[:and ...]` / `[:or ...]`.** A **top-level** `:filter [:and a b]`
+ports as multiple `lib/filter` calls (they AND together). This matches what the old
+pipeline actually saw: legacy→MBQL-5 conversion drops a leading `:and` and splices
+its args into the stage's `:filters` list
+(`src/metabase/lib/util.cljc:206-214,269`), whereas `(lib/filter q (lib/and a b))`
+produces the different shape `:filters [[:and a b]]` that the old query never had.
+Use `lib/and` / `lib/or` only for **nested** boolean subexpressions (an `:or` at
+top level, or `:and`/`:or` inside another clause).
 
 **R15 — `{:case-sensitive false}` option on string filters → `lib/ignore-case`.**
 
@@ -278,9 +332,25 @@ so the compiled SQL shape stays closest.
 (`src/metabase/lib/core.cljc:1717-1722`, implemented as
 `(lib.options/update-options expr assoc :case-sensitive false)`.)
 
-**R16 — Segments.** `[:segment (:id segment)]` → `(lib/segment (:id segment))`.
+**R16 — Segments & time intervals.** `[:segment (:id segment)]` →
+`(lib/segment (:id segment))`.
 Time intervals: `[:time-interval $created_at -30 :day]` →
 `(lib/time-interval orders-created-at -30 :day)`.
+
+- Keyword amounts pass straight through: `[:time-interval $f :last :month]` →
+  `(lib/time-interval col :last :month)` (same for `:current` / `:next`).
+- A trailing **options map** has no builder arg — `lib/time-interval` is a fixed
+  3-arity op (`lib.common/defop time-interval [x amount unit]`,
+  `src/metabase/lib/filter.cljc:396`). Port options via
+  `lib.options/update-options` (requires `[metabase.lib.options :as lib.options]`):
+
+  ```clojure
+  ;; OLD: [:time-interval $last_login -15 :day {:include-current true}]
+  (lib.options/update-options (lib/time-interval col -15 :day) assoc :include-current true)
+  ```
+
+  Precedent: `test/metabase/query_processor/expressions_test.clj:1379-1381`. A
+  literal empty options map (`[:time-interval $f 2 :year {}]`) is a no-op — drop it.
 
 ### Aggregations
 
@@ -297,21 +367,60 @@ cum-count count-where distinct-where avg distinct max min median percentile shar
 stddev sum cum-sum sum-where var`. Order matters — `[:aggregation N]` refs are
 positional.
 
+Legacy normalization also accepted a single **un-nested** clause —
+`:aggregation [:count]` ≡ `:aggregation [[:count]]` and
+`:aggregation [:sum [:case ...]]` ≡ `[[:sum [:case ...]]]` (real examples:
+`nested_queries_test.clj:117-135`, `case_test.clj:74-77`). Treat it as exactly one
+aggregation, not as multiple entries.
+
+**R17b — `[:metric N]` aggregation refs → `(lib/aggregate q (lib.metadata/metric mp N))`.**
+`lib.metadata/metric` (`src/metabase/lib/metadata.cljc:189-195`) returns the metric
+card's metadata; `lib/aggregate` accepts it directly. Precedent:
+`test/metabase/measures/models/measure_test.clj:106`.
+
+- Arithmetic over metrics: `[:+ [:metric 1] [:metric 2]]` →
+  `(lib/+ (lib.metadata/metric mp 1) (lib.metadata/metric mp 2))` (precedent
+  `measure_test.clj:124` — metric metadata nests inside arithmetic ops).
+- When the old query pairs `[:metric N]` with `:source-table "card__N"` (the metric
+  used as its own source, e.g. `case_test.clj:86-87`), the port is
+  `(lib/query mp (lib.metadata/card mp N))` (R41) + `(lib/aggregate q (lib.metadata/metric mp N))`.
+- Fallback when metadata lookup is awkward (mock providers, forward references): a
+  raw MBQL-5 clause works — `(lib/aggregate q [:metric {:lib/uuid (str (random-uuid))} N])`
+  (precedent `test/metabase/usage_metadata/extract_test.clj:218`).
+
+The metrics test module (`metrics/api_dataset_test.clj`, `metrics/api_test.clj`,
+`metrics/api_arithmetic_test.clj`) is dominated by this pattern.
+
 **R18 — `[:aggregation-options agg {:display-name "..."}]` →
-`lib/with-expression-name`.**
+`lib/update-options` setting `:display-name` ONLY.**
 
 ```clojure
 ;; OLD: [:aggregation-options [:sum $price] {:display-name "Total Price"}]
 ;; NEW:
-(lib/aggregate q (lib/with-expression-name (lib/sum venues-price) "Total Price"))
+(lib/aggregate q (lib/update-options (lib/sum venues-price) assoc :display-name "Total Price"))
 ```
 
+Do **NOT** use `lib/with-expression-name` here: for aggregations it sets **both**
+`:name` and `:display-name` (`src/metabase/lib/expression.cljc:546-567` —
+`(assoc opts :name new-name :display-name new-name)` for any clause without
+`:lib/expression-name`), while the legacy clause converts to MBQL 5 with only
+`:display-name` (`src/metabase/lib/convert.cljc` merges the legacy options map
+verbatim). `:name` drives the result column name and the compiled SQL alias, so
+`with-expression-name` silently changes `mt/cols` / `rows+column-names` /
+native-SQL output (old column `"sum"` would become `"Total Price"`) — including in
+row-only tests where no assertion catches it. If you do use `with-expression-name`
+anywhere, the §7 compiled-SQL parity check is mandatory for that test.
+
 **R19 — `:aggregation-options` with `:name` (SQL column alias) →
-`lib/update-options`.** `with-expression-name` sets `:display-name` on aggregations;
-when the old test set `:name` specifically (assertions on SQL aliases), do:
+`lib/update-options` with both keys.** When the old test set `:name` specifically
+(assertions on SQL aliases), or both `:name` and `:display-name`, set exactly the
+keys the old clause set:
 
 ```clojure
+;; OLD: [:aggregation-options [:sum $price] {:name "sum_2", :display-name "sum_2"}]
 (lib/update-options (lib/sum venues-price) assoc :name "sum_2" :display-name "sum_2")
+;; OLD: {:name "sum_2"} only
+(lib/update-options (lib/sum venues-price) assoc :name "sum_2")
 ```
 
 **R20 — Custom aggregation expressions** compose from the arithmetic ops (R32):
@@ -408,6 +517,12 @@ mutually exclusive on a stage; `with-page` drops `:limit`.
 ;; NEW:
 (lib/expression q "double-price" (lib/* venues-price 2))
 ```
+
+Keyword keys (`:expressions {:CATEGORY [:concat $category "2"]}` — real examples
+`test/metabase/driver/sql/query_processor_test.clj:836,945,959`) were stringified by
+legacy normalization; port them as their `name` string:
+`(lib/expression q "CATEGORY" ...)`, and downstream `[:expression "CATEGORY"]` refs
+use that same string.
 
 **R32 — Expression constructors** (verified in
 `src/metabase/lib/expression.cljc:341-397`, re-exported from `lib`): arithmetic
@@ -509,6 +624,25 @@ Second-stage columns have **no field IDs** — always find them by `:name` /
 `:display-name` (precedent `drill_thru_e2e_test.clj:105-110`,
 `time_field_test.clj:200-215`).
 
+**R40b — NATIVE `:source-query` under an MBQL outer query** (native first stage +
+MBQL second stage; common in QP tests, e.g. `nested_queries_test.clj:243-246`
+`{:source-query {:native sql} :aggregation [:count] :breakout [*price]}`):
+
+```clojure
+(-> (lib/native-query mp sql)
+    lib/append-stage
+    (lib/aggregate (lib/count))
+    (lib/breakout <second-stage column>))
+```
+
+All second-stage columns are found by `:name` per R10 — they have no field IDs, and
+the names are **driver-cased** (they come from the native results). When the native
+map came from `qp.compile/compile` (a map with `:query` and `:params`, e.g.
+`explicit_joins_test.clj:606-607` wraps one in `mt/native-query`): if `:params` is
+empty, extract the SQL string with `(:query compiled)` and use `lib/native-query`;
+otherwise use the R45 hybrid —
+`(lib/query mp {:database (mt/id), :type :native, :native compiled-map})`.
+
 **R41 — `:source-table "card__N"` → `(lib/query mp (lib.metadata/card mp N))`.**
 `lib.metadata/card` is at `src/metabase/lib/metadata.cljc:157`. If N comes from a
 `(str "card__" (:id card))` expression, use `(:id card)` directly.
@@ -542,10 +676,22 @@ must resolve the mocked card, wrap execution in
 
 ### Native queries
 
-**R44 — `mt/native-query` / `mt/query` with `:type :native` →
+**R44 — `mt/native-query` / `mt/query` with `:type :native` and a plain SQL string →
 `(lib/native-query mp "SQL...")`** (`src/metabase/lib/native.cljc:194`; template
 tags are auto-extracted from the SQL). Precedent for native cards:
 `dashboard_test.clj:536-538`.
+
+**Scope: string-SQL natives only.** `mt/native-query` accepts an arbitrary inner
+native MAP (`test/metabase/test/data.clj:187-196` normalizes it), which can carry
+`:collection` (Mongo), a non-string `:query`, `:params`, or other native-extras
+keys — but `lib/native-query`'s 2-arity requires a non-blank *string*
+(`native.cljc:198-199`). For native maps with extras, use either:
+
+- the R45 hybrid: `(lib/query mp {:database (mt/id), :type :native, :native native-map})`, or
+- the 4-arity `(lib/native-query mp sql nil {:collection "..."})` /
+  `lib/with-native-extras` (`native.cljc:202-212`).
+
+Do not mechanically apply the 2-arity to Mongo-style natives — it throws.
 
 **R45 — Native map with explicit `:template-tags` (hybrid escape hatch):** wrapping
 the legacy outer map in `lib/query` converts it, including moving `:template-tags`
@@ -570,7 +716,10 @@ normalizes; `src/metabase/queries/models/card.clj:116`,
   ...)
 ```
 
-Precedent `card_test.clj:277-282`.
+Precedent: `test/metabase/queries/models/card_test.clj:965-979` (`t2/update!` with
+`(lib/query metadata-provider orders)` + MBQL-5 readback) and
+`test/metabase/queries_rest/api/card_test.clj:5055` (`mt/with-temp` with a lib
+`:dataset_query`).
 
 **R47 — Assertions on a card's stored/read-back `:dataset_query` must expect
 MBQL 5.** `transform-query-out` also normalizes to MBQL 5, so a test that
@@ -615,6 +764,10 @@ already does; when in doubt use `lib/->legacy-MBQL` to match precedent.
 ```
 
 Notes:
+- The bare no-map form `(mt/run-mbql-query venues)` (common, e.g.
+  `distinct_where_test.clj`, `postgres_test.clj:205`) is R3 + run:
+  `(qp/process-query (lib/query mp (lib.metadata/table mp (mt/id :venues))))`.
+  For dotted table symbols see the R3 note.
 - `mt/rows`, `mt/formatted-rows`, `mt/first-row`, `mt/rows+column-names`, `mt/cols`
   all operate on the results map and work unchanged.
 - You lose `run-mbql-query*`'s rethrow-with-query ex-data
@@ -633,6 +786,35 @@ Notes:
 example line 110). Same for `:info`, `:constraints`, `:settings`, `:cache-strategy`
 etc.: `assoc` onto the lib query.
 
+**R52a — Pivot keys.** `:pivot-rows` / `:pivot-cols` (and their snake_case twins in
+REST payloads) are plain top-level keys per R52: the old
+`(merge (mt/mbql-query orders {...}) {:pivot-rows [0 1 2], :pivot-cols []})`
+(`pivot_test.clj:119-130`, fed to `qp.pivot/run-pivot-query`) becomes
+`(assoc query :pivot-rows [0 1 2], :pivot-cols [])` on the lib query. **Pilot
+requirement:** the first pivot file ported must verify by running that
+`qp.pivot/run-pivot-query` accepts MBQL-5 input; if it does not, fence ALL pivot
+files (`pivot_test.clj`, dashboard/embed pivot endpoints) into the manual batch and
+record that here.
+
+**R52b — Post-construction surgery on the macro output via `[:query ...]` paths.**
+Lib queries have `:stages`, not `:query` — a kept-as-is
+`(assoc-in query [:query :limit] 0)` silently creates a dead `:query` key and
+changes nothing. Top-level assoc/merge keys survive unchanged (R52), but every
+`[:query ...]` path must be re-expressed:
+
+```clojure
+;; OLD: (assoc-in (mt/mbql-query venues) [:query :limit] 0)     ; dashboard_subscription_test.clj:285-286
+;; NEW: (lib/limit query 0)
+;; OLD: (update-in q [:query :fields] conj ...)                 ; → lib/with-fields (R28)
+;; OLD: (assoc-in q [:query :breakout] ...)                     ; → lib/breakout (R22)
+```
+
+For inner-query keys with no builder, use the stage path directly —
+`(assoc-in query [:stages 0 <key>] ...)` (stage 0 IS the legacy `:query` level for a
+single-stage query; use `[:stages -1 ...]` semantics via `lib.util/update-query-stage`
+or index the last stage explicitly for multi-stage queries). Grep each file for
+`[:query` before declaring it ported.
+
 **R53 — `:parameters`:** `(assoc lib-query :parameters [...])`, keeping the
 parameter maps **byte-for-byte** — parameter `:target`s
 (`[:dimension [:field ...]]`, `[:variable [:template-tag ...]]`) are still legacy
@@ -643,6 +825,19 @@ modernize targets. `mt/$ids`-built refs inside targets stay, or become hand-writ
 **R54 — `mt/$ids` used to build refs for parameters/expected values** stays or
 becomes hand-written literal clauses with `(mt/id ...)`. Never force `$ids` output
 through lib builders.
+
+**R54a — Sandbox (GTAP) definitions** (`met/with-gtaps!` et al.;
+`sandboxing_test.clj:71-81` is the canonical shape
+`{:query (mt/mbql-query venues), :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}`):
+
+- The `:query` value becomes a card's `dataset_query`, so R46 applies — a lib query
+  is acceptable. **Pilot requirement:** verify with one run before batch-applying;
+  if the GTAP fixture path rejects MBQL 5, keep the legacy map + TODO.
+- `:remappings` values are parameter-target-like: keep them **byte-for-byte**, same
+  policy as R53/R54. Do not modernize the `["variable" [:field ...]]` /
+  `["dimension" ...]` targets.
+- Middleware-**output** assertions in the same files (e.g. `=?` against
+  `apply-row-level-permissions` results) fall under §4.1 / §5 — manual batch.
 
 ### clj-kondo header handling
 
@@ -660,7 +855,12 @@ still used; delete the whole attr-map entry when the file reaches zero usages.**
 Precedent: `cumulative_aggregation_test.clj:2-3` (both),
 `binning_test.clj:2` (one), `drill_thru_e2e_test.clj:1-13` (none).
 `mt/query` and `mt/native-query` are the same deprecated family — convert their
-call sites in the same pass so the header can go in one shot.
+call sites in the same pass **where they are query-construction sites**. Exception:
+call sites that build an EXPECTED value (§5) are NOT converted in this pass — for
+those, keep the macro, keep its kondo entry, and add a `TODO(mbql5-migration)`
+comment. The header entry for a var is prunable only when every remaining usage of
+that var is such a TODO-carrying expected-value/manual-case usage (consistent with
+§7 bullet 4), or there are zero usages.
 
 ### Transitional escape hatch
 
@@ -683,12 +883,22 @@ tests, compile-shape tests). `qp.preprocess/preprocess` returns MBQL 5; built li
 queries contain random `:lib/uuid`s so `=` between independently built queries
 fails. **Policy:** these files are NOT mechanical ports — batch them separately for
 a manual pass. Within that pass the three accepted techniques (all with in-repo
-precedent) are: (a) `=?` against MBQL-5 shape with `{}` option maps
-(`optimize_temporal_filters_test.clj:493-502`); (b) `lib.tu.macros/mbql-5-query`
-for expected values (`test/metabase/lib/test_util/macros.clj:71-89`); (c) convert
-the actual with `lib/->legacy-MBQL` and keep the legacy expected literal
+precedent) are: (a) `=?` against a hand-written MBQL-5 shape using `(mt/id ...)`
+IDs and `{}` option maps (`optimize_temporal_filters_test.clj:493-502`); (b)
+`lib.tu.macros/mbql-5-query` for expected values
+(`test/metabase/lib/test_util/macros.clj:71-89`); (c) convert the actual with
+`lib/->legacy-MBQL` and keep the legacy expected literal
 (`nested_queries_test.clj`, `binning_test.clj`, `breakout_test.clj`). Never expect
 stable uuids.
+
+**Technique (b) is ONLY for the pure-unit files of §4.3** (those already on
+`meta/metadata-provider`). The macro is hard-wired to the STATIC test metadata: it
+expands to `(lib.query/query meta/metadata-provider ...)` and resolves sigils via
+`metabase.lib.test-metadata/id` (`macros.clj:71-89`) — there is no way to point it
+at `(mt/metadata-provider)` / `(mt/id)`. In an app-DB test the expected query would
+carry static `meta/` IDs and the wrong database ID, so the comparison can never
+pass. For app-DB shape assertions (sandboxing, permissions, preprocess tests over
+`mt/` data), the sanctioned techniques are (a) and (c) only.
 
 **4.2 Mock-provider tests (`qp.store/with-metadata-provider` around the run).**
 The store WINS over the query's baked-in provider when both exist
@@ -714,9 +924,13 @@ exclusion only for the vars those tests still use, and mark them
 
 **4.5 `*field` name-ref sigils.** Result metadata preserves ID-vs-name ref style
 (`result_metadata.cljc:309-325`), so porting `*field` to an ID lookup changes
-`:field_ref`/`:name`/`:cols` expectations. **Policy:** port per R9/R10 (name-based
-column lookup) and RUN the test — never batch-port `*`-sigil tests without executing
-them.
+`:field_ref`/`:name`/`:cols` expectations — and for **stage-0 source-table columns**
+even a name lookup in `breakoutable-columns` yields an ID ref (R9). **Policy:**
+inherited columns (previous stage / card) port per R10 (name-based column lookup);
+stage-0 `*field` ports as a hand-written MBQL-5 name-ref clause per R9 or goes to
+the manual batch. Either way, RUN the test — never batch-port `*`-sigil tests
+without executing them. Files with composed sigils (`&alias.*table.field`,
+`!unit.*field` — R12) are on the same run-to-verify list.
 
 **4.6 Tests asserting on `run-mbql-query*`'s `{:query ...}` ex-data.** **Policy:**
 manual case; either keep `mt/run-mbql-query` for that test (with kondo exclusion +
@@ -747,11 +961,28 @@ leave on the old macro with a TODO.
 after normalization for both idioms. **Policy:** no rewrites of row-order
 expectations; just don't ADD `lib/order-by` where the legacy test had none (R27).
 
+**4.12 Queries handed straight to driver-internal compilation fns** —
+`mongo.qp/mbql->native`, `sql.qp/->honeysql`, `sql.qp/mbql->honeysql`,
+`driver/mbql->native` (e.g.
+`modules/drivers/mongo/test/metabase/driver/mongo/query_processor_test.clj:255,681`
+`(mongo.qp/mbql->native query)`; `sandboxing_test.clj:55-69` `sql.qp/->honeysql`
+under `qp.store/with-metadata-provider`). These fns receive the driver-facing
+(preprocessed, legacy-converted) query, NOT an MBQL-5 lib query — a mechanically
+ported lib query passed to them does not behave like the macro output did.
+**Policy — NOT mechanical ports:**
+(i) if the assertion is on the final compiled output, switch the call to
+`qp.compile/compile` on the lib query — it runs the full preprocess pipeline and
+accepts MBQL 5; (ii) if the test intentionally exercises the driver fn in
+isolation, keep the legacy map (kondo exclusion + `TODO(mbql5-migration)`).
+Driver test directories (`modules/drivers/*/test`) are in scope for the migration —
+run them with the relevant `--drivers=` per §6 step 8.
+
 **Triage summary:** results-only tests (rows/cols assertions) = mechanical;
 query-shape-assertion tests = manual batch (4.1/4.3); mock-provider tests = unify
 build/run provider (4.2); metadata-mutating tests = reorder or flag (4.7);
 `*`-sigil tests = port then execute-verify (4.5); negative/error tests = skip (4.4);
-parameters = verbatim (4.8).
+parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep legacy
+(4.12); GTAP fixtures = R54a; serialized-form fixtures = manual (§5).
 
 ---
 
@@ -761,6 +992,29 @@ parameters = verbatim (4.8).
   refs the test *compares against*). The legacy map IS the expectation; porting it
   changes what the test verifies. Leave as-is (`$ids` itself is not marked
   deprecated).
+- **`mt/mbql-query` / `mt/query` used to construct an EXPECTED value** — the
+  right-hand side of an `=?`/`=` the test compares against, common in middleware
+  tests (e.g. `sandboxing_test.clj:241,270`:
+  `(is (=? (mt/query nil {...}) (apply-row-level-permissions (mt/mbql-query venues {...}))))`
+  — the `mt/query` call IS the expected value). Same policy as `mt/$ids` expected
+  values: this is §4.1 manual-batch material. Keep the macro + kondo exclusion +
+  `TODO(mbql5-migration)` until the manual pass decides between an `=?` MBQL-5
+  shape and `lib/->legacy-MBQL` on the actual. R55's "convert the whole family in
+  one pass" does NOT apply to these call sites.
+- **Serialization / content-hash / revision-history fixtures** — files whose
+  subject is the stored or serialized FORM of a query: serdes v2 tests
+  (`enterprise/.../serialization/v2/e2e_test.clj`, `load_test.clj` — export YAML
+  shape and load-path ingestion fixtures), remote-sync content-hash tests
+  (`enterprise/.../remote_sync/content_hash_test.clj` — asserts hash stability of
+  the entity's serialized YAML), and revision tests
+  (`test/metabase/revisions/impl/card_test.clj`, `revisions/api_test.clj` —
+  Revision rows emulate historical snapshots inserted around the Card model's
+  normalizing transforms). Changing how the `dataset_query` is authored risks
+  changing what is stored/serialized/hashed rather than just how the query is
+  built. **Manual batch:** porting is allowed only after confirming the model's
+  write-path normalization makes the stored form identical for both idioms,
+  verified by running the file. Do not port these mechanically just because they
+  carry the kondo header.
 - **Tests of legacy-MBQL machinery itself**: normalization tests, legacy-schema
   tests, `lib.convert` round-trip tests, anything under namespaces whose subject is
   legacy MBQL. There the legacy map is the fixture under test.
@@ -798,10 +1052,13 @@ parameters = verbatim (4.8).
    usages of ALL of `mbql-query`, `run-mbql-query`, `query`, `native-query`
    (from `metabase.test.data`).
 8. **Run** `./bin/test-agent :only '[<ns>]'` again. Compare against the baseline:
-   same tests run, same (or more) assertions, no new failures. For files under
-   `mt/test-drivers`, also run with a second driver if the change touches
-   name-based refs (R9/R10): `./bin/test-agent --drivers=postgres :only '[<ns>]'`
-   when feasible.
+   same tests run, same (or more) assertions, no new failures. Local runs are
+   **H2-only** by default — for files under `mt/test-drivers`, also run with a
+   second driver (`./bin/test-agent --drivers=postgres :only '[<ns>]'`) whenever
+   the port touches name-based refs (R9/R10), join aliases (R12/R35/R39, including
+   composed sigils), or driver-cased names; driver-module tests
+   (`modules/drivers/*/test`) run with their own driver via `--drivers=`.
+   Driver-conditional divergence otherwise surfaces only in CI.
 9. If a ported test fails and the fix isn't obvious within the rules, **revert that
    test** to the old macro + TODO rather than bending the assertion.
 10. Re-check step 7 (a reverted test may need the kondo header back).
@@ -821,10 +1078,16 @@ parameters = verbatim (4.8).
   force-port is strictly worse than an unported test.
 - Do not mark a file "done" while it still has a kondo `:deprecated-var` exclusion
   unless every remaining usage carries a TODO comment explaining why.
-- Spot-check compiled SQL parity when in doubt: wrap both old and new queries in
-  `mt/with-native-query-testing-context` locally, or compare
-  `(lib/->legacy-MBQL new-query)` against the old macro's output in a REPL
-  (`clojure-eval`), remembering `:lib/uuid`s are random.
+- **Compiled-SQL parity check is MANDATORY, not discretionary, for:** any test
+  touched by R18/R19 (aggregation `:name`/`:display-name` — a wrong port changes
+  the SQL alias without failing any row-only assertion), and any join-alias rewrite
+  (R12/R35/R39, composed sigils included). Compare the compiled native query (or
+  `(lib/->legacy-MBQL new-query)` against the old macro's output) in a REPL
+  (`clojure-eval`), remembering `:lib/uuid`s are random. These are exactly the
+  changes that can pass an unchanged assertion suite while compiling different SQL.
+- For everything else, spot-check compiled SQL parity when in doubt: wrap both old
+  and new queries in `mt/with-native-query-testing-context` locally, or diff
+  `lib/->legacy-MBQL` output as above.
 
 ---
 
@@ -853,6 +1116,8 @@ parameters = verbatim (4.8).
   [metabase.lib.core :as lib]
   [metabase.lib.metadata :as lib.metadata]
   [metabase.lib.expression :as lib.expression]                   ; only for non-re-exported fns / value
+  [metabase.lib.filter :as lib.filter]                           ; only for during (not re-exported)
+  [metabase.lib.options :as lib.options]                         ; update-options (R16/R18/R19)
   [metabase.lib.test-util :as lib.tu]                            ; mock/remap providers
   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]  ; find-col-with-spec, add-breakout
   [metabase.query-processor.test :as qp]                         ; process-query (test facade)
@@ -861,9 +1126,10 @@ parameters = verbatim (4.8).
   ```
 - **Requires to remove** when the file goes fully clean: nothing forced — but drop
   any require that became unused (kondo will flag it).
-- **Alias conventions are fixed**: `lib`, `lib.metadata`, `lib.tu`,
-  `lib.tu.notebook`, `mt`, `qp`, `qp.store`, `m`. Do not invent alternates; do not
-  alias `metabase.lib.test-util.macros` in app-DB test files at all.
+- **Alias conventions are fixed**: `lib`, `lib.metadata`, `lib.expression`,
+  `lib.filter`, `lib.options`, `lib.tu`, `lib.tu.notebook`, `mt`, `qp`, `qp.store`,
+  `m`. Do not invent alternates; do not alias `metabase.lib.test-util.macros` in
+  app-DB test files at all.
 - Keep `mt/with-native-query-testing-context` wherever the old test had it (and add
   it where R51 says to); it accepts lib queries unchanged.
 - `assoc` / `assoc-in` directly on lib queries for `:middleware`, `:parameters`,
