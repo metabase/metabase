@@ -62,9 +62,9 @@
   ^String []
   (let [path (channel.settings/static-viz-node-script-path)]
     (when (str/blank? path)
-      (throw (ex-info (str "static-viz-mode is `node` but static-viz-node-script-path is not set — point"
-                           " MB_STATIC_VIZ_NODE_SCRIPT_PATH at app-static-viz-cli.bundle.js (built by"
-                           " `bun run build-static-viz`), or set static-viz-mode to graalvm")
+      (throw (ex-info (str "MB_STATIC_VIZ_MODE is `node` but MB_STATIC_VIZ_NODE_SCRIPT_PATH is not set —"
+                           " point it at app-static-viz-cli.bundle.js (built by `bun run build-static-viz`),"
+                           " or set MB_STATIC_VIZ_MODE to graalvm")
                       {})))
     (when-not (.isFile (io/file path))
       (throw (ex-info (str "static-viz node script not found: " path) {:path path})))
@@ -82,7 +82,7 @@
                                (start))
                            (catch IOException e
                              (throw (ex-info (str "could not start `node` for static-viz rendering — is node installed"
-                                                  " and on PATH? (otherwise set static-viz-mode to graalvm)")
+                                                  " and on PATH? (otherwise set MB_STATIC_VIZ_MODE to graalvm)")
                                              {} e))))
         writer           (BufferedWriter. (OutputStreamWriter. (.getOutputStream process) StandardCharsets/UTF_8))
         reader           (BufferedReader. (InputStreamReader. (.getInputStream process) StandardCharsets/UTF_8))
