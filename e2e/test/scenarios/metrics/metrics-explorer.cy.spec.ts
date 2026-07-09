@@ -154,10 +154,6 @@ const selectEntityPickerItem = (path: string | string[]) => {
   }
 };
 
-// A run's edit-mode teardown is gated on its dataset request; under network
-// throttling that can exceed Cypress's default 4s command timeout.
-const RUN_TEARDOWN_TIMEOUT = 15000;
-
 const addMetricInputSequence = (
   sequence: InputToken[],
   {
@@ -200,18 +196,8 @@ const addMetricInputSequence = (
   if (runExpression) {
     runFormula();
     if (!skipRunCompletionWait) {
-      // After a successful run the edit-mode UI is torn down once the run's
-      // dataset request settles. Under load (e.g. network throttling) that
-      // teardown can outlast the default 4s negative-assertion budget, so the
-      // CodeMirror editor (metrics-viewer-search-input / .cm-theme-light) is
-      // "continuously found" and the assertion flakes. Give the first check a
-      // longer retry window that spans a slow run, rather than waiting on the
-      // "@dataset" alias here (which would desync the many call sites that
-      // assert on that alias themselves). Once the editor is gone the run
-      // button and loading indicator are gone with it.
-      cy.findByTestId("metrics-viewer-search-input", {
-        timeout: RUN_TEARDOWN_TIMEOUT,
-      }).should("not.exist");
+      // It is expected that the elements below do not exist after the expression ran successfully
+      cy.findByTestId("metrics-viewer-search-input").should("not.exist");
       cy.findByTestId("run-expression-button").should("not.exist");
       cy.findByTestId("loading-indicator").should("not.exist");
     }
@@ -239,12 +225,16 @@ const addMetric = (
 const runFormula = () => {
   cy.log("Make sure mini picker is closed before clicking Run");
   H.MetricsViewer.runButton().should("be.visible");
-  cy.get("body").then(($body) => {
-    if ($body.find('[data-testid="mini-picker"]').length > 0) {
-      cy.realPress("Escape");
-      cy.get('[data-testid="mini-picker"]').should("not.exist");
-    }
-  });
+  // After a metric selection the search dropdown ("mini picker") reopens
+  // asynchronously. It is a Mantine Menu, which closes on an outside click, so
+  // if it is open when we click Run that click is consumed dismissing the menu
+  // instead of triggering the run — the editor then never collapses and the
+  // run-completion assertions flake. The previous one-shot snapshot check could
+  // run before the reopen fired (more likely under network throttling), missing
+  // it. Dismiss the dropdown unconditionally (Escape is a no-op when it is
+  // already closed) and confirm it is gone before clicking Run.
+  cy.realPress("Escape");
+  cy.findByTestId("mini-picker").should("not.exist");
 
   H.MetricsViewer.runButton().should("not.be.disabled").click();
 };
