@@ -26,14 +26,14 @@
   "Build a dirigiste `Pool` of up to two static-viz workers, each held exclusively per render (so at most
   two renders run at once). The utilization controller targets 100% utilization with a max of 2 and a min
   of 0, so when nothing is rendering the pool shrinks to 0 and `destroy` is called on each idle worker; it
-  rechecks every 10 minutes, so a worker lingers up to ~10 minutes before being reaped (keeping it warm
+  rechecks every 1 minute, so a worker lingers up to 1 minute before being reaped (keeping it warm
   through gaps between renders). `(generate)` mints a worker; `(destroy worker)` tears one down. The other
   constructor args (queue size, sampling interval) don't matter much."
   ^Pool [generate destroy]
   (let [max-pool-size       2
         max-queued-acquires 65000
         sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
-        control-period-ms   (.toMillis TimeUnit/MINUTES 10)]
+        control-period-ms   (.toMillis TimeUnit/MINUTES 1)]
     (Pool. (reify IPool$Generator
              (generate [_ _] (generate))
              (destroy [_ _ worker] (destroy worker)))
