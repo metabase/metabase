@@ -3060,7 +3060,6 @@
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            collections
-           events
            models
            permissions
            premium-features
