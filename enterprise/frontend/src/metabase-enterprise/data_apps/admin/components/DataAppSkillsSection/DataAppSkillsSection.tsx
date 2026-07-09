@@ -1,6 +1,4 @@
-import { t } from "ttag";
-
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "frontend/src/metabase/common/hooks";
 import {
   ActionIcon,
   Box,
@@ -10,11 +8,12 @@ import {
   Text,
   Title,
   Tooltip,
-} from "metabase/ui";
+} from "frontend/src/metabase/ui";
 import {
   isLocalOrSnapshotVersion,
   versionToNumericComponents,
-} from "metabase/utils/version";
+} from "frontend/src/metabase/utils/version";
+import { t } from "ttag";
 
 import S from "./DataAppSkillsSection.module.css";
 

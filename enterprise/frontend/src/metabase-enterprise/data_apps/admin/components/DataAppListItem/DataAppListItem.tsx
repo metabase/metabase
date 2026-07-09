@@ -1,15 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
-import { t } from "ttag";
-
-import { useConfirmation, useToast } from "metabase/common/hooks";
-import { Button, Flex, Group, Icon, Switch } from "metabase/ui";
 import {
   useDeleteDataAppMutation,
   useSetDataAppEnabledMutation,
-} from "metabase-enterprise/api";
-import type { DataApp } from "metabase-types/api";
+} from "enterprise/frontend/src/metabase-enterprise/api";
+import { useConfirmation, useToast } from "frontend/src/metabase/common/hooks";
+import { Button, Flex, Group, Icon, Switch } from "frontend/src/metabase/ui";
+import type { DataApp } from "frontend/src/metabase-types/api";
+import { useCallback, useEffect, useState } from "react";
+import { t } from "ttag";
 
-import { DataAppSummary } from "./DataAppSummary";
+import { DataAppSummary } from "../DataAppSummary/DataAppSummary";
 
 type Props = {
   app: DataApp;

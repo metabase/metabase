@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "frontend/test/__support__/ui";
 
 import { DataAppAllowedHosts } from "./DataAppAllowedHosts";
 

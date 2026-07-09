@@ -21,9 +21,9 @@ import {
   useListDataAppsQuery,
 } from "metabase-enterprise/api";
 
-import { DataAppListItem } from "./DataAppListItem";
-import { DataAppSkillsSection } from "./DataAppSkillsSection";
 import S from "./ManageDataAppsPage.module.css";
+import { DataAppListItem } from "./components/DataAppListItem/DataAppListItem";
+import { DataAppSkillsSection } from "./components/DataAppSkillsSection/DataAppSkillsSection";
 
 const REMOTE_SYNC_SETTINGS_PATH = "/admin/settings/remote-sync";
 

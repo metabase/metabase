@@ -1,4 +1,4 @@
-import { Flex, Icon } from "metabase/ui";
+import { Flex, Icon } from "frontend/src/metabase/ui";
 
 const ICON_SIZE = 20;
 
