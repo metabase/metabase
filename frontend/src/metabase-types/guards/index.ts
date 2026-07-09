@@ -2,6 +2,7 @@ export * from "./card";
 export * from "./click-behavior";
 export * from "./common";
 export * from "./dom";
+export * from "./goal-value";
 export * from "./parameters";
 export * from "./revision";
 export * from "./settings";

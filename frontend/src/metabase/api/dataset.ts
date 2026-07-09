@@ -7,6 +7,7 @@ import type {
   FieldValue,
   GetRemappedParameterValueRequest,
   NativeDatasetResponse,
+  ReferencedCard,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -27,6 +28,10 @@ interface RefetchDeps {
 
 interface IgnorableError {
   ignore_error?: boolean;
+}
+
+interface ReferencedCardsRequest {
+  referenced_cards?: ReferencedCard[];
 }
 
 export type DownloadDatasetArgs = {
@@ -63,7 +68,7 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      DatasetQuery & RefetchDeps & IgnorableError
+      DatasetQuery & RefetchDeps & IgnorableError & ReferencedCardsRequest
     >({
       query: ({ _refetchDeps, ignore_error, ...body }) => ({
         method: "POST",

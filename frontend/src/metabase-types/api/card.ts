@@ -571,9 +571,33 @@ export type ListViewColumns = {
   image?: string;
 };
 
+export type GoalSource = {
+  card_id: CardId;
+  column: string;
+};
+
+export type GoalStaticValue = number;
+
+// name of another column in the same question, already used by Progress chart
+export type GoalSelfColumnReference = string;
+
+export type GoalValue = GoalStaticValue | GoalSelfColumnReference | GoalSource;
+
+export type ReferencedCard = {
+  card_id: CardId;
+  columns?: string[];
+};
+
 export type ScalarSegment = {
   min: number | null;
   max: number | null;
+  color: string;
+  label?: string;
+};
+
+export type GoalSegment = {
+  min: GoalValue | null;
+  max: GoalValue | null;
   color: string;
   label?: string;
 };

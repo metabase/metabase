@@ -6,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card, ColumnSettings } from "./card";
+import type { Card, CardId, ColumnSettings } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -97,9 +97,19 @@ export interface ResultsMetadata {
   columns: Field[];
 }
 
+export interface ReferencedCardResult {
+  status: string;
+  error?: string;
+  data?: {
+    cols: DatasetColumn[];
+    rows: RowValues[];
+  };
+}
+
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
+  referenced_cards?: Record<CardId, ReferencedCardResult>;
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
