@@ -53,9 +53,10 @@
   "Impl [[with-temp-datasource]]."
   [db-name thunk]
   ;; with no URL the redef'd nil db-url could resolve to :app-db mode and hand back the application
-  ;; pool — the dedicated harness (which DROPs/CREATEs databases) must never point at the app db
-  (assert (string? (not-empty (:mb-pgvector-db-url env)))
-          "with-temp-datasource! requires the dedicated-harness MB_PGVECTOR_DB_URL")
+  ;; pool — the dedicated harness (which DROPs/CREATEs databases) must never point at the app db.
+  ;; unconditional (not assert): this guards destructive setup, and asserts can be elided
+  (when (str/blank? (:mb-pgvector-db-url env))
+    (throw (ex-info "with-temp-datasource! requires the dedicated-harness MB_PGVECTOR_DB_URL" {})))
   (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
                 semantic.db.datasource/data-source (atom nil)]
     (try
