@@ -423,6 +423,15 @@ export function resizeDashboardCard({
 /** Opens the dashboard info sidesheet */
 export function openDashboardInfoSidebar() {
   dashboardHeader().findByLabelText("More info").click();
+  // The click can be dropped while the header is still re-rendering (e.g. right
+  // after a save). If the sidesheet didn't open, re-click. This can't
+  // double-toggle: we only re-click when the sidesheet is absent, and by the
+  // time this runs React has flushed the click handler's render synchronously.
+  cy.document().then((doc) => {
+    if (!doc.querySelector('[data-testid="sidesheet"]')) {
+      dashboardHeader().findByLabelText("More info").click();
+    }
+  });
   return sidesheet();
 }
 /** Closes the dashboard info sidesheet */
