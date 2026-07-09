@@ -2,7 +2,8 @@ import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
-import { FormTextarea } from "metabase/forms";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { FormField, FormTextarea } from "metabase/forms";
 
 type FormTextareaWidgetProps = ActionFormFieldProps & {
   actions?: ReactNode;
@@ -25,14 +26,24 @@ export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
   }: FormTextareaWidgetProps,
   ref: Ref<HTMLTextAreaElement>,
 ) {
+  const id = useUniqueId();
+
   return (
-    <FormTextarea
-      {...props}
-      ref={ref}
-      name={name}
-      label={title}
-      nullable={nullable}
-      minRows={5}
-    />
+    <FormField
+      title={title}
+      actions={actions}
+      description={description}
+      optional={optional}
+      htmlFor={id}
+    >
+      <FormTextarea
+        {...props}
+        ref={ref}
+        id={id}
+        name={name}
+        nullable={nullable}
+        minRows={5}
+      />
+    </FormField>
   );
 });
