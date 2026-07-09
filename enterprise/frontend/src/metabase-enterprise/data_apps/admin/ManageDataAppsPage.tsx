@@ -15,6 +15,7 @@ import { DataAppListItem } from "./components/DataAppListItem/DataAppListItem";
 import { DataAppRepoSection } from "./components/DataAppRepoSection/DataAppRepoSection";
 import { DataAppSkillsSection } from "./components/DataAppSkillsSection/DataAppSkillsSection";
 import { DataAppsEmptyState } from "./components/DataAppsEmptyState/DataAppsEmptyState";
+import { DataAppsBanner } from "./components/DataAppsPromoBanner/DataAppsBanner";
 
 const DATA_APP_REPO_QUERY_OPTS = {
   // Keep the sync status fresh while the page is open: the backend polls the repo
@@ -44,6 +45,8 @@ export const ManageDataAppsPage = () => {
       <Title order={1} style={{ height: "2.5rem" }}>
         {t`Data apps`}
       </Title>
+
+      <DataAppsBanner />
 
       <Stack gap="md">
         <Title order={2}>{t`Setup`}</Title>
