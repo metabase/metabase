@@ -46,6 +46,7 @@ jobs:
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
       # Per-driver configured status from ci-test-config (skip | info | required)
+      h2-status: ${{ steps.driver-decisions.outputs.h2-status }}
       athena-status: ${{ steps.driver-decisions.outputs.athena-status }}
       bigquery-status: ${{ steps.driver-decisions.outputs.bigquery-status }}
       clickhouse-status: ${{ steps.driver-decisions.outputs.clickhouse-status }}
@@ -56,6 +57,7 @@ jobs:
       mongo-sharded-cluster-status: ${{ steps.driver-decisions.outputs.mongo-sharded-cluster-status }}
       mysql-mariadb-status: ${{ steps.driver-decisions.outputs.mysql-mariadb-status }}
       oracle-status: ${{ steps.driver-decisions.outputs.oracle-status }}
+      postgres-status: ${{ steps.driver-decisions.outputs.postgres-status }}
       presto-jdbc-status: ${{ steps.driver-decisions.outputs.presto-jdbc-status }}
       redshift-status: ${{ steps.driver-decisions.outputs.redshift-status }}
       snowflake-status: ${{ steps.driver-decisions.outputs.snowflake-status }}
@@ -590,6 +592,7 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -601,6 +604,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
         run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-h2-oss:
@@ -623,6 +627,7 @@ jobs:
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -634,6 +639,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.h2-status }}
         run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mysql-mariadb:
@@ -1171,6 +1177,7 @@ jobs:
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          driver-status: ${{ needs.determine-driver-skips.outputs.postgres-status }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -1182,6 +1189,8 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          driver-status: ${{ needs.determine-driver-skips.outputs.postgres-status }}
+          report-variant: ${{ matrix.version.name }}-${{ matrix.job.name }}
           run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
       - name: Cleanup python-runner
         if: always()
@@ -1814,11 +1823,13 @@ jobs:
               "be-tests-clickhouse-ee": "${{ needs.determine-driver-skips.outputs.clickhouse-status }}",
               "be-tests-databricks-ee": "${{ needs.determine-driver-skips.outputs.databricks-status }}",
               "be-tests-druid-jdbc-ee": "${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}",
+              "be-tests-h2": "${{ needs.determine-driver-skips.outputs.h2-status }}",
               "be-tests-mongo": "${{ needs.determine-driver-skips.outputs.mongo-status }}",
               "be-tests-mongo-ssl": "${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}",
               "be-tests-mongo-sharded-cluster-ee": "${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}",
               "be-tests-mysql-mariadb": "${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}",
               "be-tests-oracle": "${{ needs.determine-driver-skips.outputs.oracle-status }}",
+              "be-tests-postgres": "${{ needs.determine-driver-skips.outputs.postgres-status }}",
               "be-tests-presto-jdbc-ee": "${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}",
               "be-tests-redshift-ee": "${{ needs.determine-driver-skips.outputs.redshift-status }}",
               "be-tests-snowflake-ee": "${{ needs.determine-driver-skips.outputs.snowflake-status }}",
