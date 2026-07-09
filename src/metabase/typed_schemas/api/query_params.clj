@@ -9,12 +9,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn query-param
-  "Returns query param `k`, accepting either keyword or string query maps."
-  [query-params k]
-  (or (get query-params k)
-      (get query-params (name k))))
-
 (defn truthy-query-param?
   "Returns true when a query param value should be interpreted as enabled."
   [v]
@@ -31,8 +25,8 @@
 (defn query-database-value
   "Returns the requested database id/name query param."
   [query-params]
-  (some-> (or (query-param query-params :database)
-              (query-param query-params :database-name))
+  (some-> (or (:database query-params)
+              (:database-name query-params))
           str/trim
           not-empty))
 
@@ -67,14 +61,14 @@
 (defn query-library-value
   "Returns the `library` query param."
   [query-params]
-  (some-> (query-param query-params :library)
+  (some-> (:library query-params)
           str/trim
           not-empty))
 
 (defn- query-comma-separated-values
   [query-params ks]
   (when-let [value (some-> (->> ks
-                                (keep #(query-param query-params %))
+                                (keep query-params)
                                 first)
                            str/trim
                            not-empty)]
@@ -87,32 +81,27 @@
   "Returns requested library collection refs."
   [query-params]
   (query-comma-separated-values query-params [:library-collections
-                                              :libraryCollections
                                               :collections]))
 
 (defn query-include-data-library?
   "Returns true when the root Data library should be included."
   [query-params]
-  (truthy-query-param? (or (query-param query-params :include-data-library)
-                           (query-param query-params :includeDataLibrary))))
+  (truthy-query-param? (:include-data-library query-params)))
 
 (defn query-include-metric-library?
   "Returns true when the root metrics library should be included."
   [query-params]
-  (truthy-query-param? (or (query-param query-params :include-metric-library)
-                           (query-param query-params :includeMetricLibrary))))
+  (truthy-query-param? (:include-metric-library query-params)))
 
 (defn query-include-models?
   "Returns true when readable model action namespaces should be included."
   [query-params]
-  (truthy-query-param? (or (query-param query-params :include-models)
-                           (query-param query-params :includeModels))))
+  (truthy-query-param? (:include-models query-params)))
 
 (defn query-question-collection-values
   "Returns requested question collection refs."
   [query-params]
-  (query-comma-separated-values query-params [:question-collections
-                                              :questionCollections]))
+  (query-comma-separated-values query-params [:question-collections]))
 
 (defn- library-collection-for-value
   [library-value]

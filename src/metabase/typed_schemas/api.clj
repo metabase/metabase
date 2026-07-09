@@ -695,10 +695,10 @@
                                        question-collection-values
                                        include-library-root?)
         database-value             (qp/query-database-value query-params)
-        questions-only             (qp/truthy-query-param? (qp/query-param query-params :questions))]
+        questions-only             (qp/truthy-query-param? (:questions query-params))]
     (api/check-400
      (not (and library-value (or library-collection-values include-library-root?)))
-     "The library query parameter is mutually exclusive with library-collections, includeDataLibrary, and includeMetricLibrary.")
+     "The library query parameter is mutually exclusive with library-collections, include-data-library, and include-metric-library.")
     (api/check-400
      (not (and collection-scoped? database-value))
      "Collection-scoped query parameters and database query parameters are mutually exclusive.")
@@ -738,7 +738,7 @@
 
                                      :else
                                      [])
-        questions-only             (qp/truthy-query-param? (qp/query-param query-params :questions))]
+        questions-only             (qp/truthy-query-param? (:questions query-params))]
     (cond
       (or library-value
           library-collection-values

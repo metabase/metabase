@@ -773,16 +773,22 @@
                 :data-collection-ids   #{(:id data) (:id data-child)}
                 :metric-collection-ids #{(:id metrics) (:id metric-child)}}
                (select-keys (#'typed-schemas.api.query-params/library-scope
-                             {:includeDataLibrary   "true"
-                              :includeMetricLibrary "true"})
+                             {:include-data-library   "true"
+                              :include-metric-library "true"})
                             [:collection-ids :data-collection-ids :metric-collection-ids])))))))
 
-(deftest query-collection-values-accept-camel-case-aliases-test
+(deftest query-collection-values-use-kebab-case-params-test
   (is (= ["1" "2"]
-         (#'typed-schemas.api.query-params/query-library-collection-values {:libraryCollections "1, 2"})))
+         (#'typed-schemas.api.query-params/query-library-collection-values {:library-collections "1, 2"})))
   (is (= ["3" "4"]
-         (#'typed-schemas.api.query-params/query-question-collection-values {:questionCollections "3, 4"})))
+         (#'typed-schemas.api.query-params/query-question-collection-values {:question-collections "3, 4"})))
   (is (true?
+       (#'typed-schemas.api.query-params/query-include-models? {:include-models "true"})))
+  (is (nil?
+       (#'typed-schemas.api.query-params/query-library-collection-values {:libraryCollections "1, 2"})))
+  (is (nil?
+       (#'typed-schemas.api.query-params/query-question-collection-values {:questionCollections "3, 4"})))
+  (is (false?
        (#'typed-schemas.api.query-params/query-include-models? {:includeModels "true"}))))
 
 (deftest question-collection-scope-accepts-comma-separated-collection-ids-test
@@ -897,22 +903,22 @@
                 typed-schemas.api/question-schemas
                 (fn
                   ([_database-ids]
-                   (is false "includeModels-only schemas should not load questions"))
+                   (is false "include-models-only schemas should not load questions"))
                   ([_database-ids _collection-ids]
-                   (is false "includeModels-only schemas should not load questions")))
+                   (is false "include-models-only schemas should not load questions")))
                 typed-schemas.api/metric-schemas
                 (fn
                   ([_database-ids]
-                   (is false "includeModels-only schemas should not load metrics"))
+                   (is false "include-models-only schemas should not load metrics"))
                   ([_database-ids _collection-ids]
-                   (is false "includeModels-only schemas should not load metrics")))
+                   (is false "include-models-only schemas should not load metrics")))
                 typed-schemas.api/select-tables
                 (fn
                   ([_database-ids]
-                   (is false "includeModels-only schemas should not load tables"))
+                   (is false "include-models-only schemas should not load tables"))
                   ([_database-ids _table-ids]
-                   (is false "includeModels-only schemas should not load tables")))]
-    (let [schema (#'typed-schemas.api/typed-schema {:includeModels "true"})]
+                   (is false "include-models-only schemas should not load tables")))]
+    (let [schema (#'typed-schemas.api/typed-schema {:include-models "true"})]
       (is (= {} (:questions schema)))
       (is (= {"actionableModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
              (:models schema)))
@@ -936,7 +942,7 @@
                                                     ([_database-ids] [])
                                                     ([_database-ids _table-ids] []))
                   typed-schemas.api/table-schemas (constantly [])]
-      (let [schema (#'typed-schemas.api/typed-schema {:database "Boba" :includeModels "true"})]
+      (let [schema (#'typed-schemas.api/typed-schema {:database "Boba" :include-models "true"})]
         (is (= [#{42}] @model-database-ids))
         (is (= {"databaseModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
                (:models schema)))))))
@@ -1029,7 +1035,7 @@
                 (constantly [{:type "table", :key "orders", :id 3}])]
     (let [schema (#'typed-schemas.api/typed-schema {:library-collections  "10"
                                                     :question-collections "30"
-                                                    :includeModels        "true"})]
+                                                    :include-models        "true"})]
       (is (= #{1} (->> (:questions schema) vals (map :id) set)))
       (is (= {"selectedQuestionCollectionModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
              (:models schema)))

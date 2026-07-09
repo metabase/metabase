@@ -43,16 +43,16 @@ If the schema file already exists, use it. If it is missing or stale, treat sche
 
 Before generating, make sure the user has explicitly chosen the library scope the app needs:
 
-- `includeDataLibrary=true` for the whole `Library / Data` tree.
-- `includeMetricLibrary=true` for the whole `Library / metrics` tree.
-- `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
-- `questionCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific normal collections that contain saved questions.
-- `includeModels=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
+- `include-data-library=true` for the whole `Library / Data` tree.
+- `include-metric-library=true` for the whole `Library / metrics` tree.
+- `library-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
+- `question-collections=<id-or-entity-id>[,<id-or-entity-id>]` for specific normal collections that contain saved questions.
+- `include-models=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
 - `database=<name-or-id>` when the app should use tables from one database.
 
-Use `questionCollections` when the app needs generated `schema.questions.*`. Use `includeModels=true` when the app needs any saved action under `schema.models.<model>.actions`; models without executable actions are omitted to keep generated schemas compact. It can be combined with `libraryCollections`, `includeDataLibrary`, `includeMetricLibrary`, or `questionCollections` so one schema can include selected tables/metrics/questions plus all relevant actions.
+Use `question-collections` when the app needs generated `schema.questions.*`. Use `include-models=true` when the app needs any saved action under `schema.models.<model>.actions`; models without executable actions are omitted to keep generated schemas compact. It can be combined with `library-collections`, `include-data-library`, `include-metric-library`, or `question-collections` so one schema can include selected tables/metrics/questions plus all relevant actions.
 
-If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `includeModels=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
+If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `include-models=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
 
 If the user did not already choose a library scope, stop and ask what they want. Warn before exporting the whole instance: including everything is noisy, bloats context, and makes agents more likely to pick irrelevant entities.
 
@@ -91,11 +91,11 @@ fi
     -o src/metabase.data.ts \
     -H "x-api-key: $DATA_APP_MB_API_KEY" \
     -H "Accept: text/typescript" \
-    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true"
+    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?include-data-library=true&include-metric-library=true"
 )
 ```
 
-When the app needs saved questions, include `questionCollections=<id-or-entity-id>[,<id-or-entity-id>]` in the typed-schema URL. When the app needs models or actions, include `includeModels=true`.
+When the app needs saved questions, include `question-collections=<id-or-entity-id>[,<id-or-entity-id>]` in the typed-schema URL. When the app needs models or actions, include `include-models=true`.
 
 If schema generation fails while building a selected saved question, model, or model action, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing `card-id` / `card-name` / `card-type`, `model-id` / `model-name`, dropped action ids, and message when present. This usually means a selected model/question/action was readable enough to select, but its details could not be built, often because its source table, source card, or action details are not published, accessible, valid, or resolvable in the fetch context. The schema would otherwise omit the entire `schema.models.<model>` or `schema.questions.<question>` entry, or return a model whose `actions` map silently omits an action, so the user needs to curate or publish the missing dependency before regenerating.
 
