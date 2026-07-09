@@ -583,6 +583,8 @@
                     display   (str "virtual_" display)
                     :else     "virtual_dashcard")
      :dashcard_id id
+     ;; action buttons carry their visible label here; nil for virtual cards
+     :name        (:button.label visualization_settings)
      :description (:text visualization_settings)}))
 
 (defn- fetch-dashboard-items

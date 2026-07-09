@@ -711,9 +711,11 @@
                                                          :card_id model-id
                                                          :action_id action-id
                                                          :row 0 :col 0 :size_x 4 :size_y 1
-                                                         :visualization_settings {}}]
+                                                         :visualization_settings
+                                                         {:button.label "Create Row"}}]
           (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
             (is (str/includes? output "type=\"action\""))
+            (is (str/includes? output "name=\"Create Row\""))
             (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))))))))
 
 (deftest read-user-recents-test
