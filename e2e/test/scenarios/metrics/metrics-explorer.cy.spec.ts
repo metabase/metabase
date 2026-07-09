@@ -614,6 +614,11 @@ describe("scenarios > metrics > explorer", () => {
         { nameOrPath: "Count of orders over time" },
         { nameOrPath: "Orders model metric" },
       ]);
+
+      cy.log("Wait for the committed run to resolve before counting pills");
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("be.visible");
+
       verifyMetricCount(4);
     });
 
