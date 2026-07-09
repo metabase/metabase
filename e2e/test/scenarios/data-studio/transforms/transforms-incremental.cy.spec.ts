@@ -399,7 +399,9 @@ function visitTransformListPage() {
 
 function runTransformAndWaitForSuccess() {
   getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
+  // The Python runner spins up a subprocess, so a run can take well over the
+  // default 4s retry window before the button flips to "Ran successfully".
+  getRunButton({ timeout: 40_000 }).should("have.text", "Ran successfully");
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
