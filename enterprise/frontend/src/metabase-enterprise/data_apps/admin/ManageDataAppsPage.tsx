@@ -4,10 +4,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { Link } from "metabase/common/components/Link";
 import {
   Box,
-  Button,
   Flex,
   Group,
   Icon,
@@ -23,9 +21,8 @@ import {
 
 import S from "./ManageDataAppsPage.module.css";
 import { DataAppListItem } from "./components/DataAppListItem/DataAppListItem";
+import { DataAppRepoSection } from "./components/DataAppRepoSection/DataAppRepoSection";
 import { DataAppSkillsSection } from "./components/DataAppSkillsSection/DataAppSkillsSection";
-
-const REMOTE_SYNC_SETTINGS_PATH = "/admin/settings/remote-sync";
 
 // Keep the sync status fresh while the page is open: the backend polls the repo
 // on its own schedule, so re-fetch the list periodically to reflect those syncs.
@@ -66,50 +63,7 @@ export const ManageDataAppsPage = () => {
             gap: "lg",
           }}
         >
-          <Stack gap="sm">
-            <Title order={3}>{t`Remote sync repo`}</Title>
-
-            <Text>
-              {t`Data apps live in the repository connected via Git sync. Each app's built bundle is served at /apps/:name.`}
-            </Text>
-
-            <Group gap="md" wrap="nowrap" align="center">
-              <Group
-                gap="sm"
-                wrap="nowrap"
-                flex={1}
-                miw={0}
-                px="md"
-                py="sm"
-                bg="background-secondary"
-                bd="1px solid var(--mb-color-border)"
-                bdrs="md"
-                visibleFrom="sm"
-              >
-                <Icon
-                  name="git_branch"
-                  c="text-secondary"
-                  size={16}
-                  flex="0 0 auto"
-                />
-                <Text
-                  ff="monospace"
-                  c={isConfigured ? "text-primary" : "text-secondary"}
-                  truncate
-                >
-                  {isConfigured ? status?.url : t`No repository connected`}
-                </Text>
-              </Group>
-
-              <Button
-                component={Link}
-                to={REMOTE_SYNC_SETTINGS_PATH}
-                variant="default"
-              >
-                {t`Go to Git sync settings`}
-              </Button>
-            </Group>
-          </Stack>
+          <DataAppRepoSection isConfigured={isConfigured} url={status?.url} />
 
           <DataAppSkillsSection />
         </SettingsSection>
