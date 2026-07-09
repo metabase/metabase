@@ -12,6 +12,11 @@
    [metabase.typed-schemas.api.query-params :as typed-schemas.api.query-params]
    [metabase.typed-schemas.api.render :as typed-schemas.api.render]
    [metabase.typed-schemas.api.schema :as typed-schemas.api.schema]
+   [metabase.typed-schemas.api.schema.common :as typed-schemas.api.schema.common]
+   [metabase.typed-schemas.api.schema.metric :as typed-schemas.api.schema.metric]
+   [metabase.typed-schemas.api.schema.model :as typed-schemas.api.schema.model]
+   [metabase.typed-schemas.api.schema.question :as typed-schemas.api.schema.question]
+   [metabase.typed-schemas.api.schema.table :as typed-schemas.api.schema.table]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -39,7 +44,7 @@
           :fieldId       3815
           :tableId       12
           :metricId      247}
-         (#'typed-schemas.api.schema/dimension-schema
+         (#'typed-schemas.api.schema.metric/dimension-schema
           {:id             "550e8400-e29b-41d4-a716-446655440001"
            :name           "category"
            :display-name   "Category"
@@ -51,7 +56,7 @@
 (deftest metric-dimension-schema-preserves-source-field-id-test
   (is (= 102
          (:sourceFieldId
-          (#'typed-schemas.api.schema/dimension-schema
+          (#'typed-schemas.api.schema.metric/dimension-schema
            {:id              "550e8400-e29b-41d4-a716-446655440001"
             :name            "category"
             :display-name    "Category"
@@ -71,11 +76,11 @@
           :id            42
           :fieldId       42
           :tableId       10}
-         (#'typed-schemas.api.schema/field-schema {:id             42
-                                                   :table_id       10
-                                                   :name           "created_at"
-                                                   :display_name   "Created At"
-                                                   :base_type      "type/DateTime"}))))
+         (#'typed-schemas.api.schema.table/field-schema {:id             42
+                                                         :table_id       10
+                                                         :name           "created_at"
+                                                         :display_name   "Created At"
+                                                         :base_type      "type/DateTime"}))))
 
 (deftest table-schema-keys-fields-test
   (is (= {:type         "table"
@@ -94,7 +99,7 @@
                                       :id            42
                                       :fieldId       42
                                       :tableId       10}}}
-         (#'typed-schemas.api.schema/table-schema
+         (#'typed-schemas.api.schema.table/table-schema
           {:id            10
            :name          "orders"
            :display_name  "Orders"
@@ -112,7 +117,7 @@
           :id      12
           :tableId 10
           :name    "Completed Orders"}
-         (#'typed-schemas.api.schema/segment-schema
+         (#'typed-schemas.api.schema.table/segment-schema
           10
           {:id           12
            :name         "Completed Orders"
@@ -125,55 +130,55 @@
           :name    "Orders question"
           :display "table"
           :columns [{:type "column", :name "count", :displayName "Count", :jsType "number"}]}
-         (#'typed-schemas.api.schema/question-schema
+         (#'typed-schemas.api.schema.question/question-schema
           {:id             41
            :name           "Orders question"
            :display        "table"
            :result-columns [{:name "count", :display_name "Count", :type :number}]}))))
 
 (deftest model-schema-includes-actions-test
-  (with-redefs [typed-schemas.api.schema/model-actions
+  (with-redefs [typed-schemas.api.schema.model/model-actions
                 (fn [model]
                   (is (= 42 (:id model)))
                   [{:kind "action", :key "create", :id 5}])]
     (is (= {:key              "ordersModel"
             :keyDisambiguator 42
             :actions          {"create" {:kind "action", :key "create", :id 5}}}
-           (#'typed-schemas.api.schema/model-schema
+           (#'typed-schemas.api.schema.model/model-schema
             {:id             42
              :name           "Orders model"})))))
 
 (deftest model-schemas-includes-all-models-test
-  (with-redefs [typed-schemas.api.schema/select-cards
+  (with-redefs [typed-schemas.api.schema.common/select-cards
                 (fn [card-type database-ids collection-ids]
                   (is (= :model card-type))
                   (is (= #{1} database-ids))
                   (is (nil? collection-ids))
                   [{:id 42} {:id 43}])
-                typed-schemas.api.schema/question-details
+                typed-schemas.api.schema.common/question-details
                 (fn [card]
                   {:id   (:id card)
                    :name (str "Model " (:id card))})
-                typed-schemas.api.schema/model-actions
+                typed-schemas.api.schema.model/model-actions
                 (fn [model]
                   (when (= (:id model) 42)
                     [{:kind "action", :key "create", :id 5}]))]
     (is (= #{"model42" "model43"}
-           (->> (#'typed-schemas.api.schema/model-schemas #{1})
+           (->> (#'typed-schemas.api.schema.model/model-schemas #{1})
                 (map :key)
                 set)))))
 
 (deftest metric-source-id-test
   (testing "integer source-table emits sourceTableId but not sourceCardId"
     (let [card {:dataset_query {:query {:source-table 10}}}]
-      (is (= 10 (#'typed-schemas.api.schema/source-table-id card)))
-      (is (nil? (#'typed-schemas.api.schema/source-card-id card)))))
+      (is (= 10 (#'typed-schemas.api.schema.metric/source-table-id card)))
+      (is (nil? (#'typed-schemas.api.schema.metric/source-card-id card)))))
   (testing "card source-table emits sourceCardId but not sourceTableId"
     (let [card {:dataset_query {:query {:source-table "card__42"}}}]
-      (is (nil? (#'typed-schemas.api.schema/source-table-id card)))
-      (is (= 42 (#'typed-schemas.api.schema/source-card-id card)))))
+      (is (nil? (#'typed-schemas.api.schema.metric/source-table-id card)))
+      (is (= 42 (#'typed-schemas.api.schema.metric/source-card-id card)))))
   (testing "stage source-card emits sourceCardId"
-    (is (= 42 (#'typed-schemas.api.schema/source-card-id
+    (is (= 42 (#'typed-schemas.api.schema.metric/source-card-id
                {:dataset_query {:stages [{:source-card 42}]}})))))
 
 (deftest keyed-map-disambiguates-duplicate-keys-with-readable-suffix-test
@@ -215,15 +220,15 @@
                                        {:id 20 :name "franchises" :display_name "Franchises"}])
                 mi/can-read? (fn [{:keys [id]}] (= id 10))]
     (is (= {10 "orders"}
-           (#'typed-schemas.api.schema/table-source-names [10 20])))
+           (#'typed-schemas.api.schema.metric/table-source-names [10 20])))
     (is (= {10 "Orders"}
-           (#'typed-schemas.api.schema/table-key-disambiguators [10 20])))))
+           (#'typed-schemas.api.schema.metric/table-key-disambiguators [10 20])))))
 
 (deftest metric-schema-keys-dimensions-test
-  (with-redefs [typed-schemas.api.schema/metric-result-column (constantly nil)
-                typed-schemas.api.schema/readable-table-source-rows
+  (with-redefs [typed-schemas.api.schema.metric/metric-result-column (constantly nil)
+                typed-schemas.api.schema.metric/readable-table-source-rows
                 (constantly [{:id 10 :name "orders" :display_name "Orders"}])
-                typed-schemas.api.schema/metric-dimensions
+                typed-schemas.api.schema.metric/metric-dimensions
                 (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
                               :name           "orders"
                               :display-name   "Orders"
@@ -250,15 +255,15 @@
                                        :fieldId     42
                                        :tableId     10
                                        :metricId    247}}}
-           (#'typed-schemas.api.schema/metric-schema
+           (#'typed-schemas.api.schema.metric/metric-schema
             {:id   247
              :name "Customer Lifetime Value"}
             {:id 247})))))
 
 (deftest metric-schema-reuses-table-source-rows-test
   (let [table-select-count (atom 0)]
-    (with-redefs [typed-schemas.api.schema/metric-result-column (constantly nil)
-                  typed-schemas.api.schema/metric-dimensions
+    (with-redefs [typed-schemas.api.schema.metric/metric-result-column (constantly nil)
+                  typed-schemas.api.schema.metric/metric-dimensions
                   (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
                                 :name           "orders"
                                 :display-name   "Orders"
@@ -270,16 +275,16 @@
                               (when (= columns [:model/Table :id :name :display_name])
                                 (swap! table-select-count inc)
                                 [{:id 10 :name "orders" :display_name "Orders"}]))]
-      (#'typed-schemas.api.schema/metric-schema
+      (#'typed-schemas.api.schema.metric/metric-schema
        {:id   247
         :name "Customer Lifetime Value"}
        {:id 247})
       (is (= 1 @table-select-count)))))
 
 (deftest source-card-metric-schema-omits-mapped-table-dimensions-test
-  (with-redefs [typed-schemas.api.schema/metric-result-column (constantly nil)
-                typed-schemas.api.schema/table-source-names (constantly {10 "employee_store_roster"})
-                typed-schemas.api.schema/metric-dimensions
+  (with-redefs [typed-schemas.api.schema.metric/metric-result-column (constantly nil)
+                typed-schemas.api.schema.metric/table-source-names (constantly {10 "employee_store_roster"})
+                typed-schemas.api.schema.metric/metric-dimensions
                 (constantly [{:id   "count-dimension-uuid"
                               :name "count"}
                              {:id             "store-name-dimension-uuid"
@@ -304,7 +309,7 @@
                                     :key         "count"
                                     :id          "count-dimension-uuid"
                                     :metricId    259}}}
-           (#'typed-schemas.api.schema/metric-schema
+           (#'typed-schemas.api.schema.metric/metric-schema
             {:id   259
              :name "Stores with Over 5 Employees"}
             {:id            259
@@ -312,7 +317,7 @@
 
 (deftest measure-schema-uses-result-column-test
   (testing "measure result columns come from the measure definition when available"
-    (with-redefs [typed-schemas.api.schema/measure-result-column
+    (with-redefs [typed-schemas.api.schema.table/measure-result-column
                   (constantly {:name         "sum"
                                :display_name "Sum of Total"
                                :base_type    "type/Decimal"})]
@@ -326,20 +331,20 @@
                          :displayName "Sum of Total"
                          :baseType    "type/Decimal"
                          :jsType      "number"}]}
-             (#'typed-schemas.api.schema/measure-schema
+             (#'typed-schemas.api.schema.table/measure-schema
               10
               2
               {:id   1
                :name "Total Revenue"})))))
   (testing "measure result columns fall back to the measure name"
-    (with-redefs [typed-schemas.api.schema/measure-result-column (constantly nil)]
+    (with-redefs [typed-schemas.api.schema.table/measure-result-column (constantly nil)]
       (is (= {:type    "measure"
               :key     "totalRevenue"
               :id      1
               :tableId 10
               :name    "Total Revenue"
               :columns [{:type "column", :name "Total Revenue", :displayName "Total Revenue", :jsType "unknown"}]}
-             (#'typed-schemas.api.schema/measure-schema
+             (#'typed-schemas.api.schema.table/measure-schema
               10
               2
               {:id   1
@@ -541,29 +546,29 @@
 (deftest database-filter-scopes-models-test
   (let [model-database-ids (atom [])]
     (with-redefs [typed-schemas.api.query-params/database-ids-for-value (constantly #{42})
-                  typed-schemas.api.schema/model-schemas (fn [database-ids]
-                                                           (swap! model-database-ids conj database-ids)
-                                                           [])
-                  typed-schemas.api.schema/question-schemas (fn
-                                                              ([_database-ids] [])
-                                                              ([_database-ids _collection-ids] []))
-                  typed-schemas.api.schema/metric-schemas (fn
-                                                            ([_database-ids] [])
-                                                            ([_database-ids _collection-ids] []))
-                  typed-schemas.api.schema/select-tables (fn
-                                                           ([_database-ids] [])
-                                                           ([_database-ids _table-ids] []))
-                  typed-schemas.api.schema/table-schemas (constantly [])]
+                  typed-schemas.api.schema.model/model-schemas (fn [database-ids]
+                                                                 (swap! model-database-ids conj database-ids)
+                                                                 [])
+                  typed-schemas.api.schema.question/question-schemas (fn
+                                                                       ([_database-ids] [])
+                                                                       ([_database-ids _collection-ids] []))
+                  typed-schemas.api.schema.metric/metric-schemas (fn
+                                                                   ([_database-ids] [])
+                                                                   ([_database-ids _collection-ids] []))
+                  typed-schemas.api.schema.table/select-tables (fn
+                                                                 ([_database-ids] [])
+                                                                 ([_database-ids _table-ids] []))
+                  typed-schemas.api.schema.table/table-schemas (constantly [])]
       (#'typed-schemas.api.schema/typed-schema {:database "Boba"})
       (#'typed-schemas.api.schema/typed-schema {:database "Boba" :questions "true"})
       (is (= [#{42} #{42}] @model-database-ids)))))
 
 (deftest model-schemas-surface-detail-errors-test
-  (with-redefs [typed-schemas.api.schema/select-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
+  (with-redefs [typed-schemas.api.schema.common/select-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
                 entity-details/get-report-details (constantly {:output "source table not found"
                                                                :status-code 404})]
     (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (doall (#'typed-schemas.api.schema/model-schemas #{1}))))]
+                         (doall (#'typed-schemas.api.schema.model/model-schemas #{1}))))]
       (is (= "Failed to build schema details for model \"Broken model\" (card 100): source table not found"
              (ex-message e)))
       (is (= {:card-id       100
@@ -574,12 +579,12 @@
              (select-keys (ex-data e) [:card-id :card-name :card-type :status-code :error-message]))))))
 
 (deftest model-schemas-surface-detail-exceptions-test
-  (with-redefs [typed-schemas.api.schema/select-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
+  (with-redefs [typed-schemas.api.schema.common/select-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
                 entity-details/get-report-details (fn [_]
                                                     (throw (ex-info "Invalid output: [\"Valid Table metadata, got: nil\"]"
                                                                     {:status-code 500})))]
     (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (doall (#'typed-schemas.api.schema/model-schemas #{1}))))]
+                         (doall (#'typed-schemas.api.schema.model/model-schemas #{1}))))]
       (is (= "Failed to build schema details for model \"Broken model\" (card 100): Invalid output: [\"Valid Table metadata, got: nil\"]"
              (ex-message e)))
       (is (= {:card-id       100
@@ -590,14 +595,14 @@
              (select-keys (ex-data e) [:card-id :card-name :card-type :status-code :cause-message]))))))
 
 (deftest model-schema-surfaces-action-selection-errors-test
-  (with-redefs [typed-schemas.api.schema/raw-model-actions (constantly [])
+  (with-redefs [typed-schemas.api.schema.model/raw-model-actions (constantly [])
                 actions/select-actions (fn [& _]
                                          (throw (ex-info "action lookup failed"
                                                          {:status-code 500})))]
     (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (#'typed-schemas.api.schema/model-schema {:id             100
-                                                                   :name           "Broken model"
-                                                                   :result-columns []})))]
+                         (#'typed-schemas.api.schema.model/model-schema {:id             100
+                                                                         :name           "Broken model"
+                                                                         :result-columns []})))]
       (is (= "Failed to build action schemas for model \"Broken model\" (card 100): action lookup failed"
              (ex-message e)))
       (is (= {:model-id      100
@@ -610,16 +615,16 @@
   (with-redefs [actions/select-actions (constantly [{:id   200
                                                      :name "Broken action"
                                                      :type :query}])
-                typed-schemas.api.schema/raw-model-actions (constantly [{:id   200
-                                                                         :name "Broken action"
-                                                                         :type :query}])
-                typed-schemas.api.schema/action-schema (fn [& _]
-                                                         (throw (ex-info "action parameters are invalid"
-                                                                         {:status-code 500})))]
+                typed-schemas.api.schema.model/raw-model-actions (constantly [{:id   200
+                                                                               :name "Broken action"
+                                                                               :type :query}])
+                typed-schemas.api.schema.model/action-schema (fn [& _]
+                                                               (throw (ex-info "action parameters are invalid"
+                                                                               {:status-code 500})))]
     (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (#'typed-schemas.api.schema/model-schema {:id             100
-                                                                   :name           "Broken model"
-                                                                   :result-columns []})))]
+                         (#'typed-schemas.api.schema.model/model-schema {:id             100
+                                                                         :name           "Broken model"
+                                                                         :result-columns []})))]
       (is (= "Failed to build action schema for action \"Broken action\" (action 200, type query) on model \"Broken model\" (card 100): action parameters are invalid"
              (ex-message e)))
       (is (= {:model-id      100
@@ -632,14 +637,14 @@
              (select-keys (ex-data e) [:model-id :model-name :action-id :action-name :action-type :status-code :cause-message]))))))
 
 (deftest model-schema-surfaces-dropped-action-errors-test
-  (with-redefs [typed-schemas.api.schema/raw-model-actions (constantly [{:id   200
-                                                                         :name "Broken action"
-                                                                         :type :broken}])
+  (with-redefs [typed-schemas.api.schema.model/raw-model-actions (constantly [{:id   200
+                                                                               :name "Broken action"
+                                                                               :type :broken}])
                 actions/select-actions (constantly [])]
     (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (#'typed-schemas.api.schema/model-schema {:id             100
-                                                                   :name           "Broken model"
-                                                                   :result-columns []})))]
+                         (#'typed-schemas.api.schema.model/model-schema {:id             100
+                                                                         :name           "Broken model"
+                                                                         :result-columns []})))]
       (is (= "Failed to build action schemas for model \"Broken model\" (card 100): selected actions were dropped while normalizing action details: Broken action (action 200, type broken)"
              (ex-message e)))
       (is (= {:model-id        100
@@ -818,13 +823,13 @@
     (with-redefs [typed-schemas.api.query-params/library-collection-scope
                   (constantly {:metric-collection-ids #{20}
                                :data-collection-ids   #{10}})
-                  typed-schemas.api.schema/model-schemas
+                  typed-schemas.api.schema.model/model-schemas
                   (fn
                     ([_database-ids]
                      (is false "library-only schemas should not load models"))
                     ([_database-ids _collection-ids]
                      (is false "library-only schemas should not load models")))
-                  typed-schemas.api.schema/metric-schemas
+                  typed-schemas.api.schema.metric/metric-schemas
                   (fn [_database-ids collection-ids]
                     (is (= #{20} collection-ids))
                     [{:type           "metric"
@@ -833,13 +838,13 @@
                       :name           "Revenue"
                       :columns        [{:name "Revenue", :displayName "Revenue", :jsType "number"}]
                       :mappedTableIds [42]}])
-                  typed-schemas.api.schema/select-library-tables
+                  typed-schemas.api.schema.table/select-library-tables
                   (constantly [{:id 10}])
-                  typed-schemas.api.schema/select-tables
+                  typed-schemas.api.schema.table/select-tables
                   (fn [_database-ids table-ids]
                     (reset! selected-table-ids table-ids)
                     [{:id 10} {:id 42}])
-                  typed-schemas.api.schema/table-schemas
+                  typed-schemas.api.schema.table/table-schemas
                   (constantly [{:type "table", :key "publishedTable", :id 10}
                                {:type "table", :key "mappedTable", :id 42}])]
       (let [schema (#'typed-schemas.api.schema/typed-schema {:library "123"})]
@@ -856,13 +861,13 @@
                     (is (= ["10" "20"] collection-values))
                     {:metric-collection-ids #{20}
                      :data-collection-ids   #{10}})
-                  typed-schemas.api.schema/model-schemas
+                  typed-schemas.api.schema.model/model-schemas
                   (fn
                     ([_database-ids]
                      (is false "library-only schemas should not load models"))
                     ([_database-ids _collection-ids]
                      (is false "library-only schemas should not load models")))
-                  typed-schemas.api.schema/metric-schemas
+                  typed-schemas.api.schema.metric/metric-schemas
                   (fn [_database-ids collection-ids]
                     (is (= #{20} collection-ids))
                     [{:type           "metric"
@@ -871,15 +876,15 @@
                       :name           "Revenue"
                       :columns        [{:name "Revenue", :displayName "Revenue", :jsType "number"}]
                       :mappedTableIds [42]}])
-                  typed-schemas.api.schema/select-library-tables
+                  typed-schemas.api.schema.table/select-library-tables
                   (fn [library-scope]
                     (is (= #{10} (:data-collection-ids library-scope)))
                     [{:id 10}])
-                  typed-schemas.api.schema/select-tables
+                  typed-schemas.api.schema.table/select-tables
                   (fn [_database-ids table-ids]
                     (reset! selected-table-ids table-ids)
                     [{:id 10} {:id 42}])
-                  typed-schemas.api.schema/table-schemas
+                  typed-schemas.api.schema.table/table-schemas
                   (constantly [{:type "table", :key "publishedTable", :id 10}
                                {:type "table", :key "mappedTable", :id 42}])]
       (let [schema (#'typed-schemas.api.schema/typed-schema {:library-collections "10, 20"})]
@@ -890,25 +895,25 @@
         (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
 
 (deftest include-models-schema-includes-all-models-test
-  (with-redefs [typed-schemas.api.schema/model-schemas
+  (with-redefs [typed-schemas.api.schema.model/model-schemas
                 (fn [database-ids]
                   (is (nil? database-ids))
                   [{:key     "actionableModel"
                     :actions {"create" {:kind "action", :key "create", :id 1}}}
                    {:key "actionlessModel"}])
-                typed-schemas.api.schema/question-schemas
+                typed-schemas.api.schema.question/question-schemas
                 (fn
                   ([_database-ids]
                    (is false "includeModels-only schemas should not load questions"))
                   ([_database-ids _collection-ids]
                    (is false "includeModels-only schemas should not load questions")))
-                typed-schemas.api.schema/metric-schemas
+                typed-schemas.api.schema.metric/metric-schemas
                 (fn
                   ([_database-ids]
                    (is false "includeModels-only schemas should not load metrics"))
                   ([_database-ids _collection-ids]
                    (is false "includeModels-only schemas should not load metrics")))
-                typed-schemas.api.schema/select-tables
+                typed-schemas.api.schema.table/select-tables
                 (fn
                   ([_database-ids]
                    (is false "includeModels-only schemas should not load tables"))
@@ -925,20 +930,20 @@
 (deftest include-models-with-database-scopes-models-test
   (let [model-database-ids (atom [])]
     (with-redefs [typed-schemas.api.query-params/database-ids-for-value (constantly #{42})
-                  typed-schemas.api.schema/model-schemas (fn [database-ids]
-                                                           (swap! model-database-ids conj database-ids)
-                                                           [{:key     "databaseModel"
-                                                             :actions {"create" {:kind "action", :key "create", :id 1}}}])
-                  typed-schemas.api.schema/question-schemas (fn
-                                                              ([_database-ids] [])
-                                                              ([_database-ids _collection-ids] []))
-                  typed-schemas.api.schema/metric-schemas (fn
-                                                            ([_database-ids] [])
-                                                            ([_database-ids _collection-ids] []))
-                  typed-schemas.api.schema/select-tables (fn
-                                                           ([_database-ids] [])
-                                                           ([_database-ids _table-ids] []))
-                  typed-schemas.api.schema/table-schemas (constantly [])]
+                  typed-schemas.api.schema.model/model-schemas (fn [database-ids]
+                                                                 (swap! model-database-ids conj database-ids)
+                                                                 [{:key     "databaseModel"
+                                                                   :actions {"create" {:kind "action", :key "create", :id 1}}}])
+                  typed-schemas.api.schema.question/question-schemas (fn
+                                                                       ([_database-ids] [])
+                                                                       ([_database-ids _collection-ids] []))
+                  typed-schemas.api.schema.metric/metric-schemas (fn
+                                                                   ([_database-ids] [])
+                                                                   ([_database-ids _collection-ids] []))
+                  typed-schemas.api.schema.table/select-tables (fn
+                                                                 ([_database-ids] [])
+                                                                 ([_database-ids _table-ids] []))
+                  typed-schemas.api.schema.table/table-schemas (constantly [])]
       (let [schema (#'typed-schemas.api.schema/typed-schema {:database "Boba" :includeModels "true"})]
         (is (= [#{42}] @model-database-ids))
         (is (= {"databaseModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
@@ -949,12 +954,12 @@
                 (fn [collection-values]
                   (is (= ["30" "40"] collection-values))
                   #{30 40})
-                typed-schemas.api.schema/question-schemas
+                typed-schemas.api.schema.question/question-schemas
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
                   (is (= #{30 40} collection-ids))
                   [{:type "card", :key "ordersByMonth", :id 1}])
-                typed-schemas.api.schema/model-schemas
+                typed-schemas.api.schema.model/model-schemas
                 (fn
                   ([_database-ids]
                    (is false "question collection schemas should not load models"))
@@ -976,24 +981,24 @@
                 (fn [collection-values]
                   (is (= ["30"] collection-values))
                   #{30})
-                typed-schemas.api.schema/question-schemas
+                typed-schemas.api.schema.question/question-schemas
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
                   (is (= #{30} collection-ids))
                   [{:type "card", :key "ordersByMonth", :id 1}])
-                typed-schemas.api.schema/model-schemas
+                typed-schemas.api.schema.model/model-schemas
                 (fn
                   ([_database-ids]
                    (is false "question collection schemas should not load models"))
                   ([_database-ids _collection-ids]
                    (is false "question collection schemas should not load models")))
-                typed-schemas.api.schema/metric-schemas
+                typed-schemas.api.schema.metric/metric-schemas
                 (constantly [{:type "metric", :key "revenue", :id 2}])
-                typed-schemas.api.schema/select-library-tables
+                typed-schemas.api.schema.table/select-library-tables
                 (constantly [{:id 3}])
-                typed-schemas.api.schema/select-tables
+                typed-schemas.api.schema.table/select-tables
                 (constantly [{:id 3}])
-                typed-schemas.api.schema/table-schemas
+                typed-schemas.api.schema.table/table-schemas
                 (constantly [{:type "table", :key "orders", :id 3}])]
     (let [schema (#'typed-schemas.api.schema/typed-schema {:library-collections  "10"
                                                            :question-collections "30"})]
@@ -1012,23 +1017,23 @@
                 (fn [collection-values]
                   (is (= ["30"] collection-values))
                   #{30})
-                typed-schemas.api.schema/question-schemas
+                typed-schemas.api.schema.question/question-schemas
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
                   (is (= #{30} collection-ids))
                   [{:type "card", :key "ordersByMonth", :id 1}])
-                typed-schemas.api.schema/model-schemas
+                typed-schemas.api.schema.model/model-schemas
                 (fn [database-ids]
                   (is (nil? database-ids))
                   [{:key     "selectedQuestionCollectionModel"
                     :actions {"create" {:kind "action", :key "create", :id 1}}}])
-                typed-schemas.api.schema/metric-schemas
+                typed-schemas.api.schema.metric/metric-schemas
                 (constantly [{:type "metric", :key "revenue", :id 2}])
-                typed-schemas.api.schema/select-library-tables
+                typed-schemas.api.schema.table/select-library-tables
                 (constantly [{:id 3}])
-                typed-schemas.api.schema/select-tables
+                typed-schemas.api.schema.table/select-tables
                 (constantly [{:id 3}])
-                typed-schemas.api.schema/table-schemas
+                typed-schemas.api.schema.table/table-schemas
                 (constantly [{:type "table", :key "orders", :id 3}])]
     (let [schema (#'typed-schemas.api.schema/typed-schema {:library-collections  "10"
                                                            :question-collections "30"
