@@ -246,7 +246,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.undoToast().findByText("Moved 20 questions");
 
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      visitDashboardWaitingForDefinition(S.ORDERS_DASHBOARD_ID);
 
       new Array(20).fill("slowbro").forEach((_, i) => {
         H.dashboardCards().findByText(`Question ${i + 1}`);
@@ -269,7 +269,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.wait(["@updateCard", "@updateCard"]);
       cy.findByTestId("error-boundary").should("not.exist");
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      visitDashboardWaitingForDefinition(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Orders");
       H.dashboardCards().findByText("Orders, Count");
     });
@@ -1320,6 +1320,20 @@ function seedMigrationToolData() {
       });
     });
   });
+}
+
+// Visit a dashboard waiting only for its definition to load, not for every dashcard query.
+// `H.visitDashboard` waits on every dashcard's query alias, which is flaky for a dashboard
+// this large: dashcard queries are fetched in serialized batches of 5 (#70542), so under CI
+// load/throttling the later queries don't all fire within each `cy.wait` alias's 5s window
+// ("No request ever occurred"). Card titles render from the dashboard metadata, so we don't
+// need the queries to resolve to assert the cards were moved in.
+function visitDashboardWaitingForDefinition(dashboardId) {
+  cy.intercept("GET", `/api/dashboard/${dashboardId}*`).as(
+    "dashboardDefinition",
+  );
+  cy.visit(`/dashboard/${dashboardId}`);
+  cy.wait("@dashboardDefinition");
 }
 
 function selectCollectionItem(name) {
