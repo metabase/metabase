@@ -1260,7 +1260,43 @@
                 (is (= {:model "Database" :id "bad-db"}
                        (select-keys (ex-data e) [:model :id])))
                 (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
-                       (:referrer (ex-data e))))))))))))
+                       (:referrer (ex-data e))))))))
+        ;; `result-metadata-deps` derives deps only from each entry's `:field_ref`, never from its `:table_id`.
+        ;; So a result_metadata `:table_id` naming an absent database gets past dependency resolution and only
+        ;; fails inside `serdes/load-one!`, where `import-table-fk` raises ::database-not-found. (The Card's own
+        ;; top-level `table_id` cannot be used here: `populate-query-fields` recomputes it from `dataset_query`.)
+        (testing "a result_metadata table_id naming an absent database names the database and the card (GHY-3992)"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta     [{:model "Card" :id "0123456789abcdef_0123"}]
+                                                 :created_at      (t/instant)
+                                                 :creator_id      "glee@rush.yyz"
+                                                 :database_id     "my-db"
+                                                 :dataset_query   {:database "my-db"
+                                                                   :type     :query
+                                                                   :query    {:source-table ["my-db" nil "CUSTOMERS"]}}
+                                                 :display         :table
+                                                 :entity_id       "0123456789abcdef_0123"
+                                                 :name            "Some card"
+                                                 :result_metadata [{:name      "STATE"
+                                                                    :base_type :type/Text
+                                                                    :table_id  ["absent-db" nil "CUSTOMERS"]}]
+                                                 :table_id        ["my-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])
+                e         (try
+                            (serdes.load/load-metabase! ingestion)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e e))
+                root      (->> (iterate ex-cause e)
+                               (take-while some?)
+                               (some #(when (= :metabase.models.serialization.resolve.db/database-not-found
+                                               (:error (ex-data %)))
+                                        %)))]
+            (is (some? e))
+            (testing "the root cause carries the missing database name"
+              (is (some? root))
+              (is (= "absent-db" (:db-name (ex-data root)))))
+            (testing "the outer load-failure names the referring card"
+              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                     (:referrer (ex-data e)))))))))))
 
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)

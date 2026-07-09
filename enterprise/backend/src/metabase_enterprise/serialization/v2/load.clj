@@ -255,8 +255,9 @@
                                           (format " (it may have been left without these keys, which were stripped to break a circular dependency: %s)"
                                                   (str/join ", " (sort (map name (keys-to-strip ingested)))))
                                           ""))
-                                (cond-> (path-error-data ::load-failure expanding path)
-                                  stripped? (assoc :stripped-keys (keys-to-strip ingested)))
+                                (-> (path-error-data ::load-failure expanding path)
+                                    (assoc :referrer (entity-reference rebuilt-path ingested))
+                                    (cond-> stripped? (assoc :stripped-keys (keys-to-strip ingested))))
                                 e))))))))))
 
 (defn new-context

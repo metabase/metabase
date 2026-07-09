@@ -124,13 +124,26 @@
                       :id    "My Database "
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
       (is (str/includes? (impl/source-error-message e) "Database (`My Database `)"))))
-  (testing "source-error-message produces helpful message for FK database-not-found errors"
+  (testing "source-error-message names the card and the missing database for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
-                         {:table-id ["clickhouse" nil "some_table"]})
+                         {:table-id ["clickhouse" nil "some_table"]
+                          :db-name  "clickhouse"
+                          :error    :metabase.models.serialization.resolve.db/database-not-found})
           e     (ex-info "Failed to load into database for Card abc123"
-                         {:path "Card abc123"}
+                         {:path     "Card abc123"
+                          :referrer {:model "Card" :id "abc123" :name "Some card"}}
                          cause)]
-      (is (str/includes? (impl/source-error-message e) "A referenced database does not exist on this instance"))))
+      (is (= (str "Import failed: Card `Some card` (`abc123`) references Database (`clickhouse`), which does not "
+                  "exist on this instance. Make sure all referenced databases and other dependencies are set up "
+                  "before importing.")
+             (impl/source-error-message e)))))
+  (testing "database-not-found is found anywhere in the cause chain, not only at the immediate cause"
+    (let [root   (ex-info "table id present, but database not found: [clickhouse nil t]"
+                          {:db-name "clickhouse"
+                           :error   :metabase.models.serialization.resolve.db/database-not-found})
+          middle (ex-info "wrapped by an intervening helper" {} root)
+          e      (ex-info "Failed to load into database for Card abc123" {:path "Card abc123"} middle)]
+      (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)"))))
   (testing "source-error-message lists each unreadable file with its parse reason (GHY-3887)"
     (let [ingest-err (ex-info "Failed to parse file: collections/transforms/a.yaml"
                               {:file "collections/transforms/a.yaml"

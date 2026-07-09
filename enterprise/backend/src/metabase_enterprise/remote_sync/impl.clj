@@ -134,51 +134,62 @@
             (format "%s references %s, which" (describe-entity referrer) (describe-entity missing))
             (describe-entity missing))))
 
+(defn- cause-with-error
+  "Returns the first exception in `e`'s cause chain whose ex-data `:error` is `error-type`, or nil."
+  [e error-type]
+  (->> (iterate ex-cause e)
+       (take-while some?)
+       (some (fn [ex]
+               (when (= error-type (:error (ex-data ex)))
+                 ex)))))
+
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
 
   Takes a throwable exception and returns a string message that categorizes the error (network, authentication,
   repository not found, branch, or generic) based on the exception type and message content."
   [e]
-  (cond
-    (or (instance? java.net.UnknownHostException e)
-        (instance? java.net.UnknownHostException (ex-cause e)))
-    "Network error: Unable to reach git repository host"
+  (let [missing-db (cause-with-error e :metabase.models.serialization.resolve.db/database-not-found)]
+    (cond
+      (or (instance? java.net.UnknownHostException e)
+          (instance? java.net.UnknownHostException (ex-cause e)))
+      "Network error: Unable to reach git repository host"
 
-    (str/includes? (ex-message e) "Authentication failed")
-    "Authentication failed: Please check your git credentials"
+      (str/includes? (ex-message e) "Authentication failed")
+      "Authentication failed: Please check your git credentials"
 
-    (str/includes? (ex-message e) "Repository not found")
-    "Repository not found: Please check the repository URL"
+      (str/includes? (ex-message e) "Repository not found")
+      "Repository not found: Please check the repository URL"
 
-    (str/includes? (ex-message e) "branch")
-    "Branch error: Please check the specified branch exists"
+      (str/includes? (ex-message e) "branch")
+      "Branch error: Please check the specified branch exists"
 
-    (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
-    "This repository contains tenant collections, but the tenants feature is disabled on your instance."
+      (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
+      "This repository contains tenant collections, but the tenants feature is disabled on your instance."
 
-    (str/includes? (ex-message e) "Missing commit")
-    "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
+      (str/includes? (ex-message e) "Missing commit")
+      "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
 
-    (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
-    (let [{:keys [model id referrer]} (ex-data e)]
-      (missing-reference-message {:missing  {:model model :id id}
-                                  :referrer referrer}))
+      (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
+      (let [{:keys [model id referrer]} (ex-data e)]
+        (missing-reference-message {:missing  {:model model :id id}
+                                    :referrer referrer}))
 
-    (some-> e ex-cause ex-message (str/includes? "database not found"))
-    (format "Import failed: A referenced database does not exist on this instance. %s" (ex-message (ex-cause e)))
+      missing-db
+      (missing-reference-message {:missing  {:model "Database" :id (:db-name (ex-data missing-db))}
+                                  :referrer (:referrer (ex-data e))})
 
-    (seq (:ingest-errors (ex-data e)))
-    (let [ingest-errors (:ingest-errors (ex-data e))]
-      (format "Failed to read %d file(s) from the repository: %s"
-              (count ingest-errors)
-              (str/join "; " (for [ie ingest-errors
-                                   :let [{:keys [file reason]} (ex-data ie)]]
-                               (cond-> file
-                                 reason (str ": " reason))))))
+      (seq (:ingest-errors (ex-data e)))
+      (let [ingest-errors (:ingest-errors (ex-data e))]
+        (format "Failed to read %d file(s) from the repository: %s"
+                (count ingest-errors)
+                (str/join "; " (for [ie ingest-errors
+                                     :let [{:keys [file reason]} (ex-data ie)]]
+                                 (cond-> file
+                                   reason (str ": " reason))))))
 
-    :else
-    (format "Failed to reload from git repository: %s" (ex-message e))))
+      :else
+      (format "Failed to reload from git repository: %s" (ex-message e)))))
 
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
