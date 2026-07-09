@@ -666,8 +666,9 @@
 (deftest read-dashboard-items-groups-by-tab-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
-                   :model/DashboardTab {tab1-id :id} {:dashboard_id dash-id :name "Tab 1" :position 0}
-                   :model/DashboardTab {tab2-id :id} {:dashboard_id dash-id :name "Tab 2" :position 1}
+                   :model/DashboardTab {tab1-id :id} {:dashboard_id dash-id :name "Tab One" :position 0}
+                   :model/DashboardTab {tab2-id :id} {:dashboard_id dash-id :name "Tab Two" :position 1}
+                   :model/DashboardTab _ {:dashboard_id dash-id :name "Empty Tab" :position 2}
                    ;; the second tab's card sits at row 0, above the first tab's card at row 1 —
                    ;; a flat row/col sort would list it first
                    :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id tab2-id
@@ -677,14 +678,22 @@
                    :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id tab1-id
                                            :card_id nil :row 1 :col 0 :size_x 24 :size_y 1
                                            :visualization_settings {:virtual_card {:display "heading"}
-                                                                    :text "First Tab Heading"}}]
-      (testing "items group by tab (in position order) before row/col, so tabs don't interleave"
-        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
-          (is (< (str/index-of output "First Tab Heading")
-                 (str/index-of output "Second Tab Heading")))
-          (testing "each item carries the tab_id that add mutations accept"
-            (is (str/includes? output (str "tab_id=\"" tab1-id "\"")))
-            (is (str/includes? output (str "tab_id=\"" tab2-id "\"")))))))))
+                                                                    :text "First Tab Heading"}}
+                   ;; predates the tabs: nil tab id, but the frontend renders it on the first tab
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id nil
+                                           :card_id nil :row 0 :col 0 :size_x 24 :size_y 1
+                                           :visualization_settings {:virtual_card {:display "heading"}
+                                                                    :text "Legacy Heading"}}]
+      (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})
+            idx              #(str/index-of output %)]
+        (testing "dashcards group under one tab item per tab, in tab display order"
+          (is (< (idx "Tab One") (idx "Legacy Heading") (idx "First Tab Heading")
+                 (idx "Tab Two") (idx "Second Tab Heading"))))
+        (testing "empty tabs are listed too"
+          (is (str/includes? output "Empty Tab")))
+        (testing "items carry the tab_id that add mutations accept; nil-tab dashcards get the first tab's"
+          (is (= 3 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
+          (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))))))
 
 (deftest read-dashboard-items-includes-virtual-dashcards-test
   (mt/with-current-user (mt/user->id :crowberto)

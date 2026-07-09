@@ -588,23 +588,21 @@
      :description (:text visualization_settings)}))
 
 (defn- fetch-dashboard-items
-  "One item per dashcard, grouped by tab (in tab order) then in row/col (layout) order within the
-   tab, each carrying the `dashcard_id` that `update_dashboard` remove/move mutations take.
-   Card-backed dashcards keep the card fields; virtual dashcards (headings, text, ...) render
-   their text. Dashcards whose card is archived or unreadable are omitted."
+  "One item per dashcard in row/col (layout) order, each carrying the `dashcard_id` that
+   `update_dashboard` remove/move mutations take. On a tabbed dashboard the dashcards group under
+   one `tab` item per tab (in display order, empty tabs included) and carry that tab's `tab_id` —
+   nil-tab dashcards belong to the first tab, where the frontend renders them. Card-backed
+   dashcards keep the card fields; virtual dashcards (headings, text, ...) render their text.
+   Dashcards whose card is archived or unreadable are omitted."
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        ;; row/col are tab-relative, so a flat row/col sort would interleave cards from different
-        ;; tabs. Sort by tab position first; a nil tab id counts as the first tab.
-        tab-order    (into {}
-                           (map-indexed (fn [i tab-id] [tab-id i]))
-                           (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id
-                                              {:order-by [[:position :asc]]}))
-        dashcards    (->> (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
-                                      :row :col :visualization_settings]
-                                     :dashboard_id dashboard-id)
-                          (sort-by (juxt #(get tab-order (:dashboard_tab_id %) 0) :row :col)))
+        tabs         (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
+                                {:order-by [[:position :asc]]})
+        dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
+                                 :visualization_settings]
+                                :dashboard_id dashboard-id
+                                {:order-by [[:row :asc] [:col :asc]]})
         card-ids     (into #{} (keep :card_id) dashcards)
         readable     (when (seq card-ids)
                        (->> (t2/select [:model/Card :id :name :type :description :card_schema
@@ -613,17 +611,23 @@
                                        :archived false)
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
-        items        (into []
-                           (keep (fn [{:keys [id card_id action_id dashboard_tab_id] :as dashcard}]
-                                   ;; action_id wins over card_id: an action button may reference
-                                   ;; its backing model through card_id but renders as a button.
-                                   (when-let [item (if (and card_id (not action_id))
-                                                     (when-let [card (get readable card_id)]
-                                                       (assoc (present-card card) :dashcard_id id))
-                                                     (present-non-question-dashcard dashcard))]
-                                     (cond-> item
-                                       dashboard_tab_id (assoc :tab_id dashboard_tab_id)))))
-                           dashcards)]
+        ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
+                       ;; action_id wins over card_id: an action button may reference its backing
+                       ;; model through card_id but renders as a button.
+                       (if (and card_id (not action_id))
+                         (when-let [card (get readable card_id)]
+                           (assoc (present-card card) :dashcard_id id))
+                         (present-non-question-dashcard dashcard)))
+        items        (if (seq tabs)
+                       (let [by-tab (group-by #(or (:dashboard_tab_id %) (:id (first tabs)))
+                                              dashcards)]
+                         (into []
+                               (mapcat (fn [{tab-id :id tab-name :name}]
+                                         (cons {:type "tab" :tab_id tab-id :name tab-name}
+                                               (keep #(some-> (->item %) (assoc :tab_id tab-id))
+                                                     (get by-tab tab-id)))))
+                               tabs))
+                       (into [] (keep ->item) dashcards))]
     (list-result :dashboard-items items query-params)))
 
 ;; ----- Dispatch -----
