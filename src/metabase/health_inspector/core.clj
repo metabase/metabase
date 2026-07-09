@@ -113,7 +113,7 @@
   Deduplicates via [[save-check-result!]], so a flapping caller (e.g. a circuit breaker cycling
   open/half-open) can't flood the table and bury other checks."
   [check-name]
-  (when (setting/health-inspector-enabled)
+  (when (enabled?)
     (when-let [f (get @checks check-name)]
       (save-check-result! check-name (run-check check-name f)))))
 

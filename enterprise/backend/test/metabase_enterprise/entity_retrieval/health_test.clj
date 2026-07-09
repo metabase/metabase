@@ -53,8 +53,9 @@
         (is (=? {:health 0 :message #".*circuit open \(probe reachable.*"}
                 (entity-retrieval.health/nlq-retrieval-health-check)))
         (is (true? @probed?) "an open circuit still probes so recovery is detectable"))))
-  (testing "an open circuit with an unreachable probe names both"
-    (is (=? {:health 0 :message #".*unreachable; circuit open.*"}
+  (testing "an open circuit with an unreachable probe reads the same as unreachable with a closed one --
+           state-independent wording, so a flapping breaker's re-persisted rows dedup instead of flooding"
+    (is (=? {:health 0 :message #"Embedding service unreachable: boom.*"}
             (check ready-status :circuit-open? true :reachable {:reachable? false :error "boom"})))))
 
 (deftest unreachable-embedder-is-degraded-test

@@ -2,7 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
+   ;; loaded for side effects: the health namespaces register the breaker state-change hooks that
+   ;; state-change-persists-affected-checks-test exercises
+   [metabase-enterprise.entity-retrieval.health]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.health]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.test :as mt]))
 
@@ -93,12 +97,13 @@
           (is (= :open (circuit-state))))))))
 
 (deftest ^:sequential state-change-persists-affected-checks-test
-  (testing "a breaker state transition persists both embedder-dependent health checks immediately"
+  (testing "a breaker state transition runs the registered hooks, persisting both embedder-dependent health
+           checks immediately"
     (let [persisted (atom [])]
       (mt/with-dynamic-fn-redefs
         [health-inspector/run-and-save-check! (fn [check-name] (swap! persisted conj check-name))]
         (#'semantic.embedding/on-embedder-circuit-state-change! :open)
-        ;; the listener persists on a fire-and-forget future; give it a moment to drain
+        ;; the listener runs the hooks on a fire-and-forget future; give it a moment to drain
         (is (loop [tries 50]
               (cond
                 (= #{:semantic-search-index :nlq-retrieval} (set @persisted)) true

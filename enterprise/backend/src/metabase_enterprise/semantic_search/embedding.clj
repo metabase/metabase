@@ -8,7 +8,6 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.health-inspector.core :as health-inspector]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
@@ -152,44 +151,6 @@
   "If a model needs to be downloaded (which is the case for ollama), downloads it."
   {:arglists '([embedding-model])} dispatch-provider)
 
-;;;; Ollama impl
-
-(defn- ollama-get-embedding [model-name text]
-  (try
-    ;; TODO count ollama tokens into :metabase-search/semantic-embedding-tokens?
-    (log/debug "Generating Ollama embedding for text of length:" (count text))
-    (-> (http/post "http://localhost:11434/api/embeddings" ;; TODO: we should make the host configurable
-                   {:headers {"Content-Type" "application/json"}
-                    :body    (json/encode {:model model-name
-                                           :prompt text})})
-        :body
-        (json/decode true)
-        :embedding)
-    (catch Exception e
-      (log/error e "Failed to generate Ollama embedding for text of length:" (count text))
-      (throw e))))
-
-(defn- ollama-get-embeddings-batch [model-name texts]
-  ;; Ollama doesn't have a native batch API, so we fall back to individual calls
-  ;; No special batching needed for Ollama - just process all texts
-  (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
-  (mapv #(ollama-get-embedding model-name %) texts))
-
-(defn- ollama-pull-model [model-name]
-  (try
-    (log/debug "Pulling embedding model from Ollama...")
-    (http/post "http://localhost:11434/api/pull" ;; TODO: make the host configurable
-               {:headers {"Content-Type" "application/json"}
-                :body    (json/encode {:model model-name})})
-    (catch Exception e
-      (log/error e "Failed to pull embedding model")
-      (throw e))))
-
-;; Ollama is not used in production. Token tracking is not implemented.
-(defmethod get-embedding        "ollama" [{:keys [model-name]} text & {:as _opts}]  (ollama-get-embedding model-name text))
-(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}] (ollama-get-embeddings-batch model-name texts))
-(defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
-
 ;;;; Embedding-service circuit breaker
 ;;;
 ;;; The embedding service is a remote HTTP dependency; when it's down, every semantic-search / NLQ query
@@ -207,6 +168,13 @@
 
 (def ^:private embedder-circuit-breaker-delay-ms
   "How long the breaker stays open before it allows a half-open trial call." 30000)
+
+(def ^:private embedding-http-timeouts
+  "clj-http timeout opts merged into every embedding-service request. Without an explicit :socket-timeout the
+  client waits forever, so a blackholed service (accepts connections, never responds) would hang callers
+  indefinitely -- and the breaker would never open, since only completed failures count toward it."
+  {:connection-timeout 10000
+   :socket-timeout     60000})
 
 (defn- network-outage-cause?
   "Whether one throwable in a failure's cause chain says the service is unreachable at the network level:
@@ -236,19 +204,23 @@
            ;; the caller's bad request and stays off the breaker.
            (and (integer? status) (>= (long status) 500)))))))
 
+(defonce ^{:doc "Hooks `(fn [state])` run on every breaker state change. The health namespaces register
+  hooks that re-persist their embedder-dependent checks (this module can't require them back -- they require
+  this one), so an outage or its recovery shows up within minutes instead of at the next daily report."}
+  embedder-circuit-state-change-hooks
+  (atom []))
+
 (defn- on-embedder-circuit-state-change!
-  "Persist the embedder-dependent health checks the moment the breaker changes state, so an outage or its
-  recovery shows up within minutes instead of at the next daily report."
+  "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread, in
+  registration order, each isolated so one failing hook doesn't starve the rest."
   [state]
   (log/warn "Embedding service circuit breaker changed state" {:state state})
-  ;; Off the failsafe callback thread. run-and-save-check! self-gates on the setting and skips unregistered
-  ;; checks, so this is safe to fire-and-forget.
   (future
-    (try
-      (health-inspector/run-and-save-check! :semantic-search-index)
-      (health-inspector/run-and-save-check! :nlq-retrieval)
-      (catch Throwable e
-        (log/error e "Failed to persist embedder circuit health checks")))))
+    (doseq [hook @embedder-circuit-state-change-hooks]
+      (try
+        (hook state)
+        (catch Throwable e
+          (log/error e "Embedder circuit state-change hook failed"))))))
 
 (defonce ^:private embedder-circuit-breaker
   (dh.cb/circuit-breaker
@@ -299,6 +271,54 @@
       (catch FailsafeException e
         (throw (or (.getCause e) e))))))
 
+;;;; Ollama impl
+
+(def ^:private ollama-embeddings-endpoint
+  "http://localhost:11434/api/embeddings") ;; TODO: we should make the host configurable
+
+(defn- ollama-get-embedding [model-name text]
+  (try
+    ;; TODO count ollama tokens into :metabase-search/semantic-embedding-tokens?
+    (log/debug "Generating Ollama embedding for text of length:" (count text))
+    (-> (http/post ollama-embeddings-endpoint
+                   (merge embedding-http-timeouts
+                          {:headers {"Content-Type" "application/json"}
+                           :body    (json/encode {:model model-name
+                                                  :prompt text})}))
+        :body
+        (json/decode true)
+        :embedding)
+    (catch Exception e
+      (log/error e "Failed to generate Ollama embedding for text of length:" (count text))
+      (throw e))))
+
+(defn- ollama-pull-model [model-name]
+  (try
+    (log/debug "Pulling embedding model from Ollama...")
+    (http/post "http://localhost:11434/api/pull" ;; TODO: make the host configurable
+               (merge embedding-http-timeouts
+                      {:headers {"Content-Type" "application/json"}
+                       :body    (json/encode {:model model-name})}))
+    (catch Exception e
+      (log/error e "Failed to pull embedding model")
+      (throw e))))
+
+;; Ollama is not used in production. Token tracking is not implemented.
+(defmethod get-embedding "ollama" [{:keys [model-name]} text & {:as _opts}]
+  (call-through-embedder-breaker #(ollama-get-embedding model-name text)
+                                 :endpoint ollama-embeddings-endpoint))
+
+(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}]
+  ;; Ollama doesn't have a native batch API, so we fall back to individual calls. Each call goes through the
+  ;; breaker on its own, so an outage mid-batch fast-fails the remaining texts instead of timing out on each.
+  (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
+  (mapv (fn [text]
+          (call-through-embedder-breaker #(ollama-get-embedding model-name text)
+                                         :endpoint ollama-embeddings-endpoint))
+        texts))
+
+(defmethod pull-model "ollama" [{:keys [model-name]}] (ollama-pull-model model-name))
+
 ;;;; OpenAI-compatible embedding service impl (shared by "ai-service" and "openai" providers)
 
 (defn- supports-dimensions?
@@ -338,20 +358,22 @@
                {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
     (let [start-ms             (u/start-timer)
           {:keys [usage data]} (-> (http/post endpoint
-                                              {:headers
-                                               (merge {"Content-Type"  "application/json"}
-                                                      (if (and (empty? api-key)
-                                                               (= "ai-service" provider))
-                                                        {"x-metabase-instance-token"
-                                                         (u/prog1 (premium-features/premium-embedding-token)
-                                                           (when (nil? <>)
-                                                             (throw (ex-info "Premium embedding token not set"
-                                                                             {:provider provider}))))}
-                                                        {"Authorization" (str "Bearer " api-key)}))
-                                               :body    (json/encode (merge {:model           model-name
-                                                                             :input           texts
-                                                                             :encoding_format "base64"}
-                                                                            extra-body))})
+                                              (merge
+                                               embedding-http-timeouts
+                                               {:headers
+                                                (merge {"Content-Type"  "application/json"}
+                                                       (if (and (empty? api-key)
+                                                                (= "ai-service" provider))
+                                                         {"x-metabase-instance-token"
+                                                          (u/prog1 (premium-features/premium-embedding-token)
+                                                            (when (nil? <>)
+                                                              (throw (ex-info "Premium embedding token not set"
+                                                                              {:provider provider}))))}
+                                                         {"Authorization" (str "Bearer " api-key)}))
+                                                :body    (json/encode (merge {:model           model-name
+                                                                              :input           texts
+                                                                              :encoding_format "base64"}
+                                                                             extra-body))}))
                                    :body
                                    (json/decode true))
           total-tokens         (:total_tokens usage 0)

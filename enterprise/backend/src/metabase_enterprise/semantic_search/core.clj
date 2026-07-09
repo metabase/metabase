@@ -185,7 +185,8 @@
 (defenterprise repair-index!
   "Brings the semantic search index into consistency with the provided document set.
   Does not fully reinitialize the index, but will add missing documents and remove stale ones.
-  Returns the number of lost deletes (orphans) it found, so callers can feed the garbage health metric."
+  Returns the number of stale orphans (garbage the indexer hasn't cleaned since it was gated for deletion),
+  so callers can feed the garbage health metric."
   :feature :semantic-search
   [searchable-documents]
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
@@ -206,15 +207,22 @@
           ;; Re-gate all provided documents, populating the repair table as we go
           (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
                                                :repair-table repair-table-name)
-          ;; Find documents in the gate table that are not in the provided searchable-documents, and gate deletes for them
-          (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector (:gate-table-name index-metadata) repair-table-name)]
-            (doseq [[model ids] ids-by-model]
-              (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
-              (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids)))
-          ;; Return the garbage count for the health metric from the *active index* (rows absent from the
-          ;; candidate set), not the gate lost-delete count -- the latter includes retained tombstones for
-          ;; rows the indexer already removed, which would keep the metric inflated until tombstone cleanup.
-          (semantic.repair/count-active-orphans pgvector (-> active-state :index :table-name) repair-table-name))))))
+          ;; Garbage for the health metric, measured on the *active index* (rows absent from the candidate
+          ;; set), not the gate lost-delete count -- the latter includes retained tombstones for rows the
+          ;; indexer already removed, which would keep the metric inflated until tombstone cleanup. Counted
+          ;; BEFORE this run's gate-deletes so the lost deletes found below (in-flight cleanup the indexer
+          ;; typically clears within minutes) don't read as a critical garbage spike that stands until the
+          ;; next hourly repair; only orphans that survived a full cycle since being gated count.
+          (let [orphans (semantic.repair/count-stale-orphans pgvector
+                                                             (-> active-state :index :table-name)
+                                                             (:gate-table-name index-metadata)
+                                                             repair-table-name)]
+            ;; Find documents in the gate table that are not in the provided searchable-documents, and gate deletes for them
+            (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector (:gate-table-name index-metadata) repair-table-name)]
+              (doseq [[model ids] ids-by-model]
+                (log/infof "Repairing lost deletes for model %s: deleting %d documents" model (count ids))
+                (semantic.pgvector-api/gate-deletes! pgvector index-metadata model ids)))
+            orphans))))))
 
 (comment
   (update-index! [{:model "card"

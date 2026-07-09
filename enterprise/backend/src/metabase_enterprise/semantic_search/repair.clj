@@ -73,14 +73,17 @@
          (group-by :model)
          (m/map-vals #(map :model_id %)))))
 
-(defn count-active-orphans
+(defn count-stale-orphans
   "Count rows in the active index table whose `(model, model_id)` is absent from the repair table (the current
-  candidate set) -- the garbage actually being served. Unlike the gate-based [[find-lost-deletes]] anti-join,
-  this excludes retained tombstones for rows the indexer has already removed, so the count doesn't stay
-  inflated until tombstone cleanup runs.
+  candidate set) AND has no live gate row -- garbage whose delete was already gated (on a previous repair
+  cycle or organically) that the indexer still hasn't cleaned. Callers run this BEFORE the current repair's
+  own gate-deletes: a freshly found lost delete is in-flight cleanup the indexer typically clears within
+  minutes, and counting it would push a garbage spike that then stands until the next hourly repair.
+  Unlike the gate-based [[find-lost-deletes]] anti-join, this excludes retained tombstones for rows the
+  indexer has already removed, so the count doesn't stay inflated until tombstone cleanup runs.
   Returns nil if the count query fails: this feeds only the garbage health metric, and (like
   [[find-lost-deletes]]) a metric-read blip must not fail the repair run whose real work already committed."
-  [pgvector index-table-name repair-table-name]
+  [pgvector index-table-name gate-table-name repair-table-name]
   (try
     (let [count-sql (-> (sql.helpers/select [:%count.* :n])
                         (sql.helpers/from [(keyword index-table-name) :i])
@@ -88,11 +91,17 @@
                          [:not [:exists (-> (sql.helpers/select 1)
                                             (sql.helpers/from [(keyword repair-table-name) :r])
                                             (sql.helpers/where [:= :r.model :i.model]
-                                                               [:= :r.model_id :i.model_id]))]])
+                                                               [:= :r.model_id :i.model_id]))]]
+                         ;; no live gate row: the gate entry is a tombstone (document_hash NULL) or gone
+                         [:not [:exists (-> (sql.helpers/select 1)
+                                            (sql.helpers/from [(keyword gate-table-name) :g])
+                                            (sql.helpers/where [:= :g.model :i.model]
+                                                               [:= :g.model_id :i.model_id]
+                                                               [:!= :g.document_hash nil]))]])
                         (sql/format :quoted true))]
       (or (:n (jdbc/execute-one! pgvector count-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})) 0))
     (catch Exception e
-      (log/errorf e "Error counting active orphans in index table %s against repair table %s"
+      (log/errorf e "Error counting stale orphans in index table %s against repair table %s"
                   index-table-name repair-table-name)
       nil)))
 

@@ -25,7 +25,7 @@
     (log/with-context {:quartz-job-type 'SemanticIndexRepair}
       (try
         (log/info "Starting semantic search index repair")
-        ;; repair returns its lost-delete (orphan) count; feed the garbage health metric off it since repair
+        ;; repair returns its stale-orphan count; feed the garbage health metric off it since repair
         ;; already did the anti-join -- no need for a separate pull collector to recompute it.
         (semantic.health/report-repair-orphans!
          (semantic-search.core/repair-index! (search.ingestion/searchable-documents)))

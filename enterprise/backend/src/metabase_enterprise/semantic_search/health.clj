@@ -47,6 +47,24 @@
   re-runs the checks on every state change) can't drive a probe storm."
   (memoize/ttl probe-embedding-service :ttl/threshold (* 10 1000)))
 
+(defn embedding-problem
+  "Human-readable embedding-service problem, or nil when it looks healthy. Shared by the semantic-search
+  check below and the NLQ retrieval check ([[metabase-enterprise.entity-retrieval.health]]).
+  The wording deliberately does NOT vary with the breaker's open/half-open state: the state-change hooks
+  re-persist the checks on every transition, and only an identical (health, message) pair dedups in
+  [[metabase.health-inspector.core/save-check-result!]], so state-dependent wording would let a flapping
+  breaker (open <-> half-open each delay window) flood health_inspector_runs for the whole outage."
+  []
+  ;; Probe even when the circuit is open: on a quiet instance the breaker only leaves :open on a real call,
+  ;; so without this a recovered-but-idle embedder would read degraded until traffic.
+  (let [{:keys [reachable? error]} (embedding-service-reachable?)]
+    (cond
+      (not reachable?)
+      (str "embedding service unreachable: " error)
+
+      (semantic.embedding/embedder-circuit-open?)
+      "embedder circuit open (probe reachable; awaiting half-open trial)")))
+
 (defn- active-index-queryable?
   "Whether a trivial `SELECT ... LIMIT 1` against the active index table succeeds -- i.e. pgvector is
   reachable and the table exists and is queryable."
@@ -84,30 +102,34 @@
 
         :else
         (let [{:keys [pgvector state]} active
-              table-name    (-> state :index :table-name)
-              stalled-at    (-> state :metadata-row :indexer_stalled_at)
-              circuit-open? (semantic.embedding/embedder-circuit-open?)
-              ;; Probe even when the circuit is open: on a quiet instance the breaker only leaves :open on
-              ;; a real call, so without this a recovered-but-idle embedder would read degraded until traffic.
-              {:keys [reachable? error]} (embedding-service-reachable?)
-              embedding-problem (cond
-                                  (and circuit-open? (not reachable?)) "embedding service unreachable; circuit open"
-                                  circuit-open?                        "embedder circuit open (probe reachable; awaiting half-open trial)"
-                                  (not reachable?)                     (str "embedding service unreachable: " error))
-              problems (cond-> []
-                         (not (active-index-queryable? pgvector table-name))
-                         (conj "active index table not queryable")
+              table-name       (-> state :index :table-name)
+              stalled-at       (-> state :metadata-row :indexer_stalled_at)
+              embedder-problem (embedding-problem)
+              problems         (cond-> []
+                                 (not (active-index-queryable? pgvector table-name))
+                                 (conj "active index table not queryable")
 
-                         (some? stalled-at)
-                         (conj (str "indexer stalled since " stalled-at))
+                                 (some? stalled-at)
+                                 (conj (str "indexer stalled since " stalled-at))
 
-                         embedding-problem
-                         (conj embedding-problem))]
+                                 embedder-problem
+                                 (conj embedder-problem))]
           (if (seq problems)
             (degraded (str "Semantic search degraded: " (str/join "; " problems) "."))
             (healthy "Semantic search index active, fresh, and serving.")))))))
 
 (health-inspector/register-check! :semantic-search-index index-health-check)
+
+;; Re-persist the check the moment the breaker changes state, so an outage or its recovery shows up within
+;; minutes instead of at the next daily report. The probe cache is cleared first: the transition is fresher
+;; evidence than a probe from up to 10s ago -- on :closed (two real trial successes) a cached failure would
+;; otherwise persist a false "unreachable" row that nothing revisits until the daily report. Clearing here
+;; also covers the NLQ hook: this hook registers first (the NLQ health namespace requires this one), so
+;; every embedder-dependent check re-runs against a fresh probe.
+(swap! semantic.embedding/embedder-circuit-state-change-hooks conj
+       (fn [_state]
+         (memoize/memo-clear! embedding-service-reachable?)
+         (health-inspector/run-and-save-check! :semantic-search-index)))
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;
@@ -176,28 +198,39 @@
   ;; descriptors for refresh-ai-index-metrics!, populated by register-index-check! at load time
   (atom []))
 
-(defonce ^:private push-metric-clearers
-  ;; Thunks run by refresh-ai-index-metrics! to NaN a PUSH-only gauge (semantic garbage, pushed from the
-  ;; repair job) when its feature is off -- no push will clear it, whereas pull measures self-clear via
-  ;; run-measure!.
-  (atom []))
+(defonce ^:private live-gauge-series
+  ;; [gauge-key engine] pairs that have emitted a real value in this process. NaN-clearing is restricted to
+  ;; these: NaN-ing an unemitted series would CREATE it, growing engine-labelled NaN series on instances
+  ;; where the feature was never on (e.g. pgvector configured but unlicensed -- the collector job still runs
+  ;; there, with every measure N/A).
+  (atom #{}))
+
+(defn- set-index-gauge!
+  "Write `value` to `engine`'s labelled series of `gauge-key`; nil clears it with NaN so a previously-emitted
+  series doesn't keep exposing a stale healthy value after its feature turns off or its collector starts
+  failing (PromQL treats NaN as no-data, so it won't false-alert). A never-emitted series is left uncreated
+  (see [[live-gauge-series]])."
+  [gauge-key engine value]
+  (if (some? value)
+    (do (swap! live-gauge-series conj [gauge-key engine])
+        (analytics/set-gauge! gauge-key {:engine (name engine)} value))
+    (when (contains? @live-gauge-series [gauge-key engine])
+      (analytics/set-gauge! gauge-key {:engine (name engine)} ##NaN))))
 
 (defn- run-measure!
-  "Run one measure's collector and always write its labelled Prometheus gauge (Prometheus is independent of
-  the inspector setting). An N/A collector (nil) writes NaN so a previously-emitted series doesn't keep
-  exposing a stale healthy value after the feature is turned off; PromQL treats NaN as no-data, so it won't
-  false-alert.
+  "Run one measure's collector and write its labelled Prometheus gauge (Prometheus is independent of the
+  inspector setting); an N/A collector (nil) clears the gauge instead of leaving a stale value standing.
   Returns the `{:health :message}` result, or nil when N/A (so the health row is omitted)."
   [{:keys [gauge-key engine collect]}]
   (let [{:keys [value health message]} (collect)]
-    (analytics/set-gauge! gauge-key {:engine (name engine)} (or value ##NaN))
+    (set-index-gauge! gauge-key engine value)
     (when health {:health health :message message})))
 
 (defn register-index-check!
   "Register an AI-index measure. `engine` is :semantic | :nlq, `measure` is :coverage | :garbage | :staleness,
   and `collect` is a 0-arg fn returning nil (N/A) or a `{:value :health :message}` map (see
   [[coverage-result]] et al.). Registers a health-inspector check `<engine>-<measure>` and records the
-  measure so its Prometheus gauge is refreshed alongside."
+  measure so its Prometheus gauge is refreshed alongside. Returns the measure descriptor."
   [engine measure collect]
   (let [descriptor {:check-name (keyword (str (name engine) "-" (name measure)))
                     :gauge-key  (measure->gauge measure)
@@ -205,33 +238,35 @@
                     :measure    measure
                     :collect    collect}]
     (health-inspector/register-check! (:check-name descriptor) #(run-measure! descriptor))
-    (swap! index-measures conj descriptor)))
+    (swap! index-measures conj descriptor)
+    descriptor))
 
-(defn- emit-garbage!
-  "Set the labelled garbage-count gauge and persist the (deduplicated) health row (when the inspector is
-  enabled) for `engine`, from an absolute `orphans` count already in hand."
-  [engine orphans warn crit]
-  (let [{:keys [value health message]} (garbage-result orphans warn crit)]
-    (analytics/set-gauge! (measure->gauge :garbage) {:engine (name engine)} value)
-    (when (health-inspector/enabled?)
-      (health-inspector/save-check-result! (keyword (str (name engine) "-garbage")) {:health health :message message}))))
-
-(defn refresh-ai-index-metrics!
-  "Recompute every registered AI-index measure once: always set its Prometheus gauge, and -- when the health
-  inspector is enabled -- persist the (deduplicated) health row. A measure whose feature is off is a cheap
-  no-op (its collector returns nil). Driven by the periodic task so gauges stay fresh between daily reports."
-  []
-  (doseq [{:keys [check-name] :as descriptor} @index-measures]
+(defn- refresh-measure!
+  "Refresh one measure: run its collector (writing the gauge) and, when the inspector is enabled, persist the
+  (deduplicated) health row. Never throws, and each failure mode is contained: a throwing collector clears
+  its gauge -- run-measure! writes the gauge only after a successful collect, so the series would otherwise
+  freeze at its last (healthy) value for as long as the collector keeps failing -- and a failed appdb persist
+  can't undo the gauge write or affect other measures."
+  [{:keys [check-name gauge-key engine] :as descriptor}]
+  (try
     (let [result (try
                    (run-measure! descriptor)
                    (catch Throwable e
                      (log/error e "AI index metric refresh errored" {:check check-name})
+                     (set-index-gauge! gauge-key engine nil)
                      nil))]
       (when (and result (health-inspector/enabled?))
-        (health-inspector/save-check-result! check-name result))))
-  ;; Pull measures NaN-cleared themselves above; clear push-only gauges whose feature is now off.
-  (doseq [clear! @push-metric-clearers]
-    (try (clear!) (catch Throwable e (log/error e "AI index push-metric clear errored")))))
+        (health-inspector/save-check-result! check-name result)))
+    (catch Throwable e
+      (log/error e "AI index health-row persist errored" {:check check-name}))))
+
+(defn refresh-ai-index-metrics!
+  "Recompute every registered AI-index measure once: set its Prometheus gauge, and -- when the health
+  inspector is enabled -- persist the (deduplicated) health row. A measure whose feature is off is a cheap
+  no-op (its collector returns nil). Measures are isolated: one failing can't freeze or skip the others.
+  Driven by the periodic task so gauges stay fresh between daily reports."
+  []
+  (run! refresh-measure! @index-measures))
 
 ;;; ------------------------------------- semantic-search collectors ----------------------------------------
 
@@ -261,15 +296,6 @@
   "TTL-memoized [[active-index*]] so the semantic coverage + staleness collectors (and the repair reporter)
   share one get-active-index-state per refresh cycle instead of each issuing their own pgvector round-trip."
   (memoize/ttl active-index* :ttl/threshold (* 30 1000)))
-
-;; Semantic garbage is pushed from the hourly repair job (see report-repair-orphans!), so nothing updates
-;; its series once the feature is off -- the repair task stops running. Register a clearer so refresh NaNs
-;; the series when there's no active index; when the feature is on, repair owns the value and this leaves
-;; it alone.
-(swap! push-metric-clearers conj
-       (fn []
-         (when-not (active-index)
-           (analytics/set-gauge! (measure->gauge :garbage) {:engine "semantic"} ##NaN))))
 
 (defn- scalar-row [pgvector sql]
   (jdbc/execute-one! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
@@ -314,28 +340,41 @@
           detail    (when (pos? pending) (format "%d change(s) in the indexer backlog." pending))]
       (staleness-result (:age row) staleness-warn-seconds staleness-critical-seconds detail))))
 
+(defonce ^:private last-repair-orphans
+  ;; Latest stale-orphan count pushed by the hourly repair job ([[report-repair-orphans!]]); nil until the
+  ;; first repair of the process, or when the last count query failed (no reading beats a bogus one).
+  (atom nil))
+
+(defn- semantic-garbage
+  ;; Serves the repair job's pushed count through the same measure machinery as the pull collectors, so
+  ;; gauge clearing (feature off, count failed) and health-row persistence need no parallel push-only path.
+  ;; Gated on active-index (available? + the semantic-search-enabled kill switch + an actual active index):
+  ;; the repair job only checks semantic-search-available?, which ignores the kill switch, so serving the
+  ;; last pushed count with the feature disabled would keep a dead instance's garbage reading alive.
+  []
+  (when (active-index)
+    (when-let [orphans @last-repair-orphans]
+      (garbage-result orphans garbage-warn-count garbage-critical-count))))
+
 (register-index-check! :semantic :coverage  semantic-coverage)
 (register-index-check! :semantic :staleness semantic-staleness)
 
+(def ^:private semantic-garbage-measure
+  "The :semantic :garbage descriptor, held so [[report-repair-orphans!]] can refresh it the moment a repair
+  pushes a new count instead of waiting for the next collector cycle."
+  (register-index-check! :semantic :garbage semantic-garbage))
+
 (defn report-repair-orphans!
-  "Feed the semantic-search garbage measure from the hourly repair job's active-orphan count. Repair already
+  "Feed the semantic-search garbage measure from the hourly repair job's stale-orphan count. Repair already
   computes the orphan set as part of its normal work, so this is a push -- far cheaper than the standalone
-  anti-join a pull collector would need, and correct for compound-id models. `orphans` is an absolute count.
-  `orphans` may be nil (the count query failed); the gauge is then cleared and the health-row write skipped.
+  anti-join a from-scratch pull collector would need, and correct for compound-id models. `orphans` is an
+  absolute count, or nil when the count query failed (the measure then reads N/A and its gauge clears rather
+  than leaving a stale count standing -- gauges never age out while the process is scraped).
   Never throws: this is a metric side-channel of the repair job (which gates on semantic-search-available?),
   so a blip here must not make a successful repair look failed."
   [orphans]
   (try
-    ;; Gate the push on the same signal refresh-ai-index-metrics!'s clearer uses (active-index = available? +
-    ;; the semantic-search-enabled kill switch + an actual active index). The repair job only checks
-    ;; semantic-search-available?, which ignores the kill switch, so without this it would keep repopulating
-    ;; garbage-count with the feature disabled, fighting the clearer that's NaN-ing it.
-    (when (active-index)
-      (if (some? orphans)
-        (emit-garbage! :semantic orphans garbage-warn-count garbage-critical-count)
-        ;; A gauge never ages out while the process is scraped, so a failed count NaNs the series (PromQL
-        ;; no-data) rather than leave a stale count standing until the next successful repair. No health
-        ;; row: no reading beats a bogus one.
-        (analytics/set-gauge! (measure->gauge :garbage) {:engine "semantic"} ##NaN)))
+    (reset! last-repair-orphans orphans)
+    (refresh-measure! semantic-garbage-measure)
     (catch Throwable e
       (log/warn e "Failed to report semantic garbage metric"))))

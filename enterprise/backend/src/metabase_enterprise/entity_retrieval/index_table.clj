@@ -144,6 +144,11 @@
   (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" *vectors-table*)]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
+(defn- meta-column-exists? [tx column]
+  (some? (jdbc/execute-one! tx [(str "SELECT 1 FROM pg_attribute"
+                                     " WHERE attrelid = to_regclass(?) AND attname = ? AND NOT attisdropped")
+                                *meta-table* column])))
+
 (defn index-compatible?
   "Whether the meta row matches `embedding-model` and the current [[schema-version]] — i.e. the vectors
   table holds embeddings the configured model can be queried against.
@@ -171,9 +176,12 @@
     (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
     (jdbc/execute! tx (create-meta-table-sql))
     ;; Backfill reconciled_at onto meta tables created before it existed (create-table IF NOT EXISTS won't add
-    ;; a column to an existing table). Idempotent.
-    (jdbc/execute! tx [(format "ALTER TABLE \"%s\" ADD COLUMN IF NOT EXISTS reconciled_at timestamp with time zone"
-                               *meta-table*)])
+    ;; a column to an existing table). Guarded by an existence check rather than relying on ADD COLUMN IF NOT
+    ;; EXISTS alone: Postgres checks table ownership on ALTER before evaluating IF NOT EXISTS, and the
+    ;; steady-state path must keep working for roles that can use but don't own the table.
+    (when-not (meta-column-exists? tx "reconciled_at")
+      (jdbc/execute! tx [(format "ALTER TABLE \"%s\" ADD COLUMN IF NOT EXISTS reconciled_at timestamp with time zone"
+                                 *meta-table*)]))
     (let [stored  (read-meta tx)
           current (model-identity embedding-model)
           dims    (:vector_dimensions current)

@@ -22,6 +22,7 @@
    [metabase-enterprise.semantic-search.health :as semantic.health]
    [metabase.entity-retrieval.core :as er]
    [metabase.health-inspector.core :as health-inspector]
+   [metabase.util :as u]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
@@ -54,25 +55,17 @@
       (degraded "NLQ curated index empty (first reconcile pending) — agent on general-search fallback.")
 
       :else
-      ;; Probe even when the circuit is open, so a recovered-but-idle embedder isn't reported degraded
-      ;; forever (the breaker only leaves :open on a real call).
-      (let [circuit-open?              (semantic.embedding/embedder-circuit-open?)
-            {:keys [reachable? error]} (semantic.health/embedding-service-reachable?)]
-        (cond
-          (and circuit-open? (not reachable?))
-          (degraded "Embedding service unreachable; circuit open — NLQ curated retrieval unavailable.")
-
-          circuit-open?
-          (degraded (str "Embedder circuit open (probe reachable; awaiting half-open trial) — "
-                         "NLQ curated retrieval unavailable."))
-
-          (not reachable?)
-          (degraded (str "Embedding service unreachable: " error " — NLQ curated retrieval unavailable."))
-
-          :else
-          (healthy "NLQ curated retrieval available and serving."))))))
+      (if-let [problem (semantic.health/embedding-problem)]
+        (degraded (str (u/capitalize-first-char problem) " — NLQ curated retrieval unavailable."))
+        (healthy "NLQ curated retrieval available and serving.")))))
 
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)
+
+;; Re-persist the check the moment the embedder breaker changes state, so an outage or its recovery shows
+;; up within minutes instead of at the next daily report. The shared probe cache is cleared by the
+;; semantic-search hook, which registers (and so runs) before this one -- this namespace requires that one.
+(swap! semantic.embedding/embedder-circuit-state-change-hooks conj
+       (fn [_state] (health-inspector/run-and-save-check! :nlq-retrieval)))
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;

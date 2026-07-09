@@ -94,13 +94,14 @@
            (is (=? {:health 0 :message #".*circuit open \(probe reachable.*"}
                    (semantic.health/index-health-check)))
            (is (true? @probed?) "an open circuit still probes so recovery is detectable"))))
-     (testing "an open circuit with an unreachable probe names both"
+     (testing "an open circuit with an unreachable probe reads the same as unreachable with a closed one --
+              state-independent wording, so a flapping breaker's re-persisted rows dedup instead of flooding"
        (mt/with-dynamic-fn-redefs
          [semantic.index-metadata/get-active-index-state (constantly active-state)
           semantic.health/active-index-queryable?        (constantly true)
           semantic.embedding/embedder-circuit-open?      (constantly true)
           semantic.health/embedding-service-reachable?   (constantly {:reachable? false :error "boom"})]
-         (is (=? {:health 0 :message #".*unreachable; circuit open.*"}
+         (is (=? {:health 0 :message #".*embedding service unreachable: boom.*"}
                  (semantic.health/index-health-check)))))
      (testing "an unreachable embedder degrades and names the error"
        (mt/with-dynamic-fn-redefs
@@ -184,28 +185,32 @@
         (is (Double/isNaN ^double (last (first @calls))) "the labelled series is cleared with NaN, not left stale")))))
 
 (deftest ^:sequential report-repair-orphans!-test
-  ;; health-inspector disabled (the default): emit-garbage! skips the appdb persist; assert on the gauge
+  ;; health-inspector disabled (the default): the measure refresh skips the appdb persist; assert on the gauge
   (mt/with-temporary-setting-values [health-inspector-enabled false]
-    (testing "with an active index, pushes the absolute orphan count to the labelled garbage-count gauge"
+    (testing "with an active index, a pushed count lands on the labelled garbage-count gauge immediately"
       (let [calls (atom [])]
-        ;; active-index truthy = available? + kill switch + an active index; the repair push gates on it
+        ;; active-index truthy = available? + kill switch + an active index; the garbage collector gates on it
         (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
                       analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
           (semantic.health/report-repair-orphans! 3))
         (is (= [[:metabase-ai-index/garbage-count {:engine "semantic"} 3]] @calls))))
-    (testing "with no active index (kill switch off / feature unavailable), does NOT push -- so it can't
-             repopulate the gauge the refresh clearer just NaN'd"
+    (testing "with no active index (kill switch off / feature unavailable), the pushed count is not served:
+             the measure reads N/A and the gauge only ever clears, so a disabled instance can't keep a
+             garbage reading alive"
       (let [calls (atom [])]
         (with-redefs [semantic.health/active-index (constantly nil)
                       analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
           (semantic.health/report-repair-orphans! 3)
           (semantic.health/report-repair-orphans! nil))
-        (is (= [] @calls))))
+        (is (every? (fn [[_gauge _labels value]] (and (double? value) (Double/isNaN ^double value))) @calls)
+            "no real value reaches the gauge while there's no active index")))
     (testing "a nil count (the orphan query failed) with an active index NaNs the gauge rather than leaving a
              stale count standing -- gauges don't age out while the process is scraped"
       (let [calls (atom [])]
         (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
                       analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
+          (semantic.health/report-repair-orphans! 3) ; make the series live so the clear is observable
+          (reset! calls [])
           (semantic.health/report-repair-orphans! nil))
         (is (= [[:metabase-ai-index/garbage-count {:engine "semantic"}]] (mapv butlast @calls)))
         (is (Double/isNaN ^double (last (first @calls))))))
@@ -214,12 +219,16 @@
                     analytics/set-gauge!          (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (semantic.health/report-repair-orphans! 3)))))))
 
-(deftest ^:sequential refresh-clears-push-garbage-when-disabled-test
-  (testing "refresh NaNs the push-only semantic garbage series when there's no active index, since no repair
-           run will (pull measures self-clear)"
+(deftest ^:sequential refresh-clears-garbage-when-disabled-test
+  (testing "refresh NaNs a previously-emitted semantic garbage series when there's no active index, since no
+           repair push will clear it (the collector reads N/A)"
     (let [calls (atom [])]
       (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
         (mt/with-temporary-setting-values [health-inspector-enabled false]
+          ;; make the series live: a repair push while the feature was on
+          (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})]
+            (semantic.health/report-repair-orphans! 3))
+          (reset! calls [])
           (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
             (semantic.health/refresh-ai-index-metrics!))))
       (is (some (fn [[gauge labels value]]
@@ -228,3 +237,37 @@
                        (double? value) (Double/isNaN ^double value)))
                 @calls)
           "the semantic garbage-count series is cleared with NaN"))))
+
+(deftest ^:sequential na-measure-does-not-create-series-test
+  (testing "an N/A measure whose series never emitted a real value doesn't get created just to hold NaN
+           (e.g. pgvector configured but unlicensed: the collector job runs with every measure N/A)"
+    (let [calls (atom [])]
+      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
+                                         :engine    :never-emitted-test-engine
+                                         :collect   (constantly nil)}))
+      (is (= [] @calls) "no gauge write at all for a never-emitted series"))))
+
+(deftest ^:sequential refresh-isolates-measure-failures-test
+  (mt/with-temporary-setting-values [health-inspector-enabled false]
+    (testing "a throwing collector NaN-clears its gauge (instead of freezing the last healthy value) and
+             doesn't stop other measures from refreshing"
+      (let [calls (atom [])
+            boom  {:check-name :test-boom
+                   :gauge-key  :metabase-ai-index/staleness-seconds
+                   :engine     :refresh-isolation-test
+                   :collect    (fn [] (throw (ex-info "collector boom" {})))}
+            ok    {:check-name :test-ok
+                   :gauge-key  :metabase-ai-index/coverage-ratio
+                   :engine     :refresh-isolation-test
+                   :collect    (constantly {:value 1.0 :health 100 :message "ok"})}]
+        (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+          ;; make boom's series live so the clear is observable
+          (#'semantic.health/run-measure! (assoc boom :collect (constantly {:value 5 :health 100 :message "was fine"})))
+          (reset! calls [])
+          (run! #'semantic.health/refresh-measure! [boom ok]))
+        (is (=? [[:metabase-ai-index/staleness-seconds {:engine "refresh-isolation-test"}
+                  (fn [v] (Double/isNaN ^double v))]
+                 [:metabase-ai-index/coverage-ratio {:engine "refresh-isolation-test"} 1.0]]
+                @calls)
+            "boom's series is NaN-cleared and ok still refreshes")))))
