@@ -20,6 +20,8 @@ Actions belong to a model. They mutate that model's rows. Concretely:
 
 ## What's in the schema (and what isn't)
 
+Action entries are only generated when the typed schema includes models. Before writing action-invoking code, make sure the schema was generated with `includeModels=true`; with `database=<name-or-id>&includeModels=true`, Metabase includes models/actions for that database only. Do not rely on `questionCollections` for actions; question collections only add saved questions.
+
 Before writing any action-invoking code, look at the schema and enumerate what's available under `schema.models.<m>.actions` across the models the app cares about. The schema is your **complete** catalog of actions for the instance, not a catalog of model data to display. If a model's `actions` entry has `create`, `update`, `delete`, those are the actions invokable. Anything not present doesn't exist as far as the Data App is concerned.
 
 ## The hook
