@@ -179,8 +179,14 @@
   (when (semantic.u/semantic-search-available?)
     (let [pgvector             (semantic.env/get-pgvector-datasource!)
           index-metadata       (semantic.env/get-index-metadata)]
-      (cleanup-stale-indexes! pgvector index-metadata)
-      (cleanup-old-gate-tombstones! pgvector index-metadata)
+      ;; available? means a pgvector database exists, not that semantic search ever initialized on it —
+      ;; e.g. app-db mode with the engine disabled. Nothing to clean up until the tables exist.
+      (if-not (semantic.u/table-exists? pgvector (:control-table-name index-metadata))
+        (log/info "Semantic search tables have not been initialized; skipping index cleanup")
+        (do
+          (cleanup-stale-indexes! pgvector index-metadata)
+          (cleanup-old-gate-tombstones! pgvector index-metadata)))
+      ;; repair-table cleanup is information_schema-driven and safe without initialization
       (cleanup-orphan-repair-tables! pgvector index-metadata))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))

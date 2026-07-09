@@ -49,8 +49,7 @@
   The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
   re-evaluate per use."
   []
-  ;; entitlement first: in app-db mode pgvector-configured? may probe the app db (and attempt
-  ;; CREATE EXTENSION / CREATE SCHEMA), which an unlicensed instance must never do
+  ;; entitlement first: don't query the app db (the pgvector probe) for instances that can't use the answer
   (and (premium-features/has-feature? :library)
        (premium-features/has-feature? :library-retrieval)
        (pgvector-configured?)

@@ -41,8 +41,7 @@
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
-  ;; kill switch first: in app-db mode pgvector-configured? may probe the app db (and attempt
-  ;; CREATE EXTENSION / CREATE SCHEMA), which a disabled instance must never do
+  ;; kill switch first: don't query the app db (the pgvector probe) for instances that can't use the answer
   (and
    (semantic.settings/semantic-search-enabled)
    (semantic.db.datasource/pgvector-configured?)))

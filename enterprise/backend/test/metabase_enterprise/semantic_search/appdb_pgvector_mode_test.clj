@@ -24,20 +24,20 @@
 
 (deftest get-index-metadata-mode-test
   (testing "get-index-metadata returns the schema-qualified config exactly in app-db mode"
-    (with-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
+    (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
       (is (= semantic.index-metadata/app-db-index-metadata (semantic.env/get-index-metadata))))
     (doseq [mode [:dedicated :unavailable]]
-      (with-redefs [semantic.db.datasource/pgvector-mode (constantly mode)]
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly mode)]
         (is (= semantic.index-metadata/default-index-metadata (semantic.env/get-index-metadata)))))))
 
-(defn- appdb-can-host-pgvector?!
-  "Real-environment gate for the round trip: a Postgres app db where the vector extension ends up
-  installed. The probe also installs the extension and creates the schema when it can — the same work
-  app-db mode does at activation."
+(defn- appdb-can-host-pgvector?
+  "Real-environment gate for the round trip: a Postgres app db where the vector extension is installed or
+  installable. Read-only — activation (init-semantic-search!) installs the extension and creates the
+  schema."
   []
   (and (= :postgres (mdb/db-type))
        (try
-         (boolean (semantic.db.datasource/check-app-db-pgvector-support!))
+         (semantic.db.datasource/check-app-db-pgvector-support)
          (catch Exception _ false))))
 
 (defn- tables-in-schema
@@ -52,11 +52,11 @@
   "True on the CI job dedicated to app-db mode (MB_APPDB_PGVECTOR_MODE_TEST=true), where skipping the
   round trip would mean the job is misconfigured and silently verifying nothing."
   []
-  (some? (System/getenv "MB_APPDB_PGVECTOR_MODE_TEST")))
+  (Boolean/parseBoolean (System/getenv "MB_APPDB_PGVECTOR_MODE_TEST")))
 
 (deftest ^:synchronized appdb-pgvector-round-trip-test
   (cond
-    (not (appdb-can-host-pgvector?!))
+    (not (appdb-can-host-pgvector?))
     (testing "app db can't host pgvector here — nothing to verify"
       (is (not (expected-to-run?))
           "the appdb-mode CI job expects a pgvector-capable app db; its service must be misconfigured"))

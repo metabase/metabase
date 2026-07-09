@@ -17,16 +17,27 @@
 
 (defn- migration-table-kw
   "The migration bookkeeping table: inside the module's schema when index-metadata carries one (shared
-  app-db mode), bare `migration` otherwise (nil index-metadata included)."
+  app-db mode), bare `migration` otherwise."
   [index-metadata]
   (if-let [schema (:schema index-metadata)]
     (keyword (str schema ".migration"))
     :migration))
 
 (defn- ensure-schema-exists!
+  "Create the module's schema when index-metadata carries one.
+  This is where insufficient privileges surface in app-db mode: the availability probe is read-only, so
+  activation is the first write against the app db."
   [index-metadata tx]
   (when-let [schema (:schema index-metadata)]
-    (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS \"" schema "\"")])))
+    (try
+      (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (semantic.util/quote-ident schema))])
+      (catch SQLException e
+        (throw (ex-info (format (str "Failed to create the %s schema on the application database. Grant"
+                                     " CREATE on the database to the Metabase user, or set"
+                                     " MB_PGVECTOR_DB_URL to use a dedicated pgvector database.")
+                                schema)
+                        {:type ::schema-creation-failed :schema schema}
+                        e))))))
 
 (defn- migration-table-sql
   [index-metadata]
@@ -80,13 +91,9 @@
                  db-version semantic.db.migration.impl/schema-version)))
   nil)
 
-(defn- metadata-table-name
-  [index-metadata]
-  (or (:metadata-table-name index-metadata) "index_metadata"))
-
 (defn- index-metadata-table-exists?
   [index-metadata tx]
-  (semantic.util/table-exists? tx (metadata-table-name index-metadata)))
+  (semantic.util/table-exists? tx (:metadata-table-name index-metadata)))
 
 (defn- lowest-dynamic-db-version
   "Lowest index version. If there is lower than defined in code dynamic schema migration will be attempted."
@@ -95,7 +102,7 @@
         (:min_index
          (jdbc/execute-one! tx
                             (sql/format {:select [[[:min :index_version] :min_index]]
-                                         :from [(keyword (metadata-table-name index-metadata))]}))))
+                                         :from [(keyword (:metadata-table-name index-metadata))]}))))
       0))
 
 (defn maybe-migrate-dynamic-schema!
@@ -128,7 +135,5 @@
 
 (defn drop-migration-table!
   "Drop migration table."
-  ([connectable]
-   (drop-migration-table! nil connectable))
-  ([index-metadata connectable]
-   (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists (migration-table-kw index-metadata))))))
+  [index-metadata connectable]
+  (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists (migration-table-kw index-metadata)))))

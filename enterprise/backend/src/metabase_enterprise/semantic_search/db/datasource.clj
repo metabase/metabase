@@ -190,57 +190,34 @@
   (test-connection!))
 
 (def app-db-pgvector-support
-  "Cached result of [[check-app-db-pgvector-support!]]: nil = not yet determined, boolean once checked.
+  "Cached result of [[check-app-db-pgvector-support]]: nil = not yet determined, boolean once checked.
   Cached for the JVM lifetime — extensions don't come and go under a running instance. Tests reset it."
   (atom nil))
 
-(defn check-app-db-pgvector-support!
+(defn check-app-db-pgvector-support
   "Can the application database act as the pgvector store?
-  True only when the `vector` extension ends up installed AND our schema exists (or we can create both).
-  Attempts the CREATE EXTENSION / CREATE SCHEMA itself, so the cached answer reflects real privileges."
+  True when the `vector` extension is installed, or available to install.
+  Deliberately read-only: availability predicates reach this from unlicensed and disabled instances, which
+  must never mutate the app db. The CREATE EXTENSION / CREATE SCHEMA happen on the activation path
+  ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]]), which only licensed,
+  enabled instances run."
   []
-  (let [app-db (mdb/data-source)
-        {:keys [installed available]}
-        (jdbc/execute-one! app-db
+  (let [{:keys [installed available]}
+        (jdbc/execute-one! (mdb/data-source)
                            [(str "SELECT"
                                  " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
                                  " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available")]
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-        installed (cond
-                    installed true
-
-                    (not available)
-                    (do (log/info (str "Semantic search: the application database has no pgvector extension"
-                                       " available; install pgvector (or set MB_PGVECTOR_DB_URL) to enable"
-                                       " semantic search."))
-                        false)
-
-                    :else
-                    (try
-                      (jdbc/execute! app-db ["CREATE EXTENSION IF NOT EXISTS vector"])
-                      true
-                      (catch Exception e
-                        ;; pgvector is an untrusted extension: installing it typically needs superuser
-                        (log/warn e (str "Semantic search: the pgvector extension is available on the"
-                                         " application database but could not be installed (insufficient"
-                                         " privileges?). Run CREATE EXTENSION vector; as a superuser, or set"
-                                         " MB_PGVECTOR_DB_URL, to enable semantic search."))
-                        false)))]
-    (if-not installed
-      false
-      (try
-        (jdbc/execute! app-db [(str "CREATE SCHEMA IF NOT EXISTS \"" app-db-schema "\"")])
-        true
-        (catch Exception e
-          (log/warnf e (str "Semantic search: could not create the %s schema on the application"
-                            " database. Grant CREATE on the database to the Metabase user, or set"
-                            " MB_PGVECTOR_DB_URL, to enable semantic search.")
-                     app-db-schema)
-          false)))))
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (when-not (or installed available)
+      (log/info (str "Semantic search: the application database has no pgvector extension available;"
+                     " install pgvector (or set MB_PGVECTOR_DB_URL), then restart Metabase, to enable"
+                     " semantic search.")))
+    (boolean (or installed available))))
 
 (defn- app-db-pgvector-supported?
-  "Cached [[check-app-db-pgvector-support!]]. Returns false (without caching) while the app DB is not yet
-  set up, so an early call during startup cannot pin a premature answer."
+  "Cached [[check-app-db-pgvector-support]]. Returns false (without caching) while the app DB is not yet
+  set up, or when the check itself errors, so an early call or a transient connection failure cannot pin
+  a premature answer for the JVM lifetime."
   []
   (if-some [cached @app-db-pgvector-support]
     cached
@@ -249,13 +226,17 @@
        (locking app-db-pgvector-support
          (if-some [cached @app-db-pgvector-support]
            cached
-           (let [supported (try
-                             (boolean (check-app-db-pgvector-support!))
-                             (catch Exception e
-                               (log/warn e "Semantic search: pgvector support check on the application database failed.")
-                               false))]
-             (reset! app-db-pgvector-support supported)
-             supported)))))))
+           (try
+             (let [supported (check-app-db-pgvector-support)]
+               (when supported
+                 (log/info (str "Semantic search: using the application database as the pgvector store"
+                                " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
+                                " dedicated pgvector database.")))
+               (reset! app-db-pgvector-support supported)
+               supported)
+             (catch Exception e
+               (log/warn e "Semantic search: pgvector support check on the application database failed; will retry.")
+               false))))))))
 
 (defn pgvector-mode
   "How this instance reaches its pgvector database:

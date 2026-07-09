@@ -6,6 +6,11 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
+(defn quote-ident
+  "Quote a Postgres identifier, escaping embedded double quotes."
+  [s]
+  (str \" (str/replace s "\"" "\"\"") \"))
+
 (defn qualified-table-parts
   "Split a possibly schema-qualified table name into `[schema table]`; `schema` is nil when unqualified."
   [table-name]
@@ -45,7 +50,6 @@
 (defn semantic-search-available?
   "Predicate to check whether semantic search is available on the instance."
   []
-  ;; entitlement first: in app-db mode pgvector-configured? may probe the app db (and attempt
-  ;; CREATE EXTENSION / CREATE SCHEMA), which an unlicensed instance must never do
+  ;; entitlement first: don't query the app db (the pgvector probe) for instances that can't use the answer
   (and (premium-features/has-feature? :semantic-search)
        (semantic.db.datasource/pgvector-configured?)))
