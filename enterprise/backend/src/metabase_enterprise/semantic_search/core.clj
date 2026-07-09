@@ -37,13 +37,12 @@
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
-;; TODO: url should likely reside in settings
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
   (and
-   (some? semantic.db.datasource/db-url)
+   (semantic.db.datasource/pgvector-configured?)
    (semantic.settings/semantic-search-enabled)))
 
 (defn build-hnsw-index-async!

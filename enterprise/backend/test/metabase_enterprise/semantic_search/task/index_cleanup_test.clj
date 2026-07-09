@@ -228,25 +228,25 @@
           recent-time (t/minus (t/instant) (t/hours 1))]                 ; 1 hour ago
       (testing "parse-repair-table-timestamp"
         (let [repair-table-name (with-redefs [t/instant (constantly old-time)]
-                                  (#'repair/repair-table-name))
+                                  (#'repair/repair-table-name semantic.index-metadata/default-index-metadata))
               parsed-time (#'sut/parse-repair-table-timestamp repair-table-name)]
           (is (= (t/truncate-to old-time :millis)
                  parsed-time))))
       (testing "orphan repair table detection and cleanup"
         (let [old-repair-table-name (with-redefs [t/instant (constantly old-time)]
-                                      (#'repair/repair-table-name))
+                                      (#'repair/repair-table-name semantic.index-metadata/default-index-metadata))
               recent-repair-table-name (with-redefs [t/instant (constantly recent-time)]
-                                         (#'repair/repair-table-name))
+                                         (#'repair/repair-table-name semantic.index-metadata/default-index-metadata))
               non-repair-table-name "regular_table_123"]
           (try
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" old-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" recent-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" non-repair-table-name)])
             (mt/with-dynamic-fn-redefs [semantic.settings/repair-table-retention-hours (constantly retention-hours)]
-              (let [orphan-tables (#'sut/orphan-repair-tables pgvector)]
+              (let [orphan-tables (#'sut/orphan-repair-tables pgvector semantic.index-metadata/default-index-metadata)]
                 (is (= #{old-repair-table-name} (set orphan-tables))
                     "Only old repair table should be detected as orphan"))
-              (#'sut/cleanup-orphan-repair-tables! pgvector)
+              (#'sut/cleanup-orphan-repair-tables! pgvector semantic.index-metadata/default-index-metadata)
               (is (not (semantic.tu/table-exists-in-db? old-repair-table-name))
                   "Old repair table should be dropped")
               (is (semantic.tu/table-exists-in-db? recent-repair-table-name)

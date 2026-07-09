@@ -45,5 +45,5 @@
 (defn semantic-search-available?
   "Predicate to check whether semantic search is available on the instance."
   []
-  (and (string? (not-empty semantic.db.datasource/db-url))
+  (and (semantic.db.datasource/pgvector-configured?)
        (premium-features/has-feature? :semantic-search)))
