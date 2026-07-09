@@ -145,7 +145,12 @@ export const BranchSwitcher = ({
               rightSection={<Icon name="chevrondown" size={10} />}
               data-testid="settings-branch-switcher"
               w="20rem"
-              styles={{ inner: { justifyContent: "space-between" } }}
+              // Pack contents to the start (branch name next to the icon, like a standard select)
+              // and let the label's auto end-margin push the chevron to the right edge.
+              styles={{
+                inner: { justifyContent: "flex-start" },
+                label: { marginInlineEnd: "auto" },
+              }}
             >
               {currentBranch}
             </Button>
