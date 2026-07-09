@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useConfirmation, useToast } from "metabase/common/hooks";
-import { Button, Flex, Group, Icon, Switch } from "metabase/ui";
+import { ActionIcon, Flex, Group, Icon, Switch, Tooltip } from "metabase/ui";
 import {
   useDeleteDataAppMutation,
   useSetDataAppEnabledMutation,
@@ -72,15 +72,17 @@ export function DataAppListItem({ app, canRemove = false }: Props) {
 
       <Group flex="0 0 auto" gap="md" wrap="nowrap">
         {canRemove && (
-          <Button
-            leftSection={<Icon name="trash" />}
-            variant="subtle"
-            color="error"
-            disabled={isDeleting}
-            onClick={handleRemove}
-          >
-            {t`Remove`}
-          </Button>
+          <Tooltip label={t`Remove`}>
+            <ActionIcon
+              aria-label={t`Remove`}
+              variant="subtle"
+              color="error"
+              disabled={isDeleting}
+              onClick={handleRemove}
+            >
+              <Icon name="trash" />
+            </ActionIcon>
+          </Tooltip>
         )}
 
         <Switch
