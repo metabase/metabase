@@ -7,8 +7,12 @@ import type { CreateQueryActionParams } from "metabase/actions/types";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextarea,
+} from "metabase/forms";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
@@ -61,10 +65,12 @@ function CreateActionForm({
             placeholder={t`My new fantastic action`}
             data-autofocus
           />
-          <FormTextArea
+          <FormTextarea
             name="description"
-            title={t`Description`}
+            label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
+            minRows={5}
+            mb="md"
             nullable
           />
           <FormModelPicker name="model_id" title={t`Model it's saved in`} />
