@@ -133,11 +133,9 @@
                 (fn [model]
                   (is (= 42 (:id model)))
                   [{:kind "action", :key "create", :id 5}])]
-    (is (= {:kind    "model"
-            :key     "ordersModel"
-            :id      42
-            :name    "Orders model"
-            :actions {"create" {:kind "action", :key "create", :id 5}}}
+    (is (= {:key              "ordersModel"
+            :keyDisambiguator 42
+            :actions          {"create" {:kind "action", :key "create", :id 5}}}
            (#'typed-schemas.api/model-schema
             {:id             42
              :name           "Orders model"})))))
@@ -157,9 +155,9 @@
                 (fn [model]
                   (when (= (:id model) 42)
                     [{:kind "action", :key "create", :id 5}]))]
-    (is (= #{42}
+    (is (= #{"model42"}
            (->> (#'typed-schemas.api/model-schemas #{1})
-                (map :id)
+                (map :key)
                 set)))))
 
 (deftest metric-source-id-test
@@ -892,7 +890,8 @@
   (with-redefs [typed-schemas.api/model-schemas
                 (fn [database-ids]
                   (is (nil? database-ids))
-                  [{:kind "model", :key "actionableModel", :id 100}])
+                  [{:key     "actionableModel"
+                    :actions {"create" {:kind "action", :key "create", :id 1}}}])
                 typed-schemas.api/question-schemas
                 (fn
                   ([_database-ids]
@@ -913,7 +912,8 @@
                    (is false "includeModels-only schemas should not load tables")))]
     (let [schema (#'typed-schemas.api/typed-schema {:includeModels "true"})]
       (is (= {} (:questions schema)))
-      (is (= #{100} (->> (:models schema) vals (map :id) set)))
+      (is (= {"actionableModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
+             (:models schema)))
       (is (= {} (:tables schema)))
       (is (= {} (:metrics schema))))))
 
@@ -922,7 +922,8 @@
     (with-redefs [typed-schemas.api/database-ids-for-value (constantly #{42})
                   typed-schemas.api/model-schemas (fn [database-ids]
                                                     (swap! model-database-ids conj database-ids)
-                                                    [{:kind "model", :key "databaseModel", :id 100}])
+                                                    [{:key     "databaseModel"
+                                                      :actions {"create" {:kind "action", :key "create", :id 1}}}])
                   typed-schemas.api/question-schemas (fn
                                                        ([_database-ids] [])
                                                        ([_database-ids _collection-ids] []))
@@ -935,7 +936,8 @@
                   typed-schemas.api/table-schemas (constantly [])]
       (let [schema (#'typed-schemas.api/typed-schema {:database "Boba" :includeModels "true"})]
         (is (= [#{42}] @model-database-ids))
-        (is (= #{100} (->> (:models schema) vals (map :id) set)))))))
+        (is (= {"databaseModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
+               (:models schema)))))))
 
 (deftest question-collections-schema-includes-selected-question-collections-test
   (with-redefs [typed-schemas.api/collection-scope
@@ -1013,7 +1015,8 @@
                 typed-schemas.api/model-schemas
                 (fn [database-ids]
                   (is (nil? database-ids))
-                  [{:kind "model", :key "selectedQuestionCollectionModel", :id 100}])
+                  [{:key     "selectedQuestionCollectionModel"
+                    :actions {"create" {:kind "action", :key "create", :id 1}}}])
                 typed-schemas.api/metric-schemas
                 (constantly [{:type "metric", :key "revenue", :id 2}])
                 typed-schemas.api/select-library-tables
@@ -1026,6 +1029,7 @@
                                                     :question-collections "30"
                                                     :includeModels        "true"})]
       (is (= #{1} (->> (:questions schema) vals (map :id) set)))
-      (is (= #{100} (->> (:models schema) vals (map :id) set)))
+      (is (= {"selectedQuestionCollectionModel" {:actions {"create" {:kind "action", :key "create", :id 1}}}}
+             (:models schema)))
       (is (= #{3} (->> (:tables schema) vals (map :id) set)))
       (is (= #{2} (->> (:metrics schema) vals (map :id) set))))))

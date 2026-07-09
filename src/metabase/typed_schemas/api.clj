@@ -153,6 +153,13 @@
             (sorted-map)
             entities)))
 
+(defn- keyed-model-map
+  [models]
+  (reduce-kv (fn [m k model]
+               (assoc m k (select-keys model [:actions])))
+             (sorted-map)
+             (keyed-map models)))
+
 (defn- query-param
   [query-params k]
   (or (get query-params k)
@@ -638,23 +645,14 @@
             actions))))
 
 (defn- model-schema
-  "A Metabase model (curated dataset). Shape parallels [[question-schema]] —
-  same id/name/etc. — but with `:kind \"model\"` and an extra `:actions` map
-  of pre-existing actions bound to the model (`action.model_id`). Returns nil
-  when the model has no executable actions."
-  [{:keys [id name description verified display portable_entity_id] :as model}]
+  "A Metabase model (curated dataset) as an action namespace. Returns nil when
+  the model has no executable actions."
+  [{:keys [id name] :as model}]
   (let [action-schemas (model-actions model)]
     (when (seq action-schemas)
-      (assoc-some
-       {:kind    "model"
-        :key     (generated-key name id)
-        :id      id
-        :name    name}
-       :display display
-       :entityId portable_entity_id
-       :description description
-       :verified (when verified true)
-       :actions (keyed-map action-schemas)))))
+      {:key              (generated-key name id)
+       :keyDisambiguator id
+       :actions          (keyed-map action-schemas)})))
 
 (defn- persisted-dimension->column
   [dimension]
@@ -977,7 +975,7 @@
    :generatedAt   (str (Instant/now))
    :metabase      {:instanceUrl (system/site-url)}
    :questions     (keyed-map questions)
-   :models        (keyed-map models)
+   :models        (keyed-model-map models)
    :tables        (keyed-map tables)
    :metrics       (keyed-map metrics)))
 
