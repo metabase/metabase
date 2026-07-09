@@ -1,7 +1,6 @@
 import { memo } from "react";
 
 import { Stack } from "metabase/ui";
-import { SidebarResizableBox } from "metabase-enterprise/monitor/components";
 import type { DependencyNode } from "metabase-types/api";
 
 import type { DependencyDiagnosticsMode } from "../types";
@@ -17,42 +16,30 @@ import { SidebarHeader } from "./SidebarHeader";
 type DiagnosticsSidebarProps = {
   node: DependencyNode;
   mode: DependencyDiagnosticsMode;
-  containerWidth: number;
-  onResizeStart: () => void;
-  onResizeStop: () => void;
   onClose: () => void;
 };
 
 export const DiagnosticsSidebar = memo(function DiagnosticsSidebar({
   node,
   mode,
-  containerWidth,
-  onResizeStart,
-  onResizeStop,
   onClose,
 }: DiagnosticsSidebarProps) {
   return (
-    <SidebarResizableBox
-      containerWidth={containerWidth}
-      onResizeStart={onResizeStart}
-      onResizeStop={onResizeStop}
+    <Stack
+      className={S.sidebar}
+      p="lg"
+      gap="xl"
+      bg="background_page-primary"
+      data-testid="dependency-list-sidebar"
     >
-      <Stack
-        className={S.sidebar}
-        p="lg"
-        gap="xl"
-        bg="background_page-primary"
-        data-testid="dependency-list-sidebar"
-      >
-        <Stack gap="lg">
-          <SidebarHeader node={node} onClose={onClose} mode={mode} />
-          <LocationSection node={node} />
-          <InfoSection node={node} />
-        </Stack>
-        {mode === "broken" && <ErrorsSection node={node} />}
-        {mode === "broken" && <BrokenDependentsSection node={node} />}
-        {mode === "unreferenced" && <FieldsSection node={node} />}
+      <Stack gap="lg">
+        <SidebarHeader node={node} onClose={onClose} mode={mode} />
+        <LocationSection node={node} />
+        <InfoSection node={node} />
       </Stack>
-    </SidebarResizableBox>
+      {mode === "broken" && <ErrorsSection node={node} />}
+      {mode === "broken" && <BrokenDependentsSection node={node} />}
+      {mode === "unreferenced" && <FieldsSection node={node} />}
+    </Stack>
   );
 });

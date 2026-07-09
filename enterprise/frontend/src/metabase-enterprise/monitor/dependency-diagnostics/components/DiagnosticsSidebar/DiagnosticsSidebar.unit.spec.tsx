@@ -23,8 +23,6 @@ function setup({
   node = createMockCardDependencyNode(),
   mode = "broken",
 }: SetupOpts = {}) {
-  const onResizeStart = jest.fn();
-  const onResizeStop = jest.fn();
   const onClose = jest.fn();
 
   setupListBrokenGraphNodesEndpoint([]);
@@ -32,20 +30,13 @@ function setup({
     <Route
       path="/"
       component={() => (
-        <DiagnosticsSidebar
-          node={node}
-          mode={mode}
-          containerWidth={1000}
-          onResizeStart={onResizeStart}
-          onResizeStop={onResizeStop}
-          onClose={onClose}
-        />
+        <DiagnosticsSidebar node={node} mode={mode} onClose={onClose} />
       )}
     />,
     { withRouter: true, initialRoute: "/" },
   );
 
-  return { onResizeStart, onResizeStop, onClose };
+  return { onClose };
 }
 
 describe("DiagnosticsSidebar", () => {

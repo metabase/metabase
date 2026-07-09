@@ -50,9 +50,6 @@ jest.mock("metabase/monitor/tools/components/ModelCacheRefreshJobs", () => ({
   ),
   ModelCacheRefreshJobModal: () => null,
 }));
-jest.mock("metabase/monitor/tools/components/JobTriggersModal", () => ({
-  JobTriggersModal: () => null,
-}));
 jest.mock("metabase/monitor/tools/components/LogLevelsModal", () => ({
   LogLevelsModal: () => null,
 }));
