@@ -46,33 +46,37 @@
         (is (nil? (deref start-promise 100 :timed-out))
             "start-promise is delivered nil so a waiting caller doesn't hang")))))
 
+;; test-helpers-set-global-values!: these tests trigger an intentional duplicate-key violation,
+;; which on Postgres would abort (poison) the transaction with-temp otherwise wraps the body in
 (deftest start-dag-run-unique-active-run-test
   (testing "the (source_transform_id, is_active) unique constraint allows at most one active run per seed"
-    (mt/with-temp [:model/Transform {tid :id} {:name "seed"}]
-      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
-        (try
-          (is (thrown? Exception (dag-run/start-dag-run! tid :downstream nil)))
-          (testing "a terminal run doesn't collide, so a new run can start"
-            (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
-            (let [{run-id-2 :id} (dag-run/start-dag-run! tid :downstream nil)]
-              (is (pos-int? run-id-2))))
-          (finally
-            (t2/delete! :model/TransformDagRun :source_transform_id tid)))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Transform {tid :id} {:name "seed"}]
+        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
+          (try
+            (is (thrown? Exception (dag-run/start-dag-run! tid :downstream nil)))
+            (testing "a terminal run doesn't collide, so a new run can start"
+              (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
+              (let [{run-id-2 :id} (dag-run/start-dag-run! tid :downstream nil)]
+                (is (pos-int? run-id-2))))
+            (finally
+              (t2/delete! :model/TransformDagRun :source_transform_id tid))))))))
 
 (deftest run-dag-start-race-test
   (testing "run-dag! treats losing the unique-active-run insert race as already-running"
-    (mt/with-temp [:model/Transform {tid :id} {:name "seed" :table_dependencies []}]
-      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)
-            start-promise (promise)]
-        (try
-          ;; bypass the fast pre-check to simulate two triggers racing past it together; the loser's
-          ;; insert then hits the unique constraint and must be treated as "already running"
-          (mt/with-dynamic-fn-redefs [dag-run/running-run-for-source-transform-id (constantly nil)]
-            (is (nil? (dag/run-dag! tid {:direction :upstream :start-promise start-promise})))
-            (is (nil? (deref start-promise 100 :timed-out))
-                "start-promise is delivered nil so a waiting caller doesn't hang"))
-          (finally
-            (t2/delete! :model/TransformDagRun :id run-id)))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Transform {tid :id} {:name "seed" :table_dependencies []}]
+        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)
+              start-promise (promise)]
+          (try
+            ;; bypass the fast pre-check to simulate two triggers racing past it together; the loser's
+            ;; insert then hits the unique constraint and must be treated as "already running"
+            (mt/with-dynamic-fn-redefs [dag-run/running-run-for-source-transform-id (constantly nil)]
+              (is (nil? (dag/run-dag! tid {:direction :upstream :start-promise start-promise})))
+              (is (nil? (deref start-promise 100 :timed-out))
+                  "start-promise is delivered nil so a waiting caller doesn't hang"))
+            (finally
+              (t2/delete! :model/TransformDagRun :id run-id))))))))
 
 ;;; ------------------------------------------- Model lifecycle -------------------------------------------
 
