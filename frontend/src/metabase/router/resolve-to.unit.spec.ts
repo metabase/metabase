@@ -75,6 +75,15 @@ describe("resolveTo", () => {
       ).toBe("/data/database/1/schema/public/table/3");
     });
 
+    it("climbs out of a route whose path ends in a splat", () => {
+      expect(
+        parentOf(
+          [route("collection"), route("entity/:entity_id(**)")],
+          "/collection/entity/abc/def",
+        ),
+      ).toBe("/collection");
+    });
+
     it("climbs past a group route with a partially matched optional tail", () => {
       expect(
         parentOf(

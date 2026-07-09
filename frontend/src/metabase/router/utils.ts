@@ -2,9 +2,9 @@ import type { Path, URLSearchParamsInit } from "./types";
 
 /**
  * Split a path string into `pathname`, `search`, and `hash`, mirroring
- * react-router v7's `parsePath`. A part the string does not carry is left out
- * rather than set to `""`, which is how `resolveTo` tells `"?x=1"` (keep the
- * current pathname) apart from `"/"` (go to the root).
+ * react-router v7's `parsePath`. A part that the string does not carry is left
+ * out rather than set to `""`, which is how `resolveTo` tells `"?x=1"` (keep
+ * the current pathname) apart from `"/"` (go to the root).
  */
 export function parsePath(path: string): Partial<Path> {
   const parsed: Partial<Path> = {};

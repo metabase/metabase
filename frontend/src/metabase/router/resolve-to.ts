@@ -12,6 +12,11 @@ import { parsePath } from "./utils";
  * `matchPattern` rather than by counting `/`. A v3 pattern segment does not map
  * to one URL segment: `database(/:databaseId)(/schema/:schemaName)` matches
  * anything from `database` to `database/1/schema/public`.
+ *
+ * A splat (`*`, `:entity_id(**)`) swallows the rest of the URL, so that route's
+ * own entry covers the splat where v7's `pathnameBase` would stop before it.
+ * `".."` reads the parent's entry rather than the route's own, so it still
+ * climbs correctly out of a splat route.
  */
 export function getRoutePathnames(
   routes: PlainRoute[],
