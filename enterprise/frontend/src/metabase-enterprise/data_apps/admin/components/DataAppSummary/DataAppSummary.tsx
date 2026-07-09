@@ -48,7 +48,7 @@ const SyncStatus = ({ app }: Props) => {
 };
 
 export const DataAppSummary = ({ app }: Props) => (
-  <Group align="center" flex="1" wrap="nowrap">
+  <Group align="center" flex="1" wrap="nowrap" miw={0}>
     <DataAppIcon />
 
     <Stack flex="1" gap={2} miw={0}>
@@ -61,17 +61,25 @@ export const DataAppSummary = ({ app }: Props) => (
           fw={700}
           lh="1.4"
           c="brand"
+          truncate
         >
           {app.display_name}
         </Text>
       ) : (
-        <Text fw={700} lh="1.4" c="text-secondary">
+        <Text fw={700} lh="1.4" c="text-secondary" truncate>
           {app.display_name}
         </Text>
       )}
 
       <Group gap="xs" align="center" wrap="wrap">
-        <Text size="sm" c="text-secondary" ff="monospace" lh="1.4">
+        <Text
+          size="sm"
+          c="text-secondary"
+          ff="monospace"
+          lh="1.4"
+          truncate
+          maw="100%"
+        >
           {Urls.dataApp(app.name)}
         </Text>
 
