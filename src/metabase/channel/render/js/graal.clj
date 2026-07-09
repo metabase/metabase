@@ -167,13 +167,13 @@
 
   The utilization controller targets 100% utilization with a max of 2 and a min of 0, so when nothing is
   rendering it shrinks to 0 and the generator's `destroy` closes the context (and, on the last one, the
-  shared engine). It rechecks once a minute, so an idle context lingers up to ~1 minute before being
-  reaped (keeping it warm through short gaps between renders). The other constructor args (queue size,
-  sampling interval) don't matter much."
+  shared engine). It rechecks every 10 minutes, so an idle context lingers up to ~10 minutes before being
+  reaped (keeping it warm through gaps between renders). The other constructor args (queue size, sampling
+  interval) don't matter much."
   (let [max-pool-size       2
         max-queued-acquires 65000
         sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
-        control-period-ms   (.toMillis TimeUnit/MINUTES 1)]
+        control-period-ms   (.toMillis TimeUnit/MINUTES 10)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
                (generate-context!))
@@ -216,6 +216,6 @@
   []
   (reify js.protocol/StaticVizRenderer
     (chart [_ input]
-      (json/decode+kw (call-js "renderChart" [(json/encode input)])))
+      (json/decode+kw (call-js "renderChartJSON" [(json/encode input)])))
     (cell-background-colors [_ input]
-      (json/decode (call-js "getCellBackgroundColors" [(json/encode input)])))))
+      (json/decode (call-js "getCellBackgroundColorsJSON" [(json/encode input)])))))
