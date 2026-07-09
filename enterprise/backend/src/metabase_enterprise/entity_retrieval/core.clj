@@ -49,9 +49,11 @@
   The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
   re-evaluate per use."
   []
-  (and (pgvector-configured?)
-       (premium-features/has-feature? :library)
+  ;; entitlement first: in app-db mode pgvector-configured? may probe the app db (and attempt
+  ;; CREATE EXTENSION / CREATE SCHEMA), which an unlicensed instance must never do
+  (and (premium-features/has-feature? :library)
        (premium-features/has-feature? :library-retrieval)
+       (pgvector-configured?)
        (embedding/embedding-supported? (embedding/get-configured-model))))
 
 (defn- index-ready?

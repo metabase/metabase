@@ -48,10 +48,27 @@
        (map :tablename)
        set))
 
+(defn- expected-to-run?
+  "True on the CI job dedicated to app-db mode (MB_APPDB_PGVECTOR_MODE_TEST=true), where skipping the
+  round trip would mean the job is misconfigured and silently verifying nothing."
+  []
+  (some? (System/getenv "MB_APPDB_PGVECTOR_MODE_TEST")))
+
 (deftest ^:synchronized appdb-pgvector-round-trip-test
-  (if-not (appdb-can-host-pgvector?!)
+  (cond
+    (not (appdb-can-host-pgvector?!))
     (testing "app db can't host pgvector here — nothing to verify"
-      (is true))
+      (is (not (expected-to-run?))
+          "the appdb-mode CI job expects a pgvector-capable app db; its service must be misconfigured"))
+
+    ;; the app db already carries live semantic-search state (a real app-db-mode deployment, e.g. a dev
+    ;; instance) — this test's cleanup drops the schema, so refuse rather than clobber it
+    (seq (tables-in-schema (mdb/data-source) "semantic_search"))
+    (testing "pre-existing semantic_search schema with tables — refusing to run destructively against it"
+      (is (not (expected-to-run?))
+          "the appdb-mode CI job should start from a fresh app db with no semantic_search tables"))
+
+    :else
     (mt/with-premium-features #{:semantic-search}
       ;; the pair mirrors mock-embeddings' doc/query geometry: nearly identical vectors, so the query
       ;; lands well inside the distance threshold for its document and nothing else

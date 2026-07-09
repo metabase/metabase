@@ -41,9 +41,11 @@
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
+  ;; kill switch first: in app-db mode pgvector-configured? may probe the app db (and attempt
+  ;; CREATE EXTENSION / CREATE SCHEMA), which a disabled instance must never do
   (and
-   (semantic.db.datasource/pgvector-configured?)
-   (semantic.settings/semantic-search-enabled)))
+   (semantic.settings/semantic-search-enabled)
+   (semantic.db.datasource/pgvector-configured?)))
 
 (defn build-hnsw-index-async!
   "Build the HNSW index on the active semantic search index in the background, returning promptly.

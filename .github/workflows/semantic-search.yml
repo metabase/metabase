@@ -34,7 +34,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -93,7 +93,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -166,7 +166,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -239,7 +239,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -311,7 +311,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -330,6 +330,9 @@ jobs:
       MB_DB_HOST: localhost
       MB_DB_DBNAME: mb_test
       MB_DB_USER: mb_test
+      # makes the appdb-pgvector-mode round trip FAIL (not silently skip) if this job's app db
+      # can't actually host pgvector
+      MB_APPDB_PGVECTOR_MODE_TEST: 'true'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v6

@@ -45,5 +45,7 @@
 (defn semantic-search-available?
   "Predicate to check whether semantic search is available on the instance."
   []
-  (and (semantic.db.datasource/pgvector-configured?)
-       (premium-features/has-feature? :semantic-search)))
+  ;; entitlement first: in app-db mode pgvector-configured? may probe the app db (and attempt
+  ;; CREATE EXTENSION / CREATE SCHEMA), which an unlicensed instance must never do
+  (and (premium-features/has-feature? :semantic-search)
+       (semantic.db.datasource/pgvector-configured?)))

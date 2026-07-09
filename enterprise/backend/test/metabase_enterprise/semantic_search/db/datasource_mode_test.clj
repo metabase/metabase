@@ -5,7 +5,9 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase.app-db.core :as mdb])
+   [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.app-db.core :as mdb]
+   [metabase.test :as mt])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -69,6 +71,19 @@
         (with-redefs [mdb/db-is-set-up? (constantly true)
                       semantic.db.datasource/check-app-db-pgvector-support! (constantly true)]
           (is (= :app-db (semantic.db.datasource/pgvector-mode))))))))
+
+(deftest unlicensed-availability-check-does-not-probe-test
+  (testing "without the :semantic-search feature, the availability gate never probes the app db"
+    ;; the probe attempts CREATE EXTENSION / CREATE SCHEMA — an unlicensed instance must never reach it
+    (with-redefs [semantic.db.datasource/db-url nil
+                  mdb/db-type (constantly :postgres)
+                  mdb/db-is-set-up? (constantly true)
+                  semantic.db.datasource/check-app-db-pgvector-support!
+                  (fn [] (throw (AssertionError. "must not probe when the feature is off")))]
+      (with-support-cache nil
+        (mt/with-premium-features #{}
+          (is (false? (semantic.util/semantic-search-available?))))
+        (is (nil? @semantic.db.datasource/app-db-pgvector-support))))))
 
 (deftest ensure-initialized-data-source-app-db-test
   (testing "app-db mode hands back the shared application pool without storing it"
