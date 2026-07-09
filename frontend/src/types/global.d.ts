@@ -36,6 +36,12 @@ interface Window {
     onReady?: () => void;
   };
 
+  // Set by iframe-resizer's contentWindow script once it's initialized;
+  // lets embed content explicitly report its real size to the parent.
+  parentIFrame?: {
+    size: (customHeight?: number, customWidth?: number) => void;
+  };
+
   MetabaseSiteLocalization?: {
     headers: {
       language: string;

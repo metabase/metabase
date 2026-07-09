@@ -148,7 +148,10 @@ export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
 }
 
-export function initializeIframeResizer(onReady = () => {}): void {
+export function initializeIframeResizer(
+  onReady = () => {},
+  contentElement?: Element | null,
+): void {
   if (!isWithinIframe()) {
     return;
   }
@@ -161,14 +164,38 @@ export function initializeIframeResizer(onReady = () => {}): void {
   } else {
     window.iFrameResizer = {
       autoResize: true,
-      heightCalculationMethod: "max",
-      onReady,
+      heightCalculationMethod: "lowestElement",
+      onReady: () => {
+        onReady();
+        if (contentElement) {
+          observeContentElementHeight(contentElement);
+        }
+      },
     };
 
     // Make iframe-resizer available to the embed
     // We only care about contentWindow so require that minified file
     import("iframe-resizer/js/iframeResizer.contentWindow.js");
   }
+}
+
+// The app shell wraps embed content in a scrollable container pinned to the
+// viewport height, so the page can scroll internally. That means
+// document/body scrollHeight (and even bounding-rect-based measurements
+// like "lowestElement") can never report less than the iframe's current
+// height once it has grown -- the wrapping container always presents its
+// own fixed size to everything above it. `contentElement` is the actual
+// embed content (not the scrolling wrapper), so we measure its real height
+// and push it to the parent directly via `window.parentIFrame.size()`,
+// bypassing iframe-resizer's built-in (viewport-bound) calculation.
+function observeContentElementHeight(contentElement: Element): void {
+  const reportHeight = () => {
+    window.parentIFrame?.size(contentElement.getBoundingClientRect().height);
+  };
+
+  const resizeObserver = new ResizeObserver(reportHeight);
+  resizeObserver.observe(contentElement);
+  reportHeight();
 }
 
 export function isEventOverElement(

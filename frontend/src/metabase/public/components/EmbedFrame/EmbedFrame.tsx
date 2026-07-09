@@ -128,9 +128,10 @@ export const EmbedFrame = ({
   });
 
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk());
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useMount(() => {
-    initializeIframeResizer(() => setHasFrameScroll(false));
+    initializeIframeResizer(() => setHasFrameScroll(false), rootRef.current);
   });
 
   const parameterPanelRef = useRef<HTMLElement>(null);
@@ -182,6 +183,7 @@ export const EmbedFrame = ({
 
   return (
     <Root
+      ref={rootRef}
       hasScroll={hasFrameScroll}
       isBordered={bordered}
       hasVisibleOverflowWhenPriting={isPublicDashboard}
