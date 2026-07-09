@@ -1,29 +1,22 @@
-import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
 
+import { getRoutePathnames, resolveTo } from "./resolve-to";
 import type { NavigateFunction, NavigateOptions, To } from "./types";
 import { useRouter } from "./use-router";
-import { parsePath } from "./utils";
-
-function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
-  if (typeof to === "string" && state === undefined) {
-    return to;
-  }
-  if (typeof to === "string") {
-    return { ...parsePath(to), state };
-  }
-  return { ...to, state };
-}
 
 /**
  * react-router v7's `useNavigate`, implemented over react-router v3's imperative
  * router (`router.push/replace/go`).
  *
- * - `navigate(to, { replace?, state? })` pushes (or replaces) the location.
+ * - `navigate(to, { replace?, state?, relative? })` pushes (or replaces) the location.
  * - `navigate(delta)` moves through the history stack (e.g. `navigate(-1)`).
  *
- * Absolute paths only: v7's relative `to` (`".."`, `"child"`) is not resolved on
- * v3, that lands with the engine swap and modal routes (Phase 1.3).
+ * A relative `to` (`".."`, `"child"`) resolves against the matched route branch,
+ * which v3 does not do on its own. The branch comes from the router context, so
+ * it always ends at the deepest matched route: unlike v7, a component rendered
+ * by a parent route resolves `".."` as if it sat in the leaf route. Nothing
+ * relies on that today, and the route context added with the engine swap removes
+ * the difference.
  *
  * The returned function gets a new identity whenever the pathname changes, like
  * v7 (whose callback depends on the current pathname). Keeping it stable would
@@ -35,7 +28,7 @@ function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
  * @see https://reactrouter.com/7.18.1/api/hooks/useNavigate
  */
 export function useNavigate(): NavigateFunction {
-  const { router, location } = useRouter();
+  const { router, location, routes } = useRouter();
 
   return useCallback(
     (to: To | number, options: NavigateOptions = {}) => {
@@ -44,16 +37,20 @@ export function useNavigate(): NavigateFunction {
         return;
       }
 
-      const descriptor = toLocationDescriptor(to, options.state);
+      const path = resolveTo(
+        to,
+        getRoutePathnames(routes, location.pathname),
+        location.pathname,
+        options.relative === "path",
+      );
+      const descriptor = { ...path, state: options.state };
+
       if (options.replace) {
         router.replace(descriptor);
       } else {
         router.push(descriptor);
       }
     },
-    // location.pathname does not affect a single call, it is here to give
-    // `navigate` a new identity per navigation, matching v7.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, location.pathname],
+    [router, routes, location.pathname],
   );
 }
