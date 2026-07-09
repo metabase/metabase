@@ -5,11 +5,3 @@
     border-radius: 0.5rem !important;
   }
 }
-
-.Table {
-  border-spacing: 6px;
-
-  tr > td {
-    padding-bottom: 1.125rem;
-  }
-}

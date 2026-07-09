@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen, within } from "__support__/ui";
+import { fireEvent, render, screen } from "__support__/ui";
 import type { ScalarSegment } from "metabase-types/api";
 
 import {
@@ -32,14 +32,18 @@ const setup = (props: Partial<ChartSettingSegmentsEditorProps> = {}) => {
 it("Should render a segment editor", () => {
   setup();
 
-  // Add a row for the header
-  expect(screen.getAllByRole("row")).toHaveLength(3);
+  const labelInputs = screen.getAllByPlaceholderText(/optional/);
+  expect(labelInputs).toHaveLength(2);
+  expect(labelInputs[0]).toHaveValue("bad");
+  expect(labelInputs[1]).toHaveValue("good");
 
-  const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
+  const minInputs = screen.getAllByPlaceholderText("Min");
+  expect(minInputs[0]).toHaveValue("0");
+  expect(minInputs[1]).toHaveValue("100");
 
-  expect(within(firstRow).getByPlaceholderText(/optional/)).toHaveValue("bad");
-  expect(within(firstRow).getByPlaceholderText(/Min/)).toHaveValue("0");
-  expect(within(firstRow).getByPlaceholderText(/Max/)).toHaveValue("100");
+  const maxInputs = screen.getAllByPlaceholderText("Max");
+  expect(maxInputs[0]).toHaveValue("100");
+  expect(maxInputs[1]).toHaveValue("200");
 });
 
 it("Should pass back a new array of segments on change", async () => {

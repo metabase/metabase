@@ -3,8 +3,16 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
-import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Group,
+  Icon,
+  NumberInput,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ScalarSegment } from "metabase-types/api";
@@ -35,85 +43,76 @@ export const ChartSettingSegmentsEditor = ({
       ...segments.slice(index + 1),
     ]);
 
+  const canRemove = segments.length > 1 || canRemoveAll;
+
   return (
-    <Box px="1.5rem">
+    <Stack px="lg">
       {segments.length > 0 ? (
-        <table className={S.Table}>
-          <thead>
-            <tr>
-              <th />
-              <th>{t`Label`}</th>
-              <th>{t`Min`}</th>
-              <th>{t`Max`}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {segments.map((segment, index) => (
-              <tr key={index}>
-                <td>
-                  <ColorSelector
-                    pillSize="large"
-                    className={S.ColorPill}
-                    value={segment.color}
-                    colors={getColorPalette()}
-                    onChange={(color) =>
-                      onChangeProperty(index, "color", color)
-                    }
-                  />
-                </td>
-                <td>
+        <Stack>
+          {segments.map((segment, index) => (
+            <Card key={index} withBorder>
+              <Group align="flex-start" gap="sm">
+                <ColorSelector
+                  pillSize="large"
+                  className={S.ColorPill}
+                  value={segment.color}
+                  colors={getColorPalette()}
+                  onChange={(color) => onChangeProperty(index, "color", color)}
+                />
+
+                <Stack gap="sm" flex={1} miw={0}>
                   <ChartSettingInput
-                    value={segment.label}
                     placeholder={t`Label for this range (optional)`}
+                    value={segment.label}
                     onChange={(val) => onChangeProperty(index, "label", val)}
                   />
-                </td>
-                <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.min ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
-                      if (newValue !== segment.min) {
-                        onChangeProperty(index, "min", newValue);
-                      }
-                    }}
-                    placeholder={t`Min`}
-                    w="4rem"
-                  />
-                </td>
-                <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.max ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
-                      if (newValue !== segment.max) {
-                        onChangeProperty(index, "max", newValue);
-                      }
-                    }}
-                    placeholder={t`Max`}
-                    w="4rem"
-                  />
-                </td>
-                <td>
-                  {(segments.length > 1 || canRemoveAll) && (
+
+                  <Group gap="sm" grow>
+                    <NumberInput
+                      label={t`Min`}
+                      placeholder={t`Min`}
+                      value={segment.min ?? ""}
+                      onBlur={(e) => {
+                        const rawValue = e.target.value;
+                        const newValue =
+                          rawValue === "" ? null : parseFloat(rawValue);
+                        if (newValue !== segment.min) {
+                          onChangeProperty(index, "min", newValue);
+                        }
+                      }}
+                    />
+
+                    <NumberInput
+                      label={t`Max`}
+                      placeholder={t`Max`}
+                      value={segment.max ?? ""}
+                      onBlur={(e) => {
+                        const rawValue = e.target.value;
+                        const newValue =
+                          rawValue === "" ? null : parseFloat(rawValue);
+                        if (newValue !== segment.max) {
+                          onChangeProperty(index, "max", newValue);
+                        }
+                      }}
+                    />
+                  </Group>
+                </Stack>
+
+                {canRemove && (
+                  <Tooltip label={t`Remove range`}>
                     <Button
+                      aria-label={t`Remove range`}
                       leftSection={<Icon name="trash" c="text-disabled" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
                     />
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </Tooltip>
+                )}
+              </Group>
+            </Card>
+          ))}
+        </Stack>
       ) : (
         <Text
           ta="center"
@@ -131,7 +130,7 @@ export const ChartSettingSegmentsEditor = ({
       >
         {t`Add a range`}
       </Button>
-    </Box>
+    </Stack>
   );
 };
 
