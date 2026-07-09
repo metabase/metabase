@@ -384,7 +384,7 @@
       (is (=? {:engine "search.engine/in-place"}
               (mt/user-http-request :crowberto :get 200 "search" pinned :q "x"))))
     (testing "an explicit blank search_engine unpins: the cookie is ignored and the default serves"
-      (is (=? {:engine "search.engine/appdb"}
+      (is (=? {:engine (u/qualified-name (search.engine/default-engine))}
               (mt/user-http-request :crowberto :get 200 "search" pinned :q "x" :search_engine ""))))))
 
 (deftest vector-search-knobs-test
