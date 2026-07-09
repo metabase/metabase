@@ -1,7 +1,6 @@
 (ns metabase.queries.models.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.models.card-test]}}}}}}
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -808,7 +807,10 @@
               "user-set :display_name survives"))))))
 
 (deftest ^:parallel extract-result-metadata-native-model-test
-  (testing "native model Card extraction also preserves :id (as a field FK)"
+  (testing "native model Card extraction preserves :id (as a field FK) and structural column types"
+    ;; Native model columns can't be re-derived from the query at import time without executing the
+    ;; SQL, so their :base_type/:effective_type must survive extract (GHY-4043). Unlike MBQL models,
+    ;; native models serialize through the native-card whitelist, not model-preserved-keys.
     (mt/with-temp [:model/Card {card-id :id}
                    {:type            :model
                     :dataset_query   (mt/native-query {:query "SELECT ID FROM VENUES"})
@@ -819,18 +821,14 @@
                                        :base_type     :type/BigInteger}]}]
       (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
             col      (first (:result_metadata extracted))]
-        (is (= #{:name :id :display_name :semantic_type}
+        (is (= #{:name :id :display_name :semantic_type :base_type}
                (set (keys col)))
             "exact set of keys preserved for this fixture (one col with these inputs)")
         (is (= "Venue ID" (:display_name col)))
+        (is (= :type/BigInteger (:base_type col))
+            "native model keeps structural type info the target can't re-derive")
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
-        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))
-        ;; cross-reference: nothing outside the snake-cased model-preserved-keys for native models.
-        ;; If `model-preserved-keys` ever changes, the exact-set assertion above stops matching;
-        ;; this guard catches unexpected drift (a new key sneaking in) on the way.
-        (let [allowed (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys true))
-              leaked  (set/difference (set (keys col)) allowed)]
-          (is (= #{} leaked) "no key outside the native-model preserved set"))))))
+        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
