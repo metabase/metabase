@@ -2,10 +2,12 @@
   (:require
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [metabase.app-db.core :as mdb]
    [metabase.connection-pool :as connection-pool]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [next.jdbc :as jdbc])
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs])
   (:import
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (java.net URLDecoder)
@@ -15,12 +17,22 @@
 (set! *warn-on-reflection* true)
 
 (def data-source
-  "Atom to hold the pooled JDBC data source for the semantic search database."
+  "Atom to hold the pooled JDBC data source for the semantic search database.
+  Only ever holds a dedicated (MB_PGVECTOR_DB_URL) pool; in app-db mode the shared application pool is
+  returned by [[ensure-initialized-data-source!]] without being stored here, so [[shutdown-db!]] can never
+  close it."
   (atom nil))
 
 (def db-url
   "The database URL used to connect to pgvector"
   (env :mb-pgvector-db-url))
+
+(def app-db-schema
+  "The Postgres schema holding all semantic-search tables when sharing the application database.
+  A dedicated schema (rather than a table-name prefix) makes destructive maintenance structurally
+  incapable of touching application tables — see the schema handling in
+  [[metabase-enterprise.semantic-search.db.migration.impl]]."
+  "semantic_search")
 
 ;; All pgvector config — connection *and* connection-pool parameters — rides MB_PGVECTOR_DB_URL, so a
 ;; deployment sets everything in one place (the DB secret) with no env-var-vs-URL precedence to reason
@@ -177,7 +189,100 @@
   (init-db!)
   (test-connection!))
 
-(defn ensure-initialized-data-source!
-  "Return datasource. Initialize if necessary."
+(def app-db-pgvector-support
+  "Cached result of [[check-app-db-pgvector-support!]]: nil = not yet determined, boolean once checked.
+  Cached for the JVM lifetime — extensions don't come and go under a running instance. Tests reset it."
+  (atom nil))
+
+(defn check-app-db-pgvector-support!
+  "Can the application database act as the pgvector store? True only when the `vector` extension ends up
+  installed AND our schema exists (or we can create both). Attempts the CREATE EXTENSION / CREATE SCHEMA
+  right here so the cached answer reflects real privileges, not optimism."
   []
-  (or @data-source (init-db!)))
+  (let [app-db (mdb/data-source)
+        {:keys [installed available]}
+        (jdbc/execute-one! app-db
+                           [(str "SELECT"
+                                 " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
+                                 " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available")]
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+        installed (cond
+                    installed true
+
+                    (not available)
+                    (do (log/info (str "Semantic search: the application database has no pgvector extension"
+                                       " available; install pgvector (or set MB_PGVECTOR_DB_URL) to enable"
+                                       " semantic search."))
+                        false)
+
+                    :else
+                    (try
+                      (jdbc/execute! app-db ["CREATE EXTENSION IF NOT EXISTS vector"])
+                      true
+                      (catch Exception e
+                        ;; pgvector is an untrusted extension: installing it typically needs superuser
+                        (log/warn e (str "Semantic search: the pgvector extension is available on the"
+                                         " application database but could not be installed (insufficient"
+                                         " privileges?). Run CREATE EXTENSION vector; as a superuser, or set"
+                                         " MB_PGVECTOR_DB_URL, to enable semantic search."))
+                        false)))]
+    (if-not installed
+      false
+      (try
+        (jdbc/execute! app-db [(str "CREATE SCHEMA IF NOT EXISTS \"" app-db-schema "\"")])
+        true
+        (catch Exception e
+          (log/warnf e (str "Semantic search: could not create the %s schema on the application"
+                            " database. Grant CREATE on the database to the Metabase user, or set"
+                            " MB_PGVECTOR_DB_URL, to enable semantic search.")
+                     app-db-schema)
+          false)))))
+
+(defn- app-db-pgvector-supported?
+  "Cached [[check-app-db-pgvector-support!]]. Returns false (without caching) while the app DB is not yet
+  set up, so an early call during startup cannot pin a premature answer."
+  []
+  (if-some [cached @app-db-pgvector-support]
+    cached
+    (boolean
+     (when (mdb/db-is-set-up?)
+       (locking app-db-pgvector-support
+         (if-some [cached @app-db-pgvector-support]
+           cached
+           (let [supported (try
+                             (boolean (check-app-db-pgvector-support!))
+                             (catch Exception e
+                               (log/warn e "Semantic search: pgvector support check on the application database failed.")
+                               false))]
+             (reset! app-db-pgvector-support supported)
+             supported)))))))
+
+(defn pgvector-mode
+  "How this instance reaches its pgvector database:
+    :dedicated   MB_PGVECTOR_DB_URL is set (always wins)
+    :app-db      no URL, but the Postgres application database supports the vector extension
+    :unavailable no pgvector anywhere — semantic search cannot run."
+  []
+  (cond
+    (not (str/blank? db-url))            :dedicated
+    (and (= :postgres (mdb/db-type))
+         (app-db-pgvector-supported?))   :app-db
+    :else                                :unavailable))
+
+(defn pgvector-configured?
+  "Canonical availability predicate: does this instance have a pgvector database to work with?"
+  []
+  (not= :unavailable (pgvector-mode)))
+
+(defn ensure-initialized-data-source!
+  "Return datasource. Initialize if necessary.
+  In app-db mode this is the application database's own shared pool."
+  []
+  (or @data-source
+      (case (pgvector-mode)
+        :dedicated   (init-db!)
+        :app-db      (mdb/data-source)
+        :unavailable (throw (ex-info (str "Semantic search requires a pgvector database: set MB_PGVECTOR_DB_URL,"
+                                          " or use a Postgres application database with the pgvector extension"
+                                          " available.")
+                                     {:mode :unavailable})))))

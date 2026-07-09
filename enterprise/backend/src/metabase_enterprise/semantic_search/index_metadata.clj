@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    ;; TODO: extract schema code to go under db.migration
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
@@ -88,7 +89,7 @@
   [[metabase-enterprise.semantic-search.util/table-name-part]] when deriving identifiers or querying
   catalogs by bare name. HoneySQL (`:quoted true` or not) renders the dotted keywords as
   schema-qualified identifiers."
-  (let [schema "semantic_search"]
+  (let [schema semantic.db.datasource/app-db-schema]
     {:version                   "2"
      :schema                    schema
      :metadata-table-name       (str schema ".index_metadata")
