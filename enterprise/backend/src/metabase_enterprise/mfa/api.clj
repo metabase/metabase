@@ -23,7 +23,7 @@
 (def ^:private verify-throttlers
   ;; Codes are 6 digits, so slow brute-force limits are load-bearing.
   {:user-id    (throttle/make-throttler :user-id, :attempts-threshold 5)
-   :ip-address (throttle/make-throttler :user-id, :attempts-threshold 50)})
+   :ip-address (throttle/make-throttler :ip-address, :attempts-threshold 50)})
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 
@@ -41,8 +41,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/verify"
   "Complete a two-step login by verifying a one-time code. Takes the `mfa_token` returned by
-  `POST /api/session` and the `code` from the user's authenticator app; on success sets the
-  session cookie."
+  `POST /api/session` and either the 6-digit `code` from the user's authenticator app or one of
+  their single-use recovery codes; on success sets the session cookie."
   [_route-params
    _query-params
    {:keys [mfa_token code]} :- [:map
@@ -59,7 +59,7 @@
       (throw (invalid-token-ex)))
     (throttle-check (verify-throttlers :ip-address) (request/ip-address request))
     (throttle-check (verify-throttlers :user-id) user-id)
-    (if (enrollment/verify-totp-attempt! user-id code jti)
+    (if (enrollment/verify-attempt! user-id code jti)
       (let [user     (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)
             session  (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
             response (vary-meta {:id (str (:key session))} assoc :metabase-user-id (:user_id session))]

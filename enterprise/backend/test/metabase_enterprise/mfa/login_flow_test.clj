@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.mfa.api :as mfa.api]
+   [metabase-enterprise.mfa.enrollment :as enrollment]
+   [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.session.api :as api.session]
@@ -16,7 +18,8 @@
 (defn- reset-throttlers! []
   (doseq [throttler (concat (vals @#'mfa.api/verify-throttlers)
                             (vals @#'api.session/login-throttlers)
-                            [@#'api.session/reset-password-throttler])]
+                            [@#'api.session/reset-password-throttler
+                             @#'mfa.management/regenerate-throttler])]
     (reset! (:attempts throttler) nil)))
 
 (use-fixtures :each (fn [f] (reset-throttlers!) (f)))
@@ -84,6 +87,34 @@
           (is (=? {:id string?}
                   (mt/client :post 200 "ee/mfa/verify"
                              {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)}))))))))
+
+(deftest recovery-code-login-test
+  (with-enrolled-rasta! [_secret]
+    (let [[code & _] (enrollment/reset-recovery-codes! (mt/user->id :rasta))
+          resp       (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+      (testing "a recovery code completes the two-step login in place of a TOTP code"
+        (is (=? {:id string?}
+                (mt/client :post 200 "ee/mfa/verify" {:mfa_token (:mfa_token resp) :code code}))))
+      (testing "single-use: the same recovery code is dead afterwards"
+        (let [resp' (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+          (mt/client :post 401 "ee/mfa/verify" {:mfa_token (:mfa_token resp') :code code}))))))
+
+(deftest regenerate-recovery-codes-endpoint-test
+  (with-enrolled-rasta! [secret]
+    (let [user-id           (mt/user->id :rasta)
+          [c1 & _]          (enrollment/reset-recovery-codes! user-id)
+          login             (mt/client :post 200 "session" (mt/user->credentials :rasta))
+          {session-key :id} (mt/client :post 200 "ee/mfa/verify" {:mfa_token (:mfa_token login)
+                                                                  :code      (totp/generate-code secret)})]
+      (testing "requires a session"
+        (mt/client :post 401 "ee/mfa/recovery-codes" {:code c1}))
+      (testing "requires a fresh second factor, not just the session"
+        (mt/client session-key :post 401 "ee/mfa/recovery-codes" {:code "000000"}))
+      (testing "an unused recovery code re-auths; the whole old set is then invalid"
+        (let [resp (mt/client session-key :post 200 "ee/mfa/recovery-codes" {:code c1})]
+          (is (= 10 (count (:codes resp))))
+          (is (false? (enrollment/verify-attempt! user-id c1 nil))
+              "the re-auth code was consumed with the rest of the old set"))))))
 
 (deftest password-reset-issues-no-session-test
   (mt/with-premium-features #{:multi-factor-auth}
