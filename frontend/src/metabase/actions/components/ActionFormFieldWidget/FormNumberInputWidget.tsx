@@ -18,11 +18,9 @@ export const FormNumberInputWidget = forwardRef(function FormNumberInputWidget(
     description,
     actions,
     optional,
-    options,
-    type,
-    field,
     nullable,
-    ...props
+    disabled,
+    placeholder,
   }: FormNumberInputWidgetProps,
   ref: Ref<HTMLInputElement>,
 ) {
@@ -37,11 +35,12 @@ export const FormNumberInputWidget = forwardRef(function FormNumberInputWidget(
       htmlFor={id}
     >
       <FormNumberInput
-        {...props}
         ref={ref}
         id={id}
         name={name}
         nullable={nullable}
+        disabled={disabled}
+        placeholder={placeholder}
         size="sm"
       />
     </FormField>
