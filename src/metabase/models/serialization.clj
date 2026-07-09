@@ -1123,35 +1123,35 @@
   (-> mbql
       normalize
       (lib.util.match/replace
-       ;; `integer?` guard is here to make the operation idempotent
-       [:field (id :guard integer?) opts]
-       [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
+        ;; `integer?` guard is here to make the operation idempotent
+        [:field (id :guard integer?) opts]
+        [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
 
-       ;; `integer?` guard is here to make the operation idempotent
-       [:field (id :guard integer?)]
-       [:field (*export-field-fk* id)]
+        ;; `integer?` guard is here to make the operation idempotent
+        [:field (id :guard integer?)]
+        [:field (*export-field-fk* id)]
 
-       ;; field-id is still used within parameter mapping dimensions
-       ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
-       [:field-id (id :guard integer?)]
-       [:field-id (*export-field-fk* id)]
+        ;; field-id is still used within parameter mapping dimensions
+        ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
+        [:field-id (id :guard integer?)]
+        [:field-id (*export-field-fk* id)]
 
-       {:source-table (id :guard integer?)}
-       (assoc &match :source-table (*export-table-fk* id))
+        {:source-table (id :guard integer?)}
+        (assoc &match :source-table (*export-table-fk* id))
 
-       ;; source-field is also used within parameter mapping dimensions
-       ;; example relevant clause - [:field 2 {:source-field 1}]
-       {:source-field (id :guard integer?)}
-       (assoc &match :source-field (*export-field-fk* id))
+        ;; source-field is also used within parameter mapping dimensions
+        ;; example relevant clause - [:field 2 {:source-field 1}]
+        {:source-field (id :guard integer?)}
+        (assoc &match :source-field (*export-field-fk* id))
 
-       [:dimension (dim :guard vector?)]
-       [:dimension (mbql-id->fully-qualified-name dim)]
+        [:dimension (dim :guard vector?)]
+        [:dimension (mbql-id->fully-qualified-name dim)]
 
-       [:metric (id :guard integer?)]
-       [:metric (*export-fk* id 'Card)]
+        [:metric (id :guard integer?)]
+        [:metric (*export-fk* id 'Card)]
 
-       [:segment (id :guard integer?)]
-       [:segment (*export-fk* id 'Segment)])))
+        [:segment (id :guard integer?)]
+        [:segment (*export-fk* id 'Segment)])))
 
 (defn- export-source-table
   [source-table]
@@ -1167,29 +1167,29 @@
 (defn- ids->fully-qualified-names
   [entity]
   (lib.util.match/replace entity
-                          mbql-entity-reference?
-                          (mbql-id->fully-qualified-name &match)
+    mbql-entity-reference?
+    (mbql-id->fully-qualified-name &match)
 
-                          sequential?
-                          (mapv ids->fully-qualified-names &match)
+    sequential?
+    (mapv ids->fully-qualified-names &match)
 
-                          map?
-                          (reduce-kv
-                           (fn [entity k _v]
-                             (let [f (case k
-                                       :database                     (fn [db-id]
-                                                                       (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
-                                                                         "database/__virtual"
-                                                                         (t2/select-one-fn :name :model/Database :id db-id)))
-                                       (:card_id :card-id)           #(*export-fk* % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
-                                       (:source_table :source-table) export-source-table
-                                       ::mb.viz/param-mapping-source *export-field-fk*
-                                       :segment                      #(*export-fk* % :model/Segment)
-                                       :snippet-id                   #(*export-fk* % :model/NativeQuerySnippet)
-                                       #_else                        ids->fully-qualified-names)]
-                               (update entity k f)))
-                           &match
-                           &match)))
+    map?
+    (reduce-kv
+     (fn [entity k _v]
+       (let [f (case k
+                 :database                     (fn [db-id]
+                                                 (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
+                                                   "database/__virtual"
+                                                   (t2/select-one-fn :name :model/Database :id db-id)))
+                 (:card_id :card-id)           #(*export-fk* % :model/Card) ; attributes that refer to db fields use `_`; template-tags use `-`
+                 (:source_table :source-table) export-source-table
+                 ::mb.viz/param-mapping-source *export-field-fk*
+                 :segment                      #(*export-fk* % :model/Segment)
+                 :snippet-id                   #(*export-fk* % :model/NativeQuerySnippet)
+                 #_else                        ids->fully-qualified-names)]
+         (update entity k f)))
+     &match
+     &match)))
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
@@ -1210,64 +1210,64 @@
 (defn- mbql-fully-qualified-names->ids*
   [entity]
   (lib.util.match/replace entity
-                          ;; handle legacy `:field-id` forms encoded prior to 0.39.0
-                          ;; and also *current* expression forms used in parameter mapping dimensions
-                          ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
-                          [(:or :field-id "field-id") fully-qualified-name]
-                          (mbql-fully-qualified-names->ids* [:field fully-qualified-name])
+    ;; handle legacy `:field-id` forms encoded prior to 0.39.0
+    ;; and also *current* expression forms used in parameter mapping dimensions
+    ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
+    [(:or :field-id "field-id") fully-qualified-name]
+    (mbql-fully-qualified-names->ids* [:field fully-qualified-name])
 
-                          [(:or :field "field") (fully-qualified-name :guard vector?) opts]
-                          [:field (*import-field-fk* fully-qualified-name) (mbql-fully-qualified-names->ids* opts)]
-                          [(:or :field "field") (fully-qualified-name :guard vector?)]
-                          [:field (*import-field-fk* fully-qualified-name)]
+    [(:or :field "field") (fully-qualified-name :guard vector?) opts]
+    [:field (*import-field-fk* fully-qualified-name) (mbql-fully-qualified-names->ids* opts)]
+    [(:or :field "field") (fully-qualified-name :guard vector?)]
+    [:field (*import-field-fk* fully-qualified-name)]
 
-                          ;; source-field is also used within parameter mapping dimensions
-                          ;; example relevant clause - [:field 2 {:source-field 1}]
-                          {:source-field (fully-qualified-name :guard vector?)}
-                          (assoc &match :source-field (*import-field-fk* fully-qualified-name))
+    ;; source-field is also used within parameter mapping dimensions
+    ;; example relevant clause - [:field 2 {:source-field 1}]
+    {:source-field (fully-qualified-name :guard vector?)}
+    (assoc &match :source-field (*import-field-fk* fully-qualified-name))
 
-                          {:database (fully-qualified-name :guard string?)}
-                          (-> &match
-                              (assoc :database (if (= fully-qualified-name "database/__virtual")
-                                                 lib.schema.id/saved-questions-virtual-database-id
-                                                 (t2/select-one-pk :model/Database :name fully-qualified-name)))
-                              mbql-fully-qualified-names->ids*) ; Process other keys
+    {:database (fully-qualified-name :guard string?)}
+    (-> &match
+        (assoc :database (if (= fully-qualified-name "database/__virtual")
+                           lib.schema.id/saved-questions-virtual-database-id
+                           (t2/select-one-pk :model/Database :name fully-qualified-name)))
+        mbql-fully-qualified-names->ids*) ; Process other keys
 
-                          {:card-id (entity-id :guard portable-id?)}
-                          (-> &match
-                              (assoc :card-id (*import-fk* entity-id 'Card))
-                              mbql-fully-qualified-names->ids*) ; Process other keys
+    {:card-id (entity-id :guard portable-id?)}
+    (-> &match
+        (assoc :card-id (*import-fk* entity-id 'Card))
+        mbql-fully-qualified-names->ids*) ; Process other keys
 
-                          [(:or :metric "metric") (entity-id :guard portable-id?)]
-                          [:metric (*import-fk* entity-id 'Card)]
+    [(:or :metric "metric") (entity-id :guard portable-id?)]
+    [:metric (*import-fk* entity-id 'Card)]
 
-                          [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
-                          [:segment (*import-fk* fully-qualified-name 'Segment)]
+    [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
+    [:segment (*import-fk* fully-qualified-name 'Segment)]
 
-                          (_ :guard (every-pred map? #(vector? (:source-table %))))
-                          (-> &match
-                              (assoc :source-table (*import-table-fk* (:source-table &match)))
-                              mbql-fully-qualified-names->ids*)
+    (_ :guard (every-pred map? #(vector? (:source-table %))))
+    (-> &match
+        (assoc :source-table (*import-table-fk* (:source-table &match)))
+        mbql-fully-qualified-names->ids*)
 
-                          (_ :guard (every-pred map? #(vector? (:source_table %))))
-                          (-> &match
-                              (assoc :source_table (*import-table-fk* (:source_table &match)))
-                              mbql-fully-qualified-names->ids*)
+    (_ :guard (every-pred map? #(vector? (:source_table %))))
+    (-> &match
+        (assoc :source_table (*import-table-fk* (:source_table &match)))
+        mbql-fully-qualified-names->ids*)
 
-                          (_ :guard (every-pred map? (comp portable-id? :source-table)))
-                          (-> &match
-                              (assoc :source-table (str "card__" (*import-fk* (:source-table &match) 'Card)))
-                              mbql-fully-qualified-names->ids*)
+    (_ :guard (every-pred map? (comp portable-id? :source-table)))
+    (-> &match
+        (assoc :source-table (str "card__" (*import-fk* (:source-table &match) 'Card)))
+        mbql-fully-qualified-names->ids*)
 
-                          (_ :guard (every-pred map? (comp portable-id? :source_table)))
-                          (-> &match
-                              (assoc :source_table (str "card__" (*import-fk* (:source_table &match) 'Card)))
-                              mbql-fully-qualified-names->ids*) ;; process other keys
+    (_ :guard (every-pred map? (comp portable-id? :source_table)))
+    (-> &match
+        (assoc :source_table (str "card__" (*import-fk* (:source_table &match) 'Card)))
+        mbql-fully-qualified-names->ids*) ;; process other keys
 
-                          (_ :guard (every-pred map? (comp portable-id? :snippet-id)))
-                          (-> &match
-                              (assoc :snippet-id (*import-fk* (:snippet-id &match) 'NativeQuerySnippet))
-                              mbql-fully-qualified-names->ids*)))
+    (_ :guard (every-pred map? (comp portable-id? :snippet-id)))
+    (-> &match
+        (assoc :snippet-id (*import-fk* (:snippet-id &match) 'NativeQuerySnippet))
+        mbql-fully-qualified-names->ids*)))
 
 (defn- mbql-fully-qualified-names->ids
   [entity]
@@ -1505,21 +1505,21 @@
 
 (defn- export-visualizations [entity]
   (lib.util.match/replace
-   entity
-   ["field-id" (id :guard number?)]      ["field-id" (*export-field-fk* id)]
-   [:field-id  (id :guard number?)]      [:field-id  (*export-field-fk* id)]
-   ["field-id" (id :guard number?) tail] ["field-id" (*export-field-fk* id) (export-visualizations tail)]
-   [:field-id  (id :guard number?) tail] [:field-id  (*export-field-fk* id) (export-visualizations tail)]
-   ["field"    (id :guard number?)]      ["field"    (*export-field-fk* id)]
-   [:field     (id :guard number?)]      [:field     (*export-field-fk* id)]
-   ["field"    (id :guard number?) tail] ["field"    (*export-field-fk* id) (export-visualizations tail)]
-   [:field     (id :guard number?) tail] [:field     (*export-field-fk* id) (export-visualizations tail)]
+    entity
+    ["field-id" (id :guard number?)]      ["field-id" (*export-field-fk* id)]
+    [:field-id  (id :guard number?)]      [:field-id  (*export-field-fk* id)]
+    ["field-id" (id :guard number?) tail] ["field-id" (*export-field-fk* id) (export-visualizations tail)]
+    [:field-id  (id :guard number?) tail] [:field-id  (*export-field-fk* id) (export-visualizations tail)]
+    ["field"    (id :guard number?)]      ["field"    (*export-field-fk* id)]
+    [:field     (id :guard number?)]      [:field     (*export-field-fk* id)]
+    ["field"    (id :guard number?) tail] ["field"    (*export-field-fk* id) (export-visualizations tail)]
+    [:field     (id :guard number?) tail] [:field     (*export-field-fk* id) (export-visualizations tail)]
 
-   (_ :guard map?)
-   (m/map-vals export-visualizations &match)
+    (_ :guard map?)
+    (m/map-vals export-visualizations &match)
 
-   (_ :guard vector?)
-   (mapv export-visualizations &match)))
+    (_ :guard vector?)
+    (mapv export-visualizations &match)))
 
 (defn- export-column-settings
   "Column settings use a JSON-encoded string as a map key, and it contains field numbers.
@@ -1590,22 +1590,22 @@
 
 (defn- import-visualizations [entity]
   (lib.util.match/replace
-   entity
-   [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
-   [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
-   [(:or :field-id "field-id") (fully-qualified-name :guard vector?)]
-   [:field-id (*import-field-fk* fully-qualified-name)]
+    entity
+    [(:or :field-id "field-id") (fully-qualified-name :guard vector?) tail]
+    [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
+    [(:or :field-id "field-id") (fully-qualified-name :guard vector?)]
+    [:field-id (*import-field-fk* fully-qualified-name)]
 
-   [(:or :field "field") (fully-qualified-name :guard vector?) tail]
-   [:field (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
-   [(:or :field "field") (fully-qualified-name :guard vector?)]
-   [:field (*import-field-fk* fully-qualified-name)]
+    [(:or :field "field") (fully-qualified-name :guard vector?) tail]
+    [:field (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
+    [(:or :field "field") (fully-qualified-name :guard vector?)]
+    [:field (*import-field-fk* fully-qualified-name)]
 
-   (_ :guard map?)
-   (m/map-vals import-visualizations &match)
+    (_ :guard map?)
+    (m/map-vals import-visualizations &match)
 
-   (_ :guard vector?)
-   (mapv import-visualizations &match)))
+    (_ :guard vector?)
+    (mapv import-visualizations &match)))
 
 (defn- import-column-settings [settings]
   (when settings
@@ -1636,11 +1636,11 @@
      (into {}
            (for [[k cols] mapping]
              (let [updated-cols (cond
-                                  ;; e.g. [{:sourceId "card:..."} ...]
+                                   ;; e.g. [{:sourceId "card:..."} ...]
                                   (and (coll? cols) (map? (first cols)))
                                   (mapv #(update % :sourceId import-visualizer-source-id) cols)
 
-                                  ;; e.g. ["$_card:<id>_name"] for funnel dimensions
+                                   ;; e.g. ["$_card:<id>_name"] for funnel dimensions
                                   (and (coll? cols) (string? (first cols)))
                                   (mapv import-card-dimension-ref cols)
 
