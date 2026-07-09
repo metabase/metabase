@@ -2228,6 +2228,11 @@ describe("scenarios > metrics > explorer", () => {
       });
       cy.wait("@dataset");
       function assertMetricMath() {
+        cy.log(
+          "wait for the viewer to finish loading (all dataset queries settled) before asserting",
+        );
+        H.MetricsViewer.getMetricVisualization().should("be.visible");
+
         cy.log("breakout is applied");
         H.MetricsViewer.getColumnPickerButton().should(
           "contain.text",
@@ -2236,8 +2241,7 @@ describe("scenarios > metrics > explorer", () => {
         cy.log(
           "filter pills are in place and show the badge indicating the unique metric instance",
         );
-        const filterPills = H.MetricsViewer.getAllFilterPills();
-        filterPills.should("have.length", 2);
+        H.MetricsViewer.getAllFilterPills().should("have.length", 2);
         H.MetricsViewer.getAllFilterPills()
           .eq(0)
           .findByText("2")
