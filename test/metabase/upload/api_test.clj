@@ -51,7 +51,7 @@
         (is (zero? @calls) "the endpoint body should never run")))))
 
 (deftest csv-upload-at-size-cap-test
-  (testing "POST /api/upload/csv accepts a file of exactly the size cap, guarding against an off-by-one"
+  (testing "POST /api/upload/csv accepts a file of exactly the size cap"
     (let [at-cap (byte-array upload/max-upload-size-bytes)
           calls  (atom 0)]
       ;; like the real handler, the stub owns the uploaded tempfile and must delete it

@@ -608,7 +608,7 @@
 (defn wrap-multipart-tempfile-cleanup
   "Middleware, applied inside [[ring.middleware.multipart-params/wrap-multipart-params]], that deletes the parsed
   multipart tempfiles when the handler throws, e.g. when param validation rejects the request.
-  Without it rejected uploads sit on disk until Ring's temp-file store expires them an hour later.
+  Ring's temp-file store only sweeps orphaned tempfiles after an hour.
   Handlers that complete normally own the tempfiles they consume and must delete them themselves."
   [handler]
   (fn
@@ -649,8 +649,8 @@
                                    (ring.middleware.multipart-params/wrap-multipart-params
                                     (wrap-multipart-tempfile-cleanup handler#)
                                     ~(if (map? multipart) multipart {})))])]
-    ;; middleware are applied left-to-right, so later entries run first on the request. Multipart parsing goes
-    ;; first (innermost) so scope rejections respond 403 before the request body is parsed to tempfiles.
+    ;; later entries wrap outer and run first on the request: scope checks must reject before multipart parses
+    ;; the body to tempfiles, so multipart goes first (innermost).
     (vec (concat multipart-middleware scope-middleware))))
 
 (mu/defn- apply-middleware :- ::handler

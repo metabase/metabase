@@ -471,8 +471,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; Closed, and collection_id constrained to a plain text field (the frontend sends it), so a second file part
-   ;; can't be smuggled in under another part name and silently ignored.
+   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
+   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
                                                  [:map {:closed true}
@@ -501,8 +501,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; Closed, and collection_id constrained to a plain text field (the frontend sends it), so a second file part
-   ;; can't be smuggled in under another part name and silently ignored.
+   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
+   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
                                                  [:map {:closed true}
