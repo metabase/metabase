@@ -422,24 +422,21 @@ export function resizeDashboardCard({
 
 /** Opens the dashboard info sidesheet */
 export function openDashboardInfoSidebar() {
-  // The "More info" button is `disabled` while the sidesheet is open, so its
-  // enabled state — not the sidesheet's DOM presence — is the source of truth
-  // for the toggle. Right after a save the header re-renders and the first
-  // click can be dropped, so click only while the button is still enabled
-  // (sidesheet closed) and query it fresh each time. Keying on `disabled`
-  // (which flips in the same render as the click handler) rather than the
-  // sidesheet mount (which lags behind that render) makes this toggle-safe:
-  // once the click takes, the button is disabled and is never clicked again.
-  const clickWhenClosed = () =>
-    dashboardHeader()
-      .findByLabelText("More info")
-      .then(($button) => {
-        if (!$button.prop("disabled")) {
-          cy.wrap($button).click();
-        }
-      });
-  clickWhenClosed();
-  clickWhenClosed();
+  dashboardHeader().findByLabelText("More info").click();
+  // The click can be dropped while the header is still re-rendering (e.g. right
+  // after a save). The "More info" button is `disabled` only while the sidesheet
+  // is open, so if it's still enabled the click didn't take — re-click it. Read
+  // the DOM synchronously with cy.document() (not a retrying command like
+  // findByLabelText, which can resolve on an intermediate frame before the
+  // sidesheet re-render commits `disabled`) so this runs only after the queue
+  // has settled and can never observe a mid-transition state and toggle the
+  // freshly opened sidesheet back closed.
+  cy.document().then((doc) => {
+    const button = doc.querySelector('[aria-label="More info"]');
+    if (button instanceof HTMLButtonElement && !button.disabled) {
+      dashboardHeader().findByLabelText("More info").click();
+    }
+  });
   return sidesheet();
 }
 /** Closes the dashboard info sidesheet */
