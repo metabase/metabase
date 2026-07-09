@@ -1,18 +1,30 @@
 ;; The interface encapsulating the various search engine backends.
 (ns metabase.search.engine
   (:require
-   [metabase.search.settings :as settings]))
+   [metabase.search.settings :as settings]
+   [metabase.util.log :as log]))
 
 (def ^:private default-engine-precedence
-  "In the absence of explicit configuration, these are the engines to try using, in decreasing order of preference."
+  "The engines to use as the default, in decreasing order of preference.
+  The first supported one wins, unless overridden by the [[settings/search-engine]] setting."
   [:search.engine/semantic
    :search.engine/appdb
    :search.engine/in-place])
 
 (defmulti supported-engine?
-  "Does this instance support the given engine?"
+  "Can this instance run the given engine?
+  Implementations must be pure capability checks: app-db type, premium features, required infrastructure.
+  They must not read [[settings/search-engine]], which selects among the supported engines."
   {:arglists '([engine])}
   identity)
+
+(defmulti dependencies
+  "Engines whose indexes this engine needs in order to serve queries.
+  Semantic, for example, mixes appdb results into its own and falls back to appdb when its index is unavailable."
+  {:arglists '([engine])}
+  identity)
+
+(defmethod dependencies :default [_] nil)
 
 (defmethod supported-engine? :default [engine]
   (throw (ex-info (format "Unknown search engine: %s" engine)
@@ -97,25 +109,53 @@
   ;; If we end up with more "abstract" nodes, we may want a better way to filter them out.
   (keys (dissoc (methods supported-engine?) :default)))
 
-(defn supported-engines
-  "List the search engines that are supported, in order of usage preference.
-   The configured engine comes first, if it is supported."
-  []
-  (let [configured-engine (some->> (settings/search-engine) name (keyword "search.engine"))
-        potential-engines (cond->> default-engine-precedence configured-engine (cons configured-engine))]
-    (distinct (filter supported-engine? potential-engines))))
-
-(defn active-engines
-  "A list of supported search engines for which we will maintain an index, in order of usage preference.
-   Excludes :search.engine/in-place, which does not use an index."
-  []
-  (remove #{:search.engine/in-place} (supported-engines)))
-
 (defn known-engine?
   "Is the given engine recognized?"
   [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
-    (some registered? (cons engine (ancestors engine)))))
+    (boolean (some registered? (cons engine (ancestors engine))))))
+
+(def ^:private warned-engine-values
+  "Values already warned about, so misconfiguration warns once rather than on every call."
+  (atom #{}))
+
+(defn- warn-once [value message]
+  (when-not (contains? @warned-engine-values value)
+    (swap! warned-engine-values conj value)
+    (log/warn message)))
+
+(defn- validated-engine
+  "Coerce a configured engine name to a known engine keyword.
+  Unknown values return nil with a one-time warning, so a typo in MB_SEARCH_ENGINE cannot break search."
+  [value]
+  (when value
+    (let [engine (keyword "search.engine" (name value))]
+      (if (known-engine? engine)
+        engine
+        (warn-once value (format "Ignoring unknown search engine: %s" value))))))
+
+(defn- configured-engine []
+  ;; The raw setting value, not the public getter: [[settings/search-engine]] resolves its default via
+  ;; [[default-engine]], so reading it here would recurse.
+  (validated-engine (settings/configured-search-engine)))
+
+(defn supported-engines
+  "List the search engines that are supported, in order of usage preference.
+   The configured engine comes first, if it is supported."
+  []
+  (let [potential-engines (cond->> default-engine-precedence
+                            (configured-engine) (cons (configured-engine)))]
+    ;; The known-engine? filter covers reads before the engine implementations are loaded, e.g. the
+    ;; search-engine setting getter running during startup: resolution degrades to nil instead of the
+    ;; supported-engine? :default method throwing.
+    (distinct (filter supported-engine? (filter known-engine? potential-engines)))))
+
+(defn- additional-engines
+  "The supported engines force-enabled by [[settings/additional-search-engines]]."
+  []
+  (->> (settings/additional-search-engines)
+       (keep validated-engine)
+       (filter supported-engine?)))
 
 (defmulti disjunction
   "Given multiple terms to search for, reduce this to a search expression that matches any of them in a single search.
@@ -126,8 +166,29 @@
 (defn default-engine
   "In the absence of an explicit engine argument in a request, which engine should be used?"
   []
-  ;; TODO (Chris 2025-11-07) It would be good to have a warning on start up whenever this is *not* what's configured.
-  (first (supported-engines)))
+  (let [configured (configured-engine)
+        default    (first (supported-engines))]
+    (when (and configured (not= configured default))
+      (warn-once [:unsupported configured]
+                 (format "Configured search engine %s is not supported on this instance, using %s instead"
+                         configured default)))
+    default))
+
+(defn log-resolution!
+  "Log the engine that serves search."
+  []
+  (log/infof "Search will be served by the %s engine" (default-engine)))
+
+(defn active-engines
+  "The engines for which we maintain an index, default engine first.
+  Comprises the default engine, its [[dependencies]], and the [[settings/additional-search-engines]].
+  Excludes :search.engine/in-place, which does not use an index."
+  []
+  (->> (concat [(default-engine)] (additional-engines))
+       (mapcat #(cons % (dependencies %)))
+       distinct
+       (filter supported-engine?)
+       (remove #{:search.engine/in-place})))
 
 (defmethod disjunction :default [_ terms] terms)
 

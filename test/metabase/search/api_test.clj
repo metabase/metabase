@@ -17,10 +17,12 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.revisions.models.revision :as revision]
+   [metabase.search.api :as search.api]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -334,6 +336,25 @@
       (is (=? {:engine string?}
               (mt/user-http-request :crowberto :get 200 "search" :q "x" :context "search-app"))))))
 
+(deftest explicit-engine-validation-test
+  (testing "an explicit search_engine that cannot serve returns a 400 naming the reason"
+    (testing "unknown engine"
+      (is (= "Unknown search engine: elastic"
+             (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "elastic"))))
+    (testing "known engine that this instance does not support"
+      (is (= "Search engine semantic is not supported on this instance"
+             (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "semantic"))))
+    (testing "supported engine that is neither the default nor an additional engine"
+      ;; Checked below the HTTP layer: this namespace's :each fixture pins the default engine to appdb,
+      ;; so no engine can be made inactive in a real request here.
+      (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+        (is (thrown-with-msg? Exception
+                              #"not enabled"
+                              (#'search.api/check-engine-serves! "appdb"))))))
+  (testing "a servable explicit engine is accepted"
+    (is (=? {:engine "search.engine/in-place"}
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "in-place")))))
+
 (deftest vector-search-knobs-test
   (testing "the vector-search tuning/diagnostic knobs are admin-only"
     (doseq [[param value] {:vector_search_ef_search       100
@@ -441,13 +462,9 @@
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           (is (= "search.engine/fulltext" (:engine resp))))))
-    (testing "It will not use an unknown search engine"
-      (search/init-index! {:force-reset? false :re-populate? false})
-      (with-search-items-in-root-collection "test"
-        (let [resp (search-request :crowberto :q "test" :search_engine "wut" :limit 1)]
-          (is (#{"search.engine/in-place"
-                 "search.engine/appdb"}
-               (:engine resp))))))))
+    (testing "It rejects an unknown search engine"
+      (is (= "Unknown search engine: wut"
+             (mt/user-http-request :crowberto :get 400 "search" :q "test" :search_engine "wut" :limit 1))))))
 
 (defn- get-available-models [& args]
   (disj

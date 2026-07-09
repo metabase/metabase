@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders]
    [metabase-enterprise.semantic-search.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -37,14 +36,11 @@
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
 
-;; TODO: url should likely reside in settings
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
-  (and
-   (some? semantic.db.datasource/db-url)
-   (semantic.settings/semantic-search-enabled)))
+  (semantic.util/semantic-search-available?))
 
 (defn build-hnsw-index-async!
   "Build the HNSW index on the active semantic search index in the background, returning promptly.

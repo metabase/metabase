@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.util
   (:require
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :as premium-features]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
@@ -24,7 +25,9 @@
       (:index_exists false)))
 
 (defn semantic-search-available?
-  "Predicate to check whether semantic search is available on the instance."
+  "Whether semantic search can run on this instance.
+  The canonical gate for everything semantic search does: engine selection, indexing, and maintenance tasks."
   []
   (and (string? (not-empty semantic.db.datasource/db-url))
-       (premium-features/has-feature? :semantic-search)))
+       (premium-features/has-feature? :semantic-search)
+       (semantic.settings/semantic-search-enabled)))

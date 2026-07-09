@@ -13,14 +13,30 @@
   :export?    true
   :audit      :getter)
 
+(defn configured-search-engine
+  "The raw value of the [[search-engine]] setting: the operator's override, or nil when unset.
+  [[search-engine]] itself resolves a default; use this to distinguish an explicit override."
+  []
+  (setting/get-value-of-type :keyword :search-engine))
+
 (defsetting search-engine
-  (i18n/deferred-tru "Which engine to use by default for search. Supported values are :in-place, :appdb, and :semantic")
+  (i18n/deferred-tru "The engine that serves search. Supported values are :in-place, :appdb, and :semantic. When unset, the best supported engine is used.")
   :visibility :authenticated
   :export?    false
   :setter     :none
-  ;; TODO (Chris 2025-11-07) Would be good to remove the default and just use [search.engine/default-engine-precedence]
-  :default    :appdb
+  ;; Reading resolves the engine that actually serves search; [[configured-search-engine]] is the raw override.
+  :getter     (fn []
+                (some-> ((requiring-resolve 'metabase.search.engine/default-engine)) name keyword))
   :type       :keyword)
+
+(defsetting additional-search-engines
+  (i18n/deferred-tru "Engines to keep active (indexed and queryable per-request) in addition to the default engine.")
+  :visibility :internal
+  :export?    false
+  :encryption :no
+  :default    nil
+  :type       :csv
+  :doc        false)
 
 (defsetting experimental-search-weight-overrides
   (i18n/deferred-tru "Used to override weights used for search ranking")

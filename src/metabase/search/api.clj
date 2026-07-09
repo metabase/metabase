@@ -11,6 +11,7 @@
    [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
@@ -57,11 +58,32 @@
         (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
         nil))))
 
+(defn- check-engine-serves!
+  "400 when an explicitly requested engine cannot serve searches, saying why.
+  Only for explicit requests; cookie-carried engines degrade to the default instead, as they can go stale."
+  [value]
+  (let [engine (keyword "search.engine" value)]
+    (cond
+      (not (search.engine/known-engine? engine))
+      (throw (ex-info (tru "Unknown search engine: {0}" value) {:status-code 400}))
+
+      (not (search.engine/supported-engine? engine))
+      (throw (ex-info (tru "Search engine {0} is not supported on this instance" value) {:status-code 400}))
+
+      (not (or (isa? engine :search.engine/in-place)
+               (some #(isa? engine %) (search.engine/active-engines))))
+      (throw (ex-info (tru "Search engine {0} is not enabled; add it to additional-search-engines to use it" value)
+                      {:status-code 400})))))
+
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (if-let [new-engine (get-in request [:params :search_engine])]
-       (handler request (set-engine-cookie! respond new-engine) raise)
+       (try
+         (check-engine-serves! new-engine)
+         (handler request (set-engine-cookie! respond new-engine) raise)
+         (catch Exception e
+           (raise e)))
        (handler (->> (get-in request [:cookies engine-cookie-name :value])
                      (assoc-in request [:params :search_engine]))
                 respond

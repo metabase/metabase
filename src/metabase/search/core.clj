@@ -84,7 +84,12 @@
 
 (defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
-  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
+  (let [e (keyword "search.engine" engine)]
+    ;; Serving or maintained: the resolved default, or an engine whose index we keep up to date.
+    (if (or (= e (search.engine/default-engine))
+            (contains? (set (search.engine/active-engines)) e))
+      1
+      0)))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
@@ -94,6 +99,7 @@
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
+  (search.engine/log-resolution!)
   (when (supports-index?)
     (log/info "Initializing search indexes")
     (tracing/with-span :search "search.init-index" {}
