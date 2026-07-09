@@ -53,7 +53,9 @@ describe("scenarios > data apps", () => {
       });
 
       cy.visit("/admin/settings/apps");
-      cy.findByRole("link", { name: APP_DISPLAY_NAME }).should("be.visible");
+      cy.findByRole("link", { name: APP_DISPLAY_NAME })
+        .scrollIntoView()
+        .should("be.visible");
 
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -84,7 +86,9 @@ describe("scenarios > data apps", () => {
         // "no repository" state lives only in the Remote Sync row above, so it
         // must not be duplicated down here.
         cy.findByRole("heading", { name: "Apps" }).should("be.visible");
-        cy.findByText("Your data apps will appear here").should("be.visible");
+        cy.findByText("Your data apps will appear here")
+          .scrollIntoView()
+          .should("be.visible");
         cy.findByText(/No repository is connected yet/).should("not.exist");
       });
     });
@@ -106,7 +110,9 @@ describe("scenarios > data apps", () => {
         );
         // The Apps section keeps its title and shows an empty state with no apps.
         cy.findByRole("heading", { name: "Apps" }).should("be.visible");
-        cy.findByText("Your data apps will appear here").should("be.visible");
+        cy.findByText("Your data apps will appear here")
+          .scrollIntoView()
+          .should("be.visible");
       });
     });
 
@@ -128,6 +134,7 @@ describe("scenarios > data apps", () => {
         .and("contain", `/apps/${APP_NAME}`);
       cy.findByTestId("admin-layout-content")
         .findByText(`/apps/${APP_NAME}`)
+        .scrollIntoView()
         .should("be.visible");
 
       // The actions menu offers Disable; while a repo is connected there's no
@@ -154,7 +161,7 @@ describe("scenarios > data apps", () => {
       cy.findByTestId("admin-layout-content").within(() => {
         // A disabled app isn't reachable, so its name is plain text (not a link)
         // and it carries a Disabled badge.
-        cy.findByText(APP_DISPLAY_NAME).should("be.visible");
+        cy.findByText(APP_DISPLAY_NAME).scrollIntoView().should("be.visible");
         cy.findByRole("link", { name: APP_DISPLAY_NAME }).should("not.exist");
         cy.findByText("Disabled").should("be.visible");
       });
@@ -182,6 +189,7 @@ describe("scenarios > data apps", () => {
 
       cy.findByTestId("admin-layout-content")
         .findByText(APP_DISPLAY_NAME)
+        .scrollIntoView()
         .should("be.visible");
 
       cy.findByRole("button", {
