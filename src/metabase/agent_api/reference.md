@@ -535,8 +535,10 @@ Dashcard mutations go under `dashcards` and are applied in order:
 - `remove` removes a dashcard by `dashcard_id`
 - `move` moves a dashcard by `dashcard_id` to `position` `"top"` or `"bottom"`
 
-New cards are auto-positioned below existing content, so interleaving
-headings and text with card adds builds a top-to-bottom narrative layout.
+New cards are auto-placed into the first free grid slot, scanning
+left-to-right then top-to-bottom, so two half-width cards can end up side by
+side. A full-width heading always starts its own row — lead each section with
+`add_heading` to build a sectioned, top-to-bottom layout.
 
 Request:
 
@@ -555,15 +557,18 @@ Request:
 }
 ```
 
-Response:
+Response (`dashcard_ids` lists all dashcards on the dashboard after the
+mutations, in row/col order — new headings and text cards included):
 
 ```json
 {
   "id": 7,
   "name": "Renamed Dashboard",
   "collection_id": 7,
+  "collection_path": "Our analytics / Finance",
   "description": "...",
-  "archived": false
+  "archived": false,
+  "dashcard_ids": [103, 101, 104]
 }
 ```
 

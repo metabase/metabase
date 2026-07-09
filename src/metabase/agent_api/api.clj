@@ -15,6 +15,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1179,6 +1180,23 @@
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
+(defn- size-override
+  "Optional explicit size from the LLM. Returns {:width :height} or nil to fall back to defaults."
+  [display-size]
+  (case display-size
+    "wide"    {:width 18 :height 6}
+    "tall"    {:width 9  :height 12}
+    "full"    {:width 24 :height 9}
+    nil))
+
+(defn- autoplaced-position
+  "Grid position for a new dashcard: the LLM's explicit `display-size` if given, otherwise the
+   default size for `display`."
+  [placed display display-size]
+  (if-let [{:keys [width height]} (size-override display-size)]
+    (autoplace/get-position-for-new-dashcard placed width height autoplace/default-grid-width)
+    (autoplace/get-position-for-new-dashcard placed display)))
+
 (mr/def ::create-dashboard-request
   [:map
    [:name          ms/NonBlankString]
@@ -1240,7 +1258,7 @@
                     (when (seq cards)
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
-                                      position (autoplace/get-position-for-new-dashcard placed display)]
+                                      position (autoplaced-position placed display nil)]
                                   (t2/insert-returning-instance!
                                    :model/DashboardCard
                                    (merge position {:dashboard_id (:id dash)
@@ -1256,7 +1274,8 @@
        :collection_id   (:collection_id dash)
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
-       :dashcard_ids    (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))})))
+       :dashcard_ids    (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)
+                                             {:order-by [[:row :asc] [:col :asc]]}))})))
 
 ;;; ------------------------------------------------- Update Dashboard -----------------------------------------------
 
@@ -1268,28 +1287,30 @@
    - `remove`      : requires `dashcard_id`.
    - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\")."
   [:multi {:dispatch :action}
-   ["add"         [:map
+   ;; Branches are closed so an inapplicable key (e.g. `display_size` on `add_heading`, which is
+   ;; always full-width) fails validation instead of being silently ignored.
+   ["add"         [:map {:closed true}
                    [:action       [:= "add"]]
                    [:card_id      ms/PositiveInt]
                    [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
-   ["add_heading" [:map
+   ["add_heading" [:map {:closed true}
                    [:action [:= "add_heading"]]
                    [:text   ms/NonBlankString]]]
-   ["add_text"    [:map
+   ["add_text"    [:map {:closed true}
                    [:action       [:= "add_text"]]
                    [:text         ms/NonBlankString]
                    [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
-   ["remove"      [:map
+   ["remove"      [:map {:closed true}
                    [:action      [:= "remove"]]
                    [:dashcard_id ms/PositiveInt]]]
-   ["move"        [:map
+   ["move"        [:map {:closed true}
                    [:action      [:= "move"]]
                    [:dashcard_id ms/PositiveInt]
                    [:position    [:enum "top" "bottom"]]]]])
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
-   add/remove/move mutations applied in order."
+   add/add_heading/add_text/remove/move mutations applied in order."
   [:map
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
@@ -1309,45 +1330,28 @@
    [:archived        :boolean]
    [:dashcard_ids    [:sequential ms/PositiveInt]]])
 
-(defn- size-override
-  "Optional explicit size from the LLM. Returns {:width :height} or nil to fall back to defaults."
-  [display-size]
-  (case display-size
-    "wide"    {:width 18 :height 6}
-    "tall"    {:width 9  :height 12}
-    "full"    {:width 24 :height 9}
-    nil))
-
-(defn- autoplaced-position
-  "Grid position for a new dashcard: the LLM's explicit `display-size` if given, otherwise the
-   default size for `display`."
-  [placed display display-size]
-  (if-let [{:keys [width height]} (size-override display-size)]
-    (autoplace/get-position-for-new-dashcard placed width height autoplace/default-grid-width)
-    (autoplace/get-position-for-new-dashcard placed display)))
-
-(defn- virtual-card-settings
-  "`visualization_settings` for a virtual dashcard (text or heading — no backing card). Mirrors the
-   shape the frontend saves; see `createVirtualCard` in frontend/src/metabase/dashboard/utils.ts."
-  [display text]
-  (cond-> {:virtual_card {:name                   nil
-                          :display                display
-                          :dataset_query          {}
-                          :visualization_settings {}
-                          :archived               false}
-           :text         text}
-    ;; headings render without a card background, matching the frontend default
-    (= display "heading") (assoc :dashcard.background false)))
-
 (defn- insert-new-dashcard!
-  "Insert a new dashcard at `position-fields` and record it in the mutation `state`."
-  [state dashboard-id position-fields columns]
+  "Insert a new dashcard at `position-fields` on `tab-id` and record it in the mutation `state`.
+   The returned instance (with its :id) goes into :placed so later mutations in the batch — notably
+   a `move` to \"top\", which shifts every other card by id — can address it."
+  [state dashboard-id tab-id position-fields columns]
   (let [new-dashcard (t2/insert-returning-instance!
                       :model/DashboardCard
-                      (merge position-fields {:dashboard_id dashboard-id} columns))]
+                      (merge position-fields
+                             {:dashboard_id     dashboard-id
+                              :dashboard_tab_id tab-id}
+                             columns))]
     (swap! state #(-> %
-                      (update :placed conj position-fields)
+                      (update :placed conj new-dashcard)
                       (update :added conj new-dashcard)))))
+
+(defn- first-tab-id
+  "Id of the dashboard's first tab, or nil when the dashboard has no tabs. New dashcards land there —
+   a dashcard with a nil tab id on a tabbed dashboard is invisible on every tab."
+  [dashboard-id]
+  (t2/select-one-fn :id :model/DashboardTab
+                    :dashboard_id dashboard-id
+                    {:order-by [[:position :asc] [:id :asc]]}))
 
 (defn- apply-dashcard-mutations!
   "Apply a sequence of LLM-friendly dashcard mutations. Returns {:added [...] :removed [...] :moved [...]}.
@@ -1356,13 +1360,17 @@
   - `card_id` that doesn't exist or the user can't read -> 404 / 403 via `api/read-check`.
   - `dashcard_id` that isn't on this dashboard -> 404 via `api/check-404`.
 
-  Autoplace state walks the current dashcards list as we add, so each new card gets a unique slot."
+  Autoplace state walks the current dashcards list as we add, so each new card gets a unique slot.
+  Placement is per-tab: adds go on the first tab and only collide with that tab's cards; a move
+  only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
-  (let [current (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-        state   (atom {:placed  (vec current)
-                       :added   []
-                       :removed []
-                       :moved   []})]
+  (let [current  (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+        tab-id   (first-tab-id dashboard-id)
+        add-tab  (fn [placed] (filterv #(= (:dashboard_tab_id %) tab-id) placed))
+        state    (atom {:placed  (vec current)
+                        :added   []
+                        :removed []
+                        :moved   []})]
     (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text] :as mutation}]
             (map-indexed vector mutations)]
       (try
@@ -1370,19 +1378,19 @@
           "add"
           (let [card    (api/read-check :model/Card card_id)
                 display (or (:display card) :table)]
-            (insert-new-dashcard! state dashboard-id
-                                  (autoplaced-position (:placed @state) display display_size)
+            (insert-new-dashcard! state dashboard-id tab-id
+                                  (autoplaced-position (add-tab (:placed @state)) display display_size)
                                   {:card_id card_id}))
 
           "add_heading"
-          (insert-new-dashcard! state dashboard-id
-                                (autoplaced-position (:placed @state) :heading nil)
-                                {:visualization_settings (virtual-card-settings "heading" text)})
+          (insert-new-dashcard! state dashboard-id tab-id
+                                (autoplaced-position (add-tab (:placed @state)) :heading nil)
+                                {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)})
 
           "add_text"
-          (insert-new-dashcard! state dashboard-id
-                                (autoplaced-position (:placed @state) :text display_size)
-                                {:visualization_settings (virtual-card-settings "text" text)})
+          (insert-new-dashcard! state dashboard-id tab-id
+                                (autoplaced-position (add-tab (:placed @state)) :text display_size)
+                                {:visualization_settings (dashboard-card/virtual-card-settings "text" text)})
 
           "remove"
           (let [existing (api/check-404
@@ -1394,33 +1402,38 @@
                               (update :removed conj existing))))
 
           "move"
-          (let [existing (api/check-404
-                          (t2/select-one :model/DashboardCard
-                                         :id dashcard_id :dashboard_id dashboard-id))
+          (let [existing  (api/check-404
+                           (t2/select-one :model/DashboardCard
+                                          :id dashcard_id :dashboard_id dashboard-id))
+                ;; A move only makes sense relative to the moved card's own tab: collision checks
+                ;; and the move-to-top reflow must not touch cards on other tabs.
+                same-tab? #(= (:dashboard_tab_id %) (:dashboard_tab_id existing))
                 ;; Strip the moved card from the placed list while we recompute its position,
                 ;; otherwise autoplace will treat it as still occupying its old slot.
-                other-placed (vec (remove (comp #{dashcard_id} :id) (:placed @state)))
-                new-pos  (case position
-                           "top"    {:row 0 :col 0
-                                     :size_x (:size_x existing) :size_y (:size_y existing)}
-                           "bottom" (autoplace/get-position-for-new-dashcard
-                                     other-placed
-                                     (:size_x existing) (:size_y existing)
-                                     autoplace/default-grid-width))]
-            ;; "top" parks the card at row 0; everything else has to shift down by the
+                others     (vec (remove (comp #{dashcard_id} :id) (:placed @state)))
+                tab-placed (filterv same-tab? others)
+                new-pos    (case position
+                             "top"    {:row 0 :col 0
+                                       :size_x (:size_x existing) :size_y (:size_y existing)}
+                             "bottom" (autoplace/get-position-for-new-dashcard
+                                       tab-placed
+                                       (:size_x existing) (:size_y existing)
+                                       autoplace/default-grid-width))
+                shifted?   (fn [c] (and (= position "top") (same-tab? c)))]
+            ;; "top" parks the card at row 0; everything else on its tab has to shift down by the
             ;; moved card's height or we get overlapping dashcards (review finding #2).
             (when (= position "top")
               (let [shift (:size_y existing)]
-                (doseq [{:keys [id row]} other-placed]
+                (doseq [{:keys [id row]} tab-placed]
                   (t2/update! :model/DashboardCard id {:row (+ row shift)}))))
             (t2/update! :model/DashboardCard dashcard_id
                         (select-keys new-pos [:row :col]))
             (swap! state #(-> %
                               (assoc :placed
-                                     (conj (if (= position "top")
-                                             (mapv (fn [c] (update c :row + (:size_y existing)))
-                                                   other-placed)
-                                             other-placed)
+                                     (conj (mapv (fn [c]
+                                                   (cond-> c
+                                                     (shifted? c) (update :row + (:size_y existing))))
+                                                 others)
                                            (merge existing (select-keys new-pos [:row :col]))))
                               (update :moved conj (merge existing new-pos))))))
         (catch Exception e
@@ -1452,9 +1465,13 @@
                              "Markdown text card, both from a \"text\" field: "
                              "[{\"action\":\"add_heading\",\"text\":\"Revenue\"},"
                              "{\"action\":\"add_text\",\"text\":\"Orders *grew 12%* this quarter.\"}]. "
-                             "Mutations apply in order, so interleave headings and text with card "
-                             "adds to build a narrative layout. "
-                             "Get dashcard_ids by reading metabase://dashboard/{id}/items via read_resource.")}}
+                             "Mutations apply in order. New cards auto-place into the first free "
+                             "grid slot (left-to-right, top-to-bottom), so cards may sit side by "
+                             "side; a full-width heading always starts its own row, so lead each "
+                             "section with add_heading to build a sectioned layout. "
+                             "The response dashcard_ids lists all dashcards in row/col order; "
+                             "metabase://dashboard/{id}/items (via read_resource) shows each "
+                             "dashcard with its dashcard_id.")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
@@ -1504,7 +1521,8 @@
        :collection_path (collection-path (:collection_id updated))
        :description     (:description updated)
        :archived        (boolean (:archived updated))
-       :dashcard_ids    (mapv :id (t2/select :model/DashboardCard :dashboard_id id))})))
+       :dashcard_ids    (mapv :id (t2/select :model/DashboardCard :dashboard_id id
+                                             {:order-by [[:row :asc] [:col :asc]]}))})))
 
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 

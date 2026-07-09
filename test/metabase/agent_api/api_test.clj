@@ -1426,7 +1426,59 @@
                             {:dashcards [{:action "add_text"}]})
       (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add_heading" :text ""}]})
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+  (testing "add_heading rejects display_size instead of silently ignoring it (headings are always full-width)"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Heading Size Validation"}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text "KPIs" :display_size "wide"}]})
       (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id))))))
+
+(deftest update-dashboard-dashcards-add-then-move-top-test
+  (testing "A card added earlier in the batch reflows when a later move-to-top shifts the tab"
+    ;; Regression: :placed used to record the just-inserted dashcard without its :id, so the
+    ;; move-to-top shift ran `(t2/update! :model/DashboardCard nil ...)` — a silent no-op — and the
+    ;; new card ended up overlapping the moved one.
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Add Then Move Top"}
+                   :model/Card          {card-id :id} {:name "existing" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 12 :size_x 12 :size_y 5}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_text" :text "note"}
+                                         {:action "move" :dashcard_id dc-id :position "top"}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id)
+            moved     (first (filter (comp #{dc-id} :id) dashcards))
+            text-card (first (remove (comp #{dc-id} :id) dashcards))]
+        (is (= [0 0] ((juxt :row :col) moved)))
+        (is (>= (:row text-card) (+ (:row moved) (:size_y moved)))
+            "the just-added text card must sit below the moved card, not overlap it")))))
+
+(deftest update-dashboard-dashcards-add-on-tabbed-dashboard-test
+  (testing "New headings/text cards land on the dashboard's first tab and only collide with its cards"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Tabbed Target"}
+                   :model/DashboardTab  {tab1-id :id} {:dashboard_id dash-id :name "One" :position 0}
+                   :model/DashboardTab  {tab2-id :id} {:dashboard_id dash-id :name "Two" :position 1}
+                   :model/Card          {card-id :id} {:name "on tab two" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard _             {:dashboard_id dash-id :dashboard_tab_id tab2-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 24 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text "Tab one section"}]})
+      (is (=? {:dashboard_tab_id tab1-id
+               ;; the full-width card on tab 2 must not block row 0 of tab 1
+               :row              0}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil))))))
+
+(deftest update-dashboard-dashcard-ids-row-col-order-test
+  (testing "Response dashcard_ids come back in row/col order, not insertion order"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Ordered Ids"}
+                   :model/Card          {card-id :id} {:name "c" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {a-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 12 :size_y 4}
+                   :model/DashboardCard {b-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 4 :col 0 :size_x 12 :size_y 4}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "move" :dashcard_id b-dc :position "top"}]})]
+        (is (= [b-dc a-dc] (:dashcard_ids resp))
+            "after moving b to the top it should be listed first")))))
 
 (deftest update-dashboard-dashcards-remove-virtual-card-test
   (testing "A text card can be removed by dashcard_id like any other dashcard"

@@ -569,6 +569,16 @@
       {:structured-output (assoc dashboard :result-type :entity)}
       {:status-code 404 :output (:output result)})))
 
+(defn- present-virtual-dashcard
+  "Virtual dashcards (headings, text cards, links, ...) have no backing Card, so they carry their
+   `dashcard_id` — the handle `update_dashboard` remove/move mutations take. The card's text (when
+   it has any) renders as the item body via `:description`."
+  [{:keys [id visualization_settings]}]
+  (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
+    {:type        (str "virtual_" (or display "dashcard"))
+     :dashcard_id id
+     :description (:text visualization_settings)}))
+
 (defn- fetch-dashboard-items [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
@@ -583,8 +593,14 @@
                                                                     [:= :dc.dashboard_id dashboard-id]]}]]
                                       :order-by [[:%lower.name :asc]]})
                           (filter mi/can-read?)
-                          (mapv present-card))]
-    (list-result :dashboard-items cards query-params)))
+                          (mapv present-card))
+        virtual      (->> (t2/select [:model/DashboardCard :id :row :col :visualization_settings]
+                                     :dashboard_id dashboard-id
+                                     :card_id nil
+                                     {:order-by [[:row :asc] [:col :asc]]})
+                          (filter (comp :virtual_card :visualization_settings))
+                          (mapv present-virtual-dashcard))]
+    (list-result :dashboard-items (into cards virtual) query-params)))
 
 ;; ----- Dispatch -----
 

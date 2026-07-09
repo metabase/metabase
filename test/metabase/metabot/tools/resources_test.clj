@@ -662,6 +662,21 @@
           (is (str/includes? output "Dash card"))
           (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
 
+(deftest read-dashboard-items-includes-virtual-dashcards-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
+                                                     :card_id nil
+                                                     :row 0 :col 0 :size_x 24 :size_y 1
+                                                     :visualization_settings
+                                                     {:virtual_card {:display "heading"}
+                                                      :text         "Revenue Section"}}]
+      (testing "virtual (heading/text) dashcards are listed with the dashcard_id that remove/move mutations take"
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+          (is (str/includes? output "virtual_heading"))
+          (is (str/includes? output "Revenue Section"))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
+
 (deftest read-user-recents-test
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "metabase://user/recent-items returns a list shape (possibly empty)"
