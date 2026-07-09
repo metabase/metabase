@@ -86,18 +86,18 @@
   loaded the bundle. The process's stderr is inherited (for debugging); stdout carries the line protocol."
   ^NodeProcess []
   (common/assert-tests-not-initializing!)
-  (let [cli     (.getAbsolutePath (io/file (working-dir) "app-static-viz-cli.js"))
-        process (try
-                  (.. (ProcessBuilder. (into-array String ["node" cli]))
-                      (redirectError ProcessBuilder$Redirect/INHERIT)
-                      (start))
-                  (catch IOException e
-                    (throw (ex-info (str "could not start `node` for static-viz rendering — is node installed"
-                                         " and on PATH? (otherwise set static-viz-mode to graalvm)")
-                                    {} e))))
-        writer  (BufferedWriter. (OutputStreamWriter. (.getOutputStream process) StandardCharsets/UTF_8))
-        reader  (BufferedReader. (InputStreamReader. (.getInputStream process) StandardCharsets/UTF_8))
-        ready   (read-response-line reader process)]
+  (let [cli              (.getAbsolutePath (io/file (working-dir) "app-static-viz-cli.js"))
+        ^Process process (try
+                           (.. (ProcessBuilder. ^"[Ljava.lang.String;" (into-array String ["node" cli]))
+                               (redirectError ProcessBuilder$Redirect/INHERIT)
+                               (start))
+                           (catch IOException e
+                             (throw (ex-info (str "could not start `node` for static-viz rendering — is node installed"
+                                                  " and on PATH? (otherwise set static-viz-mode to graalvm)")
+                                             {} e))))
+        writer           (BufferedWriter. (OutputStreamWriter. (.getOutputStream process) StandardCharsets/UTF_8))
+        reader           (BufferedReader. (InputStreamReader. (.getInputStream process) StandardCharsets/UTF_8))
+        ready            (read-response-line reader process)]
     (when-not (some-> ready json/decode+kw :ready)
       (.destroy process)
       (throw (ex-info "static-viz node process failed to start" {:line ready})))
