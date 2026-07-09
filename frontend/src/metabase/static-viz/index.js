@@ -15,6 +15,7 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import {
   createDataSource,
   getVisualizationColumns,
@@ -150,5 +151,54 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
       renderingContext={renderingContext}
       hasDevWatermark={hasDevWatermark}
     />,
+  );
+}
+
+export function renderChart(input) {
+  let content;
+  switch (input.kind) {
+    case "funnel":
+      content = LegacyRenderChart("funnel", {
+        data: input.data,
+        settings: input.settings,
+        tokenFeatures: input.tokenFeatures,
+      });
+      break;
+    case "gauge":
+      content = LegacyRenderChart("gauge", {
+        card: input.card,
+        data: input.data,
+        tokenFeatures: input.tokenFeatures,
+      });
+      break;
+    default:
+      content = RenderChart(
+        input.rawSeries,
+        input.dashcardSettings,
+        input.options,
+      );
+  }
+  return { type: content.startsWith("<svg") ? "svg" : "html", content };
+}
+
+function buildCellBackgroundGetter(...args) {
+  try {
+    return makeCellBackgroundGetter(...args);
+  } catch (e) {
+    console.error("Error building cell background getter", e);
+    return () => null;
+  }
+}
+
+export function getCellBackgroundColors({ rows, cols, settings, cells }) {
+  const getter = buildCellBackgroundGetter(
+    rows,
+    cols,
+    settings?.["table.column_formatting"] ?? [],
+    Boolean(settings?.["table.pivot"]),
+  );
+  return cells.map(
+    ([value, rowIndex, columnName]) =>
+      getter(value, rowIndex, columnName) ?? null,
   );
 }
