@@ -3,6 +3,7 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import {
+  canAccessAlertsManagement,
   canAccessMonitor,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
@@ -159,6 +160,15 @@ const UserCanAccessMonitoringTools = connectedReduxRedirect<Props, State>({
   context: metabaseReduxContext,
 });
 
+const UserCanAccessAlertsManagement = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessAlertsManagement",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) => canAccessAlertsManagement(state),
+  redirectAction: routerActions.replace,
+  context: metabaseReduxContext,
+});
+
 const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessTransforms",
   redirectPath: "/unauthorized",
@@ -203,6 +213,10 @@ export const CanAccessMonitorDiagnostics = UserCanAccessMonitorDiagnostics(
 );
 
 export const CanAccessMonitoringTools = UserCanAccessMonitoringTools(
+  ({ children }) => children,
+);
+
+export const CanAccessAlertsManagement = UserCanAccessAlertsManagement(
   ({ children }) => children,
 );
 

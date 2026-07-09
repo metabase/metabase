@@ -23,6 +23,13 @@ export function canAccessMonitoringTools(state: State) {
   );
 }
 
+export function canAccessAlertsManagement(state: State) {
+  if (getIsEmbeddingIframe(state)) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}
+
 export function canAccessMonitor(state: State) {
   return canAccessMonitorDiagnostics(state) || canAccessMonitoringTools(state);
 }
