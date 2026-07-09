@@ -31,15 +31,23 @@ render via a pool.
 ## Building
 
 ```
-./build.sh
+./build.sh          # current platform
+./build.sh --all    # every supported platform, from one machine
 ```
 
-Fetches QuickJS-ng at the pinned tag, links it statically, runs `smoke_test.c`
-against the result, and installs the library to
+Fetches QuickJS-ng at the pinned tag, compiles it in directly, runs
+`smoke_test.c` against the result, and installs the library to
 `resources/static-viz-quickjs/<os>-<arch>/libstaticviz.{dylib,so}`, where
-`metabase.channel.render.js.quickjs` finds it on the classpath. The backend
-selects the renderer via `MB_STATIC_VIZ_RENDERER=quickjs` (default `graal`);
-`MB_STATIC_VIZ_LIBRARY_PATH` overrides the classpath lookup.
+`metabase.channel.render.js.quickjs` finds it on the classpath. QuickJS is
+the default renderer wherever a library build exists;
+`MB_STATIC_VIZ_RENDERER=graal` selects GraalVM, which is also the fallback
+without one. `MB_STATIC_VIZ_LIBRARY_PATH` overrides the classpath lookup.
+
+`--all` (macOS host) cross-compiles both Mac architectures with Apple clang
+and both Linux architectures with `zig cc` against glibc 2.17, so a jar
+built on one machine carries a working library for every supported platform.
+The smoke test executes against the host-platform library — the host can't
+run the others; CI's native runners execution-test those.
 
 The engine requires no Intl support: the bundle carries spec-compliant
 `@formatjs` polyfills (see `frontend/src/metabase/static-viz/polyfill.ts`)
