@@ -27,7 +27,7 @@ const defaultErrorPayload: ErrorPayload = {
       process_uuid: "123",
       fqns: "metabase.query-processor.middleware.catch-exceptions",
       msg: "Backend error 1",
-      exception: "Backend error 1 stacktrace",
+      exception: ["Backend error 1 stacktrace"],
     },
   ],
   userLogs: [
@@ -37,7 +37,7 @@ const defaultErrorPayload: ErrorPayload = {
       process_uuid: "123",
       fqns: "metabase.query-processor.middleware.catch-exceptions",
       msg: "Backend error 1",
-      exception: "Backend error 1 stacktrace",
+      exception: ["Backend error 1 stacktrace"],
     },
   ],
   logs: [
@@ -47,7 +47,7 @@ const defaultErrorPayload: ErrorPayload = {
       process_uuid: "123",
       fqns: "metabase.query-processor.middleware.catch-exceptions",
       msg: "Backend error 1",
-      exception: "Backend error 1 stacktrace",
+      exception: ["Backend error 1 stacktrace"],
     },
   ],
   entityName: "question",

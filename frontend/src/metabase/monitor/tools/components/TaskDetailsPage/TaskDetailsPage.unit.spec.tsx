@@ -138,4 +138,13 @@ describe("TaskDetailsPage", () => {
     await userEvent.click(endedAtCopyIcon);
     expect(copyMock).toHaveBeenCalledWith(endedAt);
   });
+
+  it("shows a placeholder when the task has no captured logs", async () => {
+    setup({ task: createMockTask({ logs: null }) });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByText("There are no captured logs")).toBeInTheDocument();
+    expect(screen.queryByTestId("task-logs")).not.toBeInTheDocument();
+  });
 });
