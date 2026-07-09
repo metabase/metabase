@@ -59,7 +59,7 @@
         nil))))
 
 (defn- check-engine-serves!
-  "400 when an explicitly requested engine cannot serve searches, saying why.
+  "400 when an explicitly requested engine cannot serve searches, naming the cause.
   Only for explicit requests; cookie-carried engines degrade to the default instead, as they can go stale."
   [value]
   (let [engine (keyword "search.engine" value)]

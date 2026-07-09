@@ -18,6 +18,10 @@
   {:arglists '([engine])}
   identity)
 
+(defmethod supported-engine? :default [engine]
+  (throw (ex-info (format "Unknown search engine: %s" engine)
+                  {:engine engine})))
+
 (defmulti dependencies
   "Engines whose indexes this engine needs in order to serve queries.
   Semantic, for example, mixes appdb results into its own and falls back to appdb when its index is unavailable."
@@ -25,10 +29,6 @@
   identity)
 
 (defmethod dependencies :default [_] nil)
-
-(defmethod supported-engine? :default [engine]
-  (throw (ex-info (format "Unknown search engine: %s" engine)
-                  {:engine engine})))
 
 (defmulti results
   "Return a reducible of the search result matching a given query."
@@ -110,7 +110,7 @@
   (keys (dissoc (methods supported-engine?) :default)))
 
 (defn known-engine?
-  "Is the given engine recognized?"
+  "Is the engine, or an engine it derives from, registered?"
   [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
     (boolean (some registered? (cons engine (ancestors engine))))))
@@ -145,9 +145,8 @@
   []
   (let [potential-engines (cond->> default-engine-precedence
                             (configured-engine) (cons (configured-engine)))]
-    ;; The known-engine? filter covers reads before the engine implementations are loaded, e.g. the
-    ;; search-engine setting getter running during startup: resolution degrades to nil instead of the
-    ;; supported-engine? :default method throwing.
+    ;; known-engine? first: before the engine implementations load (e.g. the search-engine setting getter
+    ;; running during startup) the precedence entries are unregistered, and supported-engine? would throw.
     (distinct (filter supported-engine? (filter known-engine? potential-engines)))))
 
 (defn- additional-engines
@@ -164,7 +163,8 @@
   (fn [search-engine _terms] search-engine))
 
 (defn default-engine
-  "In the absence of an explicit engine argument in a request, which engine should be used?"
+  "The engine that serves requests with no explicit engine argument.
+  The configured override when supported, otherwise the first supported engine in the precedence."
   []
   (let [configured (configured-engine)
         default    (first (supported-engines))]
@@ -181,7 +181,7 @@
 
 (defn active-engines
   "The engines for which we maintain an index, default engine first.
-  Comprises the default engine, its [[dependencies]], and the [[settings/additional-search-engines]].
+  The default engine and any [[settings/additional-search-engines]], plus their [[dependencies]].
   Excludes :search.engine/in-place, which does not use an index."
   []
   (->> (concat [(default-engine)] (additional-engines))

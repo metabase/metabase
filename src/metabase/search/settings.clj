@@ -14,8 +14,8 @@
   :audit      :getter)
 
 (defn configured-search-engine
-  "The raw value of the [[search-engine]] setting: the operator's override, or nil when unset.
-  [[search-engine]] itself resolves a default; use this to distinguish an explicit override."
+  "The operator's engine override, or nil when unset.
+  [[search-engine]] resolves a default when unset; use this to see what was explicitly configured."
   []
   (setting/get-value-of-type :keyword :search-engine))
 
