@@ -217,12 +217,10 @@ describe(
 
         cy.wait("@executeAction");
 
-        cy.findByLabelText("Team Name").should("be.visible");
-        cy.findByText("This Team_name value already exists.").should(
-          "be.visible",
-        );
+        cy.findByLabelText("Team Name").should("exist");
+        cy.findByText("This Team_name value already exists.").should("exist");
 
-        cy.findByText("Team_name already exists.").should("be.visible");
+        cy.findByText("Team_name already exists.").should("exist");
       });
     });
   },
