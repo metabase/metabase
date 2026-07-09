@@ -725,6 +725,41 @@
            "none"                         "SET SESSION AUTHORIZATION none;"
            "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))
 
+(deftest ^:synchronized assert-can-grant-usage!-test
+  (testing "throws 412 with copy-pasteable SQL when admin lacks USAGE WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (cond
+                                 (str/includes? sql "has_schema_privilege")
+                                 [{:can_grant false :current_user_name "stats_admin"}]
+                                 (str/includes? sql "nspowner")
+                                 [{:owner "mbplayground"}]
+                                 (str/includes? sql "SELECT 1 FROM pg_namespace")
+                                 [{:1 1}]))]
+      (try
+        (redshift/assert-can-grant-usage! ::stub-conn "dbt_models")
+        (is false "expected assert-can-grant-usage! to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= "dbt_models" (:schema (ex-data e))))
+          (is (= "mbplayground" (:owner (ex-data e))))
+          (is (= "stats_admin" (:admin-user (ex-data e))))
+          (is (str/includes? (ex-message e) "GRANT USAGE ON SCHEMA \"dbt_models\" TO stats_admin WITH GRANT OPTION"))
+          (is (str/includes? (ex-message e) "owned by mbplayground"))))))
+  (testing "no-op when admin holds USAGE WITH GRANT OPTION"
+    (with-redefs [jdbc/query (fn [_conn _sql]
+                               [{:can_grant true :current_user_name "stats_admin"}])]
+      (is (nil? (redshift/assert-can-grant-usage! ::stub-conn "dbt_models")))))
+  (testing "throws schema-missing 412 when schema does not exist"
+    (with-redefs [jdbc/query (fn [_conn [sql & _params]]
+                               (when (str/includes? sql "SELECT 1 FROM pg_namespace")
+                                 []))]
+      (try
+        (redshift/assert-can-grant-usage! ::stub-conn "ghost_schema")
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= :schema-missing (:cause-type (ex-data e))))
+          (is (str/includes? (ex-message e) "Schema \"ghost_schema\" not found")))))))
 ;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
 
 (defn- try-execute!

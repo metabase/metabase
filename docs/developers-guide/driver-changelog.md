@@ -133,10 +133,11 @@ title: Driver interface changelog
 - Added `metabase.driver/llm-sql-dialect-resource` multimethod. Returns the resource path for dialect-specific LLM prompt instructions, or nil if no dialect-specific instructions exist for this driver.
 
 - Added workspace isolation multimethods for the enterprise workspaces feature:
-  - `init-workspace-isolation!`    - Create an isolated schema or database with user credentials for workspace usage.
-  - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation.
-  - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user.
-  - `check-isolation-permissions`  - Test whether the database connection has sufficient permissions.
+  - `init-workspace-isolation!`        - Create an isolated schema or database with user credentials for workspace usage.
+  - `destroy-workspace-isolation!`     - Destroy all database resources created for workspace isolation.
+  - `grant-workspace-read-access!`     - Grant read access on specified tables to a workspace's isolated user.
+  - `check-isolation-permissions`      - Test whether the database connection has sufficient permissions.
+  - `check-can-grant-workspace-access!` - Pre-flight check that the admin connection can pass on the access required by `grant-workspace-read-access!`. Default impl is a no-op; drivers opt in to throw a 412 with a copy-pasteable remediation message when grant authority is missing.
 
 - Added support for escaping `LIKE` metacharacters to `:sql` driver's handling of `LIKE` clauses, which are used to
   implement the `:starts-with`, `:ends-with` and `:contains` filters. The default implementation uses backslashes to

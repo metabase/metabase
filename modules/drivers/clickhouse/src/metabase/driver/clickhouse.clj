@@ -441,6 +441,49 @@
     {:schema           db-name
      :database_details read-user}))
 
+(defn- clickhouse-can-grant-select?
+  "Does the current ClickHouse user hold `SELECT WITH GRANT OPTION` on
+   `db-name`? ClickHouse exposes grants via the `system.grants` system table;
+   `grant_option = 1` means the grant is redelegatable. Direct grants have
+   `user_name` set; grants carried by roles have `role_name` set instead, so
+   we also match rows for the user's active roles (`enabledRoles()` covers
+   transitively inherited roles). Wildcards (database NULL = '*') also confer
+   redelegation."
+  [conn db-name]
+  (boolean
+   (seq (jdbc/query conn
+                    [(str "SELECT 1 FROM system.grants "
+                          "WHERE (user_name = currentUser() OR has(enabledRoles(), role_name)) "
+                          "  AND access_type = 'SELECT' "
+                          "  AND grant_option = 1 "
+                          "  AND (database = ? OR database IS NULL)")
+                     db-name]))))
+
+(defn assert-can-grant-select!
+  "Throws when the current ClickHouse user cannot grant SELECT on `db-name`."
+  [conn db-name]
+  (when-not (clickhouse-can-grant-select? conn db-name)
+    (let [current-user (-> (jdbc/query conn ["SELECT currentUser() AS u"]) first :u)]
+      (throw (ex-info (format (str "Workspace admin %s cannot grant SELECT on database `%s`. "
+                                   "ClickHouse requires the granting user to hold SELECT WITH "
+                                   "GRANT OPTION on the database. Run as an admin user:\n\n"
+                                   "    GRANT SELECT ON `%s`.* TO %s WITH GRANT OPTION;\n\n"
+                                   "then retry workspace provisioning.")
+                              current-user db-name
+                              db-name current-user)
+                      {:status-code 412
+                       :schema      db-name
+                       :admin-user  current-user})))))
+
+(defmethod driver/check-can-grant-workspace-access! :clickhouse
+  [_driver database schemas]
+  (jdbc/with-db-transaction [check-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [schema (set schemas)]
+      (when (str/blank? schema)
+        (throw (ex-info (tru "ClickHouse workspace input schema is blank")
+                        {:status-code 412 :database-id (:id database) :step :grant})))
+      (assert-can-grant-select! check-conn schema))))
+
 (defmethod driver/grant-workspace-read-access! :clickhouse
   [_driver database workspace schemas]
   (let [read-user-name (-> workspace :database_details :user)
@@ -454,7 +497,7 @@
     (let [sqls (for [schema schemas
                      :let [_ (when (str/blank? schema)
                                (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
-                                               {:database-id (:id database) :step :grant})))]]
+                                               {:status-code 412 :database-id (:id database) :step :grant})))]]
                  (format "GRANT SELECT ON %s.* TO %s"
                          (quote-schema schema)
                          quoted-user))]

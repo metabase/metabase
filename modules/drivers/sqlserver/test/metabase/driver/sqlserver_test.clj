@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
@@ -982,3 +983,44 @@
                    (lib/expression "diff-minutes" diff-minutes)
                    (qp/process-query)
                    (mt/rows))))))))
+
+(defn- sqlserver-stub-query
+  "Build a `jdbc/query` stub for the probe. `:exists?` controls the
+   `sys.schemas` short-circuit; `:can-grant` controls the implicit-OR result;
+   `:current-user` is returned for `SELECT CURRENT_USER`."
+  [{:keys [exists? can-grant current-user]
+    :or   {exists?      true
+           can-grant    false
+           current-user "stats_admin"}}]
+  (fn [_conn query]
+    (let [sql (if (sequential? query) (first query) query)]
+      (cond
+        (str/includes? sql "sys.schemas WHERE name") (if exists? [{:1 1}] [])
+        (str/includes? sql "CASE WHEN")              [{:can_grant (if can-grant 1 0)}]
+        (str/includes? sql "CURRENT_USER")           [{:u current-user}]))))
+
+(deftest ^:synchronized assert-can-grant-select-on-schema!-test
+  (testing "throws 412 with copy-pasteable SQL when principal lacks every grant path"
+    (with-redefs [jdbc/query (sqlserver-stub-query {:can-grant false})]
+      (try
+        (sqlserver/assert-can-grant-select-on-schema! ::stub-conn "dbt_models")
+        (is false "expected assert-can-grant-select-on-schema! to throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= "dbt_models" (:schema (ex-data e))))
+          (is (= "stats_admin" (:admin-user (ex-data e))))
+          (is (str/includes? (ex-message e) "GRANT SELECT ON SCHEMA::[dbt_models] TO [stats_admin] WITH GRANT OPTION"))))))
+  (testing "no-op when principal has any grant path (sysadmin / db_owner / owner / explicit / CONTROL)"
+    ;; Single probe collapses every implicit + explicit path into one CASE WHEN
+    ;; result, so a single `:can-grant true` stub covers all positive cases.
+    (with-redefs [jdbc/query (sqlserver-stub-query {:can-grant true})]
+      (is (nil? (sqlserver/assert-can-grant-select-on-schema! ::stub-conn "dbt_models")))))
+  (testing "throws schema-missing 412 when schema does not exist"
+    (with-redefs [jdbc/query (sqlserver-stub-query {:exists? false})]
+      (try
+        (sqlserver/assert-can-grant-select-on-schema! ::stub-conn "ghost_schema")
+        (is false "expected schema-missing throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= :schema-missing (:cause-type (ex-data e))))
+          (is (str/includes? (ex-message e) "cannot find schema [ghost_schema]")))))))

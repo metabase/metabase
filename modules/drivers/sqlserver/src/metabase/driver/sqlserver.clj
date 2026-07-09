@@ -1225,6 +1225,90 @@
                          escaped-username quoted-user)]]
       (jdbc/execute! conn-spec [sql]))))
 
+(defn- sqlserver-schema-exists?
+  [conn-spec schema-name]
+  (boolean
+   (seq (jdbc/query conn-spec ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name]))))
+
+(defn- sqlserver-can-grant-select-on-schema?
+  "Does the current SQL Server principal have authority to issue
+   `GRANT SELECT ON SCHEMA::[<name>]`? Accepts any of:
+
+   - sysadmin server role (Azure SQL DB has no sysadmin -> returns 0 here,
+     fine because db_owner/CONTROL DATABASE covers Azure)
+   - db_owner or db_securityadmin db role membership
+   - schema ownership (`sys.schemas.principal_id = DATABASE_PRINCIPAL_ID()`)
+   - explicit `SELECT WITH GRANT OPTION` on the schema (directly or via a
+     database role), read from `sys.database_permissions` `state = 'W'` —
+     `HAS_PERMS_BY_NAME` cannot check grant option (its 4th argument is a
+     sub-securable name, not a modifier)
+   - `CONTROL` on the schema (implies grant authority on contained securables)
+
+   `sys.database_permissions` only holds *explicit* entries, so the implicit
+   cases above need their own OR-chain — without them, sysadmins and schema
+   owners get a false 412."
+  [conn-spec schema-name]
+  (-> (jdbc/query conn-spec
+                  ["SELECT CASE WHEN
+                         IS_SRVROLEMEMBER('sysadmin') = 1
+                      OR IS_MEMBER('db_owner') = 1
+                      OR IS_MEMBER('db_securityadmin') = 1
+                      OR EXISTS (SELECT 1 FROM sys.schemas
+                                  WHERE name = ? AND principal_id = DATABASE_PRINCIPAL_ID())
+                      OR EXISTS (SELECT 1 FROM sys.database_permissions p
+                                  WHERE p.class = 3
+                                    AND p.major_id = SCHEMA_ID(?)
+                                    AND p.permission_name = 'SELECT'
+                                    AND p.state = 'W'
+                                    AND (p.grantee_principal_id = DATABASE_PRINCIPAL_ID()
+                                         OR IS_MEMBER(USER_NAME(p.grantee_principal_id)) = 1))
+                      OR HAS_PERMS_BY_NAME(QUOTENAME(?), 'SCHEMA', 'CONTROL') = 1
+                    THEN 1 ELSE 0 END AS can_grant"
+                   schema-name schema-name schema-name])
+      first
+      :can_grant
+      (= 1)))
+
+(defn assert-can-grant-select-on-schema!
+  "Throws when the current admin principal cannot grant SELECT on `schema-name`.
+   Distinguishes a missing schema from a missing privilege so the operator
+   can fix the right thing — `HAS_PERMS_BY_NAME` returns NULL (not 0) for
+   non-existent schemas, which would surface as the generic 412 otherwise."
+  [conn-spec schema-name]
+  (let [current-user (-> (jdbc/query conn-spec ["SELECT CURRENT_USER AS u"]) first :u)]
+    (cond
+      (not (sqlserver-schema-exists? conn-spec schema-name))
+      (throw (ex-info (format (str "Workspace admin %s cannot find schema [%s] in the current database. "
+                                   "Confirm the schema name and that it exists, then retry workspace provisioning.")
+                              current-user schema-name)
+                      {:status-code 412
+                       :schema      schema-name
+                       :admin-user  current-user
+                       :cause-type  :schema-missing}))
+
+      (not (sqlserver-can-grant-select-on-schema? conn-spec schema-name))
+      (throw (ex-info (format (str "Workspace admin %s cannot grant SELECT on schema [%s]. "
+                                   "SQL Server requires the granting principal to hold SELECT "
+                                   "WITH GRANT OPTION on the schema, or be a sysadmin / db_owner / "
+                                   "db_securityadmin, or own the schema. Run as a member of "
+                                   "db_owner / sysadmin or as the schema owner:\n\n"
+                                   "    GRANT SELECT ON SCHEMA::[%s] TO [%s] WITH GRANT OPTION;\n\n"
+                                   "then retry workspace provisioning.")
+                              current-user schema-name
+                              schema-name current-user)
+                      {:status-code 412
+                       :schema      schema-name
+                       :admin-user  current-user})))))
+
+(defmethod driver/check-can-grant-workspace-access! :sqlserver
+  [_driver database schemas]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (doseq [schema (set schemas)]
+      (when (str/blank? schema)
+        (throw (ex-info (tru "SQL Server workspace input schema is blank")
+                        {:database-id (:id database) :step :grant})))
+      (assert-can-grant-select-on-schema! conn-spec schema))))
+
 (defmethod driver/grant-workspace-read-access! :sqlserver
   [_driver database workspace schemas]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))

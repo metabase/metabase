@@ -1927,6 +1927,31 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti check-can-grant-workspace-access!
+  "Pre-flight: verify the current admin connection can pass on the access
+   required by [[grant-workspace-read-access!]] for each schema in `schemas`
+   against `database`. Throw `ex-info` with `:status-code 412` and a
+   copy-pasteable remediation SQL message when not. Return nil otherwise.
+
+   Default impl is a no-op (drivers that have not implemented this check skip
+   pre-flight). Drivers that implement this should:
+   - Probe each input schema individually so the error names the specific
+     schema(s) blocking provisioning.
+   - Include the schema owner / grantor information when the driver exposes it.
+   - Return SQL the operator can copy-paste verbatim.
+
+   Called from
+   [[metabase-enterprise.workspaces.provisioning/dispatching-provisioner]]
+   before [[grant-workspace-read-access!]]. Runs inside the admin-connection
+   scope, so `current_user`/`CURRENT_ROLE()`/etc reflect the admin overlay."
+  {:added "0.59.0" :arglists '([driver database schemas])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod check-can-grant-workspace-access! :default
+  [_driver _database _schemas]
+  nil)
+
 (defmulti check-isolation-permissions
   "Check if database connection has sufficient permissions for workspace isolation.
 
