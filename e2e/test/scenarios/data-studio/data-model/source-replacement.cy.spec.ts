@@ -407,6 +407,14 @@ describe(
         createTestTables();
         createSourceQuestion("Graph question").as("question");
 
+        // Creating the question marks its dependencies stale and triggers an
+        // async backfill job (metabase-enterprise.dependencies.events); the
+        // source-table → question edge is not queryable until that job runs.
+        // The replacement modal reads dependents once on open and caches the
+        // result, so without this wait the "N items will be changed" tab never
+        // renders and the modal shows "Nothing uses this data source".
+        H.waitForBackfillComplete();
+
         getTableId(SOURCE_TABLE).then((sourceTableId) => {
           cy.visit(`/data-studio/dependencies?id=${sourceTableId}&type=table`);
         });
