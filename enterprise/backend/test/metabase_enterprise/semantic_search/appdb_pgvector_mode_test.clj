@@ -2,10 +2,11 @@
   "End-to-end round trip for pgvector-on-the-app-db mode: no MB_PGVECTOR_DB_URL, semantic search runs
   against the application database inside the semantic_search schema, sharing the app-db pool.
 
-  Self-gated: requires a Postgres app db where the vector extension is available (CI provides one via the
-  pgvector/pgvector image on the app-db-mode job; everywhere else the round-trip test no-ops). Deliberately
-  does NOT use test-util's once-fixture — that fixture gates on the dedicated-harness MB_PGVECTOR_DB_URL,
-  which is exactly what this test runs without."
+  Opt-in and self-gated: the destructive round trip (installs the vector extension, drops the
+  semantic_search schema on cleanup) only runs with MB_APPDB_PGVECTOR_MODE_TEST=true — set by the
+  appdb-mode CI job, whose pgvector/pgvector app-db image it then REQUIRES (skips fail loudly there).
+  Deliberately does NOT use test-util's once-fixture — that fixture gates on the dedicated-harness
+  MB_PGVECTOR_DB_URL, which is exactly what this test runs without."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -48,25 +49,28 @@
        (map :tablename)
        set))
 
-(defn- expected-to-run?
-  "True on the CI job dedicated to app-db mode (MB_APPDB_PGVECTOR_MODE_TEST=true), where skipping the
-  round trip would mean the job is misconfigured and silently verifying nothing."
+(defn- opted-in?
+  "True when MB_APPDB_PGVECTOR_MODE_TEST=true: the appdb-mode CI job (or a developer deliberately opting
+  in). The round trip installs the vector extension and drops the semantic_search schema on cleanup, so it
+  never runs implicitly against whatever Postgres app db happens to be around."
   []
   (Boolean/parseBoolean (System/getenv "MB_APPDB_PGVECTOR_MODE_TEST")))
 
 (deftest ^:synchronized appdb-pgvector-round-trip-test
   (cond
-    (not (appdb-can-host-pgvector?))
-    (testing "app db can't host pgvector here — nothing to verify"
-      (is (not (expected-to-run?))
-          "the appdb-mode CI job expects a pgvector-capable app db; its service must be misconfigured"))
+    (not (opted-in?))
+    (testing "destructive round trip requires the MB_APPDB_PGVECTOR_MODE_TEST opt-in — skipping"
+      (is true))
 
-    ;; the app db already carries live semantic-search state (a real app-db-mode deployment, e.g. a dev
-    ;; instance) — this test's cleanup drops the schema, so refuse rather than clobber it
+    (not (appdb-can-host-pgvector?))
+    (testing "opted in, but the app db can't host pgvector — the CI service must be misconfigured"
+      (is false "the appdb-mode job expects a pgvector-capable Postgres app db"))
+
+    ;; the app db already carries semantic-search state (a real app-db-mode deployment) — this test's
+    ;; cleanup drops the schema, so refuse rather than clobber it
     (seq (tables-in-schema (mdb/data-source) "semantic_search"))
-    (testing "pre-existing semantic_search schema with tables — refusing to run destructively against it"
-      (is (not (expected-to-run?))
-          "the appdb-mode CI job should start from a fresh app db with no semantic_search tables"))
+    (testing "opted in, but a semantic_search schema with tables already exists — refusing to clobber it"
+      (is false "the appdb-mode job should start from a fresh app db with no semantic_search tables"))
 
     :else
     (mt/with-premium-features #{:semantic-search}

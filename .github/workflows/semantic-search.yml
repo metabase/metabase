@@ -330,8 +330,8 @@ jobs:
       MB_DB_HOST: localhost
       MB_DB_DBNAME: mb_test
       MB_DB_USER: mb_test
-      # makes the appdb-pgvector-mode round trip FAIL (not silently skip) if this job's app db
-      # can't actually host pgvector
+      # opts this job into the destructive appdb-pgvector-mode round trip, which then FAILS (rather
+      # than silently skipping) if the app db can't actually host pgvector
       MB_APPDB_PGVECTOR_MODE_TEST: 'true'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
