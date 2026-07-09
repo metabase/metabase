@@ -141,6 +141,93 @@
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
+(defn- strip-lib-uuids
+  "Recursively drop volatile `\"lib/uuid\"` keys from a portable clause so the LLM copies a clean,
+  re-pasteable join; the repair pass regenerates fresh uuids at resolve time."
+  [x]
+  (cond
+    (map? x)        (into {} (keep (fn [[k v]] (when-not (= k "lib/uuid") [k (strip-lib-uuids v)]))) x)
+    (sequential? x) (mapv strip-lib-uuids x)
+    :else           x))
+
+(defn- clause-field-ids
+  "Set of numeric field ids referenced by any `[:field opts id]` clause anywhere inside `x` (e.g. a
+  join's `:conditions`). Used to drop the join-key columns from the surfaced dimension list."
+  [x]
+  (into #{}
+        (comp (filter #(and (vector? %) (= :field (first %)) (int? (nth % 2 nil))))
+              (map #(nth % 2)))
+        (tree-seq coll? seq x)))
+
+(defn- metric-join-required-dimensions
+  "Dimensions a metric reaches through an EXPLICIT join with no database foreign key.
+
+  A metric's `queryable-dimensions` are computed from a *consumer-framed* query (`source-table` +
+  `[:metric …]`), so `filterable-columns` only surfaces the base table and FK-reachable tables — the
+  metric's FK-less join dimensions are silently dropped. But the metric's *definition* joins that
+  table, so a consumer query that re-adds the same join can group/filter by them. Left unsurfaced,
+  the LLM guesses at those columns and dead-ends on `:no-fk-path` (BOT-1612).
+
+  We surface them here, grouped per join. Each entry carries the portable join clause to paste into
+  `joins:` AND, per dimension, a `:reference` — the alias-qualified field clause
+  (`[\"field\" {\"join-alias\" …} [db schema table field]]`) the LLM must reference the column by.
+  The bare portable FK does NOT resolve for these columns (there is no FK path — that is the whole
+  premise), so only the alias-qualified clause is pasteable. Detection is cheap — the definition
+  query's joins are already in hand; a `:fk-field-id` of nil marks an explicit, non-FK join. Returns
+  nil when the metric has no such joins (the common case).
+
+  Fail closed: a join is surfaced only when BOTH its portable clause exported and it targets a real
+  table. These dimensions are unreachable without the join by definition, so an entry lacking the
+  clause has zero value — and instructing the LLM to paste a nil/`null` join would be strictly worse
+  than the `:no-fk-path` dead-end this feature replaces. A `:source-card`-based join (nil
+  `source-table`) is likewise dropped rather than mislabeled with a nil table name.
+
+  The join-key columns (fields referenced in the join `:conditions`) are excluded — the target-side
+  key equals a base-table column and is redundant groupable noise. A metric that self-joins one
+  table under two aliases yields two entries with the same columns but DIFFERENT `:join_alias`, and
+  therefore distinct (correct) references — one per alias — which is the intended behavior.
+
+  `base-reachable-ids` is the id set of the consumer-framed `filterable-columns` (already computed by
+  the caller); columns in it are reachable without the join and are not re-surfaced here."
+  [metadata-provider defq base-reachable-ids]
+  (when defq
+    (let [explicit-joins (filter #(nil? (:fk-field-id %)) (lib/joins defq -1))]
+      (when (seq explicit-joins)
+        (let [def-cols          (lib/filterable-columns defq)
+              ;; Both `explicit-joins` and the export are keyed off the aggregation stage: `lib/joins`
+              ;; reads stage -1 and we read the exported LAST stage's joins, so their aliases line up
+              ;; for multi-stage definitions too (a stage whose join fails to export drops, closed).
+              portable-by-alias (into {}
+                                      (map (juxt #(get % "alias") strip-lib-uuids))
+                                      (-> (repr.resolve/try-export-query metadata-provider defq)
+                                          (get "stages") last (get "joins")))]
+          (not-empty
+           (into []
+                 (keep (fn [{:keys [alias] :as jn}]
+                         (let [target-tid (get-in jn [:stages 0 :source-table])
+                               portable   (get portable-by-alias alias)
+                               key-ids    (clause-field-ids (:conditions jn))
+                               dims       (when target-tid
+                                            (into []
+                                                  (comp (filter #(and (= target-tid (:table-id %))
+                                                                      (not (base-reachable-ids (:id %)))
+                                                                      (not (key-ids (:id %)))))
+                                                        (map #(metabot.tools.u/add-table-reference defq %))
+                                                        (map #(metabot.tools.u/->result-column defq %))
+                                                        (map (fn [rc]
+                                                               (cond-> rc
+                                                                 (vector? (:portable_fk rc))
+                                                                 (assoc :reference
+                                                                        ["field" {"join-alias" alias}
+                                                                         (:portable_fk rc)])))))
+                                                  def-cols))]
+                           (when (and portable target-tid (seq dims))
+                             {:join_alias   alias
+                              :target_table (:name (lib.metadata/table metadata-provider target-tid))
+                              :join         portable
+                              :dimensions   dims}))))
+                 explicit-joins)))))))
+
 (defn metric-details
   "Get metric details as returned by tools."
   ([id] (metric-details id nil))
@@ -181,12 +268,26 @@
          base-table-portable-fk (when (and database-name source-table)
                                   [database-name (:schema source-table) (:name source-table)])
          query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
+         metric-card (when query-needed?
+                       (lib.metadata/card metadata-provider id))
          metric-query (when query-needed?
-                        (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
+                        (lib/query metadata-provider metric-card))
          breakouts (when query-needed?
                      (lib/breakouts metric-query))
          base-query (when query-needed?
                       (lib/remove-all-breakouts metric-query))
+         ;; Consumer-framed filterable columns (base table + FK-reachable). Computed once and shared
+         ;; by `:queryable-dimensions` and the join-required-dims reachability filter below.
+         base-filterable-cols (when with-queryable-dimensions?
+                                (lib/filterable-columns base-query))
+         ;; Definition query (WITH the metric's own joins) — surfaces FK-less join dimensions that
+         ;; the consumer-framed `base-query` drops. Built from the card's `:dataset-query`, not from
+         ;; `metric-query`, which frames the metric as a source and hides its definition joins.
+         join-required-dims (when with-queryable-dimensions?
+                              (metric-join-required-dimensions
+                               metadata-provider
+                               (some->> (:dataset-query metric-card) (lib/query metadata-provider))
+                               (set (keep :id base-filterable-cols))))
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
                              (map #(metabot.tools.u/add-table-reference base-query %))))
@@ -219,8 +320,10 @@
        (assoc :queryable-dimensions (into []
                                           (comp (map #(metabot.tools.u/add-table-reference base-query %))
                                                 (map #(metabot.tools.u/->result-column metric-query %)))
-                                          (->> (lib/filterable-columns base-query)
-                                               field-values-fn)))
+                                          (field-values-fn base-filterable-cols)))
+
+       (seq join-required-dims)
+       (assoc :join-required-dimensions join-required-dims)
 
        with-segments?
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]

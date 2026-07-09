@@ -500,14 +500,14 @@
 ;; ----- Metric -----
 
 (defn- fetch-metric [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions false
-                                      :with-field-values         false}))
+  (entity-details/get-metric-details {:metric-id                  (parse-long id-str)
+                                      :with-queryable-dimensions? false
+                                      :with-field-values?         false}))
 
 (defn- fetch-metric-dimensions [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions true
-                                      :with-field-values         false}))
+  (entity-details/get-metric-details {:metric-id                  (parse-long id-str)
+                                      :with-queryable-dimensions? true
+                                      :with-field-values?         false}))
 
 (defn- fetch-metric-dimension [id-str dim-id]
   (field-stats/field-values {:entity-type "metric"
