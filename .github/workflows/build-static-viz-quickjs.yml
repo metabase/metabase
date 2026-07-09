@@ -1,0 +1,44 @@
+name: Build static-viz QuickJS library
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - "native/static-viz-quickjs/**"
+      - ".github/workflows/build-static-viz-quickjs.yml"
+  pull_request:
+    paths:
+      - "native/static-viz-quickjs/**"
+      - ".github/workflows/build-static-viz-quickjs.yml"
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - platform: linux-amd64
+            runner: ubuntu-latest
+            lib: libstaticviz.so
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+            lib: libstaticviz.so
+          - platform: macos-arm64
+            runner: macos-latest
+            lib: libstaticviz.dylib
+          - platform: macos-amd64
+            runner: macos-15-intel
+            lib: libstaticviz.dylib
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and smoke-test library
+        run: ./native/static-viz-quickjs/build.sh
+      - name: Upload library
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-viz-quickjs-${{ matrix.platform }}
+          path: resources/static-viz-quickjs/${{ matrix.platform }}/${{ matrix.lib }}
+          if-no-files-found: error
