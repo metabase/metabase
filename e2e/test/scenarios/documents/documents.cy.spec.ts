@@ -815,6 +815,14 @@ describe("documents", () => {
 
         H.addToDocument("@ord", false);
 
+        // Wait for the async mention search to render before driving the
+        // keyboard. `addToDocument` only types; without this the arrow keys can
+        // fire while the list is still loading, so they act on the incomplete
+        // list and are lost when the results arrive and reset the highlight to
+        // the top — leaving `Orders, Count` unselected (as every other block
+        // here already waits by asserting the list before navigating).
+        H.documentMentionItem(/Orders, Count$/).should("be.visible");
+
         cy.realPress("{downarrow}");
         cy.realPress("{downarrow}");
 
