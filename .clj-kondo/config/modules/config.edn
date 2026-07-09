@@ -1296,7 +1296,9 @@
    :uses #{plugins
            settings
            sync
-           util}}
+           util}
+   :model-imports #{:model/Database
+                    :model/Table}}
 
   search
   {:team "UX West"
