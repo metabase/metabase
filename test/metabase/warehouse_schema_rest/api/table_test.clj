@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.warehouse-schema-rest.api.table-test]}}}}}}
   (:require
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -18,6 +19,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema-rest.api.table :as api.table]
@@ -1194,6 +1196,65 @@
                             :table-id (:id table)
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
+
+(def ^:private multipart-request-options
+  {:request-options {:headers {"content-type" "multipart/form-data"}}})
+
+(deftest update-csv-too-large-test
+  ;; One byte over the cap is enough: the multipart middleware aborts streaming the file part as soon as it
+  ;; crosses the limit, so the oversized body is never fully buffered.
+  (let [oversized (byte-array (inc upload/max-upload-size-bytes))
+        calls     (atom 0)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+      (doseq [endpoint ["append-csv" "replace-csv"]]
+        (testing (format "POST /api/table/:id/%s rejects a file over the size cap with a 413" endpoint)
+          (is (= "Uploaded content exceeded limits."
+                 (mt/user-http-request :crowberto :post 413 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                       multipart-request-options
+                                       {:file oversized})))))
+      (is (zero? @calls) "the endpoint bodies should never run"))))
+
+(deftest update-csv-too-many-parts-test
+  (let [calls (atom 0)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+      (doseq [endpoint ["append-csv" "replace-csv"]]
+        (testing (format "POST /api/table/:id/%s rejects too many multipart parts with a 413" endpoint)
+          (is (= "Uploaded content exceeded limits."
+                 (mt/user-http-request :crowberto :post 413 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                       multipart-request-options
+                                       [[:collection_id "root"]
+                                        [:file (byte-array [97 44 98 10 49 44 50])]
+                                        [:file (byte-array [99 44 100 10 51 44 52])]])))))
+      (is (zero? @calls) "the endpoint bodies should never run"))))
+
+(deftest update-csv-with-extra-field-test
+  (let [calls (atom 0)]
+    ;; like the real handler, the stub owns the uploaded tempfile and must delete it
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [{:keys [file]}]
+                                                        (swap! calls inc)
+                                                        (io/delete-file file :silently)
+                                                        {:status 200, :body ""})]
+      (doseq [endpoint ["append-csv" "replace-csv"]]
+        (testing (format "POST /api/table/:id/%s accepts the collection_id field the frontend sends" endpoint)
+          (mt/user-http-request :crowberto :post 200 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                multipart-request-options
+                                [[:collection_id "root"]
+                                 [:file (byte-array [97 44 98 10 49 44 50])]])))
+      (is (= 2 @calls) "the endpoint bodies should run"))))
+
+(deftest update-csv-smuggled-file-part-test
+  (let [calls (atom 0)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+      (doseq [endpoint  ["append-csv" "replace-csv"]
+              ;; collection_id is caught by its :string constraint, unknown names by the closed map
+              part-name [:collection_id :unexpected_part]]
+        (testing (format "POST /api/table/:id/%s rejects a second file part smuggled as %s"
+                         endpoint (name part-name))
+          (mt/user-http-request :crowberto :post 400 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                multipart-request-options
+                                [[:file (byte-array [97 44 98 10 49 44 50])]
+                                 [part-name (byte-array [99 44 100 10 51 44 52])]])))
+      (is (zero? @calls) "the endpoint bodies should never run"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/table/:id/sync_schema                                       |
