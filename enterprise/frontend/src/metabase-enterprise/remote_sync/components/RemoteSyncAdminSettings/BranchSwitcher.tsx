@@ -30,6 +30,8 @@ interface BranchSwitcherProps {
   /** Un-pushed local changes; when present, switching prompts the admin to choose what to do with them. */
   dirty: RemoteSyncEntity[];
   disabled?: boolean;
+  /** Name of the env var pinning the branch (e.g. "MB_REMOTE_SYNC_BRANCH"), when set; shows a "Using …" note. */
+  envVarName?: string | null;
 }
 
 /**
@@ -43,6 +45,7 @@ export const BranchSwitcher = ({
   currentBranch,
   dirty,
   disabled,
+  envVarName,
 }: BranchSwitcherProps) => {
   const combobox = useCombobox();
   const [sendToast] = useToast();
@@ -176,6 +179,12 @@ export const BranchSwitcher = ({
           </Text>
         )}
       </Group>
+
+      {envVarName && (
+        <Text c="text-secondary" size="sm" mt="sm">
+          {t`Using ${envVarName}`}
+        </Text>
+      )}
 
       {pendingBranch && (
         <SyncConflictModal

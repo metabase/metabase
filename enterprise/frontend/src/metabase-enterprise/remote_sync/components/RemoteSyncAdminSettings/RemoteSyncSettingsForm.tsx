@@ -493,6 +493,11 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                       currentBranch={currentBranch}
                       dirty={dirtyData?.dirty ?? []}
                       disabled={settingDetails?.[BRANCH_KEY]?.is_env_setting}
+                      envVarName={
+                        settingDetails?.[BRANCH_KEY]?.is_env_setting
+                          ? settingDetails?.[BRANCH_KEY]?.env_name
+                          : undefined
+                      }
                     />
                   </RemoteSyncSettingsSection>
                 )}

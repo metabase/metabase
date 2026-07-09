@@ -20,11 +20,13 @@ const setup = ({
   currentBranch = "main",
   dirty = [],
   branches = ["main", "develop"],
+  envVarName,
 }: {
   isAdmin?: boolean;
   currentBranch?: string;
   dirty?: RemoteSyncEntity[];
   branches?: string[];
+  envVarName?: string;
 } = {}) => {
   setupEnterprisePlugins();
   setupRemoteSyncEndpoints({ branches, dirty });
@@ -34,7 +36,12 @@ const setup = ({
   fetchMock.get("path:/api/ee/library", { data: null });
 
   return renderWithProviders(
-    <BranchSwitcher currentBranch={currentBranch} dirty={dirty} />,
+    <BranchSwitcher
+      currentBranch={currentBranch}
+      dirty={dirty}
+      disabled={Boolean(envVarName)}
+      envVarName={envVarName}
+    />,
     {
       storeInitialState: createRemoteSyncStoreState({
         isAdmin,
@@ -75,6 +82,13 @@ describe("BranchSwitcher", () => {
     expect(
       screen.getByTestId("branch-switcher-dirty-warning"),
     ).toHaveTextContent("1 unsaved change");
+  });
+
+  it("explains that the branch is pinned by an env var and disables the control", () => {
+    setup({ envVarName: "MB_REMOTE_SYNC_BRANCH" });
+
+    expect(screen.getByText("Using MB_REMOTE_SYNC_BRANCH")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-branch-switcher")).toBeDisabled();
   });
 
   it("switches directly when the instance is clean", async () => {
