@@ -13,6 +13,15 @@
 (defn- seconds-ago [n]
   (t/minus (t/offset-date-time) (t/seconds n)))
 
+(defn- conversation-row [user-id & {:as row}]
+  (merge {:user_id user-id} row))
+
+(defn- message-row [conversation-id user-id created-at & {:as row}]
+  (merge {:conversation_id conversation-id
+          :user_id         user-id
+          :created_at      created-at}
+         row))
+
 (deftest list-conversations-authentication-test
   (testing "GET /api/metabot/conversations requires auth"
     (is (= "Unauthenticated"
@@ -60,27 +69,69 @@
 
 (deftest list-conversations-includes-message-count-test
   (testing "GET /api/metabot/conversations counts and timestamps live messages only"
-    (let [user-id (mt/user->id :rasta)]
-      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :summary "hi"}
-                     :model/MetabotMessage _ {:conversation_id convo-id
-                                              :user_id         user-id
-                                              :role            "user"
-                                              :created_at      (seconds-ago 30)}
-                     :model/MetabotMessage {live-id :id} {:conversation_id convo-id
-                                                          :user_id         user-id
-                                                          :role            "assistant"
-                                                          :created_at      (seconds-ago 20)}
-                     :model/MetabotMessage _ {:conversation_id convo-id
-                                              :user_id         user-id
-                                              :role            "assistant"
-                                              :created_at      (seconds-ago 10)
-                                              :deleted_at      (t/offset-date-time)}]
+    (let [user-id (mt/user->id :rasta)
+          t1      (seconds-ago 30)
+          t2      (seconds-ago 20)
+          t3      (seconds-ago 10)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} (conversation-row user-id :summary "hi")
+                     :model/MetabotMessage _ (message-row convo-id user-id t1 :role "user")
+                     :model/MetabotMessage {live-id :id} (message-row convo-id user-id t2 :role "assistant")
+                     :model/MetabotMessage _ (message-row convo-id user-id t3
+                                                          :role       "assistant"
+                                                          :deleted_at (t/offset-date-time))]
         (let [response (mt/user-http-request :rasta :get 200 "metabot/conversations")
               found    (first (filter #(= convo-id (:conversation_id %)) (:data response)))]
           (is (some? found))
           (is (= 2 (:message_count found)))
           (is (= (t/instant (t2/select-one-fn :created_at :model/MetabotMessage live-id))
                  (t/instant (t/offset-date-time (:last_message_at found))))))))))
+
+(deftest list-conversations-orders-by-latest-conversation-or-message-created-at-test
+  (testing "GET /api/metabot/conversations orders by the latest conversation or live message timestamp"
+    (let [user-id        (mt/user->id :rasta)
+          oldest         (seconds-ago 400)
+          old            (seconds-ago 300)
+          recent         (seconds-ago 100)
+          most-recent    (seconds-ago 50)]
+      (mt/with-temp [:model/MetabotConversation {old-convo :id}
+                     (conversation-row user-id :summary "old" :created_at oldest)
+                     :model/MetabotMessage _ (message-row old-convo user-id old :profile_id "default")
+
+                     :model/MetabotConversation {message-created-convo :id}
+                     (conversation-row user-id :summary "message-created" :created_at oldest)
+                     :model/MetabotMessage _ (message-row message-created-convo user-id recent :profile_id "default")
+
+                     :model/MetabotConversation {conversation-created-convo :id}
+                     (conversation-row user-id :summary "conversation-created" :created_at most-recent)
+                     :model/MetabotMessage _ (message-row conversation-created-convo user-id old :profile_id "default")]
+        (let [response (mt/user-http-request :rasta :get 200 "metabot/conversations")
+              ids      (->> (:data response)
+                            (map :conversation_id)
+                            (filter #{old-convo message-created-convo conversation-created-convo})
+                            vec)]
+          (is (= [conversation-created-convo message-created-convo old-convo] ids)))))))
+
+(deftest list-conversations-filters-by-last-message-profile-test
+  (testing "GET /api/metabot/conversations?profile_id= filters by the last live message profile"
+    (let [rasta-id (mt/user->id :rasta)
+          lucky-id (mt/user->id :lucky)
+          old      (seconds-ago 60)
+          new      (seconds-ago 30)]
+      (mt/with-temp [:model/MetabotConversation {nlq-convo :id} (conversation-row rasta-id)
+                     :model/MetabotMessage _ (message-row nlq-convo rasta-id old :profile_id "default")
+                     :model/MetabotMessage _ (message-row nlq-convo rasta-id new :profile_id "nlq")
+
+                     :model/MetabotConversation {default-convo :id} (conversation-row rasta-id)
+                     :model/MetabotMessage _ (message-row default-convo rasta-id old :profile_id "nlq")
+                     :model/MetabotMessage _ (message-row default-convo rasta-id new :profile_id "default")
+
+                     :model/MetabotConversation {lucky-convo :id} (conversation-row lucky-id)
+                     :model/MetabotMessage _ (message-row lucky-convo lucky-id new :profile_id "nlq")]
+        (let [response (mt/user-http-request :rasta :get 200 "metabot/conversations?profile_id=nlq")
+              ids      (set (map :conversation_id (:data response)))]
+          (is (= #{nlq-convo} ids))
+          (is (= 1 (:total response)))
+          (is (= "nlq" (-> response :data first :profile_id))))))))
 
 (deftest get-conversation-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id returns the conversation to any participant"
