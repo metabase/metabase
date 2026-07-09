@@ -190,6 +190,7 @@
         (init! searchable-documents {}))
       (semantic.repair/with-repair-table!
         pgvector
+        index-metadata
         (fn [repair-table-name]
           ;; Re-gate all provided documents, populating the repair table as we go
           (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents
