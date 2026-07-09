@@ -29,6 +29,8 @@
                 (some-> ((requiring-resolve 'metabase.search.engine/default-engine)) name keyword))
   :type       :keyword)
 
+;; An engine added at runtime backfills its index over time (for semantic, via the hourly repair task);
+;; POST /api/search/re-init forces an immediate rebuild.
 (defsetting additional-search-engines
   (i18n/deferred-tru "Engines to keep active (indexed and queryable per-request) in addition to the default engine.")
   :visibility :internal

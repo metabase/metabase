@@ -306,10 +306,8 @@
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
-        ;; Prefer an engine with a maintained index (semantic's appdb dependency) over merely supported ones.
         fallback-engine (when semantic-engine
-                          (u/seek (comp not semantic?)
-                                  (concat (search.engine/active-engines) (search.engine/supported-engines))))
+                          (search.engine/fallback-engine semantic-engine))
         fused-results   (if semantic-engine
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           (reciprocal-rank-fusion

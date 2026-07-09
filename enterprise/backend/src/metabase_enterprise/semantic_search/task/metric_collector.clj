@@ -80,7 +80,7 @@
 
 (defmethod task/init! ::SemanticMetricCollector
   [_]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-capable?)
     (let [job (jobs/build
                (jobs/of-type SemanticMetricCollector)
                (jobs/with-identity collector-job-key))

@@ -1,7 +1,9 @@
 ;; The interface encapsulating the various search engine backends.
 (ns metabase.search.engine
   (:require
+   [clojure.string :as str]
    [metabase.search.settings :as settings]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (def ^:private default-engine-precedence
@@ -129,11 +131,15 @@
   {"fulltext" "appdb"})
 
 (defn canonical-engine
-  "Coerce an engine name (string or keyword) to its canonical engine keyword, resolving legacy names.
+  "Coerce an engine name (string or keyword) to its canonical engine keyword.
+  Resolves legacy names and tolerates the qualified search.engine/ prefix the API echoes in responses.
   Every configuration and request boundary must canonicalize through this, so that engine identities
-  compare with =."
+  compare with =.
+  Malformed values yield an unknown engine named after the raw value, never an empty keyword."
   [value]
-  (let [engine-name (name value)]
+  (let [raw         (name value)
+        stripped    (str/replace raw #"^search\.engine/" "")
+        engine-name (if (str/blank? stripped) raw stripped)]
     (keyword "search.engine" (get legacy-engine-names engine-name engine-name))))
 
 (defn- validated-engine
@@ -166,6 +172,8 @@
   "The supported engines force-enabled by [[settings/additional-search-engines]]."
   []
   (->> (settings/additional-search-engines)
+       (map str/trim)
+       (remove str/blank?)
        (keep validated-engine)
        (filter supported-engine?)))
 
@@ -215,6 +223,12 @@
     (or (= engine :search.engine/in-place)
         (contains? (set (active-engines)) engine)) :ok
     :else                                   :inactive))
+
+(defn fallback-engine
+  "The engine to mix results with and fall back to when `engine` cannot serve alone.
+  Prefers engines with a maintained index over merely supported ones."
+  [engine]
+  (u/seek #(not= engine %) (concat (active-engines) (supported-engines))))
 
 (defmethod disjunction :default [_ terms] terms)
 

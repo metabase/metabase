@@ -60,12 +60,10 @@
 
 (defn- param->engine
   "Parse a search_engine param or cookie value into an engine keyword, nil when blank.
-  Tolerates the fully qualified form the API returns in the :engine response field, and legacy engine names.
   Malformed non-blank values parse to an unknown engine rather than nil, so explicit requests 400."
   [value]
   (when-not (str/blank? value)
-    (let [engine-name (str/replace value #"^search\.engine/" "")]
-      (search.engine/canonical-engine (if (str/blank? engine-name) value engine-name)))))
+    (search.engine/canonical-engine value)))
 
 (defn- check-engine-serves!
   "400 when an explicitly requested engine cannot serve searches, naming the cause."
@@ -94,9 +92,18 @@
    (fn [request respond raise]
      ;; Endpoints read :query-params (string keys), so that is where the engine must be injected.
      (let [raw (get-in request [:query-params "search_engine"])]
-       (if (and raw (not (string? raw)))
+       (cond
          ;; A repeated query param parses as a vector: pass it through for schema validation to reject.
+         (and raw (not (string? raw)))
          (handler request respond raise)
+
+         ;; An explicit blank unpins: clear the engine cookie and resolve the default.
+         (and raw (str/blank? raw))
+         (handler (assoc-in request [:query-params "search_engine"] nil)
+                  (set-engine-cookie! respond "")
+                  raise)
+
+         :else
          (if-let [engine (param->engine raw)]
            (try
              (check-engine-serves! engine)

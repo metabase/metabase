@@ -86,4 +86,7 @@
       (is (= [:search.engine/appdb] (search.engine/active-engines)))))
   (testing "legacy engine names in additional engines are canonicalized"
     (with-engines {:supported all-engines :configured :in-place :additional ["fulltext"]}
-      (is (= [:search.engine/appdb] (search.engine/active-engines))))))
+      (is (= [:search.engine/appdb] (search.engine/active-engines)))))
+  (testing "additional engines tolerate csv whitespace, blanks, and qualified names"
+    (with-engines {:supported all-engines :configured :appdb :additional [" semantic" "  " "search.engine/appdb"]}
+      (is (= [:search.engine/appdb :search.engine/semantic] (search.engine/active-engines))))))

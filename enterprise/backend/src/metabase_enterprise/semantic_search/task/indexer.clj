@@ -53,7 +53,7 @@
 (def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
 
 (defmethod task/init! ::SemanticSearchIndexer [_]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-capable?)
     (let [job         (jobs/build
                        (jobs/of-type SemanticSearchIndexer)
                        (jobs/store-durably)

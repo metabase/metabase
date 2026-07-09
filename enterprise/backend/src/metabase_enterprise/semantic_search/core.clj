@@ -16,7 +16,6 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
    [toucan2.realize :as t2.realize]))
@@ -28,12 +27,8 @@
  [metabase-enterprise.semantic-search.embedding
   get-embeddings-batch])
 
-(defn- fallback-engine
-  "The engine semantic search mixes results with and falls back to.
-  Prefers engines with a maintained index (semantic's appdb dependency) over merely supported ones."
-  []
-  (u/seek #(not= :search.engine/semantic %)
-          (concat (search.engine/active-engines) (search.engine/supported-engines))))
+(defn- fallback-engine []
+  (search.engine/fallback-engine :search.engine/semantic))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
@@ -50,7 +45,7 @@
   No-ops when semantic search isn't available on this instance. Backs the just-in-time HNSW build, which
   runs only when an instance is configured to the `:hnsw` vector-search strategy."
   []
-  (when (semantic.util/semantic-search-available?)
+  (when (semantic.util/semantic-search-active?)
     (future
       (try
         (semantic.pgvector-api/ensure-active-hnsw-index! (semantic.env/get-pgvector-datasource!)
