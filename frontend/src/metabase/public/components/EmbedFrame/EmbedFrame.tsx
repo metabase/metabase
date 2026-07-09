@@ -1,6 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useRef, useState } from "react";
-import { useMount } from "react-use";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import { TitleAndDescription } from "metabase/common/components/TitleAndDescription";
@@ -130,9 +129,12 @@ export const EmbedFrame = ({
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk());
   const rootRef = useRef<HTMLDivElement>(null);
 
-  useMount(() => {
-    initializeIframeResizer(() => setHasFrameScroll(false), rootRef.current);
-  });
+  useEffect(() => {
+    return initializeIframeResizer(
+      () => setHasFrameScroll(false),
+      rootRef.current,
+    );
+  }, []);
 
   const parameterPanelRef = useRef<HTMLElement>(null);
   const {
