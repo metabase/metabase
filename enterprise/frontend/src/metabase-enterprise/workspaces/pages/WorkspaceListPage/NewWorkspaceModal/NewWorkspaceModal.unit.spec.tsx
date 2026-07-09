@@ -7,7 +7,7 @@ import {
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import type { Workspace } from "metabase-types/api";
+import type { Database, Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockWorkspace,
@@ -17,14 +17,16 @@ import { NewWorkspaceModal } from "./NewWorkspaceModal";
 
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
+const DATABASE = createMockDatabase({ id: 10, name: "Postgres" });
+
 type SetupOpts = {
   createdWorkspace?: Workspace;
+  databases?: Database[];
 };
-
-const DATABASE = createMockDatabase({ id: 10, name: "Postgres" });
 
 function setup({
   createdWorkspace = createMockWorkspace({ name: "Brand new workspace" }),
+  databases = [DATABASE],
 }: SetupOpts = {}) {
   const onCreate = jest.fn();
   const onClose = jest.fn();
@@ -35,7 +37,7 @@ function setup({
 
   renderWithProviders(
     <NewWorkspaceModal
-      databases={[DATABASE]}
+      databases={databases}
       opened
       onCreate={onCreate}
       onClose={onClose}
@@ -68,6 +70,20 @@ describe("NewWorkspaceModal", () => {
     expect(await call?.request?.json()).toEqual({
       name: "Brand new workspace",
     });
+  });
+
+  it("cannot submit when no databases have workspaces enabled", () => {
+    setup({ databases: [] });
+
+    const databasesSection = screen.getByRole("group", { name: "Databases" });
+    expect(
+      within(databasesSection).getByText(
+        "No databases have workspaces enabled.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create workspace" }),
+    ).toBeDisabled();
   });
 
   it("lists the databases that will be added", () => {

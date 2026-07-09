@@ -151,6 +151,13 @@
                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance/test"
                                        {:url "https://down.example.com" :api_key "k"}))))))))
 
+(deftest test-connection-requires-a-resolvable-url-test
+  (testing "POST /instance/test 400s instead of NPEing when no url can be resolved"
+    (testing "empty body"
+      (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/instance/test" {}))
+    (testing "api_key with no url and no id"
+      (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/instance/test" {:api_key "k"}))))
+
 (deftest push-config-test
   (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                               :details  {}

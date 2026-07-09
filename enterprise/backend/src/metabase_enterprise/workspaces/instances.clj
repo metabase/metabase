@@ -15,6 +15,8 @@
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (comment metabase-enterprise.workspaces.models.workspace-instance/keep-me)
 
 (defn get-instance
@@ -22,7 +24,9 @@
   [id]
   (t2/select-one :model/WorkspaceInstance :id id))
 
-(defn- assert-instance-exists [id]
+(defn get-instance!
+  "Return the WorkspaceInstance with the given id, or throw a 404 if none exists."
+  [id]
   (or (get-instance id)
       (throw (ex-info (tru "Instance not found")
                       {:status-code 404 :instance_id id}))))
@@ -46,7 +50,7 @@
    keeps the stored one — the API key is never sent back to clients, so edits
    that don't change it omit it."
   [id {:keys [api_key] :as params}]
-  (assert-instance-exists id)
+  (get-instance! id)
   (let [updates (cond-> (select-keys params [:name :url])
                   (some? api_key) (assoc :details {:api-key api_key}))]
     (when (seq updates)
@@ -56,15 +60,8 @@
 (defn delete-instance!
   "Delete a child instance registration. The child itself is not touched."
   [id]
-  (assert-instance-exists id)
+  (get-instance! id)
   (t2/delete! :model/WorkspaceInstance :id id))
-
-(defn check-instance-exists!
-  "Throw a 404 unless `instance-id` exists. Used to fail workspace creation
-   fast, before any provisioning work."
-  [instance-id]
-  (assert-instance-exists instance-id)
-  nil)
 
 (defn assign-to-workspace!
   "Point `instance-id` at `workspace-id`, releasing any instance previously
@@ -75,7 +72,7 @@
   [instance-id workspace-id]
   (t2/with-transaction [_conn]
     (when instance-id
-      (assert-instance-exists instance-id))
+      (get-instance! instance-id))
     (if instance-id
       (do
         (t2/update! :model/WorkspaceInstance
@@ -89,10 +86,15 @@
   "Check that a child instance is reachable and the API key authenticates an
    admin there. Accepts `url` + `api_key` directly (pre-save checks from the
    create/edit form) or an `id` whose stored credentials fill in whatever the
-   caller omitted. Returns `{:ok true}` or `{:ok false :message ...}`."
+   caller omitted. Returns `{:ok true}` or `{:ok false :message ...}`. Throws
+   400 when no url can be resolved from either the params or a stored instance."
   [{:keys [id url api_key]}]
-  (let [stored (when id (assert-instance-exists id))]
-    (client/test-connection {:url     (or url (:url stored))
+  (let [stored       (when id (get-instance! id))
+        resolved-url (or url (:url stored))]
+    (when-not resolved-url
+      (throw (ex-info (tru "A url is required, either directly or via a registered instance id")
+                      {:status-code 400})))
+    (client/test-connection {:url     resolved-url
                              :api-key (or api_key (get-in stored [:details :api-key]))})))
 
 (defn push-config!

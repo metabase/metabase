@@ -6,6 +6,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -20,7 +21,7 @@
    `:message`, a raw string body, or the HTTP status."
   [{:keys [status body]}]
   (or (when (string? body)
-        (or (:message (try (json/decode+kw body) (catch Exception _ nil)))
+        (or (:message (u/ignore-exceptions (json/decode+kw body)))
             (not-empty (str/trim body))))
       (tru "Child instance responded with HTTP status {0}" (str status))))
 
@@ -41,7 +42,7 @@
                               :connection-timeout 10000})]
         (cond
           (and (= status 200)
-               (:is_superuser (try (json/decode+kw body) (catch Exception _ nil))))
+               (:is_superuser (u/ignore-exceptions (json/decode+kw body))))
           {:ok true}
 
           (= status 200)

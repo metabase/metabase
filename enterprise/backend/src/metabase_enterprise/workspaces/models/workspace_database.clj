@@ -62,7 +62,7 @@
   "IDs of all Databases eligible for workspaces (see
    [[database-eligible-for-workspaces?]]), sorted."
   []
-  (->> (t2/select :model/Database)
+  (->> (t2/select [:model/Database :id :engine :settings])
        (filter database-eligible-for-workspaces?)
        (map :id)
        sort

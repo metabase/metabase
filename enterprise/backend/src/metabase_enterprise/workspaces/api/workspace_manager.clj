@@ -10,6 +10,7 @@
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.instances :as ws.instances]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -159,45 +160,52 @@
    for workspaces) — or, when `database_ids` is omitted, to every database with
    workspaces enabled — provision it (blocking), and assign it to the child
    instance with `instance_id`, if given (404 when the instance doesn't exist —
-   checked before any provisioning work). An instance already hosting another
-   workspace is re-pointed at the new one."
+   checked before any provisioning work, and again atomically with the creation
+   itself, so an instance that disappears during provisioning rolls back the
+   whole workspace instead of leaving it created but unassigned). An instance
+   already hosting another workspace is re-pointed at the new one."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (let [instance-id  (:instance_id params)
         database-ids (or (:database_ids params)
-                         (ws/workspaces-enabled-database-ids))]
+                         (workspace-database/workspaces-enabled-database-ids))]
     (api/check-400 (seq database-ids) "No databases have workspaces enabled.")
     (when instance-id
-      (ws.instances/check-instance-exists! instance-id))
-    (let [workspace (ws/create-workspace!
-                     (-> params
-                         (dissoc :instance_id)
-                         (assoc :database_ids database-ids
-                                :creator_id api/*current-user-id*)))]
-      (when instance-id
-        (ws.instances/assign-to-workspace! instance-id (:id workspace)))
-      (present-workspace (ws/get-workspace (:id workspace))))))
+      (ws.instances/get-instance! instance-id))
+    (t2/with-transaction [_conn]
+      (let [workspace (ws/create-workspace!
+                       (-> params
+                           (dissoc :instance_id)
+                           (assoc :database_ids database-ids
+                                  :creator_id api/*current-user-id*)))]
+        (present-workspace
+         (if instance-id
+           (do (ws.instances/assign-to-workspace! instance-id (:id workspace))
+               (ws/get-workspace (:id workspace)))
+           workspace))))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name and/or its assigned child instance (`instance_id`
-   nil releases the current instance)."
+   nil releases the current instance). Both writes are atomic — a bad
+   `instance_id` leaves the name unchanged."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
   (api/write-check :model/Workspace id)
-  (when (:name params)
-    (t2/update! :model/Workspace :id id {:name (:name params)}))
-  (when (contains? params :instance_id)
-    (ws.instances/assign-to-workspace! (:instance_id params) id))
+  (t2/with-transaction [_conn]
+    (when (:name params)
+      (t2/update! :model/Workspace :id id {:name (:name params)}))
+    (when (contains? params :instance_id)
+      (ws.instances/assign-to-workspace! (:instance_id params) id)))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id"
-  :- [:map
+  :- [:map {:closed true}
       [:id ms/PositiveInt]
       [:deleted :boolean]
       [:message {:optional true} :string]
       [:orphaned_resources {:optional true}
-       [:sequential [:map
+       [:sequential [:map {:closed true}
                      [:workspace_database_id ms/PositiveInt]
                      [:database_id ms/PositiveInt]
                      [:driver :keyword]
@@ -219,7 +227,7 @@
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config"
-  :- [:map
+  :- [:map {:closed true}
       [:status  [:= 200]]
       [:headers [:map-of :string :string]]
       [:body    :string]]
@@ -266,7 +274,7 @@
   nil)
 
 (api.macros/defendpoint :post "/instance/test"
-  :- [:map
+  :- [:map {:closed true}
       [:ok      :boolean]
       [:message {:optional true} [:maybe :string]]]
   "Test that a child instance is reachable and its API key authenticates an admin

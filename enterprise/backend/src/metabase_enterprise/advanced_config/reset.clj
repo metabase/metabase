@@ -77,10 +77,15 @@
                         " WHERE table_type = 'BASE TABLE' AND " schema-clause))
          (map (comp str first vals)))))
 
-(defn- quoted ^String [table-name]
-  (case (mdb/db-type)
-    :mysql (str "`" table-name "`")
-    (str \" table-name \")))
+(defn- release-workspace-databases!
+  "Clear the provisioning state on every `workspace_database` row so the
+  `:model/Database` before-delete hook doesn't refuse the delete over a
+  `:provisioning`/`:provisioned`/`:deprovisioning` reference. The wipe discards
+  workspace rows wholesale, so the warehouse schemas they point at are abandoned
+  rather than torn down — no warehouse DDL is issued."
+  []
+  (t2/query {:update :workspace_database
+             :set    {:status "unprovisioned"}}))
 
 (defn- delete-through-models!
   "Delete the rows whose Toucan delete hooks tear down live runtime state that
@@ -90,6 +95,7 @@
   []
   (t2/delete! :model/Notification)
   (t2/delete! :model/Pulse)
+  (release-workspace-databases!)
   (t2/delete! :model/Database))
 
 (defn- wipe-tables!
@@ -101,25 +107,21 @@
   (when-let [tables (seq (remove preserved-table? (app-db-tables)))]
     (case (mdb/db-type)
       :postgres
-      (t2/query (str "TRUNCATE TABLE " (str/join ", " (map quoted tables)) " CASCADE"))
+      (t2/query (str "TRUNCATE TABLE "
+                     (str/join ", " (map mdb/quote-for-application-db tables))
+                     " CASCADE"))
 
-      :mysql
-      (t2/with-transaction [_conn]
-        (t2/query "SET FOREIGN_KEY_CHECKS = 0")
-        (try
-          (doseq [table tables]
-            (t2/query (str "DELETE FROM " (quoted table))))
-          (finally
-            (t2/query "SET FOREIGN_KEY_CHECKS = 1"))))
-
-      :h2
-      (t2/with-transaction [_conn]
-        (t2/query "SET REFERENTIAL_INTEGRITY FALSE")
-        (try
-          (doseq [table tables]
-            (t2/query (str "DELETE FROM " (quoted table))))
-          (finally
-            (t2/query "SET REFERENTIAL_INTEGRITY TRUE")))))))
+      (:mysql :h2)
+      (let [[disable-sql enable-sql] (case (mdb/db-type)
+                                       :mysql ["SET FOREIGN_KEY_CHECKS = 0" "SET FOREIGN_KEY_CHECKS = 1"]
+                                       :h2    ["SET REFERENTIAL_INTEGRITY FALSE" "SET REFERENTIAL_INTEGRITY TRUE"])]
+        (t2/with-transaction [_conn]
+          (t2/query disable-sql)
+          (try
+            (doseq [table tables]
+              (t2/query (str "DELETE FROM " (mdb/quote-for-application-db table))))
+            (finally
+              (t2/query enable-sql))))))))
 
 (defn- wipe-settings! []
   (t2/query {:delete-from :setting
@@ -141,25 +143,56 @@
 
 (defn- reseed-trash-collection!
   "Recreate the Trash collection the bulk wipe deleted — collection code fatally
-  requires it to exist. Mirrors the migration that creates it on a fresh
-  instance."
+  requires it to exist — and grant every non-admin group access to it. Mirrors
+  the migration that seeds both on a fresh instance."
   []
   (t2/query {:insert-into :collection
              :columns     [:name :slug :entity_id :type]
-             :values      [["Trash" "trash" "trashtrashtrashtrasht" "trash"]]}))
+             :values      [["Trash" "trash" "trashtrashtrashtrasht" "trash"]]})
+  (let [trash-id  (:id (t2/query-one {:select [:id] :from [:collection] :where [:= :type "trash"]}))
+        admin-id  (:id (perms/admin-group))
+        group-ids (map :id (t2/query {:select [:id]
+                                      :from   [:permissions_group]
+                                      :where  [:not= :id admin-id]}))]
+    (when (seq group-ids)
+      (t2/query {:insert-into :permissions
+                 :columns     [:object :group_id]
+                 :values      (for [group-id group-ids]
+                                [(str "/collection/" trash-id "/") group-id])}))))
+
+(defn- config-grants-config-text-file?
+  "Whether the config's non-settings sections are allowed to load: either the
+  running instance already has the `:config-text-file` feature, or the config
+  installs its own `premium-embedding-token` that validates and grants it. The
+  config's token is validated remotely because it is not the active token yet;
+  any validation failure is treated as not granting the feature."
+  [parsed-config]
+  (if-let [config-token (get-in parsed-config [:config :settings :premium-embedding-token])]
+    (boolean
+     (try
+       (let [{:keys [valid features]} (premium-features/check-token config-token)]
+         (and valid (contains? (set features) "config-text-file")))
+       (catch Throwable _ false)))
+    (premium-features/enable-config-text-file?)))
 
 (defn- check-can-apply!
   "Fail before the wipe if [[advanced-config.file/initialize!]] would refuse the
-  config's non-settings sections for lack of the `:config-text-file` feature.
-  The settings section may itself install the premium token, so a config that
-  sets `premium-embedding-token` is let through for [[initialize!]] to judge."
+  config's non-settings sections for lack of the `:config-text-file` feature."
   [parsed-config]
   (when (and (some (fn [[section-name _]] (not= section-name :settings))
                    (:config parsed-config))
-             (not (get-in parsed-config [:config :settings :premium-embedding-token]))
-             (not (premium-features/enable-config-text-file?)))
+             (not (config-grants-config-text-file? parsed-config)))
     (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                     {:status-code 402}))))
+
+(defn- ensure-no-active-remote-sync-import!
+  "Refuse the wipe while a remote-sync import is running: the wipe truncates
+  `remote_sync_task`, which would strand that import racing on a freshly wiped
+  DB."
+  []
+  (when (remote-sync/active-import-running?)
+    (throw (ex-info (tru "A remote sync task is in progress; try again once it finishes.")
+                    {:status-code 409}))))
 
 (defn wipe-and-initialize!
   "DESTRUCTIVE. Erase all content from this instance — users, sessions, groups,
@@ -172,15 +205,22 @@
   [parsed-config]
   (advanced-config.file/validate-config parsed-config)
   (check-can-apply! parsed-config)
+  (ensure-no-active-remote-sync-import!)
   (log/warn "unsafe-init: wiping all instance content")
   (delete-through-models!)
   (wipe-tables!)
   (wipe-settings!)
   (reseed-default-permissions!)
   (reseed-trash-collection!)
-  (mdb/increment-app-db-unique-indentifier!)
+  ;; the app DB's contents were replaced wholesale; drop every in-process cache keyed on the old identifier so stale
+  ;; entries (the Settings cache included) don't survive the wipe
+  (mdb/rotate-app-db-unique-identifier!)
   (search/reset-tracking!)
   (advanced-config.file/initialize! parsed-config)
   (search/reindex!)
-  (remote-sync/reset-and-import!)
+  ;; a failed initial import must not undo an otherwise successful wipe + re-initialization
+  (try
+    (remote-sync/reset-and-import!)
+    (catch Throwable e
+      (log/error e "unsafe-init: initial remote-sync import failed after wipe and re-initialization")))
   :ok)

@@ -26,10 +26,8 @@ import {
 import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorkspaceMutation,
-  useLazyListWorkspacesQuery,
   useListWorkspaceInstancesQuery,
   useListWorkspacesQuery,
-  usePushWorkspaceConfigMutation,
 } from "metabase-enterprise/api";
 import type {
   Database,
@@ -38,6 +36,7 @@ import type {
 } from "metabase-types/api";
 
 import { trackWorkspaceCreated } from "../../../analytics";
+import { usePushConfigWithToast } from "../../../hooks/use-push-config-with-toast";
 
 type NewWorkspaceModalProps = {
   databases: Database[];
@@ -98,8 +97,7 @@ function NewWorkspaceForm({
   onClose,
 }: NewWorkspaceFormProps) {
   const [createWorkspace] = useCreateWorkspaceMutation();
-  const [fetchWorkspaces] = useLazyListWorkspacesQuery();
-  const [pushConfig] = usePushWorkspaceConfigMutation();
+  const pushConfigWithToast = usePushConfigWithToast();
   const { data: instances = [] } = useListWorkspaceInstancesQuery();
   const { data: workspaces = [] } = useListWorkspacesQuery();
   const [sendToast] = useToast();
@@ -113,15 +111,10 @@ function NewWorkspaceForm({
       name,
       instance_id: instance_id ? Number(instance_id) : undefined,
     }).unwrap();
-    await fetchWorkspaces();
     trackWorkspaceCreated({ workspaceId: workspace.id });
     if (instance_id && initialize_instance) {
       try {
-        await pushConfig(workspace.id).unwrap();
-        sendToast({
-          message: t`The instance was set up with this workspace`,
-          icon: "check",
-        });
+        await pushConfigWithToast(workspace.id);
       } catch {
         sendToast({
           message: t`The workspace was created, but setting up the instance failed. You can retry from the workspace menu.`,
@@ -154,7 +147,11 @@ function NewWorkspaceForm({
           <FormErrorMessage />
           <Group justify="flex-end">
             <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Create workspace`} variant="filled" />
+            <FormSubmitButton
+              label={t`Create workspace`}
+              variant="filled"
+              disabled={databases.length === 0}
+            />
           </Group>
         </Stack>
       </Form>
@@ -175,6 +172,11 @@ function DatabasesSection({ databases }: DatabasesSectionProps) {
           {t`Every database with workspaces enabled will be added to this workspace.`}
         </Text>
       </Box>
+      {databases.length === 0 && (
+        <Text c="text-secondary" fz="sm">
+          {t`No databases have workspaces enabled.`}
+        </Text>
+      )}
       {databases.map((database) => (
         <Group key={database.id} gap="xs" wrap="nowrap" c="text-secondary">
           <FixedSizeIcon name="database" aria-hidden />
@@ -189,6 +191,20 @@ type InstanceSectionProps = {
   instances: WorkspaceInstance[];
   workspaces: Workspace[];
 };
+
+function getInstanceOptionLabel(
+  instance: WorkspaceInstance,
+  workspaceNamesById: Map<number, string>,
+): string {
+  if (instance.workspace_id == null) {
+    return instance.name;
+  }
+  const workspaceName = workspaceNamesById.get(instance.workspace_id);
+  if (workspaceName == null) {
+    return t`${instance.name} — in use`;
+  }
+  return t`${instance.name} — used by "${workspaceName}"`;
+}
 
 function InstanceSection({ instances, workspaces }: InstanceSectionProps) {
   const { values } = useFormikContext<NewWorkspaceFormValues>();
@@ -212,21 +228,10 @@ function InstanceSection({ instances, workspaces }: InstanceSectionProps) {
         label={t`Instance`}
         description={t`The connected instance this workspace will be developed on.`}
         placeholder={t`None`}
-        data={instances.map((instance) => {
-          const workspaceName =
-            instance.workspace_id != null
-              ? workspaceNamesById.get(instance.workspace_id)
-              : undefined;
-          return {
-            value: String(instance.id),
-            label:
-              workspaceName != null
-                ? t`${instance.name} — used by "${workspaceName}"`
-                : instance.workspace_id != null
-                  ? t`${instance.name} — in use`
-                  : instance.name,
-          };
-        })}
+        data={instances.map((instance) => ({
+          value: String(instance.id),
+          label: getInstanceOptionLabel(instance, workspaceNamesById),
+        }))}
         clearable
       />
       {selectedInstance?.workspace_id != null && (

@@ -23,10 +23,12 @@ import {
 
 import { WorkspacesSettingsPage } from "./WorkspacesSettingsPage";
 
-function setup({
-  instances = [] as WorkspaceInstance[],
-  workspaces = [] as Workspace[],
-} = {}) {
+type SetupOpts = {
+  instances?: WorkspaceInstance[];
+  workspaces?: Workspace[];
+};
+
+function setup({ instances = [], workspaces = [] }: SetupOpts = {}) {
   // TreeTable virtualizes rows, so the container needs a measurable size
   mockGetBoundingClientRect({ width: 800, height: 600 });
   setupListWorkspaceInstancesEndpoint(instances);

@@ -22,10 +22,12 @@ const ELIGIBLE_DATABASE = createMockDatabase({
   settings: { "database-enable-workspaces": true },
 });
 
-function setup({
-  workspaces = [] as Workspace[],
-  instances = [] as WorkspaceInstance[],
-} = {}) {
+type SetupOpts = {
+  workspaces?: Workspace[];
+  instances?: WorkspaceInstance[];
+};
+
+function setup({ workspaces = [], instances = [] }: SetupOpts = {}) {
   setupListWorkspacesEndpoint(workspaces);
   setupDatabasesEndpoints([ELIGIBLE_DATABASE]);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));

@@ -1,4 +1,4 @@
-/* Match the API keys design: 16px horizontal cell padding (no gap), 48px rows.
+/* Admin settings table design: 16px horizontal cell padding (no gap), 48px rows.
    !important overrides TreeTable's inline cell padding and Mantine's flex gap. */
 .cell {
   padding: 0 1rem !important;

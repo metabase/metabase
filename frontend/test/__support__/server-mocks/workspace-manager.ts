@@ -54,12 +54,6 @@ export function setupCreateWorkspaceInstanceEndpoint(
   fetchMock.post(`${BASE_URL}/instance`, instance);
 }
 
-export function setupUpdateWorkspaceInstanceEndpoint(
-  instance: WorkspaceInstance,
-) {
-  fetchMock.put(`${BASE_URL}/instance/${instance.id}`, instance);
-}
-
 export function setupDeleteWorkspaceInstanceEndpoint(
   instanceId: WorkspaceInstanceId,
 ) {
@@ -70,11 +64,4 @@ export function setupTestWorkspaceInstanceConnectionEndpoint(
   response: TestWorkspaceInstanceConnectionResponse,
 ) {
   fetchMock.post(`${BASE_URL}/instance/test`, response);
-}
-
-export function setupPushWorkspaceConfigEndpoint(
-  workspaceId: WorkspaceId,
-  instance: WorkspaceInstance,
-) {
-  fetchMock.post(`${BASE_URL}/${workspaceId}/push-config`, instance);
 }

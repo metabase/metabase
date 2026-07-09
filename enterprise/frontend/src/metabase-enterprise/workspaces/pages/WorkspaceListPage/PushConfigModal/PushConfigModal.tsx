@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { useToast } from "metabase/common/hooks/use-toast";
 import {
   Form,
   FormErrorMessage,
@@ -8,8 +7,9 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
-import { usePushWorkspaceConfigMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
+
+import { usePushConfigWithToast } from "../../../hooks/use-push-config-with-toast";
 
 export type PushConfigModalProps = {
   workspace: Workspace;
@@ -22,16 +22,11 @@ export function PushConfigModal({
   opened,
   onClose,
 }: PushConfigModalProps) {
-  const [pushConfig] = usePushWorkspaceConfigMutation();
-  const [sendToast] = useToast();
+  const pushConfigWithToast = usePushConfigWithToast();
   const instance = workspace.instance;
 
   const handleSubmit = async () => {
-    await pushConfig(workspace.id).unwrap();
-    sendToast({
-      message: t`The instance was set up with this workspace`,
-      icon: "check",
-    });
+    await pushConfigWithToast(workspace.id);
     onClose();
   };
 

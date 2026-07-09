@@ -160,6 +160,13 @@
     (fn [& args] (apply f args))
     assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
 
+(defn rotate-app-db-unique-identifier!
+  "Assign a fresh [[unique-identifier]] to the Metabase application DB, discarding every in-process cache keyed on the
+  old one — all [[memoize-for-application-db]] caches, the Settings cache included. Intended for callers that have
+  replaced the app DB's contents wholesale and must not let stale caches outlive the data they described."
+  []
+  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
+
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as
   a key (including things using [[mdb/memoize-for-application-db]]) such as the Settings cache. Should only be used
@@ -167,7 +174,7 @@
   []
   (assert (or (not config/is-prod?)
               (config/config-bool :mb-enable-test-endpoints)))
-  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
+  (rotate-app-db-unique-identifier!))
 
 (defn do-with-application-db
   "Impl for [[with-application-db]] macro."

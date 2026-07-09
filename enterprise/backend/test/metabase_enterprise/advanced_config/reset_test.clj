@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.advanced-config.reset :as reset]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.remote-sync.impl :as remote-sync.impl]
    [metabase.api-keys.core :as api-keys]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util.password :as u.password]
@@ -78,30 +80,66 @@
       (testing "API keys survive, so the caller can init again"
         (is (t2/exists? :model/ApiKey :id api-key-id)))
       (testing "permission grants are reset to fresh-instance defaults"
-        (is (not (t2/exists? :model/Permissions :group_id group-id)))
+        (is (not (t2/exists? :model/Permissions :group_id group-id :object "/collection/root/")))
         (is (= all-users-id (:id (perms/all-users-group))))
         (is (= admin-id (:id (perms/admin-group))))
         (is (t2/exists? :model/Permissions :group_id admin-id :object "/"))
         (is (t2/exists? :model/Permissions :group_id all-users-id :object "/collection/root/"))
         (is (t2/exists? :model/Permissions :group_id all-users-id :object "/application/subscription/"))
         (is (t2/exists? :model/Permissions :group_id all-users-id :object "/collection/namespace/snippets/root/")))
+      (testing "every non-admin group can access the re-seeded Trash collection"
+        (let [trash-id   (t2/select-one-fn :id :model/Collection :type "trash")
+              trash-path (str "/collection/" trash-id "/")]
+          (is (t2/exists? :model/Permissions :group_id all-users-id :object trash-path))
+          (is (t2/exists? :model/Permissions :group_id group-id :object trash-path))
+          (is (not (t2/exists? :model/Permissions :group_id admin-id :object trash-path)))))
       (testing "preserved settings survive; everything else is wiped or comes from the config"
         (is (= "fake-token" (t2/select-one-fn :value :model/Setting :key "premium-embedding-token")))
         (is (= "https://child.example.com" (t2/select-one-fn :value :model/Setting :key "site-url")))
         (is (nil? (t2/select-one :model/Setting :key "some-wiped-setting")))
         (is (= "Fresh Instance" (setting/get :site-name)))))))
 
+(def ^:private remote-sync-config
+  {:version 1
+   :config  {:settings {:remote-sync-url    "https://github.com/acme/content.git"
+                        :remote-sync-token  "fake-pat"
+                        :remote-sync-branch "main"
+                        :remote-sync-type   "read-write"}}})
+
 (deftest wipe-and-initialize-triggers-remote-sync-import-test
   (mt/with-empty-h2-app-db!
     (testing "when the applied settings configure remote sync, a full import is started"
       (let [import-args (atom nil)]
-        (with-redefs [remote-sync.impl/async-import! (fn [branch force? _opts & _kvs]
-                                                       (reset! import-args {:branch branch :force? force?})
-                                                       nil)]
-          (reset/wipe-and-initialize!
-           {:version 1
-            :config  {:settings {:remote-sync-url    "https://github.com/acme/content.git"
-                                 :remote-sync-token  "fake-pat"
-                                 :remote-sync-branch "main"
-                                 :remote-sync-type   "read-write"}}})
+        (mt/with-dynamic-fn-redefs [remote-sync.impl/async-import! (fn [branch force? _opts & _kvs]
+                                                                     (reset! import-args {:branch branch :force? force?})
+                                                                     nil)]
+          (reset/wipe-and-initialize! remote-sync-config)
           (is (= {:branch "main", :force? true} @import-args)))))))
+
+(deftest check-can-apply-validates-config-token-test
+  (testing "a config with a non-settings section and an invalid config token is refused"
+    (mt/with-dynamic-fn-redefs [premium-features/check-token (constantly {:valid false})]
+      (is (thrown-with-msg? Exception #"config-text-file"
+                            (#'reset/check-can-apply! {:config {:databases [{}]
+                                                               :settings  {:premium-embedding-token "bad"}}})))))
+  (testing "a config whose token validates and grants the feature passes"
+    (mt/with-dynamic-fn-redefs [premium-features/check-token (constantly {:valid true :features ["config-text-file"]})]
+      (is (nil? (#'reset/check-can-apply! {:config {:databases [{}]
+                                                    :settings  {:premium-embedding-token "good"}}}))))))
+
+(deftest wipe-and-initialize-refuses-during-active-import-test
+  (mt/with-empty-h2-app-db!
+    (testing "an in-flight remote-sync import blocks the wipe so the two don't race"
+      (let [{:keys [coll-id]} (seed-content!)]
+        (mt/with-dynamic-fn-redefs [remote-sync/active-import-running? (constantly true)]
+          (is (thrown-with-msg? Exception #"remote sync task is in progress"
+                                (reset/wipe-and-initialize! {:version 1 :config {:settings {:site-name "X"}}})))
+          (is (t2/exists? :model/Collection :id coll-id))
+          (is (= 1 (t2/count :model/Database))))))))
+
+(deftest wipe-and-initialize-tolerates-import-failure-test
+  (mt/with-empty-h2-app-db!
+    (testing "an import failure after a successful wipe + re-init does not fail the call"
+      (mt/with-dynamic-fn-redefs [remote-sync.impl/async-import! (fn [& _]
+                                                                   (throw (ex-info "bad repo" {})))]
+        (is (= :ok (reset/wipe-and-initialize! remote-sync-config)))))))

@@ -2,6 +2,8 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { AdminSettingsTableEmptyState } from "metabase/admin/components/AdminSettingsTable";
+import S from "metabase/admin/components/AdminSettingsTable/AdminSettingsTable.module.css";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { DateTime } from "metabase/common/components/DateTime";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -12,7 +14,6 @@ import {
   Box,
   Button,
   Card,
-  Center,
   Ellipsified,
   Group,
   Icon,
@@ -31,21 +32,10 @@ import type { WorkspaceInstance } from "metabase-types/api";
 
 import { DeleteInstanceModal } from "./DeleteInstanceModal";
 import { InstanceModal } from "./InstanceModal";
-import S from "./WorkspacesSettingsPage.module.css";
 
 type Modal = null | "connect" | "edit" | "delete";
 
 const getNodeId = (instance: WorkspaceInstance) => String(instance.id);
-
-function EmptyState() {
-  return (
-    <Center mih="20rem" data-testid="empty-table-warning">
-      <Text c="text-disabled" size="sm" ta="center">
-        {t`No instances connected yet`}
-      </Text>
-    </Center>
-  );
-}
 
 function InstanceActionsMenu({
   instance,
@@ -285,7 +275,9 @@ export function WorkspacesSettingsPage() {
             onDelete={handleDelete}
           />
         ) : (
-          <EmptyState />
+          <AdminSettingsTableEmptyState
+            message={t`No instances connected yet`}
+          />
         )}
       </Card>
     </SettingsPageWrapper>

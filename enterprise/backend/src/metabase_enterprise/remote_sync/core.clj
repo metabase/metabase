@@ -24,6 +24,11 @@
  [source.p
   ->ingestable])
 
+(defn active-import-running?
+  "True when a remote-sync task is currently in progress on this instance."
+  []
+  (guards/task-running?))
+
 (defn reset-and-import!
   "Clear all remote-sync tracking state, then start an async full import from the
   configured branch. Returns the created RemoteSyncTask, or nil when remote sync
