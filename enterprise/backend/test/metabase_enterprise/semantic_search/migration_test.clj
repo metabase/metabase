@@ -11,7 +11,9 @@
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -36,7 +38,7 @@
                     (semantic.db.connection/with-migrate-tx [tx]
                       (semantic.db.migration/maybe-migrate! tx nil)
                       {:messages (messages)
-                       :db-version (@#'semantic.db.migration/db-version tx)}))))]
+                       :db-version (@#'semantic.db.migration/db-version tx nil)}))))]
         (testing "Migration up works"
           (u/prog1 (migrate-and-get-db-version 130)
             (is (= 130 (:db-version <>)))
@@ -55,6 +57,34 @@
             (is (= 130 (:db-version <>)))
             (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
                               (:messages <>)))))))))
+
+(deftest schema-scoped-migration-drop-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (testing "app-db-mode migration reset only ever drops tables inside the module's schema"
+        (let [pgvector       (semantic.env/get-pgvector-datasource!)
+              index-metadata semantic.index-metadata/app-db-index-metadata
+              schema-tables  (fn []
+                               (->> (jdbc/execute! pgvector
+                                                   ["SELECT tablename FROM pg_tables WHERE schemaname = 'semantic_search'"]
+                                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                                    (map :tablename)
+                                    set))]
+          ;; decoys playing the role of application tables; the second is a real app-db table name from
+          ;; migration 056 that any `semantic_`-prefix-based drop pattern would have matched
+          (jdbc/execute! pgvector ["CREATE TABLE decoy_app_table (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE semantic_search_token_tracking (id int)"])
+          ;; positive control: a leftover table inside the module schema is fair game for the reset
+          (jdbc/execute! pgvector ["CREATE SCHEMA semantic_search"])
+          (jdbc/execute! pgvector ["CREATE TABLE semantic_search.legacy_junk (id int)"])
+          (semantic.db.connection/with-migrate-tx [tx]
+            (semantic.db.migration/maybe-migrate! tx {:index-metadata index-metadata}))
+          (testing "tables outside the schema survive the version<2 drop-everything reset"
+            (is (semantic.util/table-exists? pgvector "public.decoy_app_table"))
+            (is (semantic.util/table-exists? pgvector "public.semantic_search_token_tracking")))
+          (testing "inside the schema: junk dropped, module tables created"
+            (is (= #{"migration" "index_metadata" "index_control" "index_gate"}
+                   (schema-tables)))))))))
 
 (defn- executions-overlap?
   "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
