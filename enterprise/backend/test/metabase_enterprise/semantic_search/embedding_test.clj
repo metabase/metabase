@@ -17,6 +17,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -24,6 +25,10 @@
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
+
+;; the token-tracking test hits the app db before any auto-initializing mt helper when it is the first
+;; db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest test-get-provider
   (testing "get-active-model returns based on setting"
