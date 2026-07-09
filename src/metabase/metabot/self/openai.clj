@@ -228,8 +228,7 @@
    "gpt-5.5-pro"   "GPT-5.5 Pro"
    "gpt-5.4"       "GPT-5.4"
    "gpt-5.4-pro"   "GPT-5.4 Pro"
-   "gpt-5.4-mini"  "GPT-5.4 Mini"
-   "gpt-5"         "GPT-5"})
+   "gpt-5.4-mini"  "GPT-5.4 Mini"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."

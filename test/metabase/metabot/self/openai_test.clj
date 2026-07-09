@@ -307,10 +307,10 @@
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
-    (doseq [id ["gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini" "gpt-5"]]
+    (doseq [id ["gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
       (is (true? (#'openai/supported-model? {:id id})) id)))
   (testing "non-white-listed models are not supported"
-    (doseq [id ["gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
+    (doseq [id ["gpt-5" "gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
       (is (false? (#'openai/supported-model? {:id id})) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
@@ -329,8 +329,7 @@
                                                     {:id "o3"                     :created 15}
                                                     {:id "text-embedding-3-small" :created 8}
                                                     {:id "whisper-1"              :created 7}]}})]
-        (is (= [{:id "gpt-5" :display_name "GPT-5"}
-                {:id "gpt-5.4" :display_name "GPT-5.4"}
+        (is (= [{:id "gpt-5.4" :display_name "GPT-5.4"}
                 {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
                 {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}]
                (:models (openai/list-models))))))))
