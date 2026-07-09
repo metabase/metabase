@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Group, Icon, Paper, Select } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 
 import S from "./DataAppLayout.module.css";
@@ -61,7 +62,7 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
 
   const handleSelectApp = (nextName: string) => {
     if (nextName && nextName !== name) {
-      dispatch(push(`/data-app/${encodeURIComponent(nextName)}`));
+      dispatch(push(Urls.dataApp(nextName)));
     }
   };
 

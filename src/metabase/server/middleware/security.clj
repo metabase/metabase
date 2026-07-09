@@ -495,15 +495,18 @@
 
 (defn- data-app-iframe-request?
   [request]
-  (str/starts-with? (:uri request) "/embed/data-app/"))
+  (str/starts-with? (:uri request) (str request/data-app-embed-prefix "/")))
+
+(def ^:private data-app-slug-regex
+  (re-pattern (str "/(?:embed/)?" request/data-app-url-segment "/([^/]+).*")))
 
 (defn- data-app-slug
   "Slug of the data-app document being served, parsed from the top-level
-   `/data-app/<slug>` page or the internal `/embed/data-app/<slug>` iframe (and
+   `/apps/<slug>` page or the internal `/embed/apps/<slug>` iframe (and
    any deeper sub-route), or nil. The top page needs it too: its `frame-src`
    governs what the iframe below it may navigate to."
   [request]
-  (second (re-matches #"/(?:embed/)?data-app/([^/]+).*" (:uri request))))
+  (second (re-matches data-app-slug-regex (:uri request))))
 
 (defn- site-origin
   "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
@@ -539,7 +542,7 @@
                  ;; The internal data-app iframe is only ever framed by the
                  ;; same-origin Metabase app, so restrict it to `'self'` rather
                  ;; than the open embedding `*`. Check it before the broader
-                 ;; `embed?`, which `/embed/data-app/...` also matches.
+                 ;; `embed?`, which `/embed/apps/...` also matches.
                  :frame-ancestors             (cond
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any

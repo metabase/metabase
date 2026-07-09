@@ -3,7 +3,7 @@ export type DataAppId = number;
 /**
  * A data app materialized from the connected repository. The repo's
  * `data_apps/<dir>/data_app.yml` files are discovered on sync; one row exists
- * per app and the bundle is cached in the app DB and served at `/data-app/:name`.
+ * per app and the bundle is cached in the app DB and served at `/apps/:name`.
  * The repository itself is configured via the remote-sync settings.
  */
 export interface DataApp {

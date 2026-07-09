@@ -1,4 +1,5 @@
 import { IndexRoute, Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { AppView } from "./AppView";
 import { DataAppLayout } from "./DataAppLayout";
@@ -11,9 +12,12 @@ import { DataAppLayout } from "./DataAppLayout";
  */
 export function getRoutes() {
   return (
-    <Route path="data-app/:name" component={DataAppLayout}>
+    <Route
+      path={`${Urls.DATA_APP_URL_SEGMENT}/:name`}
+      component={DataAppLayout}
+    >
       <IndexRoute component={AppView} />
-      {/* Sub-paths under /data-app/:name are owned by the iframe's router.
+      {/* Sub-paths under /apps/:name are owned by the iframe's router.
           Same component — `AppView` just keeps the iframe mounted; the URL
           change is mirrored back from inside the iframe via
           `history.replaceState`. */}

@@ -10,10 +10,10 @@ describe("deriveIframeSrc", () => {
   afterEach(() => window.history.replaceState({}, "", "/"));
 
   it.each<[string, string, string]>([
-    ["/data-app/sales", "sales", "/embed/data-app/sales"],
-    ["/data-app/sales/orders/42", "sales", "/embed/data-app/sales/orders/42"],
-    ["/somewhere/else", "sales", "/embed/data-app/sales"],
-    ["/data-app/my%20app/page", "my app", "/embed/data-app/my%20app/page"],
+    ["/apps/sales", "sales", "/embed/apps/sales"],
+    ["/apps/sales/orders/42", "sales", "/embed/apps/sales/orders/42"],
+    ["/somewhere/else", "sales", "/embed/apps/sales"],
+    ["/apps/my%20app/page", "my app", "/embed/apps/my%20app/page"],
   ])(
     "maps parent %p (name %p) to iframe src %p",
     (parentPath, name, expected) => {

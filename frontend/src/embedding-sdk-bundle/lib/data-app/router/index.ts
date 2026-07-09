@@ -1,12 +1,8 @@
 import { browserHistory } from "metabase/router";
 
-import {
-  DATA_APP_EMBED_PREFIX,
-  DataAppRouter,
-  getBasename,
-} from "./DataAppRouter";
+import { DataAppRouter, getBasename } from "./DataAppRouter";
 
-export { DataAppRouter, getBasename, DATA_APP_EMBED_PREFIX };
+export { DataAppRouter, getBasename };
 export { DataAppLink, type DataAppLinkProps } from "./DataAppLink";
 export { useDataAppLocation } from "./useDataAppLocation";
 
