@@ -192,7 +192,7 @@ export function formatValueRaw(
     isDate(column) ||
     isDateValue(value) ||
     dayjs.isDayjs(value) ||
-    dayjs(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
