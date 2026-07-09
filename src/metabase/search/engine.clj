@@ -121,7 +121,7 @@
   "Values already warned about, so misconfiguration warns once rather than on every call."
   (atom #{}))
 
-(defn- warn-once [value message]
+(defn- warn-once! [value message]
   (when-not (contains? @warned-engine-values value)
     (swap! warned-engine-values conj value)
     (log/warn message)))
@@ -150,7 +150,7 @@
     (let [engine (canonical-engine value)]
       (if (known-engine? engine)
         engine
-        (warn-once value (format "Ignoring unknown search engine: %s" value))))))
+        (warn-once! value (format "Ignoring unknown search engine: %s" value))))))
 
 (defn- configured-engine []
   ;; The raw setting value, not the public getter: [[settings/search-engine]] resolves its default via
@@ -190,7 +190,7 @@
   (let [configured (configured-engine)
         default    (first (supported-engines))]
     (when (and configured (not= configured default))
-      (warn-once [:unsupported configured]
+      (warn-once! [:unsupported configured]
                  (format "Configured search engine %s is not supported on this instance, using %s instead"
                          configured default)))
     default))

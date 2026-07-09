@@ -183,7 +183,11 @@
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
-      (log/debug "repair-index! called prior to init!")
+      ;; Semantic can become active at runtime (kill switch re-enabled, or added to additional-search-engines)
+      ;; without init! ever having run; initializing here lets the periodic repair task backfill the index.
+      (do
+        (log/info "No active semantic index, initializing it instead of repairing")
+        (init! searchable-documents {}))
       (semantic.repair/with-repair-table!
         pgvector
         (fn [repair-table-name]

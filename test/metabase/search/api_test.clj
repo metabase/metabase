@@ -378,6 +378,15 @@
     (testing "an unknown cookie engine degrades to the default"
       (is (nil? (#'search.api/cookie-engine {:cookies {"metabase.SEARCH_ENGINE" {:value "wut"}}}))))))
 
+(deftest engine-cookie-request-test
+  (let [pinned {:request-options {:cookies {"metabase.SEARCH_ENGINE" {:value "in-place"}}}}]
+    (testing "a pinned engine cookie selects the engine"
+      (is (=? {:engine "search.engine/in-place"}
+              (mt/user-http-request :crowberto :get 200 "search" pinned :q "x"))))
+    (testing "an explicit blank search_engine unpins: the cookie is ignored and the default serves"
+      (is (=? {:engine "search.engine/appdb"}
+              (mt/user-http-request :crowberto :get 200 "search" pinned :q "x" :search_engine ""))))))
+
 (deftest vector-search-knobs-test
   (testing "the vector-search tuning/diagnostic knobs are admin-only"
     (doseq [[param value] {:vector_search_ef_search       100
