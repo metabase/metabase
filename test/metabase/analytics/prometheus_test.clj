@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
@@ -223,12 +223,11 @@
     (testing "The values are boolean"
       (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-active)))))
       (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-default))))))
-    (testing "Legacy search is always active"
-      (is (= 1 (value :metabase-search/engine-active :in-place))))
-    (testing "There is at least one other active engine iff we support an index."
-      (if (search/supports-index?)
-        (is (< 1 (sum :metabase-search/engine-active)))
-        (is (= 1 (sum :metabase-search/engine-active)))))
+    (testing "The default engine is active"
+      (is (= 1 (value :metabase-search/engine-active (search.engine/default-engine)))))
+    (testing "The active engines are the default plus the maintained indexes"
+      (is (= (count (into #{(search.engine/default-engine)} (search.engine/active-engines)))
+             (sum :metabase-search/engine-active))))
     (testing "There is only one default"
       (is (= 1 (sum :metabase-search/engine-default))))))
 

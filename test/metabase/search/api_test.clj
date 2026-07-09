@@ -355,6 +355,17 @@
     (is (=? {:engine "search.engine/in-place"}
             (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "in-place")))))
 
+(deftest engine-cookie-staleness-test
+  (let [request-with-cookie {:cookies {"metabase.SEARCH_ENGINE" {:value "appdb"}}}]
+    (testing "a cookie engine that can still serve is honored"
+      (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])]
+        (is (= "appdb" (#'search.api/cookie-engine request-with-cookie)))))
+    (testing "a cookie engine whose index is no longer maintained degrades to the default"
+      (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+        (is (nil? (#'search.api/cookie-engine request-with-cookie)))))
+    (testing "an unknown cookie engine degrades to the default"
+      (is (nil? (#'search.api/cookie-engine {:cookies {"metabase.SEARCH_ENGINE" {:value "wut"}}}))))))
+
 (deftest vector-search-knobs-test
   (testing "the vector-search tuning/diagnostic knobs are admin-only"
     (doseq [[param value] {:vector_search_ef_search       100

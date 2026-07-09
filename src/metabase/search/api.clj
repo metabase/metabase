@@ -58,9 +58,14 @@
         (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
         nil))))
 
+(defn- engine-active?
+  "Can the engine serve queries right now? In-place always can; indexed engines must be in the active set."
+  [engine]
+  (or (= engine :search.engine/in-place)
+      (boolean (some #(isa? engine %) (search.engine/active-engines)))))
+
 (defn- check-engine-serves!
-  "400 when an explicitly requested engine cannot serve searches, naming the cause.
-  Only for explicit requests; cookie-carried engines degrade to the default instead, as they can go stale."
+  "400 when an explicitly requested engine cannot serve searches, naming the cause."
   [value]
   (let [engine (keyword "search.engine" value)]
     (cond
@@ -70,10 +75,20 @@
       (not (search.engine/supported-engine? engine))
       (throw (ex-info (tru "Search engine {0} is not supported on this instance" value) {:status-code 400}))
 
-      (not (or (isa? engine :search.engine/in-place)
-               (some #(isa? engine %) (search.engine/active-engines))))
+      (not (engine-active? engine))
       (throw (ex-info (tru "Search engine {0} is not enabled; add it to additional-search-engines to use it" value)
                       {:status-code 400})))))
+
+(defn- cookie-engine
+  "The engine cookie's value when it can still serve, else nil.
+  Cookies outlive configuration, so a stale value degrades to the default instead of erroring."
+  [request]
+  (when-let [value (get-in request [:cookies engine-cookie-name :value])]
+    (let [engine (keyword "search.engine" value)]
+      (when (and (search.engine/known-engine? engine)
+                 (search.engine/supported-engine? engine)
+                 (engine-active? engine))
+        value))))
 
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
@@ -84,8 +99,7 @@
          (handler request (set-engine-cookie! respond new-engine) raise)
          (catch Exception e
            (raise e)))
-       (handler (->> (get-in request [:cookies engine-cookie-name :value])
-                     (assoc-in request [:params :search_engine]))
+       (handler (assoc-in request [:params :search_engine] (cookie-engine request))
                 respond
                 raise)))
    (fn [prefix]
