@@ -87,12 +87,21 @@
           (testing "nothing unmanaged was persisted"
             (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id))))))))))
 
-(deftest requires-transform-write-test
-  (testing "a user without write access to the transform cannot manage its indexes"
+(deftest index-endpoints-require-transform-permission-test
+  (testing "every index endpoint inherits the transform's permission: a user without access is blocked from all of them"
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "index/request"
-                                   {:transform_id transform-id :structured btree}))))))
+      (let [req-id (:id (mt/user-http-request :crowberto :post 200 "index/request"
+                                              {:transform_id transform-id :structured btree}))]
+        (testing "reads require transform read access"
+          (mt/user-http-request :rasta :get 403 (str "index?transform-id=" transform-id))
+          (mt/user-http-request :rasta :get 403 (str "index/request/" req-id)))
+        (testing "mutations require transform write access"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "index/request"
+                                       {:transform_id transform-id :structured btree})))
+          (mt/user-http-request :rasta :put 403 (str "index/request/" req-id)
+                                {:structured (assoc btree :columns [{:name "price"}])})
+          (mt/user-http-request :rasta :delete 403 (str "index/request/" req-id)))))))
 
 (deftest list-requires-transform-id-test
   (testing "GET requires transform-id"

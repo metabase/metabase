@@ -660,6 +660,21 @@
     (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
       (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
 
+(defn- apply-index-outcomes!
+  "Write a [[reconcile/classify-index-outcomes]] result back: drop the removed rows, and move the rest to their new
+  status (one update per outcome), keeping `error_message` in step with the transition."
+  [by-outcome]
+  (doseq [[status rows] by-outcome]
+    (if (= :delete-row status)
+      (t2/delete! :model/TableIndex :id [:in (map :id rows)])
+      (t2/update! :model/TableIndex :id [:in (map :id rows)]
+                  (cond-> {:status           status
+                           :last_executed_at :%now}
+                    (= status :succeeded)
+                    (assoc :error_message nil)
+                    (= status :failed)
+                    (assoc :error_message "Index was not found on the target table after the transform ran."))))))
+
 (defn verify-managed-indexes!
   "Reconcile each index request against what's physically in the warehouse and set its `:status`.
   Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
@@ -673,27 +688,8 @@
         (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
               {:keys [schema] table-name :name} (:target transform)]
           (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
-            (let [present-keys (into #{} (map reconcile/match-key) warehouse-indexes)
-                  by-outcome   (group-by (fn [row]
-                                           (let [present? (contains? present-keys (reconcile/managed-match-key row))]
-                                             (cond
-                                               (and (table-index/applicable? row) present?) :succeeded
-                                               (table-index/applicable? row)                :failed
-                                               present?                                    :delete-pending
-                                               :else                                       :delete-row)))
-                                         managed)]
-              ;; one update per outcome rather than per row
-              (doseq [[status rows] by-outcome]
-                (if (= :delete-row status)
-                  (t2/delete! :model/TableIndex :id [:in (map :id rows)])
-                  (t2/update! :model/TableIndex :id [:in (map :id rows)]
-                              ;; keep error_message in step with the status transition
-                              (cond-> {:status           status
-                                       :last_executed_at :%now}
-                                (= status :succeeded)
-                                (assoc :error_message nil)
-                                (= status :failed)
-                                (assoc :error_message "Index was not found on the target table after the transform ran."))))))
+            (apply-index-outcomes!
+             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))
             (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s; leaving %d request(s) unchanged"
                        schema table-name (count managed))))))))
 

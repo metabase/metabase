@@ -62,6 +62,10 @@
     :schema     nil :table "events"
     :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}] :if-not-exists true}
     :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" (\"a\"\"b\")"}
+   {:label      "a SQL-injection payload in the name and column is quoted+escaped, so it can only ever be an identifier"
+    :schema     nil :table "events"
+    :structured {:kind :btree :name "idx\"; DROP TABLE users; --" :columns [{:name "a\"; DROP TABLE x; --"}]}
+    :expected   "CREATE INDEX \"idx\"\"; DROP TABLE users; --\" ON \"events\" (\"a\"\"; DROP TABLE x; --\")"}
    {:label      "gin renders USING gin"
     :schema     "public" :table "events"
     :structured {:kind :gin :name "events_data" :columns [{:name "data"}] :if-not-exists true}

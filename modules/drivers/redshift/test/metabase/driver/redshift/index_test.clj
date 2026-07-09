@@ -88,7 +88,13 @@
                    {:kind :sortkey :columns [{:name "b"}]}]
     :ctas         "CREATE TABLE \"events\" DISTSTYLE KEY DISTKEY (\"a\") COMPOUND SORTKEY (\"b\") AS SELECT 1"
     :create-table (str "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) "
-                       "DISTSTYLE KEY DISTKEY (\"a\") COMPOUND SORTKEY (\"b\")")}])
+                       "DISTSTYLE KEY DISTKEY (\"a\") COMPOUND SORTKEY (\"b\")")}
+   {:label        "a SQL-injection payload in a sortkey column is quoted+escaped at both seams"
+    :table        :events
+    :indexes      [{:kind :sortkey :columns [{:name "a\"; DROP TABLE x; --"}]}]
+    :ctas         "CREATE TABLE \"events\" COMPOUND SORTKEY (\"a\"\"; DROP TABLE x; --\") AS SELECT 1"
+    :create-table (str "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) "
+                       "COMPOUND SORTKEY (\"a\"\"; DROP TABLE x; --\")")}])
 
 (deftest ^:parallel sortkey-inlined-at-both-creation-seams-test
   (doseq [{:keys [label table indexes ctas create-table]} inline-cases]

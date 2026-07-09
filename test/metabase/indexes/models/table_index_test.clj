@@ -156,3 +156,35 @@
                                         :structured   {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}]
       (is (= [a-id b-id]
              (map :id (table-index/select-applicable-for-transform transform-id)))))))
+
+(deftest transform-edit-marks-indexes-for-revalidation-test
+  (testing "editing a transform's target flips its applicable indexes to :update-pending; delete-pending untouched"
+    (mt/with-temp [:model/Transform {transform-id :id :as transform} (temp-transform-spec)
+                   :model/TableIndex {create-id :id} {:transform_id transform-id
+                                                      :index_name   "create_idx"
+                                                      :structured   {:kind :btree :name "create_idx"
+                                                                     :columns [{:name "a"}]}}
+                   :model/TableIndex {succeeded-id :id} {:transform_id transform-id
+                                                         :index_name   "succeeded_idx"
+                                                         :status       :succeeded
+                                                         :structured   {:kind :btree :name "succeeded_idx"
+                                                                        :columns [{:name "b"}]}}
+                   :model/TableIndex {deleted-id :id} {:transform_id transform-id
+                                                       :index_name   "deleted_idx"
+                                                       :status       :delete-pending
+                                                       :structured   {:kind :btree :name "deleted_idx"
+                                                                      :columns [{:name "c"}]}}]
+      (t2/update! :model/Transform transform-id {:target (assoc (:target transform) :name (mt/random-name))})
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex create-id)))
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex succeeded-id)))
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id))))))
+
+(deftest deleting-transform-removes-its-indexes-test
+  (testing "the transform_id FK cascades, so deleting a transform drops its index requests"
+    (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+      (t2/insert! :model/TableIndex {:transform_id transform-id
+                                     :index_name   "idx"
+                                     :structured   {:kind :btree :name "idx" :columns [{:name "a"}]}})
+      (is (t2/exists? :model/TableIndex :transform_id transform-id))
+      (t2/delete! :model/Transform transform-id)
+      (is (not (t2/exists? :model/TableIndex :transform_id transform-id))))))
