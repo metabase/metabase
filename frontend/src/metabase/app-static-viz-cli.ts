@@ -27,18 +27,18 @@ type GetCellBackgroundColorsData = {
   arg: CellBackgroundColorsInput;
 };
 
-type InputData = RenderChartData | GetCellBackgroundColorsData;
+type LineData = RenderChartData | GetCellBackgroundColorsData;
 
 const rl = readline.createInterface({ input: process.stdin });
 rl.on("line", (line: string) => {
-  const data = line.trim();
-  if (!data) {
+  const lineClean = line.trim();
+  if (!lineClean) {
     return;
   }
   let out;
   try {
-    const dataJson: InputData = JSON.parse(data);
-    const { fn, arg } = dataJson;
+    const lineData: LineData = JSON.parse(lineClean);
+    const { fn, arg } = lineData;
     if (fn === "renderChart") {
       out = JSON.stringify({ ok: true, result: renderChart(arg) });
     } else if (fn === "getCellBackgroundColors") {
