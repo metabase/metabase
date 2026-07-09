@@ -22,7 +22,9 @@
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.util.password :as u.password]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.security SecureRandom)))
 
 (set! *warn-on-reflection* true)
 
@@ -49,6 +51,11 @@
 
 (defn- jti-used? [credentials jti]
   (boolean (some #(= (:jti %) jti) (:used_jtis credentials))))
+
+(defn jti-consumed?
+  "Has this challenge `jti` already been consumed by a successful verification for `user-id`?"
+  [user-id jti]
+  (boolean (some-> (totp-identity user-id) :credentials (jti-used? jti))))
 
 (defn- consume-jti
   "Record `jti` as used (nil jti = session re-auth, nothing to record), pruning expired entries."
@@ -138,7 +145,7 @@
                                             :provider provider-name
                                             {:for :update})]
       (when (confirmed? auth-identity)
-        (let [code (format "%06d" (.nextInt (java.security.SecureRandom.) 1000000))]
+        (let [code (format "%06d" (.nextInt (SecureRandom.) 1000000))]
           (t2/update! :model/AuthIdentity (:id auth-identity)
                       {:credentials (assoc (:credentials auth-identity)
                                            :email_otp {:hash (u.password/hash-bcrypt code)
@@ -161,6 +168,10 @@
   authenticator)."
   [user-id]
   (t2/with-transaction [_conn]
+    ;; serialize concurrent enrollments for the same user by locking the User row: with no totp
+    ;; row yet there is nothing else to lock, and racing inserts would abort the transaction on
+    ;; the unique (user_id, provider) constraint
+    (t2/select-one [:model/User :id] :id user-id {:for :update})
     (let [auth-identity (t2/select-one :model/AuthIdentity
                                        :user_id user-id
                                        :provider provider-name

@@ -15,6 +15,7 @@
    [clojure.string :as str]
    [metabase.util :as u])
   (:import
+   (java.net URLEncoder)
    (java.nio ByteBuffer)
    (java.security MessageDigest SecureRandom)
    (org.apache.commons.codec.binary Base32)))
@@ -98,6 +99,8 @@
 (defn otpauth-uri
   "Build an `otpauth://totp/...` URI for QR-code enrollment."
   ^String [{:keys [issuer account secret]}]
-  (let [enc (fn [s] (java.net.URLEncoder/encode (str s) "UTF-8"))]
+  ;; URLEncoder form-encodes spaces as "+", which authenticator apps display literally
+  ;; ("Acme+Analytics"); otpauth URIs need percent-encoding.
+  (let [enc (fn [s] (str/replace (URLEncoder/encode (str s) "UTF-8") "+" "%20"))]
     (format "otpauth://totp/%s:%s?secret=%s&issuer=%s&digits=%d&period=%d"
             (enc issuer) (enc account) secret (enc issuer) num-digits time-step-seconds)))

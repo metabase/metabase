@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -9,13 +9,16 @@ export const MfaAuthCard = () => {
   const hasFeature = useHasTokenFeature("multi-factor-auth");
   const { value: enabled, updateSetting } = useAdminSetting("mfa-enabled");
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
-    skip: !hasFeature && !enabled,
+    skip: !enabled,
   });
 
   // Feature gone AND setting off: nothing to manage, nothing to sell here.
   if (!hasFeature && !enabled) {
     return null;
   }
+
+  const enrolledCount = overview?.enrolled_count ?? 0;
+  const unenrolledCount = overview?.unenrolled_count ?? 0;
 
   return (
     <Card withBorder>
@@ -40,7 +43,11 @@ export const MfaAuthCard = () => {
         )}
         {Boolean(enabled) && overview && (
           <Text c="text-secondary" size="sm">
-            {t`${overview.enrolled_count} users enrolled, ${overview.unenrolled_users.length} without two-factor authentication.`}
+            {ngettext(
+              msgid`${enrolledCount} user enrolled, ${unenrolledCount} without two-factor authentication.`,
+              `${enrolledCount} users enrolled, ${unenrolledCount} without two-factor authentication.`,
+              enrolledCount,
+            )}
           </Text>
         )}
       </Stack>

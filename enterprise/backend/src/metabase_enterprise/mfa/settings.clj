@@ -12,6 +12,8 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defsetting mfa-enabled
   (deferred-tru "Allow users to secure their account with two-factor authentication (an authenticator app).")
   :visibility :public
@@ -32,11 +34,7 @@
   :export?    false
   :audit      :never
   :encryption :when-encryption-key-set
-  :getter     (fn []
-                (or (setting/get-value-of-type :string :mfa-challenge-signing-key)
-                    ;; ponytail: two nodes generating simultaneously race; last write wins and the
-                    ;; loser's in-flight (5-min) challenge tokens fail verification. Generate
-                    ;; eagerly at startup if this ever bites.
-                    (let [k (codecs/bytes->hex (nonce/random-bytes 32))]
-                      (setting/set-value-of-type! :string :mfa-challenge-signing-key k)
-                      k))))
+  ;; :init generates and persists on first access. Two nodes touching it simultaneously can still
+  ;; race (last write wins; the loser's in-flight 5-min challenge tokens fail verification), but
+  ;; the window is one first-ever MFA login. Generate eagerly at startup if this ever bites.
+  :init       (fn [] (codecs/bytes->hex (nonce/random-bytes 32))))

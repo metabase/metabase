@@ -17,7 +17,7 @@
 (defn- reset-throttlers! []
   (doseq [throttler (concat (vals @#'mfa.api/verify-throttlers)
                             (vals @#'api.session/login-throttlers)
-                            [@#'mfa.api/email-otp-send-throttler])]
+                            (vals @#'mfa.api/email-otp-send-throttlers))]
     (reset! (:attempts throttler) nil)))
 
 (use-fixtures :each (fn [f] (reset-throttlers!) (f)))
@@ -66,8 +66,8 @@
                                          :provider    "totp"
                                          :credentials {:secret secret :confirmed_at (t/instant)}})
         (try
-          (with-redefs [channel.settings/email-configured? (constantly true)
-                        channel.email/send-message!        (fn [& {:as msg}] (reset! sent msg) msg)]
+          (mt/with-dynamic-fn-redefs [channel.settings/email-configured?    (constantly true)
+                                      channel.email/send-message-or-throw! (fn [msg] (reset! sent msg) msg)]
             (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
               (testing "the challenge advertises the email method when email is configured"
                 (is (= ["totp" "email"] (:methods challenge))))
@@ -78,7 +78,9 @@
                 (testing "the emailed code completes the login"
                   (is (=? {:id string?}
                           (mt/client :post 200 "ee/mfa/verify"
-                                     {:mfa_token (:mfa_token challenge) :code code})))))))
+                                     {:mfa_token (:mfa_token challenge) :code code}))))
+                (testing "a consumed challenge token cannot keep sending codes"
+                  (mt/client :post 401 "ee/mfa/send-email-otp" {:mfa_token (:mfa_token challenge)})))))
           (testing "a bogus challenge token cannot trigger a send"
             (mt/client :post 401 "ee/mfa/send-email-otp" {:mfa_token "bogus"}))
           (finally
@@ -92,7 +94,7 @@
                                          :provider    "totp"
                                          :credentials {:secret secret :confirmed_at (t/instant)}})
         (try
-          (with-redefs [channel.settings/email-configured? (constantly false)]
+          (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)]
             (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
               (testing "the challenge does not advertise email"
                 (is (= ["totp"] (:methods challenge))))

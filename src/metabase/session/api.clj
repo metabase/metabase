@@ -36,7 +36,7 @@
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
-(mu/defn- ldap-login :- [:maybe :map]
+(mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa-pending? [:= true]]]]]
   "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
   result map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username password device-info :- request/DeviceInfo]
@@ -62,7 +62,7 @@
         (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                  :status-code 401}))))))
 
-(mu/defn- email-login :- [:maybe :map]
+(mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa-pending? [:= true]]]]]
   "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
   map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString

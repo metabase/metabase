@@ -12,17 +12,17 @@
   (:require
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase-enterprise.mfa.throttling :as mfa.throttling]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
    [metabase.util.encryption :as encryption]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
@@ -34,16 +34,16 @@
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
 (def ^:private throttlers
-  ;; second-factor re-auth takes a 6-digit code, so these paths need brute-force limits like /verify
+  ;; second-factor re-auth takes a 6-digit code, so these paths need brute-force limits like
+  ;; /verify. Only failed attempts count (see `mfa.throttling`).
   {:enroll     (throttle/make-throttler :user-id, :attempts-threshold 5)
    :regenerate (throttle/make-throttler :user-id, :attempts-threshold 5)
    :disable    (throttle/make-throttler :user-id, :attempts-threshold 5)})
 
-(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
-
-(defn- throttle-check [key]
-  (when-not throttling-disabled?
-    (throttle/check (throttlers key) api/*current-user-id*)))
+(defn- throttled [throttler-key f]
+  (mfa.throttling/call-with-failure-throttling
+   [[(throttlers throttler-key) api/*current-user-id*]]
+   f))
 
 (defn- verify-user-password
   "Re-verify the signed-in user's first-factor password, dispatched by how they authenticate:
@@ -51,18 +51,18 @@
   [user-id password]
   (boolean
    (or (when-let [{:keys [password_hash password_salt]}
-                  (:credentials (t2/select-one :model/AuthIdentity :user_id user-id :provider "password"))]
+                  (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
          (and password_hash (u.password/verify-password password password_salt password_hash)))
        (when (sso/ldap-enabled)
-         (when-let [email (t2/select-one-fn :email :model/User user-id)]
-           (when-let [user-info (sso/find-user email)]
+         (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
+           (when-let [user-info (sso/find-user user-email)]
              (sso/verify-password user-info password)))))))
 
 (defn- notify! [user-id subject message event-topic]
   (try
-    (when-let [email (t2/select-one-fn :email :model/User user-id)]
+    (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
       (email/send-message! {:subject      subject
-                            :recipients   [email]
+                            :recipients   [user-email]
                             :message-type :text
                             :message      message}))
     (catch Throwable e
@@ -70,7 +70,7 @@
   (events/publish-event! event-topic {:object (t2/select-one :model/User user-id)}))
 
 (defn- invalid-code-ex []
-  (ex-info (str (deferred-tru "Invalid authentication code.")) {:status-code 401}))
+  (ex-info (tru "Invalid authentication code.") {:status-code 401}))
 
 ;;; -------------------------------------------------- Enrollment --------------------------------------------------
 
@@ -85,19 +85,20 @@
    {:keys [password]} :- [:map [:password ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (when-not (mfa.settings/mfa-enabled)
-    (throw (ex-info (str (deferred-tru "Two-factor authentication is not enabled on this instance."))
+    (throw (ex-info (tru "Two-factor authentication is not enabled on this instance.")
                     {:status-code 400})))
-  (throttle-check :enroll)
-  (when-not (verify-user-password api/*current-user-id* password)
-    (throw (ex-info (str (deferred-tru "Invalid password.")) {:status-code 401})))
-  (let [secret (or (enrollment/start-enrollment! api/*current-user-id*)
-                   (throw (ex-info (str (deferred-tru "Two-factor authentication is already set up. Disable it before re-enrolling."))
-                                   {:status-code 400})))
-        email  (t2/select-one-fn :email :model/User api/*current-user-id*)]
-    {:secret      secret
-     :otpauth_uri (totp/otpauth-uri {:issuer (or (appearance/site-name) "Metabase")
-                                     :account email
-                                     :secret  secret})}))
+  (throttled :enroll
+             (fn []
+               (when-not (verify-user-password api/*current-user-id* password)
+                 (throw (ex-info (tru "Invalid password.") {:status-code 401})))
+               (let [secret     (or (enrollment/start-enrollment! api/*current-user-id*)
+                                    (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
+                                                    {:status-code 400})))
+                     user-email (t2/select-one-fn :email :model/User api/*current-user-id*)]
+                 {:secret      secret
+                  :otpauth_uri (totp/otpauth-uri {:issuer (or (appearance/site-name) "Metabase")
+                                                  :account user-email
+                                                  :secret  secret})}))))
 
 (api.macros/defendpoint :post "/enroll/confirm" :- [:map
                                                     [:recovery_codes [:sequential ms/NonBlankString]]]
@@ -107,12 +108,13 @@
    _query-params
    {:keys [code]} :- [:map [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
-  (throttle-check :enroll)
-  (let [codes (or (enrollment/confirm-enrollment! api/*current-user-id* code)
-                  (throw (invalid-code-ex)))]
+  (let [codes (throttled :enroll
+                         (fn []
+                           (or (enrollment/confirm-enrollment! api/*current-user-id* code)
+                               (throw (invalid-code-ex)))))]
     (notify! api/*current-user-id*
-             (str (deferred-tru "Two-factor authentication was enabled on your Metabase account"))
-             (str (deferred-tru "Two-factor authentication is now required when you sign in. If you did not do this, reset your password and contact your administrator immediately."))
+             (tru "Two-factor authentication was enabled on your Metabase account")
+             (tru "Two-factor authentication is now required when you sign in. If you did not do this, reset your password and contact your administrator immediately.")
              :event/mfa-enrolled)
     {:recovery_codes codes}))
 
@@ -122,13 +124,16 @@
   [_route-params
    _query-params
    {:keys [code]} :- [:map [:code ms/NonBlankString]]]
-  (throttle-check :disable)
-  (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
-    (throw (invalid-code-ex)))
-  (enrollment/disable! api/*current-user-id*)
+  (throttled :disable
+             (fn []
+               ;; one transaction so a consumed recovery code and the enrollment removal land together
+               (t2/with-transaction [_conn]
+                 (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
+                   (throw (invalid-code-ex)))
+                 (enrollment/disable! api/*current-user-id*))))
   (notify! api/*current-user-id*
-           (str (deferred-tru "Two-factor authentication was disabled on your Metabase account"))
-           (str (deferred-tru "Two-factor authentication was turned off for your account. If you did not do this, contact your administrator immediately."))
+           (tru "Two-factor authentication was disabled on your Metabase account")
+           (tru "Two-factor authentication was turned off for your account. If you did not do this, contact your administrator immediately.")
            :event/mfa-disabled)
   api/generic-204-no-content)
 
@@ -157,24 +162,22 @@
   there is nothing to \"reset\", the secret lives on their device."
   [_route-params
    _query-params
-   {:keys [user_id]} :- [:map [:user_id ms/PositiveInt]]]
+   {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
   (api/check-superuser)
-  (when (enrollment/disable! user_id)
-    (notify! user_id
-             (str (deferred-tru "Two-factor authentication was removed from your Metabase account"))
-             (str (deferred-tru "An administrator removed two-factor authentication from your account. You can set it up again from your account settings. If you did not request this, contact your administrator immediately."))
+  (when (enrollment/disable! user-id)
+    (notify! user-id
+             (tru "Two-factor authentication was removed from your Metabase account")
+             (tru "An administrator removed two-factor authentication from your account. You can set it up again from your account settings. If you did not request this, contact your administrator immediately.")
              :event/mfa-disabled))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/admin/overview" :- [:map
                                                    [:encryption_key_set :boolean]
                                                    [:enrolled_count     :int]
-                                                   [:unenrolled_users   [:sequential
-                                                                         [:map
-                                                                          [:id    ms/PositiveInt]
-                                                                          [:email ms/NonBlankString]]]]]
-  "Admin: enrollment overview — who hasn't set up a second factor yet, and whether the instance
-  encrypts secrets at rest."
+                                                   [:unenrolled_count   :int]]
+  "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and
+  whether the instance encrypts secrets at rest. Counts only; a browsable per-user list belongs to
+  the People page (Phase 2 visibility work) with proper pagination."
   []
   (api/check-superuser)
   ;; Enrollment state lives inside the encrypted credentials JSON, so filter in memory rather
@@ -182,15 +185,11 @@
   (let [enrolled-ids (->> (t2/select [:model/AuthIdentity :id :user_id :credentials] :provider "totp")
                           (filter #(get-in % [:credentials :confirmed_at]))
                           (map :user_id)
-                          set)]
+                          set)
+        active-ids   (t2/select-pks-set :model/User :is_active true :type "personal")]
     {:encryption_key_set (encryption/default-encryption-enabled?)
      :enrolled_count     (count enrolled-ids)
-     :unenrolled_users   (vec (for [user  (t2/select [:model/User :id :email]
-                                                     :is_active true
-                                                     :type "personal"
-                                                     {:order-by [:email]})
-                                    :when (not (contains? enrolled-ids (:id user)))]
-                                (select-keys user [:id :email])))}))
+     :unenrolled_count   (count (remove enrolled-ids active-ids))}))
 
 ;;; -------------------------------------------------- Recovery codes --------------------------------------------------
 
@@ -201,7 +200,9 @@
   [_route-params
    _query-params
    {:keys [code]} :- [:map [:code ms/NonBlankString]]]
-  (throttle-check :regenerate)
-  (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
-    (throw (invalid-code-ex)))
-  {:codes (enrollment/reset-recovery-codes! api/*current-user-id*)})
+  (throttled :regenerate
+             (fn []
+               (t2/with-transaction [_conn]
+                 (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
+                   (throw (invalid-code-ex)))
+                 {:codes (enrollment/reset-recovery-codes! api/*current-user-id*)}))))

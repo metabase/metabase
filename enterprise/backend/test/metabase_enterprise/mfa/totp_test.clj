@@ -8,7 +8,7 @@
   "RFC 6238 Appendix B seed (ASCII \"12345678901234567890\") encoded as Base32, for HMAC-SHA1."
   "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
 
-(deftest rfc6238-vectors-test
+(deftest ^:parallel rfc6238-vectors-test
   (testing "6-digit truncations of the RFC 6238 Appendix B SHA1 test vectors (proves interop with authenticator apps)"
     (are [unix expected] (= expected (totp/code-for-unix-time rfc-secret unix))
       59          "287082"
@@ -19,7 +19,7 @@
       ;; T > 32 bits — proves 64-bit time-step handling (RFC 6238 Appendix A note)
       20000000000 "353130")))
 
-(deftest round-trip-test
+(deftest ^:parallel round-trip-test
   (let [secret (totp/generate-secret)]
     (testing "a generated secret is unpadded Base32"
       (is (re-matches #"[A-Z2-7]+" secret)))
@@ -30,7 +30,7 @@
       (is (not (totp/valid-code? secret "abcdef")))
       (is (not (totp/valid-code? secret nil))))))
 
-(deftest validation-window-test
+(deftest ^:parallel validation-window-test
   (let [secret  (totp/generate-secret)
         now     (totp/current-time-step)
         code-at (fn [^long step] (totp/code-for-unix-time secret (* step 30)))]

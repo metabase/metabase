@@ -33,11 +33,11 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
 
   const handleSubmit = useCallback(
     async (data: LoginData) => {
-      const { mfaChallenge } = await dispatch(
+      const { mfaChallenge: challenge } = await dispatch(
         login({ data, redirectUrl }),
       ).unwrap();
-      if (mfaChallenge) {
-        setMfaChallenge(mfaChallenge);
+      if (challenge) {
+        setMfaChallenge(challenge);
       }
     },
     [dispatch, redirectUrl],
@@ -49,6 +49,7 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
         mfaToken={mfaChallenge.mfa_token}
         method={mfaChallenge.method}
         methods={mfaChallenge.methods}
+        onCancel={() => setMfaChallenge(null)}
       />
     );
   }

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import type { MfaChallengeFormProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { openNavbar } from "metabase/redux/app";
@@ -12,11 +13,12 @@ import {
   useVerifyMfaMutation,
 } from "metabase-enterprise/api";
 
-const TOTP_CODE_LENGTH = 6;
+import { RECOVERY_CODE_LENGTH, TOTP_CODE_LENGTH } from "./constants";
 
 export const MfaChallengeForm = ({
   mfaToken,
   methods,
+  onCancel,
 }: MfaChallengeFormProps) => {
   const dispatch = useDispatch();
   const [verifyMfa] = useVerifyMfaMutation();
@@ -42,8 +44,13 @@ export const MfaChallengeForm = ({
       if (!isSmallScreen()) {
         dispatch(openNavbar());
       }
-    } catch {
-      setError(t`That code didn't work. Please try again.`);
+    } catch (verifyError) {
+      setError(
+        getErrorMessage(
+          verifyError,
+          t`That code didn't work. Please try again.`,
+        ),
+      );
       setIsSubmitting(false);
     }
   };
@@ -57,6 +64,9 @@ export const MfaChallengeForm = ({
             : t`Enter the 6-digit code from your authenticator app.`}
         </Text>
         <TextInput
+          aria-label={
+            useRecoveryCode ? t`Recovery code` : t`Authenticator code`
+          }
           value={code}
           onChange={(event) =>
             setCode(
@@ -66,7 +76,7 @@ export const MfaChallengeForm = ({
             )
           }
           placeholder={useRecoveryCode ? "xxxxx-xxxxx" : "123456"}
-          maxLength={useRecoveryCode ? 11 : TOTP_CODE_LENGTH}
+          maxLength={useRecoveryCode ? RECOVERY_CODE_LENGTH : TOTP_CODE_LENGTH}
           inputMode={useRecoveryCode ? "text" : "numeric"}
           autoFocus
           error={error}
@@ -100,14 +110,22 @@ export const MfaChallengeForm = ({
               try {
                 await sendEmailOtp({ mfa_token: mfaToken }).unwrap();
                 setEmailSent(true);
-              } catch {
-                setError(t`Couldn't send the email. Try again in a minute.`);
+              } catch (sendError) {
+                setError(
+                  getErrorMessage(
+                    sendError,
+                    t`Couldn't send the email. Try again in a minute.`,
+                  ),
+                );
               }
             }}
           >
             {emailSent ? t`Code sent — check your email` : t`Email me a code`}
           </Button>
         )}
+        <Button variant="subtle" onClick={onCancel}>
+          {t`Back to log in`}
+        </Button>
       </Stack>
     </Box>
   );

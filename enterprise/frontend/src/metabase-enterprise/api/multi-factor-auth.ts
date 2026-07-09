@@ -1,10 +1,12 @@
+import type { MfaMethod } from "metabase-types/api";
+
 import { EnterpriseApi } from "./api";
 
 export interface MfaStatus {
   mfa_enabled: boolean;
   enrolled: boolean;
   pending: boolean;
-  method: string | null;
+  method: MfaMethod | null;
   recovery_codes_remaining: number;
 }
 
@@ -16,7 +18,7 @@ export interface MfaEnrollResponse {
 export interface MfaAdminOverview {
   encryption_key_set: boolean;
   enrolled_count: number;
-  unenrolled_users: { id: number; email: string }[];
+  unenrolled_count: number;
 }
 
 export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
@@ -26,7 +28,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/mfa/admin/overview",
       }),
-      providesTags: ["session-properties"],
+      providesTags: ["mfa-status"],
     }),
     verifyMfa: builder.mutation<
       { id: string },
@@ -43,7 +45,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/mfa/status",
       }),
-      providesTags: ["session-properties"],
+      providesTags: ["mfa-status"],
     }),
     enrollMfa: builder.mutation<MfaEnrollResponse, { password: string }>({
       query: (body) => ({
@@ -61,7 +63,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/enroll/confirm",
         body,
       }),
-      invalidatesTags: ["session-properties"],
+      invalidatesTags: ["mfa-status"],
     }),
     disableMfa: builder.mutation<void, { code: string }>({
       query: (body) => ({
@@ -69,7 +71,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/disable",
         body,
       }),
-      invalidatesTags: ["session-properties"],
+      invalidatesTags: ["mfa-status"],
     }),
     sendEmailOtp: builder.mutation<{ success: true }, { mfa_token: string }>({
       query: (body) => ({
@@ -87,7 +89,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/recovery-codes",
         body,
       }),
-      invalidatesTags: ["session-properties"],
+      invalidatesTags: ["mfa-status"],
     }),
   }),
 });

@@ -22,6 +22,8 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :refer [defenterprise]]))
 
+(set! *warn-on-reflection* true)
+
 (defn- available-methods
   "Second-factor methods the challenge UI may offer. Email OTP is a fallback to TOTP, advertised
   only when the instance can actually send email."

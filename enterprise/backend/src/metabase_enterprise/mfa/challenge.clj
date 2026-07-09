@@ -13,7 +13,8 @@
 (set! *warn-on-reflection* true)
 
 (def ttl-seconds
-  "How long a challenge token stays valid. Also bounds how long a consumed `jti` must be remembered."
+  "How long a challenge token stays valid. (Consumed `jti`s are retained longer — see
+  `enrollment/consume-jti`'s conservative 2-hour window.)"
   (* 5 60))
 
 (defn issue-challenge-token

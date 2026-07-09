@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase.sso.core :as sso]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -73,8 +74,8 @@
     (mt/with-temp [:model/User {user-id :id, email :email} {}]
       ;; temp users get a password identity; simulate an LDAP-only user by proving dispatch order:
       ;; when the local hash fails, the LDAP branch decides.
-      (with-redefs [metabase.sso.core/ldap-enabled    (constantly true)
-                    metabase.sso.core/find-user       (fn [username] (when (= username email) {:dn "uid=x"}))
-                    metabase.sso.core/verify-password (fn [_user-info password] (= password "directory-pw"))]
+      (mt/with-dynamic-fn-redefs [sso/ldap-enabled    (constantly true)
+                                  sso/find-user       (fn [username] (when (= username email) {:dn "uid=x"}))
+                                  sso/verify-password (fn [_user-info password] (= password "directory-pw"))]
         (is (true? (#'mfa.management/verify-user-password user-id "directory-pw")))
         (is (false? (#'mfa.management/verify-user-password user-id "wrong")))))))

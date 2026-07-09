@@ -28,13 +28,13 @@
                                         :provider    "totp"
                                         :credentials {:secret       (totp/generate-secret)
                                                       :confirmed_at (t/instant)}}
-                 :model/User {unenrolled-id :id} {}]
+                 :model/User _unenrolled {}]
     (testing "requires superuser"
       (mt/user-http-request :rasta :get 403 "ee/mfa/admin/overview"))
-    (let [overview (mt/user-http-request :crowberto :get 200 "ee/mfa/admin/overview")
-          listed?  (fn [user-id] (some #(= user-id (:id %)) (:unenrolled_users overview)))]
+    (let [overview (mt/user-http-request :crowberto :get 200 "ee/mfa/admin/overview")]
       (is (boolean? (:encryption_key_set overview)))
       (is (pos? (:enrolled_count overview)))
-      (testing "unenrolled users are listed; enrolled ones aren't"
-        (is (listed? unenrolled-id))
-        (is (not (listed? enrolled-id)))))))
+      (testing "unenrolled count covers active users without a confirmed enrollment"
+        ;; both temp users are active + personal; only one is enrolled
+        (is (pos? (:unenrolled_count overview)))
+        (is (nil? (:unenrolled_users overview)) "the unbounded per-user list is gone")))))

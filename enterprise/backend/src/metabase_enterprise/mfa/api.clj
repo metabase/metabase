@@ -8,14 +8,15 @@
    [java-time.api :as t]
    [metabase-enterprise.mfa.challenge :as challenge]
    [metabase-enterprise.mfa.enrollment :as enrollment]
+   [metabase-enterprise.mfa.throttling :as mfa.throttling]
    [metabase.api.macros :as api.macros]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.channel.email :as channel.email]
+   [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
@@ -23,22 +24,18 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private verify-throttlers
-  ;; Codes are 6 digits, so slow brute-force limits are load-bearing.
+  ;; Codes are 6 digits, so brute-force limits are load-bearing. Only failures count (see
+  ;; `mfa.throttling`), so 5 wrong codes per user per hour, not 5 logins.
   {:user-id    (throttle/make-throttler :user-id, :attempts-threshold 5)
    :ip-address (throttle/make-throttler :ip-address, :attempts-threshold 50)})
 
-(def ^:private email-otp-send-throttler
-  ;; sending is expensive and spammable — much tighter than verification
-  (throttle/make-throttler :user-id, :attempts-threshold 3))
-
-(def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
-
-(defn- throttle-check [throttler throttle-key]
-  (when-not throttling-disabled?
-    (throttle/check throttler throttle-key)))
+(def ^:private email-otp-send-throttlers
+  ;; sending is expensive and spammable — every send counts, much tighter than verification
+  {:user-id    (throttle/make-throttler :user-id, :attempts-threshold 3)
+   :ip-address (throttle/make-throttler :ip-address, :attempts-threshold 20)})
 
 (defn- invalid-token-ex []
-  (ex-info (str (deferred-tru "Authentication session expired. Please log in again."))
+  (ex-info (tru "Authentication session expired. Please log in again.")
            {:status-code 401}))
 
 ;; No response schema: the success path returns a full ring response (session cookies must be set),
@@ -51,30 +48,36 @@
   their single-use recovery codes; on success sets the session cookie."
   [_route-params
    _query-params
-   {:keys [mfa_token code]} :- [:map
-                                [:mfa_token ms/NonBlankString]
-                                [:code      ms/NonBlankString]]
+   {mfa-token :mfa_token, code :code} :- [:map
+                                          [:mfa_token ms/NonBlankString]
+                                          [:code      ms/NonBlankString]]
    request]
   (let [request-time (t/zoned-date-time (t/zone-id "GMT"))
-        claims       (or (challenge/verify-challenge-token mfa_token)
+        claims       (or (challenge/verify-challenge-token mfa-token)
                          (throw (invalid-token-ex)))
         {:keys [jti]} claims
         user-id      (:user-id claims)
         first-factor (auth-identity/provider-string->keyword (:provider claims))]
     (when-not jti
       (throw (invalid-token-ex)))
-    (throttle-check (verify-throttlers :ip-address) (request/ip-address request))
-    (throttle-check (verify-throttlers :user-id) user-id)
-    (if (enrollment/verify-attempt! user-id code jti)
-      (let [user     (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)
-            session  (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
-            response (vary-meta {:id (str (:key session))} assoc :metabase-user-id (:user_id session))]
-        (request/set-session-cookies request response session request-time))
-      (do
-        (events/publish-event! :event/mfa-verification-failed
-                               {:object (t2/select-one :model/User :id user-id)})
-        (throw (ex-info (str (deferred-tru "Invalid authentication code."))
-                        {:status-code 401}))))))
+    (mfa.throttling/call-with-failure-throttling
+     [[(verify-throttlers :ip-address) (request/ip-address request)]
+      [(verify-throttlers :user-id) user-id]]
+     (fn []
+       (if (enrollment/verify-attempt! user-id code jti)
+         (let [user (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]
+           ;; the account can be deactivated (or deleted) between the password step and here; a
+           ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
+           (when-not (:is_active user)
+             (throw (invalid-token-ex)))
+           (let [session  (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
+                 response (vary-meta {:id (str (:key session))} assoc :metabase-user-id (:user_id session))]
+             (request/set-session-cookies request response session request-time)))
+         (do
+           (events/publish-event! :event/mfa-verification-failed
+                                  {:object (t2/select-one :model/User :id user-id)})
+           (throw (ex-info (tru "Invalid authentication code.")
+                           {:status-code 401}))))))))
 
 (api.macros/defendpoint :post "/send-email-otp" :- [:map [:success [:= true]]]
   "Email a one-time code as a fallback second factor (for a user who lost their authenticator but
@@ -83,22 +86,34 @@
   `POST /verify` like any other code."
   [_route-params
    _query-params
-   {:keys [mfa_token]} :- [:map [:mfa_token ms/NonBlankString]]]
-  (let [claims  (or (challenge/verify-challenge-token mfa_token)
+   {mfa-token :mfa_token} :- [:map [:mfa_token ms/NonBlankString]]
+   request]
+  (let [claims  (or (challenge/verify-challenge-token mfa-token)
                     (throw (invalid-token-ex)))
+        {:keys [jti]} claims
         user-id (:user-id claims)]
-    (throttle-check email-otp-send-throttler user-id)
+    ;; a token that already minted a session must not keep sending codes for its remaining TTL
+    (when (or (not jti) (enrollment/jti-consumed? user-id jti))
+      (throw (invalid-token-ex)))
+    (mfa.throttling/check (email-otp-send-throttlers :ip-address) (request/ip-address request))
+    (mfa.throttling/check (email-otp-send-throttlers :user-id) user-id)
     (when-not (channel.settings/email-configured?)
-      (throw (ex-info (str (deferred-tru "Email is not configured on this instance."))
+      (throw (ex-info (tru "Email is not configured on this instance.")
                       {:status-code 400})))
-    (let [code  (or (enrollment/set-email-otp! user-id)
-                    (throw (invalid-token-ex)))
-          email (t2/select-one-fn :email :model/User :id user-id)]
-      (channel.email/send-message!
-       {:subject      (tru "Your Metabase sign-in code")
-        :recipients   [email]
-        :message-type :text
-        :message      (str (tru "Your one-time sign-in code is: {0}" code)
-                           "\n\n"
-                           (tru "It expires in 10 minutes. If you didn''t try to sign in, contact your administrator."))})
+    (let [code       (or (enrollment/set-email-otp! user-id)
+                         (throw (invalid-token-ex)))
+          user-email (t2/select-one-fn :email :model/User :id user-id)]
+      (try
+        (email/send-message-or-throw!
+         {:subject      (tru "Your Metabase sign-in code")
+          :recipients   [user-email]
+          :message-type :text
+          :message      (str (tru "Your one-time sign-in code is: {0}" code)
+                             "\n\n"
+                             (tru "It expires in 10 minutes. If you didn''t try to sign in, contact your administrator."))})
+        (catch Throwable e
+          (log/warn e "Failed to send MFA email OTP")
+          ;; don't tell an unauthenticated caller "the code exists but the email failed"
+          (throw (ex-info (tru "Failed to send the sign-in code. Please try again or contact your administrator.")
+                          {:status-code 500}))))
       {:success true})))

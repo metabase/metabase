@@ -11,7 +11,7 @@
 
 (defn- fresh-jti [] (str (random-uuid)))
 
-(deftest generate-codes-test
+(deftest ^:parallel generate-codes-test
   (let [codes (recovery-codes/generate-codes)]
     (is (= recovery-codes/num-codes (count codes)))
     (is (every? recovery-codes/recovery-code? codes))

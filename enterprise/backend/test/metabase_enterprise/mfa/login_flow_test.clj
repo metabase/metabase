@@ -69,6 +69,26 @@
 (deftest bogus-token-rejected-test
   (mt/client :post 401 "ee/mfa/verify" {:mfa_token "not-a-real-token" :code "000000"}))
 
+(deftest deactivated-user-cannot-verify-test
+  (with-enrolled-rasta! [secret]
+    (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+      (t2/update! :model/User (mt/user->id :rasta) {:is_active false})
+      (try
+        (testing "a challenge token does not outlive the account: deactivated mid-challenge gets the same 401 as a bad token"
+          (mt/client :post 401 "ee/mfa/verify"
+                     {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)}))
+        (finally
+          (t2/update! :model/User (mt/user->id :rasta) {:is_active true}))))))
+
+(deftest successful-verify-does-not-count-toward-throttle-test
+  (with-enrolled-rasta! [secret]
+    (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+      (is (=? {:id string?}
+              (mt/client :post 200 "ee/mfa/verify"
+                         {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)})))
+      (testing "only failures count — a busy legitimate user is never throttled by their own logins"
+        (is (empty? @(:attempts (@#'mfa.api/verify-throttlers :user-id))))))))
+
 (deftest verify-throttled-test
   (with-enrolled-rasta! [secret]
     (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]

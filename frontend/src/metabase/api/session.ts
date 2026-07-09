@@ -7,6 +7,7 @@ import {
 import MetabaseSettings from "metabase/utils/settings";
 import type {
   EnterpriseSettings,
+  MfaMethod,
   PasswordResetTokenStatus,
 } from "metabase-types/api";
 
@@ -21,8 +22,8 @@ export interface SessionResponse {
 
 export interface MfaChallengeResponse {
   mfa_required: true;
-  method: string;
-  methods?: string[];
+  method: MfaMethod;
+  methods?: MfaMethod[];
   mfa_token: string;
 }
 
