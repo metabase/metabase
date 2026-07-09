@@ -20,6 +20,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
 (def visibility-types
