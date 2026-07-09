@@ -462,8 +462,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by
-  uploading a CSV file."
-  {:multipart true}
+  uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size upload/max-upload-size-bytes}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -486,8 +488,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
-  been created by uploading a CSV file."
-  {:multipart true}
+  been created by uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size upload/max-upload-size-bytes}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params

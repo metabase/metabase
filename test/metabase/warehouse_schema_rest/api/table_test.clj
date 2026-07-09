@@ -18,6 +18,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema-rest.api.table :as api.table]
@@ -1194,6 +1195,17 @@
                             :table-id (:id table)
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
+
+(deftest update-csv-too-large-test
+  ;; one byte over the cap is enough — the multipart layer aborts streaming the file part as soon as it passes the
+  ;; limit, so this never buffers the whole body.
+  (let [oversized (byte-array (inc upload/max-upload-size-bytes))]
+    (doseq [endpoint ["append-csv" "replace-csv"]]
+      (testing (format "POST /api/table/:id/%s rejects files over the size cap with a 413, before the body reaches the handler" endpoint)
+        (is (= "Uploaded content exceeded limits."
+               (mt/user-http-request :crowberto :post 413 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                     {:file oversized})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/table/:id/sync_schema                                       |

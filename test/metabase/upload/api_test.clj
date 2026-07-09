@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.upload.api :as upload.api]
+   [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
    [toucan2.core :as t2]))
 
@@ -33,3 +34,13 @@
                  status))
           (is (= body
                  (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
+
+(deftest csv-upload-too-large-test
+  (testing "POST /api/upload/csv rejects files over the size cap with a 413, before the body reaches the handler"
+    ;; one byte over the cap is enough — the multipart layer aborts streaming the file part as soon as it passes the
+    ;; limit, so this never buffers the whole body.
+    (let [oversized (byte-array (inc upload/max-upload-size-bytes))]
+      (is (= "Uploaded content exceeded limits."
+             (mt/user-http-request :crowberto :post 413 "upload/csv"
+                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                   {:file oversized}))))))
