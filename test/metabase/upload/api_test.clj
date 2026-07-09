@@ -37,16 +37,18 @@
           (is (= body
                  (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
 
+(def ^:private multipart-request-options
+  {:request-options {:headers {"content-type" "multipart/form-data"}}})
+
 (deftest csv-upload-too-large-test
-  (testing "POST /api/upload/csv rejects files over the size cap with a 413, before the body reaches the handler"
+  (testing "POST /api/upload/csv rejects a file over the size cap with a 413"
     ;; One byte over the cap is enough: the multipart middleware aborts streaming the file part as soon as it
     ;; crosses the limit, so the oversized body is never fully buffered.
     (let [oversized (byte-array (inc upload/max-upload-size-bytes))
           calls     (atom 0)]
       (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
         (is (= "Uploaded content exceeded limits."
-               (mt/user-http-request :crowberto :post 413 "upload/csv"
-                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
+               (mt/user-http-request :crowberto :post 413 "upload/csv" multipart-request-options
                                      {:file oversized})))
         (is (zero? @calls) "the endpoint body should never run")))))
 
@@ -59,19 +61,17 @@
                                                          (swap! calls inc)
                                                          (io/delete-file file :silently)
                                                          {:status 200, :body 1})]
-        (mt/user-http-request :crowberto :post 200 "upload/csv"
-                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+        (mt/user-http-request :crowberto :post 200 "upload/csv" multipart-request-options
                               [[:collection_id "root"]
                                [:file at-cap]])
         (is (= 1 @calls) "the endpoint body should run")))))
 
 (deftest csv-upload-too-many-parts-test
-  (testing "POST /api/upload/csv rejects requests with too many multipart parts with a 413, before the body reaches the handler"
+  (testing "POST /api/upload/csv rejects too many multipart parts with a 413"
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
         (is (= "Uploaded content exceeded limits."
-               (mt/user-http-request :crowberto :post 413 "upload/csv"
-                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
+               (mt/user-http-request :crowberto :post 413 "upload/csv" multipart-request-options
                                      [[:collection_id "root"]
                                       [:file (byte-array [97 44 98 10 49 44 50])]
                                       [:file (byte-array [99 44 100 10 51 44 52])]])))
@@ -85,8 +85,7 @@
                                                          (swap! calls inc)
                                                          (io/delete-file file :silently)
                                                          {:status 200, :body 1})]
-        (mt/user-http-request :crowberto :post 200 "upload/csv"
-                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+        (mt/user-http-request :crowberto :post 200 "upload/csv" multipart-request-options
                               [[:collection_id "root"]
                                [:file (byte-array [97 44 98 10 49 44 50])]])
         (is (= 1 @calls) "the endpoint body should run")))))
@@ -95,8 +94,7 @@
   (testing "POST /api/upload/csv rejects a second file part smuggled as collection_id"
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
-        (let [response (mt/user-http-request :crowberto :post 400 "upload/csv"
-                                             {:request-options {:headers {"content-type" "multipart/form-data"}}}
+        (let [response (mt/user-http-request :crowberto :post 400 "upload/csv" multipart-request-options
                                              [[:file (byte-array [97 44 98 10 49 44 50])]
                                               [:collection_id (byte-array [99 44 100 10 51 44 52])]])]
           (testing "the validation error does not leak the tempfile path"

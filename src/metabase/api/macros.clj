@@ -606,8 +606,9 @@
     (io/delete-file f :silently)))
 
 (defn wrap-multipart-tempfile-cleanup
-  "Middleware, applied inside [[ring.middleware.multipart-params/wrap-multipart-params]], that deletes the parsed
-  multipart tempfiles when the handler throws, e.g. when param validation rejects the request.
+  "Ring middleware that deletes the parsed multipart tempfiles when the wrapped handler throws,
+  e.g. when param validation rejects the request.
+  Applied inside [[ring.middleware.multipart-params/wrap-multipart-params]].
   Ring's temp-file store only sweeps orphaned tempfiles after an hour.
   Handlers that complete normally own the tempfiles they consume and must delete them themselves."
   [handler]

@@ -1197,6 +1197,9 @@
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
 
+(def ^:private multipart-request-options
+  {:request-options {:headers {"content-type" "multipart/form-data"}}})
+
 (deftest update-csv-too-large-test
   ;; One byte over the cap is enough: the multipart middleware aborts streaming the file part as soon as it
   ;; crosses the limit, so the oversized body is never fully buffered.
@@ -1204,10 +1207,10 @@
         calls     (atom 0)]
     (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
       (doseq [endpoint ["append-csv" "replace-csv"]]
-        (testing (format "POST /api/table/:id/%s rejects files over the size cap with a 413, before the body reaches the handler" endpoint)
+        (testing (format "POST /api/table/:id/%s rejects a file over the size cap with a 413" endpoint)
           (is (= "Uploaded content exceeded limits."
                  (mt/user-http-request :crowberto :post 413 (format "table/%d/%s" (mt/id :venues) endpoint)
-                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                       multipart-request-options
                                        {:file oversized})))))
       (is (zero? @calls) "the endpoint bodies should never run"))))
 
@@ -1215,11 +1218,10 @@
   (let [calls (atom 0)]
     (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
       (doseq [endpoint ["append-csv" "replace-csv"]]
-        (testing (format "POST /api/table/:id/%s rejects requests with too many multipart parts with a 413, before the body reaches the handler"
-                         endpoint)
+        (testing (format "POST /api/table/:id/%s rejects too many multipart parts with a 413" endpoint)
           (is (= "Uploaded content exceeded limits."
                  (mt/user-http-request :crowberto :post 413 (format "table/%d/%s" (mt/id :venues) endpoint)
-                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                       multipart-request-options
                                        [[:collection_id "root"]
                                         [:file (byte-array [97 44 98 10 49 44 50])]
                                         [:file (byte-array [99 44 100 10 51 44 52])]])))))
@@ -1233,10 +1235,9 @@
                                                         (io/delete-file file :silently)
                                                         {:status 200, :body ""})]
       (doseq [endpoint ["append-csv" "replace-csv"]]
-        (testing (format "POST /api/table/:id/%s accepts the collection_id field the frontend sends alongside the file"
-                         endpoint)
+        (testing (format "POST /api/table/:id/%s accepts the collection_id field the frontend sends" endpoint)
           (mt/user-http-request :crowberto :post 200 (format "table/%d/%s" (mt/id :venues) endpoint)
-                                {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                multipart-request-options
                                 [[:collection_id "root"]
                                  [:file (byte-array [97 44 98 10 49 44 50])]])))
       (is (= 2 @calls) "the endpoint bodies should run"))))
@@ -1247,9 +1248,10 @@
       (doseq [endpoint  ["append-csv" "replace-csv"]
               ;; collection_id is caught by its :string constraint, unknown names by the closed map
               part-name [:collection_id :unexpected_part]]
-        (testing (format "POST /api/table/:id/%s rejects a second file part smuggled as %s" endpoint (name part-name))
+        (testing (format "POST /api/table/:id/%s rejects a second file part smuggled as %s"
+                         endpoint (name part-name))
           (mt/user-http-request :crowberto :post 400 (format "table/%d/%s" (mt/id :venues) endpoint)
-                                {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                multipart-request-options
                                 [[:file (byte-array [97 44 98 10 49 44 50])]
                                  [part-name (byte-array [99 44 100 10 51 44 52])]])))
       (is (zero? @calls) "the endpoint bodies should never run"))))
