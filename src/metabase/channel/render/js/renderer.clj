@@ -2,10 +2,10 @@
   "Hands callers the static-viz [[metabase.channel.render.js.protocol/StaticVizRenderer]] implementation.
   `MB_STATIC_VIZ_RENDERER` selects it:
 
-    * `quickjs` (the default) — [[metabase.channel.render.js.quickjs]], out-of-process on sandboxed
-      native QuickJS workers, keeping the JS heap out of the JVM.
-    * `graal` — [[metabase.channel.render.js.graal]], in-process on pooled GraalVM contexts. Also the
-      fallback on platforms without a static-viz worker binary.
+    * `quickjs` (the default) — [[metabase.channel.render.js.quickjs]], pooled native QuickJS contexts
+      whose memory lives outside the JVM heap. Requires a libstaticviz build for the platform; GraalVM
+      is the fallback without one.
+    * `graal` — [[metabase.channel.render.js.graal]], pooled GraalVM contexts on the JVM heap.
 
   Kept behind the protocol so callers ([[metabase.channel.render.js.svg]],
   [[metabase.channel.render.js.color]]) don't care which backend runs."
@@ -18,8 +18,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private warn-quickjs-unavailable!
-  (delay (log/warn (str "No static-viz worker binary is available for this platform"
-                        " (see native/static-viz-worker/README.md);"
+  (delay (log/warn (str "No libstaticviz build is available for this platform"
+                        " (see native/static-viz-quickjs/README.md);"
                         " using the GraalVM renderer"))))
 
 (defn renderer
