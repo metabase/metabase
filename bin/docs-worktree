@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Check out just the docs/ folder of a release branch into __worktrees_docs/<branch>.
+#
+# Usage:
+#   ./bin/docs-worktree release-x.58.x
+set -euo pipefail
+
+branch="${1:-}"
+
+if [[ -z "$branch" ]]; then
+  echo "Usage: $0 <release-branch>" >&2
+  echo "Example: $0 release-x.58.x" >&2
+  exit 1
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+worktree_dir="$repo_root/__worktrees_docs/$branch"
+
+if [[ -e "$worktree_dir" ]]; then
+  echo "Worktree already exists at $worktree_dir" >&2
+  exit 1
+fi
+
+mkdir -p "$repo_root/__worktrees_docs"
+
+# Make sure we have an up to date ref for the branch, whether it's local or
+# only present on the remote.
+if git show-ref --verify --quiet "refs/heads/$branch"; then
+  :
+elif git show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+  :
+else
+  echo "Fetching origin/$branch..." >&2
+  git fetch origin "$branch:refs/remotes/origin/$branch"
+fi
+
+echo "Creating worktree for $branch at $worktree_dir..." >&2
+git worktree add --no-checkout "$worktree_dir" "$branch"
+
+pushd "$worktree_dir" >/dev/null
+
+git sparse-checkout init --cone
+git sparse-checkout set docs
+git checkout "$branch"
+
+popd >/dev/null
+
+echo "Done. docs/ for $branch is checked out at $worktree_dir"

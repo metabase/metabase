@@ -198,6 +198,7 @@ __pycache__/
 .mcp.json
 .config/wt.toml
 .claude/worktrees
+/__worktrees_docs/
 .claude/scheduled_tasks.lock
 .playwright-mcp
 .ci_reports/
