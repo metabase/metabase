@@ -97,10 +97,9 @@ function SavedEntityPickerInner({
       CARD_INFO[type].model === model;
 
     const preparedCollections: Collection[] = [];
-    const userPersonalCollections = currentUserPersonalCollections(
-      collections,
-      currentUser?.id ?? 0,
-    );
+    const userPersonalCollections = currentUser
+      ? currentUserPersonalCollections(collections, currentUser.id)
+      : [];
     const nonPersonalOrArchivedCollections = collections.filter(
       nonPersonalOrArchivedCollection,
     );
