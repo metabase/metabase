@@ -8,7 +8,7 @@ import { DATA_APP_ERROR_MESSAGE_TYPE } from "../../constants";
 
 import { DataAppView } from "./DataAppView";
 
-jest.mock("enterprise/metabase-enterprise/api", () => ({
+jest.mock("metabase-enterprise/api", () => ({
   ...jest.requireActual("metabase-enterprise/api"),
   useGetDataAppQuery: jest.fn(),
 }));

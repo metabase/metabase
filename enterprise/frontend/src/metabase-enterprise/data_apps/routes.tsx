@@ -18,7 +18,7 @@ export function getRoutes() {
     >
       <IndexRoute component={DataAppView} />
       {/* Sub-paths under /apps/:name are owned by the iframe's router.
-          Same component — `AppView` just keeps the iframe mounted; the URL
+          Same component — `DataAppView` just keeps the iframe mounted; the URL
           change is mirrored back from inside the iframe via
           `history.replaceState`. */}
       <Route path="*" component={DataAppView} />
