@@ -185,7 +185,7 @@
                 (count ingest-errors)
                 (str/join "; " (for [ie ingest-errors
                                      :let [{:keys [file reason]} (ex-data ie)]]
-                                 (cond-> file
+                                 (cond-> (quoted file)
                                    reason (str ": " reason))))))
 
       :else

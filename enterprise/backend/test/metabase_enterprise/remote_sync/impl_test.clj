@@ -124,6 +124,15 @@
                       :id    "My Database "
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
       (is (str/includes? (impl/source-error-message e) "Database (`My Database `)"))))
+  (testing "trailing whitespace in a referenced name is visible because names are backtick-quoted (GHY-3992)"
+    (let [e (ex-info "Database 'My Database ' was not found"
+                     {:path  "Database My Database "
+                      :model "Database"
+                      :id    "My Database "
+                      :error :metabase-enterprise.serialization.v2.load/not-found})]
+      (is (str/includes? (impl/source-error-message e) "Database (`My Database `)")))))
+
+(deftest source-error-message-database-not-found-test
   (testing "source-error-message names the card and the missing database for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
                          {:table-id ["clickhouse" nil "some_table"]
@@ -143,7 +152,9 @@
                            :error   :metabase.models.serialization.resolve.db/database-not-found})
           middle (ex-info "wrapped by an intervening helper" {} root)
           e      (ex-info "Failed to load into database for Card abc123" {:path "Card abc123"} middle)]
-      (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)"))))
+      (is (str/includes? (impl/source-error-message e) "Database (`clickhouse`)")))))
+
+(deftest source-error-message-ingest-errors-test
   (testing "source-error-message lists each unreadable file with its parse reason (GHY-3887)"
     (let [ingest-err (ex-info "Failed to parse file: collections/transforms/a.yaml"
                               {:file "collections/transforms/a.yaml"
@@ -154,8 +165,23 @@
                               ingest-err)
           msg        (impl/source-error-message e)]
       (is (str/includes? msg "Failed to read 1 file(s)"))
-      (is (str/includes? msg "collections/transforms/a.yaml"))
-      (is (str/includes? msg "found character '@'")))))
+      (is (str/includes? msg "`collections/transforms/a.yaml`"))
+      (is (str/includes? msg "found character '@'"))))
+  (testing "file paths are backtick-quoted so surrounding whitespace is visible (GHY-3992)"
+    (let [ingest-err (ex-info "Failed to read file: collections/bar .yaml"
+                              {:file   "collections/bar .yaml"
+                               :reason "IOException"})
+          e          (ex-info "Failed to read 1 file(s) during ingestion: collections/bar .yaml"
+                              {:ingest-errors [ingest-err]}
+                              ingest-err)]
+      (is (= "Failed to read 1 file(s) from the repository: `collections/bar .yaml`: IOException"
+             (impl/source-error-message e)))))
+  (testing "each unreadable file is quoted independently when several fail"
+    (let [errs [(ex-info "a" {:file "a.yaml" :reason "bad"})
+                (ex-info "b" {:file "b.yaml" :reason "worse"})]
+          e    (ex-info "Failed to read 2 file(s) during ingestion" {:ingest-errors errs} (first errs))]
+      (is (= "Failed to read 2 file(s) from the repository: `a.yaml`: bad; `b.yaml`: worse"
+             (impl/source-error-message e))))))
 
 ;; We need to make sure the task-id we use to track the Remote Sync is not bound to a transactions because of the behavior of
 ;; update-sync-progress. So the follow two tests cannot use with-temp to create models
