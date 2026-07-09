@@ -81,11 +81,11 @@
   (let [{:keys [field-name]} checkpoint-config
         table-id (mt/id :transforms_products)
         timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
-        query (format "SELECT *, %s AS %s FROM {{source_table}} AS %s ORDER BY %s"
-                      timestamp-sql
-                      (sql.u/quote-name driver/*driver* :field "load_timestamp")
-                      (sql.u/quote-name driver/*driver* :field "source_table")
-                      (sql.u/quote-name driver/*driver* :field field-name))]
+        quoted (fn [field] (sql.u/quote-name driver/*driver* :field field))
+        query (format "SELECT %s, %s, %s, %s, %s AS %s FROM {{source_table}} AS %s ORDER BY %s"
+                      (quoted "name") (quoted "category") (quoted "price") (quoted "created_at")
+                      timestamp-sql (quoted "load_timestamp") (quoted "source_table")
+                      (quoted field-name))]
     {:database (mt/id)
      :type :native
      :native {:query query
@@ -98,10 +98,13 @@
 
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms. "
+
   [checkpoint-config]
   (let [{:keys [field-name]} checkpoint-config]
-    (mt/mbql-query transforms_products {:expressions {"load_timestamp" [:now]}
-                                        :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
+    (mt/mbql-query transforms_products
+      {:expressions {"load_timestamp" [:now]}
+       :fields [$name $category $price $created_at [:expression "load_timestamp"]]
+       :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
 
 (def incremental-python-body
   (str "import pandas as pd\n"
@@ -214,7 +217,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- test-drivers []
-  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse :sqlserver))
+  (mt/normal-drivers-with-feature :transforms/table))
 
 (defn- target-table-gen [prefix]
   {:type     :table

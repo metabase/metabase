@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
@@ -13,6 +11,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,

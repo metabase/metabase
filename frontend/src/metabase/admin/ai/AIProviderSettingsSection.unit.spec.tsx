@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -16,6 +15,7 @@ import {
   type MetabotApiKeyProvider,
 } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
+import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type {
   BedrockCredentials,

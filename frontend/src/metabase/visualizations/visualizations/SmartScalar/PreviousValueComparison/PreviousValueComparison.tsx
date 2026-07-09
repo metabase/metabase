@@ -132,7 +132,7 @@ export function PreviousValueComparison({
         </VariationDetails>
 
         {showsOtherValuesInTooltip && (
-          <Badge px="xs" size="xs" variant="light" w={ELLIPSIS_BADGE_WIDTH}>
+          <Badge size="xs" variant="light" w={ELLIPSIS_BADGE_WIDTH}>
             <Group align="center" h="100%">
               <Icon name="ellipsis" size={12} />
             </Group>

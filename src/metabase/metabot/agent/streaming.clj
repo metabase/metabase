@@ -85,7 +85,6 @@
   [todos]
   {:type :data
    :data-type todo-list-type
-   :version 1
    :data todos})
 
 (defn code-edit-part
@@ -97,7 +96,6 @@
   [edit-data]
   {:type :data
    :data-type code-edit-type
-   :version 1
    :data edit-data})
 
 (defn transform-suggestion-part
@@ -109,7 +107,6 @@
   [suggestion]
   {:type :data
    :data-type transform-suggestion-type
-   :version 1
    :data suggestion})
 
 (defn adhoc-viz-part
@@ -122,7 +119,6 @@
   [value]
   {:type :data
    :data-type adhoc-viz-type
-   :version 1
    :data value})
 
 (defn static-viz-part
@@ -134,7 +130,6 @@
   [value]
   {:type :data
    :data-type static-viz-type
-   :version 1
    :data value})
 
 (defn generated-entity-part
@@ -144,7 +139,6 @@
   [entity]
   {:type :data
    :data-type generated-entity-type
-   :version 1
    :data entity})
 
 (defn viz-part

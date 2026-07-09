@@ -1,9 +1,9 @@
 import type { Location, LocationDescriptor } from "history";
 import { Component, cloneElement } from "react";
-import { Route } from "react-router";
 import { push } from "react-router-redux";
 
 import { connect } from "metabase/redux";
+import { Route } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
 

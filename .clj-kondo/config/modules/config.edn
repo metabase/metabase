@@ -829,7 +829,6 @@
            metabase.driver.common
            metabase.driver.connection
            metabase.driver.ddl.interface
-           metabase.driver.h2
            metabase.driver.impl
            metabase.driver.init
            metabase.driver.mysql
@@ -1227,13 +1226,17 @@
    :api  #{metabase.mcp.api
            metabase.mcp.callback-api
            metabase.mcp.core
-           metabase.mcp.init}
+           metabase.mcp.init
+           metabase.mcp.usage}
+   :model-exports #{:model/McpSessionLog
+                    :model/McpToolCallLog}
    :uses #{agent-api
            api
            app-db
            config
            llm
            oauth-server
+           premium-features
            request
            server
            session
@@ -2308,6 +2311,7 @@
            config
            lib
            lib-be
+           mcp
            permissions
            premium-features
            search
@@ -3253,6 +3257,18 @@
            collections
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
+
+  enterprise/mcp
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.mcp.init}
+   :uses    #{analytics
+              mcp
+              metabot
+              premium-features
+              task
+              util}
+   :model-imports #{:model/McpSessionLog
+                    :model/McpToolCallLog}}
 
   enterprise/memoize-monitor
   {:team "Graphy"
