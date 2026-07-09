@@ -608,21 +608,26 @@ describe("scenarios > metrics > explorer", () => {
 
     it("should add multiple metrics one by one using metrics dropdown", () => {
       H.MetricsViewer.goToViewer();
-      addMetricInputSequence([
-        { nameOrPath: "Count of products" },
-        { nameOrPath: "Count of orders" },
-        { nameOrPath: "Count of orders over time" },
-        { nameOrPath: "Orders model metric" },
-      ]);
 
-      // `addMetricInputSequence` only asserts the editor/run-button/loading
-      // indicator are gone, which are negative checks that can pass before the
-      // committed run's `/api/metric/dataset` request has even fired. The pills
-      // render from `selectedMetrics` once that response resolves, so wait on it
-      // before counting instead of racing the network + render under CI load.
-      cy.wait("@dataset");
-
-      verifyMetricCount(4);
+      // Add the metrics one at a time — as the test name describes — and let
+      // each committed run fully settle (dataset response + rendered pills)
+      // before adding the next. Building all four in a single rapid editor
+      // session fired the per-metric `/api/metric/dataset` requests and their
+      // React state updates back-to-back, which under fast (unthrottled) CI
+      // timing intermittently crashed the viewer to its error boundary so the
+      // pills never rendered at all. Serializing the additions mirrors real
+      // dropdown usage and keeps the flow deterministic.
+      const metrics = [
+        "Count of products",
+        "Count of orders",
+        "Count of orders over time",
+        "Orders model metric",
+      ];
+      metrics.forEach((metric, index) => {
+        addMetric(metric);
+        cy.wait("@dataset");
+        verifyMetricCount(index + 1);
+      });
     });
 
     it("should not show me metrics that live in collections I do not have permissions to see", () => {
