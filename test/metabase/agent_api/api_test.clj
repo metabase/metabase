@@ -1513,6 +1513,22 @@
       (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
           "re-adding it unarchives the internal dashboard question")
       (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
+  (testing "archiving and mutating dashcards in one request is rejected"
+    ;; the post-mutation internal-question sync could otherwise unarchive dashboard questions
+    ;; on the dashboard this same request just archived
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Archive Plus Mutate"}
+                   :model/Card          {dq-id :id}   {:name "internal q" :dataset_query (orders-count-query)
+                                                       :display :table :dashboard_id dash-id}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id dq-id
+                                                       :row 0 :col 0 :size_x 12 :size_y 4}
+                   :model/Card          {add-id :id}  {:name "to add" :dataset_query (orders-count-query)
+                                                       :display :table}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:archived  true
+                             :dashcards [{:action "add" :card_id add-id}]})
+      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id))
+          "the rejected request must not have archived the dashboard")
+      (is (t2/exists? :model/DashboardCard :id dc-id))))
   (testing "archiving via the agent endpoint records archived_directly, like the REST path"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "To Archive"}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)

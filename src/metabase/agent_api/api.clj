@@ -1523,9 +1523,13 @@
         ;; above only covered the source entity. Mirror the REST endpoint's gate.
         _            (collection/check-allowed-to-change-collection current-dash updates)
         mutations    (:dashcards body)
-        ;; Card mutations on an archived dashboard are rejected, like the REST path.
+        ;; Card mutations on an archived dashboard are rejected, like the REST path. That includes
+        ;; a dashboard being archived by THIS request — otherwise the post-mutation
+        ;; internal-question sync could unarchive dashboard questions on a just-archived dashboard.
         _            (when (seq mutations)
-                       (api/check-not-archived current-dash))
+                       (api/check-not-archived current-dash)
+                       (api/check (not (true? (:archived updates)))
+                                  [400 "Can't modify dashcards while archiving the dashboard."]))
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
                          (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)
