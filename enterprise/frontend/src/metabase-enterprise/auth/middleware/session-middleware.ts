@@ -1,6 +1,9 @@
+import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
+import { isAction } from "@reduxjs/toolkit";
 import Cookies from "js-cookie";
 
 import { logout, refreshSession } from "metabase/redux/auth";
+import type { State } from "metabase/redux/store";
 import { replace } from "metabase/router";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
@@ -26,14 +29,23 @@ const preventImmedidateRedirect = () => {
   return window.location.pathname.startsWith("/auth/login");
 };
 
-export const createSessionMiddleware = (
-  resetActions = [],
-  setInterval = global.setInterval,
-) => {
-  let intervalId;
+type SessionMiddleware = Middleware<
+  Record<string, never>,
+  State,
+  ThunkDispatch<State, unknown, Action>
+>;
 
-  const sessionMiddlware = (store) => (next) => (action) => {
-    if (intervalId == null || resetActions.includes(action.type)) {
+export const createSessionMiddleware = (
+  resetActions: string[] = [],
+  setInterval = global.setInterval,
+): SessionMiddleware => {
+  let intervalId: ReturnType<typeof setInterval> | undefined;
+
+  const sessionMiddlware: SessionMiddleware = (store) => (next) => (action) => {
+    if (
+      intervalId == null ||
+      (isAction(action) && resetActions.includes(action.type))
+    ) {
       clearInterval(intervalId);
 
       let wasLoggedIn = getIsLoggedIn();
