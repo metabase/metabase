@@ -5,12 +5,12 @@
 
   - A native-SQL transform that JOINs two input tables (orders and people)
     with GROUP BY, SUM, COUNT, COALESCE (NULL-handling), a CASE expression
-    (boolean output), WHERE filtering, and a NOW() column that gets ignored
-    via `ignore_columns`.
+    (1/0 indicator output), WHERE filtering, and a CURRENT_TIMESTAMP column
+    that gets ignored via `ignore_columns`.
 
   - Input fixtures exercising:
     * NULL cells (empty discount column)
-    * A boolean output column (has_discounts: CASE WHEN SUM(COALESCE(discount,0))>0)
+    * A 1/0 indicator column (has_discounts: CASE WHEN SUM(COALESCE(discount,0))>0)
     * A date column in the people fixture (birth_date: :type/Date → midnight-UTC)
     * Two fixture files (orders and people) with exact column headers
 
@@ -80,40 +80,43 @@
 ;;
 ;; CA (users 1 + 3):
 ;;   orders passing WHERE: 1 (87.20, disc=NULL→0), 2 (130.80, disc=5.00), 5 (98.10, disc=10.00)
-;;   COUNT=3, SUM(total)=316.10, SUM(COALESCE(discount,0))=15.00 → has_discounts=true
+;;   COUNT=3, SUM(total)=316.10, SUM(COALESCE(discount,0))=15.00 → has_discounts=1
 ;;
 ;; TX (users 2 + 4):
 ;;   orders passing WHERE: 3 (218.00, disc=NULL→0), 6 (59.95, disc=NULL→0)
-;;   COUNT=2, SUM(total)=277.95, SUM(COALESCE(discount,0))=0 → has_discounts=false
+;;   COUNT=2, SUM(total)=277.95, SUM(COALESCE(discount,0))=0 → has_discounts=0
 ;;
 ;; WA (user 5):
 ;;   orders passing WHERE: 7 (196.20, disc=20.00)
-;;   COUNT=1, SUM(total)=196.20, SUM(COALESCE(discount,0))=20.00 → has_discounts=true
+;;   COUNT=1, SUM(total)=196.20, SUM(COALESCE(discount,0))=20.00 → has_discounts=1
 ;;
-;; snapshot_ts (NOW()) is excluded by ignore_columns — its value in the expected
-;; CSV is a placeholder that will always mismatch reality.
+;; snapshot_ts (CURRENT_TIMESTAMP) is excluded by ignore_columns — its value in the
+;; expected CSV is a placeholder that will always mismatch reality.
 (def ^:private correct-expected-csv
-  "state,order_count,revenue,has_discounts,snapshot_ts\nCA,3,316.10,true,1970-01-01T00:00:00Z\nTX,2,277.95,false,1970-01-01T00:00:00Z\nWA,1,196.20,true,1970-01-01T00:00:00Z\n")
+  "state,order_count,revenue,has_discounts,snapshot_ts\nCA,3,316.10,1,1970-01-01T00:00:00Z\nTX,2,277.95,0,1970-01-01T00:00:00Z\nWA,1,196.20,1,1970-01-01T00:00:00Z\n")
 
 ;; Wrong expected CSV: TX count deliberately changed to 99 instead of 2.
 (def ^:private wrong-expected-csv
-  "state,order_count,revenue,has_discounts,snapshot_ts\nCA,3,316.10,true,1970-01-01T00:00:00Z\nTX,99,277.95,false,1970-01-01T00:00:00Z\nWA,1,196.20,true,1970-01-01T00:00:00Z\n")
+  "state,order_count,revenue,has_discounts,snapshot_ts\nCA,3,316.10,1,1970-01-01T00:00:00Z\nTX,99,277.95,0,1970-01-01T00:00:00Z\nWA,1,196.20,1,1970-01-01T00:00:00Z\n")
 
 ;;; ---------------------------------------------------------------------------
 ;;; The SQL transform under test
 ;;;
 ;;; - JOINs orders (o) → people (p) ON user_id = p.id
-;;; - Aggregates: COUNT(*), SUM(total), CASE/COALESCE for boolean, NOW() noise col
+;;; - Aggregates: COUNT(*), SUM(total), CASE/COALESCE 1/0 indicator, CURRENT_TIMESTAMP noise col
 ;;; - WHERE filters orders below $50 (order 4 is excluded)
-;;; - GROUP BY state; ORDER BY state (deterministic output for diff)
+;;; - GROUP BY state; ORDER BY state (top-level ORDER BY, legal in T-SQL SELECT INTO;
+;;;   the diff itself is order-insensitive)
 ;;; ---------------------------------------------------------------------------
 
 (def ^:private e2e-sql
   (str "SELECT p.state,"
        " COUNT(*) AS order_count,"
        " SUM(o.total) AS revenue,"
-       " CASE WHEN SUM(COALESCE(o.discount, 0)) > 0 THEN true ELSE false END AS has_discounts,"
-       " NOW() AS snapshot_ts"
+       ;; Integer 1/0 indicator, not a boolean literal: T-SQL has no boolean value
+       ;; expressions in a SELECT list. CURRENT_TIMESTAMP, not NOW(): SQL Server has no NOW().
+       " CASE WHEN SUM(COALESCE(o.discount, 0)) > 0 THEN 1 ELSE 0 END AS has_discounts,"
+       " CURRENT_TIMESTAMP AS snapshot_ts"
        " FROM orders o"
        " JOIN people p ON o.user_id = p.id"
        " WHERE o.total > 50"
@@ -125,7 +128,7 @@
 ;;; ===========================================================================
 
 (deftest e2e-join-aggregation-passed-test
-  (testing "E2E: JOIN orders→people + aggregation with NULL/boolean/date fixtures → 200 passed"
+  (testing "E2E: JOIN orders→people + aggregation with NULL/indicator/date fixtures → 200 passed"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data

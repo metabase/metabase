@@ -940,14 +940,15 @@
 (deftest subgraph-single-node-ignore-columns-test
   (testing "run-chain-test! with sources=#{} and ignore_columns → :passed despite ts mismatch"
     (with-single-native-transform [{:keys [t db-id schema orders-id]}
-                                   (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
+                                   ;; CURRENT_TIMESTAMP, not NOW(): SQL Server has no NOW().
+                                   (str "SELECT user_id, COUNT(*) AS order_count, CURRENT_TIMESTAMP AS ts"
                                         " FROM orders GROUP BY user_id ORDER BY user_id")]
       ;; orders-rows has 4 rows: user_ids 1,1,2,3 → COUNT(*) yields 3 groups.
       (let [before-scratch (tu/count-test-scratch-tables db-id schema)
             result (chain/run-chain-test!
                     (:id t) #{}
                     {orders-id tu/orders-rows}
-                    ;; ts placeholder doesn't match NOW(), but :ignore-columns excludes it.
+                    ;; ts placeholder doesn't match CURRENT_TIMESTAMP, but :ignore-columns excludes it.
                     "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"
                     {:ignore-columns #{"ts"}}
                     (t2/select :model/Transform))]
@@ -1080,7 +1081,8 @@
 (deftest subgraph-single-node-endpoint-ignore-columns-test
   (testing "POST /subgraph with sources=[] and ignore_columns → 200 passed"
     (with-single-native-transform [{:keys [t orders-id]}
-                                   (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
+                                   ;; CURRENT_TIMESTAMP, not NOW(): portable to SQL Server.
+                                   (str "SELECT user_id, COUNT(*) AS order_count, CURRENT_TIMESTAMP AS ts"
                                         " FROM orders GROUP BY user_id ORDER BY user_id")]
       (with-temp-csv-files
         [orders-f   tu/orders-rows

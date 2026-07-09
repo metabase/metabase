@@ -179,12 +179,15 @@
 (defn aggregate-sql
   "t2 / card query: aggregate `enriched-table` into (state, order_count, revenue)."
   [enriched-table]
+  ;; No ORDER BY: the diff is a multiset (row order irrelevant), and this SQL is
+  ;; also bound as an assertion CTE (`WITH test_output AS (<this>)`) where SQL
+  ;; Server rejects a trailing ORDER BY inside the CTE.
   (str "SELECT state, count(*) AS order_count, sum(total) AS revenue"
        " FROM " enriched-table
-       " GROUP BY state ORDER BY state"))
+       " GROUP BY state"))
 
 (def correct-expected-csv
-  "Aggregate of [[orders-rows]] ⋈ [[people-rows]], ordered by state:
+  "Aggregate of [[orders-rows]] ⋈ [[people-rows]] (multiset; row order irrelevant):
   CA: orders 1,2,4 → count 3, revenue 180.00; TX: order 3 → count 1, revenue 200.00."
   "state,order_count,revenue\nCA,3,180.00\nTX,1,200.00\n")
 

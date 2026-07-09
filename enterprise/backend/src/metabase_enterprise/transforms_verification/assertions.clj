@@ -49,7 +49,9 @@
   assertion's ordinal index in `runnable`, not its name; names never reach
   SQL. Callers correlate result rows back to assertions by that index.
 
-  `output-sql` — SQL whose result is bound as `test_output`.
+  `output-sql` — SQL whose result is bound as `test_output`. Must be embeddable
+                 as a CTE body: on SQL Server a bare top-level ORDER BY (no
+                 TOP/OFFSET/FOR XML) is rejected inside a CTE.
   `runnable`   — seq of PreparedAssertions (no `:error` key).
 
   Returns a SQL string."

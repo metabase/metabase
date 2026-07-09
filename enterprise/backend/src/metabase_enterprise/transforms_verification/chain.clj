@@ -423,6 +423,11 @@
   was rewritten may produce dangling qualifiers. `resolve/verify` catches them and
   throws `::errors/cannot-test-run` with the offending token.
 
+  SQL Server limitation: `:assertions` bind the card SQL as a CTE (`WITH
+  test_output AS (<card sql>)`), and T-SQL rejects a bare top-level ORDER BY
+  inside a CTE — a card query ending in one fails assertions there. Row order
+  never affects the diff (a multiset), so drop the ORDER BY.
+
   On error, throws a typed `ex-info` (`:error-type` in ex-data). Scratch tables
   are dropped on every path, including errors."
   [card source-ids fixtures-by-table-id expected-csv-file opts all-transforms]
