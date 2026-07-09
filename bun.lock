@@ -167,7 +167,7 @@
         "tinykeys": "^3.0.0",
         "ts-pattern": "^5.9.0",
         "ttag": "1.7.21",
-        "typescript": "npm:@typescript/typescript6@6.0.1",
+        "typescript": "6.0.3",
         "typescript7": "npm:typescript@7.0.2",
         "underscore": "^1.13.8",
         "url": "^0.11.4",
@@ -5372,7 +5372,7 @@
 
     "typedoc-plugin-redirect": ["typedoc-plugin-redirect@1.2.0", "", {}, "sha512-BfS8FVWCaAHbbz0/Yx6TeKhKrfo+XIYTw2L17HklvR70GQ3iDbbWu0MDDVwecfbPW9oxlHPitFxTVBZVA9Iojg=="],
 
-    "typescript": ["@typescript/typescript6@6.0.1", "", { "dependencies": { "typescript": "^6" }, "bin": { "tsc6": "bin/tsc6" } }, "sha512-JbesA1Y3wSOYpcw4b4XvG8KCk9AaStATxk1Vmc1qY0Y30fjovvcuRXX2fJ8eC2JRycKQi7V1VYKUljSVBJUzZA=="],
+    "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "typescript-eslint": ["typescript-eslint@8.60.0", "", { "dependencies": { "@typescript-eslint/eslint-plugin": "8.60.0", "@typescript-eslint/parser": "8.60.0", "@typescript-eslint/typescript-estree": "8.60.0", "@typescript-eslint/utils": "8.60.0" }, "peerDependencies": { "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0", "typescript": ">=4.8.4 <6.1.0" } }, "sha512-9f65qWLZdAW9m1JaxBDUHcqRUfL8bkxxXL7XxEfI+F09q56PkBvIfCjLF3yInsDM/BBmwkqmCQdCZe/RYlIWEw=="],
 
