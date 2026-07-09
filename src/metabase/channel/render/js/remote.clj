@@ -7,7 +7,8 @@
   (:require
    [clj-http.client :as http]
    [metabase.channel.render.js.protocol :as js.protocol]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.retry :as retry]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,14 +16,17 @@
 (def ^:private connection-timeout-ms 5000)
 
 (defn- post
-  "POST the JSON `body` string to `url`+`path` and return the service's raw response body string."
+  "POST the JSON `body` string to `url`+`path` and return the service's raw response body string. Retries
+  any error — 5xx responses (clj-http throws on non-2xx), connection/socket timeouts, connection refused,
+  etc. — with the default exponential backoff (see [[metabase.util.retry/retry-configuration]])."
   ^String [url path body]
-  (:body (http/post (str url path)
-                    {:body               body
-                     :content-type       :json
-                     :as                 :string
-                     :socket-timeout     socket-timeout-ms
-                     :connection-timeout connection-timeout-ms})))
+  (:body (retry/with-retry (retry/retry-configuration)
+           (http/post (str url path)
+                      {:body               body
+                       :content-type       :json
+                       :as                 :string
+                       :socket-timeout     socket-timeout-ms
+                       :connection-timeout connection-timeout-ms}))))
 
 (defn renderer
   "The `:remote` renderer, POSTing to the static-viz service at `url`."
