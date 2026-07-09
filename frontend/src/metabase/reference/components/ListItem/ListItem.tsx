@@ -64,6 +64,7 @@ const ListItemInner = ({
         component="li"
         pos="relative"
         className={S.disabled}
+        data-disabled="true"
         data-testid={dataTestId}
       >
         {card}
