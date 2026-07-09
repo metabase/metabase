@@ -433,7 +433,12 @@ export const CommandSuggestion = forwardRef<
                       item={item}
                       isSelected={selectedIndex === index}
                       onClick={() => selectItem(index)}
-                      onMouseEnter={() => setSelectedIndex(index)}
+                      // Select on real pointer movement, not `mouseenter`: the
+                      // menu opens under the cursor and rows shift as async
+                      // items (Ask Metabot, recents) load, so `mouseenter`
+                      // fires on whichever row slides under a stationary
+                      // pointer and would hijack the keyboard/default highlight.
+                      onMouseMove={() => setSelectedIndex(index)}
                     />
                   ))}
                   {searchMenuItems.length > 0 && commandOptions.length > 0 && (
@@ -448,7 +453,7 @@ export const CommandSuggestion = forwardRef<
                         option={option}
                         isSelected={selectedIndex === index}
                         onClick={() => selectItem(index)}
-                        onMouseEnter={() => setSelectedIndex(index)}
+                        onMouseMove={() => setSelectedIndex(index)}
                       />
                     );
                   })}
@@ -488,7 +493,7 @@ export const CommandSuggestion = forwardRef<
                             option={option}
                             isSelected={selectedIndex === index}
                             onClick={() => selectItem(index)}
-                            onMouseEnter={() => setSelectedIndex(index)}
+                            onMouseMove={() => setSelectedIndex(index)}
                           />
                         );
                       })}
@@ -509,7 +514,7 @@ export const CommandSuggestion = forwardRef<
                   {canCreateNewQuestion && (
                     <CreateNewQuestionFooter
                       isSelected={selectedIndex === 0}
-                      onMouseEnter={() => setSelectedIndex(0)}
+                      onMouseMove={() => setSelectedIndex(0)}
                       onClick={onTriggerCreateNewQuestion}
                     />
                   )}
@@ -523,7 +528,7 @@ export const CommandSuggestion = forwardRef<
                           canCreateNewQuestion,
                         )
                       }
-                      onMouseEnter={() =>
+                      onMouseMove={() =>
                         setSelectedIndex(
                           getBrowseAllItemIndex(
                             searchMenuItems.length,
