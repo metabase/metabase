@@ -37,12 +37,12 @@
 
 (deftest csv-upload-too-large-test
   (testing "POST /api/upload/csv rejects files over the size cap with a 413, before the body reaches the handler"
-    ;; one byte over the cap is enough — the multipart layer aborts streaming the file part as soon as it passes the
-    ;; limit, so this never buffers the whole body.
+    ;; One byte over the cap is enough: the multipart middleware aborts streaming the file part as soon as it
+    ;; crosses the limit, so the oversized body is never fully buffered.
     (let [oversized (byte-array (inc upload/max-upload-size-bytes))
           calls     (atom 0)]
-      ;; `with-redefs` because the request is handled on a server thread, which doesn't inherit this thread's dynamic
-      ;; bindings, so an `mt/with-dynamic-fn-redefs` spy would be invisible to it.
+      ;; Plain `with-redefs` is required here: the request is handled on a server thread, which doesn't inherit
+      ;; this thread's dynamic bindings, so an `mt/with-dynamic-fn-redefs` spy would be invisible to it.
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
         (is (= "Uploaded content exceeded limits."
