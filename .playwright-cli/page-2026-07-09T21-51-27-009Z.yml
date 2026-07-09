@@ -1,0 +1,177 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - navigation "Navigation bar" [ref=e4]:
+      - link "Metabase Admin" [ref=e5] [cursor=pointer]:
+        - /url: /admin
+        - img [ref=e208]
+        - generic [ref=e6]: Metabase Admin
+      - list [ref=e8]:
+        - listitem [ref=e9]:
+          - link "Settings" [ref=e10] [cursor=pointer]:
+            - /url: /admin/settings
+        - listitem [ref=e11]:
+          - link "Databases" [ref=e12] [cursor=pointer]:
+            - /url: /admin/databases
+        - listitem [ref=e13]:
+          - link "Embedding" [ref=e14] [cursor=pointer]:
+            - /url: /admin/embedding
+        - listitem [ref=e15]:
+          - link "AI" [ref=e16] [cursor=pointer]:
+            - /url: /admin/metabot
+        - listitem [ref=e17]:
+          - link "Table Metadata" [ref=e18] [cursor=pointer]:
+            - /url: /admin/datamodel
+        - listitem [ref=e19]:
+          - link "People" [ref=e20] [cursor=pointer]:
+            - /url: /admin/people
+        - listitem [ref=e21]:
+          - link "Permissions" [ref=e22] [cursor=pointer]:
+            - /url: /admin/permissions
+        - listitem [ref=e23]:
+          - link "Performance" [ref=e24] [cursor=pointer]:
+            - /url: /admin/performance
+        - listitem [ref=e25]:
+          - link "Tools" [ref=e26] [cursor=pointer]:
+            - /url: /admin/tools
+      - button "Settings" [ref=e28] [cursor=pointer]:
+        - img "mode icon" [ref=e30]
+    - main [ref=e35]:
+      - generic [ref=e37]:
+        - navigation [ref=e39]:
+          - link "gear icon General" [ref=e40] [cursor=pointer]:
+            - /url: /admin/settings/general
+            - img "gear icon" [ref=e42]
+            - generic [ref=e45]: General
+          - link "lock icon Authentication" [ref=e46] [cursor=pointer]:
+            - img "lock icon" [ref=e48]
+            - generic [ref=e50]: Authentication
+            - img [ref=e52]
+          - generic [ref=e55]:
+            - link "Overview" [ref=e56] [cursor=pointer]:
+              - /url: /admin/settings/authentication
+              - generic [ref=e57]: Overview
+            - link "User provisioning" [ref=e58] [cursor=pointer]:
+              - /url: /admin/settings/authentication/user-provisioning
+              - generic [ref=e59]: User provisioning
+            - link "API keys" [ref=e60] [cursor=pointer]:
+              - /url: /admin/settings/authentication/api-keys
+              - generic [ref=e61]: API keys
+            - link "Google auth" [ref=e62] [cursor=pointer]:
+              - /url: /admin/settings/authentication/google
+              - generic [ref=e63]: Google auth
+            - link "LDAP" [ref=e64] [cursor=pointer]:
+              - /url: /admin/settings/authentication/ldap
+              - generic [ref=e65]: LDAP
+            - link "SAML" [ref=e66] [cursor=pointer]:
+              - /url: /admin/settings/authentication/saml
+              - generic [ref=e67]: SAML
+            - link "JWT" [ref=e68] [cursor=pointer]:
+              - /url: /admin/settings/authentication/jwt
+              - generic [ref=e69]: JWT
+            - link "OIDC" [ref=e70] [cursor=pointer]:
+              - /url: /admin/settings/authentication/oidc
+              - generic [ref=e71]: OIDC
+          - link "sync icon Remote sync" [ref=e72] [cursor=pointer]:
+            - /url: /admin/settings/remote-sync
+            - img "sync icon" [ref=e74]
+            - generic [ref=e76]: Remote sync
+          - separator [ref=e77]
+          - link "mail icon Email" [ref=e78] [cursor=pointer]:
+            - /url: /admin/settings/email
+            - img "mail icon" [ref=e80]
+            - generic [ref=e82]: Email
+          - link "slack icon Slack" [ref=e83] [cursor=pointer]:
+            - /url: /admin/settings/slack
+            - img "slack icon" [ref=e85]
+            - generic [ref=e87]: Slack
+          - link "webhook icon Webhooks" [ref=e88] [cursor=pointer]:
+            - /url: /admin/settings/webhooks
+            - img "webhook icon" [ref=e90]
+            - generic [ref=e92]: Webhooks
+          - separator [ref=e93]
+          - link "globe icon Localization" [ref=e94] [cursor=pointer]:
+            - /url: /admin/settings/localization
+            - img "globe icon" [ref=e96]
+            - generic [ref=e98]: Localization
+          - link "bar icon Custom visualizations" [ref=e99] [cursor=pointer]:
+            - /url: /admin/settings/custom-visualizations
+            - img "bar icon" [ref=e101]
+            - generic [ref=e106]: Custom visualizations
+          - link "pinmap icon Maps" [ref=e107] [cursor=pointer]:
+            - /url: /admin/settings/maps
+            - img "pinmap icon" [ref=e109]
+            - generic [ref=e112]: Maps
+          - link "palette icon Appearance" [ref=e113] [cursor=pointer]:
+            - img "palette icon" [ref=e115]
+            - generic [ref=e121]: Appearance
+            - img [ref=e123]
+          - separator [ref=e125]
+          - link "upload icon Uploads" [ref=e126] [cursor=pointer]:
+            - /url: /admin/settings/uploads
+            - img "upload icon" [ref=e128]
+            - generic [ref=e130]: Uploads
+          - link "share icon Public sharing" [ref=e131] [cursor=pointer]:
+            - /url: /admin/settings/public-sharing
+            - img "share icon" [ref=e133]
+            - generic [ref=e136]: Public sharing
+          - separator [ref=e137]
+          - link "store icon License" [ref=e138] [cursor=pointer]:
+            - /url: /admin/settings/license
+            - img "store icon" [ref=e140]
+            - generic [ref=e142]: License
+          - link "cloud icon Cloud" [ref=e143] [cursor=pointer]:
+            - /url: /admin/settings/cloud
+            - img "cloud icon" [ref=e145]
+            - generic [ref=e150]: Cloud
+        - generic [ref=e154]:
+          - heading "Authentication" [level=1] [ref=e156]
+          - generic [ref=e233]:
+            - generic [ref=e235]: Sign in with Google
+            - generic [ref=e236]: Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.
+            - link "Set up" [ref=e237] [cursor=pointer]:
+              - /url: /admin/settings/authentication/google
+              - button "Set up" [ref=e238]:
+                - generic [ref=e240]: Set up
+          - generic [ref=e243]:
+            - generic [ref=e245]: LDAP
+            - generic [ref=e246]: Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.
+            - link "Set up" [ref=e247] [cursor=pointer]:
+              - /url: /admin/settings/authentication/ldap
+              - button "Set up" [ref=e248]:
+                - generic [ref=e250]: Set up
+          - generic [ref=e253]:
+            - generic [ref=e255]: SAML
+            - generic [ref=e256]: Allows users to login via a SAML Identity Provider.
+            - link "Set up" [ref=e257] [cursor=pointer]:
+              - /url: /admin/settings/authentication/saml
+              - button "Set up" [ref=e258]:
+                - generic [ref=e260]: Set up
+          - generic [ref=e263]:
+            - generic [ref=e265]: JWT
+            - generic [ref=e266]: Allows users to login via a JWT Identity Provider.
+            - link "Set up" [ref=e267] [cursor=pointer]:
+              - /url: /admin/settings/authentication/jwt
+              - button "Set up" [ref=e268]:
+                - generic [ref=e270]: Set up
+          - generic [ref=e273]:
+            - generic [ref=e275]: OIDC
+            - generic [ref=e276]: Allows users to login via an OpenID Connect Identity Provider.
+            - link "Set up" [ref=e277] [cursor=pointer]:
+              - /url: /admin/settings/authentication/oidc
+              - button "Set up" [ref=e278]:
+                - generic [ref=e280]: Set up
+          - generic [ref=e182]:
+            - heading "Two-factor authentication" [level=4] [ref=e183]
+            - generic [ref=e186]:
+              - switch "Let users secure their account with an authenticator app" [checked] [active] [ref=e187]
+              - generic [ref=e192] [cursor=pointer]: Let users secure their account with an authenticator app
+          - generic [ref=e195]:
+            - generic [ref=e196]:
+              - generic [ref=e197]: Session timeout
+              - generic [ref=e198]: Time before inactive users are logged out.
+            - generic [ref=e200]:
+              - switch "Session timeout Disabled" [ref=e201]
+              - generic [ref=e206] [cursor=pointer]: Disabled
+  - generic:
+    - generic:
+      - list "undo-list"

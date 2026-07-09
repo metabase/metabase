@@ -12,7 +12,7 @@ Metabase can require a second factor — a code from an authenticator app — wh
 
 Admins can turn on MFA in **Admin settings** > **Settings** > **Authentication**. Once it's on, people can set up two-factor authentication for their own account; it's optional per person.
 
-If your Metabase doesn't have `MB_ENCRYPTION_SECRET_KEY` set, authenticator secrets are stored unencrypted in the application database. We strongly recommend [setting an encryption key](../operations-guide/encrypting-database-details-at-rest.md).
+If your Metabase doesn't have `MB_ENCRYPTION_SECRET_KEY` set, authenticator secrets are stored unencrypted in the application database. We strongly recommend [setting an encryption key](../databases/encrypting-details-at-rest.md).
 
 ## Setting up two-factor authentication for your account
 

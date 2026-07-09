@@ -31,7 +31,8 @@ export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
 
 export const isMfaChallenge = (
   response: CreateSessionResponse,
-): response is MfaChallengeResponse => "mfa_required" in response;
+): response is MfaChallengeResponse =>
+  "mfa_required" in response && response.mfa_required === true;
 
 export interface GoogleAuthData {
   token: string;

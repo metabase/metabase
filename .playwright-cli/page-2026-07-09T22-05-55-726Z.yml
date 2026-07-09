@@ -1,0 +1,173 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner "Navigation bar" [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - button "Toggle sidebar" [ref=e60] [cursor=pointer]:
+            - img "burger icon" [ref=e61]
+          - link [ref=e63] [cursor=pointer]:
+            - /url: /
+            - img [ref=e65]
+        - generic [ref=e88]:
+          - button "Search" [ref=e89] [cursor=pointer]:
+            - generic [ref=e90]:
+              - img "search icon" [ref=e92]
+              - generic [ref=e94]:
+                - generic [ref=e95]: Search...
+                - generic [ref=e96]:
+                  - generic [ref=e97]: ⌘
+                  - generic [ref=e98]: K
+          - button "New" [ref=e100] [cursor=pointer]:
+            - generic [ref=e101]:
+              - img "add icon" [ref=e103]
+              - generic [ref=e105]: New
+          - button "Chat with Metabot (⌘+E)" [ref=e106] [cursor=pointer]:
+            - img "metabot icon" [ref=e109]
+          - generic "Settings menu" [ref=e111]:
+            - button "Settings" [ref=e112] [cursor=pointer]:
+              - img "mode icon" [ref=e114]
+    - generic [ref=e3]:
+      - complementary [ref=e119]:
+        - navigation [ref=e120]:
+          - generic [ref=e122]:
+            - listitem "Home" [ref=e124] [cursor=pointer]:
+              - link "home icon Home" [ref=e125]:
+                - /url: /
+                - img "home icon" [ref=e127]
+                - generic [ref=e129]: Home
+            - tab "Getting Started chevrondown icon" [selected] [ref=e131]:
+              - button "Getting Started chevrondown icon" [ref=e132] [cursor=pointer]:
+                - heading "Getting Started" [level=4] [ref=e133]
+                - img "chevrondown icon" [ref=e134]
+              - tabpanel [ref=e136]:
+                - listitem "Add your data" [ref=e137] [cursor=pointer]:
+                  - button "add_data icon Add your data" [ref=e138]:
+                    - img "add_data icon" [ref=e140]
+                    - generic [ref=e142]: Add your data
+                - listitem "How to use Metabase" [ref=e143] [cursor=pointer]:
+                  - link "learn icon How to use Metabase" [ref=e144]:
+                    - /url: /getting-started
+                    - img "learn icon" [ref=e146]
+                    - generic [ref=e148]: How to use Metabase
+                - tree "examples-collection-tree" [ref=e149]:
+                  - treeitem "folder icon Examples" [ref=e152] [cursor=pointer]:
+                    - link "folder icon Examples" [ref=e153]:
+                      - /url: /collection/2-examples
+                      - img "folder icon" [ref=e155]
+                      - generic [ref=e157]: Examples
+            - generic "Collections" [ref=e159]:
+              - button "Collections chevrondown icon Create a new collection" [expanded] [ref=e160] [cursor=pointer]:
+                - generic [ref=e161]:
+                  - heading "Collections" [level=4] [ref=e163]
+                  - img "chevrondown icon" [ref=e164]
+                - button "Create a new collection" [ref=e167]:
+                  - img "add icon" [ref=e169]
+              - region "Collections chevrondown icon Create a new collection" [ref=e171]:
+                - tree "collection-tree" [ref=e172]:
+                  - treeitem "folder icon Our analytics" [ref=e175] [cursor=pointer]:
+                    - link "folder icon Our analytics" [ref=e176]:
+                      - /url: /collection/root
+                      - img "folder icon" [ref=e178]
+                      - generic [ref=e180]: Our analytics
+                  - treeitem "person icon Your personal collection" [ref=e183] [cursor=pointer]:
+                    - link "person icon Your personal collection" [ref=e184]:
+                      - /url: /collection/6-crowberto-c-s-personal-collection
+                      - img "person icon" [ref=e186]
+                      - generic [ref=e189]: Your personal collection
+                  - treeitem "chevronright icon audit icon Usage analytics" [ref=e192] [cursor=pointer]:
+                    - button "chevronright icon" [ref=e193]:
+                      - img "chevronright icon" [ref=e194]
+                    - link "audit icon Usage analytics" [ref=e196]:
+                      - /url: /collection/4-usage-analytics
+                      - img "audit icon" [ref=e198]
+                      - generic [ref=e200]: Usage analytics
+                - listitem "Other users' personal collections" [ref=e201] [cursor=pointer]:
+                  - link "group icon Other users' personal collections" [ref=e202]:
+                    - /url: /collection/users
+                    - img "group icon" [ref=e204]
+                    - generic [ref=e207]: Other users' personal collections
+            - generic "Data" [ref=e209]:
+              - button "Data chevrondown icon Add data" [expanded] [ref=e210] [cursor=pointer]:
+                - generic [ref=e211]:
+                  - heading "Data" [level=4] [ref=e213]
+                  - img "chevrondown icon" [ref=e214]
+                - button "Add data" [ref=e217]:
+                  - img "add icon" [ref=e219]
+              - region "Data chevrondown icon Add data" [ref=e221]:
+                - listitem "Browse databases" [ref=e222] [cursor=pointer]:
+                  - link "database icon Databases" [ref=e223]:
+                    - /url: /browse/databases
+                    - img "database icon" [ref=e225]
+                    - generic [ref=e227]: Databases
+                - listitem "Browse models" [ref=e228] [cursor=pointer]:
+                  - link "model icon Models" [ref=e229]:
+                    - /url: /browse/models
+                    - img "model icon" [ref=e231]
+                    - generic [ref=e233]: Models
+                - listitem "Browse metrics" [ref=e234] [cursor=pointer]:
+                  - link "metric icon Metrics" [ref=e235]:
+                    - /url: /browse/metrics
+                    - img "metric icon" [ref=e237]
+                    - generic [ref=e239]: Metrics
+            - tree [ref=e241]:
+              - treeitem "trash icon Trash" [ref=e244] [cursor=pointer]:
+                - link "trash icon Trash" [ref=e245]:
+                  - /url: /collection/trash
+                  - img "trash icon" [ref=e247]
+                  - generic [ref=e250]: Trash
+      - main [ref=e4]:
+        - generic [ref=e251]:
+          - generic:
+            - img
+          - generic [ref=e252]:
+            - generic [ref=e253]:
+              - img "Metabot" [ref=e254]
+              - img "Metabot" [ref=e269]
+            - generic [ref=e281]: Good to see you, Crowberto
+          - button "pencil icon Customize" [ref=e282] [cursor=pointer]:
+            - generic [ref=e283]:
+              - img "pencil icon" [ref=e285]
+              - generic [ref=e287]: Customize
+          - generic [ref=e289]:
+            - generic [ref=e290]: Try out these sample x-rays to see what Metabase can do.
+            - generic [ref=e291]:
+              - link "bolt_filled icon A look at Accounts" [ref=e292] [cursor=pointer]:
+                - /url: /auto/dashboard/table/6
+                - img "bolt_filled icon" [ref=e293]
+                - generic [ref=e295]: A look at Accounts
+              - link "bolt_filled icon Some insights about People" [ref=e296] [cursor=pointer]:
+                - /url: /auto/dashboard/table/1
+                - img "bolt_filled icon" [ref=e297]
+                - generic [ref=e299]: Some insights about People
+              - link "bolt_filled icon A glance at Orders" [ref=e300] [cursor=pointer]:
+                - /url: /auto/dashboard/table/2
+                - img "bolt_filled icon" [ref=e301]
+                - generic [ref=e303]: A glance at Orders
+              - link "bolt_filled icon A glance at Analytic Events" [ref=e304] [cursor=pointer]:
+                - /url: /auto/dashboard/table/7
+                - img "bolt_filled icon" [ref=e305]
+                - generic [ref=e307]: A glance at Analytic Events
+              - link "bolt_filled icon A look at Products" [ref=e308] [cursor=pointer]:
+                - /url: /auto/dashboard/table/3
+                - img "bolt_filled icon" [ref=e309]
+                - generic [ref=e311]: A look at Products
+              - link "bolt_filled icon A summary of Feedback" [ref=e312] [cursor=pointer]:
+                - /url: /auto/dashboard/table/5
+                - img "bolt_filled icon" [ref=e313]
+                - generic [ref=e315]: A summary of Feedback
+              - link "bolt_filled icon A summary of Reviews" [ref=e316] [cursor=pointer]:
+                - /url: /auto/dashboard/table/4
+                - img "bolt_filled icon" [ref=e317]
+                - generic [ref=e319]: A summary of Reviews
+              - link "bolt_filled icon Some insights about Invoices" [ref=e320] [cursor=pointer]:
+                - /url: /auto/dashboard/table/8
+                - img "bolt_filled icon" [ref=e321]
+                - generic [ref=e323]: Some insights about Invoices
+              - link "Metabase tips" [ref=e324] [cursor=pointer]:
+                - /url: https://www.metabase.com/learn/
+                - generic [ref=e325]:
+                  - img "reference icon" [ref=e326]
+                  - generic [ref=e328]: Metabase tips
+  - generic:
+    - generic:
+      - list "undo-list"

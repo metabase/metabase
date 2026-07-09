@@ -1,0 +1,19 @@
+- generic [ref=e1]:
+  - main [ref=e4]:
+    - generic [ref=e5]:
+      - generic:
+        - img
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e31]:
+          - heading "Sign in to Metabase" [ref=e32]
+          - generic [ref=e57]:
+            - generic [ref=e58]: Enter one of your recovery codes.
+            - textbox "xxxxx-xxxxx" [ref=e68]
+            - button "Verify" [disabled] [ref=e62]:
+              - generic [ref=e64]: Verify
+            - button "Use an authenticator code instead" [active] [ref=e69] [cursor=pointer]:
+              - generic [ref=e67]: Use an authenticator code instead
+  - generic:
+    - generic:
+      - list "undo-list"

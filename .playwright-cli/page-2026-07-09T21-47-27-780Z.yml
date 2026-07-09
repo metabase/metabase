@@ -1,0 +1,29 @@
+- generic [ref=e1]:
+  - main [ref=e4]:
+    - generic [ref=e5]:
+      - generic:
+        - img
+      - generic [ref=e7]:
+        - heading "Sign in to Metabase" [ref=e8]
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - generic [ref=e12]:
+              - generic [ref=e13]: Email address
+              - textbox "Email address" [active] [ref=e15]:
+                - /placeholder: nicetoseeyou@email.com
+            - generic [ref=e16]:
+              - generic [ref=e17]: Password
+              - textbox "Password" [ref=e19]:
+                - /placeholder: Shhh...
+            - generic [ref=e21]:
+              - generic [ref=e22]:
+                - checkbox "Remember me" [checked] [ref=e23] [cursor=pointer]
+                - img "check icon"
+              - generic [ref=e25]: Remember me
+            - button "Sign in" [disabled] [ref=e26]:
+              - generic [ref=e28]: Sign in
+          - link "I seem to have forgotten my password" [ref=e31] [cursor=pointer]:
+            - /url: /auth/forgot_password
+  - generic:
+    - generic:
+      - list "undo-list"

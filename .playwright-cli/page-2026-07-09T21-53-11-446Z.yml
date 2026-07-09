@@ -1,0 +1,122 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner "Navigation bar" [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - button "Toggle sidebar" [ref=e7] [cursor=pointer]:
+            - img "burger icon" [ref=e8]
+          - link [ref=e10] [cursor=pointer]:
+            - /url: /
+            - img [ref=e135]
+        - generic [ref=e11]:
+          - button "Search" [ref=e12] [cursor=pointer]:
+            - generic [ref=e13]:
+              - img "search icon" [ref=e15]
+              - generic [ref=e17]:
+                - generic [ref=e18]: Search...
+                - generic [ref=e19]:
+                  - generic [ref=e20]: ⌘
+                  - generic [ref=e21]: K
+          - button "New" [ref=e23] [cursor=pointer]:
+            - generic [ref=e24]:
+              - img "add icon" [ref=e26]
+              - generic [ref=e28]: New
+          - button "Chat with Metabot (⌘+E)" [ref=e158] [cursor=pointer]:
+            - img "metabot icon" [ref=e161]
+          - generic "Settings menu" [ref=e29]:
+            - generic [ref=e31] [cursor=pointer]: RR
+    - generic [ref=e32]:
+      - complementary [ref=e33]:
+        - navigation [ref=e34]:
+          - generic [ref=e164]:
+            - listitem "Home" [ref=e166] [cursor=pointer]:
+              - link "home icon Home" [ref=e167]:
+                - /url: /
+                - img "home icon" [ref=e169]
+                - generic [ref=e171]: Home
+            - tab "Getting Started chevrondown icon" [selected] [ref=e173]:
+              - button "Getting Started chevrondown icon" [ref=e174] [cursor=pointer]:
+                - heading "Getting Started" [level=4] [ref=e175]
+                - img "chevrondown icon" [ref=e176]
+              - tabpanel [ref=e178]:
+                - listitem "How to use Metabase" [ref=e179] [cursor=pointer]:
+                  - link "learn icon How to use Metabase" [ref=e180]:
+                    - /url: /getting-started
+                    - img "learn icon" [ref=e182]
+                    - generic [ref=e184]: How to use Metabase
+                - tree "examples-collection-tree" [ref=e185]:
+                  - treeitem "folder icon Examples" [ref=e188] [cursor=pointer]:
+                    - link "folder icon Examples" [ref=e189]:
+                      - /url: /collection/2-examples
+                      - img "folder icon" [ref=e191]
+                      - generic [ref=e193]: Examples
+            - generic "Collections" [ref=e195]:
+              - button "Collections chevrondown icon Create a new collection" [expanded] [ref=e196] [cursor=pointer]:
+                - generic [ref=e197]:
+                  - heading "Collections" [level=4] [ref=e199]
+                  - img "chevrondown icon" [ref=e200]
+                - button "Create a new collection" [ref=e203]:
+                  - img "add icon" [ref=e205]
+              - region "Collections chevrondown icon Create a new collection" [ref=e207]:
+                - tree "collection-tree" [ref=e208]:
+                  - treeitem "folder icon Our analytics" [ref=e211] [cursor=pointer]:
+                    - link "folder icon Our analytics" [ref=e212]:
+                      - /url: /collection/root
+                      - img "folder icon" [ref=e214]
+                      - generic [ref=e216]: Our analytics
+                  - treeitem "person icon Your personal collection" [ref=e219] [cursor=pointer]:
+                    - link "person icon Your personal collection" [ref=e220]:
+                      - /url: /collection/7-rasta-r-s-personal-collection
+                      - img "person icon" [ref=e222]
+                      - generic [ref=e225]: Your personal collection
+            - generic "Data" [ref=e227]:
+              - button "Data chevrondown icon" [expanded] [ref=e228] [cursor=pointer]:
+                - generic [ref=e229]:
+                  - heading "Data" [level=4] [ref=e231]
+                  - img "chevrondown icon" [ref=e232]
+              - region "Data chevrondown icon" [ref=e234]:
+                - listitem "Browse databases" [ref=e235] [cursor=pointer]:
+                  - link "database icon Databases" [ref=e236]:
+                    - /url: /browse/databases
+                    - img "database icon" [ref=e238]
+                    - generic [ref=e240]: Databases
+                - listitem "Browse models" [ref=e241] [cursor=pointer]:
+                  - link "model icon Models" [ref=e242]:
+                    - /url: /browse/models
+                    - img "model icon" [ref=e244]
+                    - generic [ref=e246]: Models
+                - listitem "Browse metrics" [ref=e247] [cursor=pointer]:
+                  - link "metric icon Metrics" [ref=e248]:
+                    - /url: /browse/metrics
+                    - img "metric icon" [ref=e250]
+                    - generic [ref=e252]: Metrics
+            - tree [ref=e254]:
+              - treeitem "trash icon Trash" [ref=e257] [cursor=pointer]:
+                - link "trash icon Trash" [ref=e258]:
+                  - /url: /collection/trash
+                  - img "trash icon" [ref=e260]
+                  - generic [ref=e263]: Trash
+      - main [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - generic [ref=e87]: RR
+              - heading "Rasta R" [level=2] [ref=e88]
+              - heading "rasta@metabase.com" [level=3] [ref=e89]
+            - tablist [ref=e91]:
+              - tab "Profile" [ref=e92] [cursor=pointer]:
+                - generic [ref=e93]: Profile
+              - tab "Password" [ref=e94] [cursor=pointer]:
+                - generic [ref=e95]: Password
+              - tab "Security" [active] [selected] [ref=e96] [cursor=pointer]:
+                - generic [ref=e97]: Security
+              - tab "Login History" [ref=e98] [cursor=pointer]:
+                - generic [ref=e99]: Login History
+              - tab "Notifications" [ref=e100] [cursor=pointer]:
+                - generic [ref=e101]: Notifications
+          - generic [ref=e264]:
+            - heading "Two-factor authentication" [level=2] [ref=e265]
+            - generic [ref=e266]: Two-factor authentication is turned off for this instance.
+  - generic:
+    - generic:
+      - list "undo-list"

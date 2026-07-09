@@ -1,0 +1,19 @@
+- generic [ref=e1]:
+  - main [ref=e4]:
+    - generic [ref=e5]:
+      - generic:
+        - img
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e31]:
+          - heading "Sign in to Metabase" [ref=e32]
+          - generic [ref=e57]:
+            - generic [ref=e58]: Enter the 6-digit code from your authenticator app.
+            - textbox "123456" [active] [ref=e61]
+            - button "Verify" [disabled] [ref=e62]:
+              - generic [ref=e64]: Verify
+            - button "Use a recovery code instead" [ref=e65] [cursor=pointer]:
+              - generic [ref=e67]: Use a recovery code instead
+  - generic:
+    - generic:
+      - list "undo-list"
