@@ -4,6 +4,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.registry :as mr]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel parse-args-test
   (are [args expected] (= expected
                           (#'api.macros/parse-args args))
