@@ -33,7 +33,6 @@ function renderPieSvg(
     chart.renderToSVGString(),
     isStorybook ?? false,
   );
-  // Free the ECharts/zrender SSR instance; it is otherwise never released (memory leak).
   chart.dispose();
   return chartSvg;
 }
