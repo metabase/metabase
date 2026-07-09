@@ -588,16 +588,23 @@
      :description (:text visualization_settings)}))
 
 (defn- fetch-dashboard-items
-  "One item per dashcard, in row/col (layout) order, each carrying the `dashcard_id` that
-   `update_dashboard` remove/move mutations take. Card-backed dashcards keep the card fields;
-   virtual dashcards (headings, text, ...) render their text. Dashcards whose card is archived
-   or unreadable are omitted."
+  "One item per dashcard, grouped by tab (in tab order) then in row/col (layout) order within the
+   tab, each carrying the `dashcard_id` that `update_dashboard` remove/move mutations take.
+   Card-backed dashcards keep the card fields; virtual dashcards (headings, text, ...) render
+   their text. Dashcards whose card is archived or unreadable are omitted."
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :visualization_settings]
-                                :dashboard_id dashboard-id
-                                {:order-by [[:row :asc] [:col :asc]]})
+        ;; row/col are tab-relative, so a flat row/col sort would interleave cards from different
+        ;; tabs. Sort by tab position first; a nil tab id counts as the first tab.
+        tab-order    (into {}
+                           (map-indexed (fn [i tab-id] [tab-id i]))
+                           (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id
+                                              {:order-by [[:position :asc]]}))
+        dashcards    (->> (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
+                                      :row :col :visualization_settings]
+                                     :dashboard_id dashboard-id)
+                          (sort-by (juxt #(get tab-order (:dashboard_tab_id %) 0) :row :col)))
         card-ids     (into #{} (keep :card_id) dashcards)
         readable     (when (seq card-ids)
                        (->> (t2/select [:model/Card :id :name :type :description :card_schema
