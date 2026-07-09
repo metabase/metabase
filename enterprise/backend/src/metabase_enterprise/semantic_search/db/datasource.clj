@@ -29,9 +29,9 @@
 
 (def app-db-schema
   "The Postgres schema holding all semantic-search tables when sharing the application database.
-  A dedicated schema (rather than a table-name prefix) makes destructive maintenance structurally
-  incapable of touching application tables — see the schema handling in
-  [[metabase-enterprise.semantic-search.db.migration.impl]]."
+  Isolating by schema makes destructive maintenance (see
+  [[metabase-enterprise.semantic-search.db.migration.impl]]) structurally incapable of touching
+  application tables."
   "semantic_search")
 
 ;; All pgvector config — connection *and* connection-pool parameters — rides MB_PGVECTOR_DB_URL, so a
@@ -195,9 +195,9 @@
   (atom nil))
 
 (defn check-app-db-pgvector-support!
-  "Can the application database act as the pgvector store? True only when the `vector` extension ends up
-  installed AND our schema exists (or we can create both). Attempts the CREATE EXTENSION / CREATE SCHEMA
-  right here so the cached answer reflects real privileges, not optimism."
+  "Can the application database act as the pgvector store?
+  True only when the `vector` extension ends up installed AND our schema exists (or we can create both).
+  Attempts the CREATE EXTENSION / CREATE SCHEMA itself, so the cached answer reflects real privileges."
   []
   (let [app-db (mdb/data-source)
         {:keys [installed available]}

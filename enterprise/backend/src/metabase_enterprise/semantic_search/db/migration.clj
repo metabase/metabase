@@ -16,15 +16,15 @@
    [:status [:varchar 32]]])
 
 (defn- migration-table-kw
-  "The migration bookkeeping table, inside the module's schema when index-metadata carries one (shared app-db
-  mode), the historical bare `migration` otherwise. nil index-metadata means the dedicated-database default."
+  "The migration bookkeeping table: inside the module's schema when index-metadata carries one (shared
+  app-db mode), bare `migration` otherwise (nil index-metadata included)."
   [index-metadata]
   (if-let [schema (:schema index-metadata)]
     (keyword (str schema ".migration"))
     :migration))
 
 (defn- ensure-schema-exists!
-  [tx index-metadata]
+  [index-metadata tx]
   (when-let [schema (:schema index-metadata)]
     (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS \"" schema "\"")])))
 
@@ -35,7 +35,7 @@
       (sql/format)))
 
 (defn- ensure-migration-table!
-  [tx index-metadata]
+  [index-metadata tx]
   (let [sql (migration-table-sql index-metadata)]
     (try
       (jdbc/execute! tx sql)
@@ -47,7 +47,7 @@
 
 (defn- db-version
   "Get database version of schema from migration table."
-  [tx index-metadata]
+  [index-metadata tx]
   (or (:max_version
        (jdbc/execute-one! tx
                           (sql/format {:select [[[:max :version] :max_version]]
@@ -55,7 +55,7 @@
       -1))
 
 (defn- write-successful-migration!
-  [tx index-metadata]
+  [index-metadata tx]
   (jdbc/execute-one! tx (sql/format (-> (sql.helpers/insert-into (migration-table-kw index-metadata))
                                         (sql.helpers/values [{:version semantic.db.migration.impl/schema-version
                                                               :status "success"}])))))
@@ -63,7 +63,7 @@
 (defn maybe-migrate-schema!
   "Execute schema migration (control, meta, gate, ...) if appropriate."
   [tx {:keys [index-metadata] :as opts}]
-  (let [db-version (db-version tx index-metadata)]
+  (let [db-version (db-version index-metadata tx)]
     (cond
       (= db-version semantic.db.migration.impl/schema-version)
       (log/info "Migration already performed, skipping.")
@@ -73,7 +73,7 @@
         (log/infof "Starting migration from version %d to %d."
                    db-version semantic.db.migration.impl/schema-version)
         (semantic.db.migration.impl/migrate-schema! tx opts)
-        (write-successful-migration! tx index-metadata))
+        (write-successful-migration! index-metadata tx))
 
       :else
       (log/infof "Database schema version (%d) is newer than code version (%d). Not performing migration."
@@ -85,13 +85,13 @@
   (or (:metadata-table-name index-metadata) "index_metadata"))
 
 (defn- index-metadata-table-exists?
-  [tx index-metadata]
+  [index-metadata tx]
   (semantic.util/table-exists? tx (metadata-table-name index-metadata)))
 
 (defn- lowest-dynamic-db-version
   "Lowest index version. If there is lower than defined in code dynamic schema migration will be attempted."
-  [tx index-metadata]
-  (or (when (index-metadata-table-exists? tx index-metadata)
+  [index-metadata tx]
+  (or (when (index-metadata-table-exists? index-metadata tx)
         (:min_index
          (jdbc/execute-one! tx
                             (sql/format {:select [[[:min :index_version] :min_index]]
@@ -101,7 +101,7 @@
 (defn maybe-migrate-dynamic-schema!
   "Migration for dynamic tables (index_table_xyzs) if appropriate."
   [tx {:keys [index-metadata] :as opts}]
-  (let [db-version (lowest-dynamic-db-version tx index-metadata)]
+  (let [db-version (lowest-dynamic-db-version index-metadata tx)]
     (cond
       (= db-version semantic.db.migration.impl/dynamic-schema-version)
       (log/info "Dynamic tables migration already performed, skipping.")
@@ -120,8 +120,8 @@
 (defn maybe-migrate!
   "Execute schema and dynamic schema migrations."
   [tx {:keys [index-metadata] :as opts}]
-  (ensure-schema-exists! tx index-metadata)
-  (ensure-migration-table! tx index-metadata)
+  (ensure-schema-exists! index-metadata tx)
+  (ensure-migration-table! index-metadata tx)
   (maybe-migrate-schema! tx opts)
   (maybe-migrate-dynamic-schema! tx opts)
   nil)
@@ -129,6 +129,6 @@
 (defn drop-migration-table!
   "Drop migration table."
   ([connectable]
-   (drop-migration-table! connectable nil))
-  ([connectable index-metadata]
+   (drop-migration-table! nil connectable))
+  ([index-metadata connectable]
    (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists (migration-table-kw index-metadata))))))

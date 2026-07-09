@@ -30,8 +30,8 @@
   (jobs/key "metabase-enterprise.entity-retrieval.sync.job"))
 
 (defn pgvector-configured?
-  "True when a pgvector store is available: a dedicated MB_PGVECTOR_DB_URL, or the Postgres app db hosting
-  the vector extension (see [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]]).
+  "True when a pgvector store is available — see
+  [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]].
   The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
   even when the library-retrieval feature is turned on after startup (a common onboarding flow)."
   []

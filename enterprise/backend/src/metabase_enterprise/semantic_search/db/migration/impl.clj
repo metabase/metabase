@@ -26,7 +26,7 @@
   When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
   dropped — the application's tables live in other schemas and must never be touched here. Without a
   `:schema` the whole database is assumed dedicated to semantic search and is wiped wholesale."
-  [tx index-metadata]
+  [index-metadata tx]
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx
                               (sql/format
@@ -51,7 +51,7 @@
   and in general leaving schema in desired state."
   [tx {:keys [index-metadata] :as _opts}]
   ;; ideally index_table indexed are manipulated in dynamic schema part but for now it does not matter
-  (drop-all-but-migration-table tx index-metadata)
+  (drop-all-but-migration-table index-metadata tx)
   (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
   (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
 
