@@ -53,9 +53,6 @@ describe(
       cy.intercept("POST", "/api/ee/replacement/replace-source").as(
         "replaceSource",
       );
-      cy.intercept("POST", "/api/ee/replacement/check-replace-source").as(
-        "checkReplaceSource",
-      );
       cy.intercept("GET", "/api/ee/dependencies/graph/dependents*").as(
         "dependents",
       );
@@ -857,14 +854,17 @@ function pickTarget(targetTableLabel: string) {
 }
 
 function confirmReplacement() {
-  // The tabs (and the affected-items count) only render once the async
-  // check-replace-source response arrives — until then the modal body shows an
-  // empty state. Wait on that request instead of racing a fixed DOM timeout.
-  cy.wait("@checkReplaceSource");
-
+  // The "N items will be changed" tab renders only once BOTH async inputs are
+  // ready: the check-replace-source result (checkInfo.success) and the
+  // backfilled dependents list (dependents.length > 0). Wait on the tab itself
+  // rather than cy.wait("@checkReplaceSource"): useCheckReplaceSourceQuery is an
+  // RTK Query, so when its result is served from cache no XHR fires and the
+  // request wait times out ("No request ever occurred") even though the modal
+  // is fully ready. The tab is the true readiness signal regardless of caching.
   SourceReplacement.getModal()
     .findByRole("tab", {
       name: /\d+ items? will be changed/,
+      timeout: 30000,
     })
     .should("be.visible");
 
