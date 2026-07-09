@@ -48,7 +48,6 @@ export const SankeyChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
-  // Free the ECharts/zrender SSR instance; it is otherwise never released (memory leak).
   chart.dispose();
 
   return (
