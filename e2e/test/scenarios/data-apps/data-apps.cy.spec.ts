@@ -90,15 +90,22 @@ describe("scenarios > data apps", () => {
     it("shows an empty state when the connected repository has no apps", () => {
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: true,
+        url: "https://github.com/metabase/stats-remote-sync",
       });
       cy.intercept("GET", "/api/apps", []).as("apps");
 
       cy.visit("/admin/settings/apps");
       cy.wait("@apps");
 
-      cy.findByTestId("admin-layout-content")
-        .findByText("The connected repository has no data apps yet.")
-        .should("be.visible");
+      cy.findByTestId("admin-layout-content").within(() => {
+        // The connected repository URL shows in the remote-sync row.
+        cy.findByText("https://github.com/metabase/stats-remote-sync").should(
+          "be.visible",
+        );
+        cy.findByText("The connected repository has no data apps yet.").should(
+          "be.visible",
+        );
+      });
     });
 
     it("lists an enabled app with an Open link and a working enable toggle", () => {
@@ -149,20 +156,23 @@ describe("scenarios > data apps", () => {
       });
     });
 
-    it("shows the setup section: install command and the Git sync link", () => {
+    it("shows the setup section: repo status, the Git sync link, and the install command", () => {
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: false,
+        url: null,
       });
       cy.intercept("GET", "/api/apps", []);
 
       cy.visit("/admin/settings/apps");
 
-      // Remote-sync link points at the Git sync settings page.
-      cy.findByRole("link", {
-        name: /Configure the connected repository in Git sync settings/,
-      })
-        .should("have.attr", "href")
-        .and("contain", "/admin/settings/remote-sync");
+      cy.findByTestId("admin-layout-content").within(() => {
+        // With no repo connected, the remote-sync row shows the empty status
+        // and the button links to the Git sync settings page.
+        cy.findByText("No repository connected").should("be.visible");
+        cy.findByRole("link", { name: "Go to Git sync settings" })
+          .should("have.attr", "href")
+          .and("contain", "/admin/settings/remote-sync");
+      });
 
       // The skills install command references the data-app skills.
       cy.findByDisplayValue(/npx skills add metabase\/metabase/).should(

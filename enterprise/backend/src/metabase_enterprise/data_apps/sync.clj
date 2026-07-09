@@ -37,12 +37,20 @@
 (defn- ->bytes ^bytes [^String s]
   (.getBytes s "UTF-8"))
 
-(defn repo-configured?
-  "True when a repository is connected via remote-sync. Read by keyword so this
-   OSS namespace has no compile-time dependency on the enterprise remote-sync
-   module; returns false when that module (and its setting) isn't loaded."
+(defn repo-url
+  "The connected remote-sync repository URL, or nil when none is configured. Read
+   by keyword so this OSS namespace has no compile-time dependency on the
+   enterprise remote-sync module; returns nil when that module (and its setting)
+   isn't loaded."
   []
-  (not (str/blank? (try (setting/get :remote-sync-url) (catch Throwable _ nil)))))
+  (let [url (try (setting/get :remote-sync-url) (catch Throwable _ nil))]
+    (when-not (str/blank? url)
+      url)))
+
+(defn repo-configured?
+  "True when a repository is connected via remote-sync."
+  []
+  (some? (repo-url)))
 
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 

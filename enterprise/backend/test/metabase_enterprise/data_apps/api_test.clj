@@ -251,11 +251,14 @@
 
 (deftest repo-status-endpoint-test
   (mt/with-premium-features #{:data-apps}
-    (testing "configured reflects whether a repository is connected"
-      (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly false)]
-        (is (=? {:configured false} (mt/user-http-request :crowberto :get 200 "apps/repo-status"))))
-      (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly true)]
-        (is (=? {:configured true} (mt/user-http-request :crowberto :get 200 "apps/repo-status")))))))
+    (testing "reports no repository when none is connected"
+      (mt/with-dynamic-fn-redefs [data-app.sync/repo-url (constantly nil)]
+        (is (=? {:configured false :url nil}
+                (mt/user-http-request :crowberto :get 200 "apps/repo-status")))))
+    (testing "reports the connected repository URL"
+      (mt/with-dynamic-fn-redefs [data-app.sync/repo-url (constantly "https://github.com/metabase/stats-remote-sync")]
+        (is (=? {:configured true :url "https://github.com/metabase/stats-remote-sync"}
+                (mt/user-http-request :crowberto :get 200 "apps/repo-status")))))))
 
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!

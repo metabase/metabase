@@ -10,6 +10,7 @@ import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import {
   Box,
+  Button,
   Flex,
   Group,
   Icon,
@@ -54,6 +55,11 @@ const STATUS_POLL_INTERVAL_MS = 10_000;
 const POLL_OPTS = {
   pollingInterval: STATUS_POLL_INTERVAL_MS,
   skipPollingIfUnfocused: true,
+  // Repo connection is managed on a different tab (Remote Sync) through another
+  // API slice, so it can't invalidate this cache. Refetch on mount so navigating
+  // (back) to the Data apps tab always reflects the current connection instead
+  // of a stale cached value.
+  refetchOnMountOrArgChange: true,
 } as const;
 
 export function ManageDataAppsPage() {
@@ -95,22 +101,45 @@ export function ManageDataAppsPage() {
           }}
         >
           <Stack gap="sm">
-            <SettingHeader title={t`Remote Sync`} />
+            <Title order={3}>{t`Remote sync repo`}</Title>
 
             <Text c="text-secondary" maw="40rem">
               {t`Data apps live in the repository connected via Git sync. Each app's built bundle is served at /apps/:name.`}
             </Text>
 
-            <Group gap="xs">
-              <Icon name="git_branch" c="text-secondary" size={14} />
-              <Text
-                component={Link}
-                c="brand"
-                fw={700}
-                to={REMOTE_SYNC_SETTINGS_PATH}
+            <Group gap="md" wrap="nowrap" align="center">
+              <Group
+                gap="sm"
+                wrap="nowrap"
+                flex={1}
+                miw={0}
+                px="md"
+                py="sm"
+                bg="background-secondary"
+                bd="1px solid var(--mb-color-border)"
+                bdrs="md"
               >
-                {t`Configure the connected repository in Git sync settings`}
-              </Text>
+                <Icon
+                  name="git_branch"
+                  c="text-secondary"
+                  size={16}
+                  flex="0 0 auto"
+                />
+                <Text
+                  ff="monospace"
+                  c={isConfigured ? "text-primary" : "text-secondary"}
+                  truncate
+                >
+                  {isConfigured ? status?.url : t`No repository connected`}
+                </Text>
+              </Group>
+              <Button
+                component={Link}
+                to={REMOTE_SYNC_SETTINGS_PATH}
+                variant="default"
+              >
+                {t`Go to Git sync settings`}
+              </Button>
             </Group>
           </Stack>
 

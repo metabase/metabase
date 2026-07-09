@@ -42,7 +42,9 @@
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
 (defn- repo-status []
-  {:configured (data-app.sync/repo-configured?)})
+  (let [url (data-app.sync/repo-url)]
+    {:configured (some? url)
+     :url        url}))
 
 (defn- if-none-match-hashes
   "Parse an `If-None-Match` header into the set of bare hashes it lists, dropping
@@ -71,7 +73,8 @@
 
 (def ^:private RepoStatusResponse
   [:map
-   [:configured :boolean]])
+   [:configured :boolean]
+   [:url [:maybe :string]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 

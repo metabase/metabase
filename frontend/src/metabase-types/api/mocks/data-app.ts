@@ -20,5 +20,6 @@ export const createMockDataAppRepoStatus = (
   opts?: Partial<DataAppRepoStatus>,
 ): DataAppRepoStatus => ({
   configured: true,
+  url: "https://github.com/metabase/stats-remote-sync",
   ...opts,
 });
