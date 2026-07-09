@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupCurrentUserEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import {
   createMockSettingsState,
@@ -9,7 +9,14 @@ import {
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as domUtils from "metabase/utils/dom";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+
+// The `loadSettings` action, inlined: importing `metabase/redux/settings` pulls
+// in an import graph large enough to exhaust the jest heap.
+const loadSettings = (values: ReturnType<typeof createMockSettings>) => ({
+  type: "metabase/settings/LOAD_SETTINGS",
+  payload: values,
+});
 
 import {
   CardHashRedirect,
@@ -56,6 +63,24 @@ describe("RedirectIfSetup", () => {
       expect(history?.getCurrentLocation().pathname).toBe("/"),
     );
     expect(screen.queryByText("setup page")).not.toBeInTheDocument();
+  });
+
+  it("stays on setup when has-user-setup flips to true mid-wizard", () => {
+    const { history, store } = setup(false);
+    expect(screen.getByText("setup page")).toBeInTheDocument();
+
+    // The wizard's user step calls /api/setup, then reloads settings.
+    act(() => {
+      store.dispatch(
+        loadSettings(createMockSettings({ "has-user-setup": true })),
+      );
+    });
+
+    // Guards against the inlined action type drifting and voiding this test.
+    expect(store.getState().settings.values["has-user-setup"]).toBe(true);
+
+    expect(history?.getCurrentLocation().pathname).toBe("/setup");
+    expect(screen.getByText("setup page")).toBeInTheDocument();
   });
 });
 
