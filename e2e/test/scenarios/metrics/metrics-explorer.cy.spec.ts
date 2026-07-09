@@ -615,9 +615,12 @@ describe("scenarios > metrics > explorer", () => {
         { nameOrPath: "Orders model metric" },
       ]);
 
-      cy.log("Wait for the committed run to resolve before counting pills");
+      // `addMetricInputSequence` only asserts the editor/run-button/loading
+      // indicator are gone, which are negative checks that can pass before the
+      // committed run's `/api/metric/dataset` request has even fired. The pills
+      // render from `selectedMetrics` once that response resolves, so wait on it
+      // before counting instead of racing the network + render under CI load.
       cy.wait("@dataset");
-      H.MetricsViewer.getMetricVisualization().should("be.visible");
 
       verifyMetricCount(4);
     });
