@@ -149,7 +149,6 @@ export function MetricExpressionPill({
                           color="brand"
                           key={i}
                           variant="light"
-                          size="sm"
                           style={{ marginInlineStart: "0.2em" }}
                         >
                           {segment}
