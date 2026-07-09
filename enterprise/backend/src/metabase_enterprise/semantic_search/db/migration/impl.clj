@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
-   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.util :as semantic.util]
@@ -16,10 +15,6 @@
   "Version to compare the [[metabase-enterprise.semantic-search.db.migration/db-version]] with. If this is higher,
   schema migration will be performed."
   2)
-
-(defn- quote-ident
-  [s]
-  (str \" (str/replace s "\"" "\"\"") \"))
 
 (defn- drop-all-but-migration-table
   "Destructive: clears out semantic-search storage ahead of recreating it from scratch.
@@ -44,7 +39,8 @@
     (doseq [{:keys [schemaname tablename]} tables]
       (jdbc/execute! tx
                      (sql/format
-                      {:drop-table [[[:raw (str (quote-ident schemaname) "." (quote-ident tablename))]]]})))))
+                      {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."
+                                                (semantic.util/quote-ident tablename))]]]})))))
 
 (defn migrate-schema!
   "Migrate schema (control, metadata, gate, ...). Migration author is responsible for removing leftovers if necessary
@@ -139,13 +135,15 @@
     (alter-index-tables!
      tx index-metadata 4
      (fn [execute! table-name]
+       ;; column refs are dotted keywords, not namespaced ones: a schema-qualified table name in a keyword
+       ;; namespace renders as a single (broken) identifier
        (let [kw-tbl             (keyword table-name)
              kw-gate            (keyword gate-table)
-             tbl-model          (keyword table-name "model")
-             tbl-model-id       (keyword table-name "model_id")
-             tbl-root-coll-type (keyword table-name "root_collection_type")
-             gate-id            (keyword gate-table "id")
-             gate-doc-root      [:->> (keyword gate-table "document") [:inline "root_collection_type"]]
+             tbl-model          (keyword (str table-name ".model"))
+             tbl-model-id       (keyword (str table-name ".model_id"))
+             tbl-root-coll-type (keyword (str table-name ".root_collection_type"))
+             gate-id            (keyword (str gate-table ".id"))
+             gate-doc-root      [:->> (keyword (str gate-table ".document")) [:inline "root_collection_type"]]
              composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.

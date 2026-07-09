@@ -180,13 +180,15 @@
   (when (semantic.u/semantic-search-available?)
     (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.env/get-index-metadata)]
-      ;; Available but never initialized is a steady state (semantic neither default nor additional);
-      ;; the bookkeeping tables only exist after init, and the cleanup queries would throw without them.
+      ;; Available but never initialized is a steady state (semantic neither default nor additional,
+      ;; or app-db mode with the engine disabled); the bookkeeping tables only exist after init, and
+      ;; the cleanup queries would throw without them.
       ;; Still runs while merely available, so an opted-out instance's leftover indexes get cleaned.
       (when (semantic.index-metadata/control-and-metadata-tables-exist? pgvector index-metadata)
         (cleanup-stale-indexes! pgvector index-metadata)
-        (cleanup-old-gate-tombstones! pgvector index-metadata)
-        (cleanup-orphan-repair-tables! pgvector index-metadata)))))
+        (cleanup-old-gate-tombstones! pgvector index-metadata))
+      ;; repair-table cleanup is information_schema-driven and safe without initialization
+      (cleanup-orphan-repair-tables! pgvector index-metadata))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))

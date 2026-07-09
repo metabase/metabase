@@ -9,6 +9,11 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
+(defn quote-ident
+  "Quote a Postgres identifier, escaping embedded double quotes."
+  [s]
+  (str \" (str/replace s "\"" "\"\"") \"))
+
 (defn qualified-table-parts
   "Split a possibly schema-qualified table name into `[schema table]`; `schema` is nil when unqualified."
   [table-name]

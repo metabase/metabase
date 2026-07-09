@@ -32,7 +32,7 @@
     (doseq [db-type [:h2 :mysql]]
       (with-redefs [semantic.db.datasource/db-url nil
                     mdb/db-type (constantly db-type)
-                    semantic.db.datasource/check-app-db-pgvector-support!
+                    semantic.db.datasource/check-app-db-pgvector-support
                     (fn [] (throw (AssertionError. "must not probe a non-Postgres app db")))]
         (with-support-cache nil
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
@@ -45,7 +45,7 @@
     (testing "nothing cached (and mode :unavailable) before the app db is set up"
       (with-support-cache nil
         (with-redefs [mdb/db-is-set-up? (constantly false)
-                      semantic.db.datasource/check-app-db-pgvector-support!
+                      semantic.db.datasource/check-app-db-pgvector-support
                       (fn [] (throw (AssertionError. "must not probe before the app db is set up")))]
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support)))))
@@ -53,32 +53,35 @@
       (with-support-cache nil
         (let [calls (atom 0)]
           (with-redefs [mdb/db-is-set-up? (constantly true)
-                        semantic.db.datasource/check-app-db-pgvector-support! (fn [] (swap! calls inc) true)]
+                        semantic.db.datasource/check-app-db-pgvector-support (fn [] (swap! calls inc) true)]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))
             (is (= 1 @calls))
             (is (true? @semantic.db.datasource/app-db-pgvector-support))))))
-    (testing "a throwing check is caught and caches false"
+    (testing "a throwing check reads as unavailable but does NOT latch — a transient failure is retried"
       (with-support-cache nil
         (with-redefs [mdb/db-is-set-up? (constantly true)
-                      semantic.db.datasource/check-app-db-pgvector-support! (fn [] (throw (ex-info "boom" {})))]
+                      semantic.db.datasource/check-app-db-pgvector-support (fn [] (throw (ex-info "boom" {})))]
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
-          (is (false? @semantic.db.datasource/app-db-pgvector-support)))))
+          (is (nil? @semantic.db.datasource/app-db-pgvector-support)))
+        (with-redefs [mdb/db-is-set-up? (constantly true)
+                      semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
+          (is (= :app-db (semantic.db.datasource/pgvector-mode))
+              "the next call after a transient failure re-probes"))))
     (testing "the cache is resettable (JVM-lifetime semantics, tests/REPL reset it)"
       (with-support-cache false
         (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
         (reset! semantic.db.datasource/app-db-pgvector-support nil)
         (with-redefs [mdb/db-is-set-up? (constantly true)
-                      semantic.db.datasource/check-app-db-pgvector-support! (constantly true)]
+                      semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
           (is (= :app-db (semantic.db.datasource/pgvector-mode))))))))
 
 (deftest unlicensed-availability-check-does-not-probe-test
   (testing "without the :semantic-search feature, the availability gate never probes the app db"
-    ;; the probe attempts CREATE EXTENSION / CREATE SCHEMA — an unlicensed instance must never reach it
     (with-redefs [semantic.db.datasource/db-url nil
                   mdb/db-type (constantly :postgres)
                   mdb/db-is-set-up? (constantly true)
-                  semantic.db.datasource/check-app-db-pgvector-support!
+                  semantic.db.datasource/check-app-db-pgvector-support
                   (fn [] (throw (AssertionError. "must not probe when the feature is off")))]
       (with-support-cache nil
         (mt/with-premium-features #{}

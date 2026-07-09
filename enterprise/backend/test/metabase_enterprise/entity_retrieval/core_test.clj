@@ -37,7 +37,7 @@
     ;; MB_PGVECTOR_DB_URL or a pgvector-capable Postgres app db: available? is false, so search returns []
     ;; and the write-path nudge no-ops rather than throwing.
     (mt/with-premium-features #{:library :library-retrieval}
-      (with-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
         (is (= [] (mirror/search "anything" 10)))
         (is (nil? (mirror/request-entity-sync! "table" 1)))))))
 
@@ -114,7 +114,7 @@
 (deftest force-reconcile-unavailable-returns-nil-test
   (testing "force-reconcile! is nil (so the API can 400) when pgvector isn't configured"
     (mt/with-premium-features #{:library :library-retrieval}
-      (with-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
         (is (nil? (entity-retrieval.core/force-reconcile!)))))))
 
 (deftest available?-gates-test
@@ -136,12 +136,12 @@
         (mt/with-premium-features #{:library :library-retrieval}
           (is (true? (entity-retrieval.core/available?)))))
       ;; pgvector-on-the-app-db counts as configured, with no URL set
-      (with-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
         (mt/with-premium-features #{:library :library-retrieval}
           (is (true? (entity-retrieval.core/pgvector-configured?)))
           (is (true? (entity-retrieval.core/available?)))))
       ;; pgvector unconfigured -> unavailable regardless of license
-      (with-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
+      (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
         (mt/with-premium-features #{:library :library-retrieval}
           (is (false? (entity-retrieval.core/available?))))))
     (testing "fully licensed + pgvector, but no way to compute embeddings -> unavailable"
