@@ -11,9 +11,13 @@ export type TimelineEventId = number;
 export type TimelineEventSource = "question" | "collections" | "api";
 
 export type TimelineIcon =
+  | "info"
+  | "note"
+  | "event"
   | "star"
   | "cake"
   | "mail"
+  | "mail_at"
   | "warning"
   | "bell"
   | "cloud";
