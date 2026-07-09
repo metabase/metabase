@@ -177,7 +177,7 @@
     "ts-pattern": "^5.9.0",
     "ttag": "1.7.21",
     "typescript": "npm:@typescript/typescript6@6.0.1",
-    "typescript7": "npm:typescript@7.0.1-rc",
+    "typescript7": "npm:typescript@7.0.2",
     "underscore": "^1.13.8",
     "url": "^0.11.4",
     "use-sync-external-store": "^1.6.0",
