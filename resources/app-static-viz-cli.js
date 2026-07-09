@@ -7,7 +7,7 @@ for (const method of ["log", "info", "warn", "error", "debug", "trace"]) {
     process.stderr.write(args.map((a) => String(a)).join(" ") + "\n");
 }
 
-const staticViz = require(path.join(__dirname, "lib-static-viz.bundle.js"));
+const staticViz = require(path.join(__dirname, "app-static-viz.bundle.js"));
 
 const rl = readline.createInterface({ input: process.stdin });
 rl.on("line", (line) => {

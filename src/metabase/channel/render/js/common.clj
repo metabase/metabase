@@ -12,7 +12,7 @@
 
 (def bundle-resource-path
   "Classpath path of the built static-viz bundle both renderers load."
-  "frontend_client/app/dist/lib-static-viz.bundle.js")
+  "frontend_client/app/dist/app-static-viz.bundle.js")
 
 (defn assert-tests-not-initializing!
   "Guard against loading the static-viz bundle as a side effect of loading namespaces: it might not have

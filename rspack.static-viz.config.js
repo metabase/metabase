@@ -30,7 +30,7 @@ module.exports = (env) => {
     },
 
     entry: {
-      "lib-static-viz": {
+      "app-static-viz": {
         import: "./app-static-viz.ts",
         library: {
           name: "MetabaseStaticViz",

@@ -38,7 +38,7 @@
   ^java.io.File []
   (let [dir (.toFile (Files/createTempDirectory "mb-static-viz-node" (into-array FileAttribute [])))]
     (.deleteOnExit dir)
-    (doseq [[resource filename] [[common/bundle-resource-path "lib-static-viz.bundle.js"]
+    (doseq [[resource filename] [[common/bundle-resource-path "app-static-viz.bundle.js"]
                                  [cli-resource-path "app-static-viz-cli.js"]]]
       (let [resource-url (io/resource resource)]
         (when (nil? resource-url)
