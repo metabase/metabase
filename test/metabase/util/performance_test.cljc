@@ -127,6 +127,16 @@
            (println x y)))
        #_=> "")))
 
+(deftest str-test
+  (is (= "" (perf/str nil)))
+  (is (= "1" (perf/str 1)))
+  (is (= "12" (perf/str 1 2)))
+  (is (= "1" (perf/str 1 nil)))
+  (is (= "2" (perf/str nil 2)))
+  (is (= "123" (perf/str 1 2 3)))
+  (is (= "13" (perf/str 1 nil 3)))
+  (is (= "1234567" (perf/str 1 2 3 4 5 6 7))))
+
 (deftest ^:parallel test-postwalk
   (are [before after] (= after (perf/postwalk #(cond-> %
                                                  (number? %) inc)
