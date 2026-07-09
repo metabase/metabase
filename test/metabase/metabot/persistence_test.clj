@@ -96,9 +96,9 @@
     (let [blocks [{:type "data-navigate_to" :data "/question/1"}
                   {:type "data-todo_list"   :data [{:id "t1"}]}
                   {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}]]
-      (is (=? [{:role "agent" :type "data_part" :part {:type "navigate_to" :version 1 :value "/question/1"}}
-               {:role "agent" :type "data_part" :part {:type "todo_list"   :version 1 :value [{:id "t1"}]}}
-               {:role "agent" :type "data_part" :part {:type "code_edit"   :version 1 :value {:buffer_id "b" :value "v"}}}]
+      (is (=? [{:role "agent" :type "data_part" :part {:type "data-navigate_to" :data "/question/1"}}
+               {:role "agent" :type "data_part" :part {:type "data-todo_list"   :data [{:id "t1"}]}}
+               {:role "agent" :type "data_part" :part {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}}]
               (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
 
 (deftest ^:parallel message->chat-messages-test-10

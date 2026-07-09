@@ -88,6 +88,8 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
+const formatPartType = (type: string) => type.replace(/^data-/, "");
+
 const DataPartJsonCard = ({
   type,
   value,
@@ -119,7 +121,7 @@ const DataPartJsonCard = ({
       >
         <Flex align="center">
           <Icon name="document" c="text-secondary" mr="sm" />
-          <Text fw="bold">{type}</Text>
+          <Text fw="bold">{formatPartType(type)}</Text>
         </Flex>
         <ActionIcon
           h="sm"
@@ -169,7 +171,7 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
   >
     <Flex align="center">
       <Icon name="document" c="text-secondary" mr="sm" />
-      <Text fw="bold">{type}</Text>
+      <Text fw="bold">{formatPartType(type)}</Text>
     </Flex>
     <ActionIcon
       component={ForwardRefLink}
@@ -208,7 +210,7 @@ const CodeEditDataPart = ({
       >
         <Flex align="center" gap="sm">
           <Icon name="document" c="text-secondary" />
-          <Text fw="bold">{type}</Text>
+          <Text fw="bold">{formatPartType(type)}</Text>
           <Text c="text-secondary">{t`Buffer ID: ${value.buffer_id}`}</Text>
           <Badge variant="light" size="sm">
             {value.mode}

@@ -236,6 +236,15 @@
   [{:keys [error]}]
   (format-sse-event {:type "error" :errorText (or (:message error) (str error))}))
 
+(defn format-error-frames
+  "SSE frames that close a stream which failed mid-flight: the `error` event, a
+  `finish` (finishReason \"error\"), and the `[DONE]` terminator — so the client
+  consumes a well-formed end instead of a truncated close."
+  [error-part]
+  (str (format-error-line error-part) "\n"
+       (format-sse-event {:type "finish" :finishReason "error"}) "\n"
+       "data: [DONE]\n\n"))
+
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
   metadata.

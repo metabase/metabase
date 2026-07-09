@@ -255,10 +255,14 @@
                          :data    {:status 503 :provider :test}}
                         (:error @stored-kwargs))
                     "the throwable becomes a structured error payload")
-                (testing "the failure is streamed to the client as an AI SDK error part rather than a silent close"
+                (testing "the failure is streamed to the client as a well-formed AI SDK error tail rather than a silent close"
                   (is (some #(str/includes? % "\"type\":\"error\"")
                             (str/split-lines response)))
-                  (is (re-find #"(?i)agent setup exploded" response)))))))))))
+                  (is (re-find #"(?i)agent setup exploded" response))
+                  (is (str/includes? response "\"finishReason\":\"error\"")
+                      "the errored stream is closed with a finish event")
+                  (is (str/includes? response "data: [DONE]")
+                      "the stream terminates with [DONE]"))))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
