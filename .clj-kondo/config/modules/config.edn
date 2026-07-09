@@ -3323,6 +3323,11 @@
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
+  enterprise/mfa
+  {:team "Graphy"
+   :api  #{metabase-enterprise.mfa.init}
+   :uses #{premium-features}}
+
   enterprise/permission-debug
   {:team "UX West"
    :api  #{metabase-enterprise.permission-debug.api}

@@ -345,6 +345,7 @@ export const tokenFeatures = [
   "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "metabot-v3",
+  "multi-factor-auth",
   "official_collections",
   "sandboxes",
   "scim",
