@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.api :as typed-schemas.api]
+   [metabase.typed-schemas.api.common :as typed-schemas.api.common]
+   [metabase.typed-schemas.api.query-params :as typed-schemas.api.query-params]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -20,10 +22,10 @@
           :baseType      "type/Text"
           :jsType        "string"
           :description   "Name of the customer"}
-         (#'typed-schemas.api/column-schema {:name         "name"
-                                             :display_name "Name"
-                                             :base_type    "type/Text"
-                                             :description  "Name of the customer"}))))
+         (#'typed-schemas.api.common/column-schema {:name         "name"
+                                                    :display_name "Name"
+                                                    :base_type    "type/Text"
+                                                    :description  "Name of the customer"}))))
 
 (deftest metric-dimension-schema-uses-dimension-id-test
   (is (= {:type          "column"
@@ -180,7 +182,7 @@
           "channelOrders"     {:key     "channelOrders"
                                :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
                                :tableId 167}}
-         (#'typed-schemas.api/keyed-map
+         (#'typed-schemas.api.common/keyed-map
           [{:key     "channel"
             :id      "ca9bef16-d484-4add-8245-ddbc78287e8f"
             :tableId 167
@@ -197,7 +199,7 @@
           "channelOrders2" {:key     "channelOrders2"
                             :id      2
                             :tableId 168}}
-         (#'typed-schemas.api/keyed-map
+         (#'typed-schemas.api.common/keyed-map
           [{:key     "channel"
             :id      1
             :tableId 167
@@ -537,7 +539,7 @@
 
 (deftest database-filter-scopes-models-test
   (let [model-database-ids (atom [])]
-    (with-redefs [typed-schemas.api/database-ids-for-value (constantly #{42})
+    (with-redefs [typed-schemas.api.query-params/database-ids-for-value (constantly #{42})
                   typed-schemas.api/model-schemas (fn [database-ids]
                                                     (swap! model-database-ids conj database-ids)
                                                     [])
@@ -692,7 +694,7 @@
       (is (= {:collection-ids        #{(:id child)}
               :data-collection-ids   #{(:id child)}
               :metric-collection-ids #{}}
-             (select-keys (#'typed-schemas.api/library-collection-scope (str (:id child)))
+             (select-keys (#'typed-schemas.api.query-params/library-collection-scope (str (:id child)))
                           [:collection-ids :data-collection-ids :metric-collection-ids]))))))
 
 (deftest library-collections-scope-accepts-comma-separated-subcollection-ids-test
@@ -718,8 +720,8 @@
       (is (= {:collection-ids        #{(:id data-child) (:id data-grandkid) (:id metric-child)}
               :data-collection-ids   #{(:id data-child) (:id data-grandkid)}
               :metric-collection-ids #{(:id metric-child)}}
-             (select-keys (#'typed-schemas.api/library-collections-scope
-                           (#'typed-schemas.api/query-library-collection-values
+             (select-keys (#'typed-schemas.api.query-params/library-collections-scope
+                           (#'typed-schemas.api.query-params/query-library-collection-values
                             {:library-collections (format "%d, %d"
                                                           (:id data-child)
                                                           (:id metric-child))}))
@@ -743,12 +745,12 @@
       (is (= {:collection-ids        #{(:id website) (:id website-page)}
               :data-collection-ids   #{(:id website) (:id website-page)}
               :metric-collection-ids #{}}
-             (select-keys (#'typed-schemas.api/library-collections-scope ["g-jLnamuHKdezZMthJ-z7"])
+             (select-keys (#'typed-schemas.api.query-params/library-collections-scope ["g-jLnamuHKdezZMthJ-z7"])
                           [:collection-ids :data-collection-ids :metric-collection-ids]))))))
 
 (deftest library-scope-includes-canonical-data-and-metrics-libraries-test
-  (with-redefs [typed-schemas.api/library-data-entity-id    "test-library-data"
-                typed-schemas.api/library-metrics-entity-id "test-library-metrics"]
+  (with-redefs [typed-schemas.api.query-params/library-data-entity-id    "test-library-data"
+                typed-schemas.api.query-params/library-metrics-entity-id "test-library-metrics"]
     (mt/with-temp [:model/Collection root         {:name "Library"
                                                    :type "library"
                                                    :location "/"}
@@ -770,18 +772,18 @@
         (is (= {:collection-ids        #{(:id data) (:id data-child) (:id metrics) (:id metric-child)}
                 :data-collection-ids   #{(:id data) (:id data-child)}
                 :metric-collection-ids #{(:id metrics) (:id metric-child)}}
-               (select-keys (#'typed-schemas.api/library-scope
+               (select-keys (#'typed-schemas.api.query-params/library-scope
                              {:includeDataLibrary   "true"
                               :includeMetricLibrary "true"})
                             [:collection-ids :data-collection-ids :metric-collection-ids])))))))
 
 (deftest query-collection-values-accept-camel-case-aliases-test
   (is (= ["1" "2"]
-         (#'typed-schemas.api/query-library-collection-values {:libraryCollections "1, 2"})))
+         (#'typed-schemas.api.query-params/query-library-collection-values {:libraryCollections "1, 2"})))
   (is (= ["3" "4"]
-         (#'typed-schemas.api/query-question-collection-values {:questionCollections "3, 4"})))
+         (#'typed-schemas.api.query-params/query-question-collection-values {:questionCollections "3, 4"})))
   (is (true?
-       (#'typed-schemas.api/query-include-models? {:includeModels "true"}))))
+       (#'typed-schemas.api.query-params/query-include-models? {:includeModels "true"}))))
 
 (deftest question-collection-scope-accepts-comma-separated-collection-ids-test
   (mt/with-temp [:model/Collection parent {:name "Question Parent"
@@ -790,8 +792,8 @@
                                            :location (collection/children-location parent)}]
     (mt/with-test-user :crowberto
       (is (= #{(:id parent) (:id child)}
-             (#'typed-schemas.api/collection-scope
-              (#'typed-schemas.api/query-question-collection-values
+             (#'typed-schemas.api.query-params/collection-scope
+              (#'typed-schemas.api.query-params/query-question-collection-values
                {:question-collections (str (:id parent))})))))))
 
 (deftest question-collection-scope-accepts-representation-entity-ids-test
@@ -802,17 +804,17 @@
                                            :location (collection/children-location parent)}]
     (mt/with-test-user :crowberto
       (is (= #{(:id parent) (:id child)}
-             (#'typed-schemas.api/collection-scope ["question-entity-id-1"]))))))
+             (#'typed-schemas.api.query-params/collection-scope ["question-entity-id-1"]))))))
 
 (deftest question-collection-scope-rejects-missing-collection-ref-test
   (mt/with-test-user :crowberto
     (let [e (is (thrown? clojure.lang.ExceptionInfo
-                         (#'typed-schemas.api/collection-scope ["missing-entity-id-1"])))]
+                         (#'typed-schemas.api.query-params/collection-scope ["missing-entity-id-1"])))]
       (is (= 404 (:status-code (ex-data e)))))))
 
 (deftest library-schema-includes-metric-mapped-tables-test
   (let [selected-table-ids (atom nil)]
-    (with-redefs [typed-schemas.api/library-collection-scope
+    (with-redefs [typed-schemas.api.query-params/library-collection-scope
                   (constantly {:metric-collection-ids #{20}
                                :data-collection-ids   #{10}})
                   typed-schemas.api/model-schemas
@@ -848,7 +850,7 @@
 
 (deftest collections-schema-includes-selected-data-and-metric-collections-test
   (let [selected-table-ids (atom nil)]
-    (with-redefs [typed-schemas.api/library-collections-scope
+    (with-redefs [typed-schemas.api.query-params/library-collections-scope
                   (fn [collection-values]
                     (is (= ["10" "20"] collection-values))
                     {:metric-collection-ids #{20}
@@ -919,7 +921,7 @@
 
 (deftest include-models-with-database-scopes-models-test
   (let [model-database-ids (atom [])]
-    (with-redefs [typed-schemas.api/database-ids-for-value (constantly #{42})
+    (with-redefs [typed-schemas.api.query-params/database-ids-for-value (constantly #{42})
                   typed-schemas.api/model-schemas (fn [database-ids]
                                                     (swap! model-database-ids conj database-ids)
                                                     [{:key     "databaseModel"
@@ -940,7 +942,7 @@
                (:models schema)))))))
 
 (deftest question-collections-schema-includes-selected-question-collections-test
-  (with-redefs [typed-schemas.api/collection-scope
+  (with-redefs [typed-schemas.api.query-params/collection-scope
                 (fn [collection-values]
                   (is (= ["30" "40"] collection-values))
                   #{30 40})
@@ -962,12 +964,12 @@
       (is (= {} (:metrics schema))))))
 
 (deftest library-and-question-collections-can-be-combined-test
-  (with-redefs [typed-schemas.api/library-collections-scope
+  (with-redefs [typed-schemas.api.query-params/library-collections-scope
                 (fn [collection-values]
                   (is (= ["10"] collection-values))
                   {:metric-collection-ids #{10}
                    :data-collection-ids   #{10}})
-                typed-schemas.api/collection-scope
+                typed-schemas.api.query-params/collection-scope
                 (fn [collection-values]
                   (is (= ["30"] collection-values))
                   #{30})
@@ -998,12 +1000,12 @@
       (is (= #{2} (->> (:metrics schema) vals (map :id) set))))))
 
 (deftest library-and-question-collections-can-be-combined-with-include-models-test
-  (with-redefs [typed-schemas.api/library-collections-scope
+  (with-redefs [typed-schemas.api.query-params/library-collections-scope
                 (fn [collection-values]
                   (is (= ["10"] collection-values))
                   {:metric-collection-ids #{10}
                    :data-collection-ids   #{10}})
-                typed-schemas.api/collection-scope
+                typed-schemas.api.query-params/collection-scope
                 (fn [collection-values]
                   (is (= ["30"] collection-values))
                   #{30})
