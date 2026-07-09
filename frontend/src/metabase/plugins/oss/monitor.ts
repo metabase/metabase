@@ -3,11 +3,13 @@ import type { ComponentType, ReactNode } from "react";
 type MonitorPlugin = {
   isDependencyDiagnosticsEnabled: boolean;
   getDependencyDiagnosticsRoutes: () => ReactNode;
+  getUsageAuditingRoutes: () => ReactNode;
 };
 
 const getDefaultPluginMonitor = (): MonitorPlugin => ({
   isDependencyDiagnosticsEnabled: false,
   getDependencyDiagnosticsRoutes: () => null,
+  getUsageAuditingRoutes: () => null,
 });
 
 export const PLUGIN_MONITOR = getDefaultPluginMonitor();

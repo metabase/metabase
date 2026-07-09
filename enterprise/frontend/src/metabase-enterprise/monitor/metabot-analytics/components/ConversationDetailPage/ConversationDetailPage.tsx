@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -65,11 +64,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   }, [conversation]);
 
   if (isLoading || error) {
-    return (
-      <MetabotAdminLayout>
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </MetabotAdminLayout>
-    );
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   if (!conversation) {
@@ -86,67 +81,62 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = conversation;
 
   return (
-    <MetabotAdminLayout>
-      <Stack gap="2.5rem">
-        <ConversationHeader conversation={conversation} />
+    <Stack gap="2.5rem">
+      <ConversationHeader conversation={conversation} />
 
-        <SimpleGrid cols={4}>
-          <StatCard label={t`Messages`} value={formatNumber(message_count)} />
-          <StatCard
-            label={t`Total tokens`}
-            value={formatNumber(total_tokens)}
-          />
-          <StatCard label={t`Queries run`} value={formatNumber(query_count)} />
-          <StatCard label={t`Searches`} value={formatNumber(search_count)} />
-        </SimpleGrid>
+      <SimpleGrid cols={4}>
+        <StatCard label={t`Messages`} value={formatNumber(message_count)} />
+        <StatCard label={t`Total tokens`} value={formatNumber(total_tokens)} />
+        <StatCard label={t`Queries run`} value={formatNumber(query_count)} />
+        <StatCard label={t`Searches`} value={formatNumber(search_count)} />
+      </SimpleGrid>
 
-        {feedback.length > 0 && (
-          <Stack gap="md">
-            <Title order={3}>{t`Feedback`}</Title>
-            <Stack gap="sm">
-              {feedback.map((item) => (
-                <FeedbackCard
-                  key={item.id}
-                  feedback={item}
-                  chatMessages={chatMessages}
-                />
-              ))}
-            </Stack>
-          </Stack>
-        )}
-
+      {feedback.length > 0 && (
         <Stack gap="md">
-          <Flex align="baseline" justify="space-between">
-            <Title order={3}>{t`Conversation`}</Title>
-            {conversation.slack_permalink && (
-              <ExternalLink href={conversation.slack_permalink}>
-                {t`Open in Slack`}
-              </ExternalLink>
-            )}
-          </Flex>
-          <Card withBorder shadow="none" p="xl">
-            <Messages
-              messages={chatMessages}
-              isDoingScience={false}
-              debug
-              readonly
-            />
-          </Card>
-        </Stack>
-
-        {queries.length > 0 && (
-          <Stack gap="md">
-            <Title order={3}>{t`Queries generated`}</Title>
-            {queries.map((query) => (
-              <GeneratedQueryCard
-                key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-                query={query}
+          <Title order={3}>{t`Feedback`}</Title>
+          <Stack gap="sm">
+            {feedback.map((item) => (
+              <FeedbackCard
+                key={item.id}
+                feedback={item}
+                chatMessages={chatMessages}
               />
             ))}
           </Stack>
-        )}
+        </Stack>
+      )}
+
+      <Stack gap="md">
+        <Flex align="baseline" justify="space-between">
+          <Title order={3}>{t`Conversation`}</Title>
+          {conversation.slack_permalink && (
+            <ExternalLink href={conversation.slack_permalink}>
+              {t`Open in Slack`}
+            </ExternalLink>
+          )}
+        </Flex>
+        <Card withBorder shadow="none" p="xl">
+          <Messages
+            messages={chatMessages}
+            isDoingScience={false}
+            debug
+            readonly
+          />
+        </Card>
       </Stack>
-    </MetabotAdminLayout>
+
+      {queries.length > 0 && (
+        <Stack gap="md">
+          <Title order={3}>{t`Queries generated`}</Title>
+          {queries.map((query) => (
+            <GeneratedQueryCard
+              key={query.call_id ?? `${query.message_id}-${query.query_id}`}
+              query={query}
+            />
+          ))}
+        </Stack>
+      )}
+    </Stack>
   );
 }
 

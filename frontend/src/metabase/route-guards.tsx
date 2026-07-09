@@ -7,6 +7,7 @@ import {
   canAccessMonitor,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
+  canAccessUsageAuditing,
 } from "metabase/common/monitor/selectors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { metabaseReduxContext } from "metabase/redux";
@@ -178,6 +179,15 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   context: metabaseReduxContext,
 });
 
+const UserCanAccessUsageAuditing = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessUsageAuditing",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) => canAccessUsageAuditing(state),
+  redirectAction: routerActions.replace,
+  context: metabaseReduxContext,
+});
+
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -225,5 +235,9 @@ export const CanAccessDataModel = UserCanAccessDataModel(
 );
 
 export const CanAccessTransforms = UserCanAccessTransforms(
+  ({ children }) => children,
+);
+
+export const CanAccessUsageAuditing = UserCanAccessUsageAuditing(
   ({ children }) => children,
 );

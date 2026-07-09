@@ -38,7 +38,6 @@ import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AI_CONTROLS,
-  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_SECURITY_CENTER,
@@ -263,7 +262,6 @@ export const getRoutes = (
 
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
             <Route key="mcp" path="mcp" component={McpSettingsPage} />

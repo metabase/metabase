@@ -11,6 +11,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   tools: "metabase-enterprise/monitor/tools",
   monitor_dependency_diagnostics:
     "metabase-enterprise/monitor/dependency-diagnostics",
+  monitor_metabot_analytics: "metabase-enterprise/monitor/metabot-analytics",
   advanced_permissions: "metabase-enterprise/advanced_permissions",
   sharing: "metabase-enterprise/sharing",
   metabot: "metabase-enterprise/metabot",

@@ -10,6 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { useDispatch } from "metabase/redux";
 import { Badge, Ellipsified, Flex, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
@@ -40,11 +41,7 @@ export function ConversationsTable({
   const showLoadingAndError = isLoading || error != null;
 
   const handleRowClick = (convo: ConversationSummary) => {
-    dispatch(
-      push(
-        `/admin/metabot/usage-auditing/conversations/${convo.conversation_id}`,
-      ),
-    );
+    dispatch(push(Urls.monitorConversationDetails(convo.conversation_id)));
   };
 
   return (

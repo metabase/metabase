@@ -33,3 +33,10 @@ export function canAccessAlertsManagement(state: State) {
 export function canAccessMonitor(state: State) {
   return canAccessMonitorDiagnostics(state) || canAccessMonitoringTools(state);
 }
+
+export function canAccessUsageAuditing(state: State) {
+  if (getIsEmbeddingIframe(state)) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}

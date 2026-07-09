@@ -35,6 +35,7 @@ export function getMonitorRoutes(
   CanAccessMonitorDiagnostics: RouteComponent,
   CanAccessMonitoringTools: RouteComponent,
   CanAccessAlertsManagement: RouteComponent,
+  CanAccessUsageAuditing: RouteComponent,
 ) {
   return (
     <Route component={CanAccessMonitor}>
@@ -80,6 +81,10 @@ export function getMonitorRoutes(
 
         <Route component={CanAccessAlertsManagement}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
+        </Route>
+
+        <Route component={CanAccessUsageAuditing}>
+          {PLUGIN_MONITOR.getUsageAuditingRoutes()}
         </Route>
 
         <Route path="*" component={NotFound} />
@@ -144,6 +149,16 @@ export function getMonitorRedirects() {
         to={`${Urls.monitorNotifications()}/*`}
       />
       <Redirect from="/admin/tools" to={Urls.monitor()} />
+
+      <Redirect from="/admin/metabot/usage-auditing" to={Urls.monitorStats()} />
+      <Redirect
+        from="/admin/metabot/usage-auditing/conversations"
+        to={Urls.monitorConversations()}
+      />
+      <Redirect
+        from="/admin/metabot/usage-auditing/conversations/*"
+        to={`${Urls.monitorConversations()}/*`}
+      />
     </>
   );
 }

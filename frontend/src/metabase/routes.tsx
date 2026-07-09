@@ -82,6 +82,7 @@ import {
   CanAccessOnboarding,
   CanAccessSettings,
   CanAccessTransforms,
+  CanAccessUsageAuditing,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -412,6 +413,7 @@ export const getRoutes = (store: AppStore) => {
             CanAccessMonitorDiagnostics,
             CanAccessMonitoringTools,
             CanAccessAlertsManagement,
+            CanAccessUsageAuditing,
           )}
         </Route>
       </Route>

@@ -109,7 +109,7 @@ const setup = ({
 
 describe("MonitorLayout", () => {
   it("renders a navbar with tabs for each Monitor section", async () => {
-    setup();
+    setup({ tokenFeatures: { audit_app: true } });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
@@ -123,6 +123,8 @@ describe("MonitorLayout", () => {
       ["Erroring questions", Urls.monitorErroringQuestions()],
       ["Model cache log", Urls.monitorModelCaching()],
       ["Alerts management", Urls.monitorNotifications()],
+      ["AI Stats", Urls.monitorStats()],
+      ["AI Conversations", Urls.monitorConversations()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -153,12 +155,14 @@ describe("MonitorLayout", () => {
       "Erroring questions",
       "Model cache log",
       "Alerts management",
+      "AI Stats",
+      "AI Conversations",
     ].forEach((name) => {
       expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
+  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management/Stats/Conversations (admin-only)", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -180,9 +184,12 @@ describe("MonitorLayout", () => {
     expect(
       screen.queryByRole("link", { name: "Alerts management" }),
     ).not.toBeInTheDocument();
+    ["AI Stats", "AI Conversations"].forEach((name) => {
+      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    });
   });
 
-  it("hides Alerts management for an analyst even with the monitoring permission", async () => {
+  it("hides Alerts management/Stats/Conversations for an analyst even with the monitoring permission", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -198,6 +205,9 @@ describe("MonitorLayout", () => {
     expect(
       screen.queryByRole("link", { name: "Alerts management" }),
     ).not.toBeInTheDocument();
+    ["AI Stats", "AI Conversations"].forEach((name) => {
+      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    });
   });
 
   it("renders the content area", async () => {
@@ -290,5 +300,33 @@ describe("MonitorLayout", () => {
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it("hides Stats and Conversations entirely for an admin without audit_app (no upsell gem)", async () => {
+    setup({ tokenFeatures: { audit_app: false } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("link", { name: "AI Stats" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "AI Conversations" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Stats and Conversations for an admin with audit_app", async () => {
+    setup({ tokenFeatures: { audit_app: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("link", { name: "AI Stats" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "AI Conversations" }),
+    ).toBeInTheDocument();
   });
 });

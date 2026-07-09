@@ -88,3 +88,15 @@ export function monitorNotifications() {
 export function monitorNotificationDetail(id: number) {
   return `${monitorNotifications()}/${id}`;
 }
+
+export function monitorStats() {
+  return `${ROOT_URL}/stats`;
+}
+
+export function monitorConversations() {
+  return `${ROOT_URL}/conversations`;
+}
+
+export function monitorConversationDetails(conversationId: string) {
+  return `${monitorConversations()}/${conversationId}`;
+}

@@ -3,7 +3,6 @@ import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
@@ -12,6 +11,7 @@ import { serializeDateParameterValue } from "metabase/querying/parameters/utils/
 import { useDispatch } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
 import { Button, Flex, SimpleGrid, Tabs, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
@@ -193,7 +193,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
     (filterOverrides: Partial<ConversationsUrlState>) => {
       dispatch(
         push({
-          pathname: "/admin/metabot/usage-auditing/conversations",
+          pathname: Urls.monitorConversations(),
           query: conversationsUrlStateConfig.serialize({
             page: 0,
             sort_column: "created_at",
@@ -258,122 +258,120 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   );
 
   return (
-    <MetabotAdminLayout fullWidth>
-      <SettingsPageWrapper
-        mt="sm"
-        title={hasDataComplexityFeature ? t`Usage stats` : undefined}
-      >
-        <DataComplexitySection />
-        <Flex align="center" justify="space-between">
-          {hasDataComplexityFeature ? (
-            <Title order={3} display="flex" style={{ alignItems: "center" }}>
-              {t`Usage metrics`}
-            </Title>
-          ) : (
-            <Title order={2} display="flex" style={{ alignItems: "center" }}>
-              {t`Usage stats`}
-            </Title>
-          )}
+    <SettingsPageWrapper
+      mt="sm"
+      title={hasDataComplexityFeature ? t`Usage stats` : undefined}
+    >
+      <DataComplexitySection />
+      <Flex align="center" justify="space-between">
+        {hasDataComplexityFeature ? (
+          <Title order={3} display="flex" style={{ alignItems: "center" }}>
+            {t`Usage metrics`}
+          </Title>
+        ) : (
+          <Title order={2} display="flex" style={{ alignItems: "center" }}>
+            {t`Usage stats`}
+          </Title>
+        )}
 
-          <ConversationFilters
-            date={date}
-            onDateChange={(val) => patchUrlState({ date: val })}
-            user={user}
-            onUserChange={(val) => patchUrlState({ user: val })}
-            group={group}
-            onGroupChange={(val) => patchUrlState({ group: val })}
-            groupNoFilterValue={groupNoFilterValue}
-            tenant={tenant}
-            onTenantChange={(val) => patchUrlState({ tenant: val })}
-            userOptions={userOptions}
-            groupOptions={groupOptions}
-            tenantOptions={tenantOptions}
-            hasTenants={hasTenants}
-          />
-        </Flex>
-
-        <Tabs
-          variant="pills"
-          value={metric}
-          onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
-        >
-          <Tabs.List className={S.metricTabs}>
-            <Tabs.Tab
-              className={S.metricTab}
-              value="conversations"
-            >{t`Conversations`}</Tabs.Tab>
-            <Tabs.Tab
-              className={S.metricTab}
-              value="tokens"
-            >{t`Tokens`}</Tabs.Tab>
-            <Tabs.Tab
-              className={S.metricTab}
-              value="messages"
-            >{t`Messages`}</Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-
-        <ConversationsByDayChart
-          {...sharedChartProps}
-          onDimensionClick={handleDayClick}
+        <ConversationFilters
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val })}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val })}
+          groupNoFilterValue={groupNoFilterValue}
+          tenant={tenant}
+          onTenantChange={(val) => patchUrlState({ tenant: val })}
+          userOptions={userOptions}
+          groupOptions={groupOptions}
+          tenantOptions={tenantOptions}
+          hasTenants={hasTenants}
         />
+      </Flex>
 
-        <SimpleGrid cols={2} spacing="lg">
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={sourceTitles}
-            display="bar"
-            buildQuery={buildSourceQuery}
-          />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={profileTitles}
-            display="bar"
-            buildQuery={buildProfileQuery}
-          />
-        </SimpleGrid>
+      <Tabs
+        variant="pills"
+        value={metric}
+        onChange={(val) => patchUrlState({ metric: val as UsageStatsMetric })}
+      >
+        <Tabs.List className={S.metricTabs}>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="conversations"
+          >{t`Conversations`}</Tabs.Tab>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="tokens"
+          >{t`Tokens`}</Tabs.Tab>
+          <Tabs.Tab
+            className={S.metricTab}
+            value="messages"
+          >{t`Messages`}</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
 
-        <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
-          {hasTenants && (
-            <BreakoutChart
-              {...sharedChartProps}
-              titles={tenantTitles}
-              display="row"
-              buildQuery={buildTenantBreakoutQuery}
-              labelMapper={labelTenantName}
-              onDimensionClick={handleTenantClick}
-              h={500}
-            />
-          )}
+      <ConversationsByDayChart
+        {...sharedChartProps}
+        onDimensionClick={handleDayClick}
+      />
+
+      <SimpleGrid cols={2} spacing="lg">
+        <BreakoutChart
+          {...sharedChartProps}
+          titles={sourceTitles}
+          display="bar"
+          buildQuery={buildSourceQuery}
+        />
+        <BreakoutChart
+          {...sharedChartProps}
+          titles={profileTitles}
+          display="bar"
+          buildQuery={buildProfileQuery}
+        />
+      </SimpleGrid>
+
+      <SimpleGrid cols={hasTenants ? 2 : 3} spacing="lg">
+        {hasTenants && (
           <BreakoutChart
             {...sharedChartProps}
-            titles={groupTitles}
+            titles={tenantTitles}
             display="row"
-            buildQuery={(opts) =>
-              buildGroupBreakoutQuery({ ...opts, excludeAllUsers: !hasTenants })
-            }
-            onDimensionClick={handleGroupClick}
+            buildQuery={buildTenantBreakoutQuery}
+            labelMapper={labelTenantName}
+            onDimensionClick={handleTenantClick}
             h={500}
           />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={userTitles}
-            display="row"
-            buildQuery={buildUserQuery}
-            onDimensionClick={handleUserClick}
-            h={500}
-          />
-          <BreakoutChart
-            {...sharedChartProps}
-            titles={ipAddressTitles}
-            display="row"
-            buildQuery={buildIpAddressQuery}
-            labelMapper={labelUnknownIpAddress}
-            h={500}
-          />
-        </SimpleGrid>
-      </SettingsPageWrapper>
-    </MetabotAdminLayout>
+        )}
+        <BreakoutChart
+          {...sharedChartProps}
+          titles={groupTitles}
+          display="row"
+          buildQuery={(opts) =>
+            buildGroupBreakoutQuery({ ...opts, excludeAllUsers: !hasTenants })
+          }
+          onDimensionClick={handleGroupClick}
+          h={500}
+        />
+        <BreakoutChart
+          {...sharedChartProps}
+          titles={userTitles}
+          display="row"
+          buildQuery={buildUserQuery}
+          onDimensionClick={handleUserClick}
+          h={500}
+        />
+        <BreakoutChart
+          {...sharedChartProps}
+          titles={ipAddressTitles}
+          display="row"
+          buildQuery={buildIpAddressQuery}
+          labelMapper={labelUnknownIpAddress}
+          h={500}
+        />
+      </SimpleGrid>
+    </SettingsPageWrapper>
   );
 }
 

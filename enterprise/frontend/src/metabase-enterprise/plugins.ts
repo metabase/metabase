@@ -34,6 +34,7 @@ import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
+import { initializePlugin as initializeMonitorMetabotAnalytics } from "./monitor/metabot-analytics";
 import { initializePlugin as initializeTools } from "./monitor/tools";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
@@ -88,6 +89,7 @@ export function initializePlugins() {
   initializeModelPersistence();
   initializeModeration();
   initializeMonitorDependencyDiagnostics();
+  initializeMonitorMetabotAnalytics();
   initializeRemoteSync();
   initializeReplacement();
   initializeResourceDownloads();

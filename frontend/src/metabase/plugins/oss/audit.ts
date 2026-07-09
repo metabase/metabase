@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
 import type {
@@ -46,8 +46,6 @@ const getDefaultPluginAudit = () => ({
   isAuditDb: (_db: DatabaseType) => false,
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
   InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
-  getMetabotAnalyticsNavItems: (): ReactNode => null,
-  getAiAnalyticsRoutes: (): ReactNode => null,
   handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });
 

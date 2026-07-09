@@ -7,6 +7,7 @@ import {
   canAccessAlertsManagement,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
+  canAccessUsageAuditing,
 } from "metabase/common/monitor/selectors";
 import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
@@ -37,6 +38,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
+  const canAccessAuditing = useSelector(canAccessUsageAuditing);
 
   const upperNav = (
     <>
@@ -98,6 +100,24 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
           isSelected={pathname.startsWith(Urls.monitorNotifications())}
           showLabel={isNavbarOpened}
         />
+      )}
+      {canAccessAuditing && hasAuditAppFeature && (
+        <>
+          <AreaTab
+            label={t`AI Stats`}
+            icon="lineandbar"
+            to={Urls.monitorStats()}
+            isSelected={pathname.startsWith(Urls.monitorStats())}
+            showLabel={isNavbarOpened}
+          />
+          <AreaTab
+            label={t`AI Conversations`}
+            icon="message_circle"
+            to={Urls.monitorConversations()}
+            isSelected={pathname.startsWith(Urls.monitorConversations())}
+            showLabel={isNavbarOpened}
+          />
+        </>
       )}
     </>
   );

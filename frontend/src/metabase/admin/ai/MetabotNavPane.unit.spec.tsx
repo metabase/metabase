@@ -13,13 +13,11 @@ import { MetabotNavPane } from "./MetabotNavPane";
 const setup = ({
   aiFeaturesEnabled = true,
   aiControlsEnabled = false,
-  auditAppEnabled = false,
   isConfigured = true,
   initialRoute = "/admin/metabot",
 }: {
   aiFeaturesEnabled?: boolean;
   aiControlsEnabled?: boolean;
-  auditAppEnabled?: boolean;
   isConfigured?: boolean;
   initialRoute?: string;
 } = {}) => {
@@ -27,7 +25,6 @@ const setup = ({
     "ai-features-enabled?": aiFeaturesEnabled,
     "token-features": createMockTokenFeatures({
       ai_controls: aiControlsEnabled,
-      audit_app: auditAppEnabled,
     }),
   });
 
@@ -122,19 +119,5 @@ describe("MetabotNavPane", () => {
     expect(
       screen.getByRole("link", { name: "Authorizations" }),
     ).toHaveAttribute("href", "/admin/metabot/mcp/authorizations");
-  });
-
-  it("displays the usage auditing upsell link when audit app is available and ai controls is unavailable", async () => {
-    setup({
-      aiControlsEnabled: false,
-      auditAppEnabled: true,
-      aiFeaturesEnabled: true,
-    });
-
-    expect(await screen.findByText("AI Settings")).toBeInTheDocument();
-
-    expect(
-      screen.getByRole("link", { name: /Usage auditing/ }),
-    ).toHaveAttribute("href", "/admin/metabot/usage-auditing");
   });
 });

@@ -84,6 +84,37 @@ jest.mock(
   }),
 );
 
+jest.mock(
+  "metabase-enterprise/monitor/metabot-analytics/components/ConversationStatsPage",
+  () => ({
+    ConversationStatsPage: () => <div data-testid="stats-page">{"Stats"}</div>,
+  }),
+);
+jest.mock(
+  "metabase-enterprise/monitor/metabot-analytics/components/ConversationsPage",
+  () => ({
+    ConversationsPage: () => (
+      <div data-testid="conversations-page">{"Conversations"}</div>
+    ),
+  }),
+);
+jest.mock(
+  "metabase-enterprise/monitor/metabot-analytics/components/ConversationDetailPage",
+  () => ({
+    ConversationDetailPage: () => (
+      <div data-testid="conversation-detail-page">{"Conversation detail"}</div>
+    ),
+  }),
+);
+jest.mock(
+  "metabase-enterprise/monitor/metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage",
+  () => ({
+    MetabotAnalyticsUpsellPage: () => (
+      <div data-testid="usage-auditing-upsell">{"Usage auditing upsell"}</div>
+    ),
+  }),
+);
+
 const CanAccessMonitor = ({ children }: { children?: ReactNode }) => (
   <>{children}</>
 );
@@ -99,6 +130,10 @@ const CanAccessMonitoringTools = ({ children }: { children?: ReactNode }) => (
 );
 
 const CanAccessAlertsManagement = ({ children }: { children?: ReactNode }) => (
+  <>{children}</>
+);
+
+const CanAccessUsageAuditing = ({ children }: { children?: ReactNode }) => (
   <>{children}</>
 );
 
@@ -125,6 +160,7 @@ const setup = ({
         CanAccessMonitorDiagnostics,
         CanAccessMonitoringTools,
         CanAccessAlertsManagement,
+        CanAccessUsageAuditing,
       )}
     </Route>,
     { withRouter: true, initialRoute },
@@ -140,11 +176,13 @@ const setupWithGuards = ({
   CanAccessMonitorDiagnostics: Diagnostics = CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools: Tools = CanAccessMonitoringTools,
   CanAccessAlertsManagement: AlertsManagement = CanAccessAlertsManagement,
+  CanAccessUsageAuditing: UsageAuditing = CanAccessUsageAuditing,
 }: {
   initialRoute: string;
   CanAccessMonitorDiagnostics?: (props: { children?: ReactNode }) => ReactNode;
   CanAccessMonitoringTools?: (props: { children?: ReactNode }) => ReactNode;
   CanAccessAlertsManagement?: (props: { children?: ReactNode }) => ReactNode;
+  CanAccessUsageAuditing?: (props: { children?: ReactNode }) => ReactNode;
 }) => {
   const store = getStore(
     mainReducers,
@@ -160,6 +198,7 @@ const setupWithGuards = ({
         Diagnostics,
         Tools,
         AlertsManagement,
+        UsageAuditing,
       )}
     </Route>,
     { withRouter: true, initialRoute },
@@ -356,6 +395,45 @@ describe("monitor routes", () => {
     );
   });
 
+  describe("Usage auditing section (migrated from /admin/metabot/usage-auditing)", () => {
+    it("renders NotFound at /monitor/stats when the plugin is not enabled", async () => {
+      setup({ initialRoute: "/monitor/stats" });
+
+      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+    });
+
+    it("renders the Stats, Conversations, and Conversation detail pages when enabled", async () => {
+      setupEnterpriseOnlyPlugin("monitor_metabot_analytics");
+
+      setup({ initialRoute: "/monitor/stats" });
+      expect(await screen.findByTestId("stats-page")).toBeInTheDocument();
+
+      setup({ initialRoute: "/monitor/conversations" });
+      expect(
+        await screen.findByTestId("conversations-page"),
+      ).toBeInTheDocument();
+
+      setup({ initialRoute: "/monitor/conversations/42" });
+      expect(
+        await screen.findByTestId("conversation-detail-page"),
+      ).toBeInTheDocument();
+    });
+
+    it("blocks the route when its own guard denies, independent of the Tools guard", async () => {
+      setupEnterpriseOnlyPlugin("monitor_metabot_analytics");
+
+      setupWithGuards({
+        initialRoute: "/monitor/stats",
+        CanAccessUsageAuditing: DenyingGuard,
+      });
+
+      expect(
+        await screen.findByTestId("unauthorized-marker"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("stats-page")).not.toBeInTheDocument();
+    });
+  });
+
   describe("getMonitorRedirects (legacy Admin Tools URLs)", () => {
     it.each([
       ["/admin/tools/tasks", "task-list-page"],
@@ -382,6 +460,23 @@ describe("monitor routes", () => {
       setup({ initialRoute: "/admin/tools" });
 
       expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
+    });
+  });
+
+  describe("getMonitorRedirects (legacy Admin Metabot Usage auditing URLs)", () => {
+    it.each([
+      ["/admin/metabot/usage-auditing", "stats-page"],
+      ["/admin/metabot/usage-auditing/conversations", "conversations-page"],
+      [
+        "/admin/metabot/usage-auditing/conversations/42",
+        "conversation-detail-page",
+      ],
+    ])("redirects %s into the Monitor space", async (route, testId) => {
+      setupEnterpriseOnlyPlugin("monitor_metabot_analytics");
+
+      setup({ initialRoute: route });
+
+      expect(await screen.findByTestId(testId)).toBeInTheDocument();
     });
   });
 });
