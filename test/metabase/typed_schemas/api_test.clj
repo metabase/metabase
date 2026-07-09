@@ -27,6 +27,18 @@
                                                     :base_type    "type/Text"
                                                     :description  "Name of the customer"}))))
 
+(deftest column-schema-maps-metabase-types-test
+  (are [column js-type] (= js-type
+                           (:jsType (#'typed-schemas.api.common/column-schema column)))
+    {:name "bool", :base_type :type/Boolean}        "boolean"
+    {:name "int", :base_type :type/Integer}         "number"
+    {:name "date", :base_type :type/DateTime}       "Date"
+    {:name "uuid", :base_type :type/UUID}           "string"
+    {:name "string", :base_type "type/Text"}        "string"
+    {:name "decimal", :base_type "Decimal"}         "number"
+    {:name "effective", :effective_type :type/Text} "string"
+    {:name "unknown", :base_type :type/Structured}  "unknown"))
+
 (deftest metric-dimension-schema-uses-dimension-id-test
   (is (= {:type          "column"
           :name          "category"
@@ -515,6 +527,17 @@
     (is (map? (get-in response [:body :tables])))
     (is (map? (get-in response [:body :metrics])))))
 
+(deftest query-params-are-coerced-at-endpoint-test
+  (with-redefs [typed-schemas.api/typed-schema identity]
+    (let [response (mt/user-http-request
+                    :crowberto
+                    :get
+                    200
+                    "typed-schemas/v1/json?include-models=true&questions=false&library-collections=1,2")]
+      (is (true? (:include-models response)))
+      (is (false? (:questions response)))
+      (is (= "1,2" (:library-collections response))))))
+
 (deftest database-filter-test
   (testing "a non-matching database name returns an empty semantic schema"
     (let [response (mt/user-http-request-full-response
@@ -777,7 +800,7 @@
                               :include-metric-library "true"})
                             [:collection-ids :data-collection-ids :metric-collection-ids])))))))
 
-(deftest query-collection-values-use-kebab-case-params-test
+(deftest ^:parallel query-collection-values-use-kebab-case-params-test
   (is (= ["1" "2"]
          (#'typed-schemas.api.query-params/query-library-collection-values {:library-collections "1, 2"})))
   (is (= ["3" "4"]

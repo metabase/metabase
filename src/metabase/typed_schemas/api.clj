@@ -19,6 +19,7 @@
    [metabase.typed-schemas.api.query-params :as qp]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.time Instant)))
@@ -1097,23 +1098,47 @@
   [schema]
   (render-schema-module schema " as const"))
 
+(def ^:private TypedSchemaQueryParams
+  [:map
+   [:database {:optional true} [:maybe ms/NonBlankString]]
+   [:database-name {:optional true} [:maybe ms/NonBlankString]]
+   [:library {:optional true} [:maybe ms/NonBlankString]]
+   [:library-collections {:optional true} [:maybe ms/NonBlankString]]
+   [:collections {:optional true} [:maybe ms/NonBlankString]]
+   [:question-collections {:optional true} [:maybe ms/NonBlankString]]
+   [:include-data-library {:optional true} [:maybe :boolean]]
+   [:include-metric-library {:optional true} [:maybe :boolean]]
+   [:include-models {:optional true} [:maybe :boolean]]
+   [:questions {:optional true} [:maybe :boolean]]])
+
 (api.macros/defendpoint :get "/v1/javascript" :- :any
   "Generate a JavaScript semantic schema module."
-  [_route-params query-params _body _request respond _raise]
+  [_route-params
+   query-params :- TypedSchemaQueryParams
+   _body
+   _request
+   respond
+   _raise]
   (respond {:status  200
             :headers javascript-response-headers
             :body    (render-javascript (typed-schema query-params))}))
 
 (api.macros/defendpoint :get "/v1/typescript" :- :any
   "Generate a TypeScript semantic schema module."
-  [_route-params query-params _body _request respond _raise]
+  [_route-params
+   query-params :- TypedSchemaQueryParams
+   _body
+   _request
+   respond
+   _raise]
   (respond {:status  200
             :headers typescript-response-headers
             :body    (render-typescript (typed-schema query-params))}))
 
 (api.macros/defendpoint :get "/v1/json" :- :any
   "Generate a JSON semantic schema."
-  [_route-params query-params]
+  [_route-params
+   query-params :- TypedSchemaQueryParams]
   (typed-schema query-params))
 
 (def ^{:arglists '([request respond raise])} routes

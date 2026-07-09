@@ -14,11 +14,11 @@
   [v]
   (contains? #{true "true" "1"} v))
 
-(def library-data-entity-id
+(def ^:private library-data-entity-id
   "Entity id of the root Data library collection."
   "librarylibrarydatadat")
 
-(def library-metrics-entity-id
+(def ^:private library-metrics-entity-id
   "Entity id of the root metrics library collection."
   "librarylibrarymetrics")
 
@@ -66,8 +66,8 @@
           not-empty))
 
 (defn- query-comma-separated-values
-  [query-params ks]
-  (when-let [value (some-> (->> ks
+  [query-params param-keys]
+  (when-let [value (some-> (->> param-keys
                                 (keep query-params)
                                 first)
                            str/trim

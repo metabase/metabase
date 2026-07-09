@@ -3,31 +3,49 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.types.core]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
+(comment metabase.types.core/keep-me)
+
+;; Action parameters in generated schemas use these primitive types.
+(def ^:private primitive-type->js-type
+  {:number   "number"
+   :boolean  "boolean"
+   :string   "string"
+   :date     "Date"
+   :datetime "Date"
+   :time     "Date"})
+
+(defn- type-keyword
+  [schema-type]
+  (cond
+    (keyword? schema-type) schema-type
+    (string? schema-type)  (let [schema-type (str/replace schema-type #"^:" "")]
+                             (if (str/includes? schema-type "/")
+                               (keyword schema-type)
+                               (keyword "type" schema-type)))))
+
+;; Result columns and fields use Metabase base/effective types. For example,
+;; `:type/Integer` maps to "number", and `:type/UUID` maps to "string".
+(defn- schema-type->js-type
+  [schema-type]
+  (let [schema-type (type-keyword schema-type)]
+    (cond
+      (nil? schema-type)                     "unknown"
+      (isa? schema-type :type/Boolean)       "boolean"
+      (isa? schema-type :type/Number)        "number"
+      (isa? schema-type :type/Temporal)      "Date"
+      (isa? schema-type :type/Text)          "string"
+      (isa? schema-type :type/TextLike)      "string"
+      :else                                  "unknown")))
+
 (defn- js-type
   [{:keys [type base_type effective_type] :as _column}]
-  (case type
-    :number   "number"
-    :boolean  "boolean"
-    :string   "string"
-    :date     "Date"
-    :datetime "Date"
-    :time     "Date"
-    (let [schema-type (or effective_type base_type)]
-      (cond
-        (some-> schema-type (str/includes? "Boolean")) "boolean"
-        (some-> schema-type (str/includes? "Number"))  "number"
-        (some-> schema-type (str/includes? "Integer")) "number"
-        (some-> schema-type (str/includes? "Float"))   "number"
-        (some-> schema-type (str/includes? "Decimal")) "number"
-        (some-> schema-type (str/includes? "Date"))    "Date"
-        (some-> schema-type (str/includes? "Time"))    "Date"
-        (some-> schema-type (str/includes? "Text"))    "string"
-        (some-> schema-type (str/includes? "UUID"))    "string"
-        :else                                          "unknown"))))
+  (or (get primitive-type->js-type type)
+      (schema-type->js-type (or effective_type base_type))))
 
 (defn column-schema
   "Returns the typed-schema representation for a result column or field-like map."
@@ -47,50 +65,49 @@
 (defn generated-key
   "Returns a stable JavaScript object key for an entity name and id."
   [entity-name id]
-  (let [k (some-> entity-name u/->camelCaseEn)]
-    (if (str/blank? k)
+  (let [generated-key (some-> entity-name u/->camelCaseEn)]
+    (if (str/blank? generated-key)
       (str "entity" id)
-      k)))
+      generated-key)))
 
 (defn pascal-case
-  "Capitalizes the first character of `s` without changing the rest."
-  [s]
-  (when-not (str/blank? s)
-    (str (u/upper-case-en (subs s 0 1))
-         (subs s 1))))
+  "Capitalizes the first character of string without changing the rest."
+  [string]
+  (when-not (str/blank? string)
+    (str (u/upper-case-en (subs string 0 1))
+         (subs string 1))))
+
+(defn- duplicate-key?
+  [key->count key]
+  (> (get key->count key 0) 1))
+
+(defn- keyed-map-candidate-key
+  [key->count {:keys [key id]
+               key-disambiguator :keyDisambiguator
+               table-id :tableId}]
+  (cond-> key
+    (duplicate-key? key->count key) (str (or key-disambiguator table-id id))))
 
 (defn keyed-map
   "Returns a sorted map keyed by each entity key, disambiguating duplicate keys."
   [entities]
-  (let [entities          (vec entities)
-        base-key->count   (frequencies (map :key entities))
-        duplicate-key?    (fn [base-key]
-                            (> (get base-key->count base-key 0) 1))
-        candidate-key     (fn [entity]
-                            (let [base-key (:key entity)]
-                              (if-not (duplicate-key? base-key)
-                                base-key
-                                (str base-key (or (:keyDisambiguator entity)
-                                                  (:tableId entity)
-                                                  (:id entity))))))
-        candidate->count  (frequencies (map candidate-key entities))
-        disambiguated-key (fn [entity]
-                            (let [candidate (candidate-key entity)]
-                              (if (= 1 (get candidate->count candidate))
-                                candidate
-                                (str candidate (:id entity)))))]
-    (reduce (fn [m entity]
-              (let [key (disambiguated-key entity)]
-                (assoc m key (-> entity
-                                 (dissoc :keyDisambiguator)
-                                 (assoc :key key)))))
-            (sorted-map)
-            entities)))
+  (let [entities         (vec entities)
+        base-key->count  (frequencies (map :key entities))
+        candidate-keys   (mapv (partial keyed-map-candidate-key base-key->count) entities)
+        candidate->count (frequencies candidate-keys)]
+    (into (sorted-map)
+          (map (fn [[entity candidate-key]]
+                 (let [key (cond-> candidate-key
+                             (duplicate-key? candidate->count candidate-key) (str (:id entity)))]
+                   [key (-> entity
+                            (dissoc :keyDisambiguator)
+                            (assoc :key key))])))
+          (map vector entities candidate-keys))))
 
 (defn keyed-model-map
   "Returns a sorted model map keyed by model key, exposing only action namespaces."
   [models]
-  (reduce-kv (fn [m k model]
-               (assoc m k (select-keys model [:actions])))
+  (reduce-kv (fn [model-map model-key model]
+               (assoc model-map model-key (select-keys model [:actions])))
              (sorted-map)
              (keyed-map models)))
