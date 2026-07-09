@@ -1,10 +1,10 @@
-(ns metabase-enterprise.content-diagnostics.task
+(ns metabase-enterprise.content-diagnostics.task.scan
   "Quartz job that runs the Content Diagnostics scan on a schedule (stored durably)."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase-enterprise.content-diagnostics.detect :as detect]
+   [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task])
   (:import
@@ -24,7 +24,7 @@
   every EE instance regardless of token features."
   []
   (when (premium-features/has-feature? :content-diagnostics)
-    (detect/scan!)))
+    (scan/scan!)))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                         "Content Diagnostics — scan for problematic content."}

@@ -4,4 +4,4 @@
   (:require
    [metabase-enterprise.content-diagnostics.models.finding]
    [metabase-enterprise.content-diagnostics.settings]
-   [metabase-enterprise.content-diagnostics.task]))
+   [metabase-enterprise.content-diagnostics.task.scan]))

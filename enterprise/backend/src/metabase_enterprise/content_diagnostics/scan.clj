@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-diagnostics.detect
+(ns metabase-enterprise.content-diagnostics.scan
   "Content Diagnostics scan pipeline. A scan runs every registered *checker* instance-wide and writes
   one `scan_id` batch of findings."
   (:require
