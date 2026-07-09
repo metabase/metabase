@@ -9,10 +9,12 @@
   (:import
    (java.util.concurrent
     ArrayBlockingQueue
+    CancellationException
     Callable
     ExecutionException
     ExecutorService
     Future
+    FutureTask
     RejectedExecutionException
     ThreadFactory
     ThreadPoolExecutor
@@ -41,19 +43,39 @@
    :required   ["title"]
    :additionalProperties false})
 
-(defonce ^:private title-executor
-  (delay
-    (doto (ThreadPoolExecutor.
-           (int executor-pool-size)
-           (int executor-pool-size)
-           (long idle-timeout-ms) TimeUnit/MILLISECONDS
-           (ArrayBlockingQueue. (int executor-queue-capacity))
-           (reify ThreadFactory
-             (newThread [_ r]
-               (doto (Thread. r)
-                 (.setName "metabot-title-generator")
-                 (.setDaemon true)))))
-      (.allowCoreThreadTimeOut true))))
+(defn- make-executor
+  [thread-name]
+  (doto (ThreadPoolExecutor.
+         (int executor-pool-size)
+         (int executor-pool-size)
+         (long idle-timeout-ms) TimeUnit/MILLISECONDS
+         (ArrayBlockingQueue. (int executor-queue-capacity))
+         (reify ThreadFactory
+           (newThread [_ r]
+             (doto (Thread. r)
+               (.setName thread-name)
+               (.setDaemon true)))))
+    (.allowCoreThreadTimeOut true)))
+
+(defonce ^:private title-worker-executor
+  (delay (make-executor "metabot-title-generator-worker")))
+
+(defonce ^:private title-watch-executor
+  (delay (make-executor "metabot-title-generator-watch")))
+
+(defonce ^:private in-flight-title-jobs
+  (atom {}))
+
+(defn- non-blank-title
+  [title]
+  (when (string? title)
+    (let [title (str/trim title)]
+      (when-not (str/blank? title)
+        title))))
+
+(defn- current-title
+  [conversation-id]
+  (non-blank-title (metabot.persistence/conversation-title conversation-id)))
 
 (defn- title-prompt
   [message]
@@ -82,7 +104,7 @@
 (defn- generate!
   "Generate and persist a title for `conversation-id`, returning it only if it was saved."
   [conversation-id profile-id message]
-  (when (and conversation-id (not (str/blank? message)))
+  (when (and conversation-id (not (str/blank? message)) (nil? (current-title conversation-id)))
     (let [response (metabot.self/call-llm-structured
                     (metabot.settings/llm-metabot-provider)
                     [{:role "user" :content (title-prompt message)}]
@@ -92,7 +114,7 @@
                     {:request-id  (str (random-uuid))
                      :session-id  conversation-id
                      :profile-id  profile-id
-                     :source      "metabot_conversation_title"
+                     :source      "metabot_agent"
                      :tag         "conversation-title"})
           title    (clean-title (:title response))]
       (when title
@@ -100,39 +122,132 @@
                               0)))
           title)))))
 
-(defn ^Future submit!
-  "Start title generation on a bounded background executor. Returns a Future or nil."
+(defn- remove-in-flight-job!
+  [conversation-id ^Future future]
+  (swap! in-flight-title-jobs
+         (fn [jobs]
+           (if (= future (get jobs conversation-id))
+             (dissoc jobs conversation-id)
+             jobs))))
+
+(defn- running-job
+  [conversation-id]
+  (when-let [future (get @in-flight-title-jobs conversation-id)]
+    (if (.isDone ^Future future)
+      (do
+        (remove-in-flight-job! conversation-id future)
+        nil)
+      future)))
+
+(defn- log-queue-full
+  [conversation-id]
+  (log/warn "Metabot title generation queue full; skipping title generation"
+            {:conversation-id conversation-id
+             :queue-capacity  executor-queue-capacity}))
+
+(defn- generate-with-timeout!
   [conversation-id profile-id message]
   (try
-    (.submit ^ExecutorService @title-executor
-             ^Callable (bound-fn* #(try
-                                     (generate! conversation-id profile-id message)
-                                     (catch Throwable t
-                                       (log/warn t "Failed to generate Metabot conversation title"
-                                                 {:conversation-id conversation-id})
-                                       nil))))
+    (let [worker-future (.submit ^ExecutorService @title-worker-executor
+                                 ^Callable (bound-fn* #(generate! conversation-id profile-id message)))]
+      (try
+        (.get ^Future worker-future (long title-timeout-ms) TimeUnit/MILLISECONDS)
+        (catch TimeoutException _
+          (.cancel ^Future worker-future true)
+          (log/warn "Metabot title generation timed out"
+                    {:conversation-id conversation-id
+                     :timeout-ms      title-timeout-ms})
+          nil)
+        (catch ExecutionException e
+          (log/warn (.getCause e) "Metabot title generation failed"
+                    {:conversation-id conversation-id})
+          nil)
+        (catch InterruptedException _
+          (.interrupt (Thread/currentThread))
+          nil)))
     (catch RejectedExecutionException _
-      (log/warn "Metabot title generation queue full; skipping title generation"
-                {:conversation-id conversation-id
-                 :queue-capacity  executor-queue-capacity})
+      (log-queue-full conversation-id)
       nil)))
 
-(defn await!
-  "Wait for a submitted title job. Returns nil on failure or timeout."
+(defn ^Future submit!
+  "Start title generation on a bounded background executor. Returns a Future or nil.
+
+  Only one title job runs per conversation at a time. The returned future watches
+  the real generation work and completes after the title succeeds, fails, or
+  times out; the SSE stream must never block on it."
+  [conversation-id profile-id message]
+  (when (and conversation-id (not (str/blank? message)) (nil? (current-title conversation-id)))
+    (locking in-flight-title-jobs
+      (or (running-job conversation-id)
+          (let [task-ref (atom nil)
+                task     (FutureTask.
+                          ^Callable
+                          (bound-fn* #(try
+                                        (generate-with-timeout! conversation-id profile-id message)
+                                        (catch Throwable t
+                                          (log/warn t "Failed to generate Metabot conversation title"
+                                                    {:conversation-id conversation-id})
+                                          nil)
+                                        (finally
+                                          (when-let [task @task-ref]
+                                            (remove-in-flight-job! conversation-id task))))))]
+            (reset! task-ref task)
+            (swap! in-flight-title-jobs assoc conversation-id task)
+            (try
+              (.execute ^ExecutorService @title-watch-executor task)
+              task
+              (catch RejectedExecutionException _
+                (remove-in-flight-job! conversation-id task)
+                (log-queue-full conversation-id)
+                nil)))))))
+
+(defn ensure-title!
+  "Ensure title generation is running when the conversation row has no title."
+  [conversation-id profile-id message]
+  (if-let [title (current-title conversation-id)]
+    {:status :ready :title title}
+    (if-let [future (or (running-job conversation-id)
+                        (submit! conversation-id profile-id message))]
+      {:status :pending :future future}
+      {:status :missing})))
+
+(defn title-status
+  "Return the client-facing status for a conversation title."
+  [conversation-id]
+  (if-let [title (current-title conversation-id)]
+    {:status "ready" :title title}
+    {:status (if (running-job conversation-id) "pending" "missing")
+     :title  nil}))
+
+(defn- completed-future-title
   [^Future title-future conversation-id]
-  (when title-future
+  (when (and title-future (.isDone title-future))
     (try
-      (.get title-future (long title-timeout-ms) TimeUnit/MILLISECONDS)
-      (catch TimeoutException _
-        (.cancel title-future true)
-        (log/warn "Metabot title generation timed out; closing stream without title"
-                  {:conversation-id conversation-id
-                   :timeout-ms      title-timeout-ms})
-        nil)
+      (or (.get title-future)
+          (current-title conversation-id))
       (catch ExecutionException e
         (log/warn (.getCause e) "Metabot title generation failed"
                   {:conversation-id conversation-id})
         nil)
+      (catch CancellationException _
+        nil)
       (catch InterruptedException _
         (.interrupt (Thread/currentThread))
         nil))))
+
+(defn- pending-job?
+  [title-job]
+  (when-let [future (:future title-job)]
+    (not (.isDone ^Future future))))
+
+(defn stream-event
+  "Return the title SSE event, if one should be emitted before `[DONE]`."
+  [title-job conversation-id]
+  (when title-job
+    (if-let [title (or (:title title-job)
+                       (completed-future-title (:future title-job) conversation-id)
+                       (current-title conversation-id))]
+      {:type "data-chat-title" :data title}
+      (when (pending-job? title-job)
+        {:type "data-chat-title-pending"
+         :data {:conversation_id conversation-id}}))))

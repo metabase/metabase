@@ -10,6 +10,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.request.core :as request]
@@ -47,6 +49,11 @@
    [:user_id         [:maybe ms/PositiveInt]]
    [:state           {:optional true} [:maybe ::metabot.schema/state]]
    [:chat_messages   [:sequential :map]]])
+
+(def ^:private ConversationTitleResponse
+  [:map
+   [:status [:enum "ready" "pending" "missing"]]
+   [:title  [:maybe :string]]])
 
 (def ^:private ConversationIdParams
   [:map [:id ms/UUIDString]])
@@ -136,6 +143,13 @@
      :total  total
      :limit  limit
      :offset offset}))
+
+(api.macros/defendpoint :get "/:id/title" :- ConversationTitleResponse
+  "Return the title generation status for a conversation."
+  [{:keys [id]} :- ConversationIdParams]
+  (let [conversation (api/check-404 (t2/select-one [:model/MetabotConversation :id :user_id] :id id))]
+    (api/check-403 (metabot-conversation/participant-or-originator? conversation api/*current-user-id*))
+    (conversation-title/title-status id)))
 
 (api.macros/defendpoint :get "/:id" :- ConversationDetail
   "Return a single conversation with its flattened chat messages.

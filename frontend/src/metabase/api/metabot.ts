@@ -2,6 +2,7 @@ import type {
   DeleteSuggestedMetabotPromptRequest,
   ListMetabotConversationsRequest,
   ListMetabotConversationsResponse,
+  MetabotConversationTitleResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -43,6 +44,15 @@ export const metabotApi = Api.injectEndpoints({
         params,
       }),
       providesTags: () => [listTag("metabot-conversations")],
+    }),
+    getMetabotConversationTitle: builder.query<
+      MetabotConversationTitleResponse,
+      string
+    >({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}/title`,
+      }),
     }),
     getMetabotSettings: builder.query<
       MetabotSettingsResponse,
@@ -174,6 +184,7 @@ export const metabotApi = Api.injectEndpoints({
 
 export const {
   useGetMetabotSettingsQuery,
+  useGetMetabotConversationTitleQuery,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotSettingsMutation,

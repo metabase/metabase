@@ -454,13 +454,27 @@
            :tool_call_id toolCallId
            :content      content}])))))
 
-(defn- user-row->llm-message
+(defn- message-text
   [{:keys [data]}]
+  (->> data
+       (filter schema.v2/text-part?)
+       (map :text)
+       str/join))
+
+(defn first-user-message-content
+  "Return the first non-blank live user message text from `messages`."
+  [messages]
+  (some (fn [{:keys [role] :as message}]
+          (when (= :user role)
+            (let [content (message-text message)]
+              (when-not (str/blank? content)
+                content))))
+        messages))
+
+(defn- user-row->llm-message
+  [message]
   {:role    :user
-   :content (->> data
-                 (filter schema.v2/text-part?)
-                 (map :text)
-                 str/join)})
+   :content (message-text message)})
 
 (defn- assistant-row->llm-messages
   [{:keys [data]}]
@@ -515,6 +529,12 @@
     (t2/update! :model/MetabotConversation
                 {:id conversation-id :title nil}
                 {:title title})))
+
+(defn conversation-title
+  "Return the current persisted title for a conversation."
+  [conversation-id]
+  (when conversation-id
+    (t2/select-one-fn :title :model/MetabotConversation :id conversation-id)))
 
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 

@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.metabot.api :as metabot.api]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -182,6 +183,48 @@
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404
                                  (str "metabot/conversations/" (random-uuid)))))))
+
+(deftest get-conversation-title-status-404-test
+  (testing "GET /api/metabot/conversations/:id/title returns 404 when the conversation does not exist"
+    (is (= "Not found."
+           (mt/user-http-request :rasta :get 404
+                                 (str "metabot/conversations/" (random-uuid) "/title"))))))
+
+(deftest get-conversation-title-status-test
+  (testing "GET /api/metabot/conversations/:id/title returns ready when a title exists"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "Orders by Month"}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id}]
+        (is (= {:status "ready" :title "Orders by Month"}
+               (mt/user-http-request :rasta :get 200
+                                     (str "metabot/conversations/" convo-id "/title")))))))
+  (testing "GET /api/metabot/conversations/:id/title returns missing when no title job is running"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id}]
+        (is (= {:status "missing" :title nil}
+               (mt/user-http-request :rasta :get 200
+                                     (str "metabot/conversations/" convo-id "/title")))))))
+  (testing "GET /api/metabot/conversations/:id/title returns pending for an in-flight title job"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id}]
+        (mt/with-dynamic-fn-redefs [conversation-title/title-status (constantly {:status "pending" :title nil})]
+          (is (= {:status "pending" :title nil}
+                 (mt/user-http-request :rasta :get 200
+                                       (str "metabot/conversations/" convo-id "/title")))))))))
+
+(deftest get-conversation-title-status-non-participant-forbidden-test
+  (testing "GET /api/metabot/conversations/:id/title returns 403 for a non-participant"
+    (let [owner-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id owner-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id owner-id}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403
+                                     (str "metabot/conversations/" convo-id "/title"))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :crowberto :get 403
+                                     (str "metabot/conversations/" convo-id "/title"))))))))
 
 (deftest check-conversation-access-test
   (testing "check-conversation-access!"

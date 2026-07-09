@@ -1,4 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
+import fetchMock from "fetch-mock";
 import { createDraft } from "immer";
 
 import { waitFor } from "__support__/ui";
@@ -272,6 +273,70 @@ describe("metabot reducer", () => {
           "Orders by Month",
         );
       });
+    });
+
+    it("polls for a title after a pending title event", async () => {
+      const { store } = setup();
+      const conversationId =
+        store.getState().metabot.conversations.omnibot?.conversationId;
+
+      if (!conversationId) {
+        throw new Error("Expected omnibot conversation id");
+      }
+
+      fetchMock.get(`path:/api/metabot/conversations/${conversationId}/title`, {
+        status: 200,
+        body: { status: "ready", title: "Orders by Month" },
+      });
+      mockAgentEndpoint({
+        events: [
+          {
+            type: "data-chat-title-pending",
+            data: { conversation_id: conversationId },
+          },
+        ],
+      });
+
+      await enterChatMessage("Show orders by month");
+
+      await waitFor(() => {
+        expect(store.getState().metabot.conversations.omnibot?.title).toBe(
+          "Orders by Month",
+        );
+      });
+    });
+
+    it("keeps the conversation untitled when pending title polling reports missing", async () => {
+      const { store } = setup();
+      const conversationId =
+        store.getState().metabot.conversations.omnibot?.conversationId;
+
+      if (!conversationId) {
+        throw new Error("Expected omnibot conversation id");
+      }
+
+      const titlePath = `path:/api/metabot/conversations/${conversationId}/title`;
+      fetchMock.get(titlePath, {
+        status: 200,
+        body: { status: "missing", title: null },
+      });
+      mockAgentEndpoint({
+        events: [
+          {
+            type: "data-chat-title-pending",
+            data: { conversation_id: conversationId },
+          },
+        ],
+      });
+
+      await enterChatMessage("Show orders by month");
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls(titlePath)).toHaveLength(1);
+      });
+      expect(store.getState().metabot.conversations.omnibot?.title).toBe(
+        undefined,
+      );
     });
   });
 

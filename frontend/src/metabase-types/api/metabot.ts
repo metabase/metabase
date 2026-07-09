@@ -173,6 +173,11 @@ export type MetabotConversation = {
   last_message_at: string | null;
 };
 
+export type MetabotConversationTitleResponse =
+  | { status: "ready"; title: string }
+  | { status: "pending"; title: null }
+  | { status: "missing"; title: null };
+
 export type ListMetabotConversationsRequest = PaginationRequest & {
   profile_id?: string | null;
 };
