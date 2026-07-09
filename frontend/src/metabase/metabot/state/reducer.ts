@@ -63,6 +63,11 @@ export const metabot = createSlice({
       state.debugMode = action.payload;
     },
     // CONVERSATION REDUCERS
+    setConversationTitle: convoReducer(
+      (convo, action: ConvoPayloadAction<{ title: string }>) => {
+        convo.title = action.payload.title;
+      },
+    ),
     addDeveloperMessage: convoReducer(
       (convo, action: ConvoPayloadAction<{ message: string }>) => {
         convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;

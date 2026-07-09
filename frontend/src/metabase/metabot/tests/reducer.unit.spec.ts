@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { createDraft } from "immer";
 
+import { waitFor } from "__support__/ui";
 import {
   type MetabotState,
   activateSuggestedTransform,
@@ -18,6 +19,8 @@ import {
   getMetabotInitialState,
   getRequestConversation,
 } from "../state/reducer-utils";
+
+import { enterChatMessage, mockAgentEndpoint, setup } from "./utils";
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,
@@ -252,6 +255,23 @@ describe("metabot reducer", () => {
       const convo = store.getState().metabot.conversations.ask;
       expect(convo).toBeDefined();
       expect(convo?.profileOverride).toBe(METABOT_PROFILE_OVERRIDES.NLQ);
+    });
+  });
+
+  describe("streamed conversation title", () => {
+    it("stores the title on the conversation", async () => {
+      const { store } = setup();
+      mockAgentEndpoint({
+        events: [{ type: "data-chat-title", data: "Orders by Month" }],
+      });
+
+      await enterChatMessage("Show orders by month");
+
+      await waitFor(() => {
+        expect(store.getState().metabot.conversations.omnibot?.title).toBe(
+          "Orders by Month",
+        );
+      });
     });
   });
 

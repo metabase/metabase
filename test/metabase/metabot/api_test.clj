@@ -16,6 +16,7 @@
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
@@ -46,7 +47,8 @@
                                                                [{:type :start :id "msg-1"}
                                                                 {:type :text :text "Hello from native agent!"}
                                                                 {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
-                                                                 :model "test-model" :id    "msg-1"}]))]
+                                                                 :model "test-model" :id    "msg-1"}]))
+                                      conversation-title/submit! (constantly (future "Orders by Month"))]
             (testing "Native agent streaming request"
               (mt/with-model-cleanup [:model/MetabotMessage
                                       [:model/MetabotConversation :created_at]]
@@ -65,12 +67,14 @@
                   (testing "response is an SSE stream of typed events ending with [DONE]"
                     (is (= "data: [DONE]" (last lines)))
                     (is (= ["start" "start-step"] (mapv :type (take 2 events))))
-                    (is (= ["finish-step" "finish"] (mapv :type (take-last 2 events))))
+                    (is (= ["finish-step" "finish" "data-chat-title"] (mapv :type (take-last 3 events))))
+                    (is (=? {:type "data-chat-title" :data "Orders by Month"}
+                            (last events)))
                     (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
                              (apply str (map :delta text-deltas)))))
                     (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
-                            (last events))
+                            (last (butlast events)))
                         "finish event carries accumulated usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
@@ -85,6 +89,17 @@
                                            {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version 2}]
                           messages)))))))))))
+
+(deftest conversation-title-generation-persists-title-test
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")
+          stored-title    #(t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
+      (with-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
+        (is (= "Orders by Month" (generate-title!)))
+        (is (= "Orders by Month" (stored-title))))
+      (with-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
+        (is (nil? (generate-title!)))
+        (is (= "Orders by Month" (stored-title)))))))
 
 (defn ^:private sse-event
   "Format an SSE event as a string for a mock LLM server."
@@ -897,7 +912,8 @@
          (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                      (fn [_]
                                        (let [[[parts]] (swap-vals! queue (comp vec rest))]
-                                         (mut/mock-llm-response (or parts default-mock-parts))))]
+                                         (mut/mock-llm-response (or parts default-mock-parts))))
+                                     conversation-title/submit! (constantly nil)]
            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
              (thunk)
              (is (empty? @queue) "unconsumed mock LLM responses"))))))))
@@ -1124,7 +1140,8 @@
                                      [{:type :start :id "msg-1"}
                                       {:type :text :text reply-text}
                                       {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
-                                       :model "test-model" :id "msg-1"}]))]
+                                       :model "test-model" :id "msg-1"}]))
+                                  conversation-title/submit! (constantly nil)]
         (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
           (thunk))))))
 

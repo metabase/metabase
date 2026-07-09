@@ -100,6 +100,7 @@ export const createConversation = (
 
   return {
     isProcessing: false,
+    title: undefined,
     messages: [],
     visible: false,
     state: {},

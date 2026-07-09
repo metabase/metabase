@@ -508,6 +508,14 @@
   (when (and msg-id slack-msg-id)
     (t2/update! :model/MetabotMessage msg-id {:slack_msg_id slack-msg-id})))
 
+(defn set-conversation-title-if-missing!
+  "Set a conversation title only when it has not already been generated."
+  [conversation-id title]
+  (when (and conversation-id (not (str/blank? title)))
+    (t2/update! :model/MetabotConversation
+                {:id conversation-id :title nil}
+                {:title title})))
+
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
 (defn- convert-content-block
@@ -734,7 +742,7 @@
     (let [messages (live-messages conversation-id)]
       {:conversation_id (:id conv)
        :created_at      (:created_at conv)
-       :summary         (:summary conv)
+       :title           (:title conv)
        :user_id         (:user_id conv)
        :state           (conversation-state messages)
        :chat_messages   (messages->chat-messages messages)})))

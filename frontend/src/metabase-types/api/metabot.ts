@@ -166,7 +166,7 @@ export type MetabotAgentResponse = {
 export type MetabotConversation = {
   conversation_id: string;
   created_at: string;
-  summary: string | null;
+  title: string | null;
   user_id: number | null;
   profile_id: string | null;
   message_count: number;

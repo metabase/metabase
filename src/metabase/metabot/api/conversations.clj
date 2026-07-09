@@ -24,7 +24,7 @@
   [:map
    [:conversation_id ms/UUIDString]
    [:created_at      ms/TemporalInstant]
-   [:summary         [:maybe :string]]
+   [:title           [:maybe :string]]
    ;; Wire compatibility: keep the field name `user_id`, but it now means the
    ;; conversation originator (first writer), not "the only allowed reader".
    [:user_id         [:maybe ms/PositiveInt]]
@@ -43,7 +43,7 @@
   [:map
    [:conversation_id ms/UUIDString]
    [:created_at      ms/TemporalInstant]
-   [:summary         [:maybe :string]]
+   [:title           [:maybe :string]]
    [:user_id         [:maybe ms/PositiveInt]]
    [:state           {:optional true} [:maybe ::metabot.schema/state]]
    [:chat_messages   [:sequential :map]]])
@@ -114,7 +114,7 @@
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
         rows        (t2/select :model/MetabotConversation
-                               {:select    [:c.id :c.created_at :c.summary :c.user_id
+                               {:select    [:c.id :c.created_at :c.title :c.user_id
                                             [[:count :message.id] :message_count]
                                             [[:max :message.created_at] :last_message_at]
                                             [(last-live-message-profile-id-subquery) :profile_id]
@@ -130,7 +130,7 @@
                                 :limit     limit
                                 :offset    offset})]
     {:data   (mapv #(-> %
-                        (select-keys [:created_at :summary :user_id :profile_id :message_count :last_message_at])
+                        (select-keys [:created_at :title :user_id :profile_id :message_count :last_message_at])
                         (assoc :conversation_id (:id %)))
                    rows)
      :total  total

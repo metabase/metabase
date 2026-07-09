@@ -8,7 +8,10 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-export type MetabotDataPart = Exclude<KnownDataPart, { type: "data-state" }>;
+export type MetabotDataPart = Exclude<
+  KnownDataPart,
+  { type: "data-state" } | { type: "data-chat-title" }
+>;
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
@@ -120,6 +123,7 @@ export type MetabotReactionsState = {
 
 export interface MetabotConverstationState {
   conversationId: string;
+  title: string | undefined;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;

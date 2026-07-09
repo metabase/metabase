@@ -22,6 +22,7 @@
    [metabase.metabot.api.permissions]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -164,6 +165,16 @@
            (vreset! canceled? true)
            (reduced acc)))))))
 
+(defn- inject-title-before-done-xf
+  [title-future conversation-id]
+  (mapcat
+   (fn [line]
+     (if (and title-future (= self.core/done-sse-line line))
+       (if-let [title (conversation-title/await! title-future conversation-id)]
+         [(self.core/format-sse-event {:type "data-chat-title" :data title}) line]
+         [line])
+       [line]))))
+
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
@@ -187,12 +198,14 @@
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id]}]
+           eval-session-id assistant-msg-id external-id user-external-id generate-title?]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
-      (let [parts-atom  (atom [])
+      (let [title-future (when generate-title?
+                           (conversation-title/submit! conversation-id profile-id (:content message)))
+            parts-atom  (atom [])
             memory-atom (atom nil)
             canceled?   (volatile! false)
             ;; Captures throwables that escape the agent loop's own `catch Exception`
@@ -204,7 +217,8 @@
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
                               (cond-> {:message-id external-id}
-                                user-external-id (assoc :message-metadata {:userMessageId user-external-id}))))]
+                                user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
+                             (inject-title-before-done-xf title-future conversation-id))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
@@ -328,7 +342,9 @@
         :eval-session-id  eval_session_id
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id
-        :user-external-id user-external-id}))))
+        :user-external-id user-external-id
+        :generate-title?  (and (nil? parent_message_id)
+                               (nil? retry_message_id))}))))
 
 (defn- legacy->modern-query
   [query]
