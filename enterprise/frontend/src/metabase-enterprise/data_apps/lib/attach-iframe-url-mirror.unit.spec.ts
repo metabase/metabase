@@ -1,5 +1,3 @@
-import { DATA_APP_EMBED_PREFIX, dataApp } from "metabase/urls";
-
 import {
   type UrlMirrorWindow,
   attachIframeUrlMirror,
@@ -35,7 +33,7 @@ const asMirrorWindow = (iframe: FakeIframeWindow): UrlMirrorWindow => iframe;
 
 describe("attachIframeUrlMirror", () => {
   it("patches the iframe history + popstate on attach and restores them on cleanup", () => {
-    const iframe = fakeIframeWindow(`${DATA_APP_EMBED_PREFIX}/sales`);
+    const iframe = fakeIframeWindow("/embed/apps/sales");
     const origPush = iframe.history.pushState;
     const origReplace = iframe.history.replaceState;
 
@@ -59,24 +57,24 @@ describe("attachIframeUrlMirror", () => {
   });
 
   it("mirrors the iframe's sub-path into the parent URL on a patched navigation", () => {
-    const iframe = fakeIframeWindow(`${DATA_APP_EMBED_PREFIX}/sales`);
+    const iframe = fakeIframeWindow("/embed/apps/sales");
     const replaceSpy = jest.spyOn(window.history, "replaceState");
 
     attachIframeUrlMirror(asMirrorWindow(iframe), "sales");
 
     // Simulate an in-iframe navigation to a sub-route.
-    iframe.location.pathname = `${DATA_APP_EMBED_PREFIX}/sales/orders`;
-    iframe.history.pushState({}, "", `${DATA_APP_EMBED_PREFIX}/sales/orders`);
+    iframe.location.pathname = "/embed/apps/sales/orders";
+    iframe.history.pushState({}, "", "/embed/apps/sales/orders");
 
     // The parent URL is replaced (not pushed) with the mirrored sub-path.
     const lastCall = replaceSpy.mock.calls.at(-1);
-    expect(lastCall?.[2]).toContain(`${dataApp("sales")}/orders`);
+    expect(lastCall?.[2]).toContain("/apps/sales/orders");
 
     replaceSpy.mockRestore();
   });
 
   it("does not throw on cleanup when the frame has gone cross-origin", () => {
-    const iframe = fakeIframeWindow(`${DATA_APP_EMBED_PREFIX}/sales`);
+    const iframe = fakeIframeWindow("/embed/apps/sales");
     const detach = attachIframeUrlMirror(asMirrorWindow(iframe), "sales");
 
     // A cross-origin frame throws on any window access (like the chrome-error
@@ -89,7 +87,7 @@ describe("attachIframeUrlMirror", () => {
   });
 
   it("rethrows unexpected (non-cross-origin) cleanup errors so real bugs surface", () => {
-    const iframe = fakeIframeWindow(`${DATA_APP_EMBED_PREFIX}/sales`);
+    const iframe = fakeIframeWindow("/embed/apps/sales");
     const detach = attachIframeUrlMirror(asMirrorWindow(iframe), "sales");
 
     iframe.removeEventListener = jest.fn<void, PopstateArgs>(() => {

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Group, Stack, Text } from "metabase/ui";
-import { dataApp, getSubpathSafeUrl } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
 import { DataAppAllowedHosts } from "./DataAppAllowedHosts";
@@ -41,7 +41,7 @@ export function DataAppSummary({ app }: Props) {
         {app.enabled ? (
           <Text
             component="a"
-            href={getSubpathSafeUrl(dataApp(app.name))}
+            href={Urls.getSubpathSafeUrl(Urls.dataApp(app.name))}
             target="_blank"
             rel="noreferrer"
             fw={700}
@@ -58,7 +58,7 @@ export function DataAppSummary({ app }: Props) {
         )}
         <Group gap="xs" align="center">
           <Text size="sm" c="text-tertiary" ff="monospace">
-            {dataApp(app.name)}
+            {Urls.dataApp(app.name)}
           </Text>
           <Text size="sm" c="text-tertiary">
             &bull;

@@ -3,11 +3,6 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Link, Route } from "metabase/router";
-import {
-  DATA_APP_API_ROOT,
-  DATA_APP_ROOT_URL,
-  dataApp,
-} from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
@@ -35,11 +30,11 @@ afterEach(() => {
 });
 
 const setup = (apps: DataApp[], name = "sales") => {
-  fetchMock.get(`path:${DATA_APP_API_ROOT}`, apps);
+  fetchMock.get("path:/api/apps", apps);
 
   return renderWithProviders(
-    <Route path={`${DATA_APP_ROOT_URL}/:name`} component={LayoutRoute} />,
-    { withRouter: true, initialRoute: dataApp(name) },
+    <Route path="/apps/:name" component={LayoutRoute} />,
+    { withRouter: true, initialRoute: `/apps/${name}` },
   );
 };
 
@@ -67,17 +62,15 @@ describe("DataAppLayout", () => {
 
     it("returns to the previous page when the app opened from another page", async () => {
       mockHistoryLength(2);
-      fetchMock.get("path:/api/data-app", [
-        createMockDataApp({ name: "sales" }),
-      ]);
+      fetchMock.get("path:/api/apps", [createMockDataApp({ name: "sales" })]);
 
       const { history } = renderWithProviders(
         <>
           <Route
             path="/home"
-            component={() => <Link to="/data-app/sales">open app</Link>}
+            component={() => <Link to="/apps/sales">open app</Link>}
           />
-          <Route path="/data-app/:name" component={LayoutRoute} />
+          <Route path="/apps/:name" component={LayoutRoute} />
         </>,
         { withRouter: true, initialRoute: "/home" },
       );
@@ -149,7 +142,7 @@ describe("DataAppLayout", () => {
       const listbox = await screen.findByRole("listbox");
       await userEvent.click(within(listbox).getByText("Ops"));
 
-      expect(history?.getCurrentLocation().pathname).toBe(dataApp("ops"));
+      expect(history?.getCurrentLocation().pathname).toBe("/apps/ops");
     });
   });
 });

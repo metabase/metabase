@@ -7,7 +7,7 @@ import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
-import { DATA_APP_API_ROOT, getSubpathSafeUrl } from "metabase/urls";
+import { getSubpathSafeUrl } from "metabase/urls";
 
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
@@ -78,7 +78,7 @@ export const fetchDataAppBundleCode = async (
   name: string,
 ): Promise<FetchedDataAppBundle> => {
   const url = getSubpathSafeUrl(
-    `${DATA_APP_API_ROOT}/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
+    `/api/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
 
   let res: Response;

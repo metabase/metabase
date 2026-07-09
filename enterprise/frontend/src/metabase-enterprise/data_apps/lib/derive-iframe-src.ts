@@ -1,8 +1,4 @@
-import {
-  DATA_APP_EMBED_PREFIX,
-  dataApp,
-  getSubpathSafeUrl,
-} from "metabase/urls";
+import * as Urls from "metabase/urls";
 
 /**
  * Maps the parent's `/apps/:name(/sub/route)` path to the iframe's
@@ -15,12 +11,12 @@ import {
  * preserved verbatim.
  */
 export function deriveIframeSrc(name: string): string {
-  const prefix = dataApp(name);
+  const prefix = Urls.dataApp(name);
   const path = window.location.pathname;
   const index = path.indexOf(prefix);
   const tail = index >= 0 ? path.slice(index + prefix.length) : "";
 
-  return getSubpathSafeUrl(
-    `${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}${tail}`,
+  return Urls.getSubpathSafeUrl(
+    `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}${tail}`,
   );
 }

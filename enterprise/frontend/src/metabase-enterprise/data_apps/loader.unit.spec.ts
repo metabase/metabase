@@ -1,5 +1,3 @@
-import { DATA_APP_API_ROOT } from "metabase/urls";
-
 import {
   DataAppBundleError,
   fetchDataAppBundleCode,
@@ -44,7 +42,7 @@ describe("fetchDataAppBundleCode", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
 
-    expect(url).toContain(`${DATA_APP_API_ROOT}/my%20app/bundle`);
+    expect(url).toContain("/api/apps/my%20app/bundle");
     expect(init).toEqual({ cache: "no-store" });
   });
 

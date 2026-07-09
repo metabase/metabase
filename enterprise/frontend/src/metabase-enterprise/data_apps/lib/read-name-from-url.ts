@@ -1,4 +1,4 @@
-import { DATA_APP_URL_SEGMENT } from "metabase/urls";
+import * as Urls from "metabase/urls";
 
 /**
  * Reads the requested data-app name from the iframe URL.
@@ -9,7 +9,7 @@ import { DATA_APP_URL_SEGMENT } from "metabase/urls";
  */
 export function readNameFromUrl(): string | null {
   const segments = window.location.pathname.split("/").filter(Boolean);
-  const index = segments.indexOf(DATA_APP_URL_SEGMENT);
+  const index = segments.indexOf(Urls.DATA_APP_URL_SEGMENT);
 
   if (index < 0 || index === segments.length - 1) {
     return null;

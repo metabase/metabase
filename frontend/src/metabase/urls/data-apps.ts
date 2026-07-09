@@ -1,7 +1,9 @@
 /**
  * Canonical data-app URLs. `DATA_APP_URL_SEGMENT` is the single source of
- * truth for the `apps` path segment; the page, admin, API, and iframe-embed
- * URLs all derive from it, so renaming the route is a one-line change here.
+ * truth for the `apps` path segment; the page, admin, and iframe-embed URLs
+ * all derive from it, so renaming the route is a one-line change here. (REST
+ * API paths deliberately live as bare strings in the API layer so they stay
+ * greppable — see `metabase-enterprise/api/data-app.ts`.)
  */
 export const DATA_APP_URL_SEGMENT = "apps";
 
@@ -10,9 +12,6 @@ export const DATA_APP_ROOT_URL = `/${DATA_APP_URL_SEGMENT}`;
 
 /** Admin management page: `/admin/settings/apps`. */
 export const DATA_APP_ADMIN_URL = `/admin/settings/${DATA_APP_URL_SEGMENT}`;
-
-/** REST API root: `/api/apps`. */
-export const DATA_APP_API_ROOT = `/api/${DATA_APP_URL_SEGMENT}`;
 
 /**
  * Prefix the BE serves the internal data-app iframe entrypoint at:
