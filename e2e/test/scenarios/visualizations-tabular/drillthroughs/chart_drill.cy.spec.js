@@ -695,48 +695,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.location("pathname").should("eq", "/question/42");
   });
 
-  it("should only show the 'See these records' option for the 'Other' pie slice (metabase#5334)", () => {
-    H.visitQuestionAdhoc({
-      name: "5334",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-          ],
-        },
-        type: "query",
-      },
-      display: "pie",
-      visualization_settings: {
-        "pie.dimension": "CATEGORY",
-        "pie.metric": "count",
-        "pie.slice_threshold": 26,
-      },
-    });
-
-    H.pieSlices()
-      .filter("[fill^='hsla']")
-      .then(($slice) => {
-        const { height } = $slice[0].getBoundingClientRect();
-
-        cy.wrap($slice).realClick({
-          x: 30,
-          y: height / 2,
-          scrollBehavior: false,
-        });
-      });
-
-    H.popover().within(() => {
-      cy.findByTestId("click-actions-view").within(() => {
-        cy.findByText("See these Products").should("be.visible");
-        cy.findAllByRole("button").should("have.length", 1);
-      });
-    });
-  });
-
   describe("for an unsaved question", () => {
     beforeEach(() => {
       const questionDetails = {

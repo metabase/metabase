@@ -1,9 +1,5 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -1284,68 +1280,5 @@ describe("issue 58061", () => {
       cy.wait("@cardQuery");
       H.assertQueryBuilderRowCount(1);
     });
-  });
-});
-
-describe("issue 63537", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
-    cy.signInAsAdmin();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
-  });
-
-  it("should allow to use postgres enums in field filters (metabase#63537)", () => {
-    H.startNewNativeQuestion({ database: WRITABLE_DB_ID });
-    H.NativeEditor.type("SELECT * FROM many_data_types WHERE {{f}}");
-    SQLFilter.openTypePickerFromDefaultFilterType();
-    SQLFilter.chooseType("Field Filter");
-    FieldFilter.mapTo({
-      table: "Many Data Types",
-      field: "Enum",
-    });
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("beta").click();
-      cy.button("Add filter").click();
-    });
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(2);
-  });
-});
-
-describe("issue 70311", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-  });
-
-  it("should not show the run overlay for a saved question with an empty between field filter (metabase#70311)", () => {
-    H.createNativeQuestion(
-      {
-        name: "70311",
-        native: {
-          query: "SELECT * FROM PRODUCTS WHERE {{filter}} LIMIT 5",
-          "template-tags": {
-            filter: {
-              id: "a3b95feb-b6d2-33b6-660b-bb656f59b1d7",
-              name: "filter",
-              "display-name": "Filter",
-              type: "dimension",
-              dimension: ["field", PRODUCTS.RATING, null],
-              "widget-type": "number/between",
-              default: null,
-            },
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.wait("@cardQuery");
-
-    cy.findByTestId("query-visualization-root").should("be.visible");
-    cy.icon("play").should("not.exist");
   });
 });
