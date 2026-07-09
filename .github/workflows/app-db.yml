@@ -120,6 +120,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -243,6 +244,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -353,6 +355,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
