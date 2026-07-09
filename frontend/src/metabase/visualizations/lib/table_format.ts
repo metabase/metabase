@@ -188,6 +188,9 @@ export function compileFormatter(
       return () => null;
     }
 
+    const lowerBound = Math.min(min, max);
+    const upperBound = Math.max(min, max);
+
     const scale = getLinearColorScale(
       [min, max],
       format.colors.map((c) => {
@@ -197,7 +200,7 @@ export function compileFormatter(
       }),
     ).clamp(true);
     return (value) => {
-      if (!isNumber(value)) {
+      if (!isNumber(value) || value < lowerBound || value > upperBound) {
         return null;
       }
       const colorValue = scale(value);
