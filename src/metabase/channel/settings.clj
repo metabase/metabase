@@ -351,13 +351,3 @@
                   (assert (#{:graalvm :node} (keyword new-value))
                           (tru "Invalid static-viz-mode! Only values of graalvm and node are allowed.")))
                 (setting/set-value-of-type! :keyword :static-viz-mode new-value)))
-
-(defsetting static-viz-node-script-path
-  "Filesystem path of the static-viz Node entrypoint (`app-static-viz-cli.bundle.js`) that
-  `static-viz-mode` = `node` runs. Provisioned at deploy time — the official Docker images copy it out of
-  the frontend build and set this automatically; Metabase itself never writes it. Rendering in node mode
-  fails if this is unset or the file does not exist."
-  :type       :string
-  :encryption :no
-  :visibility :internal
-  :export?    false)

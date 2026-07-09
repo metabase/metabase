@@ -21,11 +21,6 @@ RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew 
 # add Metabase jar & add our run script to the image
 COPY ./metabase.jar ./run_metabase.sh /app/
 
-# extract the static-viz Node entrypoint from the jar (so it always matches the jar), owned by root:
-# the metabase user can read but not modify what `node` executes when MB_STATIC_VIZ_MODE=node
-RUN unzip -p /app/metabase.jar frontend_client/app/dist/app-static-viz-cli.bundle.js > /app/app-static-viz-cli.bundle.js
-ENV MB_STATIC_VIZ_NODE_SCRIPT_PATH=/app/app-static-viz-cli.bundle.js
-
 # expose our default runtime port
 EXPOSE 3000
 

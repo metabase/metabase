@@ -1,31 +1,18 @@
-/* eslint-disable no-console */
 // Entry point of the self-contained Node bundle (`app-static-viz-cli.bundle.js`) run by the `:node`
 // static-viz renderer (see `metabase.channel.render.js.node`). It answers newline-delimited JSON render
 // requests over stdin/stdout.
 //
-// Everything below uses `require` (not `import`) on purpose: ESM imports are hoisted above statements,
-// and the console redirect must run *before* the viz code loads — stdout carries the line protocol, so
-// anything the bundle logs during init has to go to stderr instead.
-
-for (const method of [
-  "log",
-  "info",
-  "warn",
-  "error",
-  "debug",
-  "trace",
-] as const) {
-  console[method] = (...args: unknown[]) =>
-    process.stderr.write(args.map((a) => String(a)).join(" ") + "\n");
-}
-
+// ESM imports are hoisted above statements but execute in import order, so the console redirect lives in
+// its own dependency-free module imported first: it must run *before* the viz code loads — stdout carries
+// the line protocol, so anything the bundle logs during init has to go to stderr instead.
+import "metabase/static-viz/console";
 import "metabase/static-viz/polyfill";
 
 import readline from "readline";
 
 import { getCellBackgroundColors, renderChart } from "metabase/static-viz";
 
-const functions: Record<string, (arg: any) => unknown> = {
+const functions: Record<string, (arg: never) => unknown> = {
   renderChart,
   getCellBackgroundColors,
 };
