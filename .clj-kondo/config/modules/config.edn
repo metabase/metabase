@@ -2628,6 +2628,7 @@
            audit-app
            collections
            driver
+           events
            lib
            lib-be
            models
