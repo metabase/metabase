@@ -60,7 +60,7 @@ const TimelineForm = ({
             name="description"
             label={t`Description`}
             minRows={5}
-            mb="lg"
+            mb="md"
             nullable
           />
           <IconField name="icon" title={t`Default icon`} options={icons} />
