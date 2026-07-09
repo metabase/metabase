@@ -68,9 +68,13 @@
                 (conj (filterv #(> (:exp % 0) now) jtis)
                       {:jti jti :exp (+ now (* 2 60 60))}))))))
 
-(defn- write-credentials! [auth-identity credentials jti]
+(defn- write-credentials!
+  "Persist a successful attempt's credential changes. Any pending emailed one-time code dies with
+  the successful verification — otherwise it would stay valid for its remaining ~10-minute TTL,
+  including as re-auth for disable/regenerate."
+  [auth-identity credentials jti]
   (t2/update! :model/AuthIdentity (:id auth-identity)
-              {:credentials (consume-jti credentials jti)}))
+              {:credentials (-> credentials (dissoc :email_otp) (consume-jti jti))}))
 
 (defn- totp-attempt!
   "When `code` is a valid, not-yet-used TOTP code: consume its time step (RFC 6238 §5.2) and return

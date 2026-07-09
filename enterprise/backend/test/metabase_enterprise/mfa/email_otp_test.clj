@@ -36,6 +36,17 @@
         (testing "single-use"
           (is (false? (enrollment/verify-attempt! user-id code (fresh-jti)))))))))
 
+(deftest successful-verify-clears-pending-email-otp-test
+  (let [secret (totp/generate-secret)]
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/AuthIdentity _ {:user_id     user-id
+                                          :provider    "totp"
+                                          :credentials {:secret secret :confirmed_at (t/instant)}}]
+      (let [email-code (enrollment/set-email-otp! user-id)]
+        (is (true? (enrollment/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
+        (testing "a successful TOTP verification kills the pending emailed code for its whole TTL"
+          (is (false? (enrollment/verify-attempt! user-id email-code (fresh-jti)))))))))
+
 (deftest email-otp-requires-confirmed-enrollment-test
   (mt/with-temp [:model/User {user-id :id} {}
                  :model/AuthIdentity _ {:user_id     user-id

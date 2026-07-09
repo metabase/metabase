@@ -75,7 +75,9 @@
 (defn- code-matches-step?
   "Constant-time comparison of `code` against the TOTP for `secret` at `step`."
   [^String secret ^String code ^long step]
-  (MessageDigest/isEqual (.getBytes (format-code (hotp secret step)) "UTF-8")
+  ;; the ^String call-site hint is load-bearing: format-code's return hint is lost through its
+  ;; primitive-arg (^long) signature, leaving a reflective .getBytes on every comparison
+  (MessageDigest/isEqual (.getBytes ^String (format-code (hotp secret step)) "UTF-8")
                          (.getBytes code "UTF-8")))
 
 (defn matching-time-step
