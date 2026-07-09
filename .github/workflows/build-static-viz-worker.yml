@@ -1,0 +1,47 @@
+name: Build static-viz worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - "native/static-viz-worker/**"
+      - ".github/workflows/build-static-viz-worker.yml"
+  pull_request:
+    paths:
+      - "native/static-viz-worker/**"
+      - ".github/workflows/build-static-viz-worker.yml"
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - platform: linux-amd64
+            runner: ubuntu-latest
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-latest
+          - platform: macos-amd64
+            runner: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build worker
+        run: ./native/static-viz-worker/build.sh
+      - name: Smoke test
+        run: |
+          BIN="resources/static-viz-worker/${{ matrix.platform }}/static-viz-worker"
+          "$BIN" version
+          echo 'globalThis.MetabaseStaticViz = { echo: (s) => s };' > /tmp/echo.js
+          "$BIN" compile /tmp/echo.js /tmp/echo.qbc
+          test "$(echo -n hello | "$BIN" render /tmp/echo.qbc echo)" = "hello"
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-viz-worker-${{ matrix.platform }}
+          path: resources/static-viz-worker/${{ matrix.platform }}/static-viz-worker
+          if-no-files-found: error
