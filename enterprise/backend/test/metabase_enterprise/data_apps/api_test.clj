@@ -55,17 +55,17 @@
         (create-app!)
         (testing "a non-superuser can view (open) a data app"
           (is (=? {:name "demo"}
-                  (mt/user-http-request :rasta :get 200 "data-app/demo")))
+                  (mt/user-http-request :rasta :get 200 "apps/demo")))
           (is (str/includes?
-               (str (mt/user-real-request :rasta :get 200 "data-app/demo/bundle"))
+               (str (mt/user-real-request :rasta :get 200 "apps/demo/bundle"))
                "BUNDLE")))
         (testing "but is still forbidden from managing data apps"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "data-app")))
+                 (mt/user-http-request :rasta :get 403 "apps")))
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "data-app/repo-status")))
+                 (mt/user-http-request :rasta :get 403 "apps/repo-status")))
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 "data-app/demo" {:enabled false}))))))))
+                 (mt/user-http-request :rasta :put 403 "apps/demo" {:enabled false}))))))))
 
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
@@ -74,11 +74,11 @@
         (create-app!)
         (testing "a superuser can list, read metadata, and serve the bundle"
           (is (=? [{:name "demo" :display_name "Demo"}]
-                  (mt/user-http-request :crowberto :get 200 "data-app")))
+                  (mt/user-http-request :crowberto :get 200 "apps")))
           (is (=? {:name "demo"}
-                  (mt/user-http-request :crowberto :get 200 "data-app/demo")))
+                  (mt/user-http-request :crowberto :get 200 "apps/demo")))
           (is (str/includes?
-               (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
+               (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "BUNDLE")))))))
 
 (deftest bundle-includes-allowed-hosts-header-test
@@ -92,12 +92,12 @@
                   :bundle_hash   "abc123"
                   :allowed_hosts ["https://api.example.com"])
       (testing "the bundle response carries the app's allowed_hosts as a JSON header"
-        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "data-app/demo/bundle")]
+        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
           (is (= "[\"https://api.example.com\"]"
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))
       (testing "an app with no allowed_hosts still sends the header as an empty JSON array"
         (t2/update! :model/DataApp :name "demo" {:allowed_hosts []})
-        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "data-app/demo/bundle")]
+        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "apps/demo/bundle")]
           (is (= "[]"
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
 
@@ -113,7 +113,7 @@
                   :name "nohosts" :display_name "No"
                   :bundle_path "data_apps/nohosts/index.js")
       (testing "the list endpoint returns allowed_hosts, always a list (NULL → [])"
-        (let [by-name (->> (mt/user-http-request :crowberto :get 200 "data-app")
+        (let [by-name (->> (mt/user-http-request :crowberto :get 200 "apps")
                            (into {} (map (juxt :name identity))))]
           (is (= ["https://api.example.com"]
                  (get-in by-name ["withhosts" :allowed_hosts])))
@@ -243,19 +243,19 @@
         (testing "GET / lists the synced apps"
           (is (=? [{:name "demo" :display_name "Demo app"
                     :bundle_path "data_apps/demo/dist/index.js" :enabled true}]
-                  (mt/user-http-request :crowberto :get 200 "data-app"))))
+                  (mt/user-http-request :crowberto :get 200 "apps"))))
         (testing "GET /:slug/bundle serves the cached bytes"
           (is (str/includes?
-               (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
+               (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "DEMOBUNDLE")))))))
 
 (deftest repo-status-endpoint-test
   (mt/with-premium-features #{:data-apps}
     (testing "configured reflects whether a repository is connected"
       (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly false)]
-        (is (=? {:configured false} (mt/user-http-request :crowberto :get 200 "data-app/repo-status"))))
+        (is (=? {:configured false} (mt/user-http-request :crowberto :get 200 "apps/repo-status"))))
       (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly true)]
-        (is (=? {:configured true} (mt/user-http-request :crowberto :get 200 "data-app/repo-status")))))))
+        (is (=? {:configured true} (mt/user-http-request :crowberto :get 200 "apps/repo-status")))))))
 
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
@@ -265,11 +265,11 @@
          (snapshot (app-files "demo" {:name "Demo" :slug "demo" :path "index.js" :bundle "BUNDLE"})))
         (testing "PUT /:slug can disable an app"
           (is (=? {:name "demo" :enabled false}
-                  (mt/user-http-request :crowberto :put 200 "data-app/demo" {:enabled false}))))
+                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled false}))))
         (testing "a disabled app is not served"
-          (is (= "Not found." (mt/user-http-request :crowberto :get 404 "data-app/demo")))
-          (mt/user-real-request :crowberto :get 404 "data-app/demo/bundle"))
+          (is (= "Not found." (mt/user-http-request :crowberto :get 404 "apps/demo")))
+          (mt/user-real-request :crowberto :get 404 "apps/demo/bundle"))
         (testing "re-enabling restores serving"
           (is (=? {:enabled true}
-                  (mt/user-http-request :crowberto :put 200 "data-app/demo" {:enabled true})))
-          (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "data-app/demo"))))))))
+                  (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled true})))
+          (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "apps/demo"))))))))

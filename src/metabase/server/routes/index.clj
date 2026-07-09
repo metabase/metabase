@@ -127,4 +127,4 @@
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
 (def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
-(def data-app   "/embed/data-app/:name iframe entrypoint." (partial entrypoint "data-app"   :embeddable))
+(def data-app   "/embed/apps/:name iframe entrypoint." (partial entrypoint "data-app"   :embeddable))

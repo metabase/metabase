@@ -9,7 +9,7 @@ const fakeWindow = () =>
     fetch: function nativeFetch() {},
     XMLHttpRequest: class NativeXHR {},
     location: {
-      href: "https://mb.example.com/embed/data-app/sales",
+      href: "https://mb.example.com/embed/apps/sales",
       origin: "https://mb.example.com",
     },
   }) as unknown as Window & typeof globalThis;

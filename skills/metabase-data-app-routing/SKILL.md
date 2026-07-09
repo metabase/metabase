@@ -25,7 +25,7 @@ The template already externalizes `@metabase/embedding-sdk-react/data-app` in `v
 
 ## Step 1 — Wrap `App.tsx` with `<DataAppRouter>`
 
-Import the routing primitives normally. `<DataAppRouter>` does NOT take a `basename` prop — it auto-detects the iframe's URL prefix (`/embed/data-app/<name>`) in production and resolves to no prefix in the Vite dev preview.
+Import the routing primitives normally. `<DataAppRouter>` does NOT take a `basename` prop — it auto-detects the iframe's URL prefix (`/embed/apps/<name>`) in production and resolves to no prefix in the Vite dev preview.
 
 `App.tsx` is pure content — no `<MetabaseProvider>` here. The dev entry (`src/dev.tsx`) and the production host both wrap the tree.
 
@@ -88,9 +88,9 @@ Run `yarn dev`, click the links, watch the URL bar change. Reload at `http://loc
 
 You don't need to do anything for this. For context:
 
-- Bundle calls `<DataAppLink to="/customers/42">` → host's `navigate` runs `pushState` with `/embed/data-app/<name>/customers/42`.
-- The parent's `AppView` observes the iframe URL change and mirrors it to the parent's URL bar as `/data-app/<name>/customers/42` — the `/embed` prefix is stripped because the parent's React Router route is `/data-app/:name/*`, not `/embed/...`.
-- Reload works because the BE serves the same `data-app.html` for every `/embed/data-app/:name/*` sub-path; the iframe boots, `<DataAppRouter>` reads `window.location.pathname`, auto-detects the prefix, and starts at the right sub-path.
+- Bundle calls `<DataAppLink to="/customers/42">` → host's `navigate` runs `pushState` with `/embed/apps/<name>/customers/42`.
+- The parent's `AppView` observes the iframe URL change and mirrors it to the parent's URL bar as `/apps/<name>/customers/42` — the `/embed` prefix is stripped because the parent's React Router route is `/apps/:name/*`, not `/embed/...`.
+- Reload works because the BE serves the same `data-app.html` for every `/embed/apps/:name/*` sub-path; the iframe boots, `<DataAppRouter>` reads `window.location.pathname`, auto-detects the prefix, and starts at the right sub-path.
 
 ## What NOT to do
 

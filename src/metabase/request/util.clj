@@ -39,12 +39,26 @@
   [{:keys [uri]}]
   (re-matches #"^/embed/.*$" uri))
 
+(def data-app-url-segment
+  "URL path segment identifying data-app routes. Single source of truth on the
+   BE: the `/apps` page route, the `/embed/apps` iframe prefix, and the
+   `/api/apps` API mount all derive from it (mirrors the FE
+   `DATA_APP_URL_SEGMENT`)."
+  "apps")
+
+(def data-app-embed-prefix
+  "URL prefix the BE serves the internal data-app iframe entrypoint at."
+  (str "/embed/" data-app-url-segment))
+
+(def ^:private data-app-uri-regex
+  (re-pattern (str "^" data-app-embed-prefix "/.*$")))
+
 (defn data-app?
-  "Is this ring request the internal data-app iframe entrypoint (`/embed/data-app/...`)?
+  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?
    It is only ever framed by the same-origin Metabase app, so it gets
    `frame-ancestors 'self'` rather than the open embedding `*`."
   [{:keys [uri]}]
-  (re-matches #"^/embed/data-app/.*$" uri))
+  (re-matches data-app-uri-regex uri))
 
 (defn cacheable?
   "Can the ring request be permanently cached?"

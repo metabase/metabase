@@ -9,6 +9,7 @@ import {
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
+import * as Urls from "metabase/urls";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
@@ -101,7 +102,7 @@ export const getSettingsRoutes = (
           />
         )}
       </Route>
-      <Route path="data-apps" component={IsAdmin}>
+      <Route path={Urls.DATA_APP_URL_SEGMENT} component={IsAdmin}>
         <IndexRoute component={DataAppsManagePage} />
       </Route>
       <Route path="uploads" component={UploadSettingsPage} />

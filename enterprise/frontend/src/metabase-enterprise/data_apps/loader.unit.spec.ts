@@ -42,7 +42,7 @@ describe("fetchDataAppBundleCode", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
 
-    expect(url).toContain("/api/data-app/my%20app/bundle");
+    expect(url).toContain("/api/apps/my%20app/bundle");
     expect(init).toEqual({ cache: "no-store" });
   });
 

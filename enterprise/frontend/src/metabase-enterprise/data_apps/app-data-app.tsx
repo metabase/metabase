@@ -6,7 +6,7 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { DataAppIframeApp } from "./DataAppIframeApp";
 
 /**
- * Entry point loaded by `data-app.html` and served from `/embed/data-app/:name`.
+ * Entry point loaded by `data-app.html` and served from `/embed/apps/:name`.
  *
  * This script boots inside the iframe — separate from the host Metabase
  * app's React tree. It reads the data-app `:name` from the URL, fetches the

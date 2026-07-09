@@ -30,11 +30,11 @@ afterEach(() => {
 });
 
 const setup = (apps: DataApp[], name = "sales") => {
-  fetchMock.get("path:/api/data-app", apps);
+  fetchMock.get("path:/api/apps", apps);
 
   return renderWithProviders(
-    <Route path="/data-app/:name" component={LayoutRoute} />,
-    { withRouter: true, initialRoute: `/data-app/${name}` },
+    <Route path="/apps/:name" component={LayoutRoute} />,
+    { withRouter: true, initialRoute: `/apps/${name}` },
   );
 };
 
@@ -62,17 +62,15 @@ describe("DataAppLayout", () => {
 
     it("returns to the previous page when the app opened from another page", async () => {
       mockHistoryLength(2);
-      fetchMock.get("path:/api/data-app", [
-        createMockDataApp({ name: "sales" }),
-      ]);
+      fetchMock.get("path:/api/apps", [createMockDataApp({ name: "sales" })]);
 
       const { history } = renderWithProviders(
         <>
           <Route
             path="/home"
-            component={() => <Link to="/data-app/sales">open app</Link>}
+            component={() => <Link to="/apps/sales">open app</Link>}
           />
-          <Route path="/data-app/:name" component={LayoutRoute} />
+          <Route path="/apps/:name" component={LayoutRoute} />
         </>,
         { withRouter: true, initialRoute: "/home" },
       );
@@ -144,7 +142,7 @@ describe("DataAppLayout", () => {
       const listbox = await screen.findByRole("listbox");
       await userEvent.click(within(listbox).getByText("Ops"));
 
-      expect(history?.getCurrentLocation().pathname).toBe("/data-app/ops");
+      expect(history?.getCurrentLocation().pathname).toBe("/apps/ops");
     });
   });
 });

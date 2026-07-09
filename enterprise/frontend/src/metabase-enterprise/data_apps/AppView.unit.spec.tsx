@@ -62,7 +62,7 @@ describe("AppView", () => {
 
     const iframe = screen.getByTitle("Sales");
     expect(iframe).toBeInTheDocument();
-    expect(iframe).toHaveAttribute("src", "/embed/data-app/sales");
+    expect(iframe).toHaveAttribute("src", "/embed/apps/sales");
   });
 
   /** Post a `message` event as if it came from `source`. */
