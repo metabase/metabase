@@ -158,8 +158,8 @@
   (let [configured        (configured-engine)
         potential-engines (cond->> default-engine-precedence
                             configured (cons configured))]
-    ;; known-engine? first: before the engine implementations load (e.g. the search-engine setting getter
-    ;; running during startup) the precedence entries are unregistered, and supported-engine? would throw.
+    ;; Drop engines that are not yet registered: the search-engine setting can be read before
+    ;; metabase.search.init loads the engine implementations, and supported-engine? throws on unknown engines.
     (distinct (filter supported-engine? (filter known-engine? potential-engines)))))
 
 (defn- additional-engines
