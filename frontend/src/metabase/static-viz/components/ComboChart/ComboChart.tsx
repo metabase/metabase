@@ -89,7 +89,7 @@ export const ComboChart = ({
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
   chart.dispose();
-  
+
   const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
     chartModel,
     settings,
