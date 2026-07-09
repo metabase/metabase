@@ -388,19 +388,15 @@ describe("issue 16559", () => {
     H.openQuestionsSidebar();
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
-    cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
-      "dashboardReload",
-    );
-    cy.button("Save").click();
-    cy.wait("@saveDashboard");
 
-    // Saving reuses the PUT response and then kicks off a background dashboard
-    // reload (GET .../query_metadata?dashboard_load_id=…). While that reload is
-    // in flight, reopening the info sidebar races with it: the freshly opened
-    // sidesheet is torn down before it mounts, so the click is lost and the
-    // [data-testid="sidesheet"] lookup times out. Wait for the reload to settle
-    // before reopening the sidebar (metabase#16559).
-    cy.wait("@dashboardReload");
+    // Use the shared save helper instead of a manual save. Besides awaiting the
+    // PUT and the background query_metadata reload, it waits for the dashcards to
+    // finish loading and the grid to settle (H.waitForDashcardsToLoad). The manual
+    // save reopened the info sidebar while the post-save card-data refetch
+    // (fetchDashboardCardData) was still in flight; the trailing re-render tore the
+    // freshly opened sidesheet down before it mounted, so the click was lost and
+    // the [data-testid="sidesheet"] lookup timed out (metabase#16559).
+    H.saveDashboard();
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
