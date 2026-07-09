@@ -5,27 +5,36 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { DataAppAllowedHosts } from "./DataAppAllowedHosts";
 
 describe("DataAppAllowedHosts", () => {
-  it("shows 'None' when there are no allowed hosts", () => {
+  it("renders nothing when there are no allowed hosts", () => {
     renderWithProviders(<DataAppAllowedHosts hosts={[]} />);
 
-    expect(screen.getByText("None")).toBeInTheDocument();
-    expect(screen.queryByText(/Allowed hosts \(/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/allowed host/)).not.toBeInTheDocument();
   });
 
-  it("lists the hosts behind a collapsible toggle", async () => {
+  it("shows a singular label for a single host", () => {
+    renderWithProviders(
+      <DataAppAllowedHosts hosts={["https://api.example.com"]} />,
+    );
+
+    expect(screen.getByText("1 allowed host")).toBeInTheDocument();
+  });
+
+  it("shows a pluralized count and reveals the hosts on hover", async () => {
     renderWithProviders(
       <DataAppAllowedHosts
         hosts={["https://api.example.com", "https://*.acme.com"]}
       />,
     );
 
-    const toggle = screen.getByRole("button", { name: /Allowed hosts \(2\)/ });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const label = screen.getByText("2 allowed hosts");
+    expect(label).toBeInTheDocument();
 
-    expect(screen.getByText("https://api.example.com")).toBeInTheDocument();
+    // The origins live in a hover card that opens on pointer hover.
+    await userEvent.hover(label);
+
+    expect(
+      await screen.findByText("https://api.example.com"),
+    ).toBeInTheDocument();
     expect(screen.getByText("https://*.acme.com")).toBeInTheDocument();
-
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 });
