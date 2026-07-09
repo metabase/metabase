@@ -409,6 +409,31 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Driver Tests Part 1
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 3
+              :partition/index 0
+          - name: Driver Tests Part 2
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 3
+              :partition/index 1
+          - name: Driver Tests Part 3
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 3
+              :partition/index 2
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -437,9 +462,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-          :exclude-tags [:mb/transforms-python-test]
+        test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -459,6 +482,31 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Driver Tests Part 1
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 3
+              :partition/index 0
+          - name: Driver Tests Part 2
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 3
+              :partition/index 1
+          - name: Driver Tests Part 3
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 3
+              :partition/index 2
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -488,9 +536,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-          :exclude-tags [:mb/transforms-python-test]
+        test-args: ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
