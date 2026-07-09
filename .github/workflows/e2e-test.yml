@@ -215,16 +215,17 @@ jobs:
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
           run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
-      - name: Quarantine gate (dry run)
+      - name: Quarantine gate
         # always(), unlike backend/frontend: the run step is continue-on-error
         # (Trunk governs its outcome), so its result can't gate on real failures.
         if: always()
-        continue-on-error: true
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
         timeout-minutes: 3
         uses: ./.github/actions/quarantine-gate
         with:
           adapter: e2e
           test-suite: e2e
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7

@@ -214,14 +214,15 @@ jobs:
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
           adapter: backend
 
-      - name: Quarantine gate (dry run)
+      - name: Quarantine gate
         if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
-        continue-on-error: true
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
         timeout-minutes: 3
         uses: ./.github/actions/quarantine-gate
         with:
           adapter: backend
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
