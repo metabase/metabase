@@ -15,6 +15,7 @@ import type {
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import type { WithRouterProps } from "metabase/router";
@@ -42,6 +43,7 @@ import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
+import S from "./ConversationDetailPage.module.css";
 import { ConversationHeader } from "./ConversationHeader";
 
 export function ConversationDetailPage({ params }: WithRouterProps) {
@@ -81,62 +83,84 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = conversation;
 
   return (
-    <Stack gap="2.5rem">
-      <ConversationHeader conversation={conversation} />
+    <Flex h="100%" wrap="nowrap">
+      <Stack className={S.main} flex={1} gap="md">
+        <Box className={S.content} flex="1 1 auto" mih={0}>
+          <MonitorPageContent>
+            <Stack gap="2.5rem">
+              <ConversationHeader conversation={conversation} />
 
-      <SimpleGrid cols={4}>
-        <StatCard label={t`Messages`} value={formatNumber(message_count)} />
-        <StatCard label={t`Total tokens`} value={formatNumber(total_tokens)} />
-        <StatCard label={t`Queries run`} value={formatNumber(query_count)} />
-        <StatCard label={t`Searches`} value={formatNumber(search_count)} />
-      </SimpleGrid>
+              <SimpleGrid cols={4}>
+                <StatCard
+                  label={t`Messages`}
+                  value={formatNumber(message_count)}
+                />
+                <StatCard
+                  label={t`Total tokens`}
+                  value={formatNumber(total_tokens)}
+                />
+                <StatCard
+                  label={t`Queries run`}
+                  value={formatNumber(query_count)}
+                />
+                <StatCard
+                  label={t`Searches`}
+                  value={formatNumber(search_count)}
+                />
+              </SimpleGrid>
 
-      {feedback.length > 0 && (
-        <Stack gap="md">
-          <Title order={3}>{t`Feedback`}</Title>
-          <Stack gap="sm">
-            {feedback.map((item) => (
-              <FeedbackCard
-                key={item.id}
-                feedback={item}
-                chatMessages={chatMessages}
-              />
-            ))}
-          </Stack>
-        </Stack>
-      )}
+              {feedback.length > 0 && (
+                <Stack gap="md">
+                  <Title order={3}>{t`Feedback`}</Title>
+                  <Stack gap="sm">
+                    {feedback.map((item) => (
+                      <FeedbackCard
+                        key={item.id}
+                        feedback={item}
+                        chatMessages={chatMessages}
+                      />
+                    ))}
+                  </Stack>
+                </Stack>
+              )}
 
-      <Stack gap="md">
-        <Flex align="baseline" justify="space-between">
-          <Title order={3}>{t`Conversation`}</Title>
-          {conversation.slack_permalink && (
-            <ExternalLink href={conversation.slack_permalink}>
-              {t`Open in Slack`}
-            </ExternalLink>
-          )}
-        </Flex>
-        <Card withBorder shadow="none" p="xl">
-          <Messages
-            messages={chatMessages}
-            isDoingScience={false}
-            debug
-            readonly
-          />
-        </Card>
+              <Stack gap="md">
+                <Flex align="baseline" justify="space-between">
+                  <Title order={3}>{t`Conversation`}</Title>
+                  {conversation.slack_permalink && (
+                    <ExternalLink href={conversation.slack_permalink}>
+                      {t`Open in Slack`}
+                    </ExternalLink>
+                  )}
+                </Flex>
+                <Card withBorder shadow="none" p="xl">
+                  <Messages
+                    messages={chatMessages}
+                    isDoingScience={false}
+                    debug
+                    readonly
+                  />
+                </Card>
+              </Stack>
+
+              {queries.length > 0 && (
+                <Stack gap="md">
+                  <Title order={3}>{t`Queries generated`}</Title>
+                  {queries.map((query) => (
+                    <GeneratedQueryCard
+                      key={
+                        query.call_id ?? `${query.message_id}-${query.query_id}`
+                      }
+                      query={query}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </MonitorPageContent>
+        </Box>
       </Stack>
-
-      {queries.length > 0 && (
-        <Stack gap="md">
-          <Title order={3}>{t`Queries generated`}</Title>
-          {queries.map((query) => (
-            <GeneratedQueryCard
-              key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-              query={query}
-            />
-          ))}
-        </Stack>
-      )}
-    </Stack>
+    </Flex>
   );
 }
 

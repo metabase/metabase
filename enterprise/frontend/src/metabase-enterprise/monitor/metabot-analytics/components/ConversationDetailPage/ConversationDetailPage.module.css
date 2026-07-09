@@ -1,3 +1,11 @@
+.main {
+  overflow: hidden;
+}
+
+.content {
+  overflow-y: auto;
+}
+
 .groupsTarget,
 .groupsTarget:hover,
 .groupsTarget:active,

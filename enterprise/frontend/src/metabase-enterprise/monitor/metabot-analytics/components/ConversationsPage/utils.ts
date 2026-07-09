@@ -3,7 +3,7 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
-import type { SortDirection } from "metabase-types/api";
+import type { SortDirection, SortingOptions } from "metabase-types/api";
 
 import {
   CONVERSATION_SORT_COLUMNS,
@@ -19,6 +19,11 @@ export const PAGE_SIZE = 25;
 
 const DEFAULT_SORT_COLUMN: ConversationSortColumn = "created_at";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
+
+export const DEFAULT_SORTING: SortingOptions<ConversationSortColumn> = {
+  sort_column: DEFAULT_SORT_COLUMN,
+  sort_direction: DEFAULT_SORT_DIRECTION,
+};
 
 type PageUrlState = {
   page: number;

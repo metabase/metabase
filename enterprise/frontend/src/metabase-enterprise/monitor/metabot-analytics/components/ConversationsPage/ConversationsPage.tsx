@@ -1,15 +1,17 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import type { WithRouterProps } from "metabase/router";
-import { Card, Flex, Title } from "metabase/ui";
+import { Center, Flex, Stack } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
 import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 
+import S from "./ConversationsPage.module.css";
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
 
@@ -55,11 +57,9 @@ export function ConversationsPage({ location }: WithRouterProps) {
   const total = conversationsData?.total ?? 0;
 
   return (
-    <SettingsPageWrapper mt="sm">
-      <Flex align="center" justify="space-between">
-        <Title order={2} display="flex" style={{ alignItems: "center" }}>
-          {t`Conversations`}
-        </Title>
+    <Flex h="100%" wrap="nowrap">
+      <Stack className={S.main} flex={1} gap="md">
+        <MonitorHeaderTitle>{t`Conversations`}</MonitorHeaderTitle>
 
         <ConversationFilters
           date={date}
@@ -76,30 +76,36 @@ export function ConversationsPage({ location }: WithRouterProps) {
           tenantOptions={tenantOptions}
           hasTenants={hasTenants}
         />
-      </Flex>
 
-      <Card withBorder shadow="none" p={0}>
-        <ConversationsTable
-          conversations={conversations}
-          isLoading={isLoading}
-          error={error}
-          sortingOptions={{ sort_column, sort_direction }}
-          onSortingOptionsChange={(newSortingOptions) =>
-            patchUrlState({ ...newSortingOptions, page: 0 })
-          }
-        />
-      </Card>
+        {error != null ? (
+          <Center flex={1}>
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Center>
+        ) : (
+          <ConversationsTable
+            conversations={conversations}
+            isLoading={isLoading}
+            sortingOptions={{ sort_column, sort_direction }}
+            onSortingOptionsChange={(newSortingOptions) =>
+              patchUrlState({ ...newSortingOptions, page: 0 })
+            }
+          />
+        )}
 
-      <Flex justify="flex-end">
-        <PaginationControls
-          onPreviousPage={() => patchUrlState({ page: page - 1 })}
-          onNextPage={() => patchUrlState({ page: page + 1 })}
-          page={page}
-          pageSize={PAGE_SIZE}
-          itemsLength={conversations.length}
-          total={total}
-        />
-      </Flex>
-    </SettingsPageWrapper>
+        {!isLoading && error == null && (
+          <Flex justify="flex-end">
+            <PaginationControls
+              onPreviousPage={() => patchUrlState({ page: page - 1 })}
+              onNextPage={() => patchUrlState({ page: page + 1 })}
+              page={page}
+              pageSize={PAGE_SIZE}
+              itemsLength={conversations.length}
+              total={total}
+              showTotal
+            />
+          </Flex>
+        )}
+      </Stack>
+    </Flex>
   );
 }
