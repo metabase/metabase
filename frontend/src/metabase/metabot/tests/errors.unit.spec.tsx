@@ -99,7 +99,7 @@ describe("metabot > errors", () => {
 
   it("should show the backend message for admin quota limit errors", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: adminQuotaLimitErroredResponse });
+    mockAgentEndpoint({ events: adminQuotaLimitErroredResponse });
 
     await enterChatMessage("Who is your favorite?");
 
@@ -112,7 +112,7 @@ describe("metabot > errors", () => {
 
   it("should mask streamed errors with a generic message", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: erroredResponse });
+    mockAgentEndpoint({ events: erroredResponse });
 
     await enterChatMessage("Who is your favorite?");
 
@@ -128,7 +128,7 @@ describe("metabot > errors", () => {
 
   it("should not show a user error when an AbortError is triggered", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?");
 
@@ -156,7 +156,7 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
 
     mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
     await enterChatMessage("Who is your favorite?");
     await assertConversation([
@@ -167,7 +167,7 @@ describe("metabot > errors", () => {
 
   it("should rewind the previous prompt on next submit if last response contained a stream-level error", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: erroredResponse });
+    mockAgentEndpoint({ events: erroredResponse });
 
     await enterChatMessage("first prompt");
     await assertConversation([
@@ -176,7 +176,7 @@ describe("metabot > errors", () => {
     ]);
 
     const retrySpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
     await enterChatMessage("new first prompt");
 

@@ -40,8 +40,14 @@ const QuestionSettingsContent = ({
     ];
   }, [queryResults, question]);
 
-  const onChange = async (settings: VisualizationSettings) => {
-    await updateQuestion(question.updateSettings(settings).lockDisplay());
+  const onChange = async (
+    settings: VisualizationSettings,
+    nextQuestion?: Question,
+  ) => {
+    await updateQuestion(
+      (nextQuestion ?? question).updateSettings(settings).lockDisplay(),
+      { run: Boolean(nextQuestion) },
+    );
   };
 
   const { chartSettings, handleChangeSettings, transformedSeries } =
