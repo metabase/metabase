@@ -1639,15 +1639,15 @@ describe("AIProviderSettingsSection", () => {
       ).toHaveLength(1);
     });
 
-    const connectRequest = fetchMock.callHistory
-      .calls("path:/api/metabot/settings", { method: "PUT" })
-      .at(-1);
-    expect(connectRequest?.options?.body).toBe(
-      JSON.stringify({
-        provider: "openrouter",
-        "api-key": "sk-or-v1-openrouter-test",
-      }),
-    );
+expect(
+  fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+    method: "PUT",
+    body: {
+      provider: "openrouter",
+      "api-key": "sk-or-v1-openrouter-test",
+    },
+  }),
+).toBeDefined();
 
     await screen.findByLabelText("Model");
     await openModelSelector();
