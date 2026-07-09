@@ -116,7 +116,9 @@
   (api/check-superuser)
   ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
   (api/check-404 (pos? (t2/delete! :model/DataApp :name slug)))
-  api/generic-204-no-content)
+  ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
+  ;; above (returning `generic-204-no-content` would fail that validation).
+  nil)
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- DataAppResponse
   "Fetch metadata for a single enabled data app by its slug."
