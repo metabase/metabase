@@ -1,19 +1,10 @@
-import type { HTMLInputTypeAttribute, ReactNode, Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
+import { match } from "ts-pattern";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { FormField, FormTextInput } from "metabase/forms";
-import type { InputComponentType } from "metabase-types/api";
-
-const HTML_INPUT_TYPES: Partial<
-  Record<InputComponentType, HTMLInputTypeAttribute>
-> = {
-  text: "text",
-  date: "date",
-  time: "time",
-  "datetime-local": "datetime-local",
-};
 
 type FormInputWidgetProps = ActionFormFieldProps & {
   actions?: ReactNode;
@@ -49,7 +40,11 @@ export const FormInputWidget = forwardRef(function FormInputWidget(
         ref={ref}
         id={id}
         name={name}
-        type={HTML_INPUT_TYPES[type] ?? "text"}
+        type={match(type)
+          .with("date", () => "date")
+          .with("time", () => "time")
+          .with("datetime-local", () => "datetime-local")
+          .otherwise(() => "text")}
         placeholder={placeholder}
         nullable={nullable}
         disabled={disabled}
