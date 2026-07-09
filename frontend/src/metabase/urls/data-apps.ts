@@ -10,9 +10,6 @@ export const DATA_APP_URL_SEGMENT = "apps";
 /** User-facing page route: `/apps/:name`. */
 export const DATA_APP_ROOT_URL = `/${DATA_APP_URL_SEGMENT}`;
 
-/** Admin management page: `/admin/settings/apps`. */
-export const DATA_APP_ADMIN_URL = `/admin/settings/${DATA_APP_URL_SEGMENT}`;
-
 /**
  * Prefix the BE serves the internal data-app iframe entrypoint at:
  * `/embed/apps`. The host builds the iframe `src` and mirrors its URL from
