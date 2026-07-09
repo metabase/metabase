@@ -388,16 +388,19 @@ describe("issue 16559", () => {
     H.openQuestionsSidebar();
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
+    cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
+      "dashboardReload",
+    );
     cy.button("Save").click();
     cy.wait("@saveDashboard");
 
-    // Leaving edit mode dispatches setEditingDashboard(null) *after* the save
-    // PUT resolves, and that action resets the dashboard sidebar to its closed
-    // default. If we open the info sidebar before it lands, the reset closes it
-    // again and the sidesheet never stays mounted. Wait for view mode to settle
-    // (the "Edit dashboard" button only renders once editing has ended) before
-    // reopening the sidebar (metabase#16559).
-    cy.findByLabelText("Edit dashboard").should("be.visible");
+    // Saving reuses the PUT response and then kicks off a background dashboard
+    // reload (GET .../query_metadata?dashboard_load_id=…). While that reload is
+    // in flight, reopening the info sidebar races with it: the freshly opened
+    // sidesheet is torn down before it mounts, so the click is lost and the
+    // [data-testid="sidesheet"] lookup times out. Wait for the reload to settle
+    // before reopening the sidebar (metabase#16559).
+    cy.wait("@dashboardReload");
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
