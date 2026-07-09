@@ -1192,29 +1192,24 @@ describe("scenarios > embedding > dashboard appearance", () => {
       cy.findByText(questionDetails.name).should("exist");
     });
 
-    // let the resizer settle on the tall tab before capturing the "grown" height
-    cy.wait(1000);
-
+    // the tall tab grows the iframe past 1000px
     cy.get("#iframe")
       .invoke("prop", "clientHeight")
-      .should("be.greaterThan", 1000)
-      .then((tallHeight) => {
-        H.getIframeBody().within(() => {
-          cy.findByRole("tab", { name: TAB_SHORT.name }).click();
-          cy.findByRole("tab", { name: TAB_SHORT.name }).should(
-            "have.attr",
-            "aria-selected",
-            "true",
-          );
-        });
+      .should("be.greaterThan", 1000);
 
-        // give iframe-resizer a chance to recompute after the tab switch
-        cy.wait(1000);
+    H.getIframeBody().within(() => {
+      cy.findByRole("tab", { name: TAB_SHORT.name }).click();
+      cy.findByRole("tab", { name: TAB_SHORT.name }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+    });
 
-        cy.get("#iframe")
-          .invoke("prop", "clientHeight")
-          .should("be.lessThan", tallHeight);
-      });
+    // switching to the short tab shrinks the iframe well below the tall
+    // height -- assert a 500px ceiling (the real shrunk height is smaller
+    // still); the assertion retries until the resizer recomputes
+    cy.get("#iframe").invoke("prop", "clientHeight").should("be.lessThan", 500);
   });
 
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
