@@ -31,10 +31,10 @@ module.exports = (env) => {
 
     entry: {
       "lib-static-viz": {
-        import: "../static-viz-graalvm/index.ts",
+        import: "./app-static-viz.ts",
         library: {
           name: "MetabaseStaticViz",
-          type: "umd",
+          type: "var",
         },
       },
     },

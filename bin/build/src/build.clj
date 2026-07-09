@@ -45,7 +45,7 @@
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "bun" "run" "build-release:static-viz-graalvm"))
+              "bun" "run" "build-release:static-viz"))
       (u/announce "Frontend built successfully."))))
 
 (defn- build-licenses!

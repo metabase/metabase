@@ -24,7 +24,7 @@
 (use-fixtures :each
   (fn warn-possible-rebuild
     [thunk]
-    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz-graalvm`\n\n"
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n\n"
       (thunk))))
 
 (deftest channel-recipients-includes-channel-id-test

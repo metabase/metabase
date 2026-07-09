@@ -179,6 +179,7 @@ const elements = [
     "frontend/src/metabase/app-embed-mcp-public-path.ts",
     "frontend/src/metabase/app-embed-mcp-public-path.unit.spec.ts",
     "frontend/src/metabase/app-public.ts",
+    "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
@@ -243,18 +244,6 @@ const elements = [
     name: "redux-store",
     pattern: "frontend/src/metabase/store.js",
     mode: "full",
-  }),
-  createElement({
-    type: "shared",
-    name: "static-viz-graalvm",
-    pattern: "frontend/src/static-viz-graalvm/**",
-    enforceOutgoing: false,
-  }),
-  createElement({
-    type: "shared",
-    name: "static-viz-server",
-    pattern: "frontend/src/static-viz-server/**",
-    enforceOutgoing: false,
   }),
 ];
 

@@ -1,5 +1,5 @@
 (ns metabase.channel.render.js.graal
-  "The `:graalvm` [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS
+  "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS
   in-process on a pool of sandboxed GraalVM contexts (up to two by default).
 
   We run the JS interpreted (no Graal compiler on a stock JDK) and silence the interpreter warning with
@@ -188,7 +188,7 @@
 (defn- do-with-static-viz-context
   "Borrow a pooled static-viz context and call `f` with it, held exclusively for the call (never let it —
   or a context-bound `Value` — escape). In dev, builds and closes a throwaway context per call so a fresh
-  `bun run build-static-viz-graalvm` is picked up without a REPL restart."
+  `bun run build-static-viz` is picked up without a REPL restart."
   [f]
   (if config/is-dev?
     (let [context (generate-context!)]
@@ -210,11 +210,12 @@
      (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
 
 (defn renderer
-  "The `:graalvm` [[metabase.channel.render.js.protocol/StaticVizRenderer]] — runs the static-viz JS
-  in-process on the pooled GraalVM context."
+  "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]] — runs the static-viz JS
+  in-process on the pooled GraalVM context. Each method JSON-encodes its `input` map for the bundle and
+  decodes the bundle's JSON result back into Clojure data."
   []
   (reify js.protocol/StaticVizRenderer
     (chart [_ input]
-      (call-js "renderChart" [(json/encode input)]))
+      (json/decode+kw (call-js "renderChart" [(json/encode input)])))
     (cell-background-colors [_ input]
-      (call-js "getCellBackgroundColors" [(json/encode input)]))))
+      (json/decode (call-js "getCellBackgroundColors" [(json/encode input)])))))

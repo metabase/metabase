@@ -1,8 +1,8 @@
 (ns metabase.channel.render.js.svg
   "Functions to render charts as svg strings by invoking the static-viz JavaScript bundle (built by `bun run
-  build-static-viz-graalvm`) through [[metabase.channel.render.js.protocol]], which runs the JS on either a pooled
-  in-process GraalVM context or a remote HTTP renderer. This namespace has wrapper functions that JSON-encode their
-  arguments, call the corresponding protocol function, and rasterize the resulting SVG to PNG bytes via Batik."
+  build-static-viz`) through [[metabase.channel.render.js.protocol]], which runs the JS on a pooled in-process
+  GraalVM context. This namespace has wrapper functions that build the argument map, call the corresponding
+  protocol function, and rasterize the resulting SVG to PNG bytes via Batik."
   (:require
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]
@@ -11,8 +11,7 @@
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.channel.render.style :as style]
    [metabase.lib-be.core :as lib-be]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.json :as json])
+   [metabase.premium-features.core :as premium-features])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -173,7 +172,6 @@
                           :data          data
                           :settings      settings
                           :tokenFeatures (premium-features/token-features)})
-      json/decode+kw
       :content
       svg-string->bytes))
 
@@ -191,9 +189,7 @@
                             *chart-size*
                             (assoc :width (:width *chart-size*)
                                    :height (:height *chart-size*)
-                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))))})
-      json/decode+kw
-      (update :type (fnil keyword "unknown"))))
+                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))))})      (update :type (fnil keyword "unknown"))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
@@ -203,7 +199,6 @@
                           :card          card
                           :data          data
                           :tokenFeatures (premium-features/token-features)})
-      json/decode+kw
       :content
       svg-string->bytes))
 

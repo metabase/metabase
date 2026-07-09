@@ -1,17 +1,13 @@
 (ns metabase.channel.render.js.renderer
-  "Picks the static-viz [[metabase.channel.render.js.protocol/StaticVizRenderer]] implementation for the
-  configured [[metabase.channel.settings/static-viz-mode]]: the in-process GraalVM renderer
-  (default) or the remote HTTP renderer."
+  "Hands callers the static-viz [[metabase.channel.render.js.protocol/StaticVizRenderer]] implementation:
+  the in-process GraalVM renderer. Kept behind the protocol so an alternative backend can be slotted in
+  without touching the callers ([[metabase.channel.render.js.svg]], [[metabase.channel.render.js.color]])."
   (:require
-   [metabase.channel.render.js.graal :as graal]
-   [metabase.channel.render.js.remote :as remote]
-   [metabase.channel.settings :as channel.settings]))
+   [metabase.channel.render.js.graal :as graal]))
 
 (set! *warn-on-reflection* true)
 
 (defn renderer
-  "The static-viz renderer for the configured mode."
+  "The static-viz renderer."
   []
-  (if (= :remote (channel.settings/static-viz-mode))
-    (remote/renderer (channel.settings/static-viz-remote-url))
-    (graal/renderer)))
+  (graal/renderer))

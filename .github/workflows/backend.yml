@@ -182,7 +182,7 @@ jobs:
         with:
           java-version: "${{ matrix.java-version }}"
       - name: Build static-viz frontend
-        run: bun run build-static-viz-graalvm
+        run: bun run build-static-viz
         env:
           MB_EDITION: ${{ matrix.job.edition }}
 

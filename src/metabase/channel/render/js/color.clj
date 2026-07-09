@@ -5,7 +5,6 @@
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -64,12 +63,11 @@
           (empty? (or (:table.column_formatting viz-settings)
                       (get viz-settings "table.column_formatting"))))
     (vec (repeat (count cells) nil))
-    (-> (js.protocol/cell-background-colors
-         (renderer/renderer)
-         {:rows     rows
-          :cols     cols
-          :settings viz-settings
-          :cells    (mapv (fn [[value row-index column-name]]
-                            [(->js-value value) row-index column-name])
-                          cells)})
-        json/decode)))
+    (js.protocol/cell-background-colors
+     (renderer/renderer)
+     {:rows     rows
+      :cols     cols
+      :settings viz-settings
+      :cells    (mapv (fn [[value row-index column-name]]
+                        [(->js-value value) row-index column-name])
+                      cells)})))
