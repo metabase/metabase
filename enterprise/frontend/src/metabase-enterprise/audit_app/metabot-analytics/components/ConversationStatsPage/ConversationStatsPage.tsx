@@ -263,7 +263,6 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         mt="sm"
         title={hasDataComplexityFeature ? t`Usage stats` : undefined}
       >
-        <DataComplexitySection />
         <Flex align="center" justify="space-between">
           {hasDataComplexityFeature ? (
             <Title order={3} display="flex" style={{ alignItems: "center" }}>
@@ -372,6 +371,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             h={500}
           />
         </SimpleGrid>
+
+        <DataComplexitySection />
       </SettingsPageWrapper>
     </MetabotAdminLayout>
   );

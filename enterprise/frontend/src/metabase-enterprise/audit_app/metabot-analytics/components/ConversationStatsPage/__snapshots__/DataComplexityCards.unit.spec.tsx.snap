@@ -109,7 +109,7 @@ exports[`DataComplexityCards renders the data complexity cards 1`] = `
           color="text-primary"
           data-size="md"
         >
-          The subset the internal Metabot can surface with its current scope.
+          The subset the internal Metabot can see.
         </div>
         <div>
           <div
