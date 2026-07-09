@@ -2279,7 +2279,16 @@ describe("scenarios > metrics > explorer", () => {
         waitForAnimations: true,
       });
       runFormula();
-      cy.wait("@dataset");
+      // Wait for the expression to fully commit before asserting, the same way
+      // addMetricInputSequence does after every run. The manual edit path used to
+      // rely on a single `cy.wait("@dataset")`, which can resolve on an in-flight
+      // recompute and let the assertion run while the editor is still collapsing —
+      // a window in which the re-parsed formula tokens are momentarily unmapped
+      // from their filter-bearing definitions, so MetricsFilterPills renders
+      // nothing and the chart shows an intermediate unfiltered render.
+      cy.findByTestId("metrics-viewer-search-input").should("not.exist");
+      cy.findByTestId("run-expression-button").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
       assertMetricMath();
     });
 
