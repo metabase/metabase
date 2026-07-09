@@ -1,8 +1,8 @@
 name: CI Conductor quarantine gate
 description: >-
   Check this job's test failures against ci-conductor's quarantine list.
-  Either enforces the quarantine or only prints a verdict.
-  No-ops unless CI_CONDUCTOR_BASE_URL is set.
+  Either enforces the quarantine or only prints a verdict (dry run).
+  Fails closed when enforcing but the `CI_CONDUCTOR_BASE_URL` is missing or unreachable.
 
 inputs:
   adapter:
