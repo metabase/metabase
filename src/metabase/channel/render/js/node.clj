@@ -7,7 +7,7 @@
   The bundle and the CLI are copied out of the classpath into a temp working directory on first use (both
   may live inside the jar at runtime, and `node` needs real files on disk). The pool holds up to two
   processes, each held exclusively per render (so at most two renders run at once); with a min of 0 it
-  shrinks to 0 when idle, killing the processes after ~10 minutes with no work.
+  shrinks to 0 when idle, killing the processes after 1 minute with no work.
 
   Requires a `node` binary on the host's PATH."
   (:require
