@@ -103,6 +103,7 @@ export function ChartClickPopover({
   const handleAddComment = async (content: DocumentContent) => {
     const highlighted: HighlightedObject = {
       cardId: clicked.cardId,
+      columnName: clicked.column?.name,
       dimensions: clicked.dimensions?.map((d) => ({
         value: d.value,
         columnName: d.column.name,

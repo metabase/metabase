@@ -349,6 +349,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     className,
     gridSize,
     hovered,
+    highlighted,
     onHoverChange,
     visualizationIsClickable,
     onVisualizationClick,
@@ -474,6 +475,22 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
   };
 
+  const isSeriesHighlighted = card.id === highlighted?.cardId;
+  const dimensionColumn = cols[dimensionIndex];
+  const highlightedDimension = highlighted?.dimensions?.find(
+    (d) => d.columnName === dimensionColumn?.name,
+  );
+  const highlightedKey = highlightedDimension
+    ? getCanonicalRowKey(highlightedDimension.value, settings["map.region"])
+    : null;
+
+  const isFeatureHighlighted = (feature: Feature): boolean | null => {
+    if (!isSeriesHighlighted || !highlightedDimension) {
+      return null;
+    }
+    return getFeatureKey(feature) === highlightedKey;
+  };
+
   const aspectRatio = computeAspectRatio(
     projection,
     projectionFrame,
@@ -515,6 +532,8 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
           series={series}
           geoJson={geoJson}
           getColor={getColor}
+          isFeatureHighlighted={isFeatureHighlighted}
+          highlightedKey={highlightedKey}
           onHoverFeature={onHoverFeature}
           onClickFeature={onClickFeature}
           projection={projection}
