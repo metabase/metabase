@@ -41,44 +41,45 @@ export const createSessionMiddleware = (
 ): SessionMiddleware => {
   let intervalId: ReturnType<typeof setInterval> | undefined;
 
-  const sessionMiddlware: SessionMiddleware = (store) => (next) => (action) => {
-    if (
-      intervalId == null ||
-      (isAction(action) && resetActions.includes(action.type))
-    ) {
-      clearInterval(intervalId);
+  const sessionMiddleware: SessionMiddleware =
+    (store) => (next) => (action) => {
+      if (
+        intervalId == null ||
+        (isAction(action) && resetActions.includes(action.type))
+      ) {
+        clearInterval(intervalId);
 
-      let wasLoggedIn = getIsLoggedIn();
+        let wasLoggedIn = getIsLoggedIn();
 
-      // get the redirect url before refreshing the session because after the refresh the url will be reset
-      const redirectUrl = getRedirectUrl();
+        // get the redirect url before refreshing the session because after the refresh the url will be reset
+        const redirectUrl = getRedirectUrl();
 
-      if (wasLoggedIn && !!redirectUrl && !preventImmedidateRedirect()) {
-        store.dispatch(replace(redirectUrl));
+        if (wasLoggedIn && !!redirectUrl && !preventImmedidateRedirect()) {
+          store.dispatch(replace(redirectUrl));
+        }
+
+        intervalId = setInterval(async () => {
+          const isLoggedIn = getIsLoggedIn();
+
+          if (isLoggedIn !== wasLoggedIn) {
+            wasLoggedIn = isLoggedIn;
+
+            if (isLoggedIn) {
+              await store.dispatch(refreshSession())?.unwrap();
+
+              if (redirectUrl !== null) {
+                store.dispatch(replace(redirectUrl));
+              }
+            } else {
+              const url = location.pathname + location.search + location.hash;
+              store.dispatch(logout(url));
+            }
+          }
+        }, COOKIE_POOLING_TIMEOUT);
       }
 
-      intervalId = setInterval(async () => {
-        const isLoggedIn = getIsLoggedIn();
+      next(action);
+    };
 
-        if (isLoggedIn !== wasLoggedIn) {
-          wasLoggedIn = isLoggedIn;
-
-          if (isLoggedIn) {
-            await store.dispatch(refreshSession())?.unwrap();
-
-            if (redirectUrl !== null) {
-              store.dispatch(replace(redirectUrl));
-            }
-          } else {
-            const url = location.pathname + location.search + location.hash;
-            store.dispatch(logout(url));
-          }
-        }
-      }, COOKIE_POOLING_TIMEOUT);
-    }
-
-    next(action);
-  };
-
-  return sessionMiddlware;
+  return sessionMiddleware;
 };
