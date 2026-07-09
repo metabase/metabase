@@ -81,6 +81,27 @@ describe("modalRoute", () => {
     expect(pathname()).toBe("/account/notifications");
   });
 
+  // The admin permissions pages hang modal routes off a parent whose path uses
+  // v3 optional groups, so the parent matches a variable number of segments.
+  it("closes to the right parent under a route with optional groups", async () => {
+    const { pathname } = setup(
+      <Route
+        path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
+        component={CollectionPage}
+      >
+        {modalRoute("impersonated/group/:groupId", TestModal, { modalProps })}
+      </Route>,
+      "/database/1/impersonated/group/2",
+    );
+
+    expect(screen.getByText("Collection page")).toBeInTheDocument();
+
+    await close();
+
+    expect(pathname()).toBe("/database/1");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("wraps the modal component in a dialog by default", () => {
     setup(
       <Route path="collection/:slug" component={CollectionPage}>

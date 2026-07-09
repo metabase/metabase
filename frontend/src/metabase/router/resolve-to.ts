@@ -1,4 +1,4 @@
-import type { PlainRoute } from "./react-router";
+import { type PlainRoute, matchPattern } from "./react-router";
 import type { Path, To } from "./types";
 import { parsePath } from "./utils";
 
@@ -8,33 +8,47 @@ import { parsePath } from "./utils";
  * so a route whose path spans several segments (`pulse/:pulseId/archive`) is
  * left in a single step, and a pathless route is left in no steps at all.
  *
- * Only the v3 path syntax the app actually uses is understood: literal
- * segments, `:param` (one segment), and a splat (`*`), which ends the base like
- * it does in v7.
+ * How much of the URL a route accounts for is measured with v3's own
+ * `matchPattern` rather than by counting `/`. A v3 pattern segment does not map
+ * to one URL segment: `database(/:databaseId)(/schema/:schemaName)` matches
+ * anything from `database` to `database/1/schema/public`.
  */
 export function getRoutePathnames(
   routes: PlainRoute[],
   locationPathname: string,
 ): string[] {
-  const locationSegments = locationPathname.split("/").filter(Boolean);
-  let matchedSegments = 0;
+  let matched = "";
+  let remaining = locationPathname;
 
   return routes.map((route) => {
     const path = route.path;
     if (path) {
-      const segments = countMatchedSegments(path);
-      matchedSegments = path.startsWith("/")
-        ? segments
-        : matchedSegments + segments;
+      // v3 matches an absolute child path against the whole pathname rather
+      // than against what its parents left over.
+      if (path.startsWith("/")) {
+        matched = "";
+        remaining = locationPathname;
+      }
+
+      const match = matchPattern(path, remaining);
+      if (match) {
+        // `matchPattern` hands back the separator at the head of the remainder,
+        // so what it consumed is the rest of the string.
+        const consumed = remaining.slice(
+          0,
+          remaining.length - match.remainingPathname.length,
+        );
+        matched += consumed;
+        remaining = match.remainingPathname;
+      }
     }
-    return "/" + locationSegments.slice(0, matchedSegments).join("/");
+    return withoutTrailingSlash(matched);
   });
 }
 
-function countMatchedSegments(path: string): number {
-  const segments = path.split("/").filter(Boolean);
-  const splatIndex = segments.findIndex((segment) => segment.includes("*"));
-  return splatIndex === -1 ? segments.length : splatIndex;
+function withoutTrailingSlash(pathname: string): string {
+  const trimmed = pathname.replace(/\/+$/, "");
+  return trimmed === "" ? "/" : trimmed;
 }
 
 /**
