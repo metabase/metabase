@@ -207,7 +207,6 @@ function renderTreemapChartSvg({
   // 2nd to render/hide labels
   chart.setOption(getStaticTreemapOption(config, layouts));
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
-  // Free the ECharts/zrender SSR instance; it is otherwise never released (memory leak).
   chart.dispose();
   return chartSvg;
 }
