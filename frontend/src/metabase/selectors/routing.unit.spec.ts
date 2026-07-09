@@ -28,18 +28,16 @@ describe("getLocation", () => {
   });
 
   it("falls back to a default location when routing is absent", () => {
-    // The optional-chaining fallback in the selector — relied on before the
-    // history sync has run.
     const state = { ...createMockState(), routing: undefined } as any;
 
-    expect(getLocation(state)).toEqual({
-      pathname: "",
-      search: "",
-      query: {},
-      hash: "",
-      state: undefined,
-      action: "POP",
-      key: "",
+    expect(getLocation(state)).toEqual(createMockLocation({ pathname: "" }));
+  });
+
+  it("falls back to a default location before the history sync has run", () => {
+    const state = createMockState({
+      routing: createMockRoutingState({ locationBeforeTransitions: null }),
     });
+
+    expect(getLocation(state)).toEqual(createMockLocation({ pathname: "" }));
   });
 });

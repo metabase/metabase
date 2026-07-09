@@ -5,11 +5,11 @@ import type { RouterState } from "metabase/router";
 export const createMockRoutingState = (
   opts?: Partial<RouterState>,
 ): RouterState => {
+  const location = opts?.locationBeforeTransitions;
   return {
     ...opts,
-    locationBeforeTransitions: createMockLocation(
-      opts?.locationBeforeTransitions ?? undefined,
-    ),
+    locationBeforeTransitions:
+      location === null ? null : createMockLocation(location),
   };
 };
 
