@@ -359,7 +359,10 @@
             (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine ""))))
   (testing "the fully qualified form the API returns in :engine is accepted"
     (is (=? {:engine "search.engine/in-place"}
-            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "search.engine/in-place")))))
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "search.engine/in-place"))))
+  (testing "a repeated search_engine param fails validation rather than erroring"
+    (is (=? {:errors {:search_engine some?}}
+            (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine ["appdb" "in-place"])))))
 
 (deftest engine-cookie-staleness-test
   (let [request-with-cookie {:cookies {"metabase.SEARCH_ENGINE" {:value "appdb"}}}]

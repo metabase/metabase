@@ -40,7 +40,10 @@
       (is (= :search.engine/appdb (search.engine/default-engine)))))
   (testing "an unknown configured engine is ignored rather than breaking resolution"
     (with-engines {:supported all-engines :configured :elastic}
-      (is (= :search.engine/semantic (search.engine/default-engine))))))
+      (is (= :search.engine/semantic (search.engine/default-engine)))))
+  (testing "a legacy engine name is canonicalized"
+    (with-engines {:supported all-engines :configured :fulltext}
+      (is (= :search.engine/appdb (search.engine/default-engine))))))
 
 (deftest search-engine-setting-test
   (testing "the setting computes the resolved engine when no value is configured"
@@ -80,4 +83,7 @@
     (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}
                    :configured :appdb
                    :additional ["semantic" "elastic"]}
+      (is (= [:search.engine/appdb] (search.engine/active-engines)))))
+  (testing "legacy engine names in additional engines are canonicalized"
+    (with-engines {:supported all-engines :configured :in-place :additional ["fulltext"]}
       (is (= [:search.engine/appdb] (search.engine/active-engines))))))

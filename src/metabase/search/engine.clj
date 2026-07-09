@@ -124,12 +124,24 @@
     (swap! warned-engine-values conj value)
     (log/warn message)))
 
+(def ^:private legacy-engine-names
+  "Renamed engines that may still arrive via old configuration or long-lived cookies."
+  {"fulltext" "appdb"})
+
+(defn canonical-engine
+  "Coerce an engine name (string or keyword) to its canonical engine keyword, resolving legacy names.
+  Every configuration and request boundary must canonicalize through this, so that engine identities
+  compare with =."
+  [value]
+  (let [engine-name (name value)]
+    (keyword "search.engine" (get legacy-engine-names engine-name engine-name))))
+
 (defn- validated-engine
   "Coerce a configured engine name to a known engine keyword.
   Unknown values return nil with a one-time warning, so a typo in MB_SEARCH_ENGINE cannot break search."
   [value]
   (when value
-    (let [engine (keyword "search.engine" (name value))]
+    (let [engine (canonical-engine value)]
       (if (known-engine? engine)
         engine
         (warn-once value (format "Ignoring unknown search engine: %s" value))))))

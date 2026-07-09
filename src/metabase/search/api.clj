@@ -58,17 +58,12 @@
         (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
         nil))))
 
-(def ^:private legacy-engine-names
-  "Renamed engines still arriving via long-lived cookies."
-  {"fulltext" "appdb"})
-
 (defn- param->engine
   "Parse a search_engine param or cookie value into an engine keyword, nil when blank.
   Tolerates the fully qualified form the API returns in the :engine response field, and legacy engine names."
   [value]
   (when-not (str/blank? value)
-    (let [short-name (last (str/split value #"/"))]
-      (keyword "search.engine" (get legacy-engine-names short-name short-name)))))
+    (search.engine/canonical-engine (last (str/split value #"/")))))
 
 (defn- check-engine-serves!
   "400 when an explicitly requested engine cannot serve searches, naming the cause."
@@ -99,19 +94,28 @@
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      ;; Endpoints read :query-params (string keys), so that is where the engine must be injected.
-     (if-let [engine (param->engine (get-in request [:query-params "search_engine"]))]
-       (try
-         (check-engine-serves! engine)
-         (handler (assoc-in request [:query-params "search_engine"] (name engine))
-                  (set-engine-cookie! respond (name engine))
-                  raise)
-         (catch Exception e
-           (raise e)))
-       (let [cookie (cookie-engine request)]
-         (handler (cond-> request
-                    cookie (assoc-in [:query-params "search_engine"] cookie))
-                  respond
-                  raise))))
+     (let [raw (get-in request [:query-params "search_engine"])]
+       (cond
+         ;; A repeated query param parses as a vector: pass it through for schema validation to reject.
+         (and raw (not (string? raw)))
+         (handler request respond raise)
+
+         (param->engine raw)
+         (let [engine (param->engine raw)]
+           (try
+             (check-engine-serves! engine)
+             (handler (assoc-in request [:query-params "search_engine"] (name engine))
+                      (set-engine-cookie! respond (name engine))
+                      raise)
+             (catch Exception e
+               (raise e))))
+
+         :else
+         (let [cookie (cookie-engine request)]
+           (handler (cond-> request
+                      cookie (assoc-in [:query-params "search_engine"] cookie))
+                    respond
+                    raise)))))
    (fn [prefix]
      (open-api/open-api-spec handler prefix))))
 
