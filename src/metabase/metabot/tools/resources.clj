@@ -569,13 +569,16 @@
       {:structured-output (assoc dashboard :result-type :entity)}
       {:status-code 404 :output (:output result)})))
 
-(defn- present-virtual-dashcard
-  "Virtual dashcards (headings, text cards, links, ...) have no backing Card, so they carry their
-   `dashcard_id` — the handle `update_dashboard` remove/move mutations take. The card's text (when
-   it has any) renders as the item body via `:description`."
-  [{:keys [id visualization_settings]}]
+(defn- present-cardless-dashcard
+  "Dashcards with no backing Card — virtual cards (headings, text, links, ...) and action buttons.
+   They carry their `dashcard_id` — the handle `update_dashboard` remove/move mutations take. The
+   card's text (when it has any) renders as the item body via `:description`."
+  [{:keys [id action_id visualization_settings]}]
   (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
-    {:type        (str "virtual_" (or display "dashcard"))
+    {:type        (cond
+                    display   (str "virtual_" display)
+                    action_id "action"
+                    :else     "virtual_dashcard")
      :dashcard_id id
      :description (:text visualization_settings)}))
 
@@ -587,7 +590,7 @@
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        dashcards    (t2/select [:model/DashboardCard :id :card_id :visualization_settings]
+        dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :visualization_settings]
                                 :dashboard_id dashboard-id
                                 {:order-by [[:row :asc] [:col :asc]]})
         card-ids     (into #{} (keep :card_id) dashcards)
@@ -599,12 +602,11 @@
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
         items        (into []
-                           (keep (fn [{:keys [id card_id visualization_settings] :as dashcard}]
+                           (keep (fn [{:keys [id card_id] :as dashcard}]
                                    (if card_id
                                      (when-let [card (get readable card_id)]
                                        (assoc (present-card card) :dashcard_id id))
-                                     (when (:virtual_card visualization_settings)
-                                       (present-virtual-dashcard dashcard)))))
+                                     (present-cardless-dashcard dashcard))))
                            dashcards)]
     (list-result :dashboard-items items query-params)))
 
