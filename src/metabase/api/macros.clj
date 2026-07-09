@@ -627,18 +627,20 @@
    Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
    tokens from reaching endpoints that haven't opted in."
   [{:keys [metadata], :as _args} :- ::parsed-args]
-  (let [scope            (:scope metadata)
-        scope-middleware (cond
-                           (= scope :unchecked) []
-                           (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
-                           :else ['metabase.api.macros.scope/ensure-scopes-checked])
-        multipart        (:multipart metadata)]
-    (cond-> (vec scope-middleware)
-      multipart
-      (conj `(fn [handler#]
-               (ring.middleware.multipart-params/wrap-multipart-params
-                (wrap-multipart-tempfile-cleanup handler#)
-                ~(if (map? multipart) multipart {})))))))
+  (let [scope                (:scope metadata)
+        scope-middleware     (cond
+                               (= scope :unchecked) []
+                               (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
+                               :else ['metabase.api.macros.scope/ensure-scopes-checked])
+        multipart            (:multipart metadata)
+        multipart-middleware (when multipart
+                               [`(fn [handler#]
+                                   (ring.middleware.multipart-params/wrap-multipart-params
+                                    (wrap-multipart-tempfile-cleanup handler#)
+                                    ~(if (map? multipart) multipart {})))])]
+    ;; middleware are applied left-to-right, so later entries run first on the request. Multipart parsing goes
+    ;; first (innermost) so scope rejections respond 403 before the request body is parsed to tempfiles.
+    (vec (concat multipart-middleware scope-middleware))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler
