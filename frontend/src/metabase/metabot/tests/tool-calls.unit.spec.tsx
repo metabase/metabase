@@ -4,7 +4,7 @@ import { screen, waitFor } from "__support__/ui";
 
 import {
   assertConversation,
-  createMockReadableStream,
+  createMockSSEStream,
   createPauses,
   enterChatMessage,
   input,
@@ -20,15 +20,25 @@ describe("metabot > tool calls", () => {
 
     const [pause1, pause2] = createPauses(2);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `9:{"toolCallId":"x","toolName":"analyze_data","args":""}\n`;
-          yield `a:{"toolCallId":"x","result":""}\n`;
+          yield {
+            type: "tool-input-available",
+            toolCallId: "x",
+            toolName: "analyze_data",
+            input: {},
+          };
+          yield { type: "tool-output-available", toolCallId: "x", output: "" };
           await pause1.promise;
-          yield `9:{"toolCallId":"y","toolName":"analyze_chart","args":""}\n`;
-          yield `a:{"toolCallId":"y","result":""}\n`;
+          yield {
+            type: "tool-input-available",
+            toolCallId: "y",
+            toolName: "analyze_chart",
+            input: {},
+          };
+          yield { type: "tool-output-available", toolCallId: "y", output: "" };
           await pause2.promise;
-          yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          yield { type: "finish", finishReason: "stop" };
         })(),
       ),
     });
@@ -64,17 +74,27 @@ describe("metabot > tool calls", () => {
 
     const [pause1, pause2, pause3] = createPauses(3);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `9:{"toolCallId":"x","toolName":"analyze_data","args":""}\n`;
-          yield `a:{"toolCallId":"x","result":""}\n`;
+          yield {
+            type: "tool-input-available",
+            toolCallId: "x",
+            toolName: "analyze_data",
+            input: {},
+          };
+          yield { type: "tool-output-available", toolCallId: "x", output: "" };
           await pause1.promise;
-          yield `0:"Hey."`;
+          yield { type: "text-delta", id: "t1", delta: "Hey." };
           await pause2.promise;
-          yield `9:{"toolCallId":"y","toolName":"analyze_chart","args":""}\n`;
-          yield `a:{"toolCallId":"y","result":""}\n`;
+          yield {
+            type: "tool-input-available",
+            toolCallId: "y",
+            toolName: "analyze_chart",
+            input: {},
+          };
+          yield { type: "tool-output-available", toolCallId: "y", output: "" };
           await pause3.promise;
-          yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          yield { type: "finish", finishReason: "stop" };
         })(),
       ),
     });
@@ -119,12 +139,20 @@ describe("metabot > tool calls", () => {
   it("should start a new message if there's tool calls between streamed text parts", async () => {
     setup();
     mockAgentEndpoint({
-      textChunks: [
-        `0:"Response 1"`,
-        `9:{"toolCallId":"x","toolName":"x","args":""}`,
-        `a:{"toolCallId":"x","result":""}`,
-        `0:"Response 2"`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+      events: [
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "Response 1" },
+        { type: "text-end", id: "t1" },
+        {
+          type: "tool-input-available",
+          toolCallId: "x",
+          toolName: "x",
+          input: {},
+        },
+        { type: "tool-output-available", toolCallId: "x", output: "" },
+        { type: "text-start", id: "t2" },
+        { type: "text-delta", id: "t2", delta: "Response 2" },
+        { type: "text-end", id: "t2" },
       ],
     });
     await enterChatMessage("Request");
@@ -141,11 +169,11 @@ describe("metabot > tool calls", () => {
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `0:"You, but "\n`;
+          yield { type: "text-delta", id: "t1", delta: "You, but " };
           await pause1.promise;
-          yield `0:"don't tell anyone."\n`;
+          yield { type: "text-delta", id: "t1", delta: "don't tell anyone." };
         })(),
       ),
     });
@@ -154,7 +182,7 @@ describe("metabot > tool calls", () => {
     await userEvent.click(await stopResponseButton());
     pause1.resolve();
 
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
     await enterChatMessage("Who is your favorite?");
     await assertConversation([
       ["user", "Who is your favorite?"],
@@ -170,11 +198,11 @@ describe("metabot > tool calls", () => {
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
+      stream: createMockSSEStream(
         (async function* () {
-          yield `0:"You, but "\n`;
+          yield { type: "text-delta", id: "t1", delta: "You, but " };
           await pause1.promise;
-          yield `0:"don't tell anyone."\n`;
+          yield { type: "text-delta", id: "t1", delta: "don't tell anyone." };
         })(),
       ),
     });
@@ -183,7 +211,7 @@ describe("metabot > tool calls", () => {
     await userEvent.type(await input(), "{Escape}");
     pause1.resolve();
 
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
     await enterChatMessage("Who is your favorite?");
     await assertConversation([
       ["user", "Who is your favorite?"],
