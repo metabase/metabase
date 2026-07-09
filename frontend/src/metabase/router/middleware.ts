@@ -1,5 +1,6 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import type { History } from "history";
+import { match } from "ts-pattern";
 
 import {
   CALL_HISTORY_METHOD,
@@ -30,21 +31,12 @@ export function routerMiddleware(history: History): Middleware {
       return next(action);
     }
 
-    const { method, args } = action.payload;
-    switch (method) {
-      case "push":
-      case "replace":
-        history[method](args[0]);
-        return;
-      case "go":
-        history.go(args[0]);
-        return;
-      case "goBack":
-        history.goBack();
-        return;
-      case "goForward":
-        history.goForward();
-        return;
-    }
+    match(action.payload)
+      .with({ method: "push" }, ({ args }) => history.push(args[0]))
+      .with({ method: "replace" }, ({ args }) => history.replace(args[0]))
+      .with({ method: "go" }, ({ args }) => history.go(args[0]))
+      .with({ method: "goBack" }, () => history.goBack())
+      .with({ method: "goForward" }, () => history.goForward())
+      .exhaustive();
   };
 }
