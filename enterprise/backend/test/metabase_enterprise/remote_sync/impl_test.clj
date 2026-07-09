@@ -104,8 +104,26 @@
                       :model "Database"
                       :id    "clickhouse"
                       :error :metabase-enterprise.serialization.v2.load/not-found})]
-      (is (= "Import failed: Database 'clickhouse' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
+      (is (= "Import failed: Database (`clickhouse`) does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
              (impl/source-error-message e)))))
+  (testing "source-error-message names the entity holding the dangling reference when known (GHY-3992)"
+    (let [e (ex-info "Collection 'xyz789' was not found"
+                     {:path     "Collection xyz789"
+                      :model    "Collection"
+                      :id       "xyz789"
+                      :referrer {:model "Card" :id "abc123" :name "Orders by Month"}
+                      :error    :metabase-enterprise.serialization.v2.load/not-found})]
+      (is (= (str "Import failed: Card `Orders by Month` (`abc123`) references Collection (`xyz789`), which does not "
+                  "exist on this instance. Make sure all referenced databases and other dependencies are set up "
+                  "before importing.")
+             (impl/source-error-message e)))))
+  (testing "trailing whitespace in a referenced name is visible because names are backtick-quoted (GHY-3992)"
+    (let [e (ex-info "Database 'My Database ' was not found"
+                     {:path  "Database My Database "
+                      :model "Database"
+                      :id    "My Database "
+                      :error :metabase-enterprise.serialization.v2.load/not-found})]
+      (is (str/includes? (impl/source-error-message e) "Database (`My Database `)"))))
   (testing "source-error-message produces helpful message for FK database-not-found errors"
     (let [cause (ex-info "table id present, but database not found: [clickhouse nil some_table]"
                          {:table-id ["clickhouse" nil "some_table"]})

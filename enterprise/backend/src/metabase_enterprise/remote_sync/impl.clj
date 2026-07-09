@@ -111,6 +111,29 @@
         where-clause (t2/delete! model-key {:where where-clause})
         :else        (t2/delete! model-key)))))
 
+(defn- quoted
+  "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
+  [s]
+  (str "`" s "`"))
+
+(defn- describe-entity
+  "Renders `{:model :id :name}` as e.g. ``Card `Orders by Month` (`abc123`)``. Omits whichever of name/id is nil."
+  [{:keys [model id] entity-name :name}]
+  (cond-> (or model "Content")
+    entity-name (str " " (quoted entity-name))
+    id          (str " (" (quoted id) ")")))
+
+(defn missing-reference-message
+  "Renders the user-facing message for an import that references content absent from this instance.
+
+  `missing` is `{:model :id :name}` describing the content that could not be found; `referrer` is the same shape
+  for the entity holding the dangling reference, and may be nil when it is unknown. `:name` may be nil on either."
+  [{:keys [missing referrer]}]
+  (format "Import failed: %s does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing."
+          (if referrer
+            (format "%s references %s, which" (describe-entity referrer) (describe-entity missing))
+            (describe-entity missing))))
+
 (defn source-error-message
   "Constructs user-friendly error messages from remote sync source exceptions.
 
@@ -138,8 +161,9 @@
     "Repository cache is stale: the remote repository may have been force-pushed. Please retry the operation."
 
     (= (:error (ex-data e)) :metabase-enterprise.serialization.v2.load/not-found)
-    (let [{:keys [model id]} (ex-data e)]
-      (format "Import failed: %s '%s' does not exist on this instance. Make sure all referenced databases and other dependencies are set up before importing." model id))
+    (let [{:keys [model id referrer]} (ex-data e)]
+      (missing-reference-message {:missing  {:model model :id id}
+                                  :referrer referrer}))
 
     (some-> e ex-cause ex-message (str/includes? "database not found"))
     (format "Import failed: A referenced database does not exist on this instance. %s" (ex-message (ex-cause e)))

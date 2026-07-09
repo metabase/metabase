@@ -61,16 +61,17 @@
                          :error  ::no-known-references})))))
 
 (defn- load-deps!
-  "Given a list of `deps` (hierarchies), [[load-one]] them all.
+  "Given a list of `deps` (hierarchies), [[load-one]] them all. `referrer` describes the entity holding the
+  references, and is attached to any `::not-found` error they raise.
   If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
   our database."
-  [ctx deps]
+  [ctx referrer deps]
   (binding [*warned-version-mismatch* (if (nil? *warned-version-mismatch*) (atom false) *warned-version-mismatch*)]
     (if (empty? deps)
       ctx
       (letfn [(loader [ctx dep]
                 (try
-                  (load-one! ctx dep)
+                  (load-one! ctx dep referrer)
                   (catch Exception e
                     (cond
                       ;; It was missing, but we found it locally, so just return the context.
@@ -105,6 +106,16 @@
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)
      :error      error-type}))
+
+(defn- entity-reference
+  "Describes the entity at `path` as `{:model :id :name}` for use in user-facing error messages.
+  `:name` is nil for models whose name is absent or not a plain string (e.g. Settings, templated Card names)."
+  [path ingested]
+  (let [self (last path)]
+    {:model (:model self)
+     :id    (:id self)
+     :name  (when (string? (:name ingested))
+              (:name ingested))}))
 
 (defn- valid-model-name-for-load? [model-name]
   ;; linear scan, but small n
@@ -148,8 +159,10 @@
   [[metabase.models.serialization/load-one!]] and its various overridable parts, which see.
 
   The only tangling stuff is handling circular dependencies: parts of this is handled by the `serdes/load-one!`
-  function, just outright skipping processing for parts of ingested data."
-  [{:keys [expanding seen circular ingestion] :as ctx} path]
+  function, just outright skipping processing for parts of ingested data.
+
+  `referrer` describes the entity whose dependency list named `path`, or nil at the top level."
+  [{:keys [expanding seen circular ingestion] :as ctx} path referrer]
   (log/debug "Requested" (cond-> {:path (serdes/log-path-str path)}
                            (circular path) (assoc :stripped true)))
   (cond
@@ -161,7 +174,8 @@
                             (load-one! (-> ctx
                                            (update :expanding disj path)
                                            (update :circular conj path))
-                                       path))
+                                       path
+                                       referrer))
     (seen path)           ctx           ; Already been done, can skip it.
     :else
     (let [ingested (serdes.ingest/ingest-one ingestion path)]
@@ -172,10 +186,11 @@
                   model (:model missing)
                   id    (:id missing)]
               (throw (ex-info (format "%s '%s' was not found" model id)
-                              {:path  (serdes/log-path-str path)
-                               :model model
-                               :id    id
-                               :error ::not-found}))))
+                              {:path     (serdes/log-path-str path)
+                               :model    model
+                               :id       id
+                               :referrer referrer
+                               :error    ::not-found}))))
           (log/debug "Local" {:path (serdes/log-path-str path)})
           ctx)
         (let [_                  (log/trace "Loading" (cond-> {:path (serdes/log-path-str path)}
@@ -202,9 +217,10 @@
                                               {:entity_id (:entity_id ingested)
                                                :level     (count expanding)
                                                :deps      (str "[" (str/join ", " (map serdes/log-path-str deps)) "]")}))
+              self               (entity-reference rebuilt-path ingested)
               ctx                (-> ctx
                                      (update :expanding conj path)
-                                     (load-deps! deps)
+                                     (load-deps! self deps)
                                      (update :seen conj path)
                                      (update :expanding disj path))
               _                  (when (seq deps)
@@ -280,7 +296,7 @@
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]
                     (try
-                      (load-one! ctx item)
+                      (load-one! ctx item nil)
                       (catch Exception e
                         (when-not continue-on-error
                           (throw e))
