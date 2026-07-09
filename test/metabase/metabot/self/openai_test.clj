@@ -307,7 +307,7 @@
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
-    (doseq [id ["gpt-5.5" "gpt-5.4-mini" "gpt-5"]]
+    (doseq [id ["gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini" "gpt-5"]]
       (is (true? (#'openai/supported-model? {:id id})) id)))
   (testing "non-white-listed models are not supported"
     (doseq [id ["gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
@@ -318,7 +318,9 @@
     (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
       (with-redefs [http/request (fn [_]
                                    {:status 200
-                                    :body   {:data [{:id "gpt-5-mini"             :created 30}
+                                    :body   {:data [{:id "gpt-5.6-sol"            :created 40}
+                                                    {:id "gpt-5.6-luna"           :created 39}
+                                                    {:id "gpt-5-mini"             :created 30}
                                                     {:id "gpt-5"                  :created 28}
                                                     {:id "gpt-5.4"                :created 25}
                                                     {:id "gpt-4.1"                :created 20}
@@ -328,7 +330,9 @@
                                                     {:id "text-embedding-3-small" :created 8}
                                                     {:id "whisper-1"              :created 7}]}})]
         (is (= [{:id "gpt-5" :display_name "GPT-5"}
-                {:id "gpt-5.4" :display_name "GPT-5.4"}]
+                {:id "gpt-5.4" :display_name "GPT-5.4"}
+                {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
+                {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}]
                (:models (openai/list-models))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -341,7 +345,7 @@
       (is (true? (#'openai/model-supports-temperature? model))
           model)))
   (testing "GPT-5 family and o-series reasoning models do not"
-    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07"
+    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07" "gpt-5.6-sol"
                    "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
       (is (false? (#'openai/model-supports-temperature? model))
           model))))
