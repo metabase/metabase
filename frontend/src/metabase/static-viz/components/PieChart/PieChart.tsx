@@ -29,7 +29,13 @@ function renderPieSvg(
     height: side,
   });
   chart.setOption(option);
-  return sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook ?? false);
+  const chartSvg = sanitizeSvgForBatik(
+    chart.renderToSVGString(),
+    isStorybook ?? false,
+  );
+  // Free the ECharts/zrender SSR instance; it is otherwise never released (memory leak).
+  chart.dispose();
+  return chartSvg;
 }
 
 export function PieChart({
