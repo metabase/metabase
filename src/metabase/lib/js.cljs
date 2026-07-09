@@ -2000,20 +2000,22 @@
 (defn- remove-undefined-properties
   [obj]
   (cond-> obj
-    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+    (object? obj) (gobject/filter (fn [v _k _object] (not (undefined? v))))))
 
 (defn- template-tags-js->cljs
-  [tags]
-  (-> tags
-      (gobject/map (fn [e _ _]
-                     (remove-undefined-properties e)))
-      js->clj
-      (update-vals (fn [tag]
-                     (-> tag
-                         (perf/update-keys keyword)
-                         (update :type keyword)
-                         (m/update-existing :widget-type #(some-> % keyword))
-                         (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))))
+  "Convert a JavaScript Object containing template `tags` to a ClojureScript sequence."
+  [tags-object]
+  (perf/mapv (fn [tag-object]
+               (-> tag-object
+                   remove-undefined-properties
+                   js->clj
+                   ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
+                   ;; Not changing this now in case there's some sort of good reason for doing it manually
+                   (perf/update-keys keyword)
+                   (update :type keyword)
+                   (m/update-existing :widget-type #(some-> % keyword))
+                   (m/update-existing :dimension #(some-> % legacy-ref->mbql5))))
+             (gobject/getValues tags-object)))
 
 (defn- template-tag-cljs->js [tag]
   (-> tag
@@ -2021,6 +2023,16 @@
       (m/update-existing :widget-type #(some-> % u/qualified-name))
       (m/update-existing :dimension #(some-> % ref->legacy-ref))
       (clj->js :keyword-fn u/qualified-name)))
+
+(defn- template-tags-cljs->js
+  "Convert a sequence of template `tags` to a JavaScript Object."
+  [tags]
+  (reduce
+   (fn [obj {tag-name :name, :as tag}]
+     (doto obj
+       (gobject/set (u/qualified-name tag-name) (template-tag-cljs->js tag))))
+   #js {}
+   tags))
 
 (defn ^:export with-template-tags
   "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
@@ -2041,12 +2053,7 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (reduce
-   (fn [obj {tag-name :name, :as tag}]
-     (doto obj
-       (gobject/set (u/qualified-name tag-name) (template-tag-cljs->js tag))))
-   #js {}
-   (lib.core/template-tags a-query)))
+  (template-tags-cljs->js (lib.core/template-tags a-query)))
 
 (defn ^:export has-write-permission
   "Returns whether the database targeted by `a-query` has native write permissions.

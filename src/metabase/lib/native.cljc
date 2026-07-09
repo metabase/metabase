@@ -293,7 +293,9 @@
   Note that this only updates existing tags, and will not blindly set them to `template-tags`; however, initializing a
   query with [[native-query]] should populate them automatically by way of [[extract-template-tags]]."
   [query        :- ::lib.schema/query
-   ;; this function is used by the frontend, so we'll also support a template tag map as input
+   ;; TODO (Cam 2026-07-09) this function still supports a template tag map as input FOR NOW so I don't need to update
+   ;; a million tests, however it would be good at some point to just make this take a list and fix the tests in
+   ;; question.
    updated-tags :- ::lib.schema.template-tag/template-tag-map-or-sequence]
   (let [updated-tags (->> (lib.normalize/normalize ::lib.schema.template-tag/template-tags updated-tags)
                           ;; TODO (Cam 2026-07-08) -- do name normalization automatically as part of normalizing

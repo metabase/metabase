@@ -168,6 +168,30 @@
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
 
+(deftest ^:parallel template-tags-preserve-order-test
+  (let [tags (mapv (fn [i]
+                     {:name         (str "template_tag_" i)
+                      :display-name (str "Template Tag " i)
+                      :type         :number})
+                   (range 10))
+        expected-order ["template_tag_0"
+                        "template_tag_1"
+                        "template_tag_2"
+                        "template_tag_3"
+                        "template_tag_4"
+                        "template_tag_5"
+                        "template_tag_6"
+                        "template_tag_7"
+                        "template_tag_8"
+                        "template_tag_9"]]
+    (is (= expected-order
+           (mapv :name tags)))
+    (let [roundtripped-tags (-> tags
+                                (#'lib.js/template-tags-cljs->js)
+                                (#'lib.js/template-tags-js->cljs))]
+      (is (= expected-order
+             (mapv :name roundtripped-tags))))))
+
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
   (is (false? (lib.js/column-metadata? 1))))
