@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Group, Stack, Text } from "metabase/ui";
+import type { MetabaseColorKey } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
@@ -11,62 +12,80 @@ type Props = {
   app: DataApp;
 };
 
-function SyncStatus({ app }: Props) {
-  if (app.sync_error) {
-    return (
-      <Text size="sm" c="error" title={app.sync_error}>
-        {t`Sync failed`}
-      </Text>
-    );
+const Bullet = () => (
+  <Text size="sm" c="text-secondary" aria-hidden>
+    &bull;
+  </Text>
+);
+
+function getSyncStatus({ sync_error, last_synced_sha }: DataApp): {
+  label: string;
+  color: MetabaseColorKey;
+  title?: string;
+} {
+  if (sync_error) {
+    return { label: t`Sync failed`, color: "error", title: sync_error };
   }
-  if (app.last_synced_sha) {
-    return (
-      <Text size="sm" c="text-tertiary">
-        {t`Synced ${app.last_synced_sha.slice(0, 7)}`}
-      </Text>
-    );
+
+  if (last_synced_sha) {
+    return {
+      label: t`Synced ${last_synced_sha.slice(0, 7)}`,
+      color: "text-secondary",
+    };
   }
-  return (
-    <Text size="sm" c="text-tertiary">
-      {t`Not synced yet`}
-    </Text>
-  );
+
+  return { label: t`Not synced yet`, color: "text-tertiary" };
 }
 
-export function DataAppSummary({ app }: Props) {
+const SyncStatus = ({ app }: Props) => {
+  const { label, color, title } = getSyncStatus(app);
+
   return (
-    <Group align="flex-start" flex="1" wrap="nowrap">
-      <DataAppIcon app={app} />
-      <Stack flex="1" gap="xs" py="xs">
-        {app.enabled ? (
-          <Text
-            component="a"
-            href={Urls.getSubpathSafeUrl(Urls.dataApp(app.name))}
-            target="_blank"
-            rel="noreferrer"
-            fw={700}
-            c="brand"
-          >
-            {app.display_name}
-          </Text>
-        ) : (
-          // Disabled apps aren't reachable (the route 404s), so the name is
-          // plain text rather than a dead link.
-          <Text fw={700} c="text-secondary">
-            {app.display_name}
-          </Text>
-        )}
-        <Group gap="xs" align="center">
-          <Text size="sm" c="text-tertiary" ff="monospace">
-            {Urls.dataApp(app.name)}
-          </Text>
-          <Text size="sm" c="text-tertiary">
-            &bull;
-          </Text>
-          <SyncStatus app={app} />
-        </Group>
-        <DataAppAllowedHosts hosts={app.allowed_hosts} />
-      </Stack>
-    </Group>
+    <Text size="sm" c={color} title={title} lh="1.4">
+      {label}
+    </Text>
   );
-}
+};
+
+export const DataAppSummary = ({ app }: Props) => (
+  <Group align="center" flex="1" wrap="nowrap">
+    <DataAppIcon />
+    <Stack flex="1" gap={2} miw={0}>
+      {app.enabled ? (
+        <Text
+          component="a"
+          href={Urls.getSubpathSafeUrl(Urls.dataApp(app.name))}
+          target="_blank"
+          rel="noreferrer"
+          fw={700}
+          lh="1.4"
+          c="brand"
+        >
+          {app.display_name}
+        </Text>
+      ) : (
+        <Text fw={700} lh="1.4" c="text-secondary">
+          {app.display_name}
+        </Text>
+      )}
+
+      <Group gap="xs" align="center" wrap="wrap">
+        <Text size="sm" c="text-secondary" ff="monospace" lh="1.4">
+          {Urls.dataApp(app.name)}
+        </Text>
+
+        <Bullet />
+
+        <SyncStatus app={app} />
+
+        {app.allowed_hosts.length > 0 && (
+          <>
+            <Bullet />
+
+            <DataAppAllowedHosts hosts={app.allowed_hosts} />
+          </>
+        )}
+      </Group>
+    </Stack>
+  </Group>
+);

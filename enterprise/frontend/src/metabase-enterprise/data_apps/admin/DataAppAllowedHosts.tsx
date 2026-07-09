@@ -1,14 +1,6 @@
-import { useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext } from "ttag";
 
-import {
-  Collapse,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  UnstyledButton,
-} from "metabase/ui";
+import { HoverCard, Stack, Text } from "metabase/ui";
 
 type Props = {
   /** External origins the app may fetch/XHR (from `data_app.yml`). */
@@ -16,52 +8,42 @@ type Props = {
 };
 
 /**
- * The app's network allowlist, shown in the admin list. Collapsed by default
- * (apps usually have none); expands to a vertical list of the allowed origins.
+ * The app's network allowlist, shown inline in the admin list as an underlined
+ * "N allowed hosts" that reveals the origins in a hover card. Renders nothing
+ * when the app declares no allowed hosts.
  */
 export function DataAppAllowedHosts({ hosts }: Props) {
-  const [isOpen, setIsOpen] = useState(false);
-
   if (hosts.length === 0) {
-    return (
-      <Group gap="xs" align="center">
-        <Text size="sm" c="text-tertiary">
-          {t`Allowed hosts`}
-        </Text>
-        <Text size="sm" c="text-tertiary" fs="italic">
-          {t`None`}
-        </Text>
-      </Group>
-    );
+    return null;
   }
 
+  const label = ngettext(
+    msgid`${hosts.length} allowed host`,
+    `${hosts.length} allowed hosts`,
+    hosts.length,
+  );
+
   return (
-    <Stack gap={4}>
-      <UnstyledButton
-        onClick={() => setIsOpen((open) => !open)}
-        aria-expanded={isOpen}
-      >
-        <Group gap={6} align="center" wrap="nowrap">
-          <Icon name={isOpen ? "chevrondown" : "chevronright"} size={12} />
-          <Text size="sm" c="text-tertiary">
-            {t`Allowed hosts (${hosts.length})`}
-          </Text>
-        </Group>
-      </UnstyledButton>
-      <Collapse in={isOpen}>
-        <Stack gap={2} pl="lg">
+    <HoverCard position="bottom-start">
+      <HoverCard.Target>
+        <Text
+          size="sm"
+          c="text-secondary"
+          lh="1.4"
+          style={{ textDecoration: "underline dotted", cursor: "help" }}
+        >
+          {label}
+        </Text>
+      </HoverCard.Target>
+      <HoverCard.Dropdown p="sm">
+        <Stack gap="xs">
           {hosts.map((host, index) => (
-            <Text
-              key={`${index}-${host}`}
-              size="sm"
-              ff="monospace"
-              c="text-secondary"
-            >
+            <Text key={`${index}-${host}`} ff="monospace" size="sm">
               {host}
             </Text>
           ))}
         </Stack>
-      </Collapse>
-    </Stack>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 }

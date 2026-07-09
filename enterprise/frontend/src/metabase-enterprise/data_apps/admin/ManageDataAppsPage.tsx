@@ -188,7 +188,14 @@ export function ManageDataAppsPage() {
         </Flex>
       ) : (
         <Stack gap="md">
-          <Title order={2}>{t`Apps`}</Title>
+          <Group justify="space-between" align="center">
+            <Title order={2}>{t`Apps`}</Title>
+            {apps && apps.length > 0 && (
+              <Text c="text-secondary" pr="md">
+                {t`Enabled`}
+              </Text>
+            )}
+          </Group>
 
           {isAppsLoading && (
             <Flex justify="center" p="xl">

@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useConfirmation, useToast } from "metabase/common/hooks";
 import { Button, Flex, Group, Icon, Switch } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import {
   useDeleteDataAppMutation,
   useSetDataAppEnabledMutation,
@@ -72,28 +71,6 @@ export function DataAppListItem({ app, canRemove = false }: Props) {
       <DataAppSummary app={app} />
 
       <Group flex="0 0 auto" gap="md" wrap="nowrap">
-        <Switch
-          aria-label={t`Enable ${app.display_name}`}
-          checked={enabled}
-          disabled={isLoading}
-          onChange={(event) => handleToggle(event.currentTarget.checked)}
-          size="sm"
-        />
-
-        <Button
-          component="a"
-          href={
-            enabled ? Urls.getSubpathSafeUrl(Urls.dataApp(app.name)) : undefined
-          }
-          target="_blank"
-          rel="noreferrer"
-          leftSection={<Icon name="external" />}
-          variant="subtle"
-          disabled={!enabled}
-        >
-          {t`Open`}
-        </Button>
-
         {canRemove && (
           <Button
             leftSection={<Icon name="trash" />}
@@ -105,6 +82,14 @@ export function DataAppListItem({ app, canRemove = false }: Props) {
             {t`Remove`}
           </Button>
         )}
+
+        <Switch
+          aria-label={t`Enable ${app.display_name}`}
+          checked={enabled}
+          disabled={isLoading}
+          onChange={(event) => handleToggle(event.currentTarget.checked)}
+          size="sm"
+        />
       </Group>
 
       {confirmationModal}
