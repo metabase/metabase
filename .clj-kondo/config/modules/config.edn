@@ -3325,8 +3325,17 @@
 
   enterprise/mfa
   {:team "Graphy"
-   :api  #{metabase-enterprise.mfa.init}
-   :uses #{premium-features}}
+   :api  #{metabase-enterprise.mfa.init
+           metabase-enterprise.mfa.routes}
+   :uses #{api
+           auth-identity
+           config
+           events
+           premium-features
+           request
+           settings
+           util}
+   :model-imports #{:model/AuthIdentity :model/User}}
 
   enterprise/permission-debug
   {:team "UX West"

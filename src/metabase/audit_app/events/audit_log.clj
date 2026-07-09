@@ -182,6 +182,7 @@
 (derive :event/user-reactivated ::user-event)
 (derive :event/password-reset-initiated ::user-event)
 (derive :event/password-reset-successful ::user-event)
+(derive :event/mfa-verification-failed ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic event]

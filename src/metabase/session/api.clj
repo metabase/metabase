@@ -36,9 +36,9 @@
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
-(mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
-  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
-  authenticated."
+(mu/defn- ldap-login :- [:maybe :map]
+  "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
+  result map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username password device-info :- request/DeviceInfo]
   (when (sso/ldap-enabled)
     (let [result (auth-identity/login! :provider/ldap
@@ -56,14 +56,15 @@
                          :errors {:password password-fail-snippet}}))
 
         (:success? result)
-        (:session result)
+        (if (:mfa-pending? result) result (:session result))
 
         :else
         (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                  :status-code 401}))))))
 
-(mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
-  "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
+(mu/defn- email-login :- [:maybe :map]
+  "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
+  map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
@@ -73,7 +74,7 @@
                                       :device-info device-info})]
     (cond
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
-      (:success? result) (:session result)
+      (:success? result) (if (:mfa-pending? result) result (:session result))
       :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                      :status-code 401})))))
 
@@ -85,9 +86,9 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- session.schema/SessionSchema
-  "Attempt to login with different available methods with `username` and `password`, returning new Session ID or
-  throwing an Exception if login could not be completed."
+(mu/defn- login :- [:or session.schema/SessionSchema [:map [:mfa-pending? [:= true]]]]
+  "Attempt to login with different available methods with `username` and `password`, returning a new Session (or an
+  MFA-pending result map when a second factor is required) or throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
@@ -130,10 +131,18 @@
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-key :key, :as session} (login username password (request/device-info request))
-                             response                        (vary-meta {:id (str session-key)}
-                                                                        assoc :metabase-user-id (:user_id session))]
-                         (request/set-session-cookies request response session request-time)))]
+                       (let [result (login username password (request/device-info request))]
+                         (if (:mfa-pending? result)
+                           ;; First factor OK, but a second factor is required: hand back a challenge
+                           ;; token instead of a session. No cookies are set yet.
+                           {:status 200
+                            :body   {:mfa_required true
+                                     :method       (:mfa-method result)
+                                     :mfa_token    (:mfa-token result)}}
+                           (let [{session-key :key, :as session} result
+                                 response                        (vary-meta {:id (str session-key)}
+                                                                            assoc :metabase-user-id (:user_id session))]
+                             (request/set-session-cookies request response session request-time)))))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -267,13 +276,22 @@
                       [:provider/support-access-grant
                        :provider/emailed-secret-password-reset]
                       request-body)]
-    (if (:success? auth-result)
+    (cond
+      (not (:success? auth-result))
+      (api/throw-invalid-param-exception :password (tru "Invalid reset token"))
+
+      ;; The password change succeeded, but the user is MFA-enrolled: issue no session, or anyone
+      ;; who can trigger a reset email routes around the second factor. They log in normally (and
+      ;; get challenged) with the new password.
+      (:mfa-pending? auth-result)
+      {:success true}
+
+      :else
       (let [session  (:session auth-result)
             response (vary-meta {:success true :session_id (str (:key session))}
                                 assoc :metabase-user-id (:user_id session))]
         (request/set-session-cookies request response session
-                                     (t/zoned-date-time (t/zone-id "GMT"))))
-      (api/throw-invalid-param-exception :password (tru "Invalid reset token")))))
+                                     (t/zoned-date-time (t/zone-id "GMT")))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
