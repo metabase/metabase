@@ -531,7 +531,8 @@ Dashcard mutations go under `dashcards` and are applied in order:
 - `add` adds a saved question by `card_id` (optional `display_size`:
   `"wide"`, `"tall"`, or `"full"`)
 - `add_heading` adds a full-width section heading from `text`
-- `add_text` adds a Markdown text card from `text` (optional `display_size`)
+- `add_text` adds a Markdown text card from `text` (optional `display_size`:
+  `"wide"`, `"tall"`, or `"full"`)
 - `remove` removes a dashcard by `dashcard_id`
 - `move` moves a dashcard by `dashcard_id` to `position` `"top"` or `"bottom"`
 

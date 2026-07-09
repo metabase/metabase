@@ -1599,7 +1599,7 @@
                                                            :row 0 :col 0 :size_x 12 :size_y 9}]
       (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
-      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id)))))))
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id))))))
 
 (deftest update-dashboard-dashcards-move-top-test
   (testing "Move a dashcard to the top"

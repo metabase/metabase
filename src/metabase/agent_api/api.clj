@@ -1274,8 +1274,10 @@
        :collection_id   (:collection_id dash)
        :collection_path (collection-path (:collection_id dash))
        :description     (:description dash)
-       :dashcard_ids    (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)
-                                             {:order-by [[:row :asc] [:col :asc]]}))})))
+       ;; `vec` because `select-fn-vec` returns nil (not []) when the dashboard has no cards, and
+       ;; the response schema wants a sequence.
+       :dashcard_ids    (vec (t2/select-fn-vec :id :model/DashboardCard :dashboard_id (:id dash)
+                                               {:order-by [[:row :asc] [:col :asc]]}))})))
 
 ;;; ------------------------------------------------- Update Dashboard -----------------------------------------------
 
@@ -1283,7 +1285,8 @@
   "One dashcard mutation. Discriminated on `:action`:
    - `add`         : requires `card_id`. Auto-positioned. Optional `display_size` (\"wide\", \"tall\", or \"full\").
    - `add_heading` : requires `text`. Adds a full-width section heading.
-   - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`.
+   - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`
+                     (\"wide\", \"tall\", or \"full\").
    - `remove`      : requires `dashcard_id`.
    - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\").
 
@@ -1570,8 +1573,10 @@
        :collection_path (collection-path (:collection_id updated))
        :description     (:description updated)
        :archived        (boolean (:archived updated))
-       :dashcard_ids    (mapv :id (t2/select :model/DashboardCard :dashboard_id id
-                                             {:order-by [[:row :asc] [:col :asc]]}))})))
+       ;; `vec` for the same nil-when-empty reason as the create_dashboard response, and here the
+       ;; empty case is real: a `remove` mutation can clear the dashboard.
+       :dashcard_ids    (vec (t2/select-fn-vec :id :model/DashboardCard :dashboard_id id
+                                               {:order-by [[:row :asc] [:col :asc]]}))})))
 
 ;;; ------------------------------------------------ Create Collection -----------------------------------------------
 
