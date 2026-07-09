@@ -68,6 +68,22 @@
   [present-keys row]
   (contains? present-keys (managed-match-key row)))
 
+(defn classify-index-outcomes
+  "Group managed request `rows` by the lifecycle status a completed full run implies, given `present-keys`
+  (a [[warehouse-key-set]] of what physically landed). An applicable request is `:succeeded` when its index is
+  present, else `:failed`; a `:delete-pending` request is kept (`:delete-pending`) while its index is still present,
+  and dropped (`:delete-row`) once it's gone."
+  [rows present-keys]
+  (group-by (fn [row]
+              (let [applicable? (not= :delete-pending (:status row))
+                    present?    (present-in-warehouse? present-keys row)]
+                (cond
+                  (and applicable? present?) :succeeded
+                  applicable?                :failed
+                  present?                   :delete-pending
+                  :else                      :delete-row)))
+            rows))
+
 (defn- observed-fields
   "The observation fields of a warehouse `::table-index` map, snake-cased for the API."
   [wh]

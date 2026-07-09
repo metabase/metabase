@@ -1003,4 +1003,14 @@
       (is (str/starts-with? stmt "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'by_cat'")
           "guards on the index name before creating")
       (is (str/includes? stmt "CREATE NONCLUSTERED INDEX \"by_cat\"")
-          "still emits the create"))))
+          "still emits the create")))
+  (testing "a SQL-injection payload is escaped in every context the name lands: quoted identifier and N'' literal"
+    (let [[[stmt]] (driver/compile-create-index :sqlserver "dbo" "t"
+                                                {:kind :nonclustered :name "by\"cat'; DROP TABLE x; --" :if-not-exists true
+                                                 :columns [{:name "cat\"; DROP TABLE x; --"}]})]
+      (is (str/includes? stmt "CREATE NONCLUSTERED INDEX \"by\"\"cat'; DROP TABLE x; --\"")
+          "index name is a doubled-quote identifier in the CREATE")
+      (is (str/includes? stmt "(\"cat\"\"; DROP TABLE x; --\")")
+          "column is a doubled-quote identifier")
+      (is (str/includes? stmt "name = N'by\"cat''; DROP TABLE x; --'")
+          "name in the IF NOT EXISTS guard is a doubled-quote N'' string literal"))))

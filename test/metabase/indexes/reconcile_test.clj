@@ -111,6 +111,21 @@
       (is (= 1 (count (get by-flag false))))
       (is (= "dba_made" (-> (get by-flag false) first :name))))))
 
+(deftest classify-index-outcomes-test
+  (testing "each managed request lands in the bucket its warehouse presence + applicability imply"
+    (let [present     (reconcile/warehouse-key-set [wh-btree]) ; only the named by_cat index physically present
+          succ-row    managed-btree                            ; applicable + present -> succeeded
+          fail-row    managed-sortkey                          ; applicable + absent  -> failed
+          kept-row    (assoc managed-btree   :id 8 :status :delete-pending)  ; delete-pending + present -> kept
+          dropped-row (assoc managed-sortkey :id 9 :status :delete-pending)  ; delete-pending + absent  -> row dropped
+          out         (reconcile/classify-index-outcomes [succ-row fail-row kept-row dropped-row] present)]
+      (is (= [1] (map :id (:succeeded out))))
+      (is (= [2] (map :id (:failed out))))
+      (is (= [8] (map :id (:delete-pending out))))
+      (is (= [9] (map :id (:delete-row out))))
+      (testing "every row is classified into exactly one bucket"
+        (is (= 4 (reduce + (map count (vals out)))))))))
+
 (deftest fetch-warehouse-indexes-test
   (testing "delegates to the driver method"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [_driver _db _schema _table] [wh-btree])]
