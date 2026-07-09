@@ -101,7 +101,8 @@
   line protocol so the client can correlate streamed messages with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
            assistant-msg-id external-id]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
+  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
+                                                                  :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
@@ -395,6 +396,12 @@
     (str/starts-with? id "openai.")    "OpenAI"
     :else                              nil))
 
+(defn- openai-model-group
+  "Group an OpenAI model by version family for the picker."
+  [{:keys [id]}]
+  (when-let [version (second (re-find #"^gpt-(\d+(?:\.\d+)?)" id))]
+    (str "GPT-" version)))
+
 (defn- openrouter-model-group
   [{:keys [display_name id]}]
   (or (some-> display_name
@@ -410,6 +417,7 @@
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
     "bedrock"    (assoc model :group (bedrock-model-group model))
+    "openai"     (assoc model :group (openai-model-group model))
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
@@ -427,7 +435,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "bedrock" "openrouter"} provider)
+    (if (contains? #{"anthropic" "bedrock" "openai" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys

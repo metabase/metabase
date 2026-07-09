@@ -16,7 +16,7 @@
   }
 
   svg[data-error] {
-    color: var(--mb-color-error);
+    color: var(--mb-color-feedback-negative);
   }
 
   &:has([data-position]) {
@@ -32,15 +32,15 @@
 
   &[data-disabled] {
     opacity: 1;
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   &::placeholder {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   [data-position="right"] {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   /*
@@ -69,11 +69,11 @@
 
   [data-disabled] & {
     opacity: 1;
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     background-color: var(--mb-color-background_page-tertiary);
 
     &::placeholder {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     }
   }
 }
@@ -85,7 +85,7 @@
   margin-top: 1px;
 
   &:hover {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
     background-color: var(--mb-color-background_surface-hover);
   }
 
@@ -96,7 +96,7 @@
 
   &[data-combobox-disabled] {
     cursor: default;
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     pointer-events: none;
     opacity: 0.75;
   }
@@ -125,7 +125,7 @@
 }
 
 .SelectItemsNothingFound {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   padding: var(--mantine-spacing-sm);
 }
 

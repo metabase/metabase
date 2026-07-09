@@ -297,7 +297,7 @@ const AgentTurnAlert = ({
     <Flex align="center" gap="sm">
       <Icon
         name={variant === "error" ? "warning" : "info"}
-        c={variant === "error" ? "error" : "text-secondary"}
+        c={variant === "error" ? "feedback-negative" : "text-secondary"}
         size="1rem"
         flex="0 0 auto"
       />

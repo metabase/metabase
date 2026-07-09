@@ -31,5 +31,5 @@ export const mutateColors = (whitelabelColors: ColorSettings) => {
 export const staticVizOverrides = {
   "text-primary": baseColors.orion[80],
   "text-secondary": baseColors.orion[60],
-  "text-tertiary": baseColors.orion[40],
+  "text-disabled": baseColors.orion[40],
 };

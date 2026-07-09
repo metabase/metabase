@@ -1,11 +1,11 @@
 .root {
   &[data-disabled] {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     pointer-events: all;
   }
 
   &[data-variant="subtle"] {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
 
     &:hover {
       color: var(--mb-color-text-secondary);
@@ -27,7 +27,7 @@
   }
 
   &[data-variant="warning"] {
-    color: var(--mb-color-warning);
+    color: var(--mb-color-feedback-warning);
     background-color: transparent;
 
     &:hover,
@@ -38,7 +38,7 @@
   }
 
   &[data-variant="error"] {
-    color: var(--mb-color-error);
+    color: var(--mb-color-feedback-negative);
     background-color: transparent;
 
     &:hover,
@@ -62,7 +62,7 @@
 
     &:disabled,
     &[data-disabled] {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       background-color: transparent;
     }
   }
@@ -77,7 +77,7 @@
 
     &:disabled,
     &[data-disabled] {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       background-color: transparent;
     }
   }

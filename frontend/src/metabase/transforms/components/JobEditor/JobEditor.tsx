@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
@@ -9,6 +8,7 @@ import {
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";

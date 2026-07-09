@@ -4,7 +4,7 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useLocale } from "metabase/common/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -153,8 +153,7 @@ export const translateDisplayNames = <T>({
     if (isRecord(element)) {
       return Object.entries(element).reduce((acc, [key, value]) => {
         const shouldTranslate =
-          fieldsToTranslate.includes(key as string) &&
-          typeof value === "string";
+          fieldsToTranslate.includes(key) && typeof value === "string";
 
         // We can't detect if an element has a special pattern (aggregation, binning, temporal bucket) or not here.
         // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
@@ -163,7 +162,7 @@ export const translateDisplayNames = <T>({
         // and inside `translateColumnDisplayName` we fallback to regular tc() call if no pattern is matched.
         const newValue = shouldTranslate
           ? translateColumnDisplayName({
-              displayName: value as string,
+              displayName: value,
               tc,
               locale,
             })

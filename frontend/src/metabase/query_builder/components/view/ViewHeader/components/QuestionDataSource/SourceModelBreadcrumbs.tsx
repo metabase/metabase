@@ -38,7 +38,7 @@ export function SourceModelBreadcrumbs({
           key="collection"
           to={Urls.collection(collection)}
           icon={getIcon({ model: "card", type: question.type() }).name}
-          color="text-tertiary"
+          color="text-disabled"
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Breadcrumb>,
@@ -53,7 +53,7 @@ export function SourceModelBreadcrumbs({
             <span>
               <HeadBreadcrumbs.Breadcrumb
                 icon="warning"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 to={Urls.card(question.card())}
               >
                 {question.displayName()}

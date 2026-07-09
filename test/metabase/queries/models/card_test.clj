@@ -14,12 +14,16 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.stale-test :as stale-test]
+   [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -988,6 +992,23 @@
         (is (=? {:can_run_adhoc_query false}
                 (t2/hydrate no-query :can_run_adhoc_query)))))))
 
+(deftest can-run-adhoc-query-respects-create-queries-perm-test
+  (testing "can_run_adhoc_query reflects a non-admin's create-queries permission on the card's table (#13347)"
+    (let [mp     (mt/metadata-provider)
+          venues (lib.metadata/table mp (mt/id :venues))
+          query  (lib/query mp venues)]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query false}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query))))
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query true}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query)))))))))
+
 (deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
     ;; Here we're testing the specific scenario where an EE instance is downgraded to OSS, but still has the audit
@@ -1634,3 +1655,29 @@
         (let [updated-card (t2/select-one :model/Card :id (:id question))]
           (is (= db2-id (get-in updated-card [:dataset_query :database])))
           (is (= db2-id (:database_id updated-card))))))))
+
+(deftest find-stale-query-test
+  (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Card {stale-id :id}    (stale-test/stale-card {:name "stale" :collection_id col-id})
+                   :model/Card {fresh-id :id}    {:name "fresh" :collection_id col-id
+                                                  :last_used_at (stale-test/datetime-months-ago 1)}
+                   :model/Card {archived-id :id} (stale-test/stale-card {:name "archived" :collection_id col-id
+                                                                         :archived true})]
+      (let [stale-ids (fn [] (set (map :id (t2/query (staleness/find-stale-query
+                                                      :model/Card
+                                                      {:collection-ids #{col-id}
+                                                       :cutoff-date    (stale-test/date-months-ago 6)})))))]
+        (testing "a stale, unarchived card is returned; recent and archived cards are not"
+          (let [ids (stale-ids)]
+            (is (contains? ids stale-id))
+            (is (not (contains? ids fresh-id)))
+            (is (not (contains? ids archived-id)))))
+        (testing "a publicly shared card is excluded only when public sharing is enabled"
+          (mt/with-temp [:model/Card {public-id :id} (stale-test/stale-card
+                                                      {:name "public" :collection_id col-id
+                                                       :public_uuid (str (random-uuid))})]
+            (tu/with-temporary-setting-values [enable-public-sharing false]
+              (is (contains? (stale-ids) public-id)))
+            (tu/with-temporary-setting-values [enable-public-sharing true]
+              (is (not (contains? (stale-ids) public-id))))))))))

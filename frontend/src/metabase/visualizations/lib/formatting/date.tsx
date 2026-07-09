@@ -10,9 +10,9 @@ import {
   hasDay,
   hasHour,
 } from "metabase/utils/formatting/datetime-utils";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
+import type { ColumnSettings } from "metabase-types/api";
 import type { DatetimeUnit } from "metabase-types/api/query";
 import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/guards/settings";
 
@@ -711,10 +711,10 @@ export const SPECIFIC_DATE_TIME_UNITS: DatetimeUnit[] = [
   "minute-of-hour",
 ];
 
-const getDayFormat = (options: OptionsType) =>
+const getDayFormat = (options: ColumnSettings) =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";
 
-const getMonthFormat = (options: OptionsType) =>
+const getMonthFormat = (options: ColumnSettings) =>
   options.compact || options.date_abbreviate ? "MMM" : "MMMM";
 
 export function getDateFormatFromStyle(
@@ -813,7 +813,7 @@ function getEndOfInterval(start: Dayjs, unit: DatetimeUnit | null) {
 export function normalizeDateTimeRangeWithUnit(
   values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
-  options: OptionsType = {},
+  options: ColumnSettings = {},
 ): [Dayjs, Dayjs, number] | [Dayjs, Dayjs] {
   const [a, b] = [values[0], values[1] ?? values[0]].map((d) =>
     parseTimestamp(d, unit, options.local),
@@ -1026,7 +1026,7 @@ function getWeekFormatSpecsWithDateStyle(
 export function formatDateTimeRangeWithUnit(
   values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
-  options: OptionsType = {},
+  options: ColumnSettings = {},
 ) {
   const result = normalizeDateTimeRangeWithUnit(values, unit, options);
   if (result.length === 2) {
@@ -1049,8 +1049,8 @@ export function formatDateTimeRangeWithUnit(
   // Use custom format specs for week unit when date_style is provided
   if (unit === "week" && options.date_style && options.type === "cell") {
     const customSpecs = getWeekFormatSpecsWithDateStyle(
-      options.date_style as string,
-      (options.date_separator as string) || "/",
+      options.date_style,
+      options.date_separator || "/",
     );
     specs = customSpecs;
   }
@@ -1190,7 +1190,7 @@ function formatDateString({
 export function formatRange(
   range: any[],
   formatter: any,
-  options: OptionsType = {},
+  options: ColumnSettings = {},
 ) {
   const [start, end] = range.map((value) => formatter(value, options));
   if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
@@ -1204,14 +1204,14 @@ export function formatRange(
   }
 }
 
-function formatWeek(m: Dayjs, options: OptionsType = {}) {
+function formatWeek(m: Dayjs, options: ColumnSettings = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
 function formatMajorMinor(
   major: string,
   minor: string,
-  options: OptionsType = {},
+  options: ColumnSettings = {},
 ) {
   options = {
     jsx: false,
@@ -1236,7 +1236,7 @@ function formatMajorMinor(
   }
 }
 
-function replaceDateFormatNames(format: string, options: OptionsType) {
+function replaceDateFormatNames(format: string, options: ColumnSettings) {
   return format
     .replace(/\bMMMM\b/g, getMonthFormat(options))
     .replace(/\bdddd\b/g, getDayFormat(options));
@@ -1246,7 +1246,7 @@ export function formatDateTimeWithFormats(
   value: number | string | Date | Dayjs,
   dateFormat: string | undefined,
   timeFormat: string | null,
-  options: OptionsType,
+  options: ColumnSettings,
 ) {
   const m = dayjs.isDayjs(value)
     ? value
@@ -1276,7 +1276,7 @@ export function formatDateTimeWithFormats(
 export function formatDateTimeWithUnit(
   value: number | string | Date | Dayjs,
   unit: DatetimeUnit,
-  options: OptionsType = {},
+  options: ColumnSettings = {},
 ) {
   if (options.isExclude) {
     if (unit === "hour-of-day") {
@@ -1328,7 +1328,8 @@ export function formatDateTimeWithUnit(
   if (unit === "week") {
     if (
       (options.type === "tooltip" || options.type === "cell") &&
-      !options.noRange
+      !options.noRange &&
+      options.column?.source !== "native"
     ) {
       // tooltip show range like "January 1 - 7, 2017"
       return formatDateTimeRangeWithUnit([String(value)], unit, options);
@@ -1349,7 +1350,7 @@ export function formatDateTimeWithUnit(
     dateFormat = getDateFormatFromStyle(
       options.date_style as string,
       unit,
-      options.date_separator as string,
+      options.date_separator,
       options.weekday_enabled,
     );
   }

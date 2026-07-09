@@ -529,8 +529,7 @@ describe("QB Actions > updateQuestion", () => {
           );
 
           const originalCard = getCard();
-          const originalQuery =
-            originalCard.dataset_query as StructuredDatasetQuery;
+          const originalQuery = originalCard.dataset_query;
 
           const cardWithJoin = {
             ...originalCard,
@@ -577,8 +576,7 @@ describe("QB Actions > updateQuestion", () => {
             "loadMetadataForCard",
           );
           const originalCard = getCard();
-          const originalQuery =
-            originalCard.dataset_query as StructuredDatasetQuery;
+          const originalQuery = originalCard.dataset_query;
 
           const cardWithJoin = {
             ...originalCard,

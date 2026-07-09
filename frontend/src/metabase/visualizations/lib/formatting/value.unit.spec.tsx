@@ -5,8 +5,8 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { ColumnSettings } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { formatValue } from "./value";
@@ -14,12 +14,12 @@ import { formatValue } from "./value";
 const SITE_URL = "http://localhost:3000";
 
 describe("formatValue", () => {
-  const setup = (value: any, overrides: Partial<OptionsType> = {}) => {
+  const setup = (value: any, overrides: Partial<ColumnSettings> = {}) => {
     mockSettings();
     const column = createMockColumn({
       base_type: "type/Float",
     });
-    const options: OptionsType = {
+    const options: ColumnSettings = {
       view_as: "auto",
       column: column,
       type: "cell",
@@ -113,7 +113,7 @@ describe("formatValue", () => {
           [2, "2"],
           [3, "Three"],
         ]),
-      } as any);
+      });
       setup(1, { column, scale: 100 });
       expect(screen.getByText("One")).toBeInTheDocument();
 
@@ -132,7 +132,7 @@ describe("formatValue", () => {
           [2, "2"],
           [3, "Three"],
         ]),
-      } as any);
+      });
       setup(1, { column, scale: 100 });
       expect(screen.getByText("1j")).toBeInTheDocument();
 
@@ -151,7 +151,7 @@ describe("formatValue", () => {
           [2, "2"],
           [3, "Three"],
         ]),
-      } as any);
+      });
       setup(1, { column, scale: 100 });
       expect(
         screen.getByText("400,000,000,000,000,000,000"),
@@ -251,7 +251,7 @@ describe("formatValue", () => {
       const column = createMockColumn({
         base_type: "type/Integer",
         remapping: new Map([[1, "Value\nwith\nnewlines"]]),
-      } as any);
+      });
       setup(1, {
         column,
         collapseNewlines: true,

@@ -22,7 +22,9 @@
 
 (def Icon
   "Schema for Timeline and TimelineEvents `icon`"
-  [:enum default-icon "cake" "mail" "warning" "bell" "cloud"])
+  ;; using "mail" icon is deprecated, but we keep it for backwards compatibility
+  [:enum default-icon "cake" "mail" "mail_at" "warning" "bell" "cloud"
+   "info" "note" "event"])
 
 (def Source
   "Timeline Event Source Schema. For Snowplow Events, where the Event is created from is important.

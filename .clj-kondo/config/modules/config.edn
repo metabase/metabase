@@ -180,6 +180,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -687,18 +688,6 @@
    :api  #{}
    :uses :any}
 
-  curated-search
-  {:team "Metabot"
-   :api  #{metabase.curated-search.api
-           metabase.curated-search.core}
-   :uses #{api
-           models
-           premium-features
-           request
-           util}
-   :model-exports #{:model/CuratedSearchEntry}
-   :model-imports #{:model/Card}}
-
   dashboards
   {:team "UX West"
    :api  #{metabase.dashboards.autoplace
@@ -714,6 +703,7 @@
            audit-app
            collections
            config
+           embedding
            events
            lib
            models
@@ -724,6 +714,7 @@
            query-processor
            search
            settings
+           staleness
            sync
            util}
    :model-exports #{:model/Dashboard
@@ -838,7 +829,6 @@
            metabase.driver.common
            metabase.driver.connection
            metabase.driver.ddl.interface
-           metabase.driver.h2
            metabase.driver.impl
            metabase.driver.init
            metabase.driver.mysql
@@ -974,6 +964,13 @@
            tiles
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+
+  entity-retrieval
+  {:team "Metabot"
+   :api  #{metabase.entity-retrieval.core
+           metabase.entity-retrieval.mirror}
+   :uses #{premium-features}
+   :model-imports #{:model/OsiAiContext}}
 
   events
   {:team "DevEx"
@@ -1229,13 +1226,17 @@
    :api  #{metabase.mcp.api
            metabase.mcp.callback-api
            metabase.mcp.core
-           metabase.mcp.init}
+           metabase.mcp.init
+           metabase.mcp.usage}
+   :model-exports #{:model/McpSessionLog
+                    :model/McpToolCallLog}
    :uses #{agent-api
            api
            app-db
            config
            llm
            oauth-server
+           premium-features
            request
            server
            session
@@ -1283,9 +1284,9 @@
               channel
               collections
               config
-              curated-search
               documents
               driver
+              entity-retrieval
               interestingness
               legacy-mbql
               lib
@@ -1489,6 +1490,20 @@
            task
            tracing
            util}}
+
+  osi
+  {:team "Metabot"
+   :api  #{metabase.osi.ai-context.api}
+   :uses #{api
+           app-db
+           entity-retrieval
+           models
+           request
+           util}
+   :model-exports #{:model/OsiAiContext}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/Segment}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1710,6 +1725,7 @@
            content-verification
            dashboards
            documents
+           embedding
            events
            graph
            lib
@@ -1725,6 +1741,8 @@
            query-processor
            request
            search
+           settings
+           staleness
            sync
            util
            view-log
@@ -1932,6 +1950,7 @@
            metabase.sample-data.init}
    :uses #{config
            models
+           permissions
            plugins
            settings
            sync
@@ -1939,6 +1958,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DataPermissions
                     :model/Database
                     :model/Field
                     :model/Table}}
@@ -2187,6 +2207,10 @@
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
+  staleness
+  {:team "UX West"
+   :api  #{metabase.staleness.core}}
+
   startup
   {:team "DevEx"
    :api  #{metabase.startup.core}
@@ -2288,6 +2312,7 @@
            config
            lib
            lib-be
+           mcp
            permissions
            premium-features
            search
@@ -2853,7 +2878,6 @@
            app-db
            audit-app
            classloader
-           config
            driver
            lib
            models
@@ -2981,15 +3005,6 @@
   {:team "DevEx"
    :api  #{metabase-enterprise.core.init}
    :uses :any}
-
-  enterprise/curated-search
-  {:team "Metabot"
-   :api  #{metabase-enterprise.curated-search.init}
-   :uses #{premium-features
-           task
-           util
-           enterprise/semantic-search}
-   :model-imports #{:model/CuratedSearchEntry}}
 
   enterprise/custom-viz-plugin
   {:team "Gadget"
@@ -3167,6 +3182,22 @@
    ;; make token tracking a hook). Drop this dep once the relocation lands.
    :uses #{enterprise/semantic-search}}
 
+  enterprise/entity-retrieval
+  {:team "Metabot"
+   :api  #{metabase-enterprise.entity-retrieval.init}
+   :uses #{analytics-interface
+           collections
+           entity-retrieval
+           premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table}}
+
   enterprise/erd
   {:team "Gadget"
    :api  #{metabase-enterprise.erd.api}
@@ -3227,6 +3258,18 @@
            collections
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
+
+  enterprise/mcp
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.mcp.init}
+   :uses    #{analytics
+              mcp
+              metabot
+              premium-features
+              task
+              util}
+   :model-imports #{:model/McpSessionLog
+                    :model/McpToolCallLog}}
 
   enterprise/memoize-monitor
   {:team "Graphy"
@@ -3488,7 +3531,6 @@
            app-db
            appearance
            collections
-           config
            events
            lib
            logger
@@ -3541,11 +3583,11 @@
    :uses #{analytics
            api
            collections
-           embedding
            premium-features
            queries
            request
            settings
+           staleness
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
@@ -3584,7 +3626,9 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.transforms.api}
    :uses #{premium-features
-           enterprise/transforms-inspector}}
+           util
+           enterprise/transforms-inspector}
+   :model-imports #{:model/Transform}}
 
   enterprise/transforms-inspector
   {:team "Gadget"

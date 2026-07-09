@@ -132,12 +132,14 @@ To make this transform incrementally load the data based on new values of `order
 So your query will look like this:
 
 ```sql
+{% raw %}
 SELECT
   orders_var.id,
   orders_var.total,
   products.title
 FROM
    {{orders_var}} JOIN products on orders_var.product_id = products.id
+{% endraw %}
 ```
 
 In this query,`orders_var` is connected to the `orders` table in variable settings, and "Emit table aliases" toggled on in the variables sidebar.

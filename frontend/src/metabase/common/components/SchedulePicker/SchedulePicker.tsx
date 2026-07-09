@@ -26,8 +26,6 @@ import type {
   ScheduleType,
 } from "metabase-types/api";
 
-import type { SelectOption as LegacySelectOption } from "../Select";
-
 import { DynamicWidthSelect } from "./DynamicWidthSelect";
 import {
   PickerRow,
@@ -77,7 +75,9 @@ const DEFAULT_DAY = "mon";
 /**
  * Transforms legacy Select data format to Mantine Select data format
  */
-function toMantineData(options: LegacySelectOption[]): SelectOption[] {
+type LegacyScheduleOption = { name?: string; value: string | number };
+
+function toMantineData(options: LegacyScheduleOption[]): SelectOption[] {
   return options.map((option) => ({
     label: option.name ?? "",
     value: option.value.toString(),
@@ -316,7 +316,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             minButtonWidth={110}
             value={scheduleType}
             onChange={(value) =>
-              this.handleChangeProperty("schedule_type", value as ScheduleType)
+              this.handleChangeProperty("schedule_type", value)
             }
             data={scheduleOptions.map((scheduleOption) => ({
               label:

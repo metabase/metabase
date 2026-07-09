@@ -52,7 +52,7 @@
   border-radius: var(--default-border-radius);
   width: 266px;
   min-height: 300px;
-  box-shadow: inset -1px -1px 3px var(--mb-color-shadow);
+  box-shadow: inset -1px -1px 3px var(--mb-color-shadow-default);
   padding-bottom: 0.75em;
 }
 
@@ -66,7 +66,7 @@
   bottom: 0;
   margin: auto;
   margin-left: 1em;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .AdminListSearch .AdminInput {
@@ -98,14 +98,14 @@
   margin-right: -0.5em;
   padding-left: 1.5em;
   padding-right: 1.5em;
-  box-shadow: 0 1px 2px var(--mb-color-shadow);
+  box-shadow: 0 1px 2px var(--mb-color-shadow-default);
 }
 
 .AdminListSection {
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-weight: 700;
   font-size: smaller;
   padding-right: 15px; /* set so that table visibility icons align */

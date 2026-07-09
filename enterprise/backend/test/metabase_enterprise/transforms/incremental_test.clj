@@ -81,11 +81,11 @@
   (let [{:keys [field-name]} checkpoint-config
         table-id (mt/id :transforms_products)
         timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
-        query (format "SELECT *, %s AS %s FROM {{source_table}} AS %s ORDER BY %s"
-                      timestamp-sql
-                      (sql.u/quote-name driver/*driver* :field "load_timestamp")
-                      (sql.u/quote-name driver/*driver* :field "source_table")
-                      (sql.u/quote-name driver/*driver* :field field-name))]
+        quoted (fn [field] (sql.u/quote-name driver/*driver* :field field))
+        query (format "SELECT %s, %s, %s, %s, %s AS %s FROM {{source_table}} AS %s ORDER BY %s"
+                      (quoted "name") (quoted "category") (quoted "price") (quoted "created_at")
+                      timestamp-sql (quoted "load_timestamp") (quoted "source_table")
+                      (quoted field-name))]
     {:database (mt/id)
      :type :native
      :native {:query query
@@ -98,10 +98,13 @@
 
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms. "
+
   [checkpoint-config]
   (let [{:keys [field-name]} checkpoint-config]
-    (mt/mbql-query transforms_products {:expressions {"load_timestamp" [:now]}
-                                        :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
+    (mt/mbql-query transforms_products
+      {:expressions {"load_timestamp" [:now]}
+       :fields [$name $category $price $created_at [:expression "load_timestamp"]]
+       :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
 
 (def incremental-python-body
   (str "import pandas as pd\n"
@@ -214,7 +217,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- test-drivers []
-  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse :sqlserver))
+  (mt/normal-drivers-with-feature :transforms/table))
 
 (defn- target-table-gen [prefix]
   {:type     :table
@@ -308,6 +311,31 @@
                                     "Integer checkpoint should advance past initial value")
                                 (is (compare-checkpoint-values checkpoint-type expected-second-checkpoint checkpoint)
                                     (format "Checkpoint should be MAX(%s) from all 17 rows" (:field-name checkpoint-config)))))))))))))))))))
+
+(deftest reset-checkpoint-endpoint-test
+  (testing "POST /api/transform/:id/reset-checkpoint clears the checkpoint and forces a full reprocess"
+    (mt/test-drivers (test-drivers)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target-table (target-table-gen "reset_checkpoint")]
+            (let [checkpoint-config (get checkpoint-configs :integer)
+                  transform-payload (make-incremental-transform-payload "Reset Checkpoint Transform" target-table :mbql checkpoint-config)]
+              (mt/with-temp [:model/Transform transform transform-payload]
+                (testing "first run processes all 16 rows and sets a checkpoint"
+                  (execute-transform-with-ordering! transform :mbql (:field-name checkpoint-config) {:run-method :manual})
+                  (transforms.tu/wait-for-table (:name target-table) 10000)
+                  (is (= 16 (get-table-row-count target-table)))
+                  (is (some? (get-checkpoint-value (:id transform)))))
+                (with-insert-test-products!
+                  [{:name "Reset Checkpoint Extra" :category "Gadget" :price 379.99 :created-at "2024-01-20T10:00:00"}]
+                  (testing "resetting the checkpoint clears the persisted value"
+                    (is (nil? (mt/user-http-request :crowberto :post 204 (format "transform/%s/reset-checkpoint" (:id transform)))))
+                    (is (nil? (get-checkpoint-value (:id transform)))))
+                  (testing "the next run reprocesses the full source table, not just the tail"
+                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (execute-transform-with-ordering! transform :mbql (:field-name checkpoint-config) {:run-method :manual})
+                      (is (= 17 (get-table-row-count target-table))
+                          "full reload replaces the target with all 17 source rows"))))))))))))
 
 (deftest switch-incremental-to-non-incremental-test
   (testing "Switching an incremental transform to non-incremental overwrites data"

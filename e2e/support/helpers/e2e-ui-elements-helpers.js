@@ -31,7 +31,7 @@ export function menu() {
 }
 
 export function modal(options = {}) {
-  return cy.get(".mb-mantine-Modal-content[role='dialog']", options);
+  return cy.get("[role='dialog'][aria-modal='true']", options);
 }
 
 export function tooltip() {
@@ -155,15 +155,32 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  // The toggle flips the sidebar, so blindly clicking it closes an
-  // already-open sidebar (e.g. right after visiting a dashboard, before it
-  // settles). Only click when it isn't already open so this is idempotent.
+  // Opening the sidebar is racy. The toggle flips the sidebar, so blindly
+  // clicking it closes an already-open one. But a single non-retrying read of
+  // its open state isn't safe either: navigating to a dashboard/question
+  // collapses the navbar, and that collapse can land a beat after the page
+  // content renders. The old code could read a lingering-open navbar, skip the
+  // toggle click, then watch it collapse out from under the assertion below.
+  // Re-check after acting and re-open if it collapsed, so the helper self-heals
+  // regardless of a pending collapse.
+  ensureNavigationSidebarOpen();
+  navigationSidebar().should("be.visible");
+}
+
+function ensureNavigationSidebarOpen(attempt = 0) {
+  const MAX_ATTEMPTS = 5;
   navigationSidebar().then(($nav) => {
     if (!$nav.is(":visible")) {
       appBar().findByTestId("sidebar-toggle").click();
     }
   });
-  navigationSidebar().should("be.visible");
+  // Each Cypress command yields a tick, giving a pending collapse time to
+  // flush; if the navbar closed after our first read, try again.
+  navigationSidebar().then(($nav) => {
+    if (!$nav.is(":visible") && attempt < MAX_ATTEMPTS) {
+      ensureNavigationSidebarOpen(attempt + 1);
+    }
+  });
 }
 
 export function closeNavigationSidebar() {

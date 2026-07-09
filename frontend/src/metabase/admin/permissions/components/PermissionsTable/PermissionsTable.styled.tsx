@@ -82,7 +82,7 @@ export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
   text-decoration: underline;
-  color: ${() => color("admin-navbar-inverse")};
+  color: ${() => color("navbar-admin-inverse")};
 `;
 
 export const HintIcon = styled(
@@ -97,7 +97,7 @@ export const HintIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   margin-left: 0.375rem;
   cursor: pointer;
 `;

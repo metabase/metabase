@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -9,6 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -84,7 +84,7 @@ export const BrowseDatabases = () => {
 const CardImageWrapper = ({ database }: { database: string }) => {
   return (
     <Box
-      bg="white"
+      bg="core-white"
       h="xl"
       w="xl"
       className={CS.rounded}

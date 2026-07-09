@@ -81,7 +81,7 @@ const getDefaultPluginCollections = () => ({
   useGetIcon: useGetIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
-  ) => items as Item[],
+  ) => items,
   canCleanUp: (_collection: Collection) => false as boolean,
   useGetCleanUpMenuItems: (
     _collection: Collection,

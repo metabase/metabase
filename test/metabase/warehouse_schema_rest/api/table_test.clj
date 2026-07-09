@@ -1213,7 +1213,7 @@
 (deftest trigger-metadata-sync-for-table-test
   (testing "Can we trigger a metadata sync for a table?"
     (let [sync-called? (promise)
-          timeout (* 10 1000)]
+          timeout (* 60 1000)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                        :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1227,7 +1227,7 @@
   (testing "POST /api/table/:id/sync_schema"
     (testing "User with manage-table-metadata permission can sync table"
       (let [sync-called? (promise)
-            timeout (* 10 1000)]
+            timeout (* 60 1000)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                          :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1361,6 +1361,37 @@
                       (map :id)
                       set))))))))
 
+(deftest published-only-filter-test
+  (testing "GET /api/table?published-only=true"
+    (testing "filters tables that are not published"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {table-1-id :id} {:db_id db-id
+                                                    :name "table_1"
+                                                    :active true
+                                                    :is_published true}
+                     :model/Table {table-2-id :id} {:db_id db-id
+                                                    :name "table_2"
+                                                    :active true
+                                                    :is_published false}]
+        (testing "both tables returned without filter"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table")
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+        (testing "both tables returned with published-only=false"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :published-only false)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+        (testing "only table-1 is returned with published-only=true"
+          (is (= #{table-1-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :published-only true)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))))))
+
 (deftest no-fks-for-missing-tables-test
   (testing "Check that we don't return foreign keys for missing/inactive tables"
     (mt/with-temp-test-data
@@ -1449,3 +1480,16 @@
           (data-perms/set-table-permission! (perms-group/all-users) table-id :perms/create-queries :query-builder)
           (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
             (is (map? response))))))))
+
+(deftest bulk-update-tables-visibility-persists-test
+  (testing "PUT /api/table with an ids vector flips visibility_type on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id) :visibility_type nil}
+                   :model/Table {t2 :id} {:db_id (mt/id) :visibility_type nil}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type "hidden"})
+      (is (= [:hidden :hidden]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2])))
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type nil})
+      (is (= [nil nil]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2]))))))

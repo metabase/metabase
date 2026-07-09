@@ -246,7 +246,7 @@ export const ListViewConfiguration = ({
                     style={{
                       backgroundColor: iconConfig.entityIconEnabled
                         ? getIconBackground(iconConfig.selectedIconColor)
-                        : "var(--mb-color-white)",
+                        : "var(--mb-color-core-white)",
                     }}
                   >
                     {iconConfig.useImageColumn &&
@@ -274,7 +274,7 @@ export const ListViewConfiguration = ({
                         c={
                           iconConfig.entityIconEnabled
                             ? (iconConfig.selectedIconColor as ColorName)
-                            : "text-tertiary"
+                            : "text-disabled"
                         }
                       />
                     )}

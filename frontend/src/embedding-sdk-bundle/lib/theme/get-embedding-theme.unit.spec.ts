@@ -41,6 +41,7 @@ describe("Transform Embedding Theme Override", () => {
         "core-brand": expect.arrayContaining(["hotpink"]),
         "text-primary": expect.arrayContaining(["yellow"]),
         "text-tertiary": expect.arrayContaining(["green"]),
+        "text-disabled": expect.arrayContaining(["green"]),
         "background-primary": expect.arrayContaining(["orange"]),
         "background_page-primary": expect.arrayContaining(["orange"]),
         "background-tertiary": expect.arrayContaining(["brown"]),
@@ -51,7 +52,9 @@ describe("Transform Embedding Theme Override", () => {
         "background_surface-disabled": expect.arrayContaining(["pink"]),
         "text-primary-inverse": expect.arrayContaining(["white"]),
         white: expect.arrayContaining(["white"]),
+        "core-white": expect.arrayContaining(["white"]),
         focus: expect.arrayContaining(["blue"]),
+        "input-focus": expect.arrayContaining(["blue"]),
       },
       other: {
         fontSize: "2rem",

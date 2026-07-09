@@ -127,7 +127,11 @@ export function ControlsContent(props: ControlsContentProps) {
                       color="text-primary"
                       leftSection={
                         columnPickerIcon ? (
-                          <Icon c="brand" name={columnPickerIcon} size={16} />
+                          <Icon
+                            c="core-brand"
+                            name={columnPickerIcon}
+                            size={16}
+                          />
                         ) : undefined
                       }
                       onClick={handleOpenSidebar}

@@ -639,7 +639,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     ],
   },
   "graph.other_category_color": {
-    getDefault: () => color("text-tertiary"),
+    getDefault: () => color("text-disabled"),
   },
   "graph.other_category_aggregation_fn": {
     getHidden: () => true,

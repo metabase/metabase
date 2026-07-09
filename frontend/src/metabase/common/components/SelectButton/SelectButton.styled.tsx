@@ -15,7 +15,7 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
     return highlighted ? color("text-primary-inverse") : color("text-primary");
   } else {
-    return color("text-tertiary");
+    return color("text-disabled");
   }
 };
 
@@ -43,7 +43,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
 
   &:focus {
     border-color: var(--mb-color-core-brand);
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:not(:focus-visible) {

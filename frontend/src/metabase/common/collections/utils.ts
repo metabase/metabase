@@ -111,7 +111,7 @@ export function isEditableCollection(
 }
 
 export function isInstanceAnalyticsCollection(
-  collection?: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type"> | null,
 ): boolean {
   return (
     !!collection &&
@@ -185,7 +185,9 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
-export function isRootCollection(collection: Pick<Collection, "id">): boolean {
+export function isRootCollection(
+  collection: Pick<Collection, "id"> | null | undefined,
+): boolean {
   return canonicalCollectionId(collection?.id) === null;
 }
 
@@ -359,7 +361,7 @@ export function isValidCollectionId(
 }
 
 export const getCollectionName = (
-  collection: Pick<Collection, "id" | "name">,
+  collection: Pick<Collection, "id" | "name"> | null | undefined,
 ) => {
   if (isRootCollection(collection)) {
     return t`Our analytics`;
@@ -427,7 +429,7 @@ export function getCollectionIcon(
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
   return type
     ? {
-        name: type.icon as unknown as IconName,
+        name: type.icon,
         color: type.color ? color(type.color) : undefined,
         tooltip: type.tooltips?.[tooltip],
       }

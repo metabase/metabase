@@ -103,7 +103,7 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
-                      leftSection={<Icon name="trash" c="text-tertiary" />}
+                      leftSection={<Icon name="trash" c="text-disabled" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
@@ -138,9 +138,9 @@ export const ChartSettingSegmentsEditor = ({
 function getColorPalette() {
   return [
     ...getAccentColors(),
-    Color(color("error")).hex(),
-    Color(color("warning")).hex(),
-    Color(color("success")).hex(),
+    Color(color("feedback-negative")).hex(),
+    Color(color("feedback-warning")).hex(),
+    Color(color("feedback-positive")).hex(),
     Color(color("background_page-tertiary")).hex(),
   ];
 }

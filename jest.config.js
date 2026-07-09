@@ -36,7 +36,7 @@ const swcJestTransform = [
 
 const baseConfig = {
   transform: {
-    "^.+\\.[jt]sx?$": swcJestTransform,
+    "^.+\\.m?[jt]sx?$": swcJestTransform,
   },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
@@ -137,7 +137,12 @@ const baseConfig = {
 
 /** @type {import('jest').Config} */
 const config = {
-  reporters: ["default", "jest-junit"],
+  // `addFileAttribute` makes jest-junit emit the source path as a `file`
+  // attribute on each <testcase>. Additive — it leaves classname/name untouched,
+  // so Trunk's existing test identity is preserved — and it lets both Trunk
+  // (codeowners/file attribution) and the ci-conductor reporter resolve a real
+  // source file. Output dir/name come from the JEST_JUNIT_OUTPUT_* env vars.
+  reporters: ["default", ["jest-junit", { addFileAttribute: "true" }]],
   coverageReporters: ["html", "lcov"],
   watchPlugins: [
     "jest-watch-typeahead/filename",
