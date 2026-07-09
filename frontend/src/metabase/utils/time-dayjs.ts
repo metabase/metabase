@@ -65,11 +65,27 @@ const NUMERIC_UNIT_FORMATS: Record<string, (value: number) => Dayjs> = {
 
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
+// Parse-once cache: the cartesian chart pipeline parses the same raw values many times
+// (tryGetDate, dataset transforms, interval detection…). dayjs values are immutable, so handing back
+// a shared instance is safe. NOTE(bench): unbounded — production would want an LRU/per-render cache.
+const parseTimestampCache = new Map<string, Dayjs>();
+
 export function parseTimestamp(
   value: any,
   unit: DatetimeUnit | null = null,
   isLocal = false,
 ) {
+  const cacheKey =
+    typeof value === "string" || typeof value === "number"
+      ? `${typeof value} ${value} ${unit} ${isLocal}`
+      : null;
+  if (cacheKey !== null) {
+    const cached = parseTimestampCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+  }
+
   let result: Dayjs;
   if (dayjs.isDayjs(value)) {
     result = value;
@@ -111,7 +127,11 @@ export function parseTimestamp(
   } else {
     result = dayjs.utc(value);
   }
-  return isLocal ? result.local() : result;
+  const parsed = isLocal ? result.local() : result;
+  if (cacheKey !== null) {
+    parseTimestampCache.set(cacheKey, parsed);
+  }
+  return parsed;
 }
 
 export function getRelativeTime(timestamp: string) {

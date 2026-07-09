@@ -658,6 +658,8 @@ const buildEChartsLineAreaSeries = (
     z: Z_INDEXES.lineAreaSeries,
     id: seriesModel.dataKey,
     type: "line",
+    // NOTE(bench): built-in LTTB downsampling — draw ~1 point/pixel while keeping the full data model.
+    sampling: "lttb",
     lineStyle: {
       color: seriesModel.color,
       type: seriesSettings["line.style"],

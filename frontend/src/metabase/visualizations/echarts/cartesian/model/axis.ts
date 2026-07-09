@@ -754,8 +754,13 @@ export function getTimeSeriesXAxisModel(
     // Safari doesn't support offset-based timezones (e.g., "+07:00") in the Date object,
     // which Day.js relies on. To avoid runtime exceptions, we manually adjust the time
     // when an offset is provided. Otherwise, we use Day.js timezone conversion.
+    //
+    // Return a numeric epoch (ms) rather than formatting each row to an ISO string — the per-row
+    // dayjs `.format()` is a large share of a big time-series chart's render cost, and the ECharts
+    // time axis (with useUTC) consumes the shifted epoch directly (see `fromEChartsAxisValue`).
+    // Shifting by whole minutes is exact, so add the offset in ms instead of building a new dayjs.
     return offsetMinutes != null
-      ? date.add(offsetMinutes, "minute").format()
+      ? date.valueOf() + offsetMinutes * 60_000
       : date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {

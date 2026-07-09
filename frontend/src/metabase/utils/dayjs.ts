@@ -35,3 +35,19 @@ dayjs.extend(parseZone);
 dayjs.extend(duration);
 dayjs.extend(isBetween);
 dayjs.extend(preParsePostFormat);
+
+// NOTE(bench): dirty memoization of dayjs `.format()` on the hot static-viz render path. `.format()`
+// is pure for a given instant + utc offset + pattern, so cache by those. Unbounded and locale-blind —
+// throwaway experiment only (a real version would scope the cache per render and key on locale).
+const _dayjsFormat = (dayjs as any).prototype.format;
+const _dayjsFormatCache = new Map<string, string>();
+(dayjs as any).prototype.format = function (formatStr?: string) {
+  const key = `${this.valueOf()} ${this.utcOffset()} ${formatStr ?? ""}`;
+  const cached = _dayjsFormatCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const result = _dayjsFormat.call(this, formatStr);
+  _dayjsFormatCache.set(key, result);
+  return result;
+};
