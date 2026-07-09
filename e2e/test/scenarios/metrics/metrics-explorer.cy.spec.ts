@@ -196,6 +196,11 @@ const addMetricInputSequence = (
   if (runExpression) {
     runFormula();
     if (!skipRunCompletionWait) {
+      // Anchor on the run's dataset request settling before asserting the
+      // edit-mode UI has been torn down. Without this positive anchor the
+      // CodeMirror editor (metrics-viewer-search-input) can still be mid-teardown
+      // when the negative assertion's 4s budget elapses under load, flaking.
+      cy.wait("@dataset");
       // It is expected that the elements below do not exist after the expression ran successfully
       cy.findByTestId("metrics-viewer-search-input").should("not.exist");
       cy.findByTestId("run-expression-button").should("not.exist");
