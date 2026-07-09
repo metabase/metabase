@@ -31,9 +31,21 @@ databaseChangeLog:
               - column:
                   name: source_transform_id
                   type: int
-                  remarks: The seed transform the DAG reprocess was triggered from
+                  remarks: The seed transform the DAG reprocess was triggered from (null if it was later deleted)
                   constraints:
-                    nullable: false
+                    nullable: true
+              - column:
+                  name: source_transform_name
+                  type: ${text.type}
+                  remarks: Name of the seed transform at run start, preserved after its deletion
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source_transform_entity_id
+                  type: char(21)
+                  remarks: entity_id of the seed transform at run start, for potential reconnection when it is recreated
+                  constraints:
+                    nullable: true
               - column:
                   name: direction
                   type: varchar(20)
@@ -128,7 +140,10 @@ databaseChangeLog:
   - changeSet:
       id: v64.dQGhvK
       author: bronsa
-      comment: FK from transform_dag_run.source_transform_id to transform; cascade-delete a transform's DAG run history with it
+      comment: >-
+        FK from transform_dag_run.source_transform_id to transform; SET NULL on delete so DAG-run
+        history survives the transform (as for transform_run.transform_id), displayable via the
+        run-start name snapshot
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -142,7 +157,7 @@ databaseChangeLog:
             baseColumnNames: source_transform_id
             referencedTableName: transform
             referencedColumnNames: id
-            onDelete: CASCADE
+            onDelete: SET NULL
       rollback:
         - dropForeignKeyConstraint:
             baseTableName: transform_dag_run
@@ -281,3 +296,42 @@ databaseChangeLog:
         - dropIndex:
             tableName: transform_run
             indexName: idx_transform_run_dag_run_id
+
+  - changeSet:
+      id: v64.cH9mZs
+      author: bronsa
+      comment: >-
+        Snapshot the job's name/entity_id on transform_job_run at run start, as transform_run does
+        for its transform. transform_job_run.job_id has no FK, so job runs already outlive their
+        job — but namelessly; the snapshot keeps them displayable in run history after the job is
+        deleted. Backfilled from the live jobs since this table predates the branch.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: job_name
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
+              - column:
+                  name: job_name
+                  type: ${text.type}
+                  remarks: Name of the job at run start, preserved after its deletion
+              - column:
+                  name: job_entity_id
+                  type: char(21)
+                  remarks: entity_id of the job at run start, for potential reconnection when it is recreated
+        - sql:
+            sql: >-
+              UPDATE transform_job_run
+              SET job_name = (SELECT name FROM transform_job WHERE transform_job.id = transform_job_run.job_id),
+                  job_entity_id = (SELECT entity_id FROM transform_job WHERE transform_job.id = transform_job_run.job_id)
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: job_name
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: job_entity_id
