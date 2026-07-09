@@ -5,9 +5,11 @@
   JSON render requests over stdin/stdout.
 
   The bundle and the CLI are copied out of the classpath into a temp working directory on first use (both
-  may live inside the jar at runtime, and `node` needs real files on disk). The pool holds up to two
-  processes, each held exclusively per render (so at most two renders run at once); with a min of 0 it
-  shrinks to 0 when idle, killing the processes after 1 minute with no work.
+  may live inside the jar at runtime, and `node` needs real files on disk). The pool holds a single
+  process, held exclusively per render (so renders serialize onto it); with a min of 0 it shrinks to 0
+  when idle, killing the process after 1 minute with no work. We cap it at one process — spawning a fresh
+  `node` (runtime init + bundle load) is costly, and a warm process renders fast enough that queuing a
+  second render behind it beats paying that startup cost for concurrency.
 
   Requires a `node` binary on the host's PATH."
   (:require
@@ -134,10 +136,11 @@
   :static-viz-node)
 
 (def ^:private ^Pool node-process-pool
-  "A pool of up to two static-viz Node.js processes, each held exclusively per render; when idle it shrinks
-  to 0 and the generator's `destroy` kills the process. See
-  [[metabase.channel.render.js.common/make-pool]]."
-  (common/make-pool start-process! stop-process!))
+  "A pool of a single static-viz Node.js process, held exclusively per render (so renders serialize onto
+  it); when idle it shrinks to 0 and the generator's `destroy` kills the process. Capped at one because a
+  warm process is fast and spawning another is costly. See
+  [[metabase.channel.render.js.common/create-pool]]."
+  (common/create-pool start-process! stop-process! {:max-size 1}))
 
 (defn- call-node
   "Run static-viz bundle function `fn-name` with `arg` (a Clojure data structure) on a pooled Node process,

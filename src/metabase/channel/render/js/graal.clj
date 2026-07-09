@@ -153,8 +153,8 @@
   "A pool of up to two static-viz contexts, each held exclusively from acquire to release, so at most two
   renders run at once — one per context, on the shared engine. When idle the pool shrinks to 0 and the
   generator's `destroy` closes the context (and, on the last one, the shared engine); the first render
-  after an idle gap rebuilds them. See [[metabase.channel.render.js.common/make-pool]]."
-  (common/make-pool generate-context! destroy-context!))
+  after an idle gap rebuilds them. See [[metabase.channel.render.js.common/create-pool]]."
+  (common/create-pool generate-context! destroy-context! {:max-size 2}))
 
 (defn- do-with-static-viz-context
   "Borrow a pooled static-viz context and call `f` with it, held exclusively for the call (never let it —

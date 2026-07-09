@@ -22,22 +22,22 @@
   (when config/tests-available?
     ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)")))
 
-(defn make-pool
-  "Build a dirigiste `Pool` of up to two static-viz workers, each held exclusively per render (so at most
-  two renders run at once). The utilization controller targets 100% utilization with a max of 2 and a min
-  of 0, so when nothing is rendering the pool shrinks to 0 and `destroy` is called on each idle worker; it
-  rechecks every 1 minute, so a worker lingers up to 1 minute before being reaped (keeping it warm
-  through gaps between renders). `(generate)` mints a worker; `(destroy worker)` tears one down. The other
-  constructor args (queue size, sampling interval) don't matter much."
-  ^Pool [generate destroy]
-  (let [max-pool-size       2
-        max-queued-acquires 65000
+(defn create-pool
+  "Build a dirigiste `Pool` of static-viz workers, each held exclusively per render (so at most `:max-size`
+  renders run at once). `:max-size` is the maximum number of concurrent workers. The utilization
+  controller targets 100% utilization with a min of 0, so when nothing is rendering the pool shrinks to 0
+  and `destroy` is called on each idle worker; it rechecks every 1 minute, so a worker lingers up to 1
+  minute before being reaped (keeping it warm through gaps between renders). `(generate)` mints a worker;
+  `(destroy worker)` tears one down. The other constructor args (queue size, sampling interval) don't
+  matter much."
+  ^Pool [generate destroy {:keys [max-size]}]
+  (let [max-queued-acquires 65000
         sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
         control-period-ms   (.toMillis TimeUnit/MINUTES 1)]
     (Pool. (reify IPool$Generator
              (generate [_ _] (generate))
              (destroy [_ _ worker] (destroy worker)))
-           (Pools/utilizationController 1.0 max-pool-size max-pool-size)
+           (Pools/utilizationController 1.0 max-size max-size)
            max-queued-acquires
            sample-period-ms
            control-period-ms
