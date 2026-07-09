@@ -1,5 +1,6 @@
-import { renderWithProviders, screen } from "frontend/test/__support__/ui";
 import type { ReactNode } from "react";
+
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { readNameFromUrl } from "../../lib/read-name-from-url";
 import { reportErrorToParent } from "../../lib/report-error-to-parent";

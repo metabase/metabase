@@ -1,5 +1,6 @@
-import { Box } from "frontend/src/metabase/ui";
 import type { ReactNode } from "react";
+
+import { Box } from "metabase/ui";
 
 import S from "./DataAppLayout.module.css";
 

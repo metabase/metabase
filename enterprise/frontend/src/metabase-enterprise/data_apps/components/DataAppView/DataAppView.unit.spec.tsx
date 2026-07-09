@@ -1,13 +1,14 @@
 import { act } from "@testing-library/react";
-import { useGetDataAppQuery } from "enterprise/frontend/src/metabase-enterprise/api";
-import { createMockDataApp } from "frontend/src/metabase-types/api/mocks";
-import { renderWithProviders, screen } from "frontend/test/__support__/ui";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import { useGetDataAppQuery } from "metabase-enterprise/api";
+import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DATA_APP_ERROR_MESSAGE_TYPE } from "../../constants";
 
 import { DataAppView } from "./DataAppView";
 
-jest.mock("enterprise/frontend/src/metabase-enterprise/api", () => ({
+jest.mock("enterprise/metabase-enterprise/api", () => ({
   ...jest.requireActual("metabase-enterprise/api"),
   useGetDataAppQuery: jest.fn(),
 }));

@@ -1,8 +1,9 @@
-import { Group, Stack, Text } from "frontend/src/metabase/ui";
-import type { MetabaseColorKey } from "frontend/src/metabase/ui/colors/types";
-import * as Urls from "frontend/src/metabase/urls";
-import type { DataApp } from "frontend/src/metabase-types/api";
 import { t } from "ttag";
+
+import { Group, Stack, Text } from "metabase/ui";
+import type { MetabaseColorKey } from "metabase/ui/colors/types";
+import * as Urls from "metabase/urls";
+import type { DataApp } from "metabase-types/api";
 
 import { DataAppAllowedHosts } from "../DataAppAllowedHosts/DataAppAllowedHosts";
 import { DataAppIcon } from "../DataAppIcon/DataAppIcon";

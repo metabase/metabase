@@ -1,11 +1,12 @@
 import createCache from "@emotion/cache";
 import { CacheProvider, Global } from "@emotion/react";
-import { SCOPED_CSS_RESET } from "frontend/src/embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
-import { PortalContainer } from "frontend/src/embedding-sdk-bundle/components/private/SdkPortalContainer";
-import { SdkThemeProvider } from "frontend/src/embedding-sdk-bundle/components/private/SdkThemeProvider";
-import { MetabaseReduxProvider } from "frontend/src/metabase/redux";
-import { getCspNonce } from "frontend/src/metabase/utils/csp";
 import { type ReactNode, useMemo } from "react";
+
+import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
+import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
+import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
+import { MetabaseReduxProvider } from "metabase/redux";
+import { getCspNonce } from "metabase/utils/csp";
 
 import { useHostSdkStore } from "../../lib/use-host-sdk-store";
 import type { DataAppMetabaseProviderProps } from "../../sandbox";

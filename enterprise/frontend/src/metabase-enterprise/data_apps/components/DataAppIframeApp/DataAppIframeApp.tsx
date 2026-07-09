@@ -1,7 +1,8 @@
-import { Center, Loader } from "frontend/src/metabase/ui";
-import { color } from "frontend/src/metabase/ui/colors";
 import { Component, type ErrorInfo, type ReactNode, useMemo } from "react";
 import { t } from "ttag";
+
+import { Center, Loader } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 
 import { type ErrorDetail, describeError } from "../../lib/describe-error";
 import { readNameFromUrl } from "../../lib/read-name-from-url";

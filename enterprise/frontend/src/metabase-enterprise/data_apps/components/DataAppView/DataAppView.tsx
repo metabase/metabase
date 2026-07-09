@@ -1,17 +1,15 @@
 import cx from "classnames";
-import { useGetDataAppQuery } from "enterprise/frontend/src/metabase-enterprise/api";
-import { EmptyState } from "frontend/src/metabase/common/components/EmptyState";
-import { ErrorDetails } from "frontend/src/metabase/common/components/ErrorDetails/ErrorDetails";
-import {
-  GenericError,
-  NotFound,
-} from "frontend/src/metabase/common/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "frontend/src/metabase/common/components/LoadingAndErrorWrapper";
-import CS from "frontend/src/metabase/css/core/index.css";
-import QueryBuilderS from "frontend/src/metabase/css/query_builder.module.css";
-import { Box, Flex } from "frontend/src/metabase/ui";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
+import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { Box, Flex } from "metabase/ui";
+import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,

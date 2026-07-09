@@ -1,5 +1,6 @@
-import { HoverCard, Stack, Text } from "frontend/src/metabase/ui";
 import { msgid, ngettext } from "ttag";
+
+import { HoverCard, Stack, Text } from "metabase/ui";
 
 type Props = {
   /** External origins the app may fetch/XHR (from `data_app.yml`). */
