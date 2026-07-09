@@ -1,1 +1,0 @@
-{"version":1,"hooks":{"userPromptSubmitted":[{"type":"command","bash":"workmux set-window-status working"}],"postToolUse":[{"type":"command","bash":"workmux set-window-status working"}],"agentStop":[{"type":"command","bash":"workmux set-window-status done"}]}}
