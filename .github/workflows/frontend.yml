@@ -113,7 +113,7 @@ jobs:
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
       - name: Report failed tests to ci-conductor
-        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
         # This step should NEVER fail the job!
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor
