@@ -241,72 +241,75 @@ export function MainNavbarView({
   const protoCollectionsBlock = (
     <SubNavSection>
       <ErrorBoundary>
-        {canWriteToCollections && !isTenantUser && (
-          <Menu position="bottom-start">
-            <Menu.Target>
-              <button
-                type="button"
-                className={PN.navActionButton}
-                aria-label={t`Create new…`}
-              >
-                <span className={PN.navActionIconCircle}>
-                  <Icon name="add" size={12} />
-                </span>
-                {t`Create`}
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<Icon name="folder" />}
-                onClick={() => {
-                  trackNewCollectionFromNavInitiated();
-                  handleCreateNewCollection();
-                }}
-              >
-                {t`Collection`}
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="dashboard" />}
-                onClick={() => dispatch(setOpenModal("dashboard"))}
-              >
-                {t`Dashboard`}
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="document" />}
-                component={ForwardRefLink}
-                to="/document/new"
-              >
-                {t`Document`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        )}
-        <SubNavHeading>{t`Collections`}</SubNavHeading>
-        {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-          <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-            collections={protoCollectionsTree}
-            selectedId={collectionItem?.id}
-            onSelect={onItemSelect}
-            initialExpandedIds={protoInitialExpandedIds}
-            pinnedExpandedIds={protoPinnedExpandedIds}
-          />
-        ) : (
-          <Tree
-            data={protoCollectionsTree}
-            selectedId={collectionItem?.id}
-            initialExpandedIds={protoInitialExpandedIds}
-            pinnedExpandedIds={protoPinnedExpandedIds}
-            onSelect={onItemSelect}
-            TreeNode={SidebarCollectionLink}
-            role="tree"
-            aria-label="collection-tree"
-          />
-        )}
-        {showOtherUsersCollections && (
-          <PaddedSidebarLink icon="group" url={OTHER_USERS_COLLECTIONS_URL}>
-            {t`Other users' personal collections`}
-          </PaddedSidebarLink>
-        )}
+        <div className={PN.collectionsBlock}>
+          <div className={PN.collectionsHeadingRow}>
+            <SubNavHeading>{collectionsHeading}</SubNavHeading>
+            {canWriteToCollections && !isTenantUser && (
+              <Menu position="bottom-end">
+                <Menu.Target>
+                  <ActionIcon
+                    className={PN.collectionsCreateButton}
+                    aria-label={t`Create new…`}
+                    variant="subtle"
+                    c="text-secondary"
+                    size="sm"
+                  >
+                    <Icon name="add" size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<Icon name="folder" />}
+                    onClick={() => {
+                      trackNewCollectionFromNavInitiated();
+                      handleCreateNewCollection();
+                    }}
+                  >
+                    {t`Collection`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="dashboard" />}
+                    onClick={() => dispatch(setOpenModal("dashboard"))}
+                  >
+                    {t`Dashboard`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="document" />}
+                    component={ForwardRefLink}
+                    to="/document/new"
+                  >
+                    {t`Document`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            )}
+          </div>
+          {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+            <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+              collections={protoCollectionsTree}
+              selectedId={collectionItem?.id}
+              onSelect={onItemSelect}
+              initialExpandedIds={protoInitialExpandedIds}
+              pinnedExpandedIds={protoPinnedExpandedIds}
+            />
+          ) : (
+            <Tree
+              data={protoCollectionsTree}
+              selectedId={collectionItem?.id}
+              initialExpandedIds={protoInitialExpandedIds}
+              pinnedExpandedIds={protoPinnedExpandedIds}
+              onSelect={onItemSelect}
+              TreeNode={SidebarCollectionLink}
+              role="tree"
+              aria-label="collection-tree"
+            />
+          )}
+          {showOtherUsersCollections && (
+            <PaddedSidebarLink icon="group" url={OTHER_USERS_COLLECTIONS_URL}>
+              {t`Other users' personal collections`}
+            </PaddedSidebarLink>
+          )}
+        </div>
       </ErrorBoundary>
     </SubNavSection>
   );
@@ -315,8 +318,6 @@ export function MainNavbarView({
     <ErrorBoundary>
       <SidebarContentRoot>
         <div>
-          {/* Keep Create at the top of the proto Home tab so its spacing
-              matches the Data tab Add data button when switching rails. */}
           {PROTO_NAV_ENABLED && protoCollectionsBlock}
 
           {!PROTO_NAV_ENABLED && (

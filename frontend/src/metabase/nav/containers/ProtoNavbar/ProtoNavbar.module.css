@@ -9,9 +9,7 @@
 /* Shared shell for all proto nav tabs (Home, Library, Data, Monitor). */
 .section {
   padding-inline: 16px;
-  /* Matches former navActionButton margin-top so the first section lines up
-     with Create / New query across tabs. */
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 /* Space between sections matches space below Create / New query. */
@@ -19,45 +17,25 @@
   margin-top: 32px;
 }
 
-.navActionButton {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-  height: 32px;
-  margin-top: 0;
-  margin-bottom: 32px;
-  padding: 0;
-  /* Match ExpandToggleButton padding-left so the icon aligns with the chevron. */
-  padding-left: 2px;
-  border: none;
-  border-radius: var(--mantine-radius-md);
-  background: transparent;
-  color: var(--mb-color-text-primary);
-  font: inherit;
-  font-weight: 400;
-  cursor: pointer;
-  text-align: start;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease;
+.collectionsBlock:hover .collectionsCreateButton,
+.collectionsBlock:focus-within .collectionsCreateButton {
+  opacity: 1;
 }
 
-.navActionButton:hover {
-  background-color: var(--mb-color-background_surface-hover);
-  color: var(--mb-color-core-brand);
-}
-
-.navActionIconCircle {
+.collectionsHeadingRow {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: var(--mb-color-background_surface-brand-subtle);
-  color: var(--mb-color-core-brand);
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.collectionsHeadingRow .subNavHeading {
+  margin-bottom: 0;
+}
+
+.collectionsCreateButton {
+  opacity: 0;
+  transition: opacity 150ms ease;
 }
 
 .header {
@@ -77,16 +55,9 @@
   flex-shrink: 0;
 }
 
-.headerActions {
-  gap: 16px;
-}
-
-.headerActionsCompact .headerButtonLabel {
-  display: none;
-}
-
-.headerActionsCompact .headerButton {
-  padding: var(--sm-spacing, 8px);
+.headerIconActions {
+  gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .headerButton {
@@ -109,20 +80,6 @@
     border-color 150ms ease;
 }
 
-.headerQueryButton {
-  border: none;
-  border-radius: var(--xs-radius, 6px);
-  background: var(--Ocean-60, #1871bf);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
-  color: var(--mb-color-text-primary-inverse, #fff);
-}
-
-.headerQueryButton:hover {
-  border-radius: var(--xs-radius, 6px);
-  background: var(--mb-color-upsell-primary, #105490);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
-}
-
 .headerSearchButton {
   border: 0.5px solid var(--mb-color-border-strong, rgba(7, 23, 34, 0.51));
   background: var(--mb-color-background-primary, #fff);
@@ -142,7 +99,7 @@
 .rail {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.5rem;
   padding: 0 0.5rem;
   padding-inline-start: 1rem;
   margin-bottom: 8px;
@@ -154,7 +111,7 @@
   align-items: center;
   padding: 0.5rem;
   border: none;
-  background: transparent;
+  background: var(--mb-color-background-secondary);
   border-radius: var(--mantine-radius-md);
   color: var(--mb-color-text-secondary);
   cursor: pointer;
@@ -218,7 +175,8 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: 0.5rem;
+  /* 0.5rem rail gap + 1rem first-section offset (formerly .section margin-top) */
+  padding-top: calc(0.5rem + 1rem);
 }
 
 .root .sectionContent :global(a),
@@ -249,14 +207,18 @@
   background-color: var(--mb-color-background_surface-selected);
 }
 
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+.queryBar {
   flex-shrink: 0;
-  border-top: 1px solid var(--mb-color-border-neutral);
+  padding: 0.75rem 0.75rem;
+  padding-inline-start: 1rem;
+}
+
+.queryBarMenu {
+  width: 100%;
+}
+
+.queryButton {
+  width: 100%;
 }
 
 .libraryNestedItems {

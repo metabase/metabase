@@ -59,15 +59,15 @@ export function NotificationsButton() {
   return (
     <Popover position="top-start" shadow="md" withinPortal>
       <Popover.Target>
-        <Tooltip label={t`Notifications`}>
-          <ActionIcon aria-label={t`Notifications`} c="text-secondary">
+        <Tooltip label={t`Notifications`} openDelay={1000}>
+          <ActionIcon aria-label={t`Notifications`} c="icon-secondary">
             <FixedSizeIcon name="bell" />
           </ActionIcon>
         </Tooltip>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box w="20rem" p="xs">
-          <Text fw={700} px="sm" pb="xs">
+        <Box w="20rem" p="md">
+          <Text fw={700} pb="sm" ps="sm">
             {t`Notifications`}
           </Text>
           <Stack gap={0}>

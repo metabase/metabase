@@ -10,7 +10,6 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { resetConversation } from "metabase/metabot/state";
-import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -29,6 +28,7 @@ import type { IconName } from "metabase-types/api";
 import { Sidebar } from "../MainNavbar/MainNavbar.styled";
 
 import { NotificationsButton } from "./NotificationsButton";
+import { ProtoNavMoreMenu } from "./ProtoNavMoreMenu";
 import S from "./ProtoNavbar.module.css";
 import {
   type SectionId,
@@ -50,7 +50,6 @@ type Props = {
 const MIN_WIDTH = 220;
 const MAX_WIDTH = 480;
 const DEFAULT_WIDTH = 320;
-const COMPACT_HEADER_WIDTH = 262;
 const WIDTH_STORAGE_KEY = "proto-nav-width";
 
 export function ProtoNavbar({ isOpen, location, params }: Props) {
@@ -227,53 +226,18 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
           >
             <LogoIcon height={32} />
           </ForwardRefLink>
-          <Group
-            className={cx(S.headerActions, {
-              [S.headerActionsCompact]: width < COMPACT_HEADER_WIDTH,
-            })}
-            wrap="nowrap"
-          >
-            <button
-              type="button"
-              className={cx(S.headerButton, S.headerSearchButton)}
-              aria-label={t`Search`}
-              onClick={openSearch}
-            >
-              <FixedSizeIcon name="search" />
-              <span className={S.headerButtonLabel}>{t`Search`}</span>
-            </button>
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <button
-                  type="button"
-                  className={cx(S.headerButton, S.headerQueryButton)}
-                  aria-label={t`Query`}
-                >
-                  <FixedSizeIcon name="message_circle" />
-                  <span className={S.headerButtonLabel}>{t`Query`}</span>
-                </button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<Icon name="sparkles" />}
-                  onClick={handleAskAi}
-                >
-                  {t`Ask AI`}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<Icon name="notebook" />}
-                  onClick={handleQueryBuilder}
-                >
-                  {t`Query builder`}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<Icon name="sql" />}
-                  onClick={handleSqlQuery}
-                >
-                  {t`SQL query`}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+          <Group className={S.headerIconActions} gap="0.25rem" wrap="nowrap">
+            <ProtoNavMoreMenu />
+            <NotificationsButton />
+            <Tooltip label={t`Search`} openDelay={1000}>
+              <ActionIcon
+                aria-label={t`Search`}
+                c="icon-secondary"
+                onClick={openSearch}
+              >
+                <FixedSizeIcon name="search" />
+              </ActionIcon>
+            </Tooltip>
           </Group>
         </Box>
 
@@ -328,31 +292,43 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
           )}
         </Box>
 
-        <Box className={S.footer}>
-          <AppSwitcher />
-          <Group gap="0.25rem" wrap="nowrap">
-            <NotificationsButton />
-            <Tooltip label={t`Trash`}>
-              <ActionIcon
-                component={ForwardRefLink}
-                to="/trash"
-                aria-label={t`Trash`}
-                c="text-secondary"
+        <Box className={S.queryBar}>
+          <Menu className={S.queryBarMenu} position="top-end" width="target">
+            <Menu.Target>
+              <button
+                type="button"
+                className={cx(
+                  S.headerButton,
+                  S.headerSearchButton,
+                  S.queryButton,
+                )}
+                aria-label={t`Query`}
               >
-                <FixedSizeIcon name="trash" />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label={t`Settings`}>
-              <ActionIcon
-                component={ForwardRefLink}
-                to="/admin/settings"
-                aria-label={t`Settings`}
-                c="text-secondary"
+                <FixedSizeIcon name="message_circle" />
+                <span>{t`Query`}</span>
+              </button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="sparkles" />}
+                onClick={handleAskAi}
               >
-                <FixedSizeIcon name="gear" />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
+                {t`Ask AI`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="notebook" />}
+                onClick={handleQueryBuilder}
+              >
+                {t`Query builder`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="sql" />}
+                onClick={handleSqlQuery}
+              >
+                {t`SQL query`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Box>
       </Box>
     </Sidebar>
