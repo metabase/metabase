@@ -24,7 +24,7 @@ export const FormNumberInput = forwardRef(function FormNumberInput(
       } else if (typeof newValue === "number") {
         setValue(newValue);
       }
-      onChange?.(typeof newValue === "number" ? newValue : 0);
+      onChange?.(newValue);
     },
     [nullable, setValue, onChange],
   );
