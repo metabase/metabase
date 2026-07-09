@@ -9,7 +9,7 @@
   MB_PGVECTOR_DB_URL, which is exactly what this test runs without."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -18,10 +18,15 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
 (set! *warn-on-reflection* true)
+
+;; the mode probe deliberately answers only after the app db is set up (mdb/db-is-set-up?), and this
+;; namespace can be the first thing a fresh test JVM runs
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest get-index-metadata-mode-test
   (testing "get-index-metadata returns the schema-qualified config exactly in app-db mode"
