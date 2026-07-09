@@ -278,7 +278,9 @@ export const getSettingsBranchSwitcher = () =>
 // Open the branch picker on the Settings page (navigates there first).
 const openSettingsBranchPicker = () => {
   visitRemoteSyncSettings();
-  getSettingsBranchSwitcher().should("be.visible").click();
+  // The Sync branch section sits below the fold at the default viewport, and Cypress treats an element
+  // clipped by a scrollable ancestor as hidden, so scroll to it before asserting visibility.
+  getSettingsBranchSwitcher().scrollIntoView().should("be.visible").click();
 };
 
 // Create a new branch (forks the current branch and switches to it) via the Settings branch switcher.

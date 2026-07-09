@@ -102,9 +102,9 @@ export const BranchSwitcher = ({
       return;
     }
     // Creating a branch forks the current one server-side (identical content, already switched to), so no
-    // reconcile runs and unsaved changes are preserved on the new branch.
+    // reconcile runs and unsaved changes are preserved on the new branch. The branch picker already
+    // reports the creation, so don't also report a switch.
     if (isNewBranch) {
-      trackBranchSwitched({ triggeredFrom: "admin-settings" });
       return;
     }
     // Refetch the dirty state at switch time so a stale snapshot (e.g. content edited since the settings
