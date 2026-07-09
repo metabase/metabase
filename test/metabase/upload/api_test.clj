@@ -1,5 +1,6 @@
 (ns metabase.upload.api-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [metabase.upload.api :as upload.api]
@@ -52,7 +53,11 @@
   (testing "POST /api/upload/csv accepts a file of exactly the size cap, guarding against an off-by-one"
     (let [at-cap (byte-array upload/max-upload-size-bytes)
           calls  (atom 0)]
-      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200, :body 1})]
+      ;; like the real handler, the stub owns the uploaded tempfile and must delete it
+      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [{:keys [file]}]
+                                                         (swap! calls inc)
+                                                         (io/delete-file file :silently)
+                                                         {:status 200, :body 1})]
         (mt/user-http-request :crowberto :post 200 "upload/csv"
                               {:request-options {:headers {"content-type" "multipart/form-data"}}}
                               [[:collection_id "root"]
@@ -74,7 +79,11 @@
 (deftest csv-upload-with-collection-id-test
   (testing "POST /api/upload/csv accepts the collection_id field the frontend sends alongside the file"
     (let [calls (atom 0)]
-      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200, :body 1})]
+      ;; like the real handler, the stub owns the uploaded tempfile and must delete it
+      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [{:keys [file]}]
+                                                         (swap! calls inc)
+                                                         (io/delete-file file :silently)
+                                                         {:status 200, :body 1})]
         (mt/user-http-request :crowberto :post 200 "upload/csv"
                               {:request-options {:headers {"content-type" "multipart/form-data"}}}
                               [[:collection_id "root"]

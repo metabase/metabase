@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.warehouse-schema-rest.api.table-test]}}}}}}
   (:require
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -1226,7 +1227,11 @@
 
 (deftest update-csv-with-extra-field-test
   (let [calls (atom 0)]
-    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) {:status 200, :body ""})]
+    ;; like the real handler, the stub owns the uploaded tempfile and must delete it
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [{:keys [file]}]
+                                                        (swap! calls inc)
+                                                        (io/delete-file file :silently)
+                                                        {:status 200, :body ""})]
       (doseq [endpoint ["append-csv" "replace-csv"]]
         (testing (format "POST /api/table/:id/%s accepts the collection_id field the frontend sends alongside the file"
                          endpoint)
