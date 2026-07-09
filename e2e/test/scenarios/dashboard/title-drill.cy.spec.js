@@ -501,11 +501,6 @@ describe("scenarios > dashboard > title drill", () => {
       }).then(({ dashboard, questions }) => {
         H.visitDashboard(dashboard.id);
 
-        // make cursor start from a place where subsequent realHover() calls
-        // won't make the cursor move over the other cards during test
-        // (which would interfere with assertions)
-        cy.findByTestId("sidebar-toggle").realHover();
-
         H.getDashboardCard(0)
           .findByRole("link", { name: "Line chart" })
           .as("line-chart-title");
@@ -538,16 +533,26 @@ describe("scenarios > dashboard > title drill", () => {
       });
     });
 
+    // The real href is computed lazily on focus/mouseenter (metabase#45095) and
+    // reverts to the "#" placeholder whenever the dashcard node remounts. If the
+    // trigger fires once and the card then re-renders (common while it settles),
+    // the re-queried node is a fresh placeholder that never got the event, so the
+    // assertion strands at "#". Re-firing the event inside the retried should()
+    // callback re-triggers it on the current node on every poll until it resolves.
     function assertTitleHrefOnFocus({ elementAlias, href }) {
       cy.get(elementAlias).should("have.attr", "href", "#");
-      cy.get(elementAlias).focus();
-      cy.get(elementAlias).should("have.attr", "href", href);
+      cy.get(elementAlias).should(($el) => {
+        $el[0].focus();
+        expect($el).to.have.attr("href", href);
+      });
     }
 
     function assertTitleHrefOnHover({ elementAlias, href }) {
       cy.get(elementAlias).should("have.attr", "href", "#");
-      cy.get(elementAlias).realHover();
-      cy.get(elementAlias).should("have.attr", "href", href);
+      cy.get(elementAlias).should(($el) => {
+        $el[0].dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+        expect($el).to.have.attr("href", href);
+      });
     }
   });
 
