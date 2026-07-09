@@ -24,13 +24,11 @@ import { DataAppListItem } from "./components/DataAppListItem/DataAppListItem";
 import { DataAppRepoSection } from "./components/DataAppRepoSection/DataAppRepoSection";
 import { DataAppSkillsSection } from "./components/DataAppSkillsSection/DataAppSkillsSection";
 
-// Keep the sync status fresh while the page is open: the backend polls the repo
-// on its own schedule, so re-fetch the list periodically to reflect those syncs.
-// Skipped automatically when the tab is unfocused.
-const STATUS_POLL_INTERVAL_MS = 10_000;
-
-const POLL_OPTS = {
-  pollingInterval: STATUS_POLL_INTERVAL_MS,
+const DATA_APP_REPO_QUERY_OPTS = {
+  // Keep the sync status fresh while the page is open: the backend polls the repo
+  // on its own schedule, so re-fetch the list periodically to reflect those syncs.
+  // Skipped automatically when the tab is unfocused.
+  pollingInterval: 10_000,
   skipPollingIfUnfocused: true,
   // Repo connection is managed on a different tab (Remote Sync) through another
   // API slice, so it can't invalidate this cache. Refetch on mount so navigating
@@ -41,10 +39,10 @@ const POLL_OPTS = {
 
 export const ManageDataAppsPage = () => {
   const { data: status, isLoading: isStatusLoading } =
-    useGetDataAppRepoStatusQuery(undefined, POLL_OPTS);
+    useGetDataAppRepoStatusQuery(undefined, DATA_APP_REPO_QUERY_OPTS);
   const { data: apps, isLoading: isAppsLoading } = useListDataAppsQuery(
     undefined,
-    POLL_OPTS,
+    DATA_APP_REPO_QUERY_OPTS,
   );
 
   const isConfigured = status?.configured ?? false;
