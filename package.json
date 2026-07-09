@@ -413,6 +413,7 @@
     "elliptic": "^6.6.1",
     "follow-redirects": "^1.15.5",
     "json5": "2.2.2",
+    "linkify-it": "^5.0.2",
     "lodash-es": "^4.18.1",
     "lodash": "^4.18.1",
     "mdast-util-to-hast": "^13.2.1",
