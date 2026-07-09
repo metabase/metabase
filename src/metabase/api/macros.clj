@@ -650,8 +650,8 @@
                                    (ring.middleware.multipart-params/wrap-multipart-params
                                     (wrap-multipart-tempfile-cleanup handler#)
                                     ~(if (map? multipart) multipart {})))])]
-    ;; later entries wrap outer and run first on the request: scope checks must reject before multipart parses
-    ;; the body to tempfiles, so multipart goes first (innermost).
+    ;; [[apply-middleware]] wraps left-to-right, so the last entry is outermost and sees the request first.
+    ;; Scope goes last: a scope rejection must respond 403 before multipart parses the body to tempfiles.
     (vec (concat multipart-middleware scope-middleware))))
 
 (mu/defn- apply-middleware :- ::handler
