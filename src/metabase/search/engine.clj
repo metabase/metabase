@@ -181,14 +181,27 @@
 
 (defn active-engines
   "The engines for which we maintain an index, default engine first.
-  The default engine and any [[settings/additional-search-engines]], plus their [[dependencies]].
+  The default engine and any [[settings/additional-search-engines]], plus their supported [[dependencies]].
   Excludes :search.engine/in-place, which does not use an index."
   []
-  (->> (concat [(default-engine)] (additional-engines))
-       (mapcat #(cons % (dependencies %)))
-       distinct
-       (filter supported-engine?)
-       (remove #{:search.engine/in-place})))
+  (if-let [default (default-engine)]
+    (->> (concat [default] (additional-engines))
+         (mapcat #(cons % (filter supported-engine? (dependencies %))))
+         distinct
+         (remove #{:search.engine/in-place}))
+    []))
+
+(defn engine-status
+  "Whether the engine can serve queries, and if not, why: :ok, :unknown, :unsupported, or :inactive.
+  In-place needs no index, so it serves whenever supported; other engines must be in [[active-engines]].
+  Membership is exact: callers must resolve engine aliases before asking."
+  [engine]
+  (cond
+    (not (known-engine? engine))            :unknown
+    (not (supported-engine? engine))        :unsupported
+    (or (= engine :search.engine/in-place)
+        (contains? (set (active-engines)) engine)) :ok
+    :else                                   :inactive))
 
 (defmethod disjunction :default [_ terms] terms)
 

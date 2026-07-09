@@ -58,50 +58,60 @@
         (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
         nil))))
 
-(defn- engine-active?
-  "Can the engine serve queries right now? In-place always can; indexed engines must be in the active set."
-  [engine]
-  (or (= engine :search.engine/in-place)
-      (boolean (some #(isa? engine %) (search.engine/active-engines)))))
+(def ^:private legacy-engine-names
+  "Renamed engines still arriving via long-lived cookies."
+  {"fulltext" "appdb"})
+
+(defn- param->engine
+  "Parse a search_engine param or cookie value into an engine keyword, nil when blank.
+  Tolerates the fully qualified form the API returns in the :engine response field, and legacy engine names."
+  [value]
+  (when-not (str/blank? value)
+    (let [short-name (last (str/split value #"/"))]
+      (keyword "search.engine" (get legacy-engine-names short-name short-name)))))
 
 (defn- check-engine-serves!
   "400 when an explicitly requested engine cannot serve searches, naming the cause."
-  [value]
-  (let [engine (keyword "search.engine" value)]
-    (cond
-      (not (search.engine/known-engine? engine))
-      (throw (ex-info (tru "Unknown search engine: {0}" value) {:status-code 400}))
+  [engine]
+  (case (search.engine/engine-status engine)
+    :unknown
+    (throw (ex-info (tru "Unknown search engine: {0}" (name engine)) {:status-code 400}))
 
-      (not (search.engine/supported-engine? engine))
-      (throw (ex-info (tru "Search engine {0} is not supported on this instance" value) {:status-code 400}))
+    :unsupported
+    (throw (ex-info (tru "Search engine {0} is not supported on this instance" (name engine)) {:status-code 400}))
 
-      (not (engine-active? engine))
-      (throw (ex-info (tru "Search engine {0} is not enabled; add it to additional-search-engines to use it" value)
-                      {:status-code 400})))))
+    :inactive
+    (throw (ex-info (tru "Search engine {0} is not enabled; add it to additional-search-engines to use it"
+                         (name engine))
+                    {:status-code 400}))
+
+    :ok nil))
 
 (defn- cookie-engine
-  "The engine cookie's value when it can still serve, else nil.
+  "The engine cookie's engine name when it can still serve, else nil.
   Cookies outlive configuration, so a stale value degrades to the default instead of erroring."
   [request]
-  (when-let [value (get-in request [:cookies engine-cookie-name :value])]
-    (let [engine (keyword "search.engine" value)]
-      (when (and (search.engine/known-engine? engine)
-                 (search.engine/supported-engine? engine)
-                 (engine-active? engine))
-        value))))
+  (when-let [engine (param->engine (get-in request [:cookies engine-cookie-name :value]))]
+    (when (= :ok (search.engine/engine-status engine))
+      (name engine))))
 
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (if-let [new-engine (get-in request [:params :search_engine])]
+     ;; Endpoints read :query-params (string keys), so that is where the engine must be injected.
+     (if-let [engine (param->engine (get-in request [:query-params "search_engine"]))]
        (try
-         (check-engine-serves! new-engine)
-         (handler request (set-engine-cookie! respond new-engine) raise)
+         (check-engine-serves! engine)
+         (handler (assoc-in request [:query-params "search_engine"] (name engine))
+                  (set-engine-cookie! respond (name engine))
+                  raise)
          (catch Exception e
            (raise e)))
-       (handler (assoc-in request [:params :search_engine] (cookie-engine request))
-                respond
-                raise)))
+       (let [cookie (cookie-engine request)]
+         (handler (cond-> request
+                    cookie (assoc-in [:query-params "search_engine"] cookie))
+                  respond
+                  raise))))
    (fn [prefix]
      (open-api/open-api-spec handler prefix))))
 

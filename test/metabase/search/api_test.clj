@@ -350,10 +350,16 @@
       (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
         (is (thrown-with-msg? Exception
                               #"not enabled"
-                              (#'search.api/check-engine-serves! "appdb"))))))
+                              (#'search.api/check-engine-serves! :search.engine/appdb))))))
   (testing "a servable explicit engine is accepted"
     (is (=? {:engine "search.engine/in-place"}
-            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "in-place")))))
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "in-place"))))
+  (testing "a blank engine is treated as absent"
+    (is (=? {:engine string?}
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine ""))))
+  (testing "the fully qualified form the API returns in :engine is accepted"
+    (is (=? {:engine "search.engine/in-place"}
+            (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "search.engine/in-place")))))
 
 (deftest engine-cookie-staleness-test
   (let [request-with-cookie {:cookies {"metabase.SEARCH_ENGINE" {:value "appdb"}}}]
@@ -468,11 +474,11 @@
         (let [resp (search-request :crowberto :q "test" :search_engine "appdb" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
           (is (= "search.engine/appdb" (:engine resp))))))
-    (testing "It can use the old search engine name, e.g. for old cookies"
+    (testing "It normalizes the old search engine name, e.g. for old cookies"
       (search/init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
-          (is (= "search.engine/fulltext" (:engine resp))))))
+          (is (= "search.engine/appdb" (:engine resp))))))
     (testing "It rejects an unknown search engine"
       (is (= "Unknown search engine: wut"
              (mt/user-http-request :crowberto :get 400 "search" :q "test" :search_engine "wut" :limit 1))))))

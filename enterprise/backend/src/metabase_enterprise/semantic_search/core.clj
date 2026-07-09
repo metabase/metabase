@@ -29,9 +29,11 @@
   get-embeddings-batch])
 
 (defn- fallback-engine
-  "Find the highest priority search engine available for fallback."
+  "The engine semantic search mixes results with and falls back to.
+  Prefers engines with a maintained index (semantic's appdb dependency) over merely supported ones."
   []
-  (u/seek #(not= :search.engine/semantic %) (search.engine/supported-engines)))
+  (u/seek #(not= :search.engine/semantic %)
+          (concat (search.engine/active-engines) (search.engine/supported-engines))))
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))

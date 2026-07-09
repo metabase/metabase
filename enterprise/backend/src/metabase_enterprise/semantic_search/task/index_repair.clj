@@ -20,7 +20,7 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Runs repair-index! to maintain semantic search consistency"}
   SemanticIndexRepair [_ctx]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-active?)
     (log/with-context {:quartz-job-type 'SemanticIndexRepair}
       (try
         (log/info "Starting semantic search index repair")

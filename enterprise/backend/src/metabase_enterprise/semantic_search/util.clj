@@ -3,6 +3,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.search.engine :as search.engine]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
@@ -26,8 +27,16 @@
 
 (defn semantic-search-available?
   "Whether semantic search can run on this instance.
-  The canonical gate for everything semantic search does: engine selection, indexing, and maintenance tasks."
+  The canonical capability gate: engine selection, hygiene tasks, and metrics key off this."
   []
   (and (string? (not-empty semantic.db.datasource/db-url))
        (premium-features/has-feature? :semantic-search)
        (semantic.settings/semantic-search-enabled)))
+
+(defn semantic-search-active?
+  "Is the semantic index being maintained on this instance?
+  Anything that writes to the index (or pays for embeddings) must gate on this, not on availability:
+  a supported engine that is neither the default nor an additional engine has no index worth feeding."
+  []
+  (and (semantic-search-available?)
+       (contains? (set (search.engine/active-engines)) :search.engine/semantic)))
