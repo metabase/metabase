@@ -1,6 +1,3 @@
-import "./mock-environment";
-import "fast-text-encoding";
-
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
@@ -13,11 +10,11 @@ import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticCh
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
-import type { ColorPalette } from "metabase/ui/colors/types";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import {
   createDataSource,
   getVisualizationColumns,
@@ -30,37 +27,35 @@ import type {
   DashCardVisualizationSettings,
   Dataset,
   DatasetData,
-  DayOfWeekId,
-  FormattingSettings,
   RawSeries,
   SettingKey,
-  TokenFeatures,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+
+import type {
+  CellBackgroundColorsInput,
+  RenderChartDashcardSettings,
+  RenderChartInput,
+  RenderChartOptions,
+  RenderedChart,
+} from "./types";
+
+export type {
+  CellBackgroundColorsInput,
+  RenderChartInput,
+  RenderChartOptions,
+  RenderedChart,
+} from "./types";
 
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
 });
 
-export type RenderChartOptions = {
-  tokenFeatures: TokenFeatures;
-  applicationColors: ColorPalette;
-  customFormatting: FormattingSettings;
-  startOfWeek: DayOfWeekId | null | undefined;
-};
-
-type RenderChartDashcardSettings = DashCardVisualizationSettings & {
-  visualization?: VisualizerVizDefinition;
-};
-
 /**
  * @deprecated use RenderChart instead
  */
-export function LegacyRenderChart(
-  type: LegacyStaticChartType,
-  options: unknown,
-) {
+function LegacyRenderChart(type: LegacyStaticChartType, options: unknown) {
   return ReactDOMServer.renderToStaticMarkup(
     <LegacyStaticChart type={type} options={options} />,
   );
@@ -114,7 +109,7 @@ function getVisualizerRawSeries(
   ];
 }
 
-export function RenderChart(
+function RenderChart(
   rawSeries: RawSeries,
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
@@ -180,5 +175,61 @@ export function RenderChart(
       renderingContext={renderingContext}
       hasDevWatermark={hasDevWatermark}
     />,
+  );
+}
+
+export function renderChart(input: RenderChartInput): RenderedChart {
+  let content: string;
+  switch (input.kind) {
+    case "funnel":
+      content = LegacyRenderChart("funnel", {
+        data: input.data,
+        settings: input.settings,
+        tokenFeatures: input.tokenFeatures,
+      });
+      break;
+    case "gauge":
+      content = LegacyRenderChart("gauge", {
+        card: input.card,
+        data: input.data,
+        tokenFeatures: input.tokenFeatures,
+      });
+      break;
+    default:
+      content = RenderChart(
+        input.rawSeries,
+        input.dashcardSettings,
+        input.options,
+      );
+  }
+  return { type: content.startsWith("<svg") ? "svg" : "html", content };
+}
+
+function buildCellBackgroundGetter(
+  ...args: Parameters<typeof makeCellBackgroundGetter>
+) {
+  try {
+    return makeCellBackgroundGetter(...args);
+  } catch (e) {
+    console.error("Error building cell background getter", e);
+    return () => null;
+  }
+}
+
+export function getCellBackgroundColors({
+  rows,
+  cols,
+  settings,
+  cells,
+}: CellBackgroundColorsInput): (string | null)[] {
+  const getter = buildCellBackgroundGetter(
+    rows,
+    cols,
+    settings?.["table.column_formatting"] ?? [],
+    Boolean(settings?.["table.pivot"]),
+  );
+  return cells.map(
+    ([value, rowIndex, columnName]) =>
+      getter(value, rowIndex, columnName) ?? null,
   );
 }
