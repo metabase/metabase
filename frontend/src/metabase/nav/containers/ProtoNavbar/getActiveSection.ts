@@ -1,4 +1,14 @@
-export type SectionId = "collections" | "library" | "data" | "monitor";
+import { extractCollectionIdFromPath } from "metabase/urls/collections";
+import type { CollectionId } from "metabase-types/api";
+
+import { isCollectionPath } from "../MainNavbar/getSelectedItems";
+
+export type SectionId =
+  | "collections"
+  | "library"
+  | "data"
+  | "playground"
+  | "monitor";
 
 // Lets navigations from outside ProtoNavbar (e.g. opening a table question
 // from the Data tab) keep the rail on the originating section.
@@ -17,7 +27,10 @@ export function consumeProtoNavSectionPin(): SectionId | null {
 // Maps the current URL to the nav section that should appear selected.
 // Returns null when the route doesn't clearly belong to a section so the
 // previously selected section stays put.
-export function getActiveSection(pathname: string): SectionId | null {
+export function getActiveSection(
+  pathname: string,
+  personalCollectionId?: CollectionId | null,
+): SectionId | null {
   if (
     pathname.startsWith("/browse/databases") ||
     pathname.startsWith("/data-studio/data") ||
@@ -36,6 +49,13 @@ export function getActiveSection(pathname: string): SectionId | null {
   }
   if (pathname.startsWith("/data-studio")) {
     return "library";
+  }
+  if (
+    personalCollectionId != null &&
+    isCollectionPath(pathname) &&
+    extractCollectionIdFromPath(pathname) === personalCollectionId
+  ) {
+    return "playground";
   }
   if (
     pathname.startsWith("/metabot") ||

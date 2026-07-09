@@ -12,6 +12,7 @@ import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { resetConversation } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
@@ -39,6 +40,7 @@ import { CollectionsSection } from "./sections/CollectionsSection";
 import { DataSection } from "./sections/DataSection";
 import { LibrarySection } from "./sections/LibrarySection";
 import { MonitorSection } from "./sections/MonitorSection";
+import { PlaygroundSection } from "./sections/PlaygroundSection";
 
 type Props = {
   isOpen: boolean;
@@ -64,8 +66,11 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     { id: "collections", label: t`Home`, icon: "home" },
     { id: "data", label: t`Data`, icon: "database" },
     { id: "library", label: t`Library`, icon: "repository" },
+    { id: "playground", label: t`Playground`, icon: "play" },
     { id: "monitor", label: t`Monitor`, icon: "gauge" },
   ];
+
+  const personalCollectionId = useSelector(getUserPersonalCollectionId);
 
   const { data: collectionsTree = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,
@@ -74,17 +79,23 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
   const usageAnalytics = collectionsTree.find(
     (collection) => collection.type === "instance-analytics",
   );
+  const personalCollection = collectionsTree.find(
+    (collection) => collection.id === personalCollectionId,
+  );
 
   const defaultPaths: Partial<Record<SectionId, string>> = {
     collections: "/",
     library: Urls.dataStudioLibrary({ library: "tables" }),
     data: "/browse/databases",
+    playground: personalCollection
+      ? Urls.collection(personalCollection)
+      : undefined,
     monitor: usageAnalytics ? Urls.collection(usageAnalytics) : undefined,
   };
 
   const routeSection = useMemo(
-    () => getActiveSection(location.pathname),
-    [location.pathname],
+    () => getActiveSection(location.pathname, personalCollectionId),
+    [location.pathname, personalCollectionId],
   );
   const [activeSection, setActiveSection] = useState<SectionId>(
     routeSection ?? "collections",
@@ -285,6 +296,9 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
           )}
           {activeSection === "library" && (
             <LibrarySection location={location} />
+          )}
+          {activeSection === "playground" && (
+            <PlaygroundSection location={location} />
           )}
           {activeSection === "data" && <DataSection location={location} />}
           {activeSection === "monitor" && (
