@@ -384,6 +384,10 @@ describe("NotificationsAdminPage", () => {
       });
       await waitForLoaderToBeRemoved();
 
+      expect(await screen.findByTestId("pagination-total")).toHaveTextContent(
+        "120",
+      );
+
       const nextPage = screen.getByRole("button", { name: "Next page" });
       expect(nextPage).toBeEnabled();
 

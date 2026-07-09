@@ -44,6 +44,7 @@ import {
   trackAlertsManagementSearchPerformed,
 } from "../analytics";
 
+import S from "./NotificationsAdminPage.module.css";
 import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
@@ -339,54 +340,66 @@ export const NotificationsAdminPage = ({
   }
 
   return (
-    <Stack ref={containerRef} gap="lg">
-      <Flex align="center" gap="sm">
-        <MonitorHeaderTitle>{t`Alerts management`}</MonitorHeaderTitle>
-      </Flex>
+    <>
+      <Flex ref={containerRef} h="100%" wrap="nowrap">
+        <Stack className={S.main} flex={1} gap="md">
+          <MonitorHeaderTitle>{t`Alerts management`}</MonitorHeaderTitle>
 
-      <NotificationsTabs
-        tab={urlState.tab}
-        failingCount={failingCount}
-        ownerlessCount={ownerlessCount}
-        onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
-      />
+          <NotificationsTabs
+            tab={urlState.tab}
+            failingCount={failingCount}
+            ownerlessCount={ownerlessCount}
+            onChange={(patch) => patchUrlState({ ...patch, page: 0 })}
+          />
 
-      <Flex gap="md" align="center">
-        <NotificationsSearchInput
-          value={urlState.query}
-          isLoading={isFetching}
-          onChange={handleSearchChange}
-        />
-        <NotificationsFilters state={urlState} onChange={patchUrlState} />
-      </Flex>
+          <Flex gap="md" align="center">
+            <NotificationsSearchInput
+              value={urlState.query}
+              isLoading={isFetching}
+              onChange={handleSearchChange}
+            />
+            <NotificationsFilters state={urlState} onChange={patchUrlState} />
+          </Flex>
 
-      <NotificationsTable
-        notifications={notifications}
-        error={error}
-        isLoading={isLoading}
-        getSelectionState={getSelectionState}
-        selectedDetailId={notificationId}
-        sorting={sorting}
-        onSortingChange={handleSortingChange}
-        onToggleRow={handleToggleRow}
-        onToggleAll={handleToggleAll}
-        onRowClick={handleRowClick}
-      />
+          <NotificationsTable
+            notifications={notifications}
+            error={error}
+            isLoading={isLoading}
+            getSelectionState={getSelectionState}
+            selectedDetailId={notificationId}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
+            onToggleRow={handleToggleRow}
+            onToggleAll={handleToggleAll}
+            onRowClick={handleRowClick}
+          />
 
-      <Flex
-        align="center"
-        justify="space-between"
-        p="md"
-        data-testid="notifications-admin-footer"
-      >
-        <PaginationControls
-          page={urlState.page}
-          pageSize={PAGE_SIZE}
-          itemsLength={notifications.length}
-          total={total}
-          onPreviousPage={() => patchUrlState({ page: urlState.page - 1 })}
-          onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
-        />
+          <Flex justify="end">
+            <PaginationControls
+              page={urlState.page}
+              pageSize={PAGE_SIZE}
+              itemsLength={notifications.length}
+              total={total}
+              showTotal
+              onPreviousPage={() => patchUrlState({ page: urlState.page - 1 })}
+              onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
+            />
+          </Flex>
+        </Stack>
+
+        {isSidebarOpen && (
+          <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>
+            <NotificationDetailSidebar
+              notificationId={notificationId}
+              notificationSummary={notificationSummary}
+              isBulkLoading={isBulkLoading}
+              prevNotificationId={prevNotificationId}
+              nextNotificationId={nextNotificationId}
+              onClose={handleSidebarClose}
+              onDelete={(notification) => handleSidebarDelete(notification.id)}
+            />
+          </Sidebar>
+        )}
       </Flex>
 
       <BulkActionBar
@@ -421,21 +434,7 @@ export const NotificationsAdminPage = ({
         onConfirm={handleChangeOwnerConfirm}
       />
 
-      {isSidebarOpen && (
-        <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>
-          <NotificationDetailSidebar
-            notificationId={notificationId}
-            notificationSummary={notificationSummary}
-            isBulkLoading={isBulkLoading}
-            prevNotificationId={prevNotificationId}
-            nextNotificationId={nextNotificationId}
-            onClose={handleSidebarClose}
-            onDelete={(notification) => handleSidebarDelete(notification.id)}
-          />
-        </Sidebar>
-      )}
-
       {confirmContent}
-    </Stack>
+    </>
   );
 };
