@@ -348,6 +348,12 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
   });
 
   it("should allow a user to delete an upload table", () => {
+    // Re-query the table on each use (function idiom) so every retrying
+    // assertion re-runs against the freshly rendered table, rather than a
+    // captured `within` root that can go stale when the table re-renders after
+    // a refetch.
+    const uploadTablesTable = () => cy.findByTestId("upload-tables-table");
+
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
@@ -356,41 +362,58 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
 
     cy.visit("/admin/settings/uploads");
-    cy.wait("@getUploadTables");
+    // Gate on the response carrying all 5 rows so the DOM counts below only run
+    // once the fetch that populates the table has returned the full set.
+    cy.wait("@getUploadTables").its("response.body").should("have.length", 5);
 
-    cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog_breeds/i).should("have.length", 3);
-      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
+    // Guard on the rendered row count before counting per-table matches, so a
+    // transient partial render can't satisfy the more specific assertions.
+    uploadTablesTable()
+      .findAllByLabelText("trash icon")
+      .should("have.length", 5);
+    uploadTablesTable().findAllByText(/dog_breeds/i).should("have.length", 3);
+    uploadTablesTable()
+      .findAllByText(/star_wars_characters/i)
+      .should("have.length", 2);
 
-      // single delete
-      cy.findAllByLabelText("trash icon").first().click();
-    });
+    cy.log("single delete");
+    uploadTablesTable().findAllByLabelText("trash icon").first().click();
 
     H.modal().button("Delete").click();
-    cy.wait("@getUploadTables");
+    cy.wait("@getUploadTables").its("response.body").should("have.length", 4);
 
     cy.findByTestId("undo-list").findByText(/1 table deleted/i);
 
-    cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog_breeds/i).should("have.length", 2);
-      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
+    uploadTablesTable()
+      .findAllByLabelText("trash icon")
+      .should("have.length", 4);
+    uploadTablesTable().findAllByText(/dog_breeds/i).should("have.length", 2);
+    uploadTablesTable()
+      .findAllByText(/star_wars_characters/i)
+      .should("have.length", 2);
 
-      // multiple delete
-      cy.findAllByRole("checkbox").first().click();
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByRole("checkbox").last().click();
-    });
+    cy.log("multiple delete");
+    uploadTablesTable()
+      .findAllByRole("checkbox")
+      .should("have.length", 4)
+      .first()
+      .click();
+    uploadTablesTable()
+      .findAllByRole("checkbox")
+      .should("have.length", 4)
+      .last()
+      .click();
 
     cy.findByTestId("toast-card").button("Delete").click();
     H.modal().button("Delete").click();
-    cy.wait("@getUploadTables");
+    cy.wait("@getUploadTables").its("response.body").should("have.length", 2);
 
     cy.findByTestId("undo-list").findByText(/2 tables deleted/i);
 
-    cy.findByTestId("upload-tables-table").within(() => {
-      cy.findAllByText(/dog_breeds/i).should("have.length", 1);
-      cy.findAllByText(/star_wars_characters/i).should("have.length", 1);
-    });
+    uploadTablesTable().findAllByText(/dog_breeds/i).should("have.length", 1);
+    uploadTablesTable()
+      .findAllByText(/star_wars_characters/i)
+      .should("have.length", 1);
   });
 });
 
