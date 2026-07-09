@@ -16,3 +16,15 @@
   {:entity_type  mi/transform-keyword
    :finding_type mi/transform-keyword
    :details      mi/transform-json})
+
+(defn invalidate-superseded!
+  "Soft-invalidate (stamp `invalidated_at`, never delete) every still-active finding of `finding-types`
+  from a *prior* scan. Entities the new scan re-flagged keep a newer active row; entities it no longer
+  flags drop out of the active set. Filtering on `invalidated_at` NULL keeps this idempotent."
+  [scan-id finding-types]
+  (when (seq finding-types)
+    (t2/update! :model/ContentDiagnosticsFinding
+                {:scan_id        [:not= scan-id]
+                 :finding_type   [:in finding-types]
+                 :invalidated_at nil}
+                {:invalidated_at (mi/now)})))

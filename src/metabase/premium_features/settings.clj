@@ -240,7 +240,7 @@
   :collection-cleanup)
 
 (define-premium-feature ^{:added "0.64.0"} enable-content-diagnostics?
-  "Should we enable the Content Diagnostics?"
+  "Should we enable Content Diagnostics?"
   :content-diagnostics)
 
 (define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?

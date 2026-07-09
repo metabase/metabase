@@ -190,10 +190,7 @@
            [:= :collection.type nil]
            (when (setting/get :enable-public-sharing)
              [:= :document.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :document.collection_id nil])
-            [:in :document.collection_id (-> args :collection-ids)]]]})
+           (staleness/collection-filter :document.collection_id args)]})
 
 ;;; ---------------------------------------------- Serialization --------------------------------------------------
 
