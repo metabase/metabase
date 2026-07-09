@@ -87,7 +87,9 @@ function SnippetFormInner({
             name="content"
             label={t`Enter some SQL here so you can reuse it later`}
             placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
-            minRows={5}
+            autosize={false}
+            resize="vertical"
+            rows={5}
             mb="lg"
           />
           <FormInput
