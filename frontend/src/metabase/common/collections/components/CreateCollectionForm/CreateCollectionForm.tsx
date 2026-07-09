@@ -8,13 +8,17 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
 import type {
   EntityPickerOptions,
   FilterItemsInPersonalCollection,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextarea,
+} from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { WithRouterProps } from "metabase/router";
 import { withRouter } from "metabase/router";
@@ -131,12 +135,13 @@ function CreateCollectionForm({
               placeholder={t`My new fantastic collection`}
               data-autofocus
             />
-            <FormTextArea
+            <FormTextarea
               name="description"
-              title={t`Description`}
+              label={t`Description`}
               placeholder={t`It's optional but oh, so helpful`}
+              minRows={5}
+              mb="md"
               nullable
-              optional
             />
             {showCollectionPicker && (
               <FormCollectionPicker

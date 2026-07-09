@@ -1118,8 +1118,9 @@
     #"^GRANT (.+) TO "
     :>>
     (fn [[_ roles]]
+      ;; role names are case-sensitive to MySQL, so they must be passed back to `SHOW GRANTS ... USING` verbatim
       {:type  :roles
-       :roles (set (map u/lower-case-en (str/split roles #",")))})))
+       :roles (set (str/split roles #","))})))
 
 (defn- privilege-grants-for-user
   "Returns a list of parsed privilege grants for a user, taking into account the roles that the user has.
@@ -1135,7 +1136,7 @@
          privilege-grants :privileges} (group-by :type grants)]
     (if (seq role-grants)
       (let [roles  (:roles (first role-grants))
-            grants (map parse-grant (query (str "SHOW GRANTS FOR " user "USING " (str/join "," roles))))
+            grants (map parse-grant (query (str "SHOW GRANTS FOR " user " USING " (str/join "," roles))))
             {privilege-grants :privileges} (group-by :type grants)]
         privilege-grants)
       privilege-grants)))
