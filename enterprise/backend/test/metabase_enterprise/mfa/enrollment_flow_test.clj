@@ -76,6 +76,12 @@
       ;; when the local hash fails, the LDAP branch decides.
       (mt/with-dynamic-fn-redefs [sso/ldap-enabled    (constantly true)
                                   sso/find-user       (fn [username] (when (= username email) {:dn "uid=x"}))
-                                  sso/verify-password (fn [_user-info password] (= password "directory-pw"))]
+                                  ;; simulate a directory that accepts anonymous (empty-password) binds
+                                  sso/verify-password (fn [_user-info password]
+                                                        (or (= password "directory-pw") (empty? password)))]
         (is (true? (#'mfa.management/verify-user-password user-id "directory-pw")))
-        (is (false? (#'mfa.management/verify-user-password user-id "wrong")))))))
+        (is (false? (#'mfa.management/verify-user-password user-id "wrong")))
+        (testing "blank passwords never reach the bind — an empty bind is an anonymous bind"
+          (is (false? (#'mfa.management/verify-user-password user-id "")))
+          (is (false? (#'mfa.management/verify-user-password user-id "   ")))
+          (is (false? (#'mfa.management/verify-user-password user-id nil))))))))

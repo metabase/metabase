@@ -10,6 +10,7 @@
   LDAP bind for LDAP users); disable/regenerate with the factor you're managing (a fresh TOTP or
   recovery code), so a stolen password alone can never remove or weaken 2FA."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
@@ -47,16 +48,20 @@
 
 (defn- verify-user-password
   "Re-verify the signed-in user's first-factor password, dispatched by how they authenticate:
-  against the local hash for password users, by LDAP bind for LDAP-only users."
+  against the local hash for password users, by LDAP bind for LDAP-only users.
+
+  Rejects blank passwords itself rather than trusting callers' schemas: an empty password sent to
+  `ldap/bind?` is an *anonymous bind*, which succeeds on directories that allow it."
   [user-id password]
   (boolean
-   (or (when-let [{:keys [password_hash password_salt]}
-                  (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
-         (and password_hash (u.password/verify-password password password_salt password_hash)))
-       (when (sso/ldap-enabled)
-         (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
-           (when-let [user-info (sso/find-user user-email)]
-             (sso/verify-password user-info password)))))))
+   (when-not (str/blank? password)
+     (or (when-let [{:keys [password_hash password_salt]}
+                    (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
+           (and password_hash (u.password/verify-password password password_salt password_hash)))
+         (when (sso/ldap-enabled)
+           (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
+             (when-let [user-info (sso/find-user user-email)]
+               (sso/verify-password user-info password))))))))
 
 (defn- notify! [user-id subject message event-topic]
   (try
