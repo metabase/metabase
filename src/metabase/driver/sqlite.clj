@@ -115,7 +115,8 @@
   [_ {:keys [db read-only?]
       :or   {db "sqlite.db"}
       :as   details}]
-  (merge {:subprotocol "sqlite"
+  (merge {:classname   "org.sqlite.JDBC"
+          :subprotocol "sqlite"
           :subname     db}
          (dissoc details :db :read-only?)
          ;; SQLite-JDBC can't flip a live connection to read-only, so set it at open time via `open_mode`.
