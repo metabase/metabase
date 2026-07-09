@@ -1,5 +1,5 @@
 import type { SortingState } from "@tanstack/react-table";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
 import {
@@ -32,8 +32,10 @@ export function getRunName(run: TransformGraphRun): string {
   const name = run.name ?? t`Deleted`;
   if (run.run_type === "dag") {
     return run.direction === "upstream"
-      ? `${t`Upstream`} → ${name}`
-      : `${name} → ${t`Downstream`}`;
+      ? c("{0} is a transform name; a run of it plus its upstream dependencies")
+          .t`Upstream → ${name}`
+      : c("{0} is a transform name; a run of it plus its downstream dependents")
+          .t`${name} → Downstream`;
   }
   return name;
 }

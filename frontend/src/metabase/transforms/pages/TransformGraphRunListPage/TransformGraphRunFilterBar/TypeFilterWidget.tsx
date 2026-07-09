@@ -29,6 +29,12 @@ export function formatGraphRunType(type: TransformGraphRunType): string {
   }
 }
 
+function isTransformGraphRunType(
+  value: string,
+): value is TransformGraphRunType {
+  return TRANSFORM_GRAPH_RUN_TYPES.some((type) => type === value);
+}
+
 type TypeFilterWidgetProps = {
   types: TransformGraphRunType[];
   onChange: (types: TransformGraphRunType[]) => void;
@@ -84,7 +90,7 @@ function TypeFilterForm({
   const isValid = types.length > 0;
 
   const handleChange = (values: string[]) => {
-    setTypes(values as TransformGraphRunType[]);
+    setTypes(values.filter(isTransformGraphRunType));
   };
 
   const handleSubmit = (event: FormEvent) => {

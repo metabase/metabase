@@ -8,7 +8,8 @@ import {
   setupRunTransformDagEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { Transform } from "metabase-types/api";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import type { RunTransformDagResponse, Transform } from "metabase-types/api";
 import {
   createMockTransform,
   createMockTransformRunForJobRun,
@@ -19,7 +20,13 @@ import { RunSection } from "./RunSection";
 const TRANSFORM_ID = 10;
 const DAG_RUN_ID = 1;
 
-function setup({ transform }: { transform?: Transform } = {}) {
+function setup({
+  transform,
+  runDagResponse,
+}: {
+  transform?: Transform;
+  runDagResponse?: RunTransformDagResponse;
+} = {}) {
   const testTransform =
     transform ?? createMockTransform({ id: TRANSFORM_ID, last_run: null });
 
@@ -29,7 +36,7 @@ function setup({ transform }: { transform?: Transform } = {}) {
     { id: 2, name: "Upstream B" },
     { id: TRANSFORM_ID, name: testTransform.name },
   ]);
-  setupRunTransformDagEndpoint(TRANSFORM_ID);
+  setupRunTransformDagEndpoint(TRANSFORM_ID, runDagResponse);
   setupListDagRunTransformRunsEndpoint(DAG_RUN_ID, [
     createMockTransformRunForJobRun({
       id: 1,
@@ -38,7 +45,12 @@ function setup({ transform }: { transform?: Transform } = {}) {
     }),
   ]);
 
-  renderWithProviders(<RunSection transform={testTransform} />);
+  renderWithProviders(
+    <>
+      <RunSection transform={testTransform} />
+      <UndoListing />
+    </>,
+  );
 }
 
 async function triggerUpstreamRun() {
@@ -100,5 +112,21 @@ describe("RunSection DAG run flow", () => {
     expect(
       await screen.findByText("Scheduled to run as part of a reprocess run."),
     ).toBeInTheDocument();
+  });
+
+  it("notifies the user and skips the scheduled state when nothing was run", async () => {
+    setup({
+      runDagResponse: { message: "DAG run started", dag_run_id: null },
+    });
+    await triggerUpstreamRun();
+
+    expect(
+      await screen.findByText(
+        "A reprocess run for this transform is already in progress.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Scheduled to run as part of a reprocess run."),
+    ).not.toBeInTheDocument();
   });
 });

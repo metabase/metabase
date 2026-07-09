@@ -55,17 +55,15 @@ type RunSectionProps = {
   noTitle?: boolean;
 };
 
-type ScheduledDagRun = {
-  dagRunId: TransformDagRunId;
-  direction: TransformDagDirection;
-};
-
 function useScheduledDagRun(transform: Transform) {
-  const [scheduled, setScheduled] = useState<ScheduledDagRun | null>(null);
+  const [scheduledDagRunId, setScheduledDagRunId] =
+    useState<TransformDagRunId | null>(null);
 
-  const { data: members } = useListDagRunTransformRunsQuery(
-    scheduled ? { dagRunId: scheduled.dagRunId } : skipToken,
-    { pollingInterval: scheduled ? POLLING_INTERVAL : undefined },
+  const { data: members, error } = useListDagRunTransformRunsQuery(
+    scheduledDagRunId != null ? { dagRunId: scheduledDagRunId } : skipToken,
+    {
+      pollingInterval: scheduledDagRunId != null ? POLLING_INTERVAL : undefined,
+    },
   );
 
   const dagFinished =
@@ -75,23 +73,30 @@ function useScheduledDagRun(transform: Transform) {
       (run) => run.status === "started" || run.status === "canceling",
     );
 
+  // Give up if the member-runs request fails; otherwise the banner would stay
+  // "Scheduled" and keep polling forever on a fetch error.
+  const dagUnavailable = error != null;
+
   useEffect(() => {
-    if (scheduled != null && dagFinished) {
-      setScheduled(null);
+    if (scheduledDagRunId != null && (dagFinished || dagUnavailable)) {
+      setScheduledDagRunId(null);
     }
-  }, [scheduled, dagFinished]);
+  }, [scheduledDagRunId, dagFinished, dagUnavailable]);
 
   const runStatus = transform.last_run?.status;
   const isRunningNow = runStatus === "started" || runStatus === "canceling";
 
   const schedule = useCallback(
-    (dagRunId: TransformDagRunId, direction: TransformDagDirection) =>
-      setScheduled({ dagRunId, direction }),
+    (dagRunId: TransformDagRunId) => setScheduledDagRunId(dagRunId),
     [],
   );
 
   return {
-    isScheduled: scheduled != null && !dagFinished && !isRunningNow,
+    isScheduled:
+      scheduledDagRunId != null &&
+      !dagFinished &&
+      !dagUnavailable &&
+      !isRunningNow,
     schedule,
   };
 }
@@ -198,10 +203,7 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
 type RunButtonSectionProps = {
   transform: Transform;
   readOnly?: boolean;
-  onScheduled: (
-    dagRunId: TransformDagRunId,
-    direction: TransformDagDirection,
-  ) => void;
+  onScheduled: (dagRunId: TransformDagRunId) => void;
 };
 
 function RunButtonSection({
@@ -210,9 +212,10 @@ function RunButtonSection({
   onScheduled,
 }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
-  const [runTransformDag] = useRunTransformDagMutation();
+  const [runTransformDag, { isLoading: isSubmittingDag }] =
+    useRunTransformDagMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [
     isConfirmCancellationModalOpen,
     { close: closeConfirmModal, open: openConfirmModal },
@@ -244,7 +247,11 @@ function RunButtonSection({
       return;
     }
     if (data?.dag_run_id != null) {
-      onScheduled(data.dag_run_id, direction);
+      onScheduled(data.dag_run_id);
+    } else {
+      sendSuccessToast(
+        t`A reprocess run for this transform is already in progress.`,
+      );
     }
   };
 
@@ -280,6 +287,7 @@ function RunButtonSection({
       <RunDagConfirmModal
         transformId={transform.id}
         direction={dagDirection}
+        isConfirming={isSubmittingDag}
         onClose={() => setDagDirection(null)}
         onConfirm={handleRunDag}
       />

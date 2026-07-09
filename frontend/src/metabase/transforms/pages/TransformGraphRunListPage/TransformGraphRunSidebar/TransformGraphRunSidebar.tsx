@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { memo, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -104,28 +105,23 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
     [run],
   );
 
-  const { transformRuns, isLoading, error } = (() => {
-    switch (run.run_type) {
-      case "dag":
-        return {
-          transformRuns: dagResult.data ?? EMPTY_TRANSFORM_RUNS,
-          isLoading: dagResult.isLoading,
-          error: dagResult.error,
-        };
-      case "job":
-        return {
-          transformRuns: jobResult.data ?? EMPTY_TRANSFORM_RUNS,
-          isLoading: jobResult.isLoading,
-          error: jobResult.error,
-        };
-      case "transform":
-        return {
-          transformRuns: standaloneRuns,
-          isLoading: false,
-          error: undefined,
-        };
-    }
-  })();
+  const { transformRuns, isLoading, error } = match(run.run_type)
+    .with("dag", () => ({
+      transformRuns: dagResult.data ?? EMPTY_TRANSFORM_RUNS,
+      isLoading: dagResult.isLoading,
+      error: dagResult.error,
+    }))
+    .with("job", () => ({
+      transformRuns: jobResult.data ?? EMPTY_TRANSFORM_RUNS,
+      isLoading: jobResult.isLoading,
+      error: jobResult.error,
+    }))
+    .with("transform", () => ({
+      transformRuns: standaloneRuns,
+      isLoading: false,
+      error: undefined,
+    }))
+    .exhaustive();
 
   const shouldPoll =
     run.status === "started" ||

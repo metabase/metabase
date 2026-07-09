@@ -197,11 +197,14 @@ export const transformApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/transform-dag-run/${runId}/cancel`,
       }),
+      // A DAG cancel changes the last_run status of every member transform, so
+      // invalidate transform state too (matching runTransformDag).
       invalidatesTags: (_, error, runId) =>
         invalidateTags(error, [
           idTag("transform-dag-run", runId),
           listTag("transform-dag-run"),
           listTag("transform-run"),
+          tag("transform"),
         ]),
     }),
     cancelJobRun: builder.mutation<void, CancelJobRunRequest>({
@@ -209,11 +212,14 @@ export const transformApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/transform-job/${jobId}/runs/${runId}/cancel`,
       }),
+      // A job cancel changes the last_run status of its member transforms, so
+      // invalidate transform state too (matching runTransformJob).
       invalidatesTags: (_, error, { jobId }) =>
         invalidateTags(error, [
           idTag("transform-job", jobId),
           listTag("transform-job"),
           listTag("transform-run"),
+          tag("transform"),
         ]),
     }),
     listTransformGraphRuns: builder.query<

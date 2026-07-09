@@ -1,7 +1,7 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -47,12 +47,13 @@ export function TransformGraphRunListPage({
   location,
 }: TransformGraphRunListPageProps) {
   usePageTitle(t`Runs`);
-  const params = getParsedParams(location);
+  const params = useMemo(() => getParsedParams(location), [location]);
+  const filterOptions = useMemo(() => getFilterOptions(params), [params]);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
-  const [selectedKey, setSelectedKey] = useState<string | undefined>();
+  const [selectedRun, setSelectedRun] = useState<TransformGraphRun>();
   const [isPolling, setIsPolling] = useState(false);
   const dispatch = useDispatch();
 
@@ -89,19 +90,18 @@ export function TransformGraphRunListPage({
 
   const runs = data?.data ?? EMPTY_RUNS;
 
-  const selectedRun = useMemo(
-    () =>
-      selectedKey != null
-        ? runs.find((run) => getRowKey(run) === selectedKey)
-        : undefined,
-    [selectedKey, runs],
-  );
-
-  useLayoutEffect(() => {
-    if (selectedKey != null && selectedRun == null) {
-      setSelectedKey(undefined);
-    }
-  }, [selectedKey, selectedRun]);
+  // Keep the selected run in sync with the latest page data so its status stays
+  // live while polling, but retain the previous value if the row isn't on the
+  // current page (e.g. pushed off by newly-added runs) so the sidebar the user
+  // opened doesn't close on its own.
+  useEffect(() => {
+    setSelectedRun((current) =>
+      current == null
+        ? current
+        : (runs.find((run) => getRowKey(run) === getRowKey(current)) ??
+          current),
+    );
+  }, [runs]);
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformGraphRunListParams) => {
@@ -136,9 +136,10 @@ export function TransformGraphRunListPage({
     [params, handleParamsChange],
   );
 
-  const handleSelect = useCallback((run: TransformGraphRun) => {
-    setSelectedKey(getRowKey(run));
-  }, []);
+  const handleSelect = useCallback(
+    (run: TransformGraphRun) => setSelectedRun(run),
+    [],
+  );
 
   return (
     <Flex
@@ -162,13 +163,13 @@ export function TransformGraphRunListPage({
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
             <TransformGraphRunFilterBar
-              filterOptions={getFilterOptions(params)}
+              filterOptions={filterOptions}
               transforms={transforms}
               onFilterOptionsChange={handleFilterOptionsChange}
             />
             <TransformGraphRunTable
               runs={runs}
-              hasFilters={hasFilterOptions(getFilterOptions(params))}
+              hasFilters={hasFilterOptions(filterOptions)}
               sortOptions={getSortOptions(params)}
               onSortOptionsChange={handleSortOptionsChange}
               onSelect={handleSelect}
@@ -195,7 +196,7 @@ export function TransformGraphRunListPage({
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
-          onClose={() => setSelectedKey(undefined)}
+          onClose={() => setSelectedRun(undefined)}
         />
       )}
     </Flex>

@@ -17,6 +17,7 @@ import type { TransformDagDirection, TransformId } from "metabase-types/api";
 type RunDagConfirmModalProps = {
   transformId: TransformId;
   direction: TransformDagDirection | null;
+  isConfirming?: boolean;
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -24,6 +25,7 @@ type RunDagConfirmModalProps = {
 export function RunDagConfirmModal({
   transformId,
   direction,
+  isConfirming,
   onClose,
   onConfirm,
 }: RunDagConfirmModalProps) {
@@ -60,7 +62,11 @@ export function RunDagConfirmModal({
         )}
         <Group justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button variant="filled" disabled={isFetching} onClick={onConfirm}>
+          <Button
+            variant="filled"
+            disabled={isFetching || isConfirming}
+            onClick={onConfirm}
+          >
             {t`Run all`}
           </Button>
         </Group>
