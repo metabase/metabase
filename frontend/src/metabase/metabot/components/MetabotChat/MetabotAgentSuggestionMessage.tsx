@@ -45,7 +45,7 @@ import type {
 import S from "./MetabotAgentSuggestionMessage.module.css";
 
 export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
-  part: Extract<MetabotDataPart, { type: "transform_suggestion" }>;
+  part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
 };
 
 const PreviewContent = ({
@@ -126,7 +126,7 @@ export const AgentSuggestionMessage = ({
   const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
   const suggestedTransform: MetabotSuggestedTransform = {
-    ...message.part.value,
+    ...message.part.data,
     active: true,
     suggestionId: message.metadata?.suggestionId ?? message.id,
   };

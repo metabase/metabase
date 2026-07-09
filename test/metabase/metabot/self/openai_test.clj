@@ -154,7 +154,8 @@
       (testing "persistence picks up a non-nil error payload"
         (is (=? {:message "boom"} (:error err))))
       (testing "wire serializer emits the message (not an empty string)"
-        (is (= "3:\"boom\"" (self.core/format-error-line err)))))))
+        (is (= (self.core/format-sse-event {:type "error" :errorText "boom"})
+               (self.core/format-error-line err)))))))
 
 (deftest ^:parallel openai-response-incomplete-keeps-partial-text-and-usage-test
   (testing "a terminal response.incomplete event keeps the partial text and still emits usage (not an error)"

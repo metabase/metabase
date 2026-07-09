@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.response]
-   [medley.core :as m]
    [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -58,32 +57,35 @@
                                                       :conversation_id conversation-id
                                                       :history         [historical-message]
                                                       :state           {}})
-                      lines    (str/split-lines response)
+                      lines    (->> (str/split-lines response)
+                                    (filter #(str/starts-with? % "data: ")))
+                      events   (->> lines
+                                    (remove #(= "data: [DONE]" %))
+                                    (mapv #(json/decode+kw (subs % 6))))
                       conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-                  ;; Native agent emits AI SDK v4 line protocol directly
-                  (testing "response contains expected line types"
-                    ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                    (is (=? [#"f:.*"
-                             #"0:.*"
-                             #"2:.*"
-                             #"d:.*"]
-                            (m/distinct-by #(subs % 0 2) lines)))
-                    ;; Text chunks reassemble to full message
-                    (let [text-lines (filter #(str/starts-with? % "0:") lines)]
+                  (testing "response is an SSE stream of typed events ending with [DONE]"
+                    (is (= "data: [DONE]" (last lines)))
+                    (is (= ["start" "start-step"] (mapv :type (take 2 events))))
+                    (is (= ["finish-step" "finish"] (mapv :type (take-last 2 events))))
+                    (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
-                             (apply str (map #(json/decode (subs % 2)) text-lines)))))
-                    ;; Finish line includes usage
-                    (is (str/includes? (last lines) "promptTokens")))
+                             (apply str (map :delta text-deltas)))))
+                    (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
+                            (last events))
+                        "finish event carries accumulated usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
-                  ;; Native agent stores parts in raw format
+                  ;; Native agent stores parts in the v2 at-rest format
                   (is (=? [{:total_tokens 0
                             :role         :user
-                            :data         [{:role "user" :content (:content question)}]}
+                            :data         [{:type "text" :text (:content question)}]
+                            :data_version 2}
                            {:total_tokens pos-int?
                             :role         :assistant
-                            :data         [{:type "text" :text "Hello from native agent!"}]}]
+                            :data         [{:type "step-start"}
+                                           {:type "text" :text "Hello from native agent!" :state "done"}]
+                            :data_version 2}]
                           messages)))))))))))
 
 (defn ^:private sse-event
@@ -98,7 +100,7 @@
     ;; streams text-delta events. The Metabase server connects to it via the
     ;; full native-agent pipeline:
     ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
-    ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
+    ;;   → lite-aisdk-xf → agent loop → parts->aisdk-sse-xf → streaming-writer-rf → client
     ;; The test client reads one byte and closes. The streaming-writer-rf's poll
     ;; of `canceled-chan` flips the `canceled?` volatile and returns `reduced`,
     ;; the agent loop unwinds, and `finalize-assistant-turn!` is called from the
@@ -253,9 +255,14 @@
                          :data    {:status 503 :provider :test}}
                         (:error @stored-kwargs))
                     "the throwable becomes a structured error payload")
-                (testing "the failure is streamed to the client as an AI SDK error part (3:...) rather than a silent close"
-                  (is (some #(str/starts-with? % "3:") (str/split-lines response)))
-                  (is (re-find #"(?i)agent setup exploded" response)))))))))))
+                (testing "the failure is streamed to the client as a well-formed AI SDK error tail rather than a silent close"
+                  (is (some #(str/includes? % "\"type\":\"error\"")
+                            (str/split-lines response)))
+                  (is (re-find #"(?i)agent setup exploded" response))
+                  (is (str/includes? response "\"finishReason\":\"error\"")
+                      "the errored stream is closed with a finish event")
+                  (is (str/includes? response "data: [DONE]")
+                      "the stream terminates with [DONE]"))))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
@@ -737,7 +744,8 @@
                                   :profile_id      "gpt-x"
                                   :external_id     external-id
                                   :total_tokens    5
-                                  :data            [{:type "text" :text "hi"}]}))]
+                                  :data            [{:type "text" :text "hi"}]
+                                  :data_version    2}))]
           (is (nil? (mt/user-http-request :rasta :post 204 "metabot/source-feedback"
                                           {:metabot_id  1
                                            :message_id  external-id
@@ -923,8 +931,10 @@
                 {:type :finish}])
               (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
                     conv       (t2/select-one :model/MetabotConversation :id conv-id)
-                    data-types (into #{} (keep :data-type) (:data msg))
-                    part-types (into #{} (map :type) (:data msg))]
+                    part-types (into #{} (map :type) (:data msg))
+                    data-types (into #{}
+                                     (keep #(when (str/starts-with? % "data-") (subs % 5)))
+                                     part-types)]
                 (is (= #{"navigate_to" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
                        data-types)
                     "all persistable data parts (not state) should be in :data")
@@ -938,57 +948,76 @@
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
             (t2/delete! :model/MetabotConversation :id conv-id)))))))
 
-(deftest strip-tool-output-bloat-test
-  (testing "drops transient keys and structured-output fields outside the persisted subset"
-    (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
-           (metabot.persistence/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-1"
-             :result {:output            "<result>XML</result>"
-                      :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
-                      :structured-output {:result-type :search :data [{:id 1}]}
-                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
-  (testing "keeps the query-related subset of :structured-output for analytics extraction"
+(deftest parts->storable-content-tool-output-trimming-test
+  (testing "drops transient result keys and structured-output fields outside the persisted subset"
+    (is (= [{:type         "tool-search"
+             :toolCallId   "call-1"
+             :state        "output-available"
+             :input        {:q "x"}
+             :output       {:output "<result>XML</result>"}}]
+           (metabot.persistence/parts->storable-content
+            [{:type :tool-input :id "call-1" :function "search" :arguments {:q "x"}}
+             {:type   :tool-output
+              :id     "call-1"
+              :result {:output            "<result>XML</result>"
+                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
+                       :structured-output {:result-type :search :data [{:id 1}]}
+                       :data-parts        [{:type :data :data-type "navigate_to"}]}}])))))
+
+(deftest parts->storable-content-structured-output-subset-test
+  (testing "keeps the query-related subset of structured output, canonicalized to :structured_output"
     (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
-      (is (= {:type   :tool-output
-              :id     "call-sql"
+      (is (= [{:type         "tool-create_sql_query"
+               :toolCallId   "call-sql"
+               :state        "output-available"
+               :input        {}
+               :output       {:output            "<result>...</result>"
+                              :structured_output {:query-id      "qid-1"
+                                                  :query-content "SELECT 1"
+                                                  :query         query-map
+                                                  :database      1}}}]
+             (metabot.persistence/parts->storable-content
+              [{:type :tool-input :id "call-sql" :function "create_sql_query" :arguments {}}
+               {:type   :tool-output
+                :id     "call-sql"
+                :result {:output            "<result>...</result>"
+                         :structured-output {:query-id      "qid-1"
+                                             :query-content "SELECT 1"
+                                             :query         query-map
+                                             :database      1
+                                             :resources     [{:field_values [1 2 3]}]
+                                             :reactions     [:noop]}
+                         :data-parts        [{:type :data}]}}]))))))
+
+(deftest parts->storable-content-snake-alias-test
+  (testing "reads the snake-case :structured_output alias when present"
+    (is (= [{:type         "tool-search"
+             :toolCallId   "call-snake"
+             :state        "output-available"
+             :input        {}
+             :output       {:output            "<result>...</result>"
+                            :structured_output {:query-id "qid-2" :query-content "SELECT 2"}}}]
+           (metabot.persistence/parts->storable-content
+            [{:type :tool-input :id "call-snake" :function "search" :arguments {}}
+             {:type   :tool-output
+              :id     "call-snake"
               :result {:output            "<result>...</result>"
-                       :structured-output {:query-id      "qid-1"
-                                           :query-content "SELECT 1"
-                                           :query         query-map
-                                           :database      1}}}
-             (metabot.persistence/strip-tool-output-bloat
-              {:type   :tool-output
-               :id     "call-sql"
-               :result {:output            "<result>...</result>"
-                        :structured-output {:query-id      "qid-1"
-                                            :query-content "SELECT 1"
-                                            :query         query-map
-                                            :database      1
-                                            :resources     [{:field_values [1 2 3]}]
-                                            :reactions     [:noop]}
-                        :data-parts        [{:type :data}]}})))))
-  (testing "preserves the snake-case :structured_output alias when present"
-    (is (= {:type   :tool-output
-            :id     "call-snake"
-            :result {:output            "<result>...</result>"
-                     :structured_output {:query-id "qid-2" :query-content "SELECT 2"}}}
-           (metabot.persistence/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-snake"
-             :result {:output            "<result>...</result>"
-                      :structured_output {:query-id      "qid-2"
-                                          :query-content "SELECT 2"
-                                          :extra-bloat   [1 2 3]}}}))))
-  (testing "leaves non-tool-output parts untouched"
-    (let [text-part {:type :text :text "hello"}]
-      (is (= text-part (metabot.persistence/strip-tool-output-bloat text-part)))))
-  (testing "handles result with no :output key and no query-related structured-output"
-    (is (= {:type :tool-output :id "call-2" :result {}}
-           (metabot.persistence/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-2"
-             :result {:structured-output {:some "data"}}})))))
+                       :structured_output {:query-id      "qid-2"
+                                           :query-content "SELECT 2"
+                                           :extra-bloat   [1 2 3]}}}])))))
+
+(deftest parts->storable-content-empty-result-test
+  (testing "result with no :output key and no query-related structured output stores an empty map"
+    (is (= [{:type         "tool-search"
+             :toolCallId   "call-2"
+             :state        "output-available"
+             :input        {}
+             :output       {}}]
+           (metabot.persistence/parts->storable-content
+            [{:type :tool-input :id "call-2" :function "search" :arguments {}}
+             {:type   :tool-output
+              :id     "call-2"
+              :result {:structured-output {:some "data"}}}])))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."
