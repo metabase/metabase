@@ -18,7 +18,6 @@ import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
-import { CopyPermalinkButton } from "../components/CopyPermalinkButton";
 
 import DB from "./BrowseDatabases.module.css";
 import { trackAddDatabaseDBList } from "./analytics";
@@ -67,14 +66,18 @@ export const BrowseDatabases = () => {
               databases.length > 0 &&
               databases.map((database) => (
                 <BrowseCard
-                  to={Urls.browseDatabase(database)}
+                  // in case of name collisions, use id-slug url for uniqueness
+                  to={
+                    databases.filter((db) => db.name === database.name)
+                      .length === 1
+                      ? Urls.permalinkDatabase(database)
+                      : Urls.browseDatabase(database)
+                  }
                   key={database.id}
                   title={database.name}
                   icon="database"
                   size="lg"
-                >
-                  <CopyPermalinkButton url={Urls.permalinkDatabase(database)} />
-                </BrowseCard>
+                />
               ))}
             {isAdmin && <AddDatabaseCard />}
           </BrowseGrid>

@@ -46,15 +46,3 @@ const databaseSegment = (database: DatabaseRef) =>
 export function permalinkDatabase(database: DatabaseRef) {
   return `/browse/databases/${databaseSegment(database)}`;
 }
-
-export function permalinkSchema(database: DatabaseRef, schema: string) {
-  return `/browse/databases/${databaseSegment(database)}/schema/${encodeURIComponent(schema)}`;
-}
-
-export function permalinkTable(
-  database: DatabaseRef,
-  { schema, table }: { schema?: string; table: string },
-) {
-  const schemaSegment = schema ? `/schema/${encodeURIComponent(schema)}` : "";
-  return `/browse/databases/${databaseSegment(database)}${schemaSegment}/table/${encodeURIComponent(table)}`;
-}

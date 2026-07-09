@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
-import { CopyPermalinkButton } from "metabase/browse/components/CopyPermalinkButton";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -12,7 +11,6 @@ import { useSelector } from "metabase/redux";
 import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -79,14 +77,6 @@ export const TableBrowserInner = ({
           <TableBrowserItem
             key={table.id}
             table={table}
-            permalinkUrl={
-              database
-                ? Urls.permalinkTable(database, {
-                    schema: table.schema,
-                    table: table.name,
-                  })
-                : undefined
-            }
             dbId={dbId}
             getTableUrl={getTableUrl}
             xraysEnabled={xraysEnabled}
@@ -101,7 +91,6 @@ export const TableBrowserInner = ({
 
 type TableBrowserItemProps = {
   table: Table;
-  permalinkUrl?: string;
   dbId: DatabaseId;
   xraysEnabled?: boolean;
   metadata?: Metadata;
@@ -111,7 +100,6 @@ type TableBrowserItemProps = {
 
 const TableBrowserItem = ({
   table,
-  permalinkUrl,
   dbId,
   xraysEnabled,
   metadata,
@@ -137,7 +125,6 @@ const TableBrowserItem = ({
             // Unjustified type cast. FIXME
             tableId={table.id as ConcreteTableId}
             dbId={dbId}
-            permalinkUrl={permalinkUrl}
             xraysEnabled={xraysEnabled}
             canEditTables={canEditTables && isTableWritable}
           />
@@ -150,7 +137,6 @@ const TableBrowserItem = ({
 type TableBrowserItemButtonsProps = {
   tableId: ConcreteTableId;
   dbId: DatabaseId;
-  permalinkUrl?: string;
   xraysEnabled?: boolean;
   canEditTables?: boolean;
 };
@@ -158,7 +144,6 @@ type TableBrowserItemButtonsProps = {
 const TableBrowserItemButtons = ({
   tableId,
   dbId,
-  permalinkUrl,
   xraysEnabled,
   canEditTables,
 }: TableBrowserItemButtonsProps) => {
@@ -206,7 +191,6 @@ const TableBrowserItemButtons = ({
         >
           <Icon name="reference" />
         </ActionIcon>
-        {permalinkUrl && <CopyPermalinkButton url={permalinkUrl} />}
       </Group>
     </Paper>
   );
