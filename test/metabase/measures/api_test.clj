@@ -178,6 +178,30 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "measure/" (u/the-id measure))))))))))
 
+(deftest data-analyst-readonly-measure-access-test
+  (testing "a data-analyst role (manage-table-metadata, not superuser) can read but not write measures
+           without unrestricted view-data on the underlying table"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
+                                                      :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (testing "GET /api/measure/:id succeeds"
+            (is (=? {:id measure-id}
+                    (mt/user-http-request :lucky :get 200 (str "measure/" measure-id)))))
+          (testing "GET /api/measure (list) succeeds and includes the measure"
+            (is (some #(= measure-id (:id %))
+                      (mt/user-http-request :lucky :get 200 "measure/"))))
+          (testing "POST /api/measure is still blocked"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :post 403 "measure"
+                                         {:name       "New Measure"
+                                          :table_id   (mt/id :venues)
+                                          :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))
+          (testing "PUT /api/measure/:id is still blocked"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :lucky :put 403 (str "measure/" measure-id)
+                                         {:name "Updated Name" :revision_message "attempted edit"})))))))))
+
 (deftest fetch-measure-test
   (testing "GET /api/measure/:id"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)

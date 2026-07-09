@@ -1,10 +1,7 @@
 import { mockSettings } from "__support__/settings";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  DashboardSubscription,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import type { DashboardSubscription } from "metabase-types/api";
 
 import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
 
@@ -12,11 +9,24 @@ function setup({
   pulse = createPulse(),
   allowDownload = true,
   hasAttachments = false,
+  includePdf = false,
+  attachmentOnly = false,
 } = {}) {
   const setPulse = jest.fn();
 
   if (hasAttachments) {
     pulse.cards[0]["include_xls"] = true;
+  }
+
+  if (includePdf || attachmentOnly) {
+    pulse.channels = pulse.channels.map((channel) => ({
+      ...channel,
+      details: {
+        ...channel.details,
+        ...(includePdf ? { include_pdf: true } : {}),
+        ...(attachmentOnly ? { attachment_only: true } : {}),
+      },
+    }));
   }
 
   const state = createMockState({
@@ -284,6 +294,126 @@ describe("EmailAttachmentPicker", () => {
       expect(visualizerCardCheckbox).not.toBeChecked();
     });
   });
+
+  describe("PDF attachment", () => {
+    it("should render an unchecked 'Attach a PDF' switch by default", () => {
+      setup();
+      const pdfSwitch = screen.getByRole("switch", {
+        name: /Attach a PDF of the dashboard/,
+      });
+      expect(pdfSwitch).toBeInTheDocument();
+      expect(pdfSwitch).not.toBeChecked();
+    });
+
+    it("should disable the PDF switch when downloads are not allowed", () => {
+      setup({ allowDownload: false });
+      expect(
+        screen.getByRole("switch", { name: /Attach a PDF of the dashboard/ }),
+      ).toBeDisabled();
+    });
+
+    it("should render the PDF switch checked when include_pdf is set", () => {
+      setup({ includePdf: true });
+      expect(
+        screen.getByRole("switch", { name: /Attach a PDF of the dashboard/ }),
+      ).toBeChecked();
+    });
+
+    it("should write include_pdf to every channel when the PDF switch is toggled on", () => {
+      const { setPulse } = setup();
+      fireEvent.click(
+        screen.getByRole("switch", { name: /Attach a PDF of the dashboard/ }),
+      );
+      expect(setPulse).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          channels: expect.arrayContaining([
+            expect.objectContaining({
+              details: expect.objectContaining({ include_pdf: true }),
+            }),
+          ]),
+        }),
+      );
+    });
+  });
+
+  describe("send only attachments toggle", () => {
+    const SEND_ONLY = "Send only attachments";
+
+    it("should be hidden when nothing is attached", () => {
+      setup();
+      expect(
+        screen.queryByRole("switch", { name: SEND_ONLY }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should appear when only a PDF is attached", () => {
+      setup({ includePdf: true });
+      expect(
+        screen.getByRole("switch", { name: SEND_ONLY }),
+      ).toBeInTheDocument();
+    });
+
+    it("should appear when only file attachments are enabled", () => {
+      setup({ hasAttachments: true });
+      expect(
+        screen.getByRole("switch", { name: SEND_ONLY }),
+      ).toBeInTheDocument();
+    });
+
+    it("should reflect the persisted attachment_only value", () => {
+      setup({ includePdf: true, attachmentOnly: true });
+      expect(screen.getByRole("switch", { name: SEND_ONLY })).toBeChecked();
+    });
+
+    it("should write attachment_only when toggled on with only a PDF attached", () => {
+      const { setPulse } = setup({ includePdf: true });
+      fireEvent.click(screen.getByRole("switch", { name: SEND_ONLY }));
+      expect(setPulse).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          channels: expect.arrayContaining([
+            expect.objectContaining({
+              details: expect.objectContaining({
+                include_pdf: true,
+                attachment_only: true,
+              }),
+            }),
+          ]),
+        }),
+      );
+    });
+
+    it("should keep attachment_only when files are disabled but a PDF is still attached", () => {
+      const { setPulse } = setup({
+        hasAttachments: true,
+        includePdf: true,
+        attachmentOnly: true,
+      });
+
+      fireEvent.click(screen.getByLabelText("Attach results"));
+
+      const lastPulse = setPulse.mock.lastCall?.[0];
+      expect(lastPulse.channels[0].details.attachment_only).toBe(true);
+      expect(lastPulse.channels[0].details.include_pdf).toBe(true);
+      expect(
+        lastPulse.cards.every(
+          (card: { include_csv: boolean; include_xls: boolean }) =>
+            !card.include_csv && !card.include_xls,
+        ),
+      ).toBe(true);
+    });
+
+    it("should clear attachment_only when the PDF is disabled and no files are attached", () => {
+      const { setPulse } = setup({ includePdf: true, attachmentOnly: true });
+
+      fireEvent.click(
+        screen.getByRole("switch", { name: /Attach a PDF of the dashboard/ }),
+      );
+
+      const lastPulse = setPulse.mock.lastCall?.[0];
+      expect(lastPulse.channels[0].details.include_pdf).toBe(false);
+      expect(lastPulse.channels[0].details.attachment_only).toBe(false);
+    });
+  });
 });
 
 function createPulse(): DashboardSubscription {
@@ -294,7 +424,7 @@ function createPulse(): DashboardSubscription {
         id: 4,
         collection_id: null,
         description: null,
-        display: "map" as VisualizationDisplay,
+        display: "map",
         name: "card1",
         include_csv: false,
         include_xls: false,
@@ -306,7 +436,7 @@ function createPulse(): DashboardSubscription {
         id: 6,
         collection_id: null,
         description: null,
-        display: "scalar" as VisualizationDisplay,
+        display: "scalar",
         name: "card2",
         include_csv: false,
         include_xls: false,
@@ -362,7 +492,7 @@ function createPulseWithDuplicateCardId(): DashboardSubscription {
         id: 10,
         collection_id: null,
         description: null,
-        display: "table" as VisualizationDisplay,
+        display: "table",
         name: "Original Card",
         include_csv: false,
         include_xls: false,
@@ -374,7 +504,7 @@ function createPulseWithDuplicateCardId(): DashboardSubscription {
         id: 10, // Same card ID as above
         collection_id: null,
         description: null,
-        display: "line" as VisualizationDisplay,
+        display: "line",
         name: "Visualizer Card",
         include_csv: false,
         include_xls: false,

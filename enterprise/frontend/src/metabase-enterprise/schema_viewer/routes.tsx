@@ -1,4 +1,4 @@
-import { IndexRoute } from "react-router";
+import { IndexRoute } from "metabase/router";
 
 import { SchemaViewerPage } from "./pages/SchemaViewerPage";
 

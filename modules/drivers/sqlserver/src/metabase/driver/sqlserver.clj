@@ -30,7 +30,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -1086,20 +1085,11 @@
   [_ e]
   (= (sql-jdbc/get-sql-state e) "S0002"))
 
-(defmethod driver/insert-from-source! [:sqlserver :jsonl-file]
-  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
-  (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)
-          data-rows (map (fn [line]
-                           (let [m (json/decode line)]
-                             (mapv (fn [column]
-                                     (let [value (get m (:name column))]
-                                       (if (boolean? value)
-                                         (if value 1 0)
-                                         value)))
-                                   columns)))
-                         lines)]
-      (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
+(defmethod driver/insert-col->val [:sqlserver :jsonl-file]
+  [_driver _ _column-def value]
+  (if (boolean? value)
+    (if value 1 0)
+    value))
 
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]

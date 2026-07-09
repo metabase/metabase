@@ -179,6 +179,7 @@ const elements = [
     "frontend/src/metabase/app-embed-mcp-public-path.ts",
     "frontend/src/metabase/app-embed-mcp-public-path.unit.spec.ts",
     "frontend/src/metabase/app-public.ts",
+    "frontend/src/metabase/app-static-viz.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
@@ -347,4 +348,8 @@ function buildEnforcedRules(elements, rules) {
 
 const enforcedRules = buildEnforcedRules(elements, rules);
 
-export { elements, rules, enforcedRules };
+function getFeatureModules(els = elements) {
+  return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
+}
+
+export { elements, rules, enforcedRules, getFeatureModules };

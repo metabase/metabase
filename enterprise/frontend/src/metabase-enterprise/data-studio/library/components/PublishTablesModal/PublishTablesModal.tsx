@@ -151,7 +151,7 @@ function ModalBody({
   return (
     <FormProvider<BulkTableRequest>
       enableReinitialize
-      initialValues={{ collection_id: dataCollection.id as number }}
+      initialValues={{ collection_id: dataCollection.id }}
       onSubmit={handleSubmit}
     >
       <Form>

@@ -1,0 +1,235 @@
+## MCP Usage Analytics storage layer.
+##
+## Two tables modeled on the Metabot analytics pair:
+##   - mcp_session_log   (one row per MCP session)  ~ metabot_conversation
+##   - mcp_tool_call_log (one row per tools/call)    ~ ai_usage_log
+##
+## `mcp_session_log` records per-session metadata (client identity + PII) for old-protocol
+## clients. Client identity + PII are ALSO denormalized onto each `mcp_tool_call_log` row —
+## resolved at call time — so `v_mcp_tool_calls` is self-contained (no session join) and keeps
+## working under the upcoming MCP RC that drops sessions entirely. Row insertion is handled in
+## the instrumentation ticket.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/064_update_migrations.yaml
+
+  - changeSet:
+      id: v64.2026-06-23T00:00:00
+      author: sfragnaud
+      comment: Create mcp_session_log table
+      changes:
+        - createTable:
+            tableName: mcp_session_log
+            remarks: One row per MCP session; client identity + PII captured once at the initialize handshake (modeled on metabot_conversation)
+            columns:
+              - column:
+                  name: id
+                  type: varchar(254)
+                  remarks: MCP session id (primary key)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the session was opened (initialize handshake)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: When the session was torn down (DELETE); NULL when the client never sent a clean teardown
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: Metabase user behind the session; NULL for system/unauthenticated. Non-PII, always recorded.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: Snapshot of the user's tenant at session time; NULL for non-tenant users. Non-PII, always recorded.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_name
+                  type: varchar(255)
+                  remarks: Client name from the initialize handshake clientInfo (e.g. claude, chatgpt, cursor-vscode). Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_version
+                  type: varchar(255)
+                  remarks: Client version from the initialize handshake clientInfo. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP captured at initialize, PII (gated by analytics-pii-retention-enabled).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_agent
+                  type: varchar(512)
+                  remarks: Raw User-Agent header captured at initialize, PII (gated).
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: mcp_session_log
+
+  - changeSet:
+      id: v64.2026-06-23T00:00:01
+      author: sfragnaud
+      comment: Index on mcp_session_log.user_id
+      changes:
+        - createIndex:
+            indexName: idx_mcp_session_log_user_id
+            tableName: mcp_session_log
+            columns:
+              - column:
+                  name: user_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v64.2026-06-23T00:00:02
+      author: sfragnaud
+      comment: Index on mcp_session_log.created_at
+      changes:
+        - createIndex:
+            indexName: idx_mcp_session_log_created_at
+            tableName: mcp_session_log
+            columns:
+              - column:
+                  name: created_at
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v64.2026-06-23T00:00:03
+      author: sfragnaud
+      comment: Create mcp_tool_call_log table
+      changes:
+        - createTable:
+            tableName: mcp_tool_call_log
+            remarks: One row per MCP tools/call; client identity + PII denormalized on so the view needs no session join (modeled on ai_usage_log)
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Autoincrement primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the tool call was made
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: Metabase user who triggered the call; duplicated here for group-by convenience (mirrors ai_usage_log.user_id). Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: tool_name
+                  type: varchar(255)
+                  remarks: Name of the MCP tool that was invoked
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  remarks: Outcome of the call, e.g. success or error
+                  constraints:
+                    nullable: true
+              - column:
+                  name: duration_ms
+                  type: int
+                  remarks: Wall-clock duration of the tool call in milliseconds
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_code
+                  type: int
+                  remarks: JSON-RPC error code for a failed tool call (e.g. -32602, -32603); NULL on success. Non-PII, always recorded.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: JSON-RPC error message for a failed tool call, PII (gated by analytics-pii-retention-enabled, truncated); NULL on success or when gating is off.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_name
+                  type: varchar(255)
+                  remarks: Canonical MCP client key (claude/chatgpt/cursor-vscode/vscode/zed/other), resolved at call time from _meta clientInfo or the session's stored identity. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_version
+                  type: varchar(255)
+                  remarks: MCP client version, resolved at call time. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: Snapshot of the calling user's tenant at call time; NULL for non-tenant users. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP captured at call time, PII (gated by analytics-pii-retention-enabled).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_agent
+                  type: varchar(512)
+                  remarks: Raw User-Agent captured at call time, PII (gated).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: sanitized_user_agent
+                  type: varchar(512)
+                  remarks: Sanitized (browser/OS) User-Agent descriptor, PII (gated).
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: mcp_tool_call_log
+
+  - changeSet:
+      id: v64.2026-06-23T00:00:04
+      author: sfragnaud
+      comment: Index on mcp_tool_call_log.user_id
+      changes:
+        - createIndex:
+            indexName: idx_mcp_tool_call_log_user_id
+            tableName: mcp_tool_call_log
+            columns:
+              - column:
+                  name: user_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v64.2026-06-23T00:00:06
+      author: sfragnaud
+      comment: Index on mcp_tool_call_log.created_at
+      changes:
+        - createIndex:
+            indexName: idx_mcp_tool_call_log_created_at
+            tableName: mcp_tool_call_log
+            columns:
+              - column:
+                  name: created_at
+      rollback: # dropped with table

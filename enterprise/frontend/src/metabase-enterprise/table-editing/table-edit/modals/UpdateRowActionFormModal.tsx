@@ -77,9 +77,9 @@ export function UpdateRowActionFormModal({
     setFieldValue,
     handleSubmit,
     validateForm: revalidateForm,
-  } = useFormik({
+  } = useFormik<Record<string, RowValue>>({
     // We want to track only changed values, not all values
-    initialValues: {} as Record<string, RowValue>,
+    initialValues: {},
     onSubmit: handleFormikSubmit,
     validate: validateForm,
     validateOnMount: true,

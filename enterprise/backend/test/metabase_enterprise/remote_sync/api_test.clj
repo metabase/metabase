@@ -954,6 +954,17 @@
                                          {:remote-sync-url "asdf://invalid-url"})]
       (is (= "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)" (:error response))))))
 
+(deftest settings-surfaces-clone-failure-message-test
+  (testing "PUT /api/ee/remote-sync/settings surfaces a JGit clone-failure as a 400 error message"
+    (mt/with-dynamic-fn-redefs [settings/check-git-settings!
+                                (fn [_] (throw (ex-info "Failed to clone git repository: URI not supported: file://bad" {})))]
+      (mt/with-temporary-setting-values [remote-sync-url nil
+                                         remote-sync-type :read-only]
+        (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                             {:remote-sync-url "https://github.com/does/not-exist.git"
+                                              :remote-sync-type :read-only})]
+          (is (re-find #"Failed to clone git repository" (:error response))))))))
+
 (deftest settings-cannot-change-with-dirty-data
   (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
     (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly true)

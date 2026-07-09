@@ -232,7 +232,7 @@ const SampleDatabaseIndicator = () => {
         <Text inline c="text-disabled">{t`(by Metabase)`}</Text>
       </Flex>
       <Group gap="xs">
-        <Icon name="check_filled" c="success" />
+        <Icon name="check_filled" c="feedback-positive" />
         {t`Included`}
       </Group>
     </Flex>

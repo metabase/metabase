@@ -1,11 +1,10 @@
-import { Route } from "react-router";
-
 import {
   setupDependencyGraphEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
 import { createMockDependencyGraph } from "metabase-types/api/mocks";
 
 import { DependencyGraphPage } from "./DependencyGraphPage";

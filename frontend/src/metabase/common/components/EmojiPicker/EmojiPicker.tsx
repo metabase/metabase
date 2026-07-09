@@ -4,7 +4,7 @@ import {
   type Emoji as EmojiType,
   EmojiPicker as Picker,
 } from "frimousse";
-import { type CSSProperties, type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Box, Icon, Paper, Text, TextInput } from "metabase/ui";
@@ -110,7 +110,7 @@ function Emoji({
         root: {
           // for colored backgrounds
           "--emoji": `"${emoji.emoji}"`,
-        } as CSSProperties,
+        },
       }}
       {...props}
     >

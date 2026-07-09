@@ -91,7 +91,7 @@ function normalizeDescriptor(descriptor: FieldDescriptor): NormalizedField {
 export function defineCompactSchema<T>(
   config: SchemaConfig<T>,
 ): CompactSchema<T> {
-  const entries = Object.entries(config) as [string, FieldDescriptor][];
+  const entries: [string, FieldDescriptor][] = Object.entries(config);
   const normalized = entries.map(
     ([fullKey, descriptor]) =>
       [fullKey, normalizeDescriptor(descriptor)] as const,

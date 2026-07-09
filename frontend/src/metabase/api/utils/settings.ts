@@ -62,7 +62,11 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       if (response.error) {
         const message = getErrorMessage(response.error, t`Error saving ${key}`);
 
-        sendToast({ message, icon: "warning", toastColor: "danger" });
+        sendToast({
+          message,
+          icon: "warning",
+          toastColor: "feedback-negative",
+        });
       } else {
         sendToast({ message: t`Changes saved` });
       }
@@ -89,7 +93,11 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
           (response.error as { data?: { message: string } })?.data?.message ||
           t`Error saving settings`;
 
-        sendToast({ message, icon: "warning", toastColor: "danger" });
+        sendToast({
+          message,
+          icon: "warning",
+          toastColor: "feedback-negative",
+        });
       } else {
         sendToast({ message: t`Changes saved`, icon: "check_filled" });
       }
@@ -148,7 +156,11 @@ export const useAdminSettings = <
             (response.error as { data?: { message: string } })?.data?.message ||
             t`Error saving settings`;
 
-          sendToast({ message, icon: "warning", toastColor: "danger" });
+          sendToast({
+            message,
+            icon: "warning",
+            toastColor: "feedback-negative",
+          });
         } else {
           sendToast({ message: t`Changes saved`, icon: "check_filled" });
         }

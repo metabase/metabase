@@ -1,10 +1,4 @@
 import type { Store } from "@reduxjs/toolkit";
-import {
-  IndexRedirect,
-  IndexRoute,
-  Route,
-  type RouteComponent,
-} from "react-router";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
@@ -13,6 +7,12 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Route,
+  type RouteComponent,
+} from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
