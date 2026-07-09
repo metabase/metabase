@@ -1,15 +1,18 @@
 (ns metabase.channel.render.js.graal
   "The `:graalvm` [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS
-  in-process on a pool of sandboxed GraalVM contexts.
+  in-process on a pool of sandboxed GraalVM contexts (up to two by default).
 
   We run the JS interpreted (no Graal compiler on a stock JDK) and silence the interpreter warning with
   the engine-level `engine.WarnInterpreterOnly` option. See
   https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md.
 
-  All contexts share the process-lifetime `Engine` and evaluate the same bundle `Source` instance (one
-  `defonce`), so the engine's code cache — keyed on the `Source` instance — holds ONE parsed copy of
-  the static-viz bundle. Contexts are not thread-safe, so each is borrowed exclusively for a render and
-  recycled after 10 minutes to bound leaks."
+  The pooled contexts share one `Engine` and one parsed bundle `Source`: the engine (and its
+  `Source`-keyed code cache) is created with the first context and closed with the last, and each context
+  evaluates the shared source into its own realm. So one parsed copy of the bundle is held regardless of
+  how many contexts there are, which makes raising the pool's max from 1 to 2 or 3 a one-line change. A
+  context is held exclusively per render (so renders serialize per context); the utilization controller
+  has min 0, so when idle the pool shrinks to 0 and the last `destroy` closes the engine (GraalVM reclaims
+  neither context nor engine on GC). The first render after an idle gap rebuilds them."
   (:require
    [clojure.java.io :as io]
    [metabase.channel.render.js.protocol :as js.protocol]
@@ -18,7 +21,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
-   (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
+   (io.aleph.dirigiste IPool$Generator Pool Pools)
    (java.util.concurrent TimeUnit)
    (org.graalvm.polyglot Context Engine HostAccess Source Value)))
 
@@ -27,38 +30,33 @@
 ;;; --------------------------------------------- engine / context ----------------------------------------
 
 (def ^:private no-host-class-lookup
-  "Predicate blocking all host class lookup. A singleton so all contexts sharing an engine have identical config."
+  "Predicate blocking all host class lookup."
   (reify java.util.function.Predicate
     (test [_ _] false)))
 
 (defn- create-engine
-  "Build a JS `Engine` to be shared across contexts. We run JS interpreted (no Graal compiler on a stock JDK), so
-  `engine.WarnInterpreterOnly` is silenced here on the engine (it's an engine-level option)."
+  "Build a JS `Engine`. We run JS interpreted (no Graal compiler on a stock JDK), so
+  `engine.WarnInterpreterOnly` is silenced here (it's an engine-level option)."
   ^Engine []
   (.. (Engine/newBuilder)
       (option "engine.WarnInterpreterOnly" "false")
       (build)))
 
-(defonce ^:private
-  ^{:doc "The process-lifetime GraalVM `Engine` shared by every sandboxed JS context. The engine owns the Truffle
-          runtime and the parsed-source code cache, so contexts (and pool recycles) reuse one parsed copy of any
-          `Source` instance they share instead of each standing up their own. Intentionally never closed."}
-  shared-sandboxed-js-engine
-  (delay (create-engine)))
-
 (defn create-context
-  "Create a sandboxed org.graalvm.polyglot.Context (on the process-shared engine) for evaluating javascript. No host
-  access, no class lookup, no filesystem I/O. All data must be passed as JSON strings and parsed in JS."
-  ^Context []
-  (.. (Context/newBuilder (into-array String ["js"]))
-      (engine ^Engine @shared-sandboxed-js-engine)
-      (option "js.intl-402" "true")
-      (allowHostAccess HostAccess/NONE)
-      (allowHostClassLookup no-host-class-lookup)
-      (out System/out)
-      (err System/err)
-      (allowIO false)
-      (build)))
+  "Create a sandboxed org.graalvm.polyglot.Context for evaluating javascript — on a fresh engine (no args)
+  or on the given `engine`, so several contexts can share one engine and its parsed-source code cache. No
+  host access, no class lookup, no filesystem I/O; all data must be passed as JSON strings and parsed in JS."
+  (^Context [] (create-context (create-engine)))
+  (^Context [^Engine engine]
+   (.. (Context/newBuilder (into-array String ["js"]))
+       (engine engine)
+       (option "js.intl-402" "true")
+       (allowHostAccess HostAccess/NONE)
+       (allowHostClassLookup no-host-class-lookup)
+       (out System/out)
+       (err System/err)
+       (allowIO false)
+       (build))))
 
 (defn load-js-string
   "Load a string literal source into the js context."
@@ -66,9 +64,7 @@
   (.eval context (.buildLiteral (Source/newBuilder "js" string-src src-name))))
 
 (defn- build-source
-  "Build a `Source` from a classpath resource path. Evaluating the SAME `Source` instance in several contexts that
-  share an engine makes the engine's code cache reuse one parsed copy; a fresh instance per context makes the engine
-  parse (and retain) a separate copy each time — so callers that create many contexts should build once and share."
+  "Build a `Source` from a classpath resource path."
   ^Source [source-path]
   (let [resource (io/resource source-path)]
     (when (nil? resource)
@@ -82,136 +78,140 @@
   (.eval context source))
 
 (defn execute-fn-name
-  "Executes `js-fn-name` in js context with args"
+  "Execute the global js function named `js-fn-name` in `context` with `args`. Not thread-safe on its own
+  — a context is held exclusively per render by the pool (see [[call-js]])."
   ^Value [^Context context js-fn-name & args]
-  (locking context
-    (let [fn-ref (.eval context "js" js-fn-name)
-          args   (into-array Object args)]
-      (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
-      (.execute fn-ref args))))
+  (let [fn-ref (.eval context "js" js-fn-name)]
+    (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
+    (.execute fn-ref (into-array Object args))))
 
 (defn execute-fn
-  "fn-ref should be an executable org.graalvm.polyglot.Value return from a js engine. Invoke this function with args."
+  "fn-ref should be an executable org.graalvm.polyglot.Value returned from a js engine. Invoke it with args."
   ^Value [^Value fn-ref & args]
   (assert (.canExecute fn-ref) "cannot execute function reference")
   (.execute fn-ref (object-array args)))
 
-;;; ------------------------------------------------ context pool -----------------------------------------
+;;; ---------------------------------------- shared engine + contexts -------------------------------------
 
-;; Built exactly once per process (defonce + delay) and shared by every context: the engine's code cache is keyed on
-;; the `Source` instance, so this is what makes it hold ONE parsed copy of the bundle. Building a `Source` anywhere
-;; else reintroduces the leak/reparse this exists to fix — after a `bun run build-static-viz-graalvm`, re-evaluate this
-;; defonce (or restart the REPL) to pick the change up.
-(defonce ^:private bundle-source
-  (delay (build-source "frontend_client/app/dist/lib-static-viz.bundle.js")))
+(def ^:private bundle-resource-path "frontend_client/app/dist/lib-static-viz.bundle.js")
 
-(defn- assert-tests-not-initializing! []
-  ;; make sure people don't try to load the static viz bundle as a side-effect of loading namespaces, because it might
-  ;; not have been built! If it's not built, we want to be able to give people a meaningful error (see the fixture
-  ;; in [[metabase.channel.render.js.svg-test]]) rather than have the test runner fail to start with a meaningless
-  ;; compilation error.
+(defn- assert-tests-not-initializing!
+  "Guard against loading the static-viz bundle as a side effect of loading namespaces: it might not have
+  been built yet. If it hasn't, we want a meaningful error (see the fixture in
+  [[metabase.channel.render.js.svg-test]]) rather than a meaningless compilation error at test-runner
+  startup."
+  []
   (when config/tests-available?
     ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)")))
 
-(defn- create-static-viz-context
-  "A fresh sandboxed context with the static-viz bundle loaded."
+(def ^:private engine-lock (Object.))
+
+(def ^:private shared-engine
+  "Atom holding `{:engine <Engine>, :source <Source>, :refs <live context count>}`, or nil when no context
+  is live. Guarded by [[engine-lock]]. The engine and parsed bundle are shared by every pooled context;
+  they're created with the first context ([[acquire-engine!]]) and closed with the last
+  ([[release-engine!]])."
+  (atom nil))
+
+(defn- acquire-engine!
+  "Return the shared `{:engine, :source}`, creating them (parsing the bundle) with the first context.
+  Bumps the ref count."
+  []
+  (locking engine-lock
+    (let [state (or @shared-engine
+                    {:source (build-source bundle-resource-path)
+                     :engine (create-engine)
+                     :refs   0})]
+      (reset! shared-engine (update state :refs inc))
+      state)))
+
+(defn- release-engine!
+  "Drop a ref on the shared engine, closing it once the last context is gone."
+  []
+  (locking engine-lock
+    (let [{:keys [^Engine engine refs]} @shared-engine]
+      (if (<= refs 1)
+        (do (try (.close engine) (catch Exception _))
+            (reset! shared-engine nil))
+        (swap! shared-engine update :refs dec)))))
+
+(defn- generate-context!
+  "Build a context on the shared engine and evaluate the bundle into it (creating the engine + parsing the
+  bundle if this is the first context)."
   ^Context []
   (assert-tests-not-initializing!)
-  (let [ctx (create-context)]
-    (eval-source ctx @bundle-source)
-    ctx))
+  (let [{:keys [^Engine engine ^Source source]} (acquire-engine!)]
+    (try
+      (doto (create-context engine)
+        (eval-source source))
+      (catch Throwable t
+        (release-engine!)
+        (throw t)))))
+
+(defn- destroy-context!
+  "Close a context and drop its ref on the shared engine (closing the engine if it was the last context)."
+  [^Context context]
+  (try (.close context true) (catch Exception _))
+  (release-engine!))
+
+;;; ------------------------------------------------ context pool -----------------------------------------
 
 (def ^:private pool-key
-  "Dirigiste pools are keyed. The key itself is arbitrary — it just has to be the same for every pool operation."
-  :engines)
-
-(def ^:private context-creation-lock
-  "Monitor serializing pooled context creation. Even with the shared-`Source` code cache, evaluating the bundle in a
-  fresh context allocates ~500 MB, so letting the pool grow 1→3 concurrently during a render burst stacks ~1–1.5 GB
-  of transient allocation on top of the in-flight renders — enough to blow a 2 GB heap. Holding creations to one at a
-  time bounds the worst case to a single creation (~1 s each); waiting acquires just queue on the pool meanwhile.
-  Nothing else may lock this monitor. See GHY-4077."
-  (Object.))
-
-(defn- expiry-timestamp
-  "Expiry timestamp for a pooled context: now + 10 minutes ± up to 3 minutes of jitter. The jitter keeps pool members
-  created in the same burst from all expiring — and serially regenerating — in the same window."
-  ^long []
-  (+ (System/nanoTime)
-     (.toNanos TimeUnit/MINUTES 7)
-     (long (rand (.toNanos TimeUnit/MINUTES 6)))))
-
-(defn- generate-pool-entry
-  "Create a `[context expiry-timestamp]` tuple for the pool. At most one context creation runs at a time (see
-  [[context-creation-lock]]); acquisition/use is already exclusive per context, so this only bounds pool *growth*."
-  []
-  (locking context-creation-lock
-    [(create-static-viz-context) (expiry-timestamp)]))
+  "Dirigiste pools are keyed; the key itself is arbitrary, it just has to be the same for every operation."
+  :static-viz)
 
 (def ^:private ^Pool static-viz-context-pool
-  "Pool of Truffle JS contexts. They are not thread-safe, so access is exclusive from acquire to release. Generating a
-  context is cheap — realm setup plus top-level eval against the engine's code cache, no reparse — and per-context
-  memory is a realm, not a full parsed copy of the bundle. The pool targets 100% utilization with a maximum of 3
-  contexts (to bound memory; renders hold a context exclusively, so that is also the render concurrency), but at
-  least 1 context is always kept in the pool to pick up. Each pooled tuple carries a (jittered, ~10-minute) expiry
-  timestamp so a context is recycled regardless, bounding per-context leak accumulation. Context creation is
-  serialized (see [[context-creation-lock]]) so pool growth never runs multiple ~500 MB creations concurrently."
-  (let [base-controller (Pools/utilizationController 1.0 3 3)]
+  "A pool of up to two static-viz contexts (change the controller's max to run 1 or 3), each held
+  exclusively from acquire to release, so at most two renders run at once — one per context, on the
+  shared engine.
+
+  The utilization controller targets 100% utilization with a max of 2 and a min of 0, so when nothing is
+  rendering it shrinks to 0 and the generator's `destroy` closes the context (and, on the last one, the
+  shared engine). It rechecks once a minute, so an idle context lingers up to ~1 minute before being
+  reaped (keeping it warm through short gaps between renders). The other constructor args (queue size,
+  sampling interval) don't matter much."
+  (let [max-pool-size       2
+        max-queued-acquires 65000
+        sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
+        control-period-ms   (.toMillis TimeUnit/MINUTES 1)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               (generate-pool-entry))
-             (destroy [_ _ [^Context ctx _expiry]]
-               ;; Close the context when it's disposed from the pool (expiry/idle shrink/shutdown). Without this, each
-               ;; disposed static-viz context leaks its memory: GraalVM only releases it on `close`, not on GC.
-               (try
-                 (.close ctx true) ;; force close - can't wait for running code
-                 (catch Exception _))))
-           ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
-           (reify IPool$Controller
-             (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))
-             (adjustment [_ stats]
-               (let [adj (.adjustment base-controller stats)
-                     n (some-> ^Stats (get stats pool-key) .getNumWorkers)
-                     engines-adj (get adj pool-key)]
-                 (if (and n engines-adj (<= (+ n engines-adj) 0))
-                   ;; If the adjustment is going to bring the pool to 0 engines, return empty adjustment instead.
-                   {}
-                   adj))))
-           65000 ;; Queue size - doesn't matter much.
-           25 ;; Sampling interval - doesn't matter much.
-           10000 ;; Recheck every 10 seconds
+               (generate-context!))
+             (destroy [_ _ context]
+               (destroy-context! context)))
+           (Pools/utilizationController 1.0 max-pool-size max-pool-size)
+           max-queued-acquires
+           sample-period-ms
+           control-period-ms
            TimeUnit/MILLISECONDS)))
 
 (defn- do-with-static-viz-context
-  "Borrow a pooled static-viz context (a fresh one closed afterwards in dev) and call `f` with it. The context is held
-  exclusively for the call: never let it — or a context-bound `Value` — escape."
+  "Borrow a pooled static-viz context and call `f` with it, held exclusively for the call (never let it —
+  or a context-bound `Value` — escape). In dev, builds and closes a throwaway context per call so a fresh
+  `bun run build-static-viz-graalvm` is picked up without a REPL restart."
   [f]
   (if config/is-dev?
-    (with-open [ctx (create-static-viz-context)]
-      (f ctx))
-    (loop []
-      (let [[context expiry-ts :as tuple] (.acquire static-viz-context-pool pool-key)]
-        (if (>= (System/nanoTime) expiry-ts)
-          (do (.dispose static-viz-context-pool pool-key tuple)
-              (recur))
-          (try (f context)
-               (finally (.release static-viz-context-pool pool-key tuple))))))))
+    (let [context (generate-context!)]
+      (try (f context)
+           (finally (destroy-context! context))))
+    (let [context (.acquire static-viz-context-pool pool-key)]
+      (try (f context)
+           (finally (.release static-viz-context-pool pool-key context))))))
 
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
 (mu/defn- call-js :- :string
-  "Call static-viz bundle function `fn-name` with already-JSON-encoded string `json-args` on a pooled
-  GraalVM context. The bundle is a UMD library, so under GraalVM it assigns to the `MetabaseStaticViz`
-  global."
-  [fn-name   :- :string
-   json-args :- [:sequential :string]]
+  "Execute static-viz bundle function `fn-name` (a `MetabaseStaticViz.*` global) with the already-JSON-encoded
+  string `args` on the pooled context."
+  [fn-name :- :string
+   args    :- [:sequential :string]]
   (do-with-static-viz-context
-   (fn [context]
-     (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) json-args)))))
+   (fn [^Context context]
+     (.asString ^Value (apply execute-fn-name context (str "MetabaseStaticViz." fn-name) args)))))
 
 (defn renderer
   "The `:graalvm` [[metabase.channel.render.js.protocol/StaticVizRenderer]] — runs the static-viz JS
-  in-process on the pooled GraalVM contexts."
+  in-process on the pooled GraalVM context."
   []
   (reify js.protocol/StaticVizRenderer
     (chart [_ input]
