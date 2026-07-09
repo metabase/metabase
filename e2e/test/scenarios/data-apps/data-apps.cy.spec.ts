@@ -110,7 +110,7 @@ describe("scenarios > data apps", () => {
       });
     });
 
-    it("lists an enabled app with an Open link and a working enable toggle", () => {
+    it("lists an enabled app with an open link and a Disable action (no Remove while connected)", () => {
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: true,
       });
@@ -122,30 +122,28 @@ describe("scenarios > data apps", () => {
 
       cy.visit("/admin/settings/apps");
 
-      // An enabled app links to its route and shows its path + an Open link.
-      cy.findByRole("link", { name: APP_DISPLAY_NAME }).should("be.visible");
+      // The name links to the app's route and the path is shown.
+      cy.findByRole("link", { name: APP_DISPLAY_NAME })
+        .should("have.attr", "href")
+        .and("contain", `/apps/${APP_NAME}`);
       cy.findByTestId("admin-layout-content")
         .findByText(`/apps/${APP_NAME}`)
         .should("be.visible");
-      cy.findByRole("link", { name: /Open/ })
-        .should("have.attr", "href")
-        .and("contain", `/apps/${APP_NAME}`);
 
-      // While a repo is connected the app is managed by sync, so there's no
-      // manual Remove control.
-      cy.findByRole("button", { name: "Remove" }).should("not.exist");
+      // The actions menu offers Disable; while a repo is connected there's no
+      // manual Remove (a sync would just re-materialize it).
+      cy.findByRole("button", {
+        name: `Actions for ${APP_DISPLAY_NAME}`,
+      }).click();
+      cy.findByRole("menuitem", { name: "Remove" }).should("not.exist");
+      cy.findByRole("menuitem", { name: "Disable" }).click();
 
-      // Toggling the switch off issues the disable mutation. The Mantine Switch
-      // input is visually hidden, so click it with `force`.
-      cy.findByRole("switch", { name: `Enable ${APP_DISPLAY_NAME}` }).click({
-        force: true,
-      });
       cy.wait("@setEnabled")
         .its("request.body")
         .should("deep.equal", { enabled: false });
     });
 
-    it("unlinks the name and disables Open for a disabled app", () => {
+    it("shows a disabled app as plain text with a Disabled badge and a Reenable action", () => {
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: true,
       });
@@ -153,19 +151,26 @@ describe("scenarios > data apps", () => {
 
       cy.visit("/admin/settings/apps");
 
-      // A disabled app isn't reachable, so its name is plain text (not a link)
-      // and the Open control has no href (not a link).
       cy.findByTestId("admin-layout-content").within(() => {
+        // A disabled app isn't reachable, so its name is plain text (not a link)
+        // and it carries a Disabled badge.
         cy.findByText(APP_DISPLAY_NAME).should("be.visible");
         cy.findByRole("link", { name: APP_DISPLAY_NAME }).should("not.exist");
-        cy.findByRole("link", { name: /Open/ }).should("not.exist");
+        cy.findByText("Disabled").should("be.visible");
       });
+
+      // The menu offers Reenable — and no Remove, since a repo is connected.
+      cy.findByRole("button", {
+        name: `Actions for ${APP_DISPLAY_NAME}`,
+      }).click();
+      cy.findByRole("menuitem", { name: "Reenable" }).should("be.visible");
+      cy.findByRole("menuitem", { name: "Remove" }).should("not.exist");
     });
 
     it("keeps previously-synced apps listed after the repo is unlinked", () => {
       // A sync never deletes and unlinking prunes nothing, so an app synced
       // while a repo was connected stays in the list once the repo is unlinked —
-      // now with a Remove control (only offered while unlinked).
+      // now with a Remove action (only offered while unlinked).
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: false,
         url: null,
@@ -175,15 +180,19 @@ describe("scenarios > data apps", () => {
       cy.visit("/admin/settings/apps");
       cy.wait("@apps");
 
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText(APP_DISPLAY_NAME).should("be.visible");
-        cy.findByRole("button", { name: "Remove" }).should("be.visible");
-      });
+      cy.findByTestId("admin-layout-content")
+        .findByText(APP_DISPLAY_NAME)
+        .should("be.visible");
+
+      cy.findByRole("button", {
+        name: `Actions for ${APP_DISPLAY_NAME}`,
+      }).click();
+      cy.findByRole("menuitem", { name: "Remove" }).should("be.visible");
     });
 
     it("lets an admin remove a data app once the repo is unlinked", () => {
       // Repo unlinked, but a previously-synced app is still in the DB (a sync
-      // never deletes) — so the admin gets a Remove control to clear it out.
+      // never deletes) — so the admin gets a Remove action to clear it out.
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: false,
         url: null,
@@ -196,10 +205,10 @@ describe("scenarios > data apps", () => {
       cy.visit("/admin/settings/apps");
       cy.wait("@apps");
 
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText(APP_DISPLAY_NAME).should("be.visible");
-        cy.findByRole("button", { name: "Remove" }).click();
-      });
+      cy.findByRole("button", {
+        name: `Actions for ${APP_DISPLAY_NAME}`,
+      }).click();
+      cy.findByRole("menuitem", { name: "Remove" }).click();
 
       // Confirm in the modal (rendered in a portal outside the layout).
       cy.findByRole("dialog").within(() => {

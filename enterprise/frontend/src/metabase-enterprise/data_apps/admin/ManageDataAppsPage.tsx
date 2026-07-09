@@ -4,7 +4,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { Box, Flex, Group, Loader, Stack, Text, Title } from "metabase/ui";
+import { Box, Flex, Loader, Stack, Title } from "metabase/ui";
 import {
   useGetDataAppRepoStatusQuery,
   useListDataAppsQuery,
@@ -68,14 +68,7 @@ export const ManageDataAppsPage = () => {
         </Flex>
       ) : (
         <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Title order={2}>{t`Apps`}</Title>
-            {apps && apps.length > 0 && (
-              <Text c="text-secondary" pr="md">
-                {t`Enabled`}
-              </Text>
-            )}
-          </Group>
+          <Title order={2}>{t`Apps`}</Title>
 
           {isAppsLoading && (
             <Flex justify="center" p="xl">
