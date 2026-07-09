@@ -1426,7 +1426,7 @@
                             {:dashcards [{:action "add_text"}]})
       (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
                             {:dashcards [{:action "add_heading" :text ""}]})
-      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id)))))))
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id))))))
 
 (deftest update-dashboard-dashcards-remove-virtual-card-test
   (testing "A text card can be removed by dashcard_id like any other dashcard"
@@ -1436,7 +1436,7 @@
             dashcard-id (first (:dashcard_ids resp))]
         (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                               {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
-        (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id))))))))
+        (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))))
 
 (deftest update-dashboard-dashcards-remove-test
   (testing "Remove a dashcard"
