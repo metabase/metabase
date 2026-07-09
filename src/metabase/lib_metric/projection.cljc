@@ -347,10 +347,9 @@
   [dimension]
   (some-> dimension :dimension-mapping :target column-key))
 
-(mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
-  "Get dimensions corresponding to the source metric's default breakout columns.
-   Returns DimensionMetadata objects matching the breakout columns in the dataset_query."
-  [definition :- ::lib-metric.schema/metric-definition]
+(defn- source-query-breakout-dimensions
+  "Dimensions matching the breakout columns of the source metric's own dataset_query."
+  [definition]
   (let [{:keys [expression metadata-provider]} definition
         leaf-type (lib-metric.definition/expression-leaf-type expression)
         leaf-id   (lib-metric.definition/expression-leaf-id expression)]
@@ -373,3 +372,13 @@
               (filterv #(when-let [k (dimension-column-key %)]
                           (contains? breakout-keys k))
                        (projectable-dimensions definition)))))))))
+
+(mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
+  "Get the dimensions to treat as the entity's defaults for breakouts: the curated default
+   dimension when one is set, otherwise dimensions matching the breakout columns in the source
+   metric's own dataset_query."
+  [definition :- ::lib-metric.schema/metric-definition]
+  (let [curated-defaults (filterv :default (projectable-dimensions definition))]
+    (if (seq curated-defaults)
+      curated-defaults
+      (source-query-breakout-dimensions definition))))

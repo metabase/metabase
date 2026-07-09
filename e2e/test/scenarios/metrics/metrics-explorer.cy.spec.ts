@@ -2484,6 +2484,19 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
         addConnectionDimension(metricId, "User", "Source", "Category"),
     );
     createFixtureMetric("Plain orders", ORDERS_SCALAR_METRIC);
+    createFixtureMetric(
+      "Orders with default category",
+      ORDERS_SCALAR_METRIC,
+      (metricId) => {
+        addConnectionDimension(
+          metricId,
+          "Product",
+          "Category",
+          "Product Category",
+        );
+        setDefaultCuratedDimension(metricId, "Product Category");
+      },
+    );
 
     H.snapshot(SHARED_DIMENSIONS_SNAPSHOT);
   });
@@ -2643,6 +2656,31 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
       H.echartsContainer().should("be.visible");
     });
   });
+
+  describe("Initial dimension breakout", () => {
+    it("selects the curated default dimension when landing from the metric's Explore button", () => {
+      getCuratedDimensionId(
+        metricIds["Orders with default category"],
+        "Product Category",
+      ).as("defaultDimensionId");
+
+      H.visitMetric(metricIds["Orders with default category"]);
+      H.MetricPage.exploreLink().click();
+      H.MetricsViewer.searchBarPills().should("have.length", 1);
+      cy.wait("@dataset");
+
+      cy.log("the curated default wins over the usual time-first breakout");
+      H.echartsContainer().findByText("Doohickey").should("be.visible");
+      cy.then(function () {
+        assertSerializedDimensionBreakout((dimensionBreakout) => {
+          expect(dimensionBreakout.t).to.equal("category");
+          expect(
+            dimensionBreakout.D?.find((entry) => entry.i === 0)?.d,
+          ).to.equal(this.defaultDimensionId);
+        });
+      });
+    });
+  });
 });
 
 const createdMetricIds: Record<string, number> = {};
@@ -2733,6 +2771,15 @@ function getCuratedDimensionId(metricId: number, dimensionName: string) {
           (addedDimension) => addedDimension.display_name === dimensionName,
         )?.id,
     );
+}
+
+function setDefaultCuratedDimension(metricId: number, dimensionName: string) {
+  return getCuratedDimensionId(metricId, dimensionName).then((dimensionId) => {
+    expect(dimensionId, `curated dimension ${dimensionName}`).to.exist;
+    cy.request("POST", `/api/metric/${metricId}/dimension/set-default`, {
+      dimension_id: dimensionId,
+    });
+  });
 }
 
 function createTestMeasure(

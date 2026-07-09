@@ -666,9 +666,78 @@ export function computeDefaultDimensionBreakouts(
 
   dimensionBreakouts.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
 
-  return dimensionBreakouts.map(
-    ({ index, ...dimensionBreakout }) => dimensionBreakout,
+  return promoteDefaultDimensionBreakout(
+    dimensionBreakouts.map(
+      ({ index, ...dimensionBreakout }) => dimensionBreakout,
+    ),
+    dimensionsBySlotIndex,
+    slotOrder,
   );
+}
+
+function findDefaultDimension(
+  dimensionsBySlotIndex: Map<number, Map<string, DimensionDescriptor>>,
+  slotOrder: number[],
+): DimensionDescriptor | null {
+  for (const slotIndex of slotOrder) {
+    for (const [, info] of dimensionsBySlotIndex.get(slotIndex) ?? []) {
+      if (info.isDefault) {
+        return info;
+      }
+    }
+  }
+  return null;
+}
+
+function promoteDefaultDimensionBreakout(
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
+  dimensionsBySlotIndex: Map<number, Map<string, DimensionDescriptor>>,
+  slotOrder: number[],
+): MetricsViewerDimensionBreakoutState[] {
+  const defaultDimension = findDefaultDimension(
+    dimensionsBySlotIndex,
+    slotOrder,
+  );
+  if (!defaultDimension) {
+    return dimensionBreakouts;
+  }
+
+  const config = getDimensionBreakoutConfig(defaultDimension.dimensionType);
+  const defaultBreakoutId =
+    config.matchMode === "aggregate" ? config.fixedId : defaultDimension.id;
+
+  const existing = dimensionBreakouts.find(
+    (dimensionBreakout) => dimensionBreakout.id === defaultBreakoutId,
+  );
+  if (existing) {
+    return [
+      existing,
+      ...dimensionBreakouts.filter(
+        (dimensionBreakout) => dimensionBreakout !== existing,
+      ),
+    ];
+  }
+  if (config.matchMode === "aggregate") {
+    return dimensionBreakouts;
+  }
+
+  const mapping: Record<number, string> = {};
+  for (const slotIndex of slotOrder) {
+    if (dimensionsBySlotIndex.get(slotIndex)?.has(defaultDimension.id)) {
+      mapping[slotIndex] = defaultDimension.id;
+    }
+  }
+  return [
+    {
+      id: defaultDimension.id,
+      type: defaultDimension.dimensionType,
+      label: defaultDimension.displayName,
+      display: config.defaultDisplayType,
+      dimensionMapping: mapping,
+      projectionConfig: {},
+    },
+    ...dimensionBreakouts,
+  ];
 }
 
 // ── Manual dimensionBreakout creation ──

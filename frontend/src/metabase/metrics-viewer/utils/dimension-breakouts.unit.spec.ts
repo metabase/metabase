@@ -150,6 +150,144 @@ describe("computeDefaultDimensionBreakouts", () => {
       dimensionBreakouts.map((dimensionBreakout) => dimensionBreakout.label),
     ).toEqual(["Category", "Totals"]);
   });
+
+  describe("curated default dimension", () => {
+    const setupMetric = (
+      metric: ReturnType<typeof createMockNormalizedMetric>,
+    ) => {
+      const metricSourceId: MetricSourceId = `metric:${metric.id}`;
+      const metricDefinition = setupDefinition(
+        createMetricMetadata([metric]),
+        metric.id,
+      );
+      return computeDefaultDimensionBreakouts(
+        { [metricSourceId]: metricDefinition },
+        [{ slotIndex: 0, entityIndex: 0, sourceId: metricSourceId }],
+      );
+    };
+
+    it("puts the curated default dimension's breakout first", () => {
+      const dimensionBreakouts = setupMetric(
+        createMockNormalizedMetric({
+          id: 102,
+          name: "Category Default",
+          dimensions: [
+            createMockMetricDimension({
+              id: "dim-created-at",
+              display_name: "Created At",
+              effective_type: "type/DateTime",
+              semantic_type: "type/CreationTimestamp",
+            }),
+            createMockMetricDimension({
+              id: "dim-default-category",
+              display_name: "Category",
+              effective_type: "type/Text",
+              semantic_type: "type/Category",
+              default: true,
+            }),
+          ],
+        }),
+      );
+
+      expect(
+        dimensionBreakouts.map((dimensionBreakout) => dimensionBreakout.label),
+      ).toEqual(["Category", "Created At", "Totals"]);
+      expect(dimensionBreakouts[0]).toMatchObject({
+        id: "dim-default-category",
+        type: "category",
+        dimensionMapping: { 0: "dim-default-category" },
+      });
+    });
+
+    it("creates and promotes a breakout for a non-preferred curated default", () => {
+      const dimensionBreakouts = setupMetric(
+        createMockNormalizedMetric({
+          id: 103,
+          name: "Non-preferred Default",
+          dimensions: [
+            createMockMetricDimension({
+              id: "dim-created-at",
+              display_name: "Created At",
+              effective_type: "type/DateTime",
+              semantic_type: "type/CreationTimestamp",
+            }),
+            createMockMetricDimension({
+              id: "dim-default-status",
+              display_name: "Status",
+              effective_type: "type/Text",
+              semantic_type: null,
+              default: true,
+            }),
+          ],
+        }),
+      );
+
+      expect(
+        dimensionBreakouts.map((dimensionBreakout) => dimensionBreakout.label),
+      ).toEqual(["Status", "Created At", "Totals"]);
+      expect(dimensionBreakouts[0].dimensionMapping).toEqual({
+        0: "dim-default-status",
+      });
+    });
+
+    it("creates and promotes a breakout for a curated default of a type that never auto-creates", () => {
+      const dimensionBreakouts = setupMetric(
+        createMockNormalizedMetric({
+          id: 104,
+          name: "Numeric Default",
+          dimensions: [
+            createMockMetricDimension({
+              id: "dim-created-at",
+              display_name: "Created At",
+              effective_type: "type/DateTime",
+              semantic_type: "type/CreationTimestamp",
+            }),
+            createMockMetricDimension({
+              id: "dim-default-amount",
+              display_name: "Amount",
+              effective_type: "type/Float",
+              semantic_type: "type/Currency",
+              default: true,
+            }),
+          ],
+        }),
+      );
+
+      expect(
+        dimensionBreakouts.map((dimensionBreakout) => dimensionBreakout.label),
+      ).toEqual(["Amount", "Created At", "Totals"]);
+      expect(dimensionBreakouts[0].type).toBe("numeric");
+    });
+
+    it("keeps the time breakout first and unduplicated when the curated default is a time dimension", () => {
+      const dimensionBreakouts = setupMetric(
+        createMockNormalizedMetric({
+          id: 105,
+          name: "Time Default",
+          dimensions: [
+            createMockMetricDimension({
+              id: "dim-created-at",
+              display_name: "Created At",
+              effective_type: "type/DateTime",
+              semantic_type: "type/CreationTimestamp",
+              default: true,
+            }),
+            createMockMetricDimension({
+              id: "dim-default-category",
+              display_name: "Category",
+              effective_type: "type/Text",
+              semantic_type: "type/Category",
+            }),
+          ],
+        }),
+      );
+
+      expect(
+        dimensionBreakouts.map((dimensionBreakout) => dimensionBreakout.label),
+      ).toEqual(["Created At", "Category", "Totals"]);
+      expect(dimensionBreakouts[0].id).toBe("time");
+    });
+  });
 });
 
 describe("findMatchingDimensionForBreakout", () => {
