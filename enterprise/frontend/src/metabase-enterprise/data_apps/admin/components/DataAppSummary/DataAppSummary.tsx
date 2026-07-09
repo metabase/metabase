@@ -50,6 +50,7 @@ const SyncStatus = ({ app }: Props) => {
 export const DataAppSummary = ({ app }: Props) => (
   <Group align="center" flex="1" wrap="nowrap">
     <DataAppIcon />
+
     <Stack flex="1" gap={2} miw={0}>
       {app.enabled ? (
         <Text
