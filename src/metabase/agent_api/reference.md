@@ -571,7 +571,7 @@ mutations, in row/col order — new headings and text cards included):
   "collection_path": "Our analytics / Finance",
   "description": "...",
   "archived": false,
-  "dashcard_ids": [103, 101, 104]
+  "dashcard_ids": [103, 102, 104]
 }
 ```
 

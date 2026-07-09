@@ -690,12 +690,15 @@
   (testing "an action-button dashcard is listed as an action item with its dashcard_id"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {}}]
+        ;; the frontend stores action buttons with BOTH an action_id and a virtual_card whose
+        ;; display is "action" — the type must come out as "action", not "virtual_action"
         (mt/with-temp [:model/Dashboard {dash-id :id} {}
                        :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
                                                          :card_id nil
                                                          :action_id action-id
                                                          :row 0 :col 0 :size_x 4 :size_y 1
-                                                         :visualization_settings {}}]
+                                                         :visualization_settings
+                                                         {:virtual_card {:display "action"}}}]
           (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
             (is (str/includes? output "type=\"action\""))
             (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))))))))

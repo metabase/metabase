@@ -575,9 +575,11 @@
    card's text (when it has any) renders as the item body via `:description`."
   [{:keys [id action_id visualization_settings]}]
   (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
+    ;; action_id wins over the virtual display: frontend-created action buttons carry BOTH an
+    ;; action_id and a virtual_card with display "action", and should read as one type.
     {:type        (cond
-                    display   (str "virtual_" display)
                     action_id "action"
+                    display   (str "virtual_" display)
                     :else     "virtual_dashcard")
      :dashcard_id id
      :description (:text visualization_settings)}))
