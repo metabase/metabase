@@ -31,6 +31,15 @@
 ;; TODO (Cam 2026-07-06) -- a lot of this stuff is template-tag-specific rather than native-query-specific per se and
 ;; should probably be moved into [[metabase.lib.template-tags]]
 
+(mr/def ::incomplete-template-tag
+  "An unfinished template tag; must be completed by [[finish-tag]]."
+  [:map
+   [:type ::lib.schema.template-tag/type]
+   [:name ::lib.schema.template-tag/name]])
+
+(mr/def ::incomplete-template-tags
+  [:sequential ::incomplete-template-tag])
+
 (mu/defn- merge-template-tags :- ::lib.schema.template-tag/template-tags
   "Merge two sequences of template tags by `:name` as you would with map `merge`, e.g. with
 
@@ -51,7 +60,8 @@
       {}
       template-tags-lists))))
 
-(defn- finish-tag [{tag-name :name :as tag}]
+(mu/defn- finish-tag :- ::lib.schema.template-tag/template-tag
+  [{tag-name :name :as tag} :- ::incomplete-template-tag]
   (merge tag
          (when-let [card-id (lib.params.parse/tag-name->card-id tag-name)]
            {:type    :card
@@ -62,7 +72,8 @@
          (when-not (:display-name tag)
            {:display-name (u.humanization/name->human-readable-name :simple tag-name)})))
 
-(defn- fresh-tag [tag-name]
+(mu/defn- fresh-tag :- ::lib.schema.template-tag/template-tag
+  [tag-name :- ::lib.schema.template-tag/name]
   (finish-tag
    {:type :text
     :name tag-name
@@ -92,7 +103,7 @@
           (recur found more)
           found)))))
 
-(mu/defn- rename-template-tag :- ::lib.schema.template-tag/template-tags
+(mu/defn- rename-template-tag :- ::incomplete-template-tags
   [existing-tags :- ::lib.schema.template-tag/template-tags
    old-name      :- ::lib.schema.template-tag/name
    new-name      :- ::lib.schema.template-tag/name]
@@ -103,10 +114,8 @@
                                      (u.humanization/name->human-readable-name :simple new-name)
                                      (:display-name old-tag))]
               (-> old-tag
-                  ;; TODO (Cam 2026-07-07) the code previously removed these, but this made the template tags invalid
-                  ;; since these are required depending on tag type; commenting it out doesn't seem to break things as
-                  ;; far as I can tell... so I'm not sure why they were removed in the first place
-                  #_(dissoc :card-id :snippet-name :snippet-id)
+                  ;; these are dissoc'd because there is logic that derives these from the tag's name.
+                  (dissoc :card-id :snippet-name :snippet-id)
                   (assoc :display-name new-display-name
                          :name         new-name))))]
     (mapv (fn [{tag-name :name, :as tag}]
@@ -115,21 +124,21 @@
           existing-tags)))
 
 (mu/defn- unify-template-tags :- ::lib.schema.template-tag/template-tags
-  [query-tags          :- [:maybe ::lib.schema.template-tag/template-tags]
-   query-tag-names     :- [:maybe [:set ::lib.schema.template-tag/name]]
-   existing-tags       :- [:maybe ::lib.schema.template-tag/template-tags]
-   existing-tag-names  :- [:maybe [:set ::lib.schema.template-tag/name]]]
-  (let [new-tag-names (set/difference query-tag-names existing-tag-names)
-        old-tag-names (set/difference existing-tag-names query-tag-names)
-        tags          (if (= 1 (count new-tag-names) (count old-tag-names))
-                        ;; With exactly one change, we treat it as a rename.
-                        (rename-template-tag existing-tags (first old-tag-names) (first new-tag-names))
-                        ;; With more than one change, just drop the old ones and add the new.
-                        (merge-template-tags
-                         (remove #(contains? old-tag-names (:name %))
-                                 existing-tags)
-                         (filter #(contains? new-tag-names (:name %))
-                                 query-tags)))]
+  [query-tags    :- [:maybe ::lib.schema.template-tag/template-tags]
+   existing-tags :- [:maybe ::lib.schema.template-tag/template-tags]]
+  (let [query-tag-names    (not-empty (into #{} (map :name) query-tags))
+        existing-tag-names (not-empty (into #{} (map :name) existing-tags))
+        new-tag-names      (set/difference query-tag-names existing-tag-names)
+        old-tag-names      (set/difference existing-tag-names query-tag-names)
+        tags               (if (= 1 (count new-tag-names) (count old-tag-names))
+                             ;; With exactly one change, we treat it as a rename.
+                             (rename-template-tag existing-tags (first old-tag-names) (first new-tag-names))
+                             ;; With more than one change, just drop the old ones and add the new.
+                             (merge-template-tags
+                              (remove #(contains? old-tag-names (:name %))
+                                      existing-tags)
+                              (filter #(contains? new-tag-names (:name %))
+                                      query-tags)))]
     (mapv finish-tag tags)))
 
 (mu/defn- snippet-names :- [:sequential ::lib.schema.template-tag/name]
@@ -189,12 +198,11 @@
     existing-tags         :- [:maybe ::lib.schema.template-tag/template-tags]]
    (let [direct-tags        (recognize-template-tags query-text)
          tags-from-snippets (extract-snippet-tags metadata-providerable direct-tags)
-         query-tags         (merge-template-tags direct-tags tags-from-snippets)
-         query-tag-names    (not-empty (into #{} (map :name) query-tags))
-         existing-tag-names (not-empty (into #{} (map :name) existing-tags))]
-     (if (or query-tag-names existing-tag-names)
+         query-tags         (merge-template-tags direct-tags tags-from-snippets)]
+     (if (or (seq query-tags)
+             (seq existing-tags))
        ;; If there's at least some tags, unify them.
-       (->> (unify-template-tags query-tags query-tag-names existing-tags existing-tag-names)
+       (->> (unify-template-tags query-tags existing-tags)
             (add-snippet-ids metadata-providerable))
        ;; Otherwise just an empty vector, no tags.
        []))))
@@ -311,9 +319,7 @@
                     updated-tag-names (into #{} (map :name) updated-tags)
                     untouched-tags    (remove #(contains? updated-tag-names (:name %))
                                               existing-tags)]
-                (into []
-                      cat
-                      [updated-tags untouched-tags])))
+                (into (vec updated-tags) untouched-tags)))
             (update-stage [stage]
               (assert-native-stage stage)
               (-> stage

@@ -351,20 +351,20 @@
 
 (deftest ^:parallel with-native-query-update-snippet-with-template-tags-test
   (testing "with-native-query should update template tags when a {{snippet: ...}} tag changes"
-    (let [mp    (lib.tu/mock-metadata-provider
-                 meta/metadata-provider
-                 {:native-query-snippets [{:id            1
-                                           :name          "snippet1"
-                                           :type          :snippet
-                                           :content       "SELECT"}
-                                          {:id            2
-                                           :name          "snippet2"
-                                           :type          :snippet
-                                           :content       "{{var}}"
-                                           :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
-                                                                  :name         "var"
-                                                                  :display-name "Var"
-                                                                  :type         :text}}}]})
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:native-query-snippets [{:id            1
+                                        :name          "snippet1"
+                                        :type          :snippet
+                                        :content       "SELECT"}
+                                       {:id            2
+                                        :name          "snippet2"
+                                        :type          :snippet
+                                        :content       "{{var}}"
+                                        :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
+                                                               :name         "var"
+                                                               :display-name "Var"
+                                                               :type         :text}}}]})
           initial-tags [{:snippet-name "snippet1"
                          :display-name "Snippet: Snippet1"
                          :type         :snippet
