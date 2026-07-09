@@ -14,7 +14,10 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import type { ClickObject } from "metabase/visualizations/types";
+import type {
+  ClickObject,
+  HighlightedObject,
+} from "metabase/visualizations/types";
 import type {
   DocumentContent,
   ExplorationBlockNodeType,
@@ -98,18 +101,22 @@ export function ChartClickPopover({
   };
 
   const handleAddComment = async (content: DocumentContent) => {
+    const highlighted: HighlightedObject = {
+      cardId: clicked.cardId,
+      dimensions: clicked.dimensions?.map((d) => ({
+        value: d.value,
+        columnName: d.column.name,
+      })),
+    };
     const { error } = await createComment({
       target_id: explorationId,
       target_type: "exploration",
       child_target_id: pageId,
       parent_comment_id: null,
       content,
-      // Capture the clicked element in the comment context (same pattern as timelines) so the
-      // thread can render a pill showing which segment the comment is about.
-      // context: {
-      //   segment_value: toScalar(target.value),
-      //   segment_column: target.columnName ?? null,
-      // },
+      context: {
+        highlighted,
+      },
     });
     if (error) {
       sendToast({

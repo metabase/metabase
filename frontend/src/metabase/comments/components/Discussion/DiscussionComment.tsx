@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
 import { useSelector } from "metabase/redux";
@@ -157,7 +158,9 @@ export function DiscussionComment({
           readonly={!isEditing}
           onEscape={editingHandler.close}
         />
-        {renderExtra?.(comment)}
+        {renderExtra && (
+          <CommentExtra renderExtra={renderExtra} comment={comment} />
+        )}
 
         {comment.reactions.length > 0 && (
           <DiscussionReactions
@@ -169,4 +172,21 @@ export function DiscussionComment({
       </Box>
     </Timeline.Item>
   );
+}
+
+type CommentExtraProps = {
+  renderExtra: CommentExtraRenderer;
+  comment: Comment;
+};
+
+function CommentExtra({ renderExtra, comment }: CommentExtraProps) {
+  return (
+    <ErrorBoundary errorComponent={() => null}>
+      <CommentExtraContent renderExtra={renderExtra} comment={comment} />
+    </ErrorBoundary>
+  );
+}
+
+function CommentExtraContent({ renderExtra, comment }: CommentExtraProps) {
+  return <>{renderExtra(comment)}</>;
 }

@@ -26,6 +26,7 @@ import {
 } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type {
+  HoveredObject,
   RenderingContext,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -59,6 +60,7 @@ export const useChartEvents = (
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsOption,
   renderingContext: RenderingContext,
+  hovered: HoveredObject | null,
   {
     card,
     rawSeries,
@@ -74,7 +76,6 @@ export const useChartEvents = (
     onOpenTimelines,
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
-    hovered,
     clicked,
     metadata,
     isDashboard,

@@ -138,6 +138,7 @@ export const getWaterfallChartModel = (
     transformedDataset,
     seriesModels: [seriesModel],
     yAxisScaleTransforms,
+    cardsColumns,
     columnByDataKey,
     dimensionModel,
     xAxisModel,

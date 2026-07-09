@@ -23,7 +23,10 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-import { getDashboardAdjustedSettings } from "./utils";
+import {
+  getDashboardAdjustedSettings,
+  getHoveredFromHighlighted,
+} from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
   const { timelineEvents } = useTimelineEvents(props);
@@ -54,7 +57,6 @@ function CartesianChartInner(props: VisualizationProps) {
     isQueryBuilder,
     isVisualizerCard,
     isFullscreen,
-    hovered,
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
@@ -131,6 +133,20 @@ function CartesianChartInner(props: VisualizationProps) {
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
+  const hovered = useMemo(() => {
+    if (props.hovered) {
+      return props.hovered;
+    }
+    if (props.highlighted) {
+      return getHoveredFromHighlighted(
+        props.highlighted,
+        rawSeries,
+        chartModel,
+      );
+    }
+    return null;
+  }, [props.hovered, props.highlighted, rawSeries, chartModel]);
+
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
     containerRef,
@@ -138,6 +154,7 @@ function CartesianChartInner(props: VisualizationProps) {
     timelineEventsModel,
     option,
     renderingContext,
+    hovered,
     props,
     chartInstance,
   );

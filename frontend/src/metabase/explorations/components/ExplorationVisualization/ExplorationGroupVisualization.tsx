@@ -1,16 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useListCommentsQuery } from "metabase/api";
 import { explorationApi } from "metabase/api/exploration";
 import { Comments } from "metabase/comments/components/Comments";
-import {
-  getCommentNodeId,
-  getListCommentsQuery,
-} from "metabase/comments/utils";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -32,7 +26,7 @@ import type {
   ClickActionsMode,
   ClickObject,
   CustomClickAction,
-  HoveredObject,
+  HighlightedObject,
 } from "metabase/visualizations/types";
 import type {
   Comment,
@@ -40,7 +34,6 @@ import type {
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
-  RowValue,
   SingleSeries,
   Timeline,
   TimelineId,
@@ -49,18 +42,14 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
 import { ChartClickPopover } from "./ChartClickPopover";
-import {
-  ChartCommentAvatars,
-  type SegmentComment,
-} from "./ChartCommentAvatars";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
 import {
   type LegendItem,
   buildSeriesGroup,
+  getCommentLabel,
   getExploreFurtherFilters,
-  getSegmentHover,
 } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
@@ -223,83 +212,16 @@ function ExplorationGroupVisualizationChart({
     return seriesGroup?.isTimeseries && availableTimelines.length > 0;
   }, [seriesGroup, availableTimelines]);
 
-  // Clicking a comment's segment pill highlights the matching bar/dot on the chart. We hold the
-  // clicked value and translate it to the chart's `hovered` shape, which drives ECharts emphasis.
-  const [highlightValue, setHighlightValue] = useState<RowValue | null>(null);
-  const hoveredObject: HoveredObject | null = useMemo(() => {
-    if (highlightValue == null || !seriesGroup) {
-      return null;
-    }
-    return getSegmentHover(seriesGroup.series, highlightValue) ?? null;
-  }, [highlightValue, seriesGroup]);
-
-  const toggleHighlight = useCallback((value: RowValue) => {
-    setHighlightValue((prev) =>
-      String(prev) === String(value) ? null : value,
-    );
-  }, []);
-
-  // When arriving via a deep-link to a comment that captured a chart point
-  // (`#comment-<id>`), highlight that point too — same effect as clicking the comment's segment
-  // pill. Applied once per hash so it doesn't fight a manual toggle.
-  const location = useLocation();
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery({
-      target_id: explorationId,
-      target_type: "exploration",
-    }),
+  const [highlighted, setHighlighted] = useState<HighlightedObject | null>(
+    null,
   );
-  const appliedHashRef = useRef<string | null>(null);
-  useEffect(() => {
-    const hash = location.hash?.substring(1);
-    if (!hash || appliedHashRef.current === hash) {
-      return;
-    }
-    const comment = commentsData?.comments?.find(
-      (c) => getCommentNodeId(c) === hash,
-    );
-    if (!comment || String(comment.child_target_id) !== String(page.id)) {
-      return;
-    }
-    const value = comment.context?.segment_value;
-    if (value != null && value !== "") {
-      appliedHashRef.current = hash;
-      setHighlightValue(value as RowValue);
-    }
-  }, [location.hash, commentsData, page.id]);
-
-  // Open, element-scoped comments grouped by the segment value they're about, so each point can
-  // float its commenters' avatars. Non-anchorable charts (maps, tables) resolve to no point and
-  // the overlay simply stays empty.
-  const segmentComments = useMemo<SegmentComment[]>(() => {
-    const comments = commentsData?.comments;
-    if (!comments) {
-      return [];
-    }
-    const byValue = new Map<string, SegmentComment>();
-    for (const comment of comments) {
-      const isPageComment = String(comment.child_target_id) === String(page.id);
-      const value = comment.context?.segment_value as RowValue | undefined;
-      const hasSegment = value != null && value !== "";
-      if (
-        !isPageComment ||
-        comment.deleted_at ||
-        comment.is_resolved ||
-        !hasSegment
-      ) {
-        continue;
-      }
-      const key = String(value);
-      const entry = byValue.get(key) ?? { value, comments: [] };
-      entry.comments.push(comment);
-      byValue.set(key, entry);
-    }
-    return [...byValue.values()];
-  }, [commentsData, page.id]);
 
   const renderCommentExtra = useCallback(
     (comment: Comment) => {
       const context = comment.context;
+
+      const highlighted = context?.highlighted as HighlightedObject | undefined;
+      const commentLabel = getCommentLabel(highlighted, seriesGroup);
 
       const timelineId =
         typeof context?.timeline_id === "number"
@@ -310,26 +232,32 @@ function ExplorationGroupVisualizationChart({
           ? availableTimelines.find((t) => t.id === timelineId)
           : undefined;
 
-      // Comments left via the chart-click "Comment" action stash the clicked
-      // element in `context` (same metadata-in-context pattern as timelines);
-      // surface it as a pill so it's clear which segment the comment is about.
-      const segmentValue = context?.segment_value as RowValue | undefined;
-      const segmentColumn = context?.segment_column;
-      const hasSegment = segmentValue != null && segmentValue !== "";
-      const segmentLabel = !hasSegment
-        ? null
-        : typeof segmentColumn === "string" && segmentColumn !== ""
-          ? `${segmentColumn}: ${segmentValue}`
-          : String(segmentValue);
-      const isHighlighted =
-        hasSegment && String(highlightValue) === String(segmentValue);
-
-      if (!timeline && !segmentLabel) {
+      if (!commentLabel && !timeline) {
         return null;
       }
 
       return (
         <Group gap="xs" mt="0.375rem" wrap="wrap">
+          {commentLabel && (
+            <UnstyledButton
+              bd="0.5px solid border"
+              bdrs="lg"
+              py="xs"
+              px="sm"
+              className={S.commentBadge}
+              onMouseEnter={() => {
+                if (highlighted) {
+                  setHighlighted(highlighted);
+                }
+              }}
+              onMouseLeave={() => setHighlighted(null)}
+            >
+              <Group gap={4} wrap="nowrap">
+                <Icon name="filter" size={12} />
+                {commentLabel}
+              </Group>
+            </UnstyledButton>
+          )}
           {timeline && (
             <UnstyledButton
               bd="0.5px solid border"
@@ -337,7 +265,7 @@ function ExplorationGroupVisualizationChart({
               py="xs"
               px="sm"
               c="text-secondary"
-              className={S.commentTimelineBadge}
+              className={S.commentBadge}
               onClick={() => {
                 onSelectTimelineId(timelineId ?? null);
               }}
@@ -345,30 +273,10 @@ function ExplorationGroupVisualizationChart({
               {timeline.name}
             </UnstyledButton>
           )}
-          {segmentLabel && (
-            <UnstyledButton
-              bd="0.5px solid border"
-              bdrs="lg"
-              py="xs"
-              px="sm"
-              bg={isHighlighted ? "background-highlight" : undefined}
-              c={isHighlighted ? "brand" : "text-secondary"}
-              className={S.commentTimelineBadge}
-              aria-pressed={isHighlighted}
-              onClick={() =>
-                segmentValue != null && toggleHighlight(segmentValue)
-              }
-            >
-              <Group gap={4} wrap="nowrap">
-                <Icon name="filter" size={12} />
-                {segmentLabel}
-              </Group>
-            </UnstyledButton>
-          )}
         </Group>
       );
     },
-    [availableTimelines, onSelectTimelineId, highlightValue, toggleHighlight],
+    [availableTimelines, onSelectTimelineId, setHighlighted, seriesGroup],
   );
 
   if (!seriesGroup) {
@@ -422,8 +330,7 @@ function ExplorationGroupVisualizationChart({
               series={series}
               stackCount={stackCount}
               onVisualizationClick={handleVisualizationClick}
-              hovered={hoveredObject}
-              segmentComments={segmentComments}
+              highlighted={highlighted}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
@@ -431,7 +338,7 @@ function ExplorationGroupVisualizationChart({
               series={series}
               stackCount={stackCount}
               onVisualizationClick={handleVisualizationClick}
-              hovered={hoveredObject}
+              highlighted={highlighted}
             />
           ) : (
             <ExplorationMap
@@ -439,7 +346,7 @@ function ExplorationGroupVisualizationChart({
               series={series}
               legendItems={legendItems}
               onVisualizationClick={handleVisualizationClick}
-              hovered={hoveredObject}
+              highlighted={highlighted}
             />
           )}
         </Box>
@@ -493,23 +400,20 @@ interface ExplorationCartesianChartProps {
   series: SingleSeries[];
   stackCount?: number;
   onVisualizationClick?: (clicked: ClickObject | null) => void;
-  hovered?: HoveredObject | null;
-  segmentComments?: SegmentComment[];
+  highlighted?: HighlightedObject | null;
 }
 
 function ExplorationCartesianChart({
   series,
   onVisualizationClick,
-  hovered,
-  segmentComments,
+  highlighted,
 }: ExplorationCartesianChartProps) {
   return (
     <ExplorationVisualization
       rawSeries={series}
       className={S.chart}
       onVisualizationClick={onVisualizationClick}
-      hovered={hovered}
-      segmentComments={segmentComments}
+      highlighted={highlighted}
     />
   );
 }
@@ -518,14 +422,14 @@ interface ExplorationHeatMapProps {
   series: SingleSeries[];
   stackCount?: number;
   onVisualizationClick?: (clicked: ClickObject | null) => void;
-  hovered?: HoveredObject | null;
+  highlighted?: HighlightedObject | null;
 }
 
 function ExplorationHeatMap({
   series,
   stackCount,
   onVisualizationClick,
-  hovered,
+  highlighted,
 }: ExplorationHeatMapProps) {
   const tableHeight = HEADER_HEIGHT + (stackCount ?? 1) * ROW_HEIGHT;
   return (
@@ -534,7 +438,7 @@ function ExplorationHeatMap({
         rawSeries={series}
         className={S.chart}
         onVisualizationClick={onVisualizationClick}
-        hovered={hovered}
+        highlighted={highlighted}
       />
     </Box>
   );
@@ -544,14 +448,14 @@ interface ExplorationMapProps {
   series: SingleSeries[];
   legendItems: LegendItem[];
   onVisualizationClick?: (clicked: ClickObject | null) => void;
-  hovered?: HoveredObject | null;
+  highlighted?: HighlightedObject | null;
 }
 
 function ExplorationMap({
   series,
   legendItems,
   onVisualizationClick,
-  hovered,
+  highlighted,
 }: ExplorationMapProps) {
   return (
     <Stack gap="md">
@@ -595,7 +499,7 @@ function ExplorationMap({
             rawSeries={[s]}
             className={S.chart}
             onVisualizationClick={onVisualizationClick}
-            hovered={hovered}
+            highlighted={highlighted}
           />
         </Box>
       ))}
@@ -625,16 +529,14 @@ interface ExplorationVisualizationProps {
   rawSeries: SingleSeries[];
   className?: string;
   onVisualizationClick?: (clicked: ClickObject | null) => void;
-  hovered?: HoveredObject | null;
-  segmentComments?: SegmentComment[];
+  highlighted?: HighlightedObject | null;
 }
 
 export function ExplorationVisualization({
   rawSeries,
   className,
   onVisualizationClick,
-  hovered,
-  segmentComments,
+  highlighted,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -648,15 +550,8 @@ export function ExplorationVisualization({
         onUpdateWarnings={setWarnings}
         mode={onVisualizationClick ? EXPLORE_CLICK_MODE : undefined}
         handleVisualizationClick={onVisualizationClick}
-        hovered={hovered}
+        highlighted={highlighted}
       />
-      {segmentComments && segmentComments.length > 0 && (
-        <ChartCommentAvatars
-          containerRef={containerRef}
-          series={rawSeries}
-          segmentComments={segmentComments}
-        />
-      )}
     </Box>
   );
 }

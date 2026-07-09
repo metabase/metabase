@@ -72,6 +72,7 @@ import type {
   CardId,
   DatasetColumn,
   RawSeries,
+  RowValue,
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
@@ -123,6 +124,22 @@ const getSameCardDataKeys = (
   });
 };
 
+export const normalizeDimensionValue = (
+  column: DatasetColumn,
+  value: RowValue,
+): RowValue => {
+  if (!isDate(column) || value == null) {
+    return value;
+  }
+
+  const parsed = parseTimestamp(value);
+  if (!parsed.isValid()) {
+    return value;
+  }
+
+  return parsed.format("YYYY-MM-DDTHH:mm:ss");
+};
+
 export const getEventDimensions = (
   chartModel: BaseCartesianChartModel,
   datum: Datum,
@@ -142,18 +159,9 @@ export const getEventDimensions = (
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
-    let dimensionValue = datum[X_AXIS_DATA_KEY];
-
-    if (isDate(dimensionColumn) && dimensionValue != null) {
-      const parsed = parseTimestamp(dimensionValue);
-      if (parsed.isValid()) {
-        dimensionValue = parsed.format("YYYY-MM-DDTHH:mm:ss");
-      }
-    }
-
     dimensions.push({
       column: dimensionColumn,
-      value: dimensionValue,
+      value: normalizeDimensionValue(dimensionColumn, datum[X_AXIS_DATA_KEY]),
     });
   }
 

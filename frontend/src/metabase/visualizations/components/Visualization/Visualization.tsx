@@ -54,6 +54,7 @@ import {
   type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
+  type HighlightedObject,
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
@@ -136,9 +137,8 @@ type VisualizationOwnProps = {
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
-  // Lets a parent drive a data-point highlight (e.g. exploration comment pills) when the user
-  // isn't actively hovering the chart. Falls back to internal hover state otherwise.
-  hovered?: HoveredObject | null;
+  // parent supplied data point highlight
+  highlighted?: HighlightedObject | null;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -689,6 +689,7 @@ class Visualization extends PureComponent<
       hasDevWatermark,
       headerIcon,
       height: rawHeight,
+      highlighted,
       isAction,
       isDashboard,
       isDocument,
@@ -752,12 +753,6 @@ class Visualization extends PureComponent<
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
-
-    // When the user isn't actively hovering, let a parent-supplied `hovered` drive a highlight
-    // (used by exploration comment pills to point at the commented-on bar/dot).
-    if (hovered == null && this.props.hovered != null) {
-      hovered = this.props.hovered;
-    }
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
@@ -964,6 +959,7 @@ class Visualization extends PureComponent<
                     headerIcon={hasHeader ? null : headerIcon}
                     height={rawHeight}
                     hovered={hovered}
+                    highlighted={highlighted}
                     isDashboard={!!isDashboard}
                     isDocument={!!isDocument}
                     isEditing={!!isEditing}
