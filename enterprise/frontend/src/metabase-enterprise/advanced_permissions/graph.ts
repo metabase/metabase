@@ -15,7 +15,6 @@ import {
   DataPermission,
   DataPermissionValue,
   type GroupsPermissions,
-  type NativePermissions,
   type PermissionEntityId,
 } from "metabase-types/api";
 
@@ -56,7 +55,7 @@ export function upgradeViewPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: PermissionEntityId,
-  value: NativePermissions,
+  value: DataPermissionValue,
   database: Database,
 ) {
   // get permission for item up one level or db if we're already at the top most entity:

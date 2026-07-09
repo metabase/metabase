@@ -127,6 +127,10 @@ export {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
+  type PermissionAction,
+  type PermissionConfirmationProps,
+  type PermissionOption,
+  type PostActionFunction,
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export {

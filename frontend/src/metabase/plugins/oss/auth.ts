@@ -1,8 +1,10 @@
+import type { ComponentType } from "react";
+
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { User } from "metabase-types/api";
+import type { User, UserId } from "metabase-types/api";
 
 import type { GetAuthProviders } from "../types";
 
@@ -39,7 +41,9 @@ const getDefaultPluginIsPasswordUser = (): ((user: User) => boolean)[] => [];
 
 export const PLUGIN_IS_PASSWORD_USER = getDefaultPluginIsPasswordUser();
 
-const getDefaultPluginAdminUserFormFields = () => ({
+const getDefaultPluginAdminUserFormFields = (): {
+  FormLoginAttributes: ComponentType<{ userId?: UserId | null }>;
+} => ({
   FormLoginAttributes: PluginPlaceholder,
 });
 

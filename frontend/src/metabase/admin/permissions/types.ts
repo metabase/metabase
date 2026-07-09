@@ -1,9 +1,11 @@
-import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
-import type { State } from "metabase/redux/store";
-import type { ColorName } from "metabase/ui/colors/types";
-import type { GroupId, IconName } from "metabase-types/api";
+import type {
+  PermissionAction,
+  PermissionConfirmationProps,
+  PermissionOption,
+  PostActionFunction,
+} from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
@@ -11,6 +13,12 @@ import {
 } from "metabase-types/api/permissions";
 
 export { DataPermission, DataPermissionValue };
+export type {
+  PermissionAction,
+  PermissionConfirmationProps,
+  PermissionOption,
+  PostActionFunction,
+};
 
 export type GroupRouteParams = {
   groupId?: number;
@@ -79,39 +87,6 @@ export type GroupPermissionsDiff = {
 export type PermissionsGraphDiff = {
   groups: Record<number | string, GroupPermissionsDiff>;
 };
-
-export interface PermissionOption {
-  label: string;
-  value: DataPermissionValue;
-  icon: IconName;
-  iconColor: ColorName;
-}
-
-export interface PermissionAction {
-  label: string;
-  icon: IconName;
-  iconColor: ColorName;
-  actionCreator: (
-    entityId: PermissionEntityId | undefined,
-    id: number,
-    view: "database" | "group",
-  ) => ThunkDispatch<State, unknown, UnknownAction>;
-}
-
-export interface PermissionConfirmationProps {
-  title: string;
-  message: string | ReactNode;
-  confirmButtonText: string;
-  cancelButtonText: string;
-}
-
-type PostActionFunction = (
-  entityId: PermissionEntityId,
-  groupId: GroupId,
-  view: "database" | "group",
-  value: DataPermissionValue,
-  getState: () => State,
-) => void;
 
 export type PermissionSectionConfig = {
   permission: DataPermission;

@@ -1,12 +1,25 @@
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
+  GroupId,
   GroupTableAccessPolicy,
   ParameterTarget,
+  TableId,
   UserAttributeKey,
 } from "metabase-types/api";
 
-export type GroupTableAccessPolicyParams = { groupId: string; tableId: string };
+// ids as they arrive in the sandboxing modal route params
+export type RawGroupTableAccessPolicyParams = {
+  groupId?: string;
+  tableId?: string;
+};
+
+// route-param strings and UPDATE_DATA_PERMISSION payload numbers template
+// into the same policy key
+export type GroupTableAccessPolicyParams = {
+  groupId: GroupId | string;
+  tableId: TableId | string;
+};
 
 export interface SandboxesState extends EnterpriseState {
   plugins: {

@@ -17,7 +17,7 @@ export interface AdvancedPermissionsStoreState extends EnterpriseState {
 export type ImpersonationDraft = PartialBy<Impersonation, "attribute">;
 
 export type ImpersonationModalParams = {
-  groupId: string;
+  groupId?: string;
   impersonatedDatabaseId?: string;
   databaseId?: string;
 };
