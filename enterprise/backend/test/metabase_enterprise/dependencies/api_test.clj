@@ -192,7 +192,7 @@
 
 (deftest graph-transform-hydrates-creator-test
   (testing "GET /api/ee/dependencies/graph hydrates creator for transforms"
-    (mt/with-premium-features #{:dependencies :transforms-basic}
+    (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
       (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform"
                                                           :creator_id (mt/user->id :crowberto)}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
@@ -2721,7 +2721,7 @@
                       response)))))))))
 
 (deftest data-analyst-can-access-dependency-graph-test
-  (mt/with-premium-features #{:data-studio :dependencies}
+  (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
