@@ -12,6 +12,25 @@ import {
 } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { applicationPermissionsApi } from "metabase-enterprise/api";
+import type { GroupId } from "metabase-types/api";
+
+import type {
+  ApplicationPermissionKey,
+  ApplicationPermissionValue,
+  ApplicationPermissions,
+} from "./types/permissions";
+import type { ApplicationPermissionsState } from "./types/state";
+
+// the save thunk swallows endpoint failures, so its payload may be undefined
+type ApplicationPermissionsGraphPayload =
+  | { groups: ApplicationPermissions; revision: number }
+  | undefined;
+
+type UpdateApplicationPermissionPayload = {
+  groupId: GroupId;
+  permission: ApplicationPermissionKey;
+  value: ApplicationPermissionValue;
+};
 
 const INITIALIZE_APPLICATION_PERMISSIONS =
   "metabase-enterprise/general-permissions/INITIALIZE_APPLICATION_PERMISSIONS";
@@ -39,7 +58,15 @@ const UPDATE_APPLICATION_PERMISSION =
   "metabase-enterprise/general-permissions/UPDATE_APPLICATION_PERMISSION";
 export const updateApplicationPermission = createAction(
   UPDATE_APPLICATION_PERMISSION,
-  ({ groupId, permission, value }) => {
+  ({
+    groupId,
+    permission,
+    value,
+  }: {
+    groupId: GroupId;
+    permission: { permission: ApplicationPermissionKey };
+    value: ApplicationPermissionValue;
+  }): UpdateApplicationPermissionPayload => {
     return {
       groupId,
       permission: permission.permission,
@@ -53,8 +80,9 @@ const SAVE_APPLICATION_PERMISSIONS =
 export const saveApplicationPermissions = createThunkAction(
   SAVE_APPLICATION_PERMISSIONS,
   () => async (dispatch, getState) => {
-    const { applicationPermissions, applicationPermissionsRevision } =
-      getState().plugins.applicationPermissionsPlugin;
+    const { applicationPermissions, applicationPermissionsRevision } = (
+      getState() as ApplicationPermissionsState
+    ).plugins.applicationPermissionsPlugin;
 
     const result = await runRtkEndpoint(
       {
@@ -76,16 +104,24 @@ export const saveApplicationPermissions = createThunkAction(
   },
 );
 
-const applicationPermissions = handleActions(
+const applicationPermissions = handleActions<
+  ApplicationPermissions | null,
+  ApplicationPermissionsGraphPayload | UpdateApplicationPermissionPayload
+>(
   {
     [LOAD_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) =>
+        payload && "groups" in payload ? payload.groups : state,
     },
     [SAVE_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) =>
+        payload && "groups" in payload ? payload.groups : state,
     },
     [UPDATE_APPLICATION_PERMISSION]: {
       next: (state, { payload }) => {
+        if (state == null || !payload || !("groupId" in payload)) {
+          return state;
+        }
         const { groupId, permission, value } = payload;
         return assocIn(state, [groupId, permission], value);
       },
@@ -94,25 +130,31 @@ const applicationPermissions = handleActions(
   null,
 );
 
-const originalApplicationPermissions = handleActions(
+const originalApplicationPermissions = handleActions<
+  ApplicationPermissions | null,
+  ApplicationPermissionsGraphPayload
+>(
   {
     [LOAD_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) => (payload ? payload.groups : state),
     },
     [SAVE_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) => (payload ? payload.groups : state),
     },
   },
   null,
 );
 
-const applicationPermissionsRevision = handleActions(
+const applicationPermissionsRevision = handleActions<
+  number | null,
+  ApplicationPermissionsGraphPayload
+>(
   {
     [LOAD_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.revision,
+      next: (state, { payload }) => (payload ? payload.revision : state),
     },
     [SAVE_APPLICATION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.revision,
+      next: (state, { payload }) => (payload ? payload.revision : state),
     },
   },
   null,
