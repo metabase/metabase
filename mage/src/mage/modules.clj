@@ -5,7 +5,9 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
+   [mage.be-dev :as be-dev]
    [mage.color :as c]
+   [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -253,6 +255,39 @@
               (changes-important-file-for-drivers? git-ref) 1
               drivers-affected? 1
               :else 0))))
+
+;;;; =============================================================================
+;;;; Fix modules config
+;;;; =============================================================================
+`(defn- nrepl-reachable?
+   "Whether a dev nREPL is actually accepting connections on `port` (or the port in `.nrepl-port`).
+  Probes with a raw socket so a stale `.nrepl-port` can't trip `mage.be-dev`'s connect-or-exit path."
+   [port]
+   (try
+     (when-let [p (or port (some-> (slurp ".nrepl-port") str/trim parse-long))]
+       (with-open [_ (java.net.Socket. "localhost" (int p))]
+         true))
+     (catch Exception _ false)))
+
+(defn cli-fix-config
+  "Regenerate `.clj-kondo/config/modules/config.edn` so it passes `metabase.core.modules-test`.
+
+  Fast path: evaluate in the running dev nREPL (a few seconds). Fallback: spawn a cold JVM (~25s) when no
+  dev REPL is running."
+  [{:keys [options] :as _parsed}]
+  (let [port  (some-> (:port options) str str/trim parse-long)
+        timer (u/start-timer)
+        exit  (if (nrepl-reachable? port)
+                (do
+                  (println (c/green "Regenerating modules config via the running dev REPL..."))
+                  (be-dev/nrepl-eval "dev.modules-config" "(update-config!)" port)
+                  0)
+                (do
+                  (println (c/yellow "No dev REPL found — starting a JVM (slower; start your dev REPL for ~5s runs)..."))
+                  (:exit (shell/sh* "clojure" "-X:dev" "dev.modules-config/fix-config!"))))]
+    (printf "\nFinished in %.1fs\n" (/ (u/since-ms timer) 1000.0))
+    (flush)
+    (u/exit (or exit 0))))
 
 ;;;; =============================================================================
 ;;;; Driver test decisions - consolidated logic for which drivers to run
