@@ -5,9 +5,11 @@
   BE-only. Not exported from [[metabase.lib.js]] — the FE never constructs a `:pivot` clause."
   (:refer-clojure :exclude [mapv])
   (:require
+   [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]))
 
@@ -37,30 +39,21 @@
   removes the `:pivot`."
   [query        :- ::lib.schema/query
    pivot-clause :- [:maybe [:ref ::lib.schema/pivot]]]
-  (lib.util/update-query-stage query -1 (fn [stage]
-                                          (if pivot-clause
-                                            (assoc stage :pivot pivot-clause)
-                                            (dissoc stage :pivot)))))
+  (lib.util/update-query-stage query -1 u/assoc-dissoc :pivot pivot-clause))
 
 (defn read-show-flag
-  "Read a `show-*-totals` flag from `m`, trying each of `ks` in order. Defaults to `true` when none present. Treats an
-  explicitly-set `false` as set (not as 'absent')."
+  "Return the value in `m` under the first key in `ks` that is present, or `true` if none are."
   [m & ks]
-  (reduce (fn [acc k]
-            (if (contains? m k)
-              (reduced (get m k))
-              acc))
-          true
-          ks))
+  (if-let [k (m/find-first #(contains? m %) ks)]
+    (get m k)
+    true))
 
 (defn splice-pivot-grouping
   "Insert [[pivot-grouping-column-metadata]] into `cols` immediately after the leading run of breakout columns.
   Returns a vector."
   [cols]
   (let [[breakouts rest-cols] (split-with :lib/breakout? cols)]
-    (-> (vec breakouts)
-        (conj pivot-grouping-column-metadata)
-        (into rest-cols))))
+    (into [] cat [breakouts [pivot-grouping-column-metadata] rest-cols])))
 
 (defn- resolve-breakout-uuids [query uuids axis]
   (let [by-uuid (into {}

@@ -221,7 +221,7 @@
       (is (= [[100]]
              (mt/rows (run-query-for-card card)))))))
 
-(deftest ^:parallel ^:mb/driver-tests pivot-tables-should-not-override-the-run-function
+(deftest ^:parallel pivot-tables-should-not-override-the-run-function
   (testing "Pivot tables should not override the run function (#44160)"
     (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
       (mt/with-temp [:model/Card card {:dataset_query

@@ -20,6 +20,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
@@ -507,17 +508,10 @@
              :show-row-totals    (lib.pivot/read-show-flag query :show-row-totals    :show_row_totals)
              :show-column-totals (lib.pivot/read-show-flag query :show-column-totals :show_column_totals)}))))))
 
-(def ^:private window-fn-aggregation-types
-  "Aggregation clause tags that compute over a window of rows: `:cum-count`, `:cum-sum`, `:offset`."
-  #{:offset :cum-count :cum-sum})
-
 (defn- has-window-fn-aggregation?
-  "True iff any aggregation in the last stage of `query` contains a clause with a tag in
-  [[window-fn-aggregation-types]] at any depth."
+  "True iff any aggregation in the last stage of `query` contains a window-function aggregation clause at any depth."
   [query]
-  (boolean (some (fn [agg]
-                   (some #(lib.util/clause-of-type? % window-fn-aggregation-types)
-                         (tree-seq lib.util/clause? seq agg)))
+  (boolean (some lib.schema.aggregation/window-aggregation-expression?
                  (lib/aggregations query))))
 
 (defn native-pivot-compatible?
