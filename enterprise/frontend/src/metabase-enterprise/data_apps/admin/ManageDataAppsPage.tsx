@@ -216,7 +216,7 @@ export function ManageDataAppsPage() {
                 bg="background-secondary"
                 style={{ borderRadius: "50%" }}
               >
-                <Icon name="dashboard" size={48} c="border" />
+                <Icon name="app" size={48} c="border" />
               </Flex>
               <Text c="text-disabled">{t`Your data apps will appear here`}</Text>
             </Flex>
