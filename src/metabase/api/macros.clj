@@ -382,9 +382,10 @@
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (throw (ex-info (format "Invalid %s" (case params-type
-                                             :route "route parameters"
-                                             :query "query parameters"
-                                             :body  "body"))
+                                             :route   "route parameters"
+                                             :query   "query parameters"
+                                             :body    "body"
+                                             :request "request"))
                       (let [explanation     (mr/explain schema decoded)
                             specific-errors (invalid-params-specific-errors explanation)
                             errors          (invalid-params-errors explanation)]

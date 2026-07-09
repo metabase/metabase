@@ -69,3 +69,13 @@
                               [[:collection_id "root"]
                                [:file (byte-array [97 44 98 10 49 44 50])]])
         (is (= 1 @calls) "the endpoint body should run")))))
+
+(deftest csv-upload-smuggled-file-part-test
+  (testing "POST /api/upload/csv rejects a second file part smuggled as collection_id"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
+        (mt/user-http-request :crowberto :post 400 "upload/csv"
+                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                              [[:file (byte-array [97 44 98 10 49 44 50])]
+                               [:collection_id (byte-array [99 44 100 10 51 44 52])]])
+        (is (zero? @calls) "the endpoint body should never run")))))

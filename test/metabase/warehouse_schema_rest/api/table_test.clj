@@ -1236,6 +1236,17 @@
                                  [:file (byte-array [97 44 98 10 49 44 50])]])))
       (is (= 2 @calls) "the endpoint bodies should run"))))
 
+(deftest update-csv-smuggled-file-part-test
+  (let [calls (atom 0)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+      (doseq [endpoint ["append-csv" "replace-csv"]]
+        (testing (format "POST /api/table/:id/%s rejects a second file part smuggled under another part name" endpoint)
+          (mt/user-http-request :crowberto :post 400 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                [[:file (byte-array [97 44 98 10 49 44 50])]
+                                 [:collection_id (byte-array [99 44 100 10 51 44 52])]])))
+      (is (zero? @calls) "the endpoint bodies should never run"))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/table/:id/sync_schema                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -471,13 +471,16 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
+   ;; Closed, and collection_id constrained to a plain text field (the frontend sends it), so a second file part
+   ;; can't be smuggled in under another part name and silently ignored.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                  ["collection_id" {:optional true} :string]]]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -498,13 +501,16 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
+   ;; Closed, and collection_id constrained to a plain text field (the frontend sends it), so a second file part
+   ;; can't be smuggled in under another part name and silently ignored.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                  ["collection_id" {:optional true} :string]]]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
