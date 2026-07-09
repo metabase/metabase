@@ -66,21 +66,6 @@ runs:
         test-suite: ${{ inputs.junit-name }}
         adapter: backend
 
-    - name: Quarantine gate
-      # Off master and release branches an "info" driver is data-collection only - the test always passes!
-      # On master and release branches "info" carries no weight - the quarantine logic applies.
-      if: |
-        !cancelled()
-        && steps.run-test.outcome == 'failure'
-        && !(inputs.driver-status == 'info'
-             && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')))
-      continue-on-error: ${{ inputs.quarantine-engine != 'ci-conductor' }}
-      uses: ./.github/actions/quarantine-gate
-      with:
-        adapter: backend
-        test-suite: ${{ inputs.junit-name }}
-        enforce-quarantine: ${{ inputs.quarantine-engine == 'ci-conductor' }}
-
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
@@ -104,3 +89,20 @@ runs:
         retention-days: 1
       # Failing to upload the artifact should never affect the outcome of the whole test run.
       continue-on-error: true
+
+    # Last, because this is the only step allowed to fail the job: everything above it reports the
+    # failure (JUnit report, logs, ci-conductor) and must run regardless of the verdict below.
+    - name: Quarantine gate
+      # Off master and release branches an "info" driver is data-collection only - the test always passes!
+      # On master and release branches "info" carries no weight - the quarantine logic applies.
+      if: |
+        !cancelled()
+        && steps.run-test.outcome == 'failure'
+        && !(inputs.driver-status == 'info'
+             && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')))
+      continue-on-error: ${{ inputs.quarantine-engine != 'ci-conductor' }}
+      uses: ./.github/actions/quarantine-gate
+      with:
+        adapter: backend
+        test-suite: ${{ inputs.junit-name }}
+        enforce-quarantine: ${{ inputs.quarantine-engine == 'ci-conductor' }}
