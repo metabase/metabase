@@ -166,7 +166,9 @@
                              [:or where [:and [:in :id upstream-ids] [:= :is_published false]]]
                              where)
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})
-        selected-ids        (t2/select-pks-set :model/Table {:where where})
+        ;; intersect so nothing outside the permission-checked set can be updated
+        selected-ids        (set/intersection table-ids-to-update
+                                              (t2/select-pks-set :model/Table {:where where}))
         upstream-only-ids   (set/difference table-ids-to-update selected-ids)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq selected-ids)
