@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.engine :as search.engine]
    [next.jdbc :as jdbc]
@@ -45,21 +46,23 @@
       (:index_exists false)))
 
 (defn semantic-search-configured?
-  "Is a pgvector DB configured for this instance?
-  The boot-static input: gates Quartz job scheduling, which happens once at startup.
-  The runtime gates (license, kill switch, engine activity) are checked per job execution instead, so
-  flipping them never requires a restart.
-  This check becomes a DB probe under BOT-1796."
+  "Might this instance have a pgvector DB: a dedicated MB_PGVECTOR_DB_URL, or a Postgres app DB
+  (which may support pgvector -- [[semantic-search-capable?]] runs the probe that answers for sure).
+  The boot-static input: gates Quartz job scheduling, which happens once at startup, so it must be
+  cheap and infallible -- it never queries the DB. The runtime gates (license, kill switch, engine
+  activity) are checked per job execution instead, so flipping them never requires a restart."
   []
-  (string? (not-empty semantic.db.datasource/db-url)))
+  (or (string? (not-empty semantic.db.datasource/db-url))
+      (= :postgres (mdb/db-type))))
 
 (defn semantic-search-capable?
   "Does this instance have the infrastructure for semantic search: the premium feature and a pgvector DB.
   Deliberately excludes the kill switch, which is checked per execution so it works at runtime."
   []
-  ;; Cheap gate first: semantic-search-configured? becomes a DB probe under BOT-1796.
+  ;; Feature first: the pgvector check may probe the app DB, and instances that can't use the answer
+  ;; must never probe.
   (and (premium-features/has-feature? :semantic-search)
-       (semantic-search-configured?)))
+       (semantic.db.datasource/pgvector-configured?)))
 
 (defn semantic-search-available?
   "Whether semantic search can run on this instance: capable and not disabled by the kill switch.
