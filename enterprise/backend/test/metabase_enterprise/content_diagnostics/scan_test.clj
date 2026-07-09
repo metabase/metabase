@@ -47,21 +47,23 @@
                      :model/Dashboard {fresh-dash :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}
                      :model/Document  {fresh-doc :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}
                      :model/Transform {fresh-transform :id} {}]
+        (scan/scan!)
         (let [stale-keys #{[:card stale-card-1] [:card stale-card-2] [:card stale-card-3]
                            [:dashboard stale-dash-1] [:dashboard stale-dash-2]
                            [:document stale-doc] [:document never-viewed-doc]
                            [:transform never-ran-transform]}
               fresh-keys #{[:card fresh-card] [:dashboard fresh-dash]
                            [:document fresh-doc] [:transform fresh-transform]}
-              result     (scan/scan!)
-              rows       (t2/select :model/ContentDiagnosticsFinding :scan_id (:scan_id result))
+              ;; recover this run's scan_id from a guaranteed-flagged temp entity — scan! returns nil,
+              ;; the persisted findings are the result
+              scan-id    (t2/select-one-fn :scan_id :model/ContentDiagnosticsFinding
+                                           :entity_type :card :entity_id stale-card-1)
+              rows       (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id)
               found-keys (set (map (juxt :entity_type :entity_id) rows))]
-          (testing "scan! returns a topline {scan_id, finding_count, entities_scanned, duration_ms}"
-            (is (string? (:scan_id result)))
-            (is (pos-int? (:finding_count result)))
-            (is (pos-int? (:entities_scanned result)))
-            (is (<= (:finding_count result) (:entities_scanned result)))
-            (is (nat-int? (:duration_ms result))))
+          (testing "the run persisted one scan_id batch of findings"
+            (is (string? scan-id))
+            (is (seq rows))
+            (is (= 1 (count (into #{} (map :scan_id) rows)))))
           (testing "every stale temp entity produced a :stale finding; no fresh one did"
             (is (every? found-keys stale-keys))
             (is (empty? (set/intersection found-keys fresh-keys))))

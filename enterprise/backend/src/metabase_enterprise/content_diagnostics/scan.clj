@@ -107,18 +107,6 @@
 
 ;;; ----------------------------------------------- scan ------------------------------------------------
 
-(defn- count-scannable
-  "Size of the candidate universe the checkers swept — non-archived rows of every covered model
-  (transforms have no archived column, so every transform counts) — the denominator for the
-  findings/entities topline."
-  []
-  (transduce (map (fn [[entity-type model]]
-                    (if (= entity-type :transform)
-                      (t2/count model)
-                      (t2/count model :archived false))))
-             +
-             entity-type->model))
-
 (defn- scope-collection-id-lookup
   "Batched `{[entity-type entity-id] → collection_id}` for the findings' entities — **one** query per
   entity-type (over just the flagged entities, F ≪ N). Entity types whose model has no `collection_id`
@@ -168,23 +156,16 @@
                      :details             details})))))
 
 (defn scan!
-  "Run a full scan synchronously: every checker → one `scan_id` batch → persisted. Returns
-  `{:scan_id :finding_count :entities_scanned :duration_ms}`."
+  "Run a full scan synchronously: every checker → one `scan_id` batch → persisted. Side-effecting;
+  the persisted findings are the result."
   []
   (let [timer    (u/start-timer)
         scan-id  (str (random-uuid))
-        findings (attach-scope-collection-ids (detect))
-        entities (count-scannable)]
+        findings (attach-scope-collection-ids (detect))]
     (insert-findings! scan-id findings)
     ;; write-side resolution: supersede prior-scan findings the new batch didn't re-emit. Only runs on
     ;; success — a failed scan never invalidates prior findings, though already-committed chunks of the
     ;; failed batch stay active alongside them.
     (finding/invalidate-superseded! scan-id (covered-finding-types))
-    (let [duration      (u/since-ms timer)
-          finding-count (count findings)]
-      (log/infof "Content Diagnostics scan %s: %d findings over %d entities in %.0f ms"
-                 scan-id finding-count entities (double duration))
-      {:scan_id          scan-id
-       :finding_count    finding-count
-       :entities_scanned entities
-       :duration_ms      (long duration)})))
+    (log/infof "Content Diagnostics scan %s: %d findings in %.0f ms"
+               scan-id (count findings) (u/since-ms timer))))
