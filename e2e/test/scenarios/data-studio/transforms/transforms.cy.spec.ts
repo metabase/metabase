@@ -2723,7 +2723,9 @@ LIMIT
         .click();
       cy.wait("@failedRevert");
 
-      H.undoToast().should("contain.text", "Cannot revert: missing transform");
+      H.undoToastList()
+        .filter(':contains("Cannot revert: missing transform")')
+        .should("be.visible");
     });
   });
 
