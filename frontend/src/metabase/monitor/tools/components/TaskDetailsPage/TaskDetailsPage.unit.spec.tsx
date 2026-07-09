@@ -147,4 +147,15 @@ describe("TaskDetailsPage", () => {
     expect(screen.getByText("There are no captured logs")).toBeInTheDocument();
     expect(screen.queryByTestId("task-logs")).not.toBeInTheDocument();
   });
+
+  it("should show a link back to the tasks list", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByRole("link", { name: /Back to Tasks/ })).toHaveAttribute(
+      "href",
+      Urls.monitorTasksList(),
+    );
+  });
 });
