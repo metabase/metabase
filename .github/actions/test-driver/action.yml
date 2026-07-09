@@ -58,13 +58,8 @@ runs:
       continue-on-error: true
 
     - name: Report failed tests to ci-conductor
-      # Positioned right after the test run (before the report/upload steps) so it
-      # reads pristine JUnit. Gated to non-clean runs + continue-on-error so it can
-      # never change the job outcome — only the quarantine gate below can do that.
-      # junit-name is the per-job identity label (e.g. be-tests-postgres-ee); only
-      # workflows that also set CI_CONDUCTOR_BASE_URL actually POST. See DEV-2224 /
-      # DEV-2235.
-      if: ${{ always() && steps.run-test.outcome != 'success' }}
+      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+      # This step should NEVER fail the job!
       continue-on-error: true
       uses: ./.github/actions/report-failures-to-ci-conductor
       with:
