@@ -1,16 +1,10 @@
-import { useField } from "formik";
-import type {
-  ChangeEvent,
-  HTMLInputTypeAttribute,
-  ReactNode,
-  Ref,
-} from "react";
-import { forwardRef, useCallback } from "react";
+import type { HTMLInputTypeAttribute, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { TextInput } from "metabase/ui";
+import { FormTextInput } from "metabase/forms";
 import type { InputComponentType } from "metabase-types/api";
 
 const HTML_INPUT_TYPES: Partial<
@@ -43,15 +37,6 @@ export const FormInputWidget = forwardRef(function FormInputWidget(
   ref: Ref<HTMLInputElement>,
 ) {
   const id = useUniqueId();
-  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
-  const hasError = touched && error != null;
-
-  const handleChange = useCallback(
-    ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
-      setValue(value === "" && nullable ? null : value);
-    },
-    [nullable, setValue],
-  );
 
   return (
     <FormField
@@ -60,19 +45,15 @@ export const FormInputWidget = forwardRef(function FormInputWidget(
       actions={actions}
       optional={optional}
       htmlFor={id}
-      error={touched ? error : undefined}
     >
-      <TextInput
+      <FormTextInput
         ref={ref}
         id={id}
         name={name}
         type={HTML_INPUT_TYPES[type] ?? "text"}
         placeholder={placeholder}
-        value={value ?? ""}
-        error={hasError}
+        nullable={nullable}
         disabled={disabled}
-        onChange={handleChange}
-        onBlur={onBlur}
       />
     </FormField>
   );

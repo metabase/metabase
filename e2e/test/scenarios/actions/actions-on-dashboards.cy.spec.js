@@ -1119,12 +1119,12 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
         cy.button(actionName).click();
         cy.wait("@executeAction");
 
-        cy.findByLabelText("Team Name").should("not.exist");
-        cy.findByLabelText(
-          "Team Name: This Team_name value already exists.",
-        ).should("exist");
+        cy.findByLabelText("Team Name").should("be.visible");
+        cy.findByText("This Team_name value already exists.").should(
+          "be.visible",
+        );
 
-        cy.findByText("Team_name already exists.").should("exist");
+        cy.findByText("Team_name already exists.").should("be.visible");
       });
   });
 });
