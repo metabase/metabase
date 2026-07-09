@@ -24,18 +24,21 @@
   Unlike Anthropic's disjoint input buckets (see [[metabase.metabot.self.claude/claude-usage->aisdk-usage]]), OpenAI
   reports cached tokens as a subset breakdown of the input total:
 
-      input_tokens                        — total input, cached portion included
-      input_tokens_details.cached_tokens  — the cached subset of input_tokens
-      output_tokens                       — completion tokens
+      input_tokens                             — total input, cached portion included
+      input_tokens_details.cached_tokens       — the cached subset of input_tokens
+      input_tokens_details.cache_write_tokens  — should always be 0 (see below)
+      output_tokens                            — completion tokens
 
-  OpenAI's prompt caching is automatic and never reports cache writes, so there is no :cacheCreationTokens.
+  cache_write_tokens is absent from the Responses API docs, but present in live responses. We pass it through
+  as :cacheCreationTokens so a count would surface in usage tracking if OpenAI ever starts populating it.
 
-  Nested *_details maps are otherwise dropped: the result must stay flat so
-  downstream `merge-with +` usage accumulation is safe."
+  Nested *_details maps are otherwise dropped: the result must stay flat so downstream `merge-with +` usage
+  accumulation is safe."
   [u]
-  {:promptTokens     (:input_tokens u 0)
-   :completionTokens (:output_tokens u 0)
-   :cacheReadTokens  (get-in u [:input_tokens_details :cached_tokens] 0)})
+  {:promptTokens        (:input_tokens u 0)
+   :completionTokens    (:output_tokens u 0)
+   :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
+   :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
 
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.

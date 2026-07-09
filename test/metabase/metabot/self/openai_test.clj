@@ -33,9 +33,10 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?
-                        :cacheReadTokens  nat-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-tool-calls-conv-test
@@ -51,9 +52,10 @@
                  {:type :tool-input :function string? :arguments map?}]
                 (take 2 parts)))
         (is (=? {:type  :usage
-                 :usage {:promptTokens     pos-int?
-                         :completionTokens pos-int?
-                         :cacheReadTokens  nat-int?}}
+                 :usage {:promptTokens        pos-int?
+                         :completionTokens    pos-int?
+                         :cacheCreationTokens nat-int?
+                         :cacheReadTokens     nat-int?}}
                 (last parts)))))))
 
 (deftest ^:parallel openai-structured-output-conv-test
@@ -71,9 +73,10 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?
-                        :cacheReadTokens  nat-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-text-and-tool-calls-conv-test
@@ -91,9 +94,10 @@
                {:type :text :text string?}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?
-                        :cacheReadTokens  nat-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-reasoning-items-are-ignored-test
@@ -116,9 +120,10 @@
         (is (=? [{:type :start}
                  {:type :text :text string?}
                  {:type  :usage
-                  :usage {:promptTokens     pos-int?
-                          :completionTokens pos-int?
-                          :cacheReadTokens  nat-int?}}]
+                  :usage {:promptTokens        pos-int?
+                          :completionTokens    pos-int?
+                          :cacheCreationTokens nat-int?
+                          :cacheReadTokens     nat-int?}}]
                 (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
 
 (deftest ^:parallel openai-response-failed-surfaces-error-test
@@ -180,9 +185,10 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type  :usage
-                :usage {:promptTokens     pos-int?
-                        :completionTokens pos-int?
-                        :cacheReadTokens  nat-int?}}]
+                :usage {:promptTokens        pos-int?
+                        :completionTokens    pos-int?
+                        :cacheCreationTokens nat-int?
+                        :cacheReadTokens     nat-int?}}]
               parts))
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
@@ -208,26 +214,43 @@
 
 (deftest ^:parallel openai-usage-reports-cached-tokens-test
   (testing "cached tokens from input_tokens_details (Responses API shape) are reported as :cacheReadTokens"
-    (is (= {:promptTokens     2006
-            :completionTokens 300
-            :cacheReadTokens  1920}
+    (is (= {:promptTokens        2006
+            :completionTokens    300
+            :cacheCreationTokens 0
+            :cacheReadTokens     1920}
            (usage-from-patched-fixture
             {:input_tokens          2006
              :output_tokens         300
              :total_tokens          2306
-             :input_tokens_details  {:cached_tokens 1920}
+             :input_tokens_details  {:cached_tokens 1920 :cache_write_tokens 0}
              :output_tokens_details {:reasoning_tokens 0}})))))
 
 (deftest ^:parallel openai-usage-zero-cached-tokens-test
-  (testing "input_token_details missing :cached_tokens reports zero :cacheReadTokens"
-    (is (= {:promptTokens     20
-            :completionTokens 8
-            :cacheReadTokens  0}
+  (testing "input_token_details missing the cache keys reports zero cache tokens"
+    (is (= {:promptTokens        20
+            :completionTokens    8
+            :cacheCreationTokens 0
+            :cacheReadTokens     0}
            (usage-from-patched-fixture
             {:input_tokens          20
              :output_tokens         8
              :total_tokens          28
              :input_tokens_details  {}
+             :output_tokens_details {:reasoning_tokens 3}})))))
+
+(deftest ^:parallel openai-usage-cache-write-tokens-passthrough-test
+  (testing "a (hypothetical) non-zero cache_write_tokens is passed through as :cacheCreationTokens"
+    ;; The live API always reports cache_write_tokens 0 (automatic caching bills no writes), but if
+    ;; OpenAI ever starts populating it we want the count to flow through rather than be dropped.
+    (is (= {:promptTokens        20
+            :completionTokens    8
+            :cacheCreationTokens 7
+            :cacheReadTokens     0}
+           (usage-from-patched-fixture
+            {:input_tokens          20
+             :output_tokens         8
+             :total_tokens          28
+             :input_tokens_details  {:cached_tokens 0 :cache_write_tokens 7}
              :output_tokens_details {:reasoning_tokens 3}})))))
 
 ;;; ──────────────────────────────────────────────────────────────────
