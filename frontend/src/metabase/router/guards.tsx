@@ -8,7 +8,7 @@ import { getAdminPaths } from "metabase/selectors/admin";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
 import { getSetting } from "metabase/selectors/settings";
-import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
+import { isSameOrSiteUrlOrigin, replaceLocation } from "metabase/utils/dom";
 
 import { Navigate } from "./Navigate";
 import type { Location } from "./types";
@@ -29,6 +29,21 @@ const getRedirectUrl = () => {
   return redirectUrlParam != null && isSameOrSiteUrlOrigin(redirectUrlParam)
     ? redirectUrlParam
     : "/";
+};
+
+/**
+ * `getRedirectUrl` accepts site-url-origin targets as well as same-origin ones,
+ * so it can hand back an absolute URL. The SPA router only understands in-app
+ * paths, so split the target into the path to navigate to and whether the SPA
+ * can serve that origin at all.
+ */
+const resolveRedirectTarget = (url: string) => {
+  const target = new URL(url, window.location.origin);
+
+  return {
+    path: `${target.pathname}${target.search}${target.hash}`,
+    isInAppOrigin: target.origin === window.location.origin,
+  };
 };
 
 const NEVER_AUTHENTICATING = () => false;
@@ -79,7 +94,7 @@ export function createRedirectGuard(
 
 function FullPageRedirect({ to }: { to: string }): null {
   useEffect(() => {
-    window.location.replace(to);
+    replaceLocation(to);
   }, [to]);
   return null;
 }
@@ -118,10 +133,13 @@ const UserIsNotAuthenticated = createGuard(
   },
   () => {
     const url = getRedirectUrl();
-    return isBackendOnlyPath(url) ? (
+    const { path, isInAppOrigin } = resolveRedirectTarget(url);
+    const needsFullPageLoad = !isInAppOrigin || isBackendOnlyPath(path);
+
+    return needsFullPageLoad ? (
       <FullPageRedirect to={url} />
     ) : (
-      <Navigate to={url} replace />
+      <Navigate to={path} replace />
     );
   },
 );

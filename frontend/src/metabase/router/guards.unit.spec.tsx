@@ -1,8 +1,10 @@
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { replaceLocation } from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
@@ -12,6 +14,11 @@ import {
   isBackendOnlyPath,
 } from "./guards";
 import { Route } from "./react-router";
+
+jest.mock("metabase/utils/dom", () => ({
+  ...jest.requireActual("metabase/utils/dom"),
+  replaceLocation: jest.fn(),
+}));
 
 const Protected = () => <div>protected</div>;
 const LoginPage = () => <div>login page</div>;
@@ -108,6 +115,86 @@ describe("route-guards", () => {
       await waitFor(() => {
         expect(history?.getCurrentLocation().pathname).toBe("/");
       });
+    });
+  });
+
+  describe("IsNotAuthenticated redirect targets", () => {
+    const ORIGIN = "http://localhost";
+    const replaceLocationMock = jest.mocked(replaceLocation);
+
+    const setup = (redirectParam: string) => {
+      window.history.replaceState(
+        {},
+        "",
+        `/auth/login?redirect=${encodeURIComponent(redirectParam)}`,
+      );
+
+      const state = createMockState({
+        currentUser: createMockUser(),
+        auth: { loginPending: false, redirect: true },
+        settings: createMockSettingsState({ "has-user-setup": true }),
+      });
+
+      const { history } = renderWithProviders(
+        <Route component={IsNotAuthenticated}>
+          <Route path="/auth/login" component={LoginPage} />
+        </Route>,
+        {
+          storeInitialState: state,
+          withRouter: true,
+          initialRoute: "/auth/login",
+        },
+      );
+
+      return { history };
+    };
+
+    afterEach(() => {
+      replaceLocationMock.mockClear();
+      window.history.replaceState({}, "", "/");
+    });
+
+    it("does a full-page redirect for a relative backend-only path", async () => {
+      const { history } = setup("/auth/sso/google");
+
+      await waitFor(() => {
+        expect(replaceLocationMock).toHaveBeenCalledWith("/auth/sso/google");
+      });
+      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+    });
+
+    it("does a full-page redirect for an absolute same-origin backend-only URL", async () => {
+      const { history } = setup(`${ORIGIN}/auth/sso/google`);
+
+      await waitFor(() => {
+        expect(replaceLocationMock).toHaveBeenCalledWith(
+          `${ORIGIN}/auth/sso/google`,
+        );
+      });
+      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+    });
+
+    it("navigates in-app to the path of an absolute same-origin URL", async () => {
+      const { history } = setup(`${ORIGIN}/dashboard/1`);
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/dashboard/1");
+      });
+      expect(replaceLocationMock).not.toHaveBeenCalled();
+    });
+
+    it("does a full-page redirect for a site-url URL on another origin", async () => {
+      const siteUrl = "https://metabase.example.com";
+      mockSettings({ "site-url": siteUrl });
+
+      const { history } = setup(`${siteUrl}/dashboard/1`);
+
+      await waitFor(() => {
+        expect(replaceLocationMock).toHaveBeenCalledWith(
+          `${siteUrl}/dashboard/1`,
+        );
+      });
+      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
     });
   });
 
