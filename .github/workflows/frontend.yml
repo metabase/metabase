@@ -110,7 +110,7 @@ jobs:
       - name: Run frontend unit tests
         id: fe-tests
         run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
-        # Quarantine gate controls the exit code for this step.
+        # Keep this step continue-on-error because the quarantine gate controls whether it ultimately fails.
         continue-on-error: true
       - name: Report failed tests to ci-conductor
         # Positioned between the test run and "Upload Test Results" so it reads
