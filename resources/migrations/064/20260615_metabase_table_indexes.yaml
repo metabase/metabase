@@ -3,7 +3,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.ixrq01
+      id: v64.ixrq01
       author: Ngoc Khuat
       comment: Create metabase_table_indexes table for transform target index/clustering hints
       changes:
@@ -76,7 +76,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v63.ixrq02
+      id: v64.ixrq02
       author: Ngoc Khuat
       comment: Add unique constraint on metabase_table_indexes (transform_id, index_name)
       changes:
@@ -90,7 +90,7 @@ databaseChangeLog:
   ## (the FK is dropped before the index it would otherwise still need). Postgres
   ## doesn't auto-index FKs, which is what fks-are-indexed-test checks for.
   - changeSet:
-      id: v63.ixrq04
+      id: v64.ixrq04
       author: Ngoc Khuat
       comment: Index metabase_table_indexes.created_by
       changes:
@@ -102,7 +102,7 @@ databaseChangeLog:
                   name: created_by
 
   - changeSet:
-      id: v63.ixrq05
+      id: v64.ixrq05
       author: Ngoc Khuat
       comment: Add FK on metabase_table_indexes.transform_id
       changes:
@@ -115,7 +115,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.ixrq07
+      id: v64.ixrq07
       author: Ngoc Khuat
       comment: Add FK on metabase_table_indexes.created_by
       changes:
