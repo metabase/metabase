@@ -13,7 +13,10 @@ import {
   Text,
   useCombobox,
 } from "metabase/ui";
-import { useImportChangesMutation } from "metabase-enterprise/api/remote-sync";
+import {
+  useImportChangesMutation,
+  useLazyGetRemoteSyncChangesQuery,
+} from "metabase-enterprise/api/remote-sync";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { trackBranchSwitched } from "../../analytics";
@@ -44,6 +47,7 @@ export const BranchSwitcher = ({
   const combobox = useCombobox();
   const [sendToast] = useToast();
   const [importChanges, { isLoading }] = useImportChangesMutation();
+  const [fetchDirty] = useLazyGetRemoteSyncChangesQuery();
   // Switching goes through superuser-only endpoints, so only admins get the control.
   const isAdmin = useSelector(getUserIsAdmin);
   // Set to the target branch when there are unsaved changes, opening the choose-what-to-do modal.
@@ -90,7 +94,7 @@ export const BranchSwitcher = ({
     }
   };
 
-  const handleSelect = (branch: string, isNewBranch?: boolean) => {
+  const handleSelect = async (branch: string, isNewBranch?: boolean) => {
     if (branch === currentBranch) {
       return;
     }
@@ -100,9 +104,18 @@ export const BranchSwitcher = ({
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
       return;
     }
+    // Refetch the dirty state at switch time so a stale snapshot (e.g. content edited since the settings
+    // page loaded) doesn't send us down the wrong path. Fall back to the last-known state on error.
+    let hasUnsavedChanges = dirty.length > 0;
+    try {
+      const fresh = await fetchDirty().unwrap();
+      hasUnsavedChanges = fresh.dirty.length > 0;
+    } catch {
+      // keep hasUnsavedChanges as the last-known value
+    }
     // With unsaved changes, let the admin choose what to do with them (push / stash / discard) instead of
     // silently discarding.
-    if (dirty.length > 0) {
+    if (hasUnsavedChanges) {
       setPendingBranch(branch);
       return;
     }
@@ -145,7 +158,11 @@ export const BranchSwitcher = ({
           />
         </Combobox>
         {dirtyCount > 0 && (
-          <Text c="feedback-negative" size="sm" data-testid="branch-switcher-dirty-warning">
+          <Text
+            c="feedback-negative"
+            size="sm"
+            data-testid="branch-switcher-dirty-warning"
+          >
             {ngettext(
               msgid`${dirtyCount} unsaved change`,
               `${dirtyCount} unsaved changes`,

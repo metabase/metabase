@@ -53,13 +53,9 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch force force_deletion merge expected_branch]}
+   {:keys [branch force merge expected_branch]}
    :- [:map [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
-       ;; Independent of `force`: when false, the import still surfaces deletion conflicts (unsynced local
-       ;; content the target branch lacks) even on a forced version/dirty override, so a switch can't
-       ;; silently sweep local-only work. Omitted -> defaults to `force` (backward compatible).
-       [:force_deletion {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
@@ -73,8 +69,7 @@
         {task-id :id}
         (impl/async-import!
          branch-name force {}
-         :merge?          (or merge false)
-         :force-deletion? force_deletion
+         :merge?     (or merge false)
          :on-success (fn [task-id _result]
                        (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
     {:status :success

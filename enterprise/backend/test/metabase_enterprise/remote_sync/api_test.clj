@@ -218,25 +218,6 @@
             (is (= "success" (:status response)))
             (is (remote-sync.task/successful? completed-task))))))))
 
-(deftest import-threads-force-deletion-test
-  (testing "GHY-4019: POST /import forwards force_deletion to async-import! as :force-deletion?"
-    (let [captured (atom nil)]
-      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                         remote-sync-token  "test-token"
-                                         remote-sync-branch "main"]
-        (mt/with-dynamic-fn-redefs [impl/async-import! (fn [_branch _force _args & kvs]
-                                                         (reset! captured (apply hash-map kvs))
-                                                         {:id 1})]
-          (testing "force_deletion true is forwarded so a caller can force past deletion conflicts explicitly"
-            (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
-                                  {:branch "main" :expected_branch "main" :force_deletion true})
-            (is (true? (:force-deletion? @captured))))
-          (testing "omitting force_deletion forwards nil, so import! falls back to force? (backward compatible)"
-            (reset! captured nil)
-            (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
-                                  {:branch "main" :expected_branch "main"})
-            (is (nil? (:force-deletion? @captured)))))))))
-
 (deftest import-dirty-guard-includes-dirty-objects-test
   (testing "GHY-4019: a blocked (dirty, non-forced) import names the un-pushed changes it would discard"
     (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
