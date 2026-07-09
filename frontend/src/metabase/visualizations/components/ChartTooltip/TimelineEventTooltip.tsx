@@ -13,13 +13,13 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
   const { hovered } = props;
   const { timelineEvents } = hovered;
 
-  // Unjustified type cast. FIXME
   return (
     <ul className={S.timelineEventList} data-testid="timeline-event-tooltip">
       {timelineEvents.map((event) => (
         <li key={event.id}>
           <Flex>
             <Flex justify="center" align="center" pl="xs" pr="0.75rem">
+              {/* Unjustified type cast. FIXME */}
               <Icon name={event.icon as unknown as IconName} />
             </Flex>
             <Stack gap={0}>

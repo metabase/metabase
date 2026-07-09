@@ -33,9 +33,9 @@ const defaultRenderRemapped: RenderRemapped = ({
   value,
   displayValue,
   column,
-  // Unjustified type cast. FIXME
 }) => (
   <span>
+    {/* Unjustified type cast. FIXME */}
     <span className={CS.textBold}>{displayValue as ReactNode}</span>
     {/* Show the underlying ID for PK/FK */}
     {column?.isID() && <span style={{ opacity: 0.5 }}>{" - " + value}</span>}

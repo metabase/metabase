@@ -97,9 +97,9 @@ function DatabaseEditAppInner({
 
   PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
-  // Unjustified type cast. FIXME
   return (
     <>
+      {/* Unjustified type cast. FIXME */}
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
         <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
           <Breadcrumbs className={CS.py4} crumbs={crumbs} />

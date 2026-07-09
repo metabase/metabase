@@ -31,9 +31,9 @@ const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
     return t`URL`;
   }
   if (clickBehavior.linkType === "question") {
-    // Unjustified type cast. FIXME
     return (
       <Quoted key="link-question">
+        {/* Unjustified type cast. FIXME */}
         <QuestionName id={targetId as CardId} />
       </Quoted>
     );

@@ -82,10 +82,10 @@ export const EmbeddedDashcard = {
   },
 };
 
-// Unjustified type cast. FIXME
 export const DarkTheme: StoryFn = () => (
   <VisualizationWrapper displayTheme="dark">
     <Box h={500}>
+      {/* Unjustified type cast. FIXME */}
       <Visualization rawSeries={data.defaultSettings as unknown as Series} />
     </Box>
   </VisualizationWrapper>
@@ -100,9 +100,9 @@ export const Watermark: StoryFn = () => (
         }),
       }),
     })}
-    // Unjustified type cast. FIXME
   >
     <Box h={500}>
+      {/* Unjustified type cast. FIXME */}
       <Visualization rawSeries={data.defaultSettings as unknown as Series} />
     </Box>
   </VisualizationWrapper>

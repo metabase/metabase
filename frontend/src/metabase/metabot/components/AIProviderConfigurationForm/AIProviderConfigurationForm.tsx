@@ -235,10 +235,10 @@ export function AIProviderConfigurationForm({
                 <Text
                   lh="1rem"
                   c={option.disabled ? "text-disabled" : undefined}
-                  // Unjustified type cast. FIXME
                 >
                   {option.label}
                 </Text>
+                {/* Unjustified type cast. FIXME */}
                 {!isAvailableProvider(option.value as MetabotProvider) && (
                   <Text c="text-disabled" lh="1rem" size="sm">
                     {t`Coming soon`}

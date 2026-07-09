@@ -3,6 +3,9 @@ import tseslint from "typescript-eslint";
 
 import rule from "../eslint-plugin-metabase/rules/no-unjustified-type-casts";
 
+const TS_FILENAME = "spec.ts"; // Angle-bracket casts only parse with JSX off
+const TSX_FILENAME = "spec.tsx";
+
 const ruleTester = new RuleTester({
   languageOptions: {
     parser: tseslint.parser,
@@ -100,6 +103,71 @@ const VALID_CASES = [
     name: "satisfies is not a cast",
     code: `const x = value satisfies Foo;`,
   },
+  {
+    name: "angle-bracket cast with comment above",
+    code: `
+      // response comes from an untyped source
+      const user = <User>response;
+    `,
+  },
+  {
+    name: "angle-bracket const assertion",
+    code: `const x = <const>[1, 2, 3];`,
+  },
+  {
+    name: "mixed angle-bracket and as chain with single comment",
+    code: `
+      // definitely safe
+      const x = (<unknown>value) as Foo;
+    `,
+  },
+  {
+    name: "JSX comment on the line above a cast in JSX children",
+    filename: TSX_FILENAME,
+    code: `
+      function C() {
+        return (
+          <ul>
+            {/* reason */}
+            <Icon name={value as Foo} />
+          </ul>
+        );
+      }
+    `,
+  },
+  {
+    name: "inline comment inside a JSX expression container",
+    filename: TSX_FILENAME,
+    code: `
+      function C() {
+        return (
+          <ul>
+            <Icon name={/* reason */ value as Foo} />
+          </ul>
+        );
+      }
+    `,
+  },
+  {
+    name: "comment above a JSX element on the statement line",
+    filename: TSX_FILENAME,
+    code: `
+      function C() {
+        // reason
+        return <Icon name={value as Foo} />;
+      }
+    `,
+  },
+  {
+    name: "ternary branch comments after the ?/: operators",
+    code: `
+      const id = isDashboard
+        ? // reason
+          (item as Dashboard).id
+        : // reason
+          (item as Question).id();
+    `,
+  },
 ];
 
 const INVALID_CASES = [
@@ -183,9 +251,83 @@ const INVALID_CASES = [
     `,
     errors: [{ message }],
   },
+  {
+    name: "angle-bracket cast without comment",
+    code: `const user = <User>response;`,
+    errors: [{ message }],
+  },
+  {
+    name: "angle-bracket chained cast reported once",
+    code: `const x = <Foo>(<unknown>value);`,
+    errors: [{ message }],
+  },
+  {
+    name: "trailing comment on the previous code line does not justify",
+    code: `
+      let x; // asd
+      const y = value as Foo;
+    `,
+    errors: [{ message }],
+  },
+  {
+    name: "trailing comment on a previous argument line does not justify",
+    code: `
+      foo(bar, // context
+        value as Foo);
+    `,
+    errors: [{ message }],
+  },
+  {
+    name: "comment after a single-line condition and ? does not justify",
+    code: `
+      const id = isDashboard ? // reason
+        (item as Dashboard).id : other;
+    `,
+    errors: [{ message }],
+  },
+  {
+    name: "comment above the statement does not justify a cast deeper in JSX",
+    filename: TSX_FILENAME,
+    code: `
+      function C() {
+        // too far from the cast
+        return (
+          <ul>
+            <li>
+              <Icon name={value as Foo} />
+            </li>
+          </ul>
+        );
+      }
+    `,
+    errors: [{ message }],
+  },
+  {
+    name: "JSX comment two lines above the cast does not justify",
+    filename: TSX_FILENAME,
+    code: `
+      function C() {
+        return (
+          <ul>
+            {/* too far */}
+            <li>filler</li>
+            <Icon name={value as Foo} />
+          </ul>
+        );
+      }
+    `,
+    errors: [{ message }],
+  },
 ];
 
 ruleTester.run("no-unjustified-type-casts", rule, {
-  valid: VALID_CASES.map(({ code }) => ({ code })),
-  invalid: INVALID_CASES.map(({ code, errors }) => ({ code, errors })),
+  valid: VALID_CASES.map(({ code, filename }) => ({
+    code,
+    filename: filename ?? TS_FILENAME,
+  })),
+  invalid: INVALID_CASES.map(({ code, errors, filename }) => ({
+    code,
+    errors,
+    filename: filename ?? TS_FILENAME,
+  })),
 });

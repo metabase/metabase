@@ -98,13 +98,13 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
     const isRegularCollection =
       PLUGIN_COLLECTIONS.isRegularCollection(collection);
 
-    // Unjustified type cast. FIXME
     const content = (
       <>
         <TreeNode.IconContainer transparent={false}>
           <SidebarIcon {...icon} isSelected={isSelected} />
         </TreeNode.IconContainer>
         <NameContainer>{collection.name}</NameContainer>
+        {/* Unjustified type cast. FIXME */}
         {rightSection?.(collection as unknown as ITreeNodeItem)}
       </>
     );
