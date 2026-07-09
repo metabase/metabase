@@ -12,6 +12,7 @@ import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {
+  CanAccessAlertsManagement,
   CanAccessMonitor,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -177,6 +178,76 @@ describe("route-guards", () => {
       });
 
       expect(screen.getByText("monitor page")).toBeInTheDocument();
+    });
+  });
+
+  describe("CanAccessAlertsManagement", () => {
+    interface SetupOpts {
+      currentUser?: ReturnType<typeof createMockUser>;
+    }
+
+    const setup = ({ currentUser }: SetupOpts = {}) => {
+      return renderWithProviders(
+        <>
+          <Route component={CanAccessAlertsManagement}>
+            <Route
+              path="/monitor/notifications"
+              component={() => <div>alerts page</div>}
+            />
+          </Route>
+          <Route
+            path="/unauthorized"
+            component={() => <div>unauthorized</div>}
+          />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser,
+            settings: createMockSettingsState({ "has-user-setup": true }),
+          }),
+          withRouter: true,
+          initialRoute: "/monitor/notifications",
+        },
+      );
+    };
+
+    it("renders the page for superusers", async () => {
+      setup({ currentUser: createMockUser({ is_superuser: true }) });
+
+      expect(await screen.findByText("alerts page")).toBeInTheDocument();
+    });
+
+    it("redirects a non-admin with monitoring permission to unauthorized without redirect-back", async () => {
+      const { history } = setup({
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: false,
+          permissions: { can_access_monitoring: true },
+        }),
+      });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
+    });
+
+    it("redirects an analyst to unauthorized without redirect-back", async () => {
+      const { history } = setup({
+        currentUser: createMockUser({
+          is_superuser: false,
+          is_data_analyst: true,
+        }),
+      });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual({});
+      expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
   });
 

@@ -98,6 +98,10 @@ const CanAccessMonitoringTools = ({ children }: { children?: ReactNode }) => (
   <>{children}</>
 );
 
+const CanAccessAlertsManagement = ({ children }: { children?: ReactNode }) => (
+  <>{children}</>
+);
+
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
 
@@ -120,6 +124,7 @@ const setup = ({
         CanAccessMonitor,
         CanAccessMonitorDiagnostics,
         CanAccessMonitoringTools,
+        CanAccessAlertsManagement,
       )}
     </Route>,
     { withRouter: true, initialRoute },
@@ -134,10 +139,12 @@ const setupWithGuards = ({
   initialRoute,
   CanAccessMonitorDiagnostics: Diagnostics = CanAccessMonitorDiagnostics,
   CanAccessMonitoringTools: Tools = CanAccessMonitoringTools,
+  CanAccessAlertsManagement: AlertsManagement = CanAccessAlertsManagement,
 }: {
   initialRoute: string;
   CanAccessMonitorDiagnostics?: (props: { children?: ReactNode }) => ReactNode;
   CanAccessMonitoringTools?: (props: { children?: ReactNode }) => ReactNode;
+  CanAccessAlertsManagement?: (props: { children?: ReactNode }) => ReactNode;
 }) => {
   const store = getStore(
     mainReducers,
@@ -147,7 +154,13 @@ const setupWithGuards = ({
   return renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
-      {getMonitorRoutes(store, CanAccessMonitor, Diagnostics, Tools)}
+      {getMonitorRoutes(
+        store,
+        CanAccessMonitor,
+        Diagnostics,
+        Tools,
+        AlertsManagement,
+      )}
     </Route>,
     { withRouter: true, initialRoute },
   );
@@ -243,6 +256,20 @@ describe("monitor routes", () => {
           await screen.findByTestId("unauthorized-marker"),
         ).toBeInTheDocument();
         expect(screen.queryByTestId("logs-page")).not.toBeInTheDocument();
+      });
+
+      it("blocks the notifications route when its own guard denies, independent of the Tools guard", async () => {
+        setupWithGuards({
+          initialRoute: "/monitor/notifications",
+          CanAccessAlertsManagement: DenyingGuard,
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("notifications-page"),
+        ).not.toBeInTheDocument();
       });
 
       it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {

@@ -73,6 +73,7 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import { trackPageView } from "./analytics";
 import {
+  CanAccessAlertsManagement,
   CanAccessDataModel,
   CanAccessDataStudio,
   CanAccessMonitor,
@@ -410,6 +411,7 @@ export const getRoutes = (store: AppStore) => {
             CanAccessMonitor,
             CanAccessMonitorDiagnostics,
             CanAccessMonitoringTools,
+            CanAccessAlertsManagement,
           )}
         </Route>
       </Route>
