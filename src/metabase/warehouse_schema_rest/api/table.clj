@@ -466,7 +466,7 @@
 
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
-               :max-file-count upload/max-upload-file-count}}
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -493,7 +493,7 @@
 
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
-               :max-file-count upload/max-upload-file-count}}
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params

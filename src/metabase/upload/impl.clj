@@ -49,9 +49,11 @@
   The limit documented in `docs/exploration-and-organization/uploads.md` must match as well."
   (* 50 1024 1024))
 
-(def max-upload-file-count
-  "Maximum number of multipart files accepted by upload-table CSV endpoints."
-  1)
+(def max-upload-part-count
+  "Maximum number of multipart parts accepted by the CSV upload endpoints.
+  Ring's :max-file-count option counts every part, form fields included, so this must allow for the
+  collection_id field the frontend sends alongside the file part."
+  2)
 
 ;; TODO: move these to a more appropriate namespace if they need to be reused
 (defmulti max-bytes

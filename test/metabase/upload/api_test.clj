@@ -48,13 +48,24 @@
                                      {:file oversized})))
         (is (zero? @calls) "the endpoint body should never run")))))
 
-(deftest csv-upload-too-many-files-test
-  (testing "POST /api/upload/csv rejects multiple file parts with a 413, before the body reaches the handler"
+(deftest csv-upload-too-many-parts-test
+  (testing "POST /api/upload/csv rejects requests with too many multipart parts with a 413, before the body reaches the handler"
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
         (is (= "Uploaded content exceeded limits."
                (mt/user-http-request :crowberto :post 413 "upload/csv"
                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                     [[:file (byte-array [97 44 98 10 49 44 50])]
+                                     [[:collection_id "root"]
+                                      [:file (byte-array [97 44 98 10 49 44 50])]
                                       [:file (byte-array [99 44 100 10 51 44 52])]])))
         (is (zero? @calls) "the endpoint body should never run")))))
+
+(deftest csv-upload-with-collection-id-test
+  (testing "POST /api/upload/csv accepts the collection_id field the frontend sends alongside the file"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200, :body 1})]
+        (mt/user-http-request :crowberto :post 200 "upload/csv"
+                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                              [[:collection_id "root"]
+                               [:file (byte-array [97 44 98 10 49 44 50])]])
+        (is (= 1 @calls) "the endpoint body should run")))))
