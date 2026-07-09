@@ -3478,6 +3478,7 @@
            collections
            database-routing
            driver
+           events
            lib
            lib.be
            lib.metadata
@@ -3953,7 +3954,6 @@
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            collections
-           events
            lib.schema
            models
            permissions

@@ -7,7 +7,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collection]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
@@ -104,12 +103,7 @@
           table-ids-to-update (when (seq downstream-ids)
                                 (data-studio.db/published-table-ids downstream-ids))]
       (when (seq table-ids-to-update)
-        (data-studio.db/unpublish-tables! table-ids-to-update)
-        ;; Publish events for audit log and remote sync tracking
-        (let [updated-tables (data-studio.db/tables table-ids-to-update)]
-          (doseq [table updated-tables]
-            (events/publish-event! :event/table-unpublish {:object  table
-                                                           :user-id api/*current-user-id*})))))))
+        (data-studio.db/unpublish-tables! table-ids-to-update)))))
 
 ;;; ------------------------------------------------ Response Schemas ------------------------------------------------
 
@@ -181,12 +175,7 @@
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors upstream-ids :unpublished)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (data-studio.db/publish-tables! table-ids-to-update (:id target-collection))
-      ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (data-studio.db/tables table-ids-to-update)]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-publish {:object  table
-                                                       :user-id api/*current-user-id*}))))
+      (data-studio.db/publish-tables! table-ids-to-update (:id target-collection)))
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
@@ -203,12 +192,7 @@
     (when (seq table-ids-to-update)
       (run! (comp api/write-check data-studio.db/collection)
             (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update)))
-      (data-studio.db/unpublish-tables! table-ids-to-update)
-      ;; Publish events for audit log and remote sync tracking
-      (let [updated-tables (data-studio.db/tables table-ids-to-update)]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-unpublish {:object  table
-                                                         :user-id api/*current-user-id*}))))
+      (data-studio.db/unpublish-tables! table-ids-to-update))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes
