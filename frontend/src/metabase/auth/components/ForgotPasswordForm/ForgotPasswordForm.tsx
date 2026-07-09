@@ -11,6 +11,7 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
 import type { ForgotPasswordData } from "../../types";
@@ -54,7 +55,7 @@ export const ForgotPasswordForm = ({
         validationSchema={FORGOT_PASSWORD_SCHEMA}
         onSubmit={handleSubmit}
       >
-        <Form>
+        <Form as={Stack} gap="md">
           <FormTextInput
             name="email"
             label={t`Email address`}
