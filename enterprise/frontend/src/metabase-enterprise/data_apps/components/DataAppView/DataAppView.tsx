@@ -1,24 +1,27 @@
 import cx from "classnames";
+import { useGetDataAppQuery } from "enterprise/frontend/src/metabase-enterprise/api";
+import { EmptyState } from "frontend/src/metabase/common/components/EmptyState";
+import { ErrorDetails } from "frontend/src/metabase/common/components/ErrorDetails/ErrorDetails";
+import {
+  GenericError,
+  NotFound,
+} from "frontend/src/metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "frontend/src/metabase/common/components/LoadingAndErrorWrapper";
+import CS from "frontend/src/metabase/css/core/index.css";
+import QueryBuilderS from "frontend/src/metabase/css/query_builder.module.css";
+import { Box, Flex } from "frontend/src/metabase/ui";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/common/components/EmptyState";
-import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
-import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
-import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Flex } from "metabase/ui";
-import { useGetDataAppQuery } from "metabase-enterprise/api";
-
-import S from "./AppView.module.css";
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
-} from "./constants";
-import { attachIframeUrlMirror } from "./lib/attach-iframe-url-mirror";
-import { deriveIframeSrc } from "./lib/derive-iframe-src";
-import { isCrossOriginError } from "./lib/is-cross-origin-error";
+} from "../../constants";
+import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
+import { deriveIframeSrc } from "../../lib/derive-iframe-src";
+import { isCrossOriginError } from "../../lib/is-cross-origin-error";
+
+import S from "./DataAppView.module.css";
 
 interface AppViewProps {
   params: { name: string };
@@ -40,7 +43,7 @@ interface AppViewProps {
  * The data-app bundle itself knows nothing about either direction —
  * it just uses React Router as if it were the top-level app.
  */
-export function AppView({ params }: AppViewProps) {
+export function DataAppView({ params }: AppViewProps) {
   const name = params.name;
   const validName = typeof name === "string" && name.length > 0;
   // Callback ref (vs `useRef`) — fires when the iframe element actually
