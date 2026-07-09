@@ -10,8 +10,7 @@ export function useAddDataPermissions() {
   const databases = databasesResponse?.data;
   const uploadDbId = useSetting("uploads-settings")?.db_id;
   const uploadDB = databases?.find((db) => db.id === uploadDbId);
-  const hasUploadableDatabases = !!databases?.filter((db) => db.can_upload)
-    .length;
+  const hasUploadableDatabases = !!databases?.some((db) => db.can_upload);
 
   /**
    * This covers the case where instance has the attached dwh. In such cases

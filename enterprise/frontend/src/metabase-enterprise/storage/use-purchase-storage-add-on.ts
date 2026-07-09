@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetSettingsQuery, useListDatabasesQuery } from "metabase/api";
-import { usePurchaseCloudAddOnMutation } from "metabase/api/cloud-add-ons";
 import { useTokenRefreshUntil } from "metabase/api/utils";
 import {
   useHasTokenFeature,
@@ -11,6 +10,7 @@ import {
 } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 
 import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";
 
@@ -36,36 +36,34 @@ export function usePurchaseStorageAddOn() {
   const { data: databasesResponse } = useListDatabasesQuery(undefined, {
     skip: !canSetUpStorage,
   });
+  // Until loaded, "no attached DWH" is indistinguishable from "not fetched yet".
+  const areDatabasesLoaded = databasesResponse !== undefined;
   const attachedDwhDatabase = databasesResponse?.data?.find(
     (db) => db.is_attached_dwh,
   );
   const hasAttachedDwh = !!attachedDwhDatabase?.can_upload;
 
-  // A purchase made in this session keeps us in setting-up from the POST until
-  // storage is ready. On error the mutation is no longer pending or successful,
-  // so this collapses on its own — no manual state juggling.
+  // Keeps us in setting-up from the POST until storage is ready; collapses on
+  // its own on error (mutation no longer pending or successful).
   const isPurchaseSettingUp = isPurchasing || (isPurchased && !hasAttachedDwh);
 
-  // Derived purely from server state, so it survives a reload (including the
-  // redeploy that provisioning itself triggers): the token flips synchronously
-  // at purchase time while the DWH database only appears once the instance has
-  // redeployed.
+  // Server-derived, so it survives the redeploy that provisioning triggers: the
+  // token flips at purchase time, the DWH database only appears after redeploy.
   const isProvisioning =
-    canSetUpStorage && hasStorageTokenFeature && !hasAttachedDwh;
+    canSetUpStorage &&
+    hasStorageTokenFeature &&
+    areDatabasesLoaded &&
+    !hasAttachedDwh;
 
   const isSettingUp = isPurchaseSettingUp || isProvisioning;
 
-  // Bust the server-side token cache so the `attached_dwh` feature shows up.
-  // Each refresh is a round-trip to the Store, so it runs at the hook's slower
-  // default interval and stops once the feature has flipped.
+  // Refresh the token (a Store round-trip) until `attached_dwh` shows up.
   useTokenRefreshUntil("attached-dwh", {
     skip: !isSettingUp || hasStorageTokenFeature,
   });
 
-  // While setting up, poll both data sources the surrounding UI depends on:
-  // session properties (`uploads-settings` etc.) and the databases list. These
-  // are extra subscriptions to the same cache entries used above, kept alive
-  // only for their polling; the data is read through the always-on reads.
+  // While setting up, poll the two sources the surrounding UI reads: session
+  // properties and the databases list.
   useGetSettingsQuery(undefined, {
     skip: !isSettingUp,
     pollingInterval: POLL_INTERVAL_MS,

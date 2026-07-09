@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { StorageSetupProvider } from "metabase/common/components/upsells/StoragePurchaseModal";
+import { CSVPanel } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/CSVPanel";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { ICloudAddOnProduct, TokenFeatures } from "metabase-types/api";
 import {
@@ -18,7 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
-import { CSVPanel } from "./CSVPanel";
+import { StorageSetupProvider } from "./StorageSetupProvider";
 
 interface PanelProps {
   canUpload: boolean;
@@ -150,6 +150,20 @@ describe("CSVPanel storage purchase", () => {
     expect(
       screen.queryByText(/You are not permitted to upload CSV files/),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the obtain-permission prompt when uploads are enabled but the user cannot upload", async () => {
+    // Uploads are configured, but this user lacks upload permission and no
+    // provisioning is underway, so they get pointed at their administrator.
+    setup({
+      panelProps: { uploadsEnabled: true, canUpload: false },
+    });
+
+    expect(
+      await screen.findByText(/You are not permitted to upload CSV files/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Enable uploads")).not.toBeInTheDocument();
+    expect(screen.queryByText("Setting up storage")).not.toBeInTheDocument();
   });
 
   it("shows the confirmation modal with the pricing terms", async () => {

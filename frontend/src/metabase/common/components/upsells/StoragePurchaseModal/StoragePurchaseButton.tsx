@@ -1,7 +1,7 @@
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { useStoreUrl } from "metabase/common/hooks";
+import { useStoreUrl } from "metabase/common/hooks/use-store-url/use-store-url";
 import { Button } from "metabase/ui";
 
 import { UpsellGem } from "../components/UpsellGem";

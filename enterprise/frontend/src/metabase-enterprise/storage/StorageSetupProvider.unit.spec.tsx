@@ -8,6 +8,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { ICloudAddOnProduct, TokenFeatures } from "metabase-types/api";
 import {
@@ -19,7 +20,7 @@ import {
 } from "metabase-types/api/mocks";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
-import { StorageSetupProvider, useStorageSetup } from "./storage-setup-context";
+import { StorageSetupProvider } from "./StorageSetupProvider";
 
 const TestConsumer = () => {
   const { isSettingUp, openPurchaseModal } = useStorageSetup();
@@ -175,6 +176,27 @@ describe("StorageSetupProvider", () => {
     expect(
       await screen.findByText("Metabase Storage is ready"),
     ).toBeInTheDocument();
+  });
+
+  it("does not flash the setting-up state or toast on load for an instance that already has storage", async () => {
+    // Existing storage admin loading the app, no purchase. The token feature is
+    // synchronous while the databases list is async, so setting-up must not
+    // flash on while the list is still loading.
+    setup({
+      tokenFeatures: { attached_dwh: true },
+      hasAttachedDwhDatabase: true,
+    });
+
+    // Wait for the databases list to resolve — the transition that used to flip
+    // setting-up false → true → false.
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/database")).toBe(true);
+    });
+
+    expect(screen.queryByText("setting up")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Metabase Storage is ready"),
+    ).not.toBeInTheDocument();
   });
 
   describe("purchase confirmation modal", () => {

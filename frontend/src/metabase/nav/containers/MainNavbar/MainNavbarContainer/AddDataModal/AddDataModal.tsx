@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  StorageSetupProvider,
-  useStorageSetup,
-} from "metabase/common/components/upsells/StoragePurchaseModal";
+import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
@@ -39,9 +36,9 @@ export const AddDataModal = (props: AddDataModalProps) => (
   // polling survive the modal being closed and reopened, and so the purchase
   // confirmation modal it hosts can replace this modal instead of stacking.
   // `enabled` defers the add-ons fetch until the modal is actually shown.
-  <StorageSetupProvider enabled={props.opened}>
+  <PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider enabled={props.opened}>
     <AddDataModalContent {...props} />
-  </StorageSetupProvider>
+  </PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider>
 );
 
 const AddDataModalContent = ({

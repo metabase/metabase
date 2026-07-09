@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { fireEvent, screen, waitFor, within } from "__support__/ui";
 import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
-import { setup } from "./setup";
+import { setup, setupHostedInstance } from "./setup";
 
 const csvFile = new File(["test,data"], "bank-statement.csv", {
   type: "text/csv",
@@ -173,10 +173,9 @@ describe("AddDataModal", () => {
     });
 
     it("should offer the admin to either enable uploads or add storage on a hosted instance", async () => {
-      setup({
+      setupHostedInstance({
         isAdmin: true,
         uploadsEnabled: false,
-        isHosted: true,
         addOns: [mockStorageCloudAddOn],
       });
 
@@ -214,7 +213,7 @@ describe("AddDataModal", () => {
     });
 
     it("falls back to a store link on a hosted instance without a purchasable add-on", async () => {
-      setup({ isAdmin: true, uploadsEnabled: false, isHosted: true });
+      setupHostedInstance({ isAdmin: true, uploadsEnabled: false });
 
       await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
       expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
