@@ -135,11 +135,12 @@
               ":library without :library-retrieval does not entitle the tool"))
         (mt/with-premium-features #{:library :library-retrieval}
           (is (true? (entity-retrieval.core/available?)))))
-      ;; pgvector-on-the-app-db counts as configured, with no URL set
+      ;; pgvector-on-the-app-db is NOT enough for entity retrieval — its tables aren't schema-isolated
+      ;; yet, so it stays dedicated-only
       (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
         (mt/with-premium-features #{:library :library-retrieval}
-          (is (true? (entity-retrieval.core/pgvector-configured?)))
-          (is (true? (entity-retrieval.core/available?)))))
+          (is (false? (entity-retrieval.core/pgvector-configured?)))
+          (is (false? (entity-retrieval.core/available?)))))
       ;; pgvector unconfigured -> unavailable regardless of license
       (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :unavailable)]
         (mt/with-premium-features #{:library :library-retrieval}

@@ -30,12 +30,14 @@
   (jobs/key "metabase-enterprise.entity-retrieval.sync.job"))
 
 (defn pgvector-configured?
-  "True when a pgvector store is available — see
-  [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]].
+  "True when a dedicated pgvector store is configured (MB_PGVECTOR_DB_URL).
+  Deliberately excludes pgvector-on-the-app-db: entity retrieval's tables are not yet schema-isolated
+  (bare `library_entity_index*` names, dropped and recreated on rebuild), so it stays dedicated-only
+  until they are.
   The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
   even when the library-retrieval feature is turned on after startup (a common onboarding flow)."
   []
-  (semantic.db.datasource/pgvector-configured?))
+  (= :dedicated (semantic.db.datasource/pgvector-mode)))
 
 (defn available?
   "Whether the entity-retrieval mirror can run right now. All four must hold:
