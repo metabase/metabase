@@ -440,7 +440,8 @@
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
-  (let [index-name (str (:table-name index) suffix)]
+  ;; bare name part: an index lands in its table's schema and its name cannot be schema-qualified
+  (let [index-name (str (semantic.util/table-name-part (:table-name index)) suffix)]
     (hash-identifier-if-exceeds-pg-limit index-name)))
 
 (defn hnsw-index-name
@@ -1031,13 +1032,15 @@
     (first decoded)))
 
 (defn- find-scan-node
-  "Depth-first search of an EXPLAIN plan tree for the scan node over `table-name`."
+  "Depth-first search of an EXPLAIN plan tree for the scan node over `table-name`.
+  EXPLAIN reports \"Relation Name\" unqualified, so compare on the bare name part."
   [plan table-name]
-  (when (map? plan)
-    (if (and (#{"Seq Scan" "Index Scan" "Index Only Scan" "Bitmap Heap Scan"} (get plan "Node Type"))
-             (= table-name (get plan "Relation Name")))
-      plan
-      (some #(find-scan-node % table-name) (get plan "Plans")))))
+  (let [bare-name (semantic.util/table-name-part table-name)]
+    (when (map? plan)
+      (if (and (#{"Seq Scan" "Index Scan" "Index Only Scan" "Bitmap Heap Scan"} (get plan "Node Type"))
+               (= bare-name (get plan "Relation Name")))
+        plan
+        (some #(find-scan-node % table-name) (get plan "Plans"))))))
 
 (defn- scan-node-metrics
   "Pull the index-table scan node out of an EXPLAIN plan tree and summarise it: the plan node chosen, the

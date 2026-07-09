@@ -22,19 +22,27 @@
 
 (defn- orphan-index-tables
   "Returns a list of semantic search index tables which are not referenced in the metadata table.
-  Not expected to occur, but if it does, these tables can be dropped."
-  [pgvector {:keys [metadata-table-name]}]
-  (let [orphaned-tables-sql
+  Not expected to occur, but if it does, these tables can be dropped.
+  With a `:schema` (shared app-db mode) only tables inside the module's schema are considered, and the
+  returned names are schema-qualified to match how the metadata table stores them."
+  [pgvector {:keys [metadata-table-name schema]}]
+  (let [;; information_schema reports bare names; stored metadata names are qualified when we have a schema
+        stored-name (if schema
+                      [:|| [:inline (str schema ".")] :t.table_name]
+                      :t.table_name)
+        orphaned-tables-sql
         (-> {:select [:t.table_name]
              :from [[:information_schema.tables :t]]
              :left-join [[(keyword metadata-table-name) :meta]
-                         [:= :meta.table_name :t.table_name]]
-             :where [:and
-                     [:like :t.table_name [:inline "index_table_%"]]
-                     [:= :meta.table_name nil]]}
+                         [:= :meta.table_name stored-name]]
+             :where (cond-> [:and
+                             [:like :t.table_name [:inline "index_table_%"]]
+                             [:= :meta.table_name nil]]
+                      schema (conj [:= :t.table_schema [:inline schema]]))}
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-         (map :table_name))))
+         (map :table_name)
+         (map #(cond->> % schema (str schema "."))))))
 
 (defn- parse-repair-table-timestamp
   "Extracts timestamp from repair table name. Returns nil if parsing fails."
@@ -50,19 +58,23 @@
   Repair tables are named: repair_<millis-since-epoch>_<short-id>
 
   Repair tables should not become orphaned under normal operation, since they should be deleted immeditaely after use.
-  However, in case of a crash or failure, they may be left behind, so we clean them up after a retention period."
-  [pgvector]
+  However, in case of a crash or failure, they may be left behind, so we clean them up after a retention period.
+  With a `:schema` (shared app-db mode) only tables inside the module's schema are considered — a `repair_%`
+  pattern must never match application tables — and the returned names are schema-qualified."
+  [pgvector {:keys [schema]}]
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
         repair-tables-sql (-> {:select [:t.table_name]
                                :from [[:information_schema.tables :t]]
-                               :where [:like :t.table_name [:inline "repair_%"]]}
+                               :where (cond-> [:and [:like :t.table_name [:inline "repair_%"]]]
+                                        schema (conj [:= :t.table_schema [:inline schema]]))}
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))
-        old-tables (filter (fn [table-name]
-                             (when-let [table-timestamp (parse-repair-table-timestamp table-name)]
-                               (t/before? table-timestamp retention-cutoff)))
-                           all-repair-tables)]
+        old-tables (->> all-repair-tables
+                        (filter (fn [table-name]
+                                  (when-let [table-timestamp (parse-repair-table-timestamp table-name)]
+                                    (t/before? table-timestamp retention-cutoff))))
+                        (map #(cond->> % schema (str schema "."))))]
     (when (seq old-tables)
       (log/infof "Found %d orphaned repair tables older than %d hours"
                  (count old-tables)
@@ -71,8 +83,8 @@
 
 (defn- cleanup-orphan-repair-tables!
   "Cleans up repair tables that are older than the retention period."
-  [pgvector]
-  (let [orphan-tables (orphan-repair-tables pgvector)]
+  [pgvector index-metadata]
+  (let [orphan-tables (orphan-repair-tables pgvector index-metadata)]
     (when (seq orphan-tables)
       (let [tables-to-drop (map keyword orphan-tables)
             drop-table-sql (sql/format
@@ -169,7 +181,7 @@
           index-metadata       (semantic.env/get-index-metadata)]
       (cleanup-stale-indexes! pgvector index-metadata)
       (cleanup-old-gate-tombstones! pgvector index-metadata)
-      (cleanup-orphan-repair-tables! pgvector))))
+      (cleanup-orphan-repair-tables! pgvector index-metadata))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))

@@ -40,16 +40,19 @@
   but are not in the repair table. These represent lost deletes."
   [pgvector gate-table-name repair-table-name]
   (try
-    (let [anti-join-sql (-> (sql.helpers/select :model :model_id)
+    ;; column refs are built as dotted keywords (not namespaced ones) so a schema-qualified table name
+    ;; still renders as separate identifiers under :quoted
+    (let [column        (fn [table-name column-name] (keyword (str table-name "." column-name)))
+          anti-join-sql (-> (sql.helpers/select :model :model_id)
                             (sql.helpers/from (keyword gate-table-name))
                             (sql.helpers/where [:not [:exists
                                                       (-> (sql.helpers/select 1)
                                                           (sql.helpers/from (keyword repair-table-name))
                                                           (sql.helpers/where [:and
-                                                                              [:= (keyword repair-table-name "model")
-                                                                               (keyword gate-table-name "model")]
-                                                                              [:= (keyword repair-table-name "model_id")
-                                                                               (keyword gate-table-name "model_id")]]))]])
+                                                                              [:= (column repair-table-name "model")
+                                                                               (column gate-table-name "model")]
+                                                                              [:= (column repair-table-name "model_id")
+                                                                               (column gate-table-name "model_id")]]))]])
                             (sql/format :quoted true))
           results (jdbc/execute! pgvector anti-join-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (log/infof "Found %d documents in gate table that should be deleted" (count results))
@@ -89,18 +92,20 @@
       (log/warnf e "Failed to drop repair table: %s" repair-table-name))))
 
 (defn- repair-table-name
-  "Generates a unique name for a repair table with timestamp for cleanup.
+  "Generates a unique name for a repair table with timestamp for cleanup, qualified like the index tables
+  so it lands in the module's schema when sharing the app db.
   Format: repair_<millis-since-epoch>_<short-id>"
-  []
+  [index-metadata]
   (let [millis-since-epoch (t/to-millis-from-epoch (t/instant))
         short-id           (u/lower-case-en (u.str/random-string 6))]
-    (format "repair_%d_%s" millis-since-epoch short-id)))
+    (format (:index-table-qualifier index-metadata "%s")
+            (format "repair_%d_%s" millis-since-epoch short-id))))
 
 (defn with-repair-table!
   "Creates a repair table, executes a function with the table name, and ensures cleanup.
   Returns the result of calling f with the repair table name."
-  [pgvector f]
-  (let [repair-table (repair-table-name)]
+  [pgvector index-metadata f]
+  (let [repair-table (repair-table-name index-metadata)]
     (try
       (create-repair-table! pgvector repair-table)
       (f repair-table)
