@@ -148,9 +148,8 @@ describe("AgentMessage", () => {
         role: "agent",
         type: "data_part",
         part: {
-          type: "entity_saved",
-          version: 1,
-          value: {
+          type: "data-entity_saved",
+          data: {
             entity_id: "chart-1",
             card_id: 99,
             location: { type: "collection", id: 5 },

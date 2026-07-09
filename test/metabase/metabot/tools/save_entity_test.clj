@@ -1,20 +1,27 @@
 (ns metabase.metabot.tools.save-entity-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- venues-query []
+  (lib/query (mt/metadata-provider)
+             (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+
 (defn- chart-memory
-  "A memory atom holding one generated chart `c-1` over a real (legacy) query."
+  "A memory atom holding one generated chart `c-1` over a real query."
   []
-  (atom {:state   {:queries {"q-1" (mt/mbql-query venues)}
-                   :charts  {"c-1" {:chart_id "c-1"
-                                    :query_id "q-1"
-                                    :queries  [(mt/mbql-query venues)]
-                                    :visualization_settings {:chart_type :bar}}}}
-         :context {}}))
+  (let [query (venues-query)]
+    (atom {:state   {:queries {"q-1" query}
+                     :charts  {"c-1" {:chart_id "c-1"
+                                      :query_id "q-1"
+                                      :queries  [query]
+                                      :visualization_settings {:chart_type :bar}}}}
+           :context {}})))
 
 (defn- save! [destination]
   (binding [shared/*memory-atom* (chart-memory)]
