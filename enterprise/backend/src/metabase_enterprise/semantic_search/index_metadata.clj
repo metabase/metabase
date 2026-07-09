@@ -85,10 +85,10 @@
   "The index metadata configuration used when semantic search shares the application database.
   Every table lives inside a dedicated schema, so destructive maintenance (see
   [[metabase-enterprise.semantic-search.db.migration.impl]]) is structurally incapable of touching
-  application tables. Table names are stored and threaded around schema-qualified; use
-  [[metabase-enterprise.semantic-search.util/table-name-part]] when deriving identifiers or querying
-  catalogs by bare name. HoneySQL (`:quoted true` or not) renders the dotted keywords as
-  schema-qualified identifiers."
+  application tables.
+  Table names are stored and threaded around schema-qualified; derive identifiers and query catalogs via
+  [[metabase-enterprise.semantic-search.util/table-name-part]]."
+  ;; HoneySQL renders the dotted keywords as schema-qualified identifiers, quoted or not.
   (let [schema semantic.db.datasource/app-db-schema]
     {:version                   "2"
      :schema                    schema
@@ -164,7 +164,6 @@
      pgvector
      (create-gate-table-if-not-exists-sql index-metadata))
     (log/info "Creating gate table gated_at index if not exists")
-    ;; index names must be bare: they land in the table's schema and cannot be schema-qualified
     (jdbc/execute!
      pgvector
      (sql/format

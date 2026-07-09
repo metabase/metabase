@@ -40,8 +40,7 @@
   but are not in the repair table. These represent lost deletes."
   [pgvector gate-table-name repair-table-name]
   (try
-    ;; column refs are built as dotted keywords (not namespaced ones) so a schema-qualified table name
-    ;; still renders as separate identifiers under :quoted
+    ;; dotted keywords, not namespaced ones: a schema-qualified table name must render as separate identifiers
     (let [column        (fn [table-name column-name] (keyword (str table-name "." column-name)))
           anti-join-sql (-> (sql.helpers/select :model :model_id)
                             (sql.helpers/from (keyword gate-table-name))

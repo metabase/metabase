@@ -440,7 +440,7 @@
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
-  ;; bare name part: an index lands in its table's schema and its name cannot be schema-qualified
+  ;; index names are bare: an index lands in its table's schema and cannot be schema-qualified
   (let [index-name (str (semantic.util/table-name-part (:table-name index)) suffix)]
     (hash-identifier-if-exceeds-pg-limit index-name)))
 

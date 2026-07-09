@@ -38,7 +38,7 @@
                     (semantic.db.connection/with-migrate-tx [tx]
                       (semantic.db.migration/maybe-migrate! tx nil)
                       {:messages (messages)
-                       :db-version (@#'semantic.db.migration/db-version tx nil)}))))]
+                       :db-version (@#'semantic.db.migration/db-version nil tx)}))))]
         (testing "Migration up works"
           (u/prog1 (migrate-and-get-db-version 130)
             (is (= 130 (:db-version <>)))
@@ -70,8 +70,9 @@
                                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                     (map :tablename)
                                     set))]
-          ;; decoys playing the role of application tables; the second is a real app-db table name from
-          ;; migration 056 that any `semantic_`-prefix-based drop pattern would have matched
+          ;; decoys playing the role of application tables; the second is a real app-db table name
+          ;; (migration 056) squarely inside the module's naming family — the worst case for any
+          ;; name-pattern-based scoping
           (jdbc/execute! pgvector ["CREATE TABLE decoy_app_table (id int)"])
           (jdbc/execute! pgvector ["CREATE TABLE semantic_search_token_tracking (id int)"])
           ;; positive control: a leftover table inside the module schema is fair game for the reset

@@ -66,7 +66,7 @@
                :with-columns dlq-table-schema}
           sql (sql/format ddl :quoted true)]
       (jdbc/execute-one! pgvector sql))
-    ;; create attempt_at index (bare name part: index names cannot be schema-qualified)
+    ;; create attempt_at index
     (let [ddl {:create-index [[(keyword (str (semantic.util/table-name-part (name dlq-table)) "_attempt_at_idx")) :if-not-exists] [dlq-table :attempt_at]]}
           sql (sql/format ddl :quoted true)]
       (jdbc/execute-one! pgvector sql))
