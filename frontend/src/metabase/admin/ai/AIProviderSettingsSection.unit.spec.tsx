@@ -1661,12 +1661,15 @@ expect(
       ).toHaveLength(2);
     });
 
-    const modelRequest = fetchMock.callHistory
-      .calls("path:/api/metabot/settings", { method: "PUT" })
-      .at(-1);
-    expect(modelRequest?.options?.body).toBe(
-      JSON.stringify({ provider: "openrouter", model: "openai/gpt-5.4-mini" }),
-    );
+    expect(
+      fetchMock.callHistory.lastCall("path:/api/metabot/settings", {
+        method: "PUT",
+        body: {
+          provider: "openrouter",
+          model: "openai/gpt-5.4-mini",
+        },
+      }),
+    ).toBeDefined();
 
     expect(
       screen.queryByRole("button", { name: "Connect" }),
