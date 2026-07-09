@@ -7,8 +7,8 @@ export function DataAppIcon() {
     <Flex
       align="center"
       justify="center"
-      w="3rem"
-      h="3rem"
+      w="2.75rem"
+      h="2.75rem"
       bd="1px solid var(--mb-color-border)"
       bg="background-secondary"
       visibleFrom="sm"
