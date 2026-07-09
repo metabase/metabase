@@ -108,7 +108,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
         />
       </Group>
 
-      {error != null ? (
+      {error !== undefined ? (
         <Center flex={1}>
           <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
         </Center>
@@ -116,7 +116,7 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
         <TaskRunsTable taskRuns={taskRuns} isLoading={isLoading} />
       )}
 
-      {!isLoading && error == null && (
+      {!isLoading && error === undefined && (
         <Flex justify="end">
           <PaginationControls
             page={page}

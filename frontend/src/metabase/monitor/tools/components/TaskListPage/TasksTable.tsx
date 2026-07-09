@@ -130,11 +130,11 @@ function getColumns(
       maxAutoWidth: 240,
       enableSorting: false,
       accessorFn: (task) =>
-        task.db_id != null ? (databaseByID[task.db_id]?.name ?? "") : "",
+        task.db_id !== null ? (databaseByID[task.db_id]?.name ?? "") : "",
       cell: ({ row }) => {
         const { db_id } = row.original;
         // only want unknown if there is a db on the task and we don't have info
-        if (db_id == null) {
+        if (db_id === null) {
           return null;
         }
         return databaseByID[db_id]?.name || t`Unknown name`;
@@ -148,10 +148,10 @@ function getColumns(
       maxAutoWidth: 240,
       enableSorting: false,
       accessorFn: (task) =>
-        task.db_id != null ? (databaseByID[task.db_id]?.engine ?? "") : "",
+        task.db_id !== null ? (databaseByID[task.db_id]?.engine ?? "") : "",
       cell: ({ row }) => {
         const { db_id } = row.original;
-        if (db_id == null) {
+        if (db_id === null) {
           return null;
         }
         return databaseByID[db_id]?.engine || t`Unknown engine`;
@@ -244,7 +244,7 @@ function getSortingOptions(
 ): SortingOptions<ListTasksSortColumn> {
   const [firstSort] = sortingState;
 
-  if (firstSort != null && isSortColumn(firstSort.id)) {
+  if (firstSort !== undefined && isSortColumn(firstSort.id)) {
     return {
       sort_column: firstSort.id,
       sort_direction: firstSort.desc ? "desc" : "asc",

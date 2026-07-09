@@ -65,7 +65,7 @@ export const TaskListPage = ({ location }: WithRouterProps) => {
         />
       </Group>
 
-      {error != null ? (
+      {error !== undefined ? (
         <Center flex={1}>
           <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
         </Center>

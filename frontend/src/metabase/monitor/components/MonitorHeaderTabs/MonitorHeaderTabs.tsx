@@ -36,7 +36,9 @@ export function MonitorHeaderTabs({ tabs }: MonitorHeaderTabsProps) {
             key={label}
             value={to}
             to={to}
-            leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
+            leftSection={
+              icon !== undefined ? <FixedSizeIcon name={icon} /> : null
+            }
             rightSection={isGated ? <UpsellGem.New size={14} /> : null}
           >
             {label}
