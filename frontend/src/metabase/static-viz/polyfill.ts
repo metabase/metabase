@@ -1,6 +1,11 @@
+import "fast-text-encoding";
+
 import ResizeObserver from "resize-observer-polyfill";
 
 const defineGlobal = (name: PropertyKey, value: unknown): void => {
+  if (Reflect.has(globalThis, name)) {
+    return;
+  }
   Object.defineProperty(globalThis, name, {
     value,
     writable: true,
@@ -296,8 +301,3 @@ defineGlobal(
     }
   },
 );
-
-class MockTextEncoder {
-  encode(): void {}
-}
-defineGlobal("TextEncoder", MockTextEncoder);
