@@ -355,6 +355,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -411,6 +412,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -757,6 +759,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          driver-status: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -839,6 +842,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -923,6 +927,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          driver-status: ${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -970,6 +975,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -1057,6 +1063,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.oracle-status }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -1251,6 +1258,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -1480,6 +1488,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.sparksql-status }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1523,6 +1532,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.sqlite-status }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1601,6 +1611,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1728,6 +1739,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.vertica-status }}
 
   drivers-tests-result:
     needs:
