@@ -10,6 +10,7 @@ import { getCspNonce } from "metabase/utils/csp";
 
 import { useHostSdkStore } from "../../lib/use-host-sdk-store";
 import type { DataAppMetabaseProviderProps } from "../../sandbox";
+import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 
 // Note: Mantine + SDK CSS is loaded into the iframe via the `data-app-vendors`
 // Rspack entry (`<link rel="stylesheet">` in the iframe srcdoc). Don't side-
@@ -35,7 +36,13 @@ interface DataAppProviderProps {
 export const DataAppProvider = (props: DataAppProviderProps) => {
   const { children, providerProps } = props;
   const { theme } = providerProps ?? {};
-  const sdkStore = useHostSdkStore(providerProps);
+
+  // Swap the SDK's default red error alert for a calm, neutral empty state
+  const hostProviderProps = useMemo(
+    () => ({ ...providerProps, errorComponent: DataAppErrorState }),
+    [providerProps],
+  );
+  const sdkStore = useHostSdkStore(hostProviderProps);
 
   // Iframe-side Emotion cache: keyed + CSP-nonced so SDK/Mantine styles inject
   // into this document's head (not the parent's).
