@@ -49,6 +49,10 @@
   The limit documented in `docs/exploration-and-organization/uploads.md` must match as well."
   (* 50 1024 1024))
 
+(def max-upload-file-count
+  "Maximum number of multipart files accepted by upload-table CSV endpoints."
+  1)
+
 ;; TODO: move these to a more appropriate namespace if they need to be reused
 (defmulti max-bytes
   "This tracks the size of various text fields in bytes."

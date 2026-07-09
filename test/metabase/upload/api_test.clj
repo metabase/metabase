@@ -50,3 +50,17 @@
                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                      {:file oversized})))
         (is (zero? @calls) "the endpoint body should never run")))))
+
+(deftest csv-upload-too-many-files-test
+  (testing "POST /api/upload/csv rejects multiple file parts with a 413, before the body reaches the handler"
+    (let [calls (atom 0)]
+      ;; Plain `with-redefs` is required here: the request is handled on a server thread, which doesn't inherit
+      ;; this thread's dynamic bindings, so an `mt/with-dynamic-fn-redefs` spy would be invisible to it.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
+        (is (= "Uploaded content exceeded limits."
+               (mt/user-http-request :crowberto :post 413 "upload/csv"
+                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                     [[:file (byte-array [97 44 98 10 49 44 50])]
+                                      [:file (byte-array [99 44 100 10 51 44 52])]])))
+        (is (zero? @calls) "the endpoint body should never run")))))

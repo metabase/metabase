@@ -38,7 +38,8 @@
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful.
 
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
-  {:multipart {:max-file-size upload/max-upload-size-bytes}}
+  {:multipart {:max-file-size  upload/max-upload-size-bytes
+               :max-file-count upload/max-upload-file-count}}
   ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
   [_route-params
    _query-params
