@@ -2,7 +2,6 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetTaskRunQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
@@ -10,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { useDispatch } from "metabase/redux";
 import { Link } from "metabase/router";
 import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
@@ -51,7 +51,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
         <MonitorBackLink to={Urls.monitorTasksRuns()} label={t`Back to Runs`} />
 
         <Box className={S.content} flex="1 1 auto" mih={0}>
-          <SettingsSection>
+          <MonitorPageContent>
             <Grid>
               <Grid.Col span={{ base: 12, lg: "content" }} maw="50%">
                 <MonitorHeaderTitle mb="md">{t`Run details`}</MonitorHeaderTitle>
@@ -160,7 +160,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
                 </table>
               </Grid.Col>
             </Grid>
-          </SettingsSection>
+          </MonitorPageContent>
         </Box>
       </Stack>
     </Flex>

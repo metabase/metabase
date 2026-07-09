@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -10,6 +9,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogsViewer } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { Link } from "metabase/router";
 import {
   Anchor,
@@ -69,7 +69,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
         />
 
         <Box className={S.content} flex="1 1 auto" mih={0}>
-          <SettingsSection>
+          <MonitorPageContent>
             <Stack gap="sm">
               <MonitorHeaderTitle>{t`Task details`}</MonitorHeaderTitle>
               <Flex gap="md">
@@ -188,7 +188,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
                 <Text>{t`There are no captured logs`}</Text>
               )}
             </Stack>
-          </SettingsSection>
+          </MonitorPageContent>
         </Box>
       </Stack>
     </Flex>
