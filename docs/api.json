@@ -45427,7 +45427,7 @@
       "post" : {
         "operationId" : "post-api-table-id-append-csv",
         "summary" : "POST /api/table/{id}/append-csv",
-        "description" : "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by\n  uploading a CSV file.",
+        "description" : "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by\n  uploading a CSV file.\n\n  The file may be at most 50 MB; larger uploads are rejected with a 413 response.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -45455,6 +45455,9 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "collection_id" : {
+                    "type" : "string"
+                  },
                   "file" : {
                     "type" : "object",
                     "properties" : {
@@ -45466,7 +45469,8 @@
                     "required" : [ "filename", "tempfile" ]
                   }
                 },
-                "required" : [ "file" ]
+                "required" : [ "file" ],
+                "additionalProperties" : false
               }
             }
           }
@@ -45701,7 +45705,7 @@
       "post" : {
         "operationId" : "post-api-table-id-replace-csv",
         "summary" : "POST /api/table/{id}/replace-csv",
-        "description" : "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have\n  been created by uploading a CSV file.",
+        "description" : "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have\n  been created by uploading a CSV file.\n\n  The file may be at most 50 MB; larger uploads are rejected with a 413 response.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -45729,6 +45733,9 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "collection_id" : {
+                    "type" : "string"
+                  },
                   "file" : {
                     "type" : "object",
                     "properties" : {
@@ -45740,7 +45747,8 @@
                     "required" : [ "filename", "tempfile" ]
                   }
                 },
-                "required" : [ "file" ]
+                "required" : [ "file" ],
+                "additionalProperties" : false
               }
             }
           }
@@ -46319,7 +46327,7 @@
                   "icon" : {
                     "oneOf" : [ {
                       "type" : "string",
-                      "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
+                      "enum" : [ "star", "cake", "mail", "mail_at", "warning", "bell", "cloud", "info", "note", "event" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -46460,7 +46468,7 @@
                   "icon" : {
                     "oneOf" : [ {
                       "type" : "string",
-                      "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
+                      "enum" : [ "star", "cake", "mail", "mail_at", "warning", "bell", "cloud", "info", "note", "event" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -46550,7 +46558,7 @@
                   "icon" : {
                     "oneOf" : [ {
                       "type" : "string",
-                      "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
+                      "enum" : [ "star", "cake", "mail", "mail_at", "warning", "bell", "cloud", "info", "note", "event" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -46854,7 +46862,7 @@
                   "icon" : {
                     "oneOf" : [ {
                       "type" : "string",
-                      "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
+                      "enum" : [ "star", "cake", "mail", "mail_at", "warning", "bell", "cloud", "info", "note", "event" ]
                     }, {
                       "type" : "null"
                     } ]
@@ -51237,7 +51245,7 @@
       "post" : {
         "operationId" : "post-api-upload-csv",
         "summary" : "POST /api/upload/csv",
-        "description" : "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful.",
+        "description" : "Create a table and model populated with the values from the attached CSV.\n  Returns the model ID if successful.\n\n  The file may be at most 50 MB; larger uploads are rejected with a 413 response.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -51275,7 +51283,8 @@
                     "required" : [ "filename", "tempfile" ]
                   }
                 },
-                "required" : [ "collection_id", "file" ]
+                "required" : [ "collection_id", "file" ],
+                "additionalProperties" : false
               }
             }
           }
