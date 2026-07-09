@@ -63,7 +63,9 @@
           (testing "the run persisted one scan_id batch of findings"
             (is (string? scan-id))
             (is (seq rows))
-            (is (= 1 (count (into #{} (map :scan_id) rows)))))
+            ;; a different entity type flagged in the same run shares the scan_id — one unified batch
+            (is (= scan-id (t2/select-one-fn :scan_id :model/ContentDiagnosticsFinding
+                                             :entity_type :dashboard :entity_id stale-dash-1))))
           (testing "every stale temp entity produced a :stale finding; no fresh one did"
             (is (every? found-keys stale-keys))
             (is (empty? (set/intersection found-keys fresh-keys))))
