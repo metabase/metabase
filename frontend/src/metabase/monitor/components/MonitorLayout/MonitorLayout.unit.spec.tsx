@@ -182,7 +182,7 @@ describe("MonitorLayout", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows Alerts management only for an admin", async () => {
+  it("hides Alerts management for an analyst even with the monitoring permission", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
