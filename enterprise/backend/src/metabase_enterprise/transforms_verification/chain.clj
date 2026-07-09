@@ -271,7 +271,8 @@
                 actual-rows (get-in qp-result [:data :rows])
                 report      (when expected-csv-file
                               (let [expected (fixtures/parse-fixture expected-csv-file
-                                                                     (execute/actual->schema actual-cols))]
+                                                                     (execute/actual->schema actual-cols)
+                                                                     ignore-cols)]
                                 (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
                 ;; Run assertions while the scratch tables still exist: after
                 ;; produce-actual, before cleanup.

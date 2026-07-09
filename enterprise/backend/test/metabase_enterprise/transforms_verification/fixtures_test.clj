@@ -188,3 +188,28 @@
           result (fixtures/parse-fixture csv schema)]
       (is (= [(biginteger 3) (biginteger 1) (biginteger 2)]
              (first (:rows result)))))))
+
+;; ---------------------------------------------------------------------------
+;; ignore-columns: ignored cells parse as raw text, never type-checked
+;; ---------------------------------------------------------------------------
+
+(deftest ^:parallel ignore-columns-skip-type-parsing-test
+  ;; The `ts` cell carries an offset (`Z`) that the :type/DateTime parser rejects —
+  ;; the exact shape that breaks on drivers whose NOW() column is tz-less (e.g.
+  ;; ClickHouse). Ignoring the column must skip that parse entirely.
+  (let [csv    "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n"
+        schema [{:name "user_id"     :base-type :type/Integer  :nullable? false}
+                {:name "order_count" :base-type :type/Integer  :nullable? true}
+                {:name "ts"          :base-type :type/DateTime :nullable? true}]]
+    (testing "without ignoring ts, the offset-bearing value fails its :type/DateTime parser"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (fixtures/parse-fixture csv schema))
+          "control: the placeholder is genuinely unparseable as :type/DateTime"))
+    (testing "ignoring ts parses its cell as raw text, so parsing succeeds"
+      (let [result (fixtures/parse-fixture csv schema #{"ts"})]
+        (is (= 1 (count (:rows result))))
+        (let [[user-id order-count ts] (first (:rows result))]
+          (is (= (biginteger 1) user-id) "non-ignored columns keep their real type")
+          (is (= (biginteger 2) order-count))
+          (is (= "1970-01-01T00:00:00Z" ts)
+              "ignored column is the raw, unparsed string"))))))

@@ -97,6 +97,9 @@
                       `[{:name <string> :base-type <kw> :nullable? <bool>} ...]`
                       These come from real `:metadata/table` + field metadata; the
                       caller is responsible for building this from the DB.
+  - `ignore-columns` — set of column-name strings whose cells parse as raw text
+                       instead of against their declared `:base-type` (default
+                       `#{}`). See the ignored-column quirk below.
 
   Returns:
   ```
@@ -111,9 +114,10 @@
   Two representational quirks:
   - Blank cells — empty or whitespace-only — parse to nil (SQL NULL). An
     intentional empty string `\"\"` is indistinguishable from NULL and unrepresentable.
-  - When a run uses `ignore_columns`, the expected CSV must still carry a header
-    and a parseable dummy value for each ignored column: `parse-fixture` validates
-    and parses the full schema before the diff drops the ignored columns.
+  - Ignored columns still need a header entry (header validation covers the whole
+    schema), but their cells parse as raw text: no placeholder is type-valid for
+    every driver's flavor of a `NOW()` column, and the diff discards ignored
+    columns before comparing anyway.
 
   Throws (all via `ex-info` with typed `:error-type` in ex-data):
   - `::empty-target-schema` — `target-schema` is empty (the table has no columns).
@@ -127,29 +131,38 @@
   - `::unparseable-cell`  — a cell value could not be parsed as the column type;
                             ex-data includes `:row-index` (0-based), `:column-name`,
                             and `:raw-value`."
-  [csv-file target-schema]
-  (when (empty? target-schema)
-    ;; A zero-column leaf must surface as a typed 4xx, not a bare 500 — hence a
-    ;; typed throw here instead of a `:pre` precondition.
-    (throw (errors/ex ::errors/empty-target-schema
-                      (tru "Cannot build a fixture: the target table has no columns.")
-                      {})))
-  (let [header->columns
-        (fn [header]
-          (validate-header! header target-schema)
-          ;; Re-order the schema to match the CSV column order.
-          (let [name->col (u/index-by :name target-schema)]
-            (mapv name->col header)))]
-    (try
-      (upload/parse-csv csv-file header->columns)
-      (catch clojure.lang.ExceptionInfo e
-        (let [{:keys [type row-index column-name raw-value
-                      expected-cell-count actual-cell-count]} (ex-data e)]
-          (case type
-            :metabase.upload/ragged-row
-            (ragged-row-error row-index expected-cell-count actual-cell-count)
+  ([csv-file target-schema]
+   (parse-fixture csv-file target-schema #{}))
+  ([csv-file target-schema ignore-columns]
+   (when (empty? target-schema)
+     ;; A zero-column leaf must surface as a typed 4xx, not a bare 500 — hence a
+     ;; typed throw here instead of a `:pre` precondition.
+     (throw (errors/ex ::errors/empty-target-schema
+                       (tru "Cannot build a fixture: the target table has no columns.")
+                       {})))
+   (let [ignore-columns (set ignore-columns)
+         header->columns
+         (fn [header]
+           (validate-header! header target-schema)
+           ;; Re-order the schema to match the CSV column order, retyping ignored
+           ;; columns to :type/Text so their cells parse with the identity parser
+           ;; (a tz-less :type/DateTime rejects the offset a :type/DateTimeWithTZ
+           ;; requires, so no literal placeholder parses everywhere).
+           (let [name->col (u/index-by :name target-schema)]
+             (mapv (fn [col-name]
+                     (cond-> (name->col col-name)
+                       (contains? ignore-columns col-name) (assoc :base-type :type/Text)))
+                   header)))]
+     (try
+       (upload/parse-csv csv-file header->columns)
+       (catch clojure.lang.ExceptionInfo e
+         (let [{:keys [type row-index column-name raw-value
+                       expected-cell-count actual-cell-count]} (ex-data e)]
+           (case type
+             :metabase.upload/ragged-row
+             (ragged-row-error row-index expected-cell-count actual-cell-count)
 
-            :metabase.upload/unparseable-cell
-            (unparseable-cell-error row-index column-name raw-value (ex-cause e))
+             :metabase.upload/unparseable-cell
+             (unparseable-cell-error row-index column-name raw-value (ex-cause e))
 
-            (throw e)))))))
+             (throw e))))))))
