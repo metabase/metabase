@@ -108,6 +108,16 @@
     (t2/update! :model/DataApp :id (:id app) {:enabled enabled})
     (data-app/select-one-non-blob :id (:id app))))
 
+(api.macros/defendpoint :delete ["/:slug" :slug slug-regex]
+  "Remove a single data app (its row and cached bundle). Intended for clearing
+   out apps once their repository is no longer connected — a sync never deletes,
+   and while a repo is connected it would just re-materialize the app."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
+  (api/check-404 (pos? (t2/delete! :model/DataApp :name slug)))
+  api/generic-204-no-content)
+
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- DataAppResponse
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]

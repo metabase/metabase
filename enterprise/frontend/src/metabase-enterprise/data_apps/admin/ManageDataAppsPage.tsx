@@ -4,13 +4,13 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import {
+  ActionIcon,
   Box,
   Button,
+  CopyButton,
   Flex,
   Group,
   Icon,
@@ -18,6 +18,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import {
   isLocalOrSnapshotVersion,
@@ -76,15 +77,23 @@ export function ManageDataAppsPage() {
   // to the branch matching this instance: `release-x.<major>.x`, or `master` for
   // local/dev builds that have no release branch.
   const { tag } = useSetting("version");
+
   const majorVersion = tag ? versionToNumericComponents(tag)?.[1] : undefined;
+
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin UI string
+  const skillsMainText = t`Install Metabase Data App skills in your project, then ask your AI agent to create a data app.`;
   const skillBranch =
     tag && !isLocalOrSnapshotVersion(tag) && majorVersion != null
       ? `${RELEASE_BRANCH_PREFIX}-x.${majorVersion}.x`
       : MAIN_BRANCH_NAME;
-  const skillSelectors = DATA_APP_SKILLS.map(
-    (skill) => `--skill ${skill}`,
-  ).join(" ");
-  const installSkillCommand = `npx skills add ${REPOSITORY_NAME}${PUBLIC_SKILLS_PATH}#${skillBranch} ${skillSelectors}`;
+  const skillCommandBase = `npx skills add ${REPOSITORY_NAME}${PUBLIC_SKILLS_PATH}#${skillBranch}`;
+  const skillSelectors = DATA_APP_SKILLS.map((skill) => `--skill ${skill}`);
+  // One line to copy (a runnable command); shown wrapped across lines for
+  // readability.
+  const installSkillCommand = [skillCommandBase, ...skillSelectors].join(" ");
+  const installSkillCommandDisplay = [skillCommandBase, ...skillSelectors].join(
+    "\n",
+  );
 
   return (
     <SettingsPageWrapper>
@@ -103,7 +112,7 @@ export function ManageDataAppsPage() {
           <Stack gap="sm">
             <Title order={3}>{t`Remote sync repo`}</Title>
 
-            <Text c="text-secondary" maw="40rem">
+            <Text>
               {t`Data apps live in the repository connected via Git sync. Each app's built bundle is served at /apps/:name.`}
             </Text>
 
@@ -144,15 +153,31 @@ export function ManageDataAppsPage() {
           </Stack>
 
           <Stack gap="sm">
-            <SettingHeader title={t`Skills`} />
+            <Title order={3}>{t`AI skills`}</Title>
 
-            <Text c="text-secondary">{t`Install data app skills into your project, then ask your AI agent to create a data app.`}</Text>
+            <Text>{skillsMainText}</Text>
 
-            <CopyTextInput
-              value={installSkillCommand}
-              w="100%"
-              classNames={{ input: S.command }}
-            />
+            <Box className={S.command} pos="relative">
+              <CopyButton value={installSkillCommand} timeout={2000}>
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? t`Copied!` : t`Copy`}>
+                    <ActionIcon
+                      className={S.copyButton}
+                      variant="subtle"
+                      c="text-secondary"
+                      aria-label={t`Copy`}
+                      data-testid="copy-button"
+                      onClick={copy}
+                    >
+                      <Icon name="copy" />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </CopyButton>
+              <Text component="pre" className={S.commandText}>
+                {installSkillCommandDisplay}
+              </Text>
+            </Box>
           </Stack>
         </SettingsSection>
       </Stack>
@@ -161,20 +186,6 @@ export function ManageDataAppsPage() {
         <Flex justify="center" p="xl">
           <Loader />
         </Flex>
-      ) : !isConfigured ? (
-        <Group
-          align="center"
-          bd="1px solid var(--mb-color-border)"
-          bdrs="md"
-          bg="background-primary"
-          justify="center"
-          mih="10rem"
-          p="xl"
-        >
-          <Text c="text-tertiary">
-            {t`No repository is connected yet. Connect one in Git sync settings to add data apps.`}
-          </Text>
-        </Group>
       ) : (
         <Stack gap="md">
           <Title order={2}>{t`Apps`}</Title>
@@ -185,18 +196,30 @@ export function ManageDataAppsPage() {
             </Flex>
           )}
 
-          {apps && apps.length === 0 && !isAppsLoading && (
-            <Group
+          {apps?.length === 0 && !isAppsLoading && (
+            <Flex
+              direction="column"
               align="center"
+              justify="center"
+              gap="md"
               bd="1px solid var(--mb-color-border)"
               bdrs="md"
               bg="background-primary"
-              justify="center"
-              mih="10rem"
+              mih="16rem"
               p="xl"
             >
-              <Text c="text-tertiary">{t`The connected repository has no data apps yet.`}</Text>
-            </Group>
+              <Flex
+                align="center"
+                justify="center"
+                w="6rem"
+                h="6rem"
+                bg="background-secondary"
+                style={{ borderRadius: "50%" }}
+              >
+                <Icon name="dashboard" size={48} c="border" />
+              </Flex>
+              <Text c="text-disabled">{t`Your data apps will appear here`}</Text>
+            </Flex>
           )}
 
           {apps && apps.length > 0 && (
@@ -208,7 +231,11 @@ export function ManageDataAppsPage() {
               style={{ overflow: "hidden" }}
             >
               {apps.map((app) => (
-                <DataAppListItem key={app.id} app={app} />
+                <DataAppListItem
+                  key={app.id}
+                  app={app}
+                  canRemove={!isConfigured}
+                />
               ))}
             </Box>
           )}

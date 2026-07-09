@@ -69,22 +69,24 @@ describe("scenarios > data apps", () => {
       });
     });
 
-    it("shows an empty state when no repository is connected", () => {
+    it("shows the generic empty state (not a duplicate 'no repo' message) when no repository is connected", () => {
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: false,
+        url: null,
       }).as("repoStatus");
       cy.intercept("GET", "/api/apps", []);
 
       cy.visit("/admin/settings/apps");
       cy.wait("@repoStatus");
 
-      cy.findByTestId("admin-layout-content")
-        .findByText(
-          "No repository is connected yet. Connect one in Git sync settings to add data apps.",
-        )
-        .should("be.visible");
-      // The "Apps" section only renders once a repo is connected.
-      cy.findByRole("heading", { name: "Apps" }).should("not.exist");
+      cy.findByTestId("admin-layout-content").within(() => {
+        // The Apps section still renders (title + generic empty state); the
+        // "no repository" state lives only in the Remote Sync row above, so it
+        // must not be duplicated down here.
+        cy.findByRole("heading", { name: "Apps" }).should("be.visible");
+        cy.findByText("Your data apps will appear here").should("be.visible");
+        cy.findByText(/No repository is connected yet/).should("not.exist");
+      });
     });
 
     it("shows an empty state when the connected repository has no apps", () => {
@@ -102,9 +104,9 @@ describe("scenarios > data apps", () => {
         cy.findByText("https://github.com/metabase/stats-remote-sync").should(
           "be.visible",
         );
-        cy.findByText("The connected repository has no data apps yet.").should(
-          "be.visible",
-        );
+        // The Apps section keeps its title and shows an empty state with no apps.
+        cy.findByRole("heading", { name: "Apps" }).should("be.visible");
+        cy.findByText("Your data apps will appear here").should("be.visible");
       });
     });
 
@@ -128,6 +130,10 @@ describe("scenarios > data apps", () => {
       cy.findByRole("link", { name: /Open/ })
         .should("have.attr", "href")
         .and("contain", `/apps/${APP_NAME}`);
+
+      // While a repo is connected the app is managed by sync, so there's no
+      // manual Remove control.
+      cy.findByRole("button", { name: "Remove" }).should("not.exist");
 
       // Toggling the switch off issues the disable mutation. The Mantine Switch
       // input is visually hidden, so click it with `force`.
@@ -156,6 +162,53 @@ describe("scenarios > data apps", () => {
       });
     });
 
+    it("keeps previously-synced apps listed after the repo is unlinked", () => {
+      // A sync never deletes and unlinking prunes nothing, so an app synced
+      // while a repo was connected stays in the list once the repo is unlinked —
+      // now with a Remove control (only offered while unlinked).
+      cy.intercept("GET", "/api/apps/repo-status", {
+        configured: false,
+        url: null,
+      });
+      cy.intercept("GET", "/api/apps", [fakeApp()]).as("apps");
+
+      cy.visit("/admin/settings/apps");
+      cy.wait("@apps");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText(APP_DISPLAY_NAME).should("be.visible");
+        cy.findByRole("button", { name: "Remove" }).should("be.visible");
+      });
+    });
+
+    it("lets an admin remove a data app once the repo is unlinked", () => {
+      // Repo unlinked, but a previously-synced app is still in the DB (a sync
+      // never deletes) — so the admin gets a Remove control to clear it out.
+      cy.intercept("GET", "/api/apps/repo-status", {
+        configured: false,
+        url: null,
+      });
+      cy.intercept("GET", "/api/apps", [fakeApp()]).as("apps");
+      cy.intercept("DELETE", `/api/apps/${APP_NAME}`, { statusCode: 204 }).as(
+        "deleteApp",
+      );
+
+      cy.visit("/admin/settings/apps");
+      cy.wait("@apps");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText(APP_DISPLAY_NAME).should("be.visible");
+        cy.findByRole("button", { name: "Remove" }).click();
+      });
+
+      // Confirm in the modal (rendered in a portal outside the layout).
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("button", { name: "Remove" }).click();
+      });
+
+      cy.wait("@deleteApp");
+    });
+
     it("shows the setup section: repo status, the Git sync link, and the install command", () => {
       cy.intercept("GET", "/api/apps/repo-status", {
         configured: false,
@@ -172,13 +225,11 @@ describe("scenarios > data apps", () => {
         cy.findByRole("link", { name: "Go to Git sync settings" })
           .should("have.attr", "href")
           .and("contain", "/admin/settings/remote-sync");
-      });
 
-      // The skills install command references the data-app skills.
-      cy.findByDisplayValue(/npx skills add metabase\/metabase/).should(
-        "exist",
-      );
-      cy.findByDisplayValue(/--skill metabase-data-app-setup/).should("exist");
+        // The AI skills install command lists the data-app skills.
+        cy.findByText(/npx skills add metabase\/metabase/).should("be.visible");
+        cy.findByText(/--skill metabase-data-app-setup/).should("be.visible");
+      });
     });
   });
 
