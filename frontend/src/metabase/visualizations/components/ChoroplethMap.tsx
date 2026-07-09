@@ -32,6 +32,7 @@ import type {
 } from "metabase/visualizations/types";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
+  CardId,
   CustomGeoJSONMap,
   DatasetColumn,
   GeoJSONData,
@@ -278,6 +279,7 @@ type FeatureClickContext = {
   settings: VisualizationSettings;
   getFeatureName: (feature: Feature) => string;
   getFeatureKey: (feature: Feature, opts?: { lowerCase?: boolean }) => string;
+  cardId: CardId;
 };
 
 function buildFeatureClickObject(
@@ -292,6 +294,7 @@ function buildFeatureClickObject(
     settings,
     getFeatureName,
     getFeatureKey,
+    cardId,
   } = ctx;
 
   if (row == null) {
@@ -310,6 +313,7 @@ function buildFeatureClickObject(
           ]
         : [],
       settings,
+      cardId,
     };
   }
 
@@ -335,6 +339,7 @@ function buildFeatureClickObject(
     })),
     origin: { row, cols },
     settings,
+    cardId,
   };
 }
 
@@ -380,6 +385,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
   const [
     {
       data: { cols, rows },
+      card,
     },
   ] = series;
   const dimensionIndex = _.findIndex(
@@ -423,6 +429,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     settings,
     getFeatureName,
     getFeatureKey,
+    cardId: card.id,
   };
 
   const onClickFeature =

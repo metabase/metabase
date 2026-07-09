@@ -8,12 +8,12 @@ import {
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { isEmpty } from "metabase/utils/validate";
 import { isCartesianChart } from "metabase/visualizations";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type {
   ClickObject,
+  ComputedVisualizationSettings,
   HighlightedObject,
 } from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
@@ -569,41 +569,44 @@ export function canExploreFurther(
 export function getCommentLabel(
   highlighted?: HighlightedObject,
   seriesGroup?: SeriesGroup,
+  computedSettings?: ComputedVisualizationSettings,
 ): string | null | undefined {
   if (!highlighted || !seriesGroup) {
     return null;
   }
 
-  const seriesIndex = seriesGroup.series.findIndex(
-    (s) => s.card.id === highlighted.cardId,
-  );
+  const seriesIndex =
+    seriesGroup.series.length === 1
+      ? 0
+      : seriesGroup.series.findIndex((s) => s.card.id === highlighted.cardId);
   const series = seriesGroup.series[seriesIndex];
   if (!series) {
     return null;
   }
 
-  const dimensionsLabel = highlighted.dimensions
-    ?.map((d) => {
-      const column = series.data.cols.find((col) => col.name === d.columnName);
-      const columnLabel = column?.display_name ?? d.columnName;
-      const formattedValue = column
-        ? String(
-            formatValue(isEmpty(d.value) ? NULL_DISPLAY_VALUE : d.value, {
-              column,
-            }),
-          )
-        : String(d.value);
-      return `${columnLabel}: ${formattedValue}`;
-    })
-    .join(", ");
+  const labels: string[] = [];
+
+  for (const dimension of highlighted.dimensions ?? []) {
+    const column = series.data.cols.find(
+      (col) => col.name === dimension.columnName,
+    );
+    if (!column) {
+      continue;
+    }
+    const columnSettings = computedSettings?.column?.(column) ?? { column };
+    labels.push(
+      String(
+        formatValue(dimension.value ?? NULL_DISPLAY_VALUE, columnSettings),
+      ),
+    );
+  }
 
   if (highlighted.cardId && seriesGroup.series.length > 1) {
     const segmentName = seriesGroup.legendItems[seriesIndex].name;
     if (segmentName) {
-      return `${dimensionsLabel}, ${segmentName}`;
+      labels.push(segmentName);
     }
-    return dimensionsLabel;
   }
 
-  return dimensionsLabel;
+  return labels.join(", ");
 }

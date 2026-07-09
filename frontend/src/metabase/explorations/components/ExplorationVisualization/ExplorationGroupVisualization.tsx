@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -22,6 +22,7 @@ import { is403Error } from "metabase/utils/errors";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   ClickActionsMode,
   ClickObject,
@@ -34,6 +35,7 @@ import type {
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
+  IconName,
   SingleSeries,
   Timeline,
   TimelineId,
@@ -212,6 +214,14 @@ function ExplorationGroupVisualizationChart({
     return seriesGroup?.isTimeseries && availableTimelines.length > 0;
   }, [seriesGroup, availableTimelines]);
 
+  const computedSettings = useMemo(
+    () =>
+      seriesGroup
+        ? getComputedSettingsForSeries(seriesGroup.series)
+        : undefined,
+    [seriesGroup],
+  );
+
   const [highlighted, setHighlighted] = useState<HighlightedObject | null>(
     null,
   );
@@ -221,7 +231,11 @@ function ExplorationGroupVisualizationChart({
       const context = comment.context;
 
       const highlighted = context?.highlighted as HighlightedObject | undefined;
-      const commentLabel = getCommentLabel(highlighted, seriesGroup);
+      const commentLabel = getCommentLabel(
+        highlighted,
+        seriesGroup,
+        computedSettings,
+      );
 
       const timelineId =
         typeof context?.timeline_id === "number"
@@ -239,44 +253,40 @@ function ExplorationGroupVisualizationChart({
       return (
         <Group gap="xs" mt="0.375rem" wrap="wrap">
           {commentLabel && (
-            <UnstyledButton
-              bd="0.5px solid border"
-              bdrs="lg"
-              py="xs"
-              px="sm"
-              className={S.commentBadge}
-              onMouseEnter={() => {
-                if (highlighted) {
-                  setHighlighted(highlighted);
-                }
+            <CommentBadge
+              label={commentLabel}
+              iconName="filter"
+              buttonProps={{
+                onMouseEnter: () => {
+                  if (highlighted) {
+                    setHighlighted(highlighted);
+                  }
+                },
+                onMouseLeave: () => setHighlighted(null),
               }}
-              onMouseLeave={() => setHighlighted(null)}
-            >
-              <Group gap={4} wrap="nowrap">
-                <Icon name="filter" size={12} />
-                {commentLabel}
-              </Group>
-            </UnstyledButton>
+            />
           )}
           {timeline && (
-            <UnstyledButton
-              bd="0.5px solid border"
-              bdrs="lg"
-              py="xs"
-              px="sm"
-              c="text-secondary"
-              className={S.commentBadge}
-              onClick={() => {
-                onSelectTimelineId(timelineId ?? null);
+            <CommentBadge
+              label={timeline.name}
+              iconName="clock"
+              buttonProps={{
+                onClick: () => {
+                  onSelectTimelineId(timelineId ?? null);
+                },
               }}
-            >
-              {timeline.name}
-            </UnstyledButton>
+            />
           )}
         </Group>
       );
     },
-    [availableTimelines, onSelectTimelineId, setHighlighted, seriesGroup],
+    [
+      availableTimelines,
+      computedSettings,
+      onSelectTimelineId,
+      setHighlighted,
+      seriesGroup,
+    ],
   );
 
   if (!seriesGroup) {
@@ -579,5 +589,29 @@ function Message({ groupName, message, iconProps }: MessageProps) {
         <Text fw="bold">{message}</Text>
       </Stack>
     </Stack>
+  );
+}
+
+interface CommentBadgeProps {
+  label: string;
+  iconName: IconName;
+  buttonProps?: ComponentPropsWithoutRef<typeof UnstyledButton>;
+}
+
+function CommentBadge({ label, iconName, buttonProps }: CommentBadgeProps) {
+  return (
+    <UnstyledButton
+      bd="0.5px solid border"
+      bdrs="lg"
+      py="xs"
+      px="sm"
+      className={S.commentBadge}
+      {...buttonProps}
+    >
+      <Group gap={4} wrap="nowrap">
+        <Icon name={iconName} size={12} />
+        {label}
+      </Group>
+    </UnstyledButton>
   );
 }
