@@ -223,19 +223,17 @@ const addMetric = (
 };
 
 const runFormula = () => {
-  H.MetricsViewer.runButton().should("be.visible");
-  // The mini picker can still be open (or mid-transition) after a metric was
-  // just selected. While it's open it intercepts the Run click, so the formula
-  // never runs and the editor stays stuck in edit mode — the pills never
-  // re-render and the search input never disappears, which are the two dominant
-  // flakes on this spec. Escape only closes the picker (it never exits the
-  // editor), so dismiss it unconditionally and wait for it to actually leave
-  // the DOM before clicking Run, rather than snapshotting the DOM once with a
-  // non-retrying `if`.
-  cy.log("Make sure mini picker is closed before clicking Run");
-  cy.realPress("Escape");
-  H.miniPicker().should("not.exist");
-  H.MetricsViewer.runButton().should("not.be.disabled").click();
+  // Commit + run the formula with the editor's Enter keybinding instead of
+  // clicking the "Run" button. After a metric is selected the mini picker
+  // re-opens (a post-selection setTimeout re-focuses the editor and re-opens the
+  // dropdown) and can sit over the Run button, so the click is intercepted — the
+  // formula never runs, the editor stays stuck in edit mode, the pills never
+  // re-render and the search input never disappears (the dominant flakes on this
+  // spec). Enter is wired straight to the run handler and is not intercepted by
+  // the picker, so it commits deterministically whether or not the picker is
+  // still open (same approach as runFormulaWithKeyboard).
+  H.MetricsViewer.runButton().should("be.visible").and("not.be.disabled");
+  H.MetricsViewer.searchInput().type("{enter}");
 };
 
 const runFormulaWithKeyboard = () => {
