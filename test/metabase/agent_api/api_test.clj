@@ -1465,7 +1465,18 @@
       (is (=? {:dashboard_tab_id tab1-id
                ;; the full-width card on tab 2 must not block row 0 of tab 1
                :row              0}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil))))))
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil)))
+      (testing "an explicit tab_id overrides the first-tab default and collides with that tab's cards"
+        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "add_text" :text "On tab two" :tab_id tab2-id}]})
+        (is (=? {:dashboard_tab_id tab2-id
+                 ;; placed below tab 2's existing full-width 4-row card
+                 :row              4}
+                (t2/select-one :model/DashboardCard :dashboard_id dash-id
+                               :card_id nil :dashboard_tab_id tab2-id))))
+      (testing "a tab_id that isn't a tab on this dashboard is a 404"
+        (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "add_heading" :text "Nope" :tab_id 999999}]})))))
 
 (deftest update-dashboard-dashcards-move-bottom-test
   (testing "Moving a card to the bottom places it below the tab's bottom edge, not back into its old slot"

@@ -1285,21 +1285,27 @@
    - `add_heading` : requires `text`. Adds a full-width section heading.
    - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`.
    - `remove`      : requires `dashcard_id`.
-   - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\")."
+   - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\").
+
+   The add actions take an optional `tab_id` (a tab on this dashboard); omitted, new cards land on
+   the dashboard's first tab."
   [:multi {:dispatch :action}
    ;; Branches are closed so an inapplicable key (e.g. `display_size` on `add_heading`, which is
    ;; always full-width) fails validation instead of being silently ignored.
    ["add"         [:map {:closed true}
                    [:action       [:= "add"]]
                    [:card_id      ms/PositiveInt]
-                   [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
+                   [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]
+                   [:tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
    ["add_heading" [:map {:closed true}
                    [:action [:= "add_heading"]]
-                   [:text   ms/NonBlankString]]]
+                   [:text   ms/NonBlankString]
+                   [:tab_id {:optional true} [:maybe ms/PositiveInt]]]]
    ["add_text"    [:map {:closed true}
                    [:action       [:= "add_text"]]
                    [:text         ms/NonBlankString]
-                   [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
+                   [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]
+                   [:tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
    ["remove"      [:map {:closed true}
                    [:action      [:= "remove"]]
                    [:dashcard_id ms/PositiveInt]]]
@@ -1361,36 +1367,46 @@
   - `dashcard_id` that isn't on this dashboard -> 404 via `api/check-404`.
 
   Autoplace state walks the current dashcards list as we add, so each new card gets a unique slot.
-  Placement is per-tab: adds go on the first tab and only collide with that tab's cards; a move
-  only reflows cards sharing the moved card's tab."
+  Placement is per-tab: adds go on the mutation's `tab_id` (default: the first tab) and only
+  collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
-  (let [current  (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-        tab-id   (first-tab-id dashboard-id)
-        add-tab  (fn [placed] (filterv #(= (:dashboard_tab_id %) tab-id) placed))
-        state    (atom {:placed  (vec current)
-                        :added   []
-                        :removed []
-                        :moved   []})]
-    (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text] :as mutation}]
+  (let [current        (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+        default-tab-id (first-tab-id dashboard-id)
+        ;; A tab_id that isn't a tab on this dashboard -> 404, so a typo can't silently create a
+        ;; dashcard that no tab displays.
+        target-tab-id  (fn [tab-id]
+                         (if tab-id
+                           (:id (api/check-404 (t2/select-one [:model/DashboardTab :id]
+                                                              :id tab-id :dashboard_id dashboard-id)))
+                           default-tab-id))
+        on-tab         (fn [placed tab-id] (filterv #(= (:dashboard_tab_id %) tab-id) placed))
+        state          (atom {:placed  (vec current)
+                              :added   []
+                              :removed []
+                              :moved   []})]
+    (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text tab_id] :as mutation}]
             (map-indexed vector mutations)]
       (try
         (case action
           "add"
           (let [card    (api/read-check :model/Card card_id)
-                display (or (:display card) :table)]
+                display (or (:display card) :table)
+                tab-id  (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
-                                  (autoplaced-position (add-tab (:placed @state)) display display_size)
+                                  (autoplaced-position (on-tab (:placed @state) tab-id) display display_size)
                                   {:card_id card_id}))
 
           "add_heading"
-          (insert-new-dashcard! state dashboard-id tab-id
-                                (autoplaced-position (add-tab (:placed @state)) :heading nil)
-                                {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)})
+          (let [tab-id (target-tab-id tab_id)]
+            (insert-new-dashcard! state dashboard-id tab-id
+                                  (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)}))
 
           "add_text"
-          (insert-new-dashcard! state dashboard-id tab-id
-                                (autoplaced-position (add-tab (:placed @state)) :text display_size)
-                                {:visualization_settings (dashboard-card/virtual-card-settings "text" text)})
+          (let [tab-id (target-tab-id tab_id)]
+            (insert-new-dashcard! state dashboard-id tab-id
+                                  (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" text)}))
 
           "remove"
           (let [existing (api/check-404
@@ -1470,6 +1486,8 @@
                              "grid slot (left-to-right, top-to-bottom), so cards may sit side by "
                              "side; a full-width heading always starts its own row, so lead each "
                              "section with add_heading to build a sectioned layout. "
+                             "Add actions take an optional tab_id; omitted, new cards land on the "
+                             "dashboard's first tab. "
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}

@@ -535,6 +535,9 @@ Dashcard mutations go under `dashcards` and are applied in order:
 - `remove` removes a dashcard by `dashcard_id`
 - `move` moves a dashcard by `dashcard_id` to `position` `"top"` or `"bottom"`
 
+The add actions also take an optional `tab_id` (a tab on this dashboard);
+omitted, new cards land on the dashboard's first tab.
+
 New cards are auto-placed into the first free grid slot, scanning
 left-to-right then top-to-bottom, so two half-width cards can end up side by
 side. A full-width heading always starts its own row — lead each section with
