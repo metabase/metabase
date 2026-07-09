@@ -34,8 +34,6 @@ module.exports = (env) => {
         import: "./app-static-viz.ts",
         library: {
           name: "MetabaseStaticViz",
-          // UMD so Node can `require` the bundle (metabase.channel.render.js.node) while GraalVM still
-          // gets `MetabaseStaticViz` as a global via the UMD root fallback (globalObject below).
           type: "umd",
         },
       },
