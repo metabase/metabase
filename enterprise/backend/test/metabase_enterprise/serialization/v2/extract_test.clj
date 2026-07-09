@@ -1902,6 +1902,36 @@
           (is (= :type/Category (:semantic_type (get by-name "CATEGORY_ID"))))
           (is (vector? (:fk_target_field_id (get by-name "CATEGORY_ID")))))))))
 
+(deftest native-model-preserves-column-types-extract-test
+  (testing "native model Card extraction preserves structural column types (GHY-4043)"
+    ;; Native model columns can't be re-derived from the query at import time without executing
+    ;; the SQL, so :base_type/:effective_type must survive extract — otherwise filters on the
+    ;; read-only target instance collapse to Is empty / Not empty.
+    (mt/with-temp
+      [:model/Card {card-id :id}
+       {:type            :model
+        :dataset_query   (mt/native-query
+                          {:query "SELECT project_id, STRING_AGG(region_name, ', ') AS names FROM project_regions GROUP BY project_id"})
+        :result_metadata [{:name           "project_id"
+                           :display_name   "project_id"
+                           :base_type      :type/Integer
+                           :effective_type :type/Integer
+                           :semantic_type  :type/PK}
+                          {:name           "names"
+                           :display_name   "names"
+                           :base_type      :type/Text
+                           :effective_type :type/Text
+                           :semantic_type  :type/Title}]}]
+      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card card-id))
+            by-name   (u/index-by :name (:result_metadata extracted))]
+        (testing "physical passthrough column keeps its types"
+          (is (= :type/Integer (:base_type (get by-name "project_id"))))
+          (is (= :type/Integer (:effective_type (get by-name "project_id")))))
+        (testing "aggregated projection column keeps its types and soft keys"
+          (is (= :type/Text (:base_type (get by-name "names"))))
+          (is (= :type/Text (:effective_type (get by-name "names"))))
+          (is (= :type/Title (:semantic_type (get by-name "names")))))))))
+
 (deftest extract-single-collection-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
