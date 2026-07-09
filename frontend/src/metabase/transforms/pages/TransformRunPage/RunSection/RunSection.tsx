@@ -206,13 +206,15 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
       />
       <ConfirmModal
         title={t`Cancel this run?`}
+        message={t`This requests the run to stop; it may take a moment to finish canceling.`}
+        confirmButtonText={t`Cancel run`}
+        closeButtonText={t`Keep running`}
         opened={isConfirmCancellationModalOpen}
         onClose={closeConfirmModal}
         onConfirm={() => {
           void handleCancel();
           closeConfirmModal();
         }}
-        closeButtonText={t`No`}
       />
     </>
   );
