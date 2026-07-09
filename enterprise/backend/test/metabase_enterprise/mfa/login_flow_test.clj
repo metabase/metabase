@@ -8,6 +8,7 @@
    [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.request.core :as request]
    [metabase.session.api :as api.session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -68,6 +69,26 @@
 
 (deftest bogus-token-rejected-test
   (mt/client :post 401 "ee/mfa/verify" {:mfa_token "not-a-real-token" :code "000000"}))
+
+(deftest remember-me-survives-mfa-test
+  (with-enrolled-rasta! [secret]
+    (testing "'remember me' from step 1 must ride the verify request — that's what creates the session"
+      (let [challenge (mt/client :post 200 "session" (assoc (mt/user->credentials :rasta) :remember true))
+            response  (mt/client-real-response :post 200 "ee/mfa/verify"
+                                               {:mfa_token (:mfa_token challenge)
+                                                :code      (totp/generate-code secret)
+                                                :remember  true})]
+        (is (get-in response [:cookies request/metabase-session-cookie :expires])
+            "remember=true on /verify sets a permanent cookie")))
+    (testing "without remember, the cookie is session-scoped"
+      ;; the first verify consumed the current time step; use the +1 step (inside the ±1
+      ;; validation window, strictly greater than the consumed step) so replay protection passes
+      (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))
+            code      (totp/code-for-unix-time secret (+ (quot (System/currentTimeMillis) 1000) 30))
+            response  (mt/client-real-response :post 200 "ee/mfa/verify"
+                                               {:mfa_token (:mfa_token challenge)
+                                                :code      code})]
+        (is (nil? (get-in response [:cookies request/metabase-session-cookie :expires])))))))
 
 (deftest deactivated-user-cannot-verify-test
   (with-enrolled-rasta! [secret]
