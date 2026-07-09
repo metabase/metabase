@@ -2,15 +2,15 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
+  type MonitorHeaderTab,
+  MonitorHeaderTabs,
+} from "metabase/monitor/components/MonitorHeaderTabs";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
-  const tabs: PaneHeaderTab[] = [
+  const tabs: MonitorHeaderTab[] = [
     {
       label: t`Broken dependencies`,
       to: Urls.brokenDependencies(),
@@ -26,7 +26,7 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   return (
     <Stack gap="md">
       <MonitorHeaderTitle>{t`Dependency diagnostics`}</MonitorHeaderTitle>
-      <PaneHeaderTabs tabs={tabs} />
+      <MonitorHeaderTabs tabs={tabs} />
     </Stack>
   );
 });

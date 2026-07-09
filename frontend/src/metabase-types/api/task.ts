@@ -85,7 +85,7 @@ export interface TaskRun {
   started_at: string;
   ended_at: string | null;
   status: TaskRunStatus;
-  entity_name?: string;
+  entity_name: string | null;
   task_count: number;
   success_count: number;
   failed_count: number;
@@ -98,7 +98,7 @@ export interface TaskRunExtended extends TaskRun {
 export interface RunEntity {
   entity_type: TaskRunEntityType;
   entity_id: number;
-  entity_name?: string;
+  entity_name: string | null;
 }
 
 export type TaskRunStartedAtParam =

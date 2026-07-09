@@ -85,7 +85,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
                 to={getEntityUrl(
                   taskRun.entity_type,
                   taskRun.entity_id,
-                  taskRun.entity_name,
+                  taskRun.entity_name ?? undefined,
                 )}
               >
                 {taskRun.entity_name ?? taskRun.entity_id}
