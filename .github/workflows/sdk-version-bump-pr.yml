@@ -107,20 +107,12 @@ jobs:
           # being released is the current "latest" major - that determination
           # is left to the reviewer.
           #
-          # OPEN QUESTION (Kelvin 2026-07-09) for Nicolo/Roman: what should
-          # distTag mean for a stable/patch/minor release? Today's workflow
-          # only ever publishes under `alpha`/`nightly`/`latest` npm dist-tags
-          # (see the old compute-tag step this replaced) - "<major>-stable"
-          # is not a real npm dist-tag today, only a git tag
-          # (embedding-sdk-<major>-stable). The Notion proposal's own example
-          # pairs an alpha version with a "59-stable" distTag, which reads
-          # like a *new* concept: letting consumers `npm install
-          # @metabase/embedding-sdk-react@59-stable` to pin a major line,
-          # not just a channel name. I've defaulted patch/minor to
-          # "<major>-stable" (leaning into that reading) and alpha/beta to
-          # the plain channel name - review and correct before relying on
-          # this in production; it's the one part of the whole proposal I
-          # couldn't resolve from the ticket/proposal text alone.
+          # "<major>-stable" IS a real, already-live npm dist-tag (confirmed
+          # via `npm dist-tag ls @metabase/embedding-sdk-react` - 51-stable
+          # through 62-stable are all in active use today), not a new
+          # concept - matches the Notion proposal's "59-stable" example.
+          # Patch/minor bumps default to "<major>-stable", alpha/beta to the
+          # plain channel name.
           RELEASE_TYPE="${{ inputs.release_type }}"
           MAJOR_VERSION="${{ steps.bump.outputs.major_version }}"
 
