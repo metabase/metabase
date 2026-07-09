@@ -212,11 +212,13 @@
           ;; indexer already removed, which would keep the metric inflated until tombstone cleanup. Counted
           ;; BEFORE this run's gate-deletes so the lost deletes found below (in-flight cleanup the indexer
           ;; typically clears within minutes) don't read as a critical garbage spike that stands until the
-          ;; next hourly repair; only orphans that survived a full cycle since being gated count.
+          ;; next hourly repair; only tombstones the indexer watermark has already passed count as garbage
+          ;; (a fresher tombstone -- e.g. a bulk delete just before this run -- is backlog, not garbage).
           (let [orphans (semantic.repair/count-stale-orphans pgvector
                                                              (-> active-state :index :table-name)
                                                              (:gate-table-name index-metadata)
-                                                             repair-table-name)]
+                                                             repair-table-name
+                                                             (-> active-state :metadata-row :indexer_last_seen))]
             ;; Find documents in the gate table that are not in the provided searchable-documents, and gate deletes for them
             (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector (:gate-table-name index-metadata) repair-table-name)]
               (doseq [[model ids] ids-by-model]

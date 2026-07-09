@@ -248,6 +248,25 @@
                                          :collect   (constantly nil)}))
       (is (= [] @calls) "no gauge write at all for a never-emitted series"))))
 
+(deftest ^:sequential failed-first-write-does-not-mark-series-live-test
+  (testing "a throwing first gauge write doesn't mark the series live, so later N/A clears can't create a
+           NaN-only series that never held a real value"
+    (let [set-index-gauge! @#'semantic.health/set-index-gauge!
+          live             @#'semantic.health/live-gauge-series
+          series           [:metabase-ai-index/coverage-ratio :failed-write-test-engine]
+          calls            (atom [])]
+      (try
+        (with-redefs [analytics/set-gauge! (fn [& _] (throw (ex-info "prometheus down" {})))]
+          (is (thrown? Exception (apply set-index-gauge! (conj series 1.0))))
+          (is (not (contains? @live series)) "a failed write must not mark the series live"))
+        (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+          (apply set-index-gauge! (conj series nil))
+          (is (= [] @calls) "an N/A clear after the failed write emits nothing")
+          (apply set-index-gauge! (conj series 0.5))
+          (is (contains? @live series) "a successful write marks it live"))
+        (finally
+          (swap! live disj series))))))
+
 (deftest ^:sequential refresh-isolates-measure-failures-test
   (mt/with-temporary-setting-values [health-inspector-enabled false]
     (testing "a throwing collector NaN-clears its gauge (instead of freezing the last healthy value) and

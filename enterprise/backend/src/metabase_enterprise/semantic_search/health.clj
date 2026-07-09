@@ -212,8 +212,10 @@
   (see [[live-gauge-series]])."
   [gauge-key engine value]
   (if (some? value)
-    (do (swap! live-gauge-series conj [gauge-key engine])
-        (analytics/set-gauge! gauge-key {:engine (name engine)} value))
+    (do (analytics/set-gauge! gauge-key {:engine (name engine)} value)
+        ;; marked live only after the write succeeds: a throwing first write must not license later N/A
+        ;; clears to CREATE the series as NaN-only
+        (swap! live-gauge-series conj [gauge-key engine]))
     (when (contains? @live-gauge-series [gauge-key engine])
       (analytics/set-gauge! gauge-key {:engine (name engine)} ##NaN))))
 

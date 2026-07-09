@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.core :as semantic.core]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
@@ -108,6 +109,45 @@
             (testing "the supplied documents are gated for backfill"
               (let [gate-contents (gate-table-contents pgvector (:gate-table-name index-metadata))]
                 (is (some? (:document (gate-entry-by-id gate-contents "card_1"))))))))))))
+
+(deftest count-stale-orphans-test
+  ;; Hermetic: the fn only takes table names, so ad-hoc tables stand in for the index/gate/repair tables.
+  (when semantic.db.datasource/db-url
+    (let [pgvector (semantic.db.datasource/ensure-initialized-data-source!)
+          suffix   (System/nanoTime)
+          index-t  (str "count_orphans_index_" suffix)
+          gate-t   (str "count_orphans_gate_" suffix)
+          repair-t (str "count_orphans_repair_" suffix)
+          exec!    (fn [q] (jdbc/execute! pgvector [q]))]
+      (try
+        (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" index-t))
+        (exec! (format "CREATE TABLE \"%s\" (model text, model_id text, document_hash text, gated_at timestamptz)"
+                       gate-t))
+        (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" repair-t))
+        ;; candidate set: card 1 only
+        (exec! (format "INSERT INTO \"%s\" VALUES ('card','1')" repair-t))
+        ;; index rows: 1 = still a candidate, 2 = tombstone behind the watermark (stale), 3 = tombstone
+        ;; ahead of it (indexer backlog), 4 = gate row gone (survived tombstone cleanup), 5 = live gate row
+        (exec! (format "INSERT INTO \"%s\" VALUES ('card','1'),('card','2'),('card','3'),('card','4'),('card','5')"
+                       index-t))
+        (exec! (format (str "INSERT INTO \"%s\" VALUES "
+                            "('card','2', NULL,   now() - interval '2 hours'), "
+                            "('card','3', NULL,   now()), "
+                            "('card','5', 'hash', now() - interval '2 hours')")
+                       gate-t))
+        (let [watermark (t/minus (t/offset-date-time) (t/hours 1))]
+          (testing "counts non-candidates whose tombstone the watermark has passed, or whose gate row is gone"
+            (is (= 2 (semantic.repair/count-stale-orphans pgvector index-t gate-t repair-t watermark))))
+          (testing "a tombstone ahead of the watermark is in-flight backlog, not garbage"
+            (is (= 3 (semantic.repair/count-stale-orphans
+                      pgvector index-t gate-t repair-t (t/plus (t/offset-date-time) (t/hours 1))))
+                "once the watermark passes it, the same tombstone counts"))
+          (testing "nil watermark (indexer never ran) counts no tombstones, only gate-row-gone orphans"
+            (is (= 1 (semantic.repair/count-stale-orphans pgvector index-t gate-t repair-t nil))))
+          (testing "a query failure returns nil rather than failing the repair run"
+            (is (nil? (semantic.repair/count-stale-orphans pgvector "no_such_table" gate-t repair-t watermark)))))
+        (finally
+          (exec! (format "DROP TABLE IF EXISTS \"%s\", \"%s\", \"%s\"" index-t gate-t repair-t)))))))
 
 (deftest repair-table-cleanup-test
   (testing "The repair table gets cleaned up properly at the end of a repair-index! job"
