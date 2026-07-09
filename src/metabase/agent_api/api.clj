@@ -1390,11 +1390,16 @@
       (try
         (case action
           "add"
-          (let [card    (api/check-not-archived (api/read-check :model/Card card_id))
+          (let [card    (api/read-check :model/Card card_id)
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check-400 (or (nil? (:dashboard_id card))
                                            (= (:dashboard_id card) dashboard-id)))
+                ;; Archived cards can't be added — except a question internal to THIS dashboard:
+                ;; it was auto-archived when its last dashcard was removed, and re-adding it
+                ;; unarchives it via the internal-question sync after the mutations.
+                _       (when-not (= (:dashboard_id card) dashboard-id)
+                          (api/check-not-archived card))
                 display (or (:display card) :table)
                 tab-id  (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
