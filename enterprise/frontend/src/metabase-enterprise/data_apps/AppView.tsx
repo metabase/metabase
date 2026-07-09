@@ -25,7 +25,7 @@ interface AppViewProps {
 }
 
 /**
- * /data-app/:name(/*) — renders the requested data-app inside an isolated
+ * /apps/:name(/*) — renders the requested data-app inside an isolated
  * iframe, mirroring the iframe's internal route into the parent's URL.
  *
  * Sync semantics:

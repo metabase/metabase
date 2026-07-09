@@ -98,7 +98,7 @@ export function ManageDataAppsPage() {
             <SettingHeader title={t`Remote Sync`} />
 
             <Text c="text-secondary" maw="40rem">
-              {t`Data apps live in the repository connected via Git sync. Each app's built bundle is served at /data-app/:name.`}
+              {t`Data apps live in the repository connected via Git sync. Each app's built bundle is served at /apps/:name.`}
             </Text>
 
             <Group gap="xs">

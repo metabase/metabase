@@ -49,6 +49,7 @@
    [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]
+   [metabase.request.core :as request]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me)
@@ -95,10 +96,10 @@
 
   TODO -- Please fix them! See #22687"
   {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
-   ;; Data-app bundle hosting. Naughty because the FE route lives at `/data-app/:slug`
-   ;; (and `/api/data-app/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
+   ;; Data-app bundle hosting. Naughty because the FE route lives at `/apps/:slug`
+   ;; (and `/api/apps/...`), NOT `/api/ee/...` — `/app/*` is reserved for static
    ;; assets, so we keep the public path stable here. Superuser-only inside the handler.
-   "/data-app"          (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
+   (str "/" request/data-app-url-segment) (premium-handler metabase-enterprise.data-apps.api/routes :data-apps)
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 

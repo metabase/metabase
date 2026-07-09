@@ -2,7 +2,7 @@
 
 A Metabase **data app** — a single-bundle React app (built with the Embedding
 SDK) that Metabase renders inside an isolated, sandboxed iframe at
-`/data-app/<slug>`.
+`/apps/<slug>`.
 
 Data apps are delivered through **Git, not uploaded**: this directory lives at
 `data_apps/<slug>/` inside a repository connected to Metabase via remote sync.
@@ -31,7 +31,7 @@ npm run build                         # produces a single dist/index.js
 ```
 
 Commit `dist/index.js` (the `path` declared in `data_app.yaml`) along with your
-source. The app appears at `/data-app/<slug>` after Metabase's next remote-sync
+source. The app appears at `/apps/<slug>` after Metabase's next remote-sync
 import (manual "Pull changes", auto-import, or startup).
 
 ## What's in the box

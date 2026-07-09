@@ -10,7 +10,7 @@
    where `data_app.yml` is:
 
      name: Sales dashboard      # display name
-     slug: sales                # URL identity (/data-app/:slug)
+     slug: sales                # URL identity (/apps/:slug)
      path: dist/index.js        # bundle path, relative to this app's directory
      allowed_hosts:             # optional — origins the sandboxed bundle may fetch/XHR
        - https://api.example.com
@@ -44,7 +44,7 @@
   #"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 (def ^:private reserved-slugs
-  "Slugs that collide with literal `/api/data-app/*` sub-routes (see the API's
+  "Slugs that collide with literal `/api/apps/*` sub-routes (see the API's
    `slug-regex`). An app with one of these would sync but be unreachable, so we
    reject it during parsing."
   #{"repo-status"})

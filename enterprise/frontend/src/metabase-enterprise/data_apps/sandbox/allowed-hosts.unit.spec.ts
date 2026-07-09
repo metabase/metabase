@@ -78,7 +78,7 @@ describe("isHostAllowed", () => {
 });
 
 describe("makeSandboxFetch", () => {
-  const base = "https://mb.example.com/embed/data-app/sales";
+  const base = "https://mb.example.com/embed/apps/sales";
   const origin = "https://mb.example.com";
 
   const fakeWindow = (fetch: jest.Mock) =>
