@@ -39,13 +39,18 @@
         (:table_exists false))))
 
 (defn index-exists?
-  "Does an index named `index-name` exist in the pgvector DB's pg_indexes?"
+  "Does an index named `index-name` exist in the pgvector DB's pg_indexes?
+  A schema-qualified (dotted) name matches only within its schema; an unqualified name matches any schema."
   [pgvector index-name]
-  (-> (jdbc/execute-one! pgvector
-                         ["SELECT exists (select 1 FROM pg_indexes WHERE indexname = ?) index_exists"
-                          index-name]
-                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-      (:index_exists false)))
+  (let [[schema index] (qualified-table-parts index-name)]
+    (-> (jdbc/execute-one! pgvector
+                           (if schema
+                             ["SELECT exists (select 1 FROM pg_indexes WHERE schemaname = ? AND indexname = ?) index_exists"
+                              schema index]
+                             ["SELECT exists (select 1 FROM pg_indexes WHERE indexname = ?) index_exists"
+                              index])
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+        (:index_exists false))))
 
 (defn semantic-search-available?
   "Predicate to check whether semantic search is available on the instance."

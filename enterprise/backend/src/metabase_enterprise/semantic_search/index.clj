@@ -444,6 +444,13 @@
   (let [index-name (str (semantic.util/table-name-part (:table-name index)) suffix)]
     (hash-identifier-if-exceeds-pg-limit index-name)))
 
+(defn- schema-qualified-index-name
+  "The index name qualified with its table's schema (when the table has one), for catalog lookups —
+  an index lives in the same schema as its table."
+  [index index-name]
+  (let [[schema _] (semantic.util/qualified-table-parts (:table-name index))]
+    (cond->> index-name schema (str schema "."))))
+
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."
   [index]
@@ -1137,7 +1144,7 @@
         ;; path); production traffic leaves it unset and gets the fail-fast.
         (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
                    (not (:vector-search-allow-missing-index? search-context))
-                   (not (semantic.util/index-exists? db (hnsw-index-name index))))
+                   (not (semantic.util/index-exists? db (schema-qualified-index-name index (hnsw-index-name index)))))
           (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
                                "Set the semantic-search-vector-strategy setting to an index-backed strategy "
                                "(:hnsw or :hnsw-iterative-*) to build it.")
