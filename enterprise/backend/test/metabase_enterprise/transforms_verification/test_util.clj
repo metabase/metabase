@@ -90,6 +90,14 @@
   []
   (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
 
+(defn table-name
+  "Synced name of the test-data table `table-key` under the current driver.
+  Single-DB drivers (Redshift, Oracle) embed the dataset in the name -- `:orders`
+  syncs as `test_data_orders` -- so native SQL must reference this, not the
+  logical name, or input-table discovery matches nothing."
+  [table-key]
+  (t2/select-one-fn :name :model/Table :id (mt/id table-key)))
+
 (defn scratch-namespace
   "The information_schema.table_schema value scratch tables land under for
   `db-id`: the test-data schema, else the driver's `:db`-slot catalog."
@@ -172,9 +180,12 @@
 ;;; The shared chain SQL + expected output
 ;;; ---------------------------------------------------------------------------
 
-(def enrich-sql
-  "t1: reads orders and people, produces per-order (total, state) rows."
-  "SELECT o.total AS total, p.state AS state FROM orders o JOIN people p ON o.user_id = p.id")
+(defn enrich-sql
+  "t1: reads orders and people, produces per-order (total, state) rows. Reads the
+  real synced table names (see [[table-name]]) so it resolves on every driver."
+  []
+  (format "SELECT o.total AS total, p.state AS state FROM %s o JOIN %s p ON o.user_id = p.id"
+          (table-name :orders) (table-name :people)))
 
 (defn aggregate-sql
   "t2 / card query: aggregate `enriched-table` into (state, order_count, revenue)."

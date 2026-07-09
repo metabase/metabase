@@ -104,7 +104,7 @@
                          {:table_id  (:id tbl) :name "state"
                           :base_type :type/Text  :position 1 :active true}
                          :model/Transform t1
-                         {:source          {:type :query :query (lib/native-query mp tu/enrich-sql)}
+                         {:source          {:type :query :query (lib/native-query mp (tu/enrich-sql))}
                           :target          {:schema (tu/test-schema) :type "table"
                                             :name   enriched-name}
                           :target_table_id (:id tbl)}]

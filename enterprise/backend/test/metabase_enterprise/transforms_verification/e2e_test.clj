@@ -109,7 +109,10 @@
 ;;;   the diff itself is order-insensitive)
 ;;; ---------------------------------------------------------------------------
 
-(def ^:private e2e-sql
+(defn- e2e-sql
+  "The JOIN + aggregation transform SQL. Reads the real synced table names (see
+  `tu/table-name`) so input-table discovery resolves on every driver."
+  []
   (str "SELECT p.state,"
        " COUNT(*) AS order_count,"
        " SUM(o.total) AS revenue,"
@@ -117,8 +120,8 @@
        ;; expressions in a SELECT list. CURRENT_TIMESTAMP, not NOW(): SQL Server has no NOW().
        " CASE WHEN SUM(COALESCE(o.discount, 0)) > 0 THEN 1 ELSE 0 END AS has_discounts,"
        " CURRENT_TIMESTAMP AS snapshot_ts"
-       " FROM orders o"
-       " JOIN people p ON o.user_id = p.id"
+       " FROM " (tu/table-name :orders) " o"
+       " JOIN " (tu/table-name :people) " p ON o.user_id = p.id"
        " WHERE o.total > 50"
        " GROUP BY p.state"
        " ORDER BY p.state"))
@@ -141,7 +144,7 @@
                 before-runs    (t2/count :model/TransformRun)]
             (mt/with-temp [:model/Transform transform
                            {:source {:type  :query
-                                     :query (lib/native-query mp e2e-sql)}
+                                     :query (lib/native-query mp (e2e-sql))}
                             :target {:schema schema
                                      :type   "table"
                                      :name   (mt/random-name)}}]
@@ -201,7 +204,7 @@
                 before-runs    (t2/count :model/TransformRun)]
             (mt/with-temp [:model/Transform transform
                            {:source {:type  :query
-                                     :query (lib/native-query mp e2e-sql)}
+                                     :query (lib/native-query mp (e2e-sql))}
                             :target {:schema schema
                                      :type   "table"
                                      :name   (mt/random-name)}}]

@@ -49,7 +49,7 @@
               target-name   (mt/random-name)
               mp            (mt/metadata-provider)]
           (mt/with-temp [:model/Transform t1
-                         {:source {:type :query :query (lib/native-query mp tu/enrich-sql)}
+                         {:source {:type :query :query (lib/native-query mp (tu/enrich-sql))}
                           :target {:schema (tu/test-schema) :type "table" :name enriched-name}}
                          :model/Transform t2
                          {:source {:type :query :query (lib/native-query mp (tu/aggregate-sql enriched-name))}
@@ -71,13 +71,13 @@
   [[ctx-binding] & body]
   `(do-with-t1-t2-chain (fn [~ctx-binding] ~@body)))
 
-(defn- do-with-single-native-transform [sql f]
+(defn- do-with-single-native-transform [sql-thunk f]
   (mt/with-premium-features #{:dependencies}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform t
-                         {:source {:type :query :query (lib/native-query mp sql)}
+                         {:source {:type :query :query (lib/native-query mp (sql-thunk))}
                           :target {:schema (tu/test-schema) :type "table" :name (mt/random-name)}}]
             (f {:t         t
                 :db-id     (mt/id)
@@ -89,10 +89,13 @@
   "Run `body` inside the standard single-transform scaffolding: `:dependencies`
   premium feature, every `:transforms/table`-capable driver, `test-data` dataset,
   one temp native-SQL transform (from `sql`) targeting a random table in the test
-  schema. `sql` must be portable across the gated drivers. `ctx-binding`
-  destructures the context map `{:t :db-id :schema :orders-id :people-id}`."
+  schema. `sql` must be portable across the gated drivers; it is evaluated inside
+  the dataset scope, so it can (and for test-data tables must) reference the
+  current driver's real synced table names via `tu/table-name` (single-DB drivers
+  like Redshift prefix them). `ctx-binding` destructures the context map
+  `{:t :db-id :schema :orders-id :people-id}`."
   [[ctx-binding sql] & body]
-  `(do-with-single-native-transform ~sql (fn [~ctx-binding] ~@body)))
+  `(do-with-single-native-transform (fn [] ~sql) (fn [~ctx-binding] ~@body)))
 
 ;;; ===========================================================================
 ;;; Passed: full native chain (source t1 → target t2)
@@ -167,7 +170,7 @@
     ;; format-rows would render dates as report-TZ offset strings whose
     ;; instant-normalization shifts the wall date off the fixture's midnight-UTC
     ;; form; the read-back disables it, so rows canonicalize TZ-independently.
-    (with-single-native-transform [{:keys [t people-id]} "SELECT name, birth_date FROM people"]
+    (with-single-native-transform [{:keys [t people-id]} (str "SELECT name, birth_date FROM " (tu/table-name :people))]
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [result (chain/run-chain-test!
                       (:id t) #{}
@@ -259,7 +262,7 @@
      (mt/with-temp [:model/Table tbl#
                     {:db_id db-id# :schema (tu/test-schema) :name enriched-name# :active true}
                     :model/Transform ~t1-sym
-                    {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
+                    {:source          {:type :query :query (lib/native-query mp# (tu/enrich-sql))}
                      :target          {:schema (tu/test-schema) :type "table" :name enriched-name#}
                      :target_table_id (:id tbl#)}
                     :model/Card ~card-sym
@@ -370,7 +373,7 @@
                       {:table_id  (:id tbl#) :name "state"
                        :base_type :type/Text  :position 1 :active true}
                       :model/Transform ~t1-sym
-                      {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
+                      {:source          {:type :query :query (lib/native-query mp# (tu/enrich-sql))}
                        :target          {:schema (tu/test-schema) :type "table" :name enriched-name#}
                        :target_table_id (:id tbl#)}
                       :model/Card ~card-sym
@@ -905,7 +908,7 @@
                 enriched-name  (mt/random-name)
                 before-scratch (tu/count-test-scratch-tables db-id schema)]
             (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp tu/enrich-sql)}
+                           {:source {:type :query :query (lib/native-query mp (tu/enrich-sql))}
                             :target {:schema schema :type "table" :name enriched-name}}
                            :model/Transform t2
                            {:source {:type :query
@@ -942,7 +945,7 @@
     (with-single-native-transform [{:keys [t db-id schema orders-id]}
                                    ;; CURRENT_TIMESTAMP, not NOW(): SQL Server has no NOW().
                                    (str "SELECT user_id, COUNT(*) AS order_count, CURRENT_TIMESTAMP AS ts"
-                                        " FROM orders GROUP BY user_id ORDER BY user_id")]
+                                        " FROM " (tu/table-name :orders) " GROUP BY user_id ORDER BY user_id")]
       ;; orders-rows has 4 rows: user_ids 1,1,2,3 → COUNT(*) yields 3 groups.
       (let [before-scratch (tu/count-test-scratch-tables db-id schema)
             result (chain/run-chain-test!
@@ -1083,7 +1086,7 @@
     (with-single-native-transform [{:keys [t orders-id]}
                                    ;; CURRENT_TIMESTAMP, not NOW(): portable to SQL Server.
                                    (str "SELECT user_id, COUNT(*) AS order_count, CURRENT_TIMESTAMP AS ts"
-                                        " FROM orders GROUP BY user_id ORDER BY user_id")]
+                                        " FROM " (tu/table-name :orders) " GROUP BY user_id ORDER BY user_id")]
       (with-temp-csv-files
         [orders-f   tu/orders-rows
          ;; orders-rows has user_ids 1,1,2,3 → 3 groups; ts ignored.
@@ -1103,7 +1106,8 @@
   (testing "POST /subgraph with table-qualified-column SQL → 422 ::cannot-test-run"
     ;; SELECT orders.id FROM orders leaves the `orders.` qualifier dangling after
     ;; FROM-only rewrite, triggering guard 3 → ::cannot-test-run (422).
-    (with-single-native-transform [{:keys [t orders-id]} "SELECT orders.id FROM orders"]
+    (with-single-native-transform [{:keys [t orders-id]}
+                                   (str "SELECT " (tu/table-name :orders) ".id FROM " (tu/table-name :orders))]
       (with-temp-csv-files
         [orders-f   tu/orders-rows
          expected-f "id\n1\n"]
@@ -1122,7 +1126,8 @@
 (deftest subgraph-endpoint-header-mismatch-400-test
   (testing "POST /subgraph with wrong CSV headers → 400 + error envelope (::errors/header-mismatch)"
     (with-single-native-transform [{:keys [t orders-id]}
-                                   "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id"]
+                                   (str "SELECT user_id, COUNT(*) AS order_count FROM "
+                                        (tu/table-name :orders) " GROUP BY user_id")]
       (with-temp-csv-files
         [orders-f   "wrong_col_a,wrong_col_b\n1,2\n"
          expected-f "user_id,order_count\n1,1\n"]
@@ -1142,7 +1147,8 @@
 (deftest subgraph-endpoint-unknown-ignore-columns-400-test
   (testing "POST /subgraph with nonexistent ignore_columns → 400 + error envelope"
     (with-single-native-transform [{:keys [t orders-id]}
-                                   "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id"]
+                                   (str "SELECT user_id, COUNT(*) AS order_count FROM "
+                                        (tu/table-name :orders) " GROUP BY user_id")]
       (with-temp-csv-files
         [orders-f   tu/orders-rows
          expected-f "user_id,order_count\n1,2\n2,1\n3,1\n4,1\n"]
@@ -1162,7 +1168,7 @@
 
 (deftest subgraph-endpoint-malformed-options-json-400-test
   (testing "POST /subgraph with malformed options JSON → 400"
-    (with-single-native-transform [{:keys [t orders-id]} "SELECT user_id FROM orders"]
+    (with-single-native-transform [{:keys [t orders-id]} (str "SELECT user_id FROM " (tu/table-name :orders))]
       (with-temp-csv-files
         [orders-f   tu/orders-rows
          expected-f "user_id\n1\n"]
@@ -1256,7 +1262,7 @@
 
 (deftest transform-target-native-perms-allowed-test
   (testing "transform target: non-admin WITH native create-queries passes the gate"
-    (with-single-native-transform [{:keys [t db-id orders-id]} "SELECT user_id FROM orders"]
+    (with-single-native-transform [{:keys [t db-id orders-id]} (str "SELECT user_id FROM " (tu/table-name :orders))]
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :query-builder-and-native
           (let [resp (mt/user-http-request :lucky :get 200 (tu/inputs-url (:id t)))]
