@@ -37,9 +37,13 @@ export const DataAppProvider = (props: DataAppProviderProps) => {
   const { children, providerProps } = props;
   const { theme } = providerProps ?? {};
 
-  // Swap the SDK's default red error alert for a calm, neutral empty state
+  // Swap the SDK's default red error alert for a calm, neutral empty state,
+  // unless the app ships its own `errorComponent`.
   const hostProviderProps = useMemo(
-    () => ({ ...providerProps, errorComponent: DataAppErrorState }),
+    () => ({
+      ...providerProps,
+      errorComponent: providerProps?.errorComponent ?? DataAppErrorState,
+    }),
     [providerProps],
   );
   const sdkStore = useHostSdkStore(hostProviderProps);

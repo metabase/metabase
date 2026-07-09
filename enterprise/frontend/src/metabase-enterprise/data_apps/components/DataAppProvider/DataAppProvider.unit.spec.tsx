@@ -74,4 +74,13 @@ describe("DataAppProvider", () => {
       expect.objectContaining({ errorComponent: DataAppErrorState }),
     );
   });
+
+  it("lets an app override the default error component with its own", () => {
+    const AppErrorComponent = () => <div>app error</div>;
+    setup({ errorComponent: AppErrorComponent });
+
+    expect(mockedUseHostSdkStore).toHaveBeenCalledWith(
+      expect.objectContaining({ errorComponent: AppErrorComponent }),
+    );
+  });
 });

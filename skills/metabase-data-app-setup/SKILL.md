@@ -308,6 +308,42 @@ use a pale hover surface like `#EAF4FF`, not the brand blue itself.
 
 **Don't expect per-subtree theming.** Multiple `<MetabaseProvider>`s on the page fight for the single CSS-variable slot. If the look needs to change with state, recompute `sdkTheme` at the App level and re-render — the whole tree re-themes.
 
+## Custom error UI (optional)
+
+When an embedded question or dashboard can't load — its `questionId` was removed, the user lacks access, or a request fails — the host renders a **neutral built-in error state** in place of that component (a muted icon + the SDK's message). This needs no setup; leave it alone unless the app has a strong reason to restyle it.
+
+To match the app's look, return your own `errorComponent` in the factory's `providerProps` (the same object that carries `theme`). It's an ordinary `providerProps` key, not a change to the factory shape — safe to add:
+
+```tsx
+// src/components/AppError.tsx
+import type { SdkErrorComponentProps } from "@metabase/embedding-sdk-react";
+
+export default function AppError({ message }: SdkErrorComponentProps) {
+  return (
+    <div style={{ padding: 16, textAlign: "center", color: "#6b7280" }}>
+      {message}
+    </div>
+  );
+}
+```
+
+```tsx
+// src/index.tsx — add the key alongside `theme`
+import AppError from "./components/AppError";
+
+const factory: DataAppFactory = () => ({
+  component: App,
+  providerProps: { theme: sdkTheme, errorComponent: AppError },
+});
+```
+
+Rules:
+
+- **It replaces the error UI for *every* SDK component in the app**, not just not-found — so keep the copy generic. Render `message` (or your own wording), not an assumption about which error occurred.
+- `message` is a `ReactNode` — render it as-is; don't call `.toString()` or index into it.
+- Keep it a small **presentational** component. It renders inside the host's provider, but treat it as leaf UI — no data hooks, no `useMetabaseQuery`.
+- Omit `errorComponent` entirely to keep the neutral default. There's no need to re-implement it.
+
 ## Available SDK surface
 
 The bundle imports React hooks/JSX, SDK components from `@metabase/embedding-sdk-react`, and data-app-specific routing/query APIs from `@metabase/embedding-sdk-react/data-app`. `dataAppConfig()` externalizes these packages at build time, so production references the host's copies at runtime (`globalThis.__metabase_sdk__` / `globalThis.__metabase_data_app__` for SDK packages), and the Vite dev sandbox endows the same globals from the installed npm package.
