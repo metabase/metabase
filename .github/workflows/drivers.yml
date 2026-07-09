@@ -177,6 +177,8 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.athena-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -253,6 +255,8 @@ jobs:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.bigquery-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -338,6 +342,8 @@ jobs:
         junit-name: 'be-tests-clickhouse-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -392,6 +398,8 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -463,6 +471,8 @@ jobs:
       with:
         junit-name: 'be-tests-databricks-ee'
         test-args: ${{ matrix.job.test-args }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -537,6 +547,8 @@ jobs:
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
         test-args: ${{ matrix.job.test-args }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -569,6 +581,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -600,6 +613,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -730,6 +744,8 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          driver-status: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -810,6 +826,8 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -892,6 +910,8 @@ jobs:
           test-args: >-
             :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
             :only-tags [:mb/driver-tests]
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          driver-status: ${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -937,6 +957,8 @@ jobs:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1022,6 +1044,8 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.oracle-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1126,6 +1150,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -1213,6 +1238,8 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1297,6 +1324,8 @@ jobs:
         test-args: >-
           ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.redshift-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: ${{ !matrix.job.skip && !cancelled() }}
@@ -1382,6 +1411,8 @@ jobs:
         junit-name: 'be-tests-snowflake-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.snowflake-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1436,6 +1467,8 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.sparksql-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1477,6 +1510,8 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.sqlite-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1553,6 +1588,8 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.version.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1678,6 +1715,8 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+        driver-status: ${{ needs.determine-driver-skips.outputs.vertica-status }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
