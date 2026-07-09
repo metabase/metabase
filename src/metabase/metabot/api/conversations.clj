@@ -73,6 +73,20 @@
    [:entity_id ms/NonBlankString]
    [:card      SaveEntityCard]])
 
+(def ^:private SaveEntityResponse
+  [:map
+   [:id                      ms/PositiveInt]
+   [:name                    ms/NonBlankString]
+   [:description             {:optional true} [:maybe :string]]
+   [:dataset_query           :map]
+   [:display                 :keyword]
+   [:visualization_settings  {:optional true} [:maybe :map]]
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id            {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:metabot_conversation_id ms/UUIDString]
+   [:metabot_chart_id        ms/NonBlankString]])
+
 ;;; ---------------------------------------- Queries ----------------------------------------
 
 (def ^:private default-limit  50)
@@ -145,7 +159,7 @@
   (api/read-check :model/MetabotConversation id)
   (metabot.persistence/conversation-detail id))
 
-(api.macros/defendpoint :post "/:id/saved-entity"
+(api.macros/defendpoint :post "/:id/saved-entity" :- SaveEntityResponse
   "Save a Metabot-generated chart from this conversation as a card, stamping the
   card's provenance columns in the same request — used by the inline chart's
   manual Save button, which runs outside any agent turn. Creating and stamping

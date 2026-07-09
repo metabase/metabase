@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.test :as mt]
@@ -12,6 +14,10 @@
 
 (defn- seconds-ago [n]
   (t/minus (t/offset-date-time) (t/seconds n)))
+
+(defn- venues-query []
+  (lib/query (mt/metadata-provider)
+             (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
 
 (deftest list-conversations-authentication-test
   (testing "GET /api/metabot/conversations requires auth"
@@ -358,7 +364,7 @@
                                               (str "metabot/conversations/" convo-id "/saved-entity")
                                               {:entity_id "chart-1"
                                                :card      {:name          "Venues by price"
-                                                           :dataset_query (mt/mbql-query venues)
+                                                           :dataset_query (venues-query)
                                                            :display       "bar"}})]
             (is (= "Venues by price" (:name created)))
             (is (= {:metabot_conversation_id convo-id
@@ -376,7 +382,7 @@
   (let [user-id (mt/user->id :crowberto)
         body    {:entity_id "chart-1"
                  :card      {:name          "x"
-                             :dataset_query (mt/mbql-query venues)
+                             :dataset_query (venues-query)
                              :display       "bar"}}]
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}

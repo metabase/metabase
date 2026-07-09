@@ -156,6 +156,9 @@
                          ;; No description is needed for `card_schema`, because it is an internal, bookkeeping matter
                          ;; and does not change independently.
                          :card_schema
+                         ;; Metabot provenance is internal bookkeeping. It is stamped outside the Card update pipeline
+                         ;; and cleared only alongside a user-visible query, display, or visualization change.
+                         :metabot_conversation_id :metabot_chart_id
                          ;; we don't expect a description for this column because it should never change
                          ;; once created by the migration
                          :dataset_query_metrics_v2_migration_backup}
