@@ -4,16 +4,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  Box,
-  Flex,
-  Group,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Flex, Group, Loader, Stack, Text, Title } from "metabase/ui";
 import {
   useGetDataAppRepoStatusQuery,
   useListDataAppsQuery,
@@ -23,6 +14,7 @@ import S from "./ManageDataAppsPage.module.css";
 import { DataAppListItem } from "./components/DataAppListItem/DataAppListItem";
 import { DataAppRepoSection } from "./components/DataAppRepoSection/DataAppRepoSection";
 import { DataAppSkillsSection } from "./components/DataAppSkillsSection/DataAppSkillsSection";
+import { DataAppsEmptyState } from "./components/DataAppsEmptyState/DataAppsEmptyState";
 
 const DATA_APP_REPO_QUERY_OPTS = {
   // Keep the sync status fresh while the page is open: the backend polls the repo
@@ -88,31 +80,7 @@ export const ManageDataAppsPage = () => {
             </Flex>
           )}
 
-          {apps?.length === 0 && !isAppsLoading && (
-            <Flex
-              direction="column"
-              align="center"
-              justify="center"
-              gap="md"
-              bd="1px solid var(--mb-color-border)"
-              bdrs="md"
-              bg="background-primary"
-              mih="16rem"
-              p="xl"
-            >
-              <Flex
-                align="center"
-                justify="center"
-                w="6rem"
-                h="6rem"
-                bg="background-secondary"
-                style={{ borderRadius: "50%" }}
-              >
-                <Icon name="app" size={48} c="border" />
-              </Flex>
-              <Text c="text-disabled">{t`Your data apps will appear here`}</Text>
-            </Flex>
-          )}
+          {apps?.length === 0 && !isAppsLoading && <DataAppsEmptyState />}
 
           {apps && apps.length > 0 && (
             <Box
