@@ -34,6 +34,7 @@ class MetricTokenWidget extends WidgetType {
   toDOM() {
     const span = document.createElement("span");
     span.className = S.cmMetricToken;
+    span.setAttribute("data-testid", "metrics-viewer-metric-token");
     span.textContent = this.name;
     return span;
   }

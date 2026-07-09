@@ -222,16 +222,22 @@ const addMetric = (
   });
 };
 
-const runFormula = () => {
-  // Commit + run the formula with the editor's Enter keybinding instead of
-  // clicking the "Run" button. After a metric is selected the mini picker
-  // re-opens (a post-selection setTimeout re-focuses the editor and re-opens the
-  // dropdown) and can sit over the Run button, so the click is intercepted — the
-  // formula never runs, the editor stays stuck in edit mode, the pills never
-  // re-render and the search input never disappears (the dominant flakes on this
-  // spec). Enter is wired straight to the run handler and is not intercepted by
-  // the picker, so it commits deterministically whether or not the picker is
-  // still open (same approach as runFormulaWithKeyboard).
+const runFormula = ({ expectedMetricTokens = 1 } = {}) => {
+  // Wait for every selected metric to be rendered as an atomic token in the
+  // editor before committing. After a metric is picked from the dropdown,
+  // @uiw/react-codemirror re-syncs the controlled doc value and transiently
+  // drops the RangeSet-tracked metric identity (an async effect restores it).
+  // If the run fires inside that window, handleRun's validation sees the metric
+  // as an unknown token, surfaces a validation error and early-returns WITHOUT
+  // collapsing the editor — so no pills render and the search input never
+  // disappears (the dominant flakes on this spec). The Run button's disabled
+  // state reflects the previous render, so gating on it isn't enough; wait on
+  // the tokenized identity instead. Then commit with the editor's Enter
+  // keybinding, which is wired straight to the run handler and isn't
+  // intercepted by the (possibly re-opened) mini picker.
+  H.MetricsViewer.searchInput()
+    .findAllByTestId("metrics-viewer-metric-token")
+    .should("have.length.at.least", expectedMetricTokens);
   H.MetricsViewer.runButton().should("be.visible").and("not.be.disabled");
   H.MetricsViewer.searchInput().type("{enter}");
 };
@@ -888,7 +894,9 @@ describe("scenarios > metrics > explorer", () => {
       });
       selectEntityPickerItem("Count of products");
       cy.wait("@getMetric");
-      runFormula();
+      // Two original metrics + the appended one must all be tokenized before we
+      // commit, otherwise the run is rejected as invalid and never collapses.
+      runFormula({ expectedMetricTokens: 3 });
       cy.wait("@dataset");
 
       cy.log("Should now have 3 metric pills");
