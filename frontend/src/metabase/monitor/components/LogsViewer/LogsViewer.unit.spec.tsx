@@ -70,7 +70,7 @@ describe("LogsViewer", () => {
   it("shows logs only for the selected process without prefixing", () => {
     render(
       <LogsViewer
-        process="uuid-1"
+        processUUID="uuid-1"
         logs={[createLog({ process_uuid: "uuid-1", msg: "kept" })]}
         processUUIDs={["uuid-1", "uuid-2"]}
       />,

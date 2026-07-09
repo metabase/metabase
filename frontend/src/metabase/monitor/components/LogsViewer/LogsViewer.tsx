@@ -10,25 +10,30 @@ import { createLogFormatter, getAllProcessUUIDs } from "./utils";
 
 type LogsViewerProps = ComponentPropsWithoutRef<"div"> & {
   logs: Log[];
-  /** Process UUID to display logs for; with "ALL" each line is prefixed with its process UUID when there are multiple. */
-  process?: string;
-  /** UUIDs of all known processes; defaults to the ones present in `logs`. */
+  processUUID?: string;
   processUUIDs?: string[];
   emptyMessage?: string;
 };
 
 export const LogsViewer = forwardRef<HTMLDivElement, LogsViewerProps>(
   function LogsViewer(
-    { logs, process = "ALL", processUUIDs, emptyMessage, className, ...rest },
+    {
+      logs,
+      processUUID = "ALL",
+      processUUIDs,
+      emptyMessage,
+      className,
+      ...rest
+    },
     ref,
   ) {
     const logText = useMemo(() => {
       const formatLog = createLogFormatter(
-        process,
+        processUUID,
         processUUIDs ?? getAllProcessUUIDs(logs),
       );
       return logs.flatMap(formatLog).join("\n");
-    }, [logs, process, processUUIDs]);
+    }, [logs, processUUID, processUUIDs]);
 
     return (
       <AnsiLogs

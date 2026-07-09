@@ -227,8 +227,6 @@ describe("Logs", () => {
 
     it("downloads only the currently filtered logs, prefixed by process UUID", async () => {
       fetchMock.get("path:/api/logger/logs", [alpha, beta]);
-      // Filter to the alpha log only; two process UUIDs are present, so lines
-      // must carry their [uuid] prefix.
       setup({
         location: createMockLocation({
           pathname: PATHNAME,

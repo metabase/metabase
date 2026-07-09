@@ -156,10 +156,9 @@ const LogsBase = ({
               </Group>
 
               <LogsViewer
-                id="logs-content"
                 ref={scrollRef}
                 logs={filteredLogs}
-                process={process}
+                processUUID={process}
                 processUUIDs={processUUIDs}
                 emptyMessage={
                   hasAnyLogs
