@@ -10,9 +10,14 @@
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
+
+;; the dedicated-harness tests below hit the app db before any auto-initializing mt helper — on the
+;; appdb-mode CI job this namespace can be an early db touch in a fresh JVM
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
