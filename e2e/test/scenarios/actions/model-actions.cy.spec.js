@@ -280,12 +280,12 @@ describe(
         cy.button(actionName).click();
         cy.wait("@executeAction");
 
-        cy.findByLabelText("User ID").should("exist");
+        cy.findByLabelText("User ID").should("be.visible");
         cy.findByText('This value does not exist in table "people".').should(
-          "exist",
+          "be.visible",
         );
 
-        cy.findByText("Unable to update the record.").should("exist");
+        cy.findByText("Unable to update the record.").should("be.visible");
       });
     });
   },
