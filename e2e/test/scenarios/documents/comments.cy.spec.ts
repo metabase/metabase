@@ -160,7 +160,7 @@ describe("document comments", () => {
         .should("have.length", 2)
         .last()
         .should("not.contain.text", "1")
-        .click();
+        .realClick();
 
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
