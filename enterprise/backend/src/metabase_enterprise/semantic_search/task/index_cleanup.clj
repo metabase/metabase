@@ -26,6 +26,10 @@
   Not expected to occur, but if it does, these tables can be dropped.
   With a `:schema` (shared app-db mode) only tables inside the module's schema are considered, and the
   returned names are schema-qualified to match how the metadata table stores them."
+  ;; TODO (Chris 2026-07-09) -- the LIKE 'index_table_%' pattern predates the index_<provider>_<model>_<dims>
+  ;; naming, so it matches nothing and orphan detection is a no-op. A fix needs shape-aware matching that
+  ;; excludes index_metadata/index_control/index_gate (not registered in metadata.table_name — a naive
+  ;; 'index\_%' pattern would drop them as orphans).
   [pgvector {:keys [metadata-table-name schema]}]
   (let [;; information_schema reports bare names; stored metadata names are qualified when we have a schema
         stored-name (if schema
