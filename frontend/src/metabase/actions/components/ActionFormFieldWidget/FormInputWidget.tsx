@@ -2,9 +2,8 @@ import type { HTMLInputTypeAttribute, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
-import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { FormTextInput } from "metabase/forms";
+import { FormField, FormTextInput } from "metabase/forms";
 import type { InputComponentType } from "metabase-types/api";
 
 const HTML_INPUT_TYPES: Partial<
