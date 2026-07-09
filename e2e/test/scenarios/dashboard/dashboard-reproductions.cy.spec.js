@@ -391,6 +391,14 @@ describe("issue 16559", () => {
     cy.button("Save").click();
     cy.wait("@saveDashboard");
 
+    // Leaving edit mode dispatches setEditingDashboard(null) *after* the save
+    // PUT resolves, and that action resets the dashboard sidebar to its closed
+    // default. If we open the info sidebar before it lands, the reset closes it
+    // again and the sidesheet never stays mounted. Wait for view mode to settle
+    // (the "Edit dashboard" button only renders once editing has ended) before
+    // reopening the sidebar (metabase#16559).
+    cy.findByLabelText("Edit dashboard").should("be.visible");
+
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
