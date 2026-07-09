@@ -108,7 +108,7 @@
     (t2/update! :model/DataApp :id (:id app) {:enabled enabled})
     (data-app/select-one-non-blob :id (:id app))))
 
-(api.macros/defendpoint :delete ["/:slug" :slug slug-regex]
+(api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
   "Remove a single data app (its row and cached bundle). Intended for clearing
    out apps once their repository is no longer connected — a sync never deletes,
    and while a repo is connected it would just re-materialize the app."
