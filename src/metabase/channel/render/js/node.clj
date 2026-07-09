@@ -1,70 +1,42 @@
 (ns metabase.channel.render.js.node
   "The `:node` [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS in a pool
-  of external Node.js child processes rather than in-process on GraalVM. Each process runs the CLI harness
-  (`resources/app-static-viz-cli.js`), which loads the static-viz bundle and answers newline-delimited
-  JSON render requests over stdin/stdout.
+  of external Node.js child processes rather than in-process on GraalVM. Each process runs the
+  self-contained node entrypoint (`app-static-viz-cli.bundle.js`, built by `rspack.static-viz.config.js`),
+  which answers newline-delimited JSON render requests over stdin/stdout.
 
-  The bundle and the CLI are copied out of the classpath into a temp working directory on first use (both
-  may live inside the jar at runtime, and `node` needs real files on disk). The pool holds a single
-  process, held exclusively per render (so renders serialize onto it); with a min of 0 it shrinks to 0
-  when idle, killing the process after 1 minute with no work. We cap it at one process — spawning a fresh
-  `node` (runtime init + bundle load) is costly, and a warm process renders fast enough that queuing a
-  second render behind it beats paying that startup cost for concurrency.
+  Metabase never writes the script itself: [[metabase.channel.settings/static-viz-node-script-path]] must
+  point at it on disk, provisioned at deploy time — the official Docker images copy it out of the
+  frontend build (owned by root, so the Metabase process cannot modify what `node` executes) and set
+  `MB_STATIC_VIZ_NODE_SCRIPT_PATH`. If the setting is unset or the file is missing, rendering fails
+  rather than falling back to a runtime copy.
+
+  The pool holds a single process, held exclusively per render (so renders serialize onto it); with a min
+  of 0 it shrinks to 0 when idle, killing the process after 1 minute with no work. We cap it at one
+  process — spawning a fresh `node` (runtime init + bundle load) is costly, and a warm process renders
+  fast enough that queuing a second render behind it beats paying that startup cost for concurrency.
 
   Requires a `node` binary on the host's PATH."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.settings :as channel.settings]
    [metabase.util.json :as json])
   (:import
    (io.aleph.dirigiste Pool)
    (java.io BufferedReader BufferedWriter IOException InputStreamReader OutputStreamWriter)
    (java.lang ProcessBuilder$Redirect)
-   (java.nio.charset StandardCharsets)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)))
+   (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private cli-resource-path "app-static-viz-cli.js")
+;;; ------------------------------------------------ process ----------------------------------------------
 
 (def ^:private render-timeout-ms
   "How long to wait for a render process to answer before assuming it has wedged: we kill it and fail the
   render, so a stuck process can't hold its pool slot forever."
   (* 60 1000))
-
-(defn- create-working-dir!
-  "Copy the two files the render process needs — the static-viz bundle and the CLI entry point — out of the
-  classpath into a fresh temp directory, cleaned up on JVM exit."
-  ^java.io.File []
-  (let [dir (.toFile (Files/createTempDirectory "mb-static-viz-node" (into-array FileAttribute [])))]
-    (.deleteOnExit dir)
-    (doseq [[resource filename] [[common/bundle-resource-path "app-static-viz.bundle.js"]
-                                 [cli-resource-path "app-static-viz-cli.js"]]]
-      (let [resource-url (io/resource resource)]
-        (when (nil? resource-url)
-          (throw (ex-info (str "static-viz resource not found: " resource) {:resource resource})))
-        (let [target (io/file dir filename)]
-          (with-open [in (io/input-stream resource-url)]
-            (io/copy in target))
-          (.deleteOnExit target))))
-    dir))
-
-(def ^:private working-dir*
-  "Caches the working directory once created. An atom (not a `delay`) so a failed first attempt isn't
-  cached — a transient copy failure, or a not-yet-built bundle in dev, self-heals on the next render."
-  (atom nil))
-
-(defn- working-dir
-  "The temp dir holding the bundle + CLI, created (copied out of the classpath) on first use."
-  ^java.io.File []
-  (or @working-dir*
-      (locking working-dir*
-        (or @working-dir*
-            (reset! working-dir* (create-working-dir!))))))
-
-;;; ------------------------------------------------ process ----------------------------------------------
 
 (defrecord ^:private NodeProcess [^Process process ^BufferedWriter writer ^BufferedReader reader])
 
@@ -81,14 +53,31 @@
           (throw (ex-info "static-viz node render timed out" {})))
       line)))
 
+(defn- script-path
+  "Path of the static-viz node entrypoint, from
+  [[metabase.channel.settings/static-viz-node-script-path]]. Throws if the setting is unset or the file
+  does not exist: the script is provisioned at deploy time (e.g. copied into the Docker image, owned by
+  root), so a missing file is a deployment error — deliberately not fixed by copying it out of the jar at
+  runtime, which would put the executed JS somewhere the Metabase process can write."
+  ^String []
+  (let [path (channel.settings/static-viz-node-script-path)]
+    (when (str/blank? path)
+      (throw (ex-info (str "static-viz-mode is `node` but static-viz-node-script-path is not set — point"
+                           " MB_STATIC_VIZ_NODE_SCRIPT_PATH at app-static-viz-cli.bundle.js (built by"
+                           " `bun run build-static-viz`), or set static-viz-mode to graalvm")
+                      {})))
+    (when-not (.isFile (io/file path))
+      (throw (ex-info (str "static-viz node script not found: " path) {:path path})))
+    path))
+
 (defn- start-process!
-  "Copy the files (first use only), spawn `node app-static-viz-cli.js`, and block until it reports it has
-  loaded the bundle. The process's stderr is inherited (for debugging); stdout carries the line protocol."
+  "Spawn `node app-static-viz-cli.bundle.js` (from [[script-path]]) and block until it reports it has
+  loaded. The process's stderr is inherited (for debugging); stdout carries the line protocol."
   ^NodeProcess []
   (common/assert-tests-not-initializing!)
-  (let [cli              (.getAbsolutePath (io/file (working-dir) "app-static-viz-cli.js"))
+  (let [script           (script-path)
         ^Process process (try
-                           (.. (ProcessBuilder. ^"[Ljava.lang.String;" (into-array String ["node" cli]))
+                           (.. (ProcessBuilder. ^"[Ljava.lang.String;" (into-array String ["node" script]))
                                (redirectError ProcessBuilder$Redirect/INHERIT)
                                (start))
                            (catch IOException e

@@ -1,6 +1,6 @@
 (ns metabase.channel.render.js.common
   "Shared helpers for the pooled static-viz renderers ([[metabase.channel.render.js.graal]] and
-  [[metabase.channel.render.js.node]]): the built-bundle resource path, the test-init guard, and the
+  [[metabase.channel.render.js.node]]): the graal bundle's classpath path, the test-init guard, and the
   dirigiste worker-pool factory they both use."
   (:require
    [metabase.config.core :as config])
@@ -11,7 +11,9 @@
 (set! *warn-on-reflection* true)
 
 (def bundle-resource-path
-  "Classpath path of the built static-viz bundle both renderers load."
+  "Classpath path of the built static-viz bundle the graal renderer evaluates in-process. (The node
+  renderer runs its own self-contained bundle from disk instead — see
+  [[metabase.channel.render.js.node]].)"
   "frontend_client/app/dist/app-static-viz.bundle.js")
 
 (defn assert-tests-not-initializing!
