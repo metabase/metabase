@@ -1372,8 +1372,8 @@
                       (update :added conj new-dashcard)))))
 
 (defn- first-tab-id
-  "Id of the dashboard's first tab, or nil when the dashboard has no tabs. New dashcards land there —
-   a dashcard with a nil tab id on a tabbed dashboard is invisible on every tab."
+  "Id of the dashboard's first tab, or nil when the dashboard has no tabs. New dashcards land there,
+   alongside any nil-tab dashcards, which the frontend renders on the first tab."
   [dashboard-id]
   (t2/select-one-fn :id :model/DashboardTab
                     :dashboard_id dashboard-id
