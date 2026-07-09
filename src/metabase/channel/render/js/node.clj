@@ -68,12 +68,13 @@
 
 (defn- read-response-line
   "Read one line from the process, killing it and throwing if it doesn't answer within
-  [[render-timeout-ms]] (so a wedged process can't hold its pool slot forever)."
+  [[render-timeout-ms]] (so a wedged process can't hold its pool slot forever). Killing the process closes
+  its stdout, which unblocks the reader future."
   ^String [^BufferedReader reader ^Process process]
   (let [fut  (future (.readLine reader))
         line (deref fut render-timeout-ms ::timeout)]
     (if (identical? ::timeout line)
-      (do (.destroy process)                ; closing its stdout unblocks the reader thread
+      (do (.destroy process)
           (future-cancel fut)
           (throw (ex-info "static-viz node render timed out" {})))
       line)))
@@ -110,13 +111,13 @@
   "Send one render request to `node-process` and read its response. `arg` is a Clojure data structure sent
   as a JS object (not a JSON string), so the bundle serializes only once — at this process boundary rather
   than again inside the bundle. Returns the render result parsed into Clojure data. Not thread-safe on its
-  own — the pool hands a process to one render at a time."
+  own — the pool hands a process to one render at a time. A write failure (broken pipe) means the pooled
+  process had already died; it is thrown as `:retryable` so [[call-node]] can get a fresh one."
   [{:keys [^BufferedWriter writer ^BufferedReader reader ^Process process]} fn-name arg]
   (try
     (.write writer ^String (str (json/encode {:fn fn-name :arg arg}) "\n"))
     (.flush writer)
     (catch IOException e
-      ;; broken pipe — the pooled process had already died; retrying gets a fresh one
       (throw (ex-info "static-viz node process is not writable" {:retryable true} e))))
   (let [line (read-response-line reader process)]
     (when (nil? line)
@@ -140,8 +141,10 @@
 
 (defn- call-node
   "Run static-viz bundle function `fn-name` with `arg` (a Clojure data structure) on a pooled Node process,
-  returning the render result parsed into Clojure data. Retries once if the acquired process turned out to
-  be already dead (e.g. reaped or killed while parked in the pool), since a fresh one should succeed."
+  returning the render result parsed into Clojure data. A failed render's process may be in a bad state, so
+  it is disposed (dropped from the pool) rather than released back for reuse. Retries once if the acquired
+  process turned out to be already dead (e.g. reaped or killed while parked in the pool), since a fresh one
+  should succeed."
   [fn-name arg]
   (loop [retries 1]
     (let [node-process (.acquire node-process-pool pool-key)
@@ -150,8 +153,6 @@
                            (.release node-process-pool pool-key node-process)
                            {:result result})
                          (catch Throwable t
-                           ;; A failed render may have left the process in a bad state; drop it from the
-                           ;; pool rather than returning it for reuse.
                            (.dispose node-process-pool pool-key node-process)
                            (if (and (:retryable (ex-data t)) (pos? retries))
                              {:retry true}

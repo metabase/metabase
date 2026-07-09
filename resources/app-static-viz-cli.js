@@ -6,7 +6,8 @@
 // the `MetabaseStaticViz.*` bundle functions; `arg` is its argument and `result` its return value. The
 // Node renderer uses the object-in/object-out functions ("renderChart" / "getCellBackgroundColors"), so
 // `arg`/`result` are plain JS objects and the payload is serialized only once here (not again inside the
-// bundle).
+// bundle). The response is serialized inside the try, so a non-serializable result becomes an error
+// response rather than an uncaught exception that would crash the process.
 const path = require("path");
 const readline = require("readline");
 
@@ -28,8 +29,6 @@ rl.on("line", (line) => {
   let out;
   try {
     const { fn, arg } = JSON.parse(trimmed);
-    // Serialize inside the try so a non-serializable result throws here and becomes an error response,
-    // rather than an uncaught exception that kills the process.
     out = JSON.stringify({ ok: true, result: staticViz[fn](arg) });
   } catch (e) {
     out = JSON.stringify({ ok: false, error: String(e?.stack ?? e) });
