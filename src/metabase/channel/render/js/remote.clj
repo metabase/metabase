@@ -6,6 +6,7 @@
   response body (the raw JSON string the corresponding bundle function produced)."
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.util.json :as json]
    [metabase.util.retry :as retry]))
@@ -16,12 +17,13 @@
 (def ^:private connection-timeout-ms 5000)
 
 (defn- post
-  "POST the JSON `body` string to `url`+`path` and return the service's raw response body string. Retries
+  "POST the JSON `body` string to `url`+`path` and return the service's raw response body string. Any
+  trailing slash on the base `url` is stripped so it doesn't double up with `path`'s leading slash. Retries
   any error — 5xx responses (clj-http throws on non-2xx), connection/socket timeouts, connection refused,
   etc. — with the default exponential backoff (see [[metabase.util.retry/retry-configuration]])."
   ^String [url path body]
   (:body (retry/with-retry (retry/retry-configuration)
-           (http/post (str url path)
+           (http/post (str (str/replace url #"/+$" "") path)
                       {:body               body
                        :content-type       :json
                        :as                 :string
