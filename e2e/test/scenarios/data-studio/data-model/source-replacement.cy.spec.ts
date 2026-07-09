@@ -53,6 +53,9 @@ describe(
       cy.intercept("POST", "/api/ee/replacement/replace-source").as(
         "replaceSource",
       );
+      cy.intercept("POST", "/api/ee/replacement/check-replace-source").as(
+        "checkReplaceSource",
+      );
       cy.intercept("GET", "/api/ee/dependencies/graph/dependents*").as(
         "dependents",
       );
@@ -846,12 +849,14 @@ function pickTarget(targetTableLabel: string) {
 }
 
 function confirmReplacement() {
+  // The tabs (and the affected-items count) only render once the async
+  // check-replace-source response arrives — until then the modal body shows an
+  // empty state. Wait on that request instead of racing a fixed DOM timeout.
+  cy.wait("@checkReplaceSource");
+
   SourceReplacement.getModal()
     .findByRole("tab", {
-      // The affected-items count comes from an async dependents computation
-      // that can exceed the default 4s timeout, so wait longer for the tab.
       name: /\d+ items? will be changed/,
-      timeout: 15000,
     })
     .should("be.visible");
 
