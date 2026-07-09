@@ -10,27 +10,42 @@ import "metabase/static-viz/polyfill";
 
 import readline from "readline";
 
-import { getCellBackgroundColors, renderChart } from "metabase/static-viz";
-
-const functions: Record<string, (arg: never) => unknown> = {
-  renderChart,
+import {
+  type CellBackgroundColorsInput,
+  type RenderChartInput,
   getCellBackgroundColors,
+  renderChart,
+} from "metabase/static-viz";
+
+type RenderChartData = {
+  fn: "renderChart";
+  arg: RenderChartInput;
 };
+
+type GetCellBackgroundColorsData = {
+  fn: "getCellBackgroundColors";
+  arg: CellBackgroundColorsInput;
+};
+
+type InputData = RenderChartData | GetCellBackgroundColorsData;
 
 const rl = readline.createInterface({ input: process.stdin });
 rl.on("line", (line: string) => {
-  const trimmed = line.trim();
-  if (!trimmed) {
+  const data = line.trim();
+  if (!data) {
     return;
   }
   let out;
   try {
-    const { fn, arg } = JSON.parse(trimmed);
-    const handler = functions[fn];
-    if (!handler) {
+    const dataJson: InputData = JSON.parse(data);
+    const { fn, arg } = dataJson;
+    if (fn === "renderChart") {
+      out = JSON.stringify({ ok: true, result: renderChart(arg) });
+    } else if (fn === "getCellBackgroundColors") {
+      out = JSON.stringify({ ok: true, result: getCellBackgroundColors(arg) });
+    } else {
       throw new Error(`unknown function: ${fn}`);
     }
-    out = JSON.stringify({ ok: true, result: handler(arg) });
   } catch (e) {
     out = JSON.stringify({
       ok: false,
