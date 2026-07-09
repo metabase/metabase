@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   findRequests,
@@ -12,6 +11,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { SettingsPage } from "./SettingsPage";
