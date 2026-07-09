@@ -97,6 +97,23 @@
           (finally
             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
 
+(deftest send-email-otp-surfaces-delivery-failure-test
+  (mt/with-premium-features #{:multi-factor-auth}
+    (mt/with-temporary-setting-values [mfa-enabled true]
+      (let [secret (totp/generate-secret)]
+        (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
+                                         :provider    "totp"
+                                         :credentials {:secret secret :confirmed_at (t/instant)}})
+        (try
+          (mt/with-dynamic-fn-redefs [channel.settings/email-configured?    (constantly true)
+                                      channel.email/send-message-or-throw! (fn [& _]
+                                                                             (throw (Exception. "SMTP down")))]
+            (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+              (testing "an SMTP failure is an error, not {:success true} with no email"
+                (mt/client :post 500 "ee/mfa/send-email-otp" {:mfa_token (:mfa_token challenge)}))))
+          (finally
+            (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+
 (deftest send-email-otp-requires-configured-email-test
   (mt/with-premium-features #{:multi-factor-auth}
     (mt/with-temporary-setting-values [mfa-enabled true]

@@ -85,3 +85,46 @@
           (is (false? (#'mfa.management/verify-user-password user-id "")))
           (is (false? (#'mfa.management/verify-user-password user-id "   ")))
           (is (false? (#'mfa.management/verify-user-password user-id nil))))))))
+
+(deftest status-requires-session-test
+  (testing "GET /status without a session → 401 (the management block is behind +auth)"
+    (is (= "Unauthenticated" (mt/client :get 401 "ee/mfa/status")))))
+
+(deftest pending-re-enroll-overwrites-secret-test
+  (testing "re-enrolling while pending generates a new secret; the OLD pending secret no longer confirms"
+    (mt/with-premium-features #{:multi-factor-auth}
+      (mt/with-temporary-setting-values [mfa-enabled true]
+        (with-fresh-user-session! [session-key _email password]
+          (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})
+                {secret2 :secret} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
+            (is (not= secret secret2) "a fresh secret is issued on each re-enroll")
+            (testing "a code from the FIRST (discarded) secret is rejected at confirm"
+              (mt/client session-key :post 401 "ee/mfa/enroll/confirm" {:code (totp/generate-code secret)}))
+            (testing "confirming with the SECOND secret succeeds"
+              (is (= 10 (count (:recovery_codes (mt/client session-key :post 200 "ee/mfa/enroll/confirm"
+                                                           {:code (totp/generate-code secret2)}))))))))))))
+
+(deftest confirm-code-cannot-replay-to-disable-test
+  (testing "the code consumed by confirm-enrollment cannot then be used to disable (cross-operation replay)"
+    (mt/with-premium-features #{:multi-factor-auth}
+      (mt/with-temporary-setting-values [mfa-enabled true]
+        (with-fresh-user-session! [session-key _email password]
+          (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})
+                code             (totp/generate-code secret)]
+            ;; confirm consumes `code`'s time step
+            (mt/client session-key :post 200 "ee/mfa/enroll/confirm" {:code code})
+            (testing "the same code is rejected at disable — the time step was already consumed"
+              (is (= "Invalid authentication code."
+                     (mt/client session-key :post 401 "ee/mfa/disable" {:code code}))))))))))
+
+(deftest disable-throttled-test
+  (testing "repeated wrong codes on /disable are throttled — 6-digit codes need brute-force limits"
+    (mt/with-premium-features #{:multi-factor-auth}
+      (mt/with-temporary-setting-values [mfa-enabled true]
+        (with-fresh-user-session! [session-key _email password]
+          (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
+            (mt/client session-key :post 200 "ee/mfa/enroll/confirm" {:code (totp/generate-code secret)})
+            (dotimes [_ 5]
+              (mt/client session-key :post 401 "ee/mfa/disable" {:code (wrong-code secret)}))
+            (let [resp (mt/client session-key :post 400 "ee/mfa/disable" {:code (wrong-code secret)})]
+              (is (re-find #"Too many attempts!" (str resp))))))))))

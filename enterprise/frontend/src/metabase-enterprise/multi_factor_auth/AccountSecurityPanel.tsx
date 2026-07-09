@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import QRCode from "react-qr-code";
 import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -136,17 +137,18 @@ const EnrollCard = ({
         <Box component="form" onSubmit={handleConfirm}>
           <Title order={4} mb="sm">{t`Finish setup`}</Title>
           <Text mb="xs">
-            {t`Add this key to an authenticator app (Google Authenticator, 1Password, Authy…):`}
+            {t`Scan this with an authenticator app (Google Authenticator, 1Password, Authy…):`}
+          </Text>
+          {otpauthUri && (
+            <Box bg="white" p="md" w="fit-content" mb="md">
+              <QRCode value={otpauthUri} size={180} />
+            </Box>
+          )}
+          <Text size="sm" c="text-secondary" mb="xs">
+            {t`Or enter this key manually:`}
           </Text>
           <Code block mb="md">
             {secret}
-          </Code>
-          {/* TODO(FE handoff): render this as a QR code (design calls for react-qr-code) */}
-          <Text size="sm" c="text-secondary" mb="xs">
-            {t`Or open this setup link on the device running your authenticator:`}
-          </Text>
-          <Code block mb="md">
-            {otpauthUri}
           </Code>
           <TextInput
             label={t`Enter the 6-digit code it shows`}
