@@ -3,12 +3,11 @@
   `\"totp\"`) inside the `:credentials` JSON. A user is enrolled only once `:confirmed_at` is
   present.
 
-  The model's credentials transform is plain JSON, NOT encrypted-json — encryption of the TOTP
-  secret is this namespace's contract: any writer of `:secret` MUST store
-  `(encryption/maybe-encrypt secret)` (the read path [[stored-secret]] calls `maybe-decrypt`, which
-  passes plaintext through and will silently mask a writer that forgets). No writer exists yet;
-  enrollment creation arrives with the enrollment API. Recovery-code hashes and the replay/jti
-  bookkeeping need no encryption — they contain no recoverable secret.
+  Encryption at rest is the model's responsibility, not this namespace's: `:credentials` is
+  whole-column encrypted-json (see the `:model/AuthIdentity` transforms) and covered by
+  `rotate-encryption-key`, so code here reads and writes plaintext maps. Do NOT `maybe-encrypt`
+  individual fields — a field encrypted inside the JSON is invisible to key rotation and dies
+  with the old key.
 
   Also owns the two pieces of one-time-use state, both kept in the same credentials map so
   enforcement is correct across multiple app nodes with no schema migration:
@@ -21,7 +20,6 @@
   (:require
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
-   [metabase.util.encryption :as encryption]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -40,7 +38,7 @@
   (some? (get-in auth-identity [:credentials :confirmed_at])))
 
 (defn- stored-secret [auth-identity]
-  (some-> (get-in auth-identity [:credentials :secret]) encryption/maybe-decrypt))
+  (get-in auth-identity [:credentials :secret]))
 
 (defn enrolled-method
   "The user's confirmed MFA method keyword (currently only `:totp`), or nil if not enrolled."
