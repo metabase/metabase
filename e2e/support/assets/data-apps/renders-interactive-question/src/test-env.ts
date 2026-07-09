@@ -6,6 +6,13 @@ type CountAggregation = { type: "operator"; operator: "count"; args: [] };
 export type DataAppTestEnv = {
   scalarQuery: { source: TableSource; aggregations: CountAggregation[] };
   questionQuery: { source: TableSource };
+  // Config for the `/sandboxing` page: URLs it fetches to probe the sandbox's
+  // `allowed_hosts` gate. `allowedUrl` is expected to be in `allowed_hosts`,
+  // `blockedUrl` is not.
+  sandbox?: {
+    allowedUrl: string;
+    blockedUrl: string;
+  };
 };
 
 declare global {
