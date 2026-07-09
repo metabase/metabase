@@ -1250,7 +1250,17 @@
                                                  :visualization_settings {}}])]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"was not found"
-                                  (serdes.load/load-metabase! ingestion)))))))))
+                                  (serdes.load/load-metabase! ingestion)))
+            (testing "the not-found error names the entity holding the dangling reference (GHY-3992)"
+              (let [e (try
+                        (serdes.load/load-metabase! ingestion)
+                        nil
+                        (catch clojure.lang.ExceptionInfo e e))]
+                (is (some? e))
+                (is (= {:model "Database" :id "bad-db"}
+                       (select-keys (ex-data e) [:model :id])))
+                (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                       (:referrer (ex-data e))))))))))))
 
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)
