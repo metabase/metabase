@@ -72,8 +72,6 @@ export function BoxPlotChart({
   const option = getBoxPlotOption(
     chartModel,
     layoutModel,
-    null,
-    [],
     settings,
     false,
     renderingContext,
