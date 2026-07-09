@@ -1338,15 +1338,16 @@
 
 (defn- insert-new-dashcard!
   "Insert a new dashcard at `position-fields` on `tab-id` and record it in the mutation `state`.
-   The returned instance (with its :id) goes into :placed so later mutations in the batch — notably
-   a `move` to \"top\", which shifts every other card by id — can address it."
+   Goes through [[dashboard-card/create-dashboard-cards!]] so model-level invariants (e.g. no
+   document-backed cards on dashboards) are enforced. The returned instance (with its :id) goes
+   into :placed so later mutations in the batch — notably a `move` to \"top\", which shifts every
+   other card by id — can address it."
   [state dashboard-id tab-id position-fields columns]
-  (let [new-dashcard (t2/insert-returning-instance!
-                      :model/DashboardCard
-                      (merge position-fields
-                             {:dashboard_id     dashboard-id
-                              :dashboard_tab_id tab-id}
-                             columns))]
+  (let [new-dashcard (first (dashboard-card/create-dashboard-cards!
+                             [(merge position-fields
+                                     {:dashboard_id     dashboard-id
+                                      :dashboard_tab_id tab-id}
+                                     columns)]))]
     (swap! state #(-> %
                       (update :placed conj new-dashcard)
                       (update :added conj new-dashcard)))))
@@ -1389,7 +1390,11 @@
       (try
         (case action
           "add"
-          (let [card    (api/read-check :model/Card card_id)
+          (let [card    (api/check-not-archived (api/read-check :model/Card card_id))
+                ;; A card internal to a different dashboard (a dashboard question) can't be added
+                ;; here — mirrors the REST dashcard-creation gate.
+                _       (api/check-400 (or (nil? (:dashboard_id card))
+                                           (= (:dashboard_id card) dashboard-id)))
                 display (or (:display card) :table)
                 tab-id  (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
@@ -1412,7 +1417,8 @@
           (let [existing (api/check-404
                           (t2/select-one :model/DashboardCard
                                          :id dashcard_id :dashboard_id dashboard-id))]
-            (t2/delete! :model/DashboardCard :id dashcard_id)
+            ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
+            (dashboard-card/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
@@ -1462,6 +1468,11 @@
                                  :mutation-index mutation-index
                                  :mutation       mutation)
                           e)))))
+    ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
+    ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
+    (when (or (seq (:added @state)) (seq (:removed @state)))
+      (dashboard/archive-or-unarchive-internal-dashboard-questions!
+       dashboard-id (t2/select :model/DashboardCard :dashboard_id dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
@@ -1500,10 +1511,16 @@
                        (contains? body :description)   (assoc :description (:description body))
                        (contains? body :collection_id) (assoc :collection_id (:collection_id body))
                        (contains? body :archived)      (assoc :archived (boolean (:archived body))))
+        ;; Keep `archived_directly` in sync (and drop any `collection_id` sent alongside an
+        ;; archive), mirroring the REST PUT-dashboard path.
+        updates      (api/updates-with-archived-directly current-dash updates)
         ;; A move requires write on BOTH source and target collection. `api/write-check :model/Dashboard`
         ;; above only covered the source entity. Mirror the REST endpoint's gate.
         _            (collection/check-allowed-to-change-collection current-dash updates)
         mutations    (:dashcards body)
+        ;; Card mutations on an archived dashboard are rejected, like the REST path.
+        _            (when (seq mutations)
+                       (api/check-not-archived current-dash))
         result       (t2/with-transaction [_conn]
                        (when (seq updates)
                          (dashboard/cascade-card-state-from-dashboard-update! current-dash updates)

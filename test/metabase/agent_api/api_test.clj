@@ -1478,6 +1478,32 @@
         (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
                               {:dashcards [{:action "add_heading" :text "Nope" :tab_id 999999}]})))))
 
+(deftest update-dashboard-lifecycle-checks-test
+  (testing "dashcard mutations on an archived dashboard are rejected"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Archived Dash" :archived true}
+                   :model/Card      {card-id :id} {:name "c" :dataset_query (orders-count-query) :display :table}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id card-id}]})))
+  (testing "adding an archived card is rejected"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Live Dash"}
+                   :model/Card      {card-id :id} {:name "archived c" :dataset_query (orders-count-query)
+                                                   :display :table :archived true}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id card-id}]})
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+  (testing "adding a question internal to another dashboard is rejected"
+    (mt/with-temp [:model/Dashboard {other-dash :id} {:name "Owner Dash"}
+                   :model/Dashboard {dash-id :id}    {:name "Target Dash"}
+                   :model/Card      {card-id :id}    {:name "dq" :dataset_query (orders-count-query)
+                                                      :display :table :dashboard_id other-dash}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add" :card_id card-id}]})))
+  (testing "archiving via the agent endpoint records archived_directly, like the REST path"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "To Archive"}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:archived true})
+      (is (true? (t2/select-one-fn :archived_directly :model/Dashboard :id dash-id))))))
+
 (deftest update-dashboard-dashcards-move-bottom-test
   (testing "Moving a card to the bottom places it below the tab's bottom edge, not back into its old slot"
     ;; Regression: "bottom" used first-fit autoplace over the layout minus the moved card, so a card
