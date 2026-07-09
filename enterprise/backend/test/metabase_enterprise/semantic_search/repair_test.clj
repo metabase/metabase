@@ -118,34 +118,46 @@
           index-t  (str "count_orphans_index_" suffix)
           gate-t   (str "count_orphans_gate_" suffix)
           repair-t (str "count_orphans_repair_" suffix)
-          exec!    (fn [q] (jdbc/execute! pgvector [q]))]
+          exec!    (fn [q] (jdbc/execute! pgvector [q]))
+          count!   (fn [watermark] (semantic.repair/count-stale-orphans pgvector index-t gate-t repair-t watermark))
+          wm-ts    (t/offset-date-time "2026-01-01T12:00:00Z")]
       (try
         (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" index-t))
-        (exec! (format "CREATE TABLE \"%s\" (model text, model_id text, document_hash text, gated_at timestamptz)"
+        (exec! (format "CREATE TABLE \"%s\" (id text, model text, model_id text, document_hash text, gated_at timestamptz)"
                        gate-t))
         (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" repair-t))
         ;; candidate set: card 1 only
         (exec! (format "INSERT INTO \"%s\" VALUES ('card','1')" repair-t))
-        ;; index rows: 1 = still a candidate, 2 = tombstone behind the watermark (stale), 3 = tombstone
-        ;; ahead of it (indexer backlog), 4 = gate row gone (survived tombstone cleanup), 5 = live gate row
-        (exec! (format "INSERT INTO \"%s\" VALUES ('card','1'),('card','2'),('card','3'),('card','4'),('card','5')"
+        ;; index rows: 1 = still a candidate, 2 = tombstone behind the watermark (stale), 3 = tombstone ahead
+        ;; of it (indexer backlog), 4 = gate row gone (survived tombstone cleanup), 5 = live gate row,
+        ;; 6/7 = tombstones AT the watermark timestamp with gate ids on either side of the watermark id
+        (exec! (format (str "INSERT INTO \"%s\" VALUES "
+                            "('card','1'),('card','2'),('card','3'),('card','4'),('card','5'),"
+                            "('card','6'),('card','7')")
                        index-t))
         (exec! (format (str "INSERT INTO \"%s\" VALUES "
-                            "('card','2', NULL,   now() - interval '2 hours'), "
-                            "('card','3', NULL,   now()), "
-                            "('card','5', 'hash', now() - interval '2 hours')")
+                            "('card_2', 'card','2', NULL,   timestamptz '2026-01-01 11:00:00+00'), "
+                            "('card_3', 'card','3', NULL,   timestamptz '2026-01-01 13:00:00+00'), "
+                            "('card_5', 'card','5', 'hash', timestamptz '2026-01-01 11:00:00+00'), "
+                            "('card_6', 'card','6', NULL,   timestamptz '2026-01-01 12:00:00+00'), "
+                            "('card_7', 'card','7', NULL,   timestamptz '2026-01-01 12:00:00+00')")
                        gate-t))
-        (let [watermark (t/minus (t/offset-date-time) (t/hours 1))]
-          (testing "counts non-candidates whose tombstone the watermark has passed, or whose gate row is gone"
-            (is (= 2 (semantic.repair/count-stale-orphans pgvector index-t gate-t repair-t watermark))))
-          (testing "a tombstone ahead of the watermark is in-flight backlog, not garbage"
-            (is (= 3 (semantic.repair/count-stale-orphans
-                      pgvector index-t gate-t repair-t (t/plus (t/offset-date-time) (t/hours 1))))
-                "once the watermark passes it, the same tombstone counts"))
-          (testing "nil watermark (indexer never ran) counts no tombstones, only gate-row-gone orphans"
-            (is (= 1 (semantic.repair/count-stale-orphans pgvector index-t gate-t repair-t nil))))
-          (testing "a query failure returns nil rather than failing the repair run"
-            (is (nil? (semantic.repair/count-stale-orphans pgvector "no_such_table" gate-t repair-t watermark)))))
+        (testing "counts non-candidates whose tombstone the (gated_at, id) watermark has passed, or whose
+                 gate row is gone"
+          ;; watermark id between card_6 and card_7: card 2 (behind), 4 (gate row gone), 6 (same ts, id at/
+          ;; behind watermark id) count; card 3 (ahead) and 7 (same ts, later id) are backlog
+          (is (= 3 (count! {:indexer_last_seen wm-ts :indexer_last_seen_id "card_6a"}))))
+        (testing "a tombstone ahead of the watermark is in-flight backlog, not garbage"
+          (is (= 5 (count! {:indexer_last_seen (t/plus wm-ts (t/hours 2)) :indexer_last_seen_id ""}))
+              "once the watermark passes them, the same tombstones count"))
+        (testing "nil watermark (indexer never ran) counts no tombstones, only gate-row-gone orphans"
+          (is (= 1 (count! nil))))
+        (testing "a timestamp-only watermark (no id) treats same-timestamp tombstones as pending"
+          (is (= 2 (count! {:indexer_last_seen wm-ts}))
+              "conservative: cards 6/7 excluded, only card 2 and the gate-row-gone card 4 count"))
+        (testing "a query failure returns nil rather than failing the repair run"
+          (is (nil? (semantic.repair/count-stale-orphans pgvector "no_such_table" gate-t repair-t
+                                                         {:indexer_last_seen wm-ts}))))
         (finally
           (exec! (format "DROP TABLE IF EXISTS \"%s\", \"%s\", \"%s\"" index-t gate-t repair-t)))))))
 

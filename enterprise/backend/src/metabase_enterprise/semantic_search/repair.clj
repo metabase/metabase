@@ -76,19 +76,24 @@
 (defn count-stale-orphans
   "Count rows in the active index table whose `(model, model_id)` is absent from the repair table (the current
   candidate set) AND has no live or pending gate row -- garbage whose gated delete the indexer has already
-  consumed (`gated_at` at/behind `watermark`, the indexer's `indexer_last_seen`) yet whose index row still
-  stands. Callers run this BEFORE the current repair's own gate-deletes: a freshly found lost delete is
-  in-flight cleanup the indexer typically clears within minutes, and counting it would push a garbage spike
-  that then stands until the next hourly repair. Tombstones ahead of the watermark are the same in-flight
-  work (e.g. a bulk delete just before repair) and are excluded for the same reason -- the staleness metric
-  already covers that backlog. A nil `watermark` (indexer never ran) excludes every tombstone.
+  consumed yet whose index row still stands. `metadata-row` is the active index's metadata row; its
+  `indexer_last_seen` / `indexer_last_seen_id` form the indexer's composite `(gated_at, id)` consumption
+  watermark (the same ordering the gate poll uses), so a tombstone counts as consumed only when its
+  `(gated_at, id)` is at/behind it.
+  Callers run this BEFORE the current repair's own gate-deletes: a freshly found lost delete is in-flight
+  cleanup the indexer typically clears within minutes, and counting it would push a garbage spike that then
+  stands until the next hourly repair. Tombstones ahead of the watermark are the same in-flight work (e.g. a
+  bulk delete just before repair) and are excluded for the same reason -- the staleness metric already
+  covers that backlog. A nil `indexer_last_seen` (indexer never ran) excludes every tombstone; a nil
+  `indexer_last_seen_id` treats same-timestamp tombstones as pending (conservative, no false spike).
   Unlike the gate-based [[find-lost-deletes]] anti-join, this excludes retained tombstones for rows the
   indexer has already removed, so the count doesn't stay inflated until tombstone cleanup runs.
   Returns nil if the count query fails: this feeds only the garbage health metric, and (like
   [[find-lost-deletes]]) a metric-read blip must not fail the repair run whose real work already committed."
-  [pgvector index-table-name gate-table-name repair-table-name watermark]
+  [pgvector index-table-name gate-table-name repair-table-name metadata-row]
   (try
-    (let [count-sql (-> (sql.helpers/select [:%count.* :n])
+    (let [{:keys [indexer_last_seen indexer_last_seen_id]} metadata-row
+          count-sql (-> (sql.helpers/select [:%count.* :n])
                         (sql.helpers/from [(keyword index-table-name) :i])
                         (sql.helpers/where
                          [:not [:exists (-> (sql.helpers/select 1)
@@ -96,17 +101,19 @@
                                             (sql.helpers/where [:= :r.model :i.model]
                                                                [:= :r.model_id :i.model_id]))]]
                          ;; no live gate row (document_hash NULL or row gone) and no pending tombstone the
-                         ;; indexer hasn't consumed yet (gated_at past the watermark; nil watermark = all
-                         ;; tombstones pending)
+                         ;; indexer hasn't consumed yet ((gated_at, id) past the watermark; nil watermark =
+                         ;; all tombstones pending, '' sorts before every real gate id)
                          [:not [:exists (-> (sql.helpers/select 1)
                                             (sql.helpers/from [(keyword gate-table-name) :g])
                                             (sql.helpers/where [:= :g.model :i.model]
                                                                [:= :g.model_id :i.model_id]
                                                                [:or
                                                                 [:!= :g.document_hash nil]
-                                                                [:> :g.gated_at
-                                                                 [:coalesce [:lift watermark]
-                                                                  [:raw "'-infinity'::timestamptz"]]]]))]])
+                                                                [:> [:composite :g.gated_at :g.id]
+                                                                 [:composite
+                                                                  [:coalesce [:lift indexer_last_seen]
+                                                                   [:raw "'-infinity'::timestamptz"]]
+                                                                  [:coalesce [:lift indexer_last_seen_id] ""]]]]))]])
                         (sql/format :quoted true))]
       (or (:n (jdbc/execute-one! pgvector count-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})) 0))
     (catch Exception e

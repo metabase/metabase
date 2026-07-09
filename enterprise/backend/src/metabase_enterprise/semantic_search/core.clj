@@ -218,7 +218,7 @@
                                                              (-> active-state :index :table-name)
                                                              (:gate-table-name index-metadata)
                                                              repair-table-name
-                                                             (-> active-state :metadata-row :indexer_last_seen))]
+                                                             (:metadata-row active-state))]
             ;; Find documents in the gate table that are not in the provided searchable-documents, and gate deletes for them
             (when-let [ids-by-model (semantic.repair/find-lost-deletes-by-model pgvector (:gate-table-name index-metadata) repair-table-name)]
               (doseq [[model ids] ids-by-model]
