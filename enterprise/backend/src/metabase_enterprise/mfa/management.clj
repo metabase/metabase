@@ -21,6 +21,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -146,6 +147,50 @@
      :pending                  (enrollment/pending? user-id)
      :method                   (some-> method name)
      :recovery_codes_remaining (enrollment/recovery-codes-remaining user-id)}))
+
+;;; -------------------------------------------------- Admin --------------------------------------------------
+
+(api.macros/defendpoint :post "/admin/remove"
+  "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost
+  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
+  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —
+  there is nothing to \"reset\", the secret lives on their device."
+  [_route-params
+   _query-params
+   {:keys [user_id]} :- [:map [:user_id ms/PositiveInt]]]
+  (api/check-superuser)
+  (when (enrollment/disable! user_id)
+    (notify! user_id
+             (str (deferred-tru "Two-factor authentication was removed from your Metabase account"))
+             (str (deferred-tru "An administrator removed two-factor authentication from your account. You can set it up again from your account settings. If you did not request this, contact your administrator immediately."))
+             :event/mfa-disabled))
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :get "/admin/overview" :- [:map
+                                                   [:encryption_key_set :boolean]
+                                                   [:enrolled_count     :int]
+                                                   [:unenrolled_users   [:sequential
+                                                                         [:map
+                                                                          [:id    ms/PositiveInt]
+                                                                          [:email ms/NonBlankString]]]]]
+  "Admin: enrollment overview — who hasn't set up a second factor yet, and whether the instance
+  encrypts secrets at rest."
+  []
+  (api/check-superuser)
+  ;; Enrollment state lives inside the encrypted credentials JSON, so filter in memory rather
+  ;; than in SQL. Row count = users who ever started enrollment, so this stays small.
+  (let [enrolled-ids (->> (t2/select [:model/AuthIdentity :id :user_id :credentials] :provider "totp")
+                          (filter #(get-in % [:credentials :confirmed_at]))
+                          (map :user_id)
+                          set)]
+    {:encryption_key_set (encryption/default-encryption-enabled?)
+     :enrolled_count     (count enrolled-ids)
+     :unenrolled_users   (vec (for [user  (t2/select [:model/User :id :email]
+                                                     :is_active true
+                                                     :type "personal"
+                                                     {:order-by [:email]})
+                                    :when (not (contains? enrolled-ids (:id user)))]
+                                (select-keys user [:id :email])))}))
 
 ;;; -------------------------------------------------- Recovery codes --------------------------------------------------
 

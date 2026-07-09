@@ -13,6 +13,7 @@ import {
   type AuthSettingsPageProps,
   PLUGIN_AUTH_PROVIDERS,
 } from "metabase/plugins";
+import { MfaAuthCard } from "metabase-enterprise/multi_factor_auth/MfaAuthCard";
 
 import { JwtAuthCard } from "../containers/JwtAuthCard";
 import { OidcAuthCard } from "../containers/OidcAuthCard";
@@ -45,6 +46,7 @@ function AuthenticationTab() {
       <SamlAuthCard />
       <JwtAuthCard />
       <OidcAuthCard />
+      <MfaAuthCard />
 
       <SettingsSection>
         <AdminSettingInput

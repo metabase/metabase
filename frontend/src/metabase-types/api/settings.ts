@@ -769,6 +769,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-openrouter-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
+  "mfa-enabled"?: boolean;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

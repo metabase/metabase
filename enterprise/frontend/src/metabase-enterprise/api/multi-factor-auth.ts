@@ -13,8 +13,21 @@ export interface MfaEnrollResponse {
   otpauth_uri: string;
 }
 
+export interface MfaAdminOverview {
+  encryption_key_set: boolean;
+  enrolled_count: number;
+  unenrolled_users: { id: number; email: string }[];
+}
+
 export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getMfaAdminOverview: builder.query<MfaAdminOverview, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/mfa/admin/overview",
+      }),
+      providesTags: ["session-properties"],
+    }),
     verifyMfa: builder.mutation<
       { id: string },
       { mfa_token: string; code: string }
@@ -80,6 +93,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetMfaAdminOverviewQuery,
   useVerifyMfaMutation,
   useGetMfaStatusQuery,
   useEnrollMfaMutation,

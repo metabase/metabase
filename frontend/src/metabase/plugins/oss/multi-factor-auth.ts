@@ -10,6 +10,7 @@ const getDefaultPluginMultiFactorAuth = () => ({
   isEnabled: () => false,
   ChallengeForm: PluginPlaceholder<MfaChallengeFormProps>,
   AccountSecurityPanel: PluginPlaceholder,
+  AdminAuthCard: PluginPlaceholder,
 });
 
 export const PLUGIN_MULTI_FACTOR_AUTH = getDefaultPluginMultiFactorAuth();
