@@ -2241,7 +2241,15 @@ describe("scenarios > metrics > explorer", () => {
         cy.log(
           "filter pills are in place and show the badge indicating the unique metric instance",
         );
-        H.MetricsViewer.getAllFilterPills().should("have.length", 2);
+        // After a reload or a formula edit the viewer re-resolves its metric
+        // definitions asynchronously; MetricsFilterPills renders nothing while the
+        // filters are momentarily absent (the chart shows an intermediate unfiltered
+        // render), and a single `cy.wait("@dataset")` can land on that recompute. Retry
+        // on the settled pill count — which can take longer than the default 4s command
+        // timeout under CI load — rather than asserting during the transient.
+        cy.findAllByTestId("metrics-viewer-filter-pill", {
+          timeout: 15000,
+        }).should("have.length", 2);
         H.MetricsViewer.getAllFilterPills()
           .eq(0)
           .findByText("2")
