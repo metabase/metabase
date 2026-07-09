@@ -579,28 +579,34 @@
      :dashcard_id id
      :description (:text visualization_settings)}))
 
-(defn- fetch-dashboard-items [id-str query-params]
+(defn- fetch-dashboard-items
+  "One item per dashcard, in row/col (layout) order, each carrying the `dashcard_id` that
+   `update_dashboard` remove/move mutations take. Card-backed dashcards keep the card fields;
+   virtual dashcards (headings, text, ...) render their text. Dashcards whose card is archived
+   or unreadable are omitted."
+  [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        cards        (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                      :collection_id :database_id :table_id]
-                                     {:where    [:and
-                                                 [:= :archived false]
-                                                 [:exists {:select 1
-                                                           :from   [[:report_dashboardcard :dc]]
-                                                           :where  [:and
-                                                                    [:= :dc.card_id :report_card.id]
-                                                                    [:= :dc.dashboard_id dashboard-id]]}]]
-                                      :order-by [[:%lower.name :asc]]})
-                          (filter mi/can-read?)
-                          (mapv present-card))
-        virtual      (->> (t2/select [:model/DashboardCard :id :row :col :visualization_settings]
-                                     :dashboard_id dashboard-id
-                                     :card_id nil
-                                     {:order-by [[:row :asc] [:col :asc]]})
-                          (filter (comp :virtual_card :visualization_settings))
-                          (mapv present-virtual-dashcard))]
-    (list-result :dashboard-items (into cards virtual) query-params)))
+        dashcards    (t2/select [:model/DashboardCard :id :card_id :visualization_settings]
+                                :dashboard_id dashboard-id
+                                {:order-by [[:row :asc] [:col :asc]]})
+        card-ids     (into #{} (keep :card_id) dashcards)
+        readable     (when (seq card-ids)
+                       (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                        :collection_id :database_id :table_id]
+                                       :id [:in card-ids]
+                                       :archived false)
+                            (filter mi/can-read?)
+                            (into {} (map (juxt :id identity)))))
+        items        (into []
+                           (keep (fn [{:keys [id card_id visualization_settings] :as dashcard}]
+                                   (if card_id
+                                     (when-let [card (get readable card_id)]
+                                       (assoc (present-card card) :dashcard_id id))
+                                     (when (:virtual_card visualization_settings)
+                                       (present-virtual-dashcard dashcard)))))
+                           dashcards)]
+    (list-result :dashboard-items items query-params)))
 
 ;; ----- Dispatch -----
 

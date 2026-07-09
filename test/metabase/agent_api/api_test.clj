@@ -1467,6 +1467,23 @@
                :row              0}
               (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil))))))
 
+(deftest update-dashboard-dashcards-move-bottom-test
+  (testing "Moving a card to the bottom places it below the tab's bottom edge, not back into its old slot"
+    ;; Regression: "bottom" used first-fit autoplace over the layout minus the moved card, so a card
+    ;; moved from the top would be re-placed straight into the gap it had just vacated.
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Move Bottom"}
+                   :model/Card          {card-id :id} {:name "c" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {a-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 12 :size_y 4}
+                   :model/DashboardCard {b-dc :id}    {:dashboard_id dash-id :card_id card-id
+                                                       :row 4 :col 0 :size_x 12 :size_y 4}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "move" :dashcard_id a-dc :position "bottom"}]})
+      (let [a (t2/select-one :model/DashboardCard :id a-dc)
+            b (t2/select-one :model/DashboardCard :id b-dc)]
+        (is (>= (:row a) (+ (:row b) (:size_y b)))
+            "the moved card must land below the other card's bottom edge")))))
+
 (deftest update-dashboard-dashcard-ids-row-col-order-test
   (testing "Response dashcard_ids come back in row/col order, not insertion order"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Ordered Ids"}

@@ -656,11 +656,12 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:name "Dash card"}
-                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (testing "metabase://dashboard/{id}/items returns cards on the dashboard"
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id}]
+      (testing "metabase://dashboard/{id}/items returns each dashcard with its dashcard_id"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
           (is (str/includes? output "Dash card"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
+          (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
 
 (deftest read-dashboard-items-includes-virtual-dashcards-test
   (mt/with-current-user (mt/user->id :crowberto)

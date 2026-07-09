@@ -1415,10 +1415,11 @@
                 new-pos    (case position
                              "top"    {:row 0 :col 0
                                        :size_x (:size_x existing) :size_y (:size_y existing)}
-                             "bottom" (autoplace/get-position-for-new-dashcard
-                                       tab-placed
-                                       (:size_x existing) (:size_y existing)
-                                       autoplace/default-grid-width))
+                             ;; Not first-fit autoplace — that would re-fill the slot the moved card
+                             ;; just vacated. "bottom" means below the tab's bottom edge.
+                             "bottom" {:row    (transduce (map #(+ (:row %) (:size_y %))) max 0 tab-placed)
+                                       :col    (:col existing)
+                                       :size_x (:size_x existing) :size_y (:size_y existing)})
                 shifted?   (fn [c] (and (= position "top") (same-tab? c)))]
             ;; "top" parks the card at row 0; everything else on its tab has to shift down by the
             ;; moved card's height or we get overlapping dashcards (review finding #2).
