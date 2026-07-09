@@ -476,6 +476,12 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
       expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
     });
 
+    it("keeps the filters header visible in object detail view (metabase#66957)", () => {
+      setup({ card, queryBuilderMode: "view", isObjectDetail: true });
+      expect(screen.getByText("Total is less than 50")).toBeInTheDocument();
+      expect(screen.getByText("Tax is not empty")).toBeInTheDocument();
+    });
+
     it("can collapse and expand filters", async () => {
       setup({ card, queryBuilderMode: "view" });
 
