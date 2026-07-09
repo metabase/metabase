@@ -41,10 +41,7 @@
     ;; crosses the limit, so the oversized body is never fully buffered.
     (let [oversized (byte-array (inc upload/max-upload-size-bytes))
           calls     (atom 0)]
-      ;; Plain `with-redefs` is required here: the request is handled on a server thread, which doesn't inherit
-      ;; this thread's dynamic bindings, so an `mt/with-dynamic-fn-redefs` spy would be invisible to it.
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
+      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
         (is (= "Uploaded content exceeded limits."
                (mt/user-http-request :crowberto :post 413 "upload/csv"
                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}
@@ -54,10 +51,7 @@
 (deftest csv-upload-too-many-files-test
   (testing "POST /api/upload/csv rejects multiple file parts with a 413, before the body reaches the handler"
     (let [calls (atom 0)]
-      ;; Plain `with-redefs` is required here: the request is handled on a server thread, which doesn't inherit
-      ;; this thread's dynamic bindings, so an `mt/with-dynamic-fn-redefs` spy would be invisible to it.
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
+      (mt/with-dynamic-fn-redefs [upload.api/from-csv! (fn [& _] (swap! calls inc) {:status 200})]
         (is (= "Uploaded content exceeded limits."
                (mt/user-http-request :crowberto :post 413 "upload/csv"
                                      {:request-options {:headers {"content-type" "multipart/form-data"}}}

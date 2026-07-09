@@ -1201,10 +1201,7 @@
   ;; crosses the limit, so the oversized body is never fully buffered.
   (let [oversized (byte-array (inc upload/max-upload-size-bytes))
         calls     (atom 0)]
-    ;; Plain `with-redefs` is required here: the request is handled on a server thread, which doesn't inherit
-    ;; this thread's dynamic bindings, so an `mt/with-dynamic-fn-redefs` spy would be invisible to it.
-    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-    (with-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
       (doseq [endpoint ["append-csv" "replace-csv"]]
         (testing (format "POST /api/table/:id/%s rejects files over the size cap with a 413, before the body reaches the handler" endpoint)
           (is (= "Uploaded content exceeded limits."
@@ -1215,10 +1212,7 @@
 
 (deftest update-csv-too-many-files-test
   (let [calls (atom 0)]
-    ;; Plain `with-redefs` is required here: the request is handled on a server thread, which doesn't inherit
-    ;; this thread's dynamic bindings, so an `mt/with-dynamic-fn-redefs` spy would be invisible to it.
-    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-    (with-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
       (doseq [endpoint ["append-csv" "replace-csv"]]
         (testing (format "POST /api/table/:id/%s rejects multiple file parts with a 413, before the body reaches the handler"
                          endpoint)
