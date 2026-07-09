@@ -29,6 +29,7 @@
   {:select [[[:inline "job"] :run_type]
             :id
             [:job_id :entity_id]
+            [:job_name :entity_name]
             [nil :direction]
             :run_method
             :status :is_active :start_time :end_time :message
@@ -47,6 +48,7 @@
   {:select [[[:inline "dag"] :run_type]
             :id
             [:source_transform_id :entity_id]
+            [:source_transform_name :entity_name]
             :direction
             [[:inline "manual"] :run_method]
             :status :is_active :start_time :end_time :message
@@ -64,6 +66,7 @@
   {:select [[[:inline "transform"] :run_type]
             :id
             [:transform_id :entity_id]
+            [:transform_name :entity_name]
             [nil :direction]
             :run_method
             :status :is_active :start_time :end_time :message
@@ -127,16 +130,18 @@
   "Prepare raw summary rows for an API response: hydrate each row's `:name` (nil when the underlying
   job/transform was deleted), keywordize the discriminator columns, and localize timestamps."
   [rows]
-  (let [by-type     (group-by :run_type rows)
-        job-ids     (seq (map :entity_id (get by-type "job")))
-        transform-ids   (seq (map :entity_id (concat (get by-type "dag") (get by-type "transform"))))
-        job->name   (when job-ids   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
+  (let [by-type         (group-by :run_type rows)
+        job-ids         (seq (keep :entity_id (get by-type "job")))
+        transform-ids   (seq (keep :entity_id (concat (get by-type "dag") (get by-type "transform"))))
+        job->name       (when job-ids (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
         transform->name (when transform-ids (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))]
-    (map (fn [{:keys [run_type entity_id] :as row}]
+    (map (fn [{:keys [run_type entity_id entity_name] :as row}]
            (-> row
-               (assoc :name (if (= run_type "job")
-                              (get job->name entity_id)
-                              (get transform->name entity_id)))
+               (assoc :name (or (if (= run_type "job")
+                                  (get job->name entity_id)
+                                  (get transform->name entity_id))
+                                entity_name))
+               (dissoc :entity_name)
                (update :run_type keyword)
                (update :status keyword)
                (m/update-existing :run_method #(some-> % keyword))

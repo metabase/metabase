@@ -84,6 +84,9 @@
           (is (= :started (:status run)))
           (is (true? (:is_active run)))
           (is (= tid (:source_transform_id run)))
+          (testing "the seed transform's name/entity_id are snapshotted for post-deletion display"
+            (is (= "seed" (:source_transform_name run)))
+            (is (some? (:source_transform_entity_id run))))
           (is (= :upstream (:direction run)))
           (is (= (mt/user->id :rasta) (:user_id run)))
           (testing "running-run-for-source-transform-id finds the active run"
@@ -111,6 +114,20 @@
           (let [row (t2/select-one :model/TransformDagRun :id run-id)]
             (is (= :failed (:status row)))
             (is (= "boom" (:message row))))
+          (finally
+            (t2/delete! :model/TransformDagRun :id run-id)))))))
+
+(deftest dag-run-survives-transform-deletion-test
+  (testing "deleting the seed transform nulls source_transform_id but preserves the DAG run and its snapshot"
+    (mt/with-temp [:model/Transform {tid :id} {:name "doomed seed"}]
+      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
+        (try
+          (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
+          (t2/delete! :model/Transform :id tid)
+          (let [run (t2/select-one :model/TransformDagRun :id run-id)]
+            (is (some? run) "the run row survives (FK is SET NULL, not CASCADE)")
+            (is (nil? (:source_transform_id run)))
+            (is (= "doomed seed" (:source_transform_name run))))
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))))
 

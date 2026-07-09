@@ -24,6 +24,8 @@
   [:map {:closed true}
    [:id pos-int?]
    [:job_id pos-int?]
+   [:job_name {:optional true} [:maybe :string]]
+   [:job_entity_id {:optional true} [:maybe :string]]
    [:run_method :keyword]
    [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]
@@ -291,6 +293,8 @@
   [:map {:closed true}
    [:id pos-int?]
    [:job_id pos-int?]
+   [:job_name {:optional true} [:maybe :string]]
+   [:job_entity_id {:optional true} [:maybe :string]]
    [:run_method :keyword]
    [:status [:enum :started :succeeded :failed :timeout :canceled]]
    [:is_active [:maybe :boolean]]

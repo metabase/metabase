@@ -4,7 +4,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.transforms.test-util :refer [parse-instant utc-timestamp]]))
+   [metabase.transforms.test-util :refer [parse-instant utc-timestamp]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -183,6 +184,46 @@
               (is (= 1 (:limit response)))
               (is (= 0 (:offset response)))
               (is (<= 3 (:total response))))))))))
+
+(deftest unified-runs-deleted-entities-test
+  (testing "GET /api/transform/runs keeps rows for deleted jobs/transforms, naming them from the run-start snapshot"
+    (mt/with-data-analyst-role! (mt/user->id :lucky)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-temp [:model/Transform {ta-id :id} {:name "Doomed Transform"}
+                       :model/Transform {tb-id :id} {:name "Doomed Seed"}
+                       :model/TransformJob {job-id :id} {:name "Doomed Job" :schedule "0 0 0 * * ?"}
+                       :model/TransformJobRun {job-run-id :id} {:job_id     job-id
+                                                                :job_name   "Doomed Job"
+                                                                :status     "succeeded"
+                                                                :run_method "cron"
+                                                                :start_time (parse-instant "2025-09-01T10:00:00")}
+                       :model/TransformDagRun {dag-run-id :id} {:source_transform_id   tb-id
+                                                                :source_transform_name "Doomed Seed"
+                                                                :direction             "upstream"
+                                                                :status                "succeeded"
+                                                                :start_time            (parse-instant "2025-09-02T10:00:00")}
+                       :model/TransformRun {standalone-id :id} {:transform_id   ta-id
+                                                                :transform_name "Doomed Transform"
+                                                                :status         "succeeded"
+                                                                :run_method     "manual"
+                                                                :start_time     (parse-instant "2025-09-03T10:00:00")}]
+          (t2/delete! :model/TransformJob :id job-id)
+          (t2/delete! :model/Transform :id [:in [ta-id tb-id]])
+          (let [rows (rows-by-type (get-runs))]
+            (testing "job run survives (job_id has no FK) with its snapshot name"
+              (let [row (rows ["job" job-run-id])]
+                (is (some? row))
+                (is (= "Doomed Job" (:name row)))))
+            (testing "DAG run survives (FK is SET NULL) with a nil entity_id and its snapshot name"
+              (let [row (rows ["dag" dag-run-id])]
+                (is (some? row))
+                (is (nil? (:entity_id row)))
+                (is (= "Doomed Seed" (:name row)))))
+            (testing "standalone run survives (FK is SET NULL) with a nil entity_id and its snapshot name"
+              (let [row (rows ["transform" standalone-id])]
+                (is (some? row))
+                (is (nil? (:entity_id row)))
+                (is (= "Doomed Transform" (:name row)))))))))))
 
 (deftest unified-runs-requires-data-analyst-test
   (testing "GET /api/transform/runs requires the data-analyst role"

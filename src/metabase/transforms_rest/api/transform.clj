@@ -233,8 +233,9 @@
 (def ^:private RunSummaryResponse
   "One row of the unified runs listing: a job run, a manual DAG-reprocess run, or a standalone
   transform run (one not belonging to a job/DAG run). Identified by `(run_type, id)`; `entity_id`
-  is the id of the associated job/transform and `name` its name (nil if it was deleted).
-  `direction` is set only for DAG runs."
+  is the id of the associated job/transform (nil if it was deleted) and `name` its name — live if
+  it still exists, otherwise the name snapshotted at run start. `direction` is set only for DAG
+  runs."
   [:map {:closed true}
    [:run_type [:enum :job :dag :transform]]
    [:id pos-int?]

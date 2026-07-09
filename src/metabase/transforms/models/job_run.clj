@@ -36,13 +36,19 @@
           (t2/reducible-select :model/TransformJobRun (latest-runs-query job-ids)))))
 
 (defn start-run!
-  "Start a run"
+  "Start a run. Snapshots the job's name and entity_id so the run stays displayable after the job
+  is deleted (`transform_job_run.job_id` has no FK; job runs outlive their job)."
   ([job-id run-method]
-   (t2/insert-returning-instance! :model/TransformJobRun
-                                  {:job_id job-id
-                                   :run_method run-method
-                                   :status :started
-                                   :is_active true})))
+   ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
+   ;; LocalizedString into the snapshot
+   (let [job (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id)]
+     (t2/insert-returning-instance! :model/TransformJobRun
+                                    {:job_id        job-id
+                                     :job_name      (some-> (:name job) str)
+                                     :job_entity_id (:entity_id job)
+                                     :run_method    run-method
+                                     :status        :started
+                                     :is_active     true}))))
 
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator

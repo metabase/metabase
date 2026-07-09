@@ -331,7 +331,11 @@
                     (is (= "Job run started" (:message response)))
                     (is (pos-int? (:job_run_id response)))
                     (is (= (:job_run_id response) (deref called 5000 ::timed-out)))
-                    (is (= (:id job) (t2/select-one-fn :job_id :model/TransformJobRun :id (:job_run_id response))))))))))
+                    (let [run (t2/select-one :model/TransformJobRun :id (:job_run_id response))]
+                      (is (= (:id job) (:job_id run)))
+                      (testing "the job's name and entity_id are snapshotted on the run"
+                        (is (= "To Execute" (:job_name run)))
+                        (is (= (:entity_id job) (:job_entity_id run)))))))))))
         (testing "returns a nil run id when the job has no transforms"
           (mt/with-temp [:model/TransformJob job {:name "Empty Job" :schedule "0 0 0 * * ?"}]
             (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]

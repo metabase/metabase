@@ -22,14 +22,19 @@
 
 (defn start-dag-run!
   "Start a DAG-reprocess run seeded from `source-transform-id`, traversing `direction`
-  (`:upstream`/`:downstream`). `user-id` is the user who triggered it."
+  (`:upstream`/`:downstream`). `user-id` is the user who triggered it. Snapshots the seed
+  transform's name and entity_id so the run stays displayable after the transform is deleted
+  (its FK is SET NULL, as for `transform_run.transform_id`)."
   [source-transform-id direction user-id]
-  (t2/insert-returning-instance! :model/TransformDagRun
-                                 {:source_transform_id source-transform-id
-                                  :direction           direction
-                                  :user_id             user-id
-                                  :status              :started
-                                  :is_active           true}))
+  (let [transform (t2/select-one [:model/Transform :name :entity_id] :id source-transform-id)]
+    (t2/insert-returning-instance! :model/TransformDagRun
+                                   {:source_transform_id        source-transform-id
+                                    :source_transform_name      (:name transform)
+                                    :source_transform_entity_id (:entity_id transform)
+                                    :direction                  direction
+                                    :user_id                    user-id
+                                    :status                     :started
+                                    :is_active                  true})))
 
 (defn running-run-for-source-transform-id
   "Return the single active DAG run seeded from `source-transform-id`, or nil."
