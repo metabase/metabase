@@ -84,7 +84,8 @@
   ai_sdk.create_data_part(data_type=AISDKDataTypes.TODO_LIST, version=1, value=todos)"
   [todos]
   {:type :data
-   :data-type todo-list-type   :data todos})
+   :data-type todo-list-type
+   :data todos})
 
 (defn code-edit-part
   "Create a CODE_EDIT data part for streaming.
@@ -94,7 +95,8 @@
   ai_sdk.create_data_part(data_type=AISDKDataTypes.CODE_EDIT, version=1, value=edit_data)"
   [edit-data]
   {:type :data
-   :data-type code-edit-type   :data edit-data})
+   :data-type code-edit-type
+   :data edit-data})
 
 (defn transform-suggestion-part
   "Create a TRANSFORM_SUGGESTION data part for streaming.
@@ -104,7 +106,8 @@
   ai_sdk.create_data_part(data_type=AISDKDataTypes.TRANSFORM_SUGGESTION, version=1, value=suggestion)"
   [suggestion]
   {:type :data
-   :data-type transform-suggestion-type   :data suggestion})
+   :data-type transform-suggestion-type
+   :data suggestion})
 
 (defn adhoc-viz-part
   "Create an ADHOC_VIZ data part for streaming.
@@ -115,7 +118,8 @@
   ai_sdk.create_data_part(data_type=AISDKDataTypes.ADHOC_VIZ, version=1, value=adhoc_viz_value)"
   [value]
   {:type :data
-   :data-type adhoc-viz-type   :data value})
+   :data-type adhoc-viz-type
+   :data value})
 
 (defn static-viz-part
   "Create a STATIC_VIZ data part for streaming.
@@ -125,7 +129,8 @@
   ai_sdk.create_data_part(data_type=AISDKDataTypes.STATIC_VIZ, version=1, value={\"entity_id\": entity_id})"
   [value]
   {:type :data
-   :data-type static-viz-type   :data value})
+   :data-type static-viz-type
+   :data value})
 
 (defn generated-entity-part
   "Create a GENERATED_ENTITY data part for streaming. `entity` is a map describing
@@ -133,7 +138,8 @@
   a referenced query, with that query embedded so the FE can run and render it."
   [entity]
   {:type :data
-   :data-type generated-entity-type   :data entity})
+   :data-type generated-entity-type
+   :data entity})
 
 (defn viz-part
   "Return the data part used to surface a query/chart result to the frontend.
