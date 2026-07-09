@@ -331,8 +331,13 @@ export const CommandSuggestion = forwardRef<
   };
 
   useEffect(() => {
+    // Reset the highlight only when the *visible* list changes. `currentItems`
+    // already folds in `searchMenuItems` whenever they're shown, so depending on
+    // `searchMenuItems.length` separately would reset the selection when
+    // background recents/search results load but aren't displayed (empty-query
+    // command mode) — clobbering keyboard/mouse navigation mid-interaction.
     setSelectedIndex(0);
-  }, [currentItems.length, viewMode, searchMenuItems.length]);
+  }, [currentItems.length, viewMode]);
 
   useEffect(() => {
     const selectedItem = itemRefs.current[selectedIndex];
