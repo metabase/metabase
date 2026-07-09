@@ -1,11 +1,13 @@
+import { t } from "ttag";
+
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { Stack } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
-
-import { WorkspacesHeader } from "../../components/WorkspacesHeader";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
@@ -56,8 +58,12 @@ function WorkspaceListPageBody({
 
   return (
     <PageContainer data-testid="workspace-list-page">
-      <WorkspacesHeader
+      <PaneHeader
+        breadcrumbs={
+          <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
+        }
         actions={hasWorkspaces && <NewWorkspaceButton databases={databases} />}
+        py={0}
       />
       {hasWorkspaces ? (
         <Stack data-testid="workspace-list">

@@ -23,6 +23,7 @@ export function SettingsNav() {
   const hasOidc = useHasTokenFeature("sso_oidc");
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
+  const hasWorkspaces = useHasTokenFeature("workspaces");
   const isHosted = useSetting("is-hosted?");
   const tokenFeatures = useSetting("token-features");
   const isAdmin = useSelector(getUserIsAdmin);
@@ -66,6 +67,13 @@ export function SettingsNav() {
           icon="sync"
         />
       ) : null}
+      {hasWorkspaces && (
+        <SettingsNavItem
+          path="workspaces"
+          label={t`Workspaces`}
+          icon="workspace"
+        />
+      )}
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />

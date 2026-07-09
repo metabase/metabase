@@ -1,10 +1,13 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type { State } from "metabase/redux/store";
 import type { RouteComponent } from "metabase/router";
 import type { Database } from "metabase-types/api";
 
-import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import {
+  NotFoundPlaceholder,
+  PluginPlaceholder,
+} from "../components/PluginPlaceholder";
 
 export type WorkspaceDatabaseSectionProps = {
   database: Database;
@@ -15,6 +18,7 @@ const getDefaultWorkspaces = () => ({
   getDataStudioRoutes: (): ReactNode => null,
   getWorkspaceDatabaseRoutes: (_IsAdmin: RouteComponent): ReactNode => null,
   WorkspaceDatabaseSection: PluginPlaceholder<WorkspaceDatabaseSectionProps>,
+  WorkspacesSettingsPage: NotFoundPlaceholder as ComponentType,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultWorkspaces();

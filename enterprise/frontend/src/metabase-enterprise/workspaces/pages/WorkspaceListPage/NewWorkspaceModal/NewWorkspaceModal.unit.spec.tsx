@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupCreateWorkspaceEndpoint,
+  setupListWorkspaceInstancesEndpoint,
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -29,6 +30,7 @@ function setup({
 
   setupCreateWorkspaceEndpoint(createdWorkspace);
   setupListWorkspacesEndpoint([createdWorkspace]);
+  setupListWorkspaceInstancesEndpoint([]);
 
   renderWithProviders(
     <NewWorkspaceModal

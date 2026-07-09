@@ -5,6 +5,7 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_TRANSFORMS_PYTHON,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import {
@@ -88,6 +89,10 @@ export const getSettingsRoutes = (
         component={() => <PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm />}
       />
       <Route path="remote-sync" component={RemoteSyncSettingsPage} />
+      <Route
+        path="workspaces"
+        component={PLUGIN_WORKSPACES.WorkspacesSettingsPage}
+      />
       <Route path="maps" component={MapsSettingsPage} />
       <Route path="localization" component={LocalizationSettingsPage} />
       <Route

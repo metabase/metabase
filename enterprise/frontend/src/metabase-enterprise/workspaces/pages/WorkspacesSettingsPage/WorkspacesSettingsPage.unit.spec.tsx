@@ -8,30 +8,35 @@ import {
   setupListWorkspacesEndpoint,
   setupTestWorkspaceInstanceConnectionEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/router";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type { Workspace, WorkspaceInstance } from "metabase-types/api";
 import {
   createMockWorkspace,
   createMockWorkspaceInstance,
 } from "metabase-types/api/mocks";
 
-import { InstanceListPage } from "./InstanceListPage";
+import { WorkspacesSettingsPage } from "./WorkspacesSettingsPage";
 
 function setup({
   instances = [] as WorkspaceInstance[],
   workspaces = [] as Workspace[],
 } = {}) {
+  // TreeTable virtualizes rows, so the container needs a measurable size
+  mockGetBoundingClientRect({ width: 800, height: 600 });
   setupListWorkspaceInstancesEndpoint(instances);
   setupListWorkspacesEndpoint(workspaces);
 
-  renderWithProviders(<Route path="*" component={InstanceListPage} />, {
-    withRouter: true,
-  });
+  renderWithProviders(<WorkspacesSettingsPage />);
 }
 
-describe("InstanceListPage", () => {
-  it("from the empty state, connects an instance through the modal", async () => {
+describe("WorkspacesSettingsPage", () => {
+  it("connects an instance through the modal", async () => {
     setup();
     setupCreateWorkspaceInstanceEndpoint(
       createMockWorkspaceInstance({ name: "Dev child" }),
@@ -120,19 +125,33 @@ describe("InstanceListPage", () => {
       workspaces: [createMockWorkspace({ id: 42, name: "The workspace" })],
     });
 
-    const freeItem = await screen.findByRole("region", {
-      name: "Free instance",
-    });
-    expect(freeItem).toBeInTheDocument();
+    const freeRow = await screen.findByRole("row", { name: "Free instance" });
+    expect(within(freeRow).getByText("Available")).toBeInTheDocument();
+    expect(within(freeRow).getByText("Not set up yet")).toBeInTheDocument();
+
+    const busyRow = screen.getByRole("row", { name: "Busy instance" });
+    expect(within(busyRow).getByText("The workspace")).toBeInTheDocument();
     expect(
-      screen.getByText(/Available for a workspace · not set up yet/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Used by the workspace "The workspace"/),
-    ).toBeInTheDocument();
+      within(busyRow).queryByText("Not set up yet"),
+    ).not.toBeInTheDocument();
+
     expect(
       screen.getAllByRole("button", { name: "Instance options" }),
     ).toHaveLength(2);
+  });
+
+  it("opens the edit modal when a row is clicked", async () => {
+    setup({
+      instances: [createMockWorkspaceInstance({ id: 1, name: "Dev child" })],
+    });
+
+    await userEvent.click(
+      await screen.findByRole("row", { name: "Dev child" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Edit this instance?" }),
+    ).toBeInTheDocument();
   });
 
   it("disconnects an instance from the menu", async () => {

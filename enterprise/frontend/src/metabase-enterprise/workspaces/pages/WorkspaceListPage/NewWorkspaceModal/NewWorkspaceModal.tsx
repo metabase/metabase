@@ -13,7 +13,15 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Alert, Button, Checkbox, Group, Modal, Stack } from "metabase/ui";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+} from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorkspaceMutation,
@@ -213,7 +221,7 @@ function InstanceSection({ instances, workspaces }: InstanceSectionProps) {
         clearable
       />
       {selectedInstance?.workspace_id != null && (
-        <Alert icon="warning" variant="warning">
+        <Alert icon={<Icon name="warning" />} color="warning">
           {selectedInstanceWorkspaceName != null
             ? t`This instance is already used by the workspace "${selectedInstanceWorkspaceName}". Setting it up will erase that workspace's deployment from the instance.`
             : t`This instance is already used by another workspace. Setting it up will erase that workspace's deployment from the instance.`}
