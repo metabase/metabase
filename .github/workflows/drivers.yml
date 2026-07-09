@@ -192,6 +192,7 @@ jobs:
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.athena-status }}
         report-variant: ${{ matrix.job.name }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -270,6 +271,7 @@ jobs:
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.bigquery-status }}
         report-variant: ${{ matrix.job.name }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -356,6 +358,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.clickhouse-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -413,6 +416,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.druid-jdbc-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -488,6 +492,7 @@ jobs:
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
         report-variant: ${{ matrix.job.name }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
@@ -564,6 +569,7 @@ jobs:
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.databricks-status }}
         report-variant: ${{ matrix.job.name }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -595,6 +601,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -627,6 +634,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -760,6 +768,7 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
           driver-status: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-status }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -843,6 +852,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.mongo-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -928,6 +938,7 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
           driver-status: ${{ needs.determine-driver-skips.outputs.mongo-ssl-status }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -976,6 +987,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -1064,6 +1076,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.oracle-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -1169,6 +1182,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -1259,6 +1273,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.presto-jdbc-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -1347,6 +1362,7 @@ jobs:
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.redshift-status }}
         report-variant: ${{ matrix.job.name }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1434,6 +1450,7 @@ jobs:
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.snowflake-status }}
         report-variant: ${{ matrix.job.name }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1489,6 +1506,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.sparksql-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1533,6 +1551,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.sqlite-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1612,6 +1631,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.sqlserver-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1740,6 +1760,7 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
         driver-status: ${{ needs.determine-driver-skips.outputs.vertica-status }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   drivers-tests-result:
     needs:
