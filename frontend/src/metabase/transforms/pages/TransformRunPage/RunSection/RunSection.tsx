@@ -1,10 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
+  skipToken,
   useCancelCurrentTransformRunMutation,
+  useListDagRunTransformRunsQuery,
   useRunTransformDagMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
@@ -15,12 +17,23 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Link } from "metabase/router";
-import { Anchor, Box, Card, Divider, Group, Menu, Stack } from "metabase/ui";
+import { POLLING_INTERVAL } from "metabase/transforms/constants";
+import {
+  Anchor,
+  Box,
+  Card,
+  Divider,
+  Group,
+  Icon,
+  Menu,
+  Stack,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   Transform,
   TransformDagDirection,
+  TransformDagRunId,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -42,17 +55,63 @@ type RunSectionProps = {
   noTitle?: boolean;
 };
 
+type ScheduledDagRun = {
+  dagRunId: TransformDagRunId;
+  direction: TransformDagDirection;
+};
+
+function useScheduledDagRun(transform: Transform) {
+  const [scheduled, setScheduled] = useState<ScheduledDagRun | null>(null);
+
+  const { data: members } = useListDagRunTransformRunsQuery(
+    scheduled ? { dagRunId: scheduled.dagRunId } : skipToken,
+    { pollingInterval: scheduled ? POLLING_INTERVAL : undefined },
+  );
+
+  const dagFinished =
+    members != null &&
+    members.length > 0 &&
+    !members.some(
+      (run) => run.status === "started" || run.status === "canceling",
+    );
+
+  useEffect(() => {
+    if (scheduled != null && dagFinished) {
+      setScheduled(null);
+    }
+  }, [scheduled, dagFinished]);
+
+  const runStatus = transform.last_run?.status;
+  const isRunningNow = runStatus === "started" || runStatus === "canceling";
+
+  const schedule = useCallback(
+    (dagRunId: TransformDagRunId, direction: TransformDagDirection) =>
+      setScheduled({ dagRunId, direction }),
+    [],
+  );
+
+  return {
+    isScheduled: scheduled != null && !dagFinished && !isRunningNow,
+    schedule,
+  };
+}
+
 export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const { isScheduled, schedule } = useScheduledDagRun(transform);
 
   const content = (
     <>
       <Stack>
         <Group p="lg" justify="space-between">
-          <RunStatusSection transform={transform} />
-          <RunButtonSection transform={transform} readOnly={readOnly} />
+          <RunStatusSection transform={transform} isScheduled={isScheduled} />
+          <RunButtonSection
+            transform={transform}
+            readOnly={readOnly}
+            onScheduled={schedule}
+          />
         </Group>
         <RunOutputSection transform={transform} />
       </Stack>
@@ -90,9 +149,10 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
 
 type RunStatusSectionProps = {
   transform: Transform;
+  isScheduled: boolean;
 };
 
-function RunStatusSection({ transform }: RunStatusSectionProps) {
+function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
   const { id, last_run } = transform;
 
   const status = last_run?.status;
@@ -105,6 +165,15 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );
 
+  if (isScheduled) {
+    return (
+      <Group gap="sm" data-testid="run-status">
+        <Icon c="text-secondary" name="clock" />
+        <Box>{t`Scheduled to run as part of a reprocess run.`}</Box>
+      </Group>
+    );
+  }
+
   return (
     <Stack gap={0}>
       <RunStatus
@@ -115,6 +184,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
             key="link"
             component={Link}
             to={Urls.transformRunList({ transformIds: [id] })}
+            lh="inherit"
           >
             {t`See all runs`}
           </Anchor>
@@ -128,9 +198,17 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 type RunButtonSectionProps = {
   transform: Transform;
   readOnly?: boolean;
+  onScheduled: (
+    dagRunId: TransformDagRunId,
+    direction: TransformDagDirection,
+  ) => void;
 };
 
-function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
+function RunButtonSection({
+  transform,
+  readOnly,
+  onScheduled,
+}: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
   const [runTransformDag] = useRunTransformDagMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
@@ -139,7 +217,6 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
     isConfirmCancellationModalOpen,
     { close: closeConfirmModal, open: openConfirmModal },
   ] = useDisclosure(false);
-  // When set, the DAG-run confirmation modal is open for the chosen direction.
   const [dagDirection, setDagDirection] =
     useState<TransformDagDirection | null>(null);
 
@@ -152,20 +229,22 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
   };
 
   const handleRunDag = async () => {
-    if (dagDirection == null) {
+    const direction = dagDirection;
+    if (direction == null) {
       return;
     }
-    trackTransformTriggerDagRun({
-      transformId: transform.id,
-      direction: dagDirection,
-    });
-    const { error } = await runTransformDag({
+    trackTransformTriggerDagRun({ transformId: transform.id, direction });
+    const { data, error } = await runTransformDag({
       id: transform.id,
-      direction: dagDirection,
+      direction,
     });
     setDagDirection(null);
     if (error) {
       sendErrorToast(t`Failed to run transforms`);
+      return;
+    }
+    if (data?.dag_run_id != null) {
+      onScheduled(data.dag_run_id, direction);
     }
   };
 

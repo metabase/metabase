@@ -55,7 +55,6 @@ import type {
   Timeline,
   TimelineEvent,
   Transform,
-  TransformDagRun,
   TransformJob,
   TransformRun,
   TransformTag,
@@ -868,21 +867,6 @@ export function provideTransformRunListTags(
   runs: TransformRun[],
 ): TagDescription<TagType>[] {
   return [listTag("transform-run"), ...runs.flatMap(provideTransformRunTags)];
-}
-
-export function provideTransformDagRunTags(
-  run: TransformDagRun,
-): TagDescription<TagType>[] {
-  return [idTag("transform-dag-run", run.id)];
-}
-
-export function provideTransformDagRunListTags(
-  runs: TransformDagRun[],
-): TagDescription<TagType>[] {
-  return [
-    listTag("transform-dag-run"),
-    ...runs.flatMap(provideTransformDagRunTags),
-  ];
 }
 
 export function provideTransformTagTags(

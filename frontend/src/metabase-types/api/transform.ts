@@ -390,41 +390,6 @@ export type TransformDagRunId = number;
 export const TRANSFORM_DAG_DIRECTIONS = ["upstream", "downstream"] as const;
 export type TransformDagDirection = (typeof TRANSFORM_DAG_DIRECTIONS)[number];
 
-export const TRANSFORM_DAG_RUN_STATUSES = [
-  "started",
-  "succeeded",
-  "failed",
-  "timeout",
-  "canceled",
-] as const;
-export type TransformDagRunStatus = (typeof TRANSFORM_DAG_RUN_STATUSES)[number];
-
-export const TRANSFORM_DAG_RUN_SORT_COLUMNS = [
-  "start_time",
-  "end_time",
-] as const;
-export type TransformDagRunSortColumn =
-  (typeof TRANSFORM_DAG_RUN_SORT_COLUMNS)[number];
-
-// A DAG-reprocess run seeded from a single transform. Unlike job runs it lives in
-// its own `transform_dag_run` table (GDGT-2507) and carries the seed transform +
-// the direction of the DAG traversal instead of a job id.
-export type TransformDagRun = {
-  id: TransformDagRunId;
-  source_transform_id: TransformId | null;
-  direction: TransformDagDirection | null;
-  status: TransformDagRunStatus | null;
-  is_active: boolean | null;
-  start_time: string;
-  end_time: string | null;
-  message: string | null;
-  user_id?: UserId | null;
-  created_at: string;
-  updated_at: string;
-  // hydrated name of the seed transform
-  transform_name?: string | null;
-};
-
 export type RunTransformDagRequest = {
   id: TransformId;
   direction: TransformDagDirection;
@@ -444,18 +409,6 @@ export type ListDagTransformsRequest = {
 // The ordered transforms a DAG reprocess would run, used to preview the plan
 // before confirming.
 export type DagTransform = Pick<Transform, "id" | "name">;
-
-// Per-transform DAG run history: GET /api/transform/:id/dag-runs
-export type ListTransformDagRunsRequest = {
-  transformId: TransformId;
-  status?: TransformDagRunStatus;
-  "sort-column"?: TransformDagRunSortColumn;
-  "sort-direction"?: SortDirection;
-} & PaginationRequest;
-
-export type ListTransformDagRunsResponse = {
-  data: TransformDagRun[];
-} & PaginationResponse;
 
 // GET /api/transform-dag-run/:run-id/transform-runs — the member transform runs of
 // a DAG run. Reuses TransformRunForJobRun since the child-row rendering only needs

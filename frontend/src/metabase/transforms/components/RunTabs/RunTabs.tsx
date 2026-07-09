@@ -17,7 +17,7 @@ function getTabs(): PaneHeaderTab[] {
       to: Urls.transformGraphRunList(),
     },
     {
-      label: t`Transform runs`,
+      label: t`Individual transform runs`,
       to: Urls.transformRunList(),
     },
   ];

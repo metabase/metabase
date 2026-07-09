@@ -74,9 +74,6 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
   const [isPolling, setIsPolling] = useState(false);
   const pollingInterval = isPolling ? POLLING_INTERVAL : undefined;
 
-  // Member transform runs are fetched from a different endpoint per run type; the
-  // non-matching queries are skipped. A standalone transform run has no members
-  // endpoint — it is its own single member, synthesized from the run summary.
   const dagResult = useListDagRunTransformRunsQuery(
     run.run_type === "dag" ? { dagRunId: run.id } : skipToken,
     { pollingInterval },
@@ -295,9 +292,6 @@ function TransformGraphRunSidebarHeader({
   );
 }
 
-// Links to the run's underlying entity — the job for a job run, or the seed/target
-// transform for a DAG or standalone transform run — plus a dependency-graph link for
-// transforms. Mirrors the individual transform-run sidebar's header actions.
 function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
   const { entity_id } = run;
   if (entity_id == null) {

@@ -121,10 +121,6 @@ export function setupListDagRunTransformRunsEndpoint(
   fetchMock.get(`path:/api/transform-dag-run/${dagRunId}/transform-runs`, runs);
 }
 
-export function setupCancelDagRunEndpoint(dagRunId: TransformDagRunId) {
-  fetchMock.post(`path:/api/transform-dag-run/${dagRunId}/cancel`, 204);
-}
-
 export function setupCancelJobRunEndpoint(
   jobId: TransformJobId,
   runId: TransformJobRunId,
