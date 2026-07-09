@@ -18,6 +18,28 @@
   Other types (e.g. reasoning summaries) are ignored."
   #{:text :function_call})
 
+(defn- openai-usage->aisdk-usage
+  "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
+
+  Unlike Anthropic's disjoint input buckets (see [[metabase.metabot.self.claude/claude-usage->aisdk-usage]]), OpenAI
+  reports cached tokens as a subset breakdown of the input total:
+
+      input_tokens                             — total input, cached portion included
+      input_tokens_details.cached_tokens       — the cached subset of input_tokens
+      input_tokens_details.cache_write_tokens  — should always be 0 (see below)
+      output_tokens                            — completion tokens
+
+  cache_write_tokens is absent from the Responses API docs, but present in live responses. We pass it through
+  as :cacheCreationTokens so a count would surface in usage tracking if OpenAI ever starts populating it.
+
+  Nested *_details maps are otherwise dropped: the result must stay flat so downstream `merge-with +` usage
+  accumulation is safe."
+  [u]
+  {:promptTokens        (:input_tokens u 0)
+   :completionTokens    (:output_tokens u 0)
+   :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
+   :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
+
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
 
@@ -119,9 +141,7 @@
              ;; still has valid partial output, so we record its usage rather than treating it as an error.
              (contains? #{"response.completed" "response.incomplete"} t)
              (rf {:type  :usage
-                  :usage (let [u (:usage response)]
-                           {:promptTokens     (:input_tokens u 0)
-                            :completionTokens (:output_tokens u 0)})
+                  :usage (openai-usage->aisdk-usage (:usage response))
                   ;; non-standard extension, not in AISDK5
                   :id    (:id response)
                   :model @model-name})
