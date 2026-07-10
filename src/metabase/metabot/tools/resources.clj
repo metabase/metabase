@@ -626,7 +626,9 @@
                            (get readable card_id) (assoc :uri (:uri (present-card (get readable card_id)))))))
         items        (if (seq tabs)
                        ;; group by tab without emitting tab pseudo-items — those would inflate the
-                       ;; paginated total; the tab list rides on the response as `:tabs` instead
+                       ;; paginated total; the tab list rides on the response as `:tabs` instead.
+                       ;; `sort-by` is stable, so the SQL row/col ordering survives within each
+                       ;; tab; a nil tab id means the frontend renders the card on the first tab.
                        (let [tab-pos (into {} (map-indexed (fn [i {:keys [id]}] [id i])) tabs)
                              eff-tab #(or (:dashboard_tab_id %) (:id (first tabs)))]
                          (into []
