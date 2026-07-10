@@ -116,7 +116,7 @@ export function useExplorationClickActionsMode({
             sendToast({
               icon: "warning_triangle_filled",
               iconColor: "warning",
-              message: t`Failed to send comment`,
+              message: t`Failed to add comment`,
             });
           } else {
             onClose();

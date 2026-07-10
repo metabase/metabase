@@ -558,8 +558,7 @@ export function canExploreFurther(
   // OTHER_BUCKET_LABEL is not a real dimension value, so filtering on it won't return anything
   if (
     queryType === "top-n-other" &&
-    columnsAndValues.length === 1 &&
-    columnsAndValues[0].value === OTHER_BUCKET_LABEL
+    columnsAndValues.some(({ value }) => value === OTHER_BUCKET_LABEL)
   ) {
     return false;
   }

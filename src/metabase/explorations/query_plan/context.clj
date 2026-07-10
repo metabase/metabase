@@ -258,9 +258,8 @@
     {:blocks (mapv #(block-context % cards mp-by-db) blocks)}))
 
 (defn- filter-ref-from-click
-  "Build the filter target from a clicked result `field_ref`. Resolve against the metric query for
-  join disambiguation, then copy any temporal bucket or numeric binning from the clicked ref so
-  `= value` lands on the same bar the user clicked."
+  "Given a normalized click ref and its resolved metric-query column, return a filter target with
+  the click's temporal bucket or numeric binning applied so `= value` matches the clicked point."
   [ref-clause col]
   (let [target  (or col ref-clause)
         unit    (lib/raw-temporal-bucket ref-clause)
