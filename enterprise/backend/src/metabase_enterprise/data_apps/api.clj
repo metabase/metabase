@@ -42,7 +42,9 @@
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
 (defn- repo-status []
-  {:configured (data-app.sync/repo-configured?)})
+  (let [url (data-app.sync/repo-url)]
+    {:configured (some? url)
+     :url        url}))
 
 (defn- if-none-match-hashes
   "Parse an `If-None-Match` header into the set of bare hashes it lists, dropping
@@ -71,7 +73,8 @@
 
 (def ^:private RepoStatusResponse
   [:map
-   [:configured :boolean]])
+   [:configured :boolean]
+   [:url [:maybe :string]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -104,6 +107,18 @@
   (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
     (t2/update! :model/DataApp :id (:id app) {:enabled enabled})
     (data-app/select-one-non-blob :id (:id app))))
+
+(api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
+  "Remove a single data app (its row and cached bundle). Intended for clearing
+   out apps once their repository is no longer connected — a sync never deletes,
+   and while a repo is connected it would just re-materialize the app."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
+  (api/check-404 (pos? (t2/delete! :model/DataApp :name slug)))
+  ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
+  ;; above (returning `generic-204-no-content` would fail that validation).
+  nil)
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- DataAppResponse
   "Fetch metadata for a single enabled data app by its slug."
