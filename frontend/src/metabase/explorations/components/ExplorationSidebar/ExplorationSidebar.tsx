@@ -22,7 +22,6 @@ import {
   trackExplorationStopped,
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
-import { ExplorationErrorMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import {
   ActionIcon,
@@ -48,6 +47,7 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
+import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
 import {

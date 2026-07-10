@@ -17,7 +17,6 @@ import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
-import { PotentiallyInterestingMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
@@ -33,6 +32,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./ActionToolbar.module.css";
+import { PotentiallyInterestingMarker } from "./PotentiallyInterestingMarker";
 
 export type CommentDrafts = Record<ExplorationPageNodeId, DocumentContent>;
 
