@@ -644,13 +644,10 @@ describe("Remote Sync", () => {
       H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
     });
 
-    it("hides the Embed sharing option for a question in a read-only synced collection (metabase#72752)", () => {
+    it("keeps the Embed sharing option available for a question in a read-only synced collection (metabase#72752)", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      // Enable static embedding instance-wide so the Embed option would normally
-      // be offered — it must still be hidden because the synced question is
-      // read-only (publishing for embedding is a write, which the poison
-      // `___no-remote-sync-access` permission forbids on a read-only instance).
+      // Enable static embedding instance-wide so the Embed option is offered.
       H.updateSetting("enable-embedding-static", true);
       H.configureGitAndPullChanges("read-only");
 
@@ -661,11 +658,10 @@ describe("Remote Sync", () => {
         .click();
       H.collectionTable().findByText(REMOTE_QUESTION_NAME).click();
 
-      // The share menu still opens (copy-link is always available)...
+      // The Embed option stays available on a read-only synced question; the
+      // Publish button inside the modal is disabled instead (unit-tested).
       H.openSharingMenu();
-      H.sharingMenu().should("be.visible");
-      // ...but the Embed option is not offered on a read-only synced question.
-      H.sharingMenu().findByText("Embed").should("not.exist");
+      H.sharingMenu().findByText("Embed").should("be.visible");
     });
   });
 

@@ -3,13 +3,17 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import type { EmbedResourceType } from "metabase/embedding/types";
-import { Button, Flex, Group, Text } from "metabase/ui";
+import { Box, Button, Flex, Group, Text, Tooltip } from "metabase/ui";
 
 interface EmbedModalContentStatusBarProps {
   isPublished: boolean;
   resourceType: EmbedResourceType;
   hasSettingsChanges: boolean;
   isFetching?: boolean;
+  // When the resource can't be written (e.g. a remote-synced entity on a
+  // read-only instance) publishing and unpublishing are disabled, since those
+  // writes would fail; an explanatory tooltip replaces the action.
+  isReadOnly?: boolean;
   onDiscard: () => void;
   onUnpublish: () => Promise<void>;
   onSave: () => Promise<void>;
@@ -20,12 +24,15 @@ export const EmbedModalContentStatusBar = ({
   resourceType,
   hasSettingsChanges,
   isFetching,
+  isReadOnly = false,
   onDiscard,
   onUnpublish,
   onSave,
 }: EmbedModalContentStatusBarProps): JSX.Element => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
+
+  const readOnlyTooltip = t`This ${resourceType} is synced from another instance and is read-only here, so its embed settings can’t be changed.`;
 
   return (
     <Flex
@@ -53,30 +60,42 @@ export const EmbedModalContentStatusBar = ({
           (hasSettingsChanges ? (
             <Button onClick={onDiscard}>{t`Discard changes`}</Button>
           ) : (
-            <Button
-              variant="subtle"
-              color="error"
-              loading={isUnpublishing || isFetching}
-              onClick={() => {
-                setIsUnpublishing(true);
-                onUnpublish().finally(() => setIsUnpublishing(false));
-              }}
-            >{t`Unpublish`}</Button>
+            <Tooltip label={readOnlyTooltip} disabled={!isReadOnly}>
+              {/* Wrapper so the tooltip still shows over the disabled button,
+                  which itself does not emit pointer events. */}
+              <Box component="span" display="inline-flex">
+                <Button
+                  variant="subtle"
+                  color="error"
+                  disabled={isReadOnly}
+                  loading={isUnpublishing || isFetching}
+                  onClick={() => {
+                    setIsUnpublishing(true);
+                    onUnpublish().finally(() => setIsUnpublishing(false));
+                  }}
+                >{t`Unpublish`}</Button>
+              </Box>
+            </Tooltip>
           ))}
 
         {(!isPublished || hasSettingsChanges) && (
-          <Button
-            variant="filled"
-            loading={isPublishing || isFetching}
-            onClick={() => {
-              setIsPublishing(true);
-              onSave().finally(() => setIsPublishing(false));
-            }}
-          >
-            {hasSettingsChanges && isPublished
-              ? t`Publish changes`
-              : t`Publish`}
-          </Button>
+          <Tooltip label={readOnlyTooltip} disabled={!isReadOnly}>
+            <Box component="span" display="inline-flex">
+              <Button
+                variant="filled"
+                disabled={isReadOnly}
+                loading={isPublishing || isFetching}
+                onClick={() => {
+                  setIsPublishing(true);
+                  onSave().finally(() => setIsPublishing(false));
+                }}
+              >
+                {hasSettingsChanges && isPublished
+                  ? t`Publish changes`
+                  : t`Publish`}
+              </Button>
+            </Box>
+          </Tooltip>
         )}
       </Group>
     </Flex>

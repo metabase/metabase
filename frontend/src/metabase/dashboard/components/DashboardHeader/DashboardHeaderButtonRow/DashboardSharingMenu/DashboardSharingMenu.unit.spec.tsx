@@ -204,16 +204,17 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
-      // Publishing for embedding is a write; a read-only remote-synced dashboard
-      // has can_write=false, so the option must not be offered (MB #72752).
-      it("should hide the 'Embed' option when the dashboard is not writable", async () => {
+      // The Embed option stays available even on a read-only remote-synced
+      // dashboard (can_write=false); the Publish button inside the modal is
+      // disabled instead of hiding the entry point (MB #72752).
+      it("should still show the 'Embed' option when the dashboard is not writable", async () => {
         setupDashboardSharingMenu({
           isAdmin: true,
           isEmbeddingEnabled: true,
           dashboard: { can_write: false },
         });
         await openMenu();
-        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
       // note: if public sharing is disabled, the dashboard object provided by the backend should not have a UUID
