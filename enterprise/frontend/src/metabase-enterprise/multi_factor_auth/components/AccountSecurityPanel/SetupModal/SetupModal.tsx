@@ -31,30 +31,30 @@ import type { MfaEnrollResponse } from "metabase-types/api";
 import { TOTP_CODE_LENGTH } from "../../../constants";
 import { RecoveryCodesForm } from "../RecoveryCodesForm";
 
-type EnrollModalProps = {
+type SetupModalProps = {
   opened: boolean;
   onSuccess: (recoveryCodes: string[]) => void;
   onCancel: () => void;
 };
 
-export function EnrollModal({ opened, onSuccess, onCancel }: EnrollModalProps) {
+export function SetupModal({ opened, onSuccess, onCancel }: SetupModalProps) {
   return (
     <Modal
       title={t`Set up two-factor authentication`}
       opened={opened}
       onClose={onCancel}
     >
-      <EnrollModalBody onSuccess={onSuccess} onCancel={onCancel} />
+      <SetupModalBody onSuccess={onSuccess} onCancel={onCancel} />
     </Modal>
   );
 }
 
-type EnrollModalBodyProps = {
+type SetupModalBodyProps = {
   onSuccess: (recoveryCodes: string[]) => void;
   onCancel: () => void;
 };
 
-function EnrollModalBody({ onSuccess, onCancel }: EnrollModalBodyProps) {
+function SetupModalBody({ onSuccess, onCancel }: SetupModalBodyProps) {
   const [enrollment, setEnrollment] = useState<MfaEnrollResponse | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 

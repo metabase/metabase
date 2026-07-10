@@ -25,7 +25,7 @@ export function DisableModal({
 }: DisableModalProps) {
   return (
     <Modal
-      title={t`Turn off two-factor authentication`}
+      title={t`Disable two-factor authentication`}
       opened={opened}
       onClose={onCancel}
     >
@@ -68,7 +68,7 @@ function DisableForm({ onSuccess, onCancel }: DisableFormProps) {
       <Form>
         <Stack gap="md">
           <Text c="text-secondary">
-            {t`Are you sure you want to turn off two-factor authentication? Your account will be protected by your password only, and your recovery codes will stop working.`}
+            {t`Are you sure you want to disable two-factor authentication? Your account will be protected by your password only, and your recovery codes will stop working.`}
           </Text>
           <FormTextInput
             name="code"
@@ -80,9 +80,9 @@ function DisableForm({ onSuccess, onCancel }: DisableFormProps) {
           <Group justify="flex-end">
             <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
-              label={t`Turn off`}
+              label={t`Disable`}
               variant="filled"
-              color="feedback-negative"
+              color="error"
             />
           </Group>
         </Stack>

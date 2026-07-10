@@ -11,10 +11,10 @@ import { useGetMfaStatusQuery } from "metabase-enterprise/api";
 import type { MfaStatus } from "metabase-types/api";
 
 import { DisableModal } from "./DisableModal";
-import { EnrollModal } from "./EnrollModal";
 import { RecoveryCodesModal } from "./RecoveryCodesModal";
+import { SetupModal } from "./SetupModal";
 
-type SecurityModal = "enroll" | "disable" | "recovery-codes";
+type SecurityModal = "setup" | "disable" | "recovery-codes";
 
 export function AccountSecurityPanel() {
   const { data: status, isLoading, error } = useGetMfaStatusQuery();
@@ -42,8 +42,8 @@ export function AccountSecurityPanel() {
         hasFeature={hasFeature}
         onOpenModal={setOpenedModal}
       />
-      <EnrollModal
-        opened={openedModal === "enroll"}
+      <SetupModal
+        opened={openedModal === "setup"}
         onSuccess={handleCloseModal}
         onCancel={handleCloseModal}
       />
@@ -84,14 +84,15 @@ function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
               {t`Generate new recovery codes`}
             </Button>
             <Button
-              color="feedback-negative"
+              variant="filled"
+              color="error"
               onClick={() => onOpenModal("disable")}
             >
-              {t`Turn off two-factor authentication`}
+              {t`Disable two-factor authentication`}
             </Button>
           </Group>
         ) : (
-          <Button disabled={!hasFeature} onClick={() => onOpenModal("enroll")}>
+          <Button disabled={!hasFeature} onClick={() => onOpenModal("setup")}>
             {t`Set up two-factor authentication`}
           </Button>
         )}

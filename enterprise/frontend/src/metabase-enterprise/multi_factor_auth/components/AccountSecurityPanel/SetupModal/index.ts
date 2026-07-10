@@ -1,1 +1,1 @@
-export * from "./EnrollModal";
+export * from "./SetupModal";
