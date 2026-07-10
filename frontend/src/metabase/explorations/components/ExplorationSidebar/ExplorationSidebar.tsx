@@ -22,11 +22,7 @@ import {
   trackExplorationStopped,
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
-import {
-  ExplorationErrorMarker,
-  PotentiallyInterestingMarker,
-} from "metabase/explorations/components/PotentiallyInterestingMarker";
-import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import { ExplorationErrorMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import {
   ActionIcon,
@@ -615,10 +611,6 @@ function ExplorationTreeItem({
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
-  const isInteresting =
-    !isError &&
-    (pageData?.interestingness_score ?? 0) >=
-      QUERY_INTERESTINGNESS_SCORE_THRESHOLD;
 
   return (
     <ForwardRefLink
@@ -652,7 +644,6 @@ function ExplorationTreeItem({
           message={t`We couldn't generate one or more of these charts.`}
         />
       )}
-      {isInteresting && <PotentiallyInterestingMarker />}
     </ForwardRefLink>
   );
 }
