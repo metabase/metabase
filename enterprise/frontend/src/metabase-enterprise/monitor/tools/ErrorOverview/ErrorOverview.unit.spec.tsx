@@ -9,7 +9,7 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { CardId, RowValue } from "metabase-types/api";
+import type { RowValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
@@ -17,46 +17,27 @@ import {
 } from "metabase-types/api/mocks";
 
 import { ErrorOverview } from "./ErrorOverview";
+import { createMockErroringCard } from "./mocks";
+import { type ErroringCard, SORT_COLUMNS } from "./types";
 import { PAGE_SIZE } from "./utils";
 
-type QuestionRow = {
-  id: CardId;
-  name?: string;
-  error?: string;
-  collectionName?: string | null;
-  databaseName?: string | null;
-  lastRunAt?: string | null;
-};
+const COLUMN_NAMES = ["card_id", ...SORT_COLUMNS];
 
-const COLUMN_NAMES = [
-  "card_id",
-  "card_name",
-  "error_substr",
-  "collection_name",
-  "database_name",
-  "schema_name",
-  "table_name",
-  "last_run_at",
-  "total_runs",
-  "num_dashboards",
-  "user_name",
-  "updated_at",
-];
-
-function createDatasetResponse(questions: QuestionRow[], total?: number) {
-  const rows: RowValue[][] = questions.map((question) => [
-    question.id,
-    question.name ?? `Question ${question.id}`,
-    question.error ?? "Syntax error...",
-    question.collectionName ?? "Our Analytics",
-    question.databaseName ?? "Sample Database",
-    "PUBLIC",
-    "ORDERS",
-    question.lastRunAt ?? "2026-07-01T10:00:00Z",
-    10,
-    2,
-    "John Doe",
-    "2026-06-30T10:00:00Z",
+function createDatasetResponse(cards: Partial<ErroringCard>[], total?: number) {
+  const fullCards = cards.map(createMockErroringCard);
+  const rows: RowValue[][] = fullCards.map((card) => [
+    card.id,
+    card.card_name,
+    card.error_substr,
+    card.collection_name,
+    card.database_name,
+    card.schema_name,
+    card.table_name,
+    card.last_run_at,
+    card.total_runs,
+    card.num_dashboards,
+    card.user_name,
+    card.updated_at,
   ]);
 
   return {
@@ -67,7 +48,7 @@ function createDatasetResponse(questions: QuestionRow[], total?: number) {
       }),
       row_count: rows.length,
     }),
-    total_count: total ?? questions.length,
+    total_count: total ?? cards.length,
   };
 }
 
@@ -80,14 +61,14 @@ async function getLastDatasetQuery() {
 }
 
 type SetupOpts = {
-  questions?: QuestionRow[];
+  cards?: Partial<ErroringCard>[];
   total?: number;
   error?: boolean;
   initialRoute?: string;
 };
 
 async function setup({
-  questions = [{ id: 1 }],
+  cards = [{ id: 1 }],
   total,
   error,
   initialRoute = "/",
@@ -100,10 +81,7 @@ async function setup({
       body: { message: "Audit query failed" },
     });
   } else {
-    fetchMock.post(
-      "path:/api/dataset",
-      createDatasetResponse(questions, total),
-    );
+    fetchMock.post("path:/api/dataset", createDatasetResponse(cards, total));
   }
 
   const utils = renderWithProviders(
@@ -123,8 +101,12 @@ async function setup({
 describe("ErrorOverview", () => {
   it("fetches the audit bad-table query with default sorting and renders the results", async () => {
     await setup({
-      questions: [
-        { id: 1, name: "Broken question", error: "Table not found..." },
+      cards: [
+        {
+          id: 1,
+          card_name: "Broken question",
+          error_substr: "Table not found...",
+        },
       ],
     });
 
@@ -152,7 +134,7 @@ describe("ErrorOverview", () => {
   });
 
   it("shows an empty state when there are no erroring questions", async () => {
-    await setup({ questions: [] });
+    await setup({ cards: [] });
 
     expect(await screen.findByText("No results")).toBeInTheDocument();
   });
@@ -195,7 +177,7 @@ describe("ErrorOverview", () => {
 
   it("passes filter values to the query and resets to the first page", async () => {
     const { history } = await setup({
-      questions: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -262,7 +244,7 @@ describe("ErrorOverview", () => {
 
   it("reruns the selected questions from the bulk action bar and clears the selection", async () => {
     fetchMock.post("express:/api/card/:cardId/query", createMockDataset());
-    await setup({ questions: [{ id: 7 }, { id: 8 }] });
+    await setup({ cards: [{ id: 7 }, { id: 8 }] });
 
     const rows = await screen.findAllByTestId("erroring-question");
     await userEvent.click(within(rows[0]).getByLabelText("Select row"));
@@ -273,7 +255,7 @@ describe("ErrorOverview", () => {
 
     const datasetCallsBefore = getDatasetCalls().length;
     await userEvent.click(
-      screen.getByRole("button", { name: "Rerun Selected" }),
+      screen.getByRole("button", { name: "Rerun selected" }),
     );
 
     await waitFor(() => {
@@ -297,9 +279,9 @@ describe("ErrorOverview", () => {
         screen.queryByText("2 questions selected"),
       ).not.toBeInTheDocument();
     });
-    // the list is refetched after the rerun
+    // the list is refetched exactly once after both reruns settle
     await waitFor(() => {
-      expect(getDatasetCalls().length).toBeGreaterThan(datasetCallsBefore);
+      expect(getDatasetCalls().length).toBe(datasetCallsBefore + 1);
     });
   });
 
@@ -332,7 +314,7 @@ describe("ErrorOverview", () => {
     rerunsAttempted = true;
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Rerun Selected" }),
+      screen.getByRole("button", { name: "Rerun selected" }),
     );
 
     // both endpoints are attempted even though one fails
@@ -343,7 +325,7 @@ describe("ErrorOverview", () => {
       expect(rerunCalls).toHaveLength(2);
     });
 
-    // the bulk bar tears down: selection clears and the button disappears
+    // the bulk actions bar tears down: selection clears and the button disappears
     // rather than staying stuck disabled
     await waitFor(() => {
       expect(
@@ -351,7 +333,7 @@ describe("ErrorOverview", () => {
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.queryByRole("button", { name: "Rerun Selected" }),
+      screen.queryByRole("button", { name: "Rerun selected" }),
     ).not.toBeInTheDocument();
 
     // and the refetched table reflects reality: the successfully-rerun question
@@ -382,7 +364,7 @@ describe("ErrorOverview", () => {
       card8.promise.then(() => createMockDataset()),
     );
 
-    await setup({ questions: [{ id: 7 }, { id: 8 }] });
+    await setup({ cards: [{ id: 7 }, { id: 8 }] });
 
     const rowAt = (index: number) =>
       screen.getAllByTestId("erroring-question")[index];
@@ -390,7 +372,7 @@ describe("ErrorOverview", () => {
     // rerun question 7 only
     await userEvent.click(within(rowAt(0)).getByLabelText("Select row"));
     await userEvent.click(
-      screen.getByRole("button", { name: "Rerun Selected" }),
+      screen.getByRole("button", { name: "Rerun selected" }),
     );
 
     // the bulk bar closes immediately, even though 7's request is still pending
@@ -410,7 +392,7 @@ describe("ErrorOverview", () => {
     // the bar is free: question 8 can be queued while 7 is still running
     await userEvent.click(within(rowAt(1)).getByLabelText("Select row"));
     await userEvent.click(
-      screen.getByRole("button", { name: "Rerun Selected" }),
+      screen.getByRole("button", { name: "Rerun selected" }),
     );
     await waitFor(() => {
       expect(within(rowAt(1)).getByLabelText("Loading")).toBeInTheDocument();
@@ -444,7 +426,7 @@ describe("ErrorOverview", () => {
       card7.then(() => createMockDataset()),
     );
 
-    await setup({ questions: [{ id: 7 }, { id: 8 }, { id: 9 }] });
+    await setup({ cards: [{ id: 7 }, { id: 8 }, { id: 9 }] });
 
     const rowAt = (index: number) =>
       screen.getAllByTestId("erroring-question")[index];
@@ -452,7 +434,7 @@ describe("ErrorOverview", () => {
     // rerun question 7 -> it starts loading and is no longer selectable
     await userEvent.click(within(rowAt(0)).getByLabelText("Select row"));
     await userEvent.click(
-      screen.getByRole("button", { name: "Rerun Selected" }),
+      screen.getByRole("button", { name: "Rerun selected" }),
     );
     await waitFor(() => {
       expect(within(rowAt(0)).getByLabelText("Loading")).toBeInTheDocument();
@@ -472,7 +454,7 @@ describe("ErrorOverview", () => {
 
   it("paginates showing the total count and syncs the page to the URL", async () => {
     const { history } = await setup({
-      questions: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -497,7 +479,7 @@ describe("ErrorOverview", () => {
 
   it("reads the initial page from the URL", async () => {
     await setup({
-      questions: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+      cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
       })),
       total: 120,
@@ -510,13 +492,32 @@ describe("ErrorOverview", () => {
     });
   });
 
-  it("navigates to the question when a row is clicked", async () => {
-    const { history } = await setup({ questions: [{ id: 42 }] });
+  it("links each row to the question, opening in a new tab", async () => {
+    const { history } = await setup({ cards: [{ id: 42 }] });
 
-    await userEvent.click(await screen.findByTestId("erroring-question"));
+    await screen.findByTestId("erroring-question");
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("href", "/question/42");
+    expect(link).toHaveAttribute("target", "_blank");
 
-    await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/question/42");
-    });
+    // clicking stays on the Erroring questions page - the link opens
+    // a new tab rather than navigating the current one
+    await userEvent.click(link);
+    expect(history?.getCurrentLocation().pathname).not.toBe("/question/42");
+  });
+
+  it("opens the question in a new tab when activated from the keyboard", async () => {
+    const windowOpen = jest.spyOn(window, "open").mockImplementation();
+    await setup({ cards: [{ id: 42 }] });
+
+    await screen.findByTestId("erroring-question");
+    screen.getByRole("treegrid", { name: "Erroring questions" }).focus();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    expect(windowOpen).toHaveBeenCalledWith(
+      "/question/42",
+      "_blank",
+      "noopener",
+    );
   });
 });

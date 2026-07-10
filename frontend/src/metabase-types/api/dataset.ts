@@ -134,6 +134,7 @@ export interface Dataset {
   data: DatasetData;
   database_id: DatabaseId;
   row_count: number;
+  total_count?: number;
   running_time: number;
   json_query?: JsonQuery;
   error?: DatasetError;
@@ -147,7 +148,6 @@ export interface Dataset {
   cached?: string;
   /** A date in ISO 8601 format */
   started_at?: string;
-  total_count?: number;
 }
 
 export type DatasetError =

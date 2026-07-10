@@ -6,11 +6,9 @@ import type {
   Updater,
 } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { useDispatch } from "metabase/redux";
 import {
   Card,
   Ellipsified,
@@ -23,10 +21,11 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { getSorting, getSortingState } from "metabase/utils/sorting";
+import { getNextSorting, getSortingState } from "metabase/utils/sorting";
+import type { CardId } from "metabase-types/api";
 
 import {
-  type ErroringQuestion,
+  type ErroringCard,
   type ErroringQuestionsSorting,
   SORT_COLUMNS,
 } from "./types";
@@ -36,17 +35,17 @@ const COLUMN_WIDTHS = [
 ];
 
 type ErroringQuestionsTableProps = {
-  questions: ErroringQuestion[];
+  cards: ErroringCard[];
   isLoading: boolean;
   sorting: ErroringQuestionsSorting;
   rowSelection: RowSelectionState;
-  rerunningCardIds: Set<number>;
+  rerunningCardIds: Set<CardId>;
   onSortingChange: (sorting: ErroringQuestionsSorting) => void;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
 };
 
 export const ErroringQuestionsTable = ({
-  questions,
+  cards,
   isLoading,
   sorting,
   rowSelection,
@@ -54,39 +53,40 @@ export const ErroringQuestionsTable = ({
   onSortingChange,
   onRowSelectionChange,
 }: ErroringQuestionsTableProps) => {
-  const dispatch = useDispatch();
-
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(() => getSortingState(sorting), [sorting]);
 
-  // A rerunning question can't be selected, so "select all" skips it too.
+  // A rerunning card can't be selected, so "select all" skips it too.
   const isRowSelectable = useCallback(
-    (row: Row<ErroringQuestion>) => !rerunningCardIds.has(row.original.id),
+    (row: Row<ErroringCard>) => !rerunningCardIds.has(row.original.id),
     [rerunningCardIds],
   );
 
-  const handleRowActivate = useCallback(
-    (row: Row<ErroringQuestion>) => {
-      dispatch(push(Urls.card({ id: row.original.id })));
-    },
-    [dispatch],
+  const getRowHref = useCallback(
+    (row: Row<ErroringCard>) => Urls.card({ id: row.original.id }),
+    [],
   );
+
+  // Keyboard (Enter/Space) row activation.
+  const handleRowActivate = useCallback((row: Row<ErroringCard>) => {
+    window.open(Urls.card({ id: row.original.id }), "_blank", "noopener");
+  }, []);
 
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingChange(getSorting(newSortingState, SORT_COLUMNS, sorting));
+      onSortingChange(getNextSorting(newSortingState, SORT_COLUMNS, sorting));
     },
     [sortingState, sorting, onSortingChange],
   );
 
-  const treeTableInstance = useTreeTableInstance<ErroringQuestion>({
-    data: questions,
+  const treeTableInstance = useTreeTableInstance<ErroringCard>({
+    data: cards,
     columns,
     sorting: sortingState,
     manualSorting: true,
-    getNodeId: (question) => String(question.id),
+    getNodeId: (card) => String(card.id),
     enableRowSelection: isRowSelectable,
     rowSelection,
     onRowSelectionChange,
@@ -121,14 +121,15 @@ export const ErroringQuestionsTable = ({
             </Stack>
           }
           getRowProps={() => ({ "data-testid": "erroring-question" })}
-          onRowClick={handleRowActivate}
+          getRowHref={getRowHref}
+          rowLinkTarget="_blank"
         />
       )}
     </Card>
   );
 };
 
-function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
+function getColumns(): TreeTableColumnDef<ErroringCard>[] {
   return [
     {
       id: "card_name",
@@ -138,9 +139,9 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 300,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.name,
+      accessorFn: (card) => card.card_name,
       cell: ({ row }) => (
-        <Ellipsified fw="bold">{row.original.name}</Ellipsified>
+        <Ellipsified fw="bold">{row.original.card_name}</Ellipsified>
       ),
     },
     {
@@ -151,9 +152,9 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 400,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.error,
+      accessorFn: (card) => card.error_substr,
       cell: ({ row }) => (
-        <Ellipsified ff="monospace">{row.original.error}</Ellipsified>
+        <Ellipsified ff="monospace">{row.original.error_substr}</Ellipsified>
       ),
     },
     {
@@ -164,10 +165,10 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 240,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.collectionName,
+      accessorFn: (card) => card.collection_name,
       cell: ({ row }) =>
-        row.original.collectionName != null ? (
-          <Ellipsified>{row.original.collectionName}</Ellipsified>
+        row.original.collection_name != null ? (
+          <Ellipsified>{row.original.collection_name}</Ellipsified>
         ) : (
           EMPTY_CELL_PLACEHOLDER
         ),
@@ -180,10 +181,10 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 200,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.databaseName,
+      accessorFn: (card) => card.database_name,
       cell: ({ row }) =>
-        row.original.databaseName != null ? (
-          <Ellipsified>{row.original.databaseName}</Ellipsified>
+        row.original.database_name != null ? (
+          <Ellipsified>{row.original.database_name}</Ellipsified>
         ) : (
           EMPTY_CELL_PLACEHOLDER
         ),
@@ -196,10 +197,10 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 160,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.schemaName,
+      accessorFn: (card) => card.schema_name,
       cell: ({ row }) =>
-        row.original.schemaName != null ? (
-          <Ellipsified>{row.original.schemaName}</Ellipsified>
+        row.original.schema_name != null ? (
+          <Ellipsified>{row.original.schema_name}</Ellipsified>
         ) : (
           EMPTY_CELL_PLACEHOLDER
         ),
@@ -212,10 +213,10 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 200,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.tableName,
+      accessorFn: (card) => card.table_name,
       cell: ({ row }) =>
-        row.original.tableName != null ? (
-          <Ellipsified>{row.original.tableName}</Ellipsified>
+        row.original.table_name != null ? (
+          <Ellipsified>{row.original.table_name}</Ellipsified>
         ) : (
           EMPTY_CELL_PLACEHOLDER
         ),
@@ -227,12 +228,12 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       minWidth: 130,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.lastRunAt,
+      accessorFn: (card) => card.last_run_at,
       cell: ({ row }) =>
-        row.original.lastRunAt != null ? (
-          <Ellipsified alwaysShowTooltip tooltip={row.original.lastRunAt}>
+        row.original.last_run_at != null ? (
+          <Ellipsified alwaysShowTooltip tooltip={row.original.last_run_at}>
             <DateTime
-              value={row.original.lastRunAt}
+              value={row.original.last_run_at}
               unit="minute"
               data-testid="last-run-at"
             />
@@ -249,8 +250,8 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 120,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.totalRuns,
-      cell: ({ row }) => row.original.totalRuns ?? EMPTY_CELL_PLACEHOLDER,
+      accessorFn: (card) => card.total_runs,
+      cell: ({ row }) => row.original.total_runs ?? EMPTY_CELL_PLACEHOLDER,
     },
     {
       id: "num_dashboards",
@@ -260,8 +261,8 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 140,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.dashboardCount,
-      cell: ({ row }) => row.original.dashboardCount ?? EMPTY_CELL_PLACEHOLDER,
+      accessorFn: (card) => card.num_dashboards,
+      cell: ({ row }) => row.original.num_dashboards ?? EMPTY_CELL_PLACEHOLDER,
     },
     {
       id: "user_name",
@@ -271,10 +272,10 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       maxAutoWidth: 200,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.createdBy,
+      accessorFn: (card) => card.user_name,
       cell: ({ row }) =>
-        row.original.createdBy != null ? (
-          <Ellipsified>{row.original.createdBy}</Ellipsified>
+        row.original.user_name != null ? (
+          <Ellipsified>{row.original.user_name}</Ellipsified>
         ) : (
           EMPTY_CELL_PLACEHOLDER
         ),
@@ -286,11 +287,11 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       minWidth: 130,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (question) => question.updatedAt,
+      accessorFn: (card) => card.updated_at,
       cell: ({ row }) =>
-        row.original.updatedAt != null ? (
-          <Ellipsified alwaysShowTooltip tooltip={row.original.updatedAt}>
-            <DateTime value={row.original.updatedAt} unit="minute" />
+        row.original.updated_at != null ? (
+          <Ellipsified alwaysShowTooltip tooltip={row.original.updated_at}>
+            <DateTime value={row.original.updated_at} unit="minute" />
           </Ellipsified>
         ) : (
           EMPTY_CELL_PLACEHOLDER

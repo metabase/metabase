@@ -130,7 +130,6 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
           align="center"
           pl="0.75rem"
           className={S.checkboxWrapper}
-          style={{ cursor: isLoading ? "default" : "pointer" }}
           onClick={handleCheckboxToggle}
         >
           {isLoading ? (
@@ -244,6 +243,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   styles,
   getRowProps,
   href,
+  linkTarget,
   renderSubRow,
   hierarchical = true,
 }: TreeTableRowProps<TData>) {
@@ -279,7 +279,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   const renderContent = () => {
     const subRowContent = renderSubRow?.(row) ?? null;
     return href ? (
-      <Link to={href} className={S.link}>
+      <Link to={href} target={linkTarget} className={S.link}>
         {content}
         {subRowContent}
       </Link>

@@ -13,6 +13,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { type WithRouterProps, withRouter } from "metabase/router";
 import { Center, Flex, Stack } from "metabase/ui";
+import type { CardId } from "metabase-types/api";
 
 import S from "./ErrorOverview.module.css";
 import { ErroringQuestionsFilterBar } from "./ErroringQuestionsFilterBar";
@@ -38,7 +39,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
   const [sorting, setSorting] =
     useState<ErroringQuestionsSorting>(DEFAULT_SORTING);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [rerunningCardIds, setRerunningCardIds] = useState<Set<number>>(
+  const [rerunningCardIds, setRerunningCardIds] = useState<Set<CardId>>(
     () => new Set(),
   );
 
@@ -50,7 +51,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     useAbortableAdhocQuery(query);
   const [runCardQuery] = useLazyGetCardQueryQuery();
 
-  const questions = useMemo(
+  const cards = useMemo(
     () => (data == null ? [] : getErroringQuestions(data)),
     [data],
   );
@@ -126,7 +127,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
               />
 
               <ErroringQuestionsTable
-                questions={questions}
+                cards={cards}
                 isLoading={isLoading}
                 sorting={sorting}
                 rowSelection={rowSelection}
@@ -140,7 +141,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
                   <PaginationControls
                     page={page}
                     pageSize={PAGE_SIZE}
-                    itemsLength={questions.length}
+                    itemsLength={cards.length}
                     total={total}
                     showTotal
                     onPreviousPage={() => patchUrlState({ page: page - 1 })}
@@ -163,7 +164,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
       >
         <BulkActionButton
           onClick={handleRerunSelected}
-        >{t`Rerun Selected`}</BulkActionButton>
+        >{t`Rerun selected`}</BulkActionButton>
       </BulkActionBar>
     </>
   );

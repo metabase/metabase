@@ -1,19 +1,19 @@
 import type { Sorting } from "metabase/utils/sorting";
 import type { CardId } from "metabase-types/api";
 
-export type ErroringQuestion = {
+export type ErroringCard = {
   id: CardId;
-  name: string;
-  error: string;
-  collectionName: string | null;
-  databaseName: string | null;
-  schemaName: string | null;
-  tableName: string | null;
-  lastRunAt: string | null;
-  totalRuns: number | null;
-  dashboardCount: number | null;
-  createdBy: string | null;
-  updatedAt: string | null;
+  card_name: string;
+  error_substr: string;
+  collection_name: string | null;
+  database_name: string | null;
+  schema_name: string | null;
+  table_name: string | null;
+  last_run_at: string | null;
+  total_runs: number | null;
+  num_dashboards: number | null;
+  user_name: string | null;
+  updated_at: string | null;
 };
 
 export type ErroringQuestionsFilters = {

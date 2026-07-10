@@ -40,6 +40,7 @@ export function TreeTable<TData extends TreeNodeData>({
   isRowLoading,
   getRowProps,
   getRowHref,
+  rowLinkTarget,
   renderSubRow,
   hierarchical = true,
   classNames,
@@ -167,6 +168,7 @@ export function TreeTable<TData extends TreeNodeData>({
       styles={styles}
       getRowProps={getRowProps}
       href={getRowHref?.(row)}
+      linkTarget={rowLinkTarget}
       renderSubRow={renderSubRow}
       hierarchical={hierarchical}
     />

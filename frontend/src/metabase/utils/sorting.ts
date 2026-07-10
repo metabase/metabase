@@ -29,35 +29,38 @@ export function isSortColumn<TColumn extends string>(
 }
 
 /**
- * TanStack `SortingState` → `Sorting`. TanStack cycles a column through
- * asc → desc → unsorted; `columns` guards the header id. The `current` argument
- * decides what an unsorted cycle means: pass it for always-sorted tables (the
- * current column's direction is flipped instead) or omit it to allow an
- * unsorted (`undefined`) result.
+ * TanStack `SortingState` → `Sorting`, for always-sorted tables. TanStack
+ * cycles a column through asc → desc → unsorted; `columns` guards the header
+ * id, and an unsorted cycle flips `current`'s direction instead, since these
+ * tables always have some column sorted.
  */
-export function getSorting<TColumn extends string>(
+export function getNextSorting<TColumn extends string>(
   sortingState: SortingState,
   columns: readonly TColumn[],
   current: Sorting<TColumn>,
-): Sorting<TColumn>;
-export function getSorting<TColumn extends string>(
+): Sorting<TColumn> {
+  const [firstSort] = sortingState;
+  if (firstSort != null && isSortColumn(firstSort.id, columns)) {
+    return { column: firstSort.id, direction: firstSort.desc ? "desc" : "asc" };
+  }
+  return {
+    column: current.column,
+    direction: current.direction === "desc" ? "asc" : "desc",
+  };
+}
+
+/**
+ * TanStack `SortingState` → `Sorting`, for tables that can be unsorted. Same
+ * column cycling as {@link getNextSorting}, but an unsorted cycle yields
+ * `undefined` instead of flipping a current column.
+ */
+export function getNextOptionalSorting<TColumn extends string>(
   sortingState: SortingState,
   columns: readonly TColumn[],
-  current?: Sorting<TColumn>,
-): Sorting<TColumn> | undefined;
-export function getSorting<TColumn extends string>(
-  sortingState: SortingState,
-  columns: readonly TColumn[],
-  current?: Sorting<TColumn>,
 ): Sorting<TColumn> | undefined {
   const [firstSort] = sortingState;
   if (firstSort != null && isSortColumn(firstSort.id, columns)) {
     return { column: firstSort.id, direction: firstSort.desc ? "desc" : "asc" };
   }
-  return current == null
-    ? undefined
-    : {
-        column: current.column,
-        direction: current.direction === "desc" ? "asc" : "desc",
-      };
+  return undefined;
 }

@@ -21,7 +21,7 @@ import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import {
   type Sorting,
-  getSorting,
+  getNextSorting,
   getSortingState,
 } from "metabase/utils/sorting";
 import type {
@@ -94,7 +94,7 @@ export const TasksTable = ({
         typeof updater === "function" ? updater(sortingState) : updater;
       onSortingOptionsChange(
         toSortingOptions(
-          getSorting(
+          getNextSorting(
             newSortingState,
             TASK_SORT_COLUMNS,
             toSorting(sortingOptions),

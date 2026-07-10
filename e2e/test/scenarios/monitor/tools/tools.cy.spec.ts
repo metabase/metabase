@@ -428,9 +428,11 @@ describe("monitor > tools > erroring questions ", () => {
 
         cy.log("test no results state");
 
-        cy.findByTestId("erroring-questions-table").findByText("No results");
+        cy.findByTestId("erroring-questions-table")
+          .findByText("No results")
+          .should("be.visible");
         // nothing selected -> the bulk action bar (and its button) is hidden
-        cy.button("Rerun Selected").should("not.exist");
+        cy.button("Rerun selected").should("not.exist");
         cy.findByPlaceholderText("Error contents").should("be.enabled");
         cy.findByPlaceholderText("DB name").should("be.enabled");
         cy.findByPlaceholderText("Collection name").should("be.enabled");
@@ -451,7 +453,7 @@ describe("monitor > tools > erroring questions ", () => {
 
         selectQuestion(brokenQuestionDetails.name);
 
-        cy.button("Rerun Selected").should("not.be.disabled").click();
+        cy.button("Rerun selected").should("not.be.disabled").click();
 
         cy.wait("@dataset");
 
@@ -460,7 +462,7 @@ describe("monitor > tools > erroring questions ", () => {
           brokenQuestionDetails.name,
         );
         // rerunning clears the selection, so the bulk action bar closes
-        cy.button("Rerun Selected").should("not.exist");
+        cy.button("Rerun selected").should("not.exist");
 
         cy.findByPlaceholderText("Error contents").should("be.enabled");
         cy.findByPlaceholderText("DB name").should("be.enabled");
@@ -470,7 +472,9 @@ describe("monitor > tools > erroring questions ", () => {
 
         cy.wait("@dataset");
 
-        cy.findByTestId("erroring-questions-table").findByText("No results");
+        cy.findByTestId("erroring-questions-table")
+          .findByText("No results")
+          .should("be.visible");
 
         cy.findByPlaceholderText("Collection name").clear();
 
@@ -480,11 +484,13 @@ describe("monitor > tools > erroring questions ", () => {
 
         selectQuestion(brokenQuestionDetails.name);
 
-        cy.button("Rerun Selected").should("not.be.disabled").click();
+        cy.button("Rerun selected").should("not.be.disabled").click();
 
         cy.wait("@dataset");
 
-        cy.findByTestId("erroring-questions-table").findByText("No results");
+        cy.findByTestId("erroring-questions-table")
+          .findByText("No results")
+          .should("be.visible");
       });
     });
   });

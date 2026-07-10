@@ -6,7 +6,7 @@ import {
 import type { Dataset, DatasetQuery, RowValue } from "metabase-types/api";
 
 import type {
-  ErroringQuestion,
+  ErroringCard,
   ErroringQuestionsFilters,
   ErroringQuestionsSorting,
 } from "./types";
@@ -67,7 +67,7 @@ export function getErroringQuestionsQuery(
   });
 }
 
-export function getErroringQuestions(dataset: Dataset): ErroringQuestion[] {
+export function getErroringQuestions(dataset: Dataset): ErroringCard[] {
   const { cols, rows } = dataset.data;
   const indexByName: Record<string, number> = {};
   cols.forEach((col, index) => {
@@ -78,17 +78,17 @@ export function getErroringQuestions(dataset: Dataset): ErroringQuestion[] {
     const value = (name: string) => row[indexByName[name]];
     return {
       id: asCount(value("card_id")) ?? 0,
-      name: asText(value("card_name")) ?? "",
-      error: asText(value("error_substr")) ?? "",
-      collectionName: asText(value("collection_name")),
-      databaseName: asText(value("database_name")),
-      schemaName: asText(value("schema_name")),
-      tableName: asText(value("table_name")),
-      lastRunAt: asText(value("last_run_at")),
-      totalRuns: asCount(value("total_runs")),
-      dashboardCount: asCount(value("num_dashboards")),
-      createdBy: asText(value("user_name")),
-      updatedAt: asText(value("updated_at")),
+      card_name: asText(value("card_name")) ?? "",
+      error_substr: asText(value("error_substr")) ?? "",
+      collection_name: asText(value("collection_name")),
+      database_name: asText(value("database_name")),
+      schema_name: asText(value("schema_name")),
+      table_name: asText(value("table_name")),
+      last_run_at: asText(value("last_run_at")),
+      total_runs: asCount(value("total_runs")),
+      num_dashboards: asCount(value("num_dashboards")),
+      user_name: asText(value("user_name")),
+      updated_at: asText(value("updated_at")),
     };
   });
 }
