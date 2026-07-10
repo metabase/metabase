@@ -76,7 +76,7 @@
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))
     (try
       (display-name-method query stage-number x style)
-      (catch #?(:clj Throwable :cljs js/Error) e
+      (catch #?(:clj Exception :cljs js/Error) e
         (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
                         {:query query, :x x}
                         e)))))))
@@ -94,7 +94,7 @@
     (:name (lib.options/options x))
     (try
       (column-name-method query stage-number x)
-      (catch #?(:clj Throwable :cljs js/Error) e
+      (catch #?(:clj Exception :cljs js/Error) e
         (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
                         {:x            x
                          :query        query
@@ -267,7 +267,7 @@
      :display-name (display-name query stage-number x)}
     ;; if you see this error it's usually because you're calling [[metadata]] on something that you shouldn't be, for
     ;; example a query
-    (catch #?(:clj Throwable :cljs js/Error) e
+    (catch #?(:clj Exception :cljs js/Error) e
       (throw (ex-info (i18n/tru "Error calculating metadata for {0}: {1}"
                                 (pr-str (lib.dispatch/dispatch-value x))
                                 (ex-message e))
@@ -307,7 +307,7 @@
   (when-not (= (:lib/type (lib.util/query-stage query -1)) :mbql.stage/native)
     (try
       (describe-query query)
-      (catch #?(:clj Throwable :cljs js/Error) e
+      (catch #?(:clj Exception :cljs js/Error) e
         ;; Throttled: a search reindex can call this for many failing metric Cards, don't log them all.
         (log/throttle (* 10 1000)
                       (log/errorf e "Error calculating display name for query: %s" (ex-message e)))
@@ -384,7 +384,7 @@
    (letfn [(display-info* [x]
              (try
                (display-info-method query stage-number x)
-               (catch #?(:clj Throwable :cljs js/Error) e
+               (catch #?(:clj Exception :cljs js/Error) e
                  (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
                                            (lib.dispatch/dispatch-value x)
                                            (ex-message e))

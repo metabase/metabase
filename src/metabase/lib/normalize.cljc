@@ -99,7 +99,7 @@
          (thunk))
        (try
          (thunk)
-         (catch #?(:clj Throwable :cljs :default) e
+         (catch #?(:clj Exception :cljs :default) e
            (throw (ex-info (str "Uncaught normalization error: " (ex-message e))
                            {:schema schema}
                            e))))))))

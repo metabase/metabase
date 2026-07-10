@@ -73,7 +73,7 @@
               (lib/query metadata-providerable))))
      ;; return an empty map if we are unable to normalize the query correctly to prevent breaking things downstream,
      ;; unless strict mode is on (when we are saving a query)
-     (catch Throwable e
+     (catch Exception e
        (when strict?
          (throw e))
        (log/errorf e "Error normalizing query %s" (pr-str query))
@@ -92,10 +92,14 @@
   (when (some? s)
     (try
       (let [query (mi/json-out-without-keywordization s)]
-        (assert (map? query)
-                (format "Expected deserialized query to be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query)))
+        ;; an explicit throw rather than `assert`: this handler must swallow bad data (returning `{}`) but let VM
+        ;; Errors unwind, and `AssertionError` is on the wrong side of that line (#74954)
+        (when-not (map? query)
+          (throw (ex-info (format "Expected deserialized query to be a map, got ^%s %s"
+                                  (.getCanonicalName (class query)) (pr-str query))
+                          {:query query})))
         (normalize-query query))
-      (catch Throwable e
+      (catch Exception e
         (log/errorf e "Error deserializing dataset_query from app DB: %s" (ex-message e))
         {}))))
 
