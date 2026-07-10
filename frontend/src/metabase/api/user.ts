@@ -16,6 +16,7 @@ import {
   provideUserListTags,
   provideUserTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const userApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -48,7 +49,16 @@ export const userApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/user/current",
       }),
-      providesTags: (user) => (user ? provideUserTags(user) : []),
+      // Deliberately no `user` tag: this cache entry is the app's current-user
+      // state, kept in sync by the explicit patches in the mutations below. A
+      // `user` id tag would evict it whenever any user mutation invalidates
+      // that tag, forcing refetches the old `currentUser` reducer never did.
+      //
+      // Like `getSessionProperties`, this mirrors the lifetime of the redux
+      // slice it replaced: once loaded, never garbage-collected (the endpoint
+      // takes no argument, so this is one immortal entry). `refetchCurrentUser`
+      // and logout's `resetApiState` still replace/clear it.
+      keepUnusedDataFor: Infinity,
     }),
     createUser: builder.mutation<User, CreateUserRequest>({
       query: (body) => ({
@@ -104,6 +114,21 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
+      onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+        // keep the cached current user in sync when the user updates themselves
+        handleQueryFulfilled(queryFulfilled, (user) =>
+          dispatch(
+            userApi.util.updateQueryData(
+              "getCurrentUser",
+              undefined,
+              (draft) => {
+                if (draft?.id === user.id) {
+                  Object.assign(draft, user);
+                }
+              },
+            ),
+          ),
+        ),
     }),
     getPasswordResetUrl: builder.mutation<
       { password_reset_url: string },
@@ -125,15 +150,44 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [idTag("user", id)]),
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        try {
+          await queryFulfilled;
+        } catch {
+          return;
+        }
+        dispatch(
+          userApi.util.updateQueryData("getCurrentUser", undefined, (draft) => {
+            if (draft?.id === id) {
+              draft.is_qbnewb = false;
+            }
+          }),
+        );
+      },
     }),
   }),
 });
+
+/**
+ * Fetch the current user into the `getCurrentUser` cache (`getUser` reads come
+ * from it) unless it's already there.
+ */
+export const loadCurrentUser = () =>
+  userApi.endpoints.getCurrentUser.initiate();
+
+/**
+ * Force a refetch of the current user from non-React code. Dispatch it:
+ * `dispatch(refetchCurrentUser())`.
+ */
+export const refetchCurrentUser = () =>
+  userApi.endpoints.getCurrentUser.initiate(undefined, { forceRefetch: true });
 
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
   useGetCurrentUserQuery,
+  useLazyGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,

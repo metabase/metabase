@@ -39,8 +39,11 @@ export function renderWithSDKProviders(
     ...options
   }: RenderWithSDKProvidersOptions = {},
 ) {
-  // `settings` is served from the `getSessionProperties` RTK Query cache.
-  // Capture any seeded settings here and seed the cache through `preloadedState` below.
+  // `settings` and the current user are served from the `getSessionProperties`
+  // / `getCurrentUser` RTK Query caches rather than redux slices. Settings are
+  // captured here and seeded through `preloadedState` below; the user entry is
+  // seeded by `createMockState` itself (the raw `currentUser` field is dropped
+  // by the reducer-name pick).
   let {
     routing,
     settings: seededSettings,

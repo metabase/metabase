@@ -1,7 +1,6 @@
 import type { Api } from "metabase/api/api";
 import type { DocumentsState } from "metabase/redux/store/documents";
 import type { RouterState } from "metabase/router";
-import type { User } from "metabase-types/api";
 
 import type { AdminState } from "./admin";
 import type { AnalyticsExportState } from "./analytics-export";
@@ -29,7 +28,9 @@ export interface State {
   analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
-  currentUser: User | null;
+  // NOTE: there is deliberately no `currentUser` key — the current user is not
+  // redux state. It lives in the `getCurrentUser` RTK Query cache; read it via
+  // `getUser`. Tests seed it through `StoreSeedState`.
   dashboard: DashboardState;
   embed: EmbedState;
   embeddingDataPicker: EmbeddingDataPickerState;

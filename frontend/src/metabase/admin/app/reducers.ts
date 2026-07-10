@@ -1,10 +1,10 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import { userApi } from "metabase/api";
 import { PLUGIN_ADMIN_ALLOWED_PATH_GETTERS } from "metabase/plugins";
 import { combineReducers } from "metabase/redux";
 import type { AdminPath, AdminPathKey } from "metabase/redux/store";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { isNotNull } from "metabase/utils/types";
 
 export const getAdminPaths: () => AdminPath[] = () => {
@@ -60,24 +60,27 @@ export const getAdminPaths: () => AdminPath[] = () => {
 };
 
 const paths = createReducer(getAdminPaths(), (builder) => {
-  builder.addCase(refreshCurrentUser.fulfilled, (state, { payload: user }) => {
-    if (user?.is_superuser) {
-      return state;
-    }
+  builder.addMatcher(
+    userApi.endpoints.getCurrentUser.matchFulfilled,
+    (state, { payload: user }) => {
+      if (user?.is_superuser) {
+        return state;
+      }
 
-    const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map((getter) => {
-      return getter(user);
-    })
-      .flat()
-      .reduce((acc, pathKey) => {
-        acc.add(pathKey);
-        return acc;
-      }, new Set<AdminPathKey>());
+      const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map((getter) => {
+        return getter(user);
+      })
+        .flat()
+        .reduce((acc, pathKey) => {
+          acc.add(pathKey);
+          return acc;
+        }, new Set<AdminPathKey>());
 
-    return state
-      .filter((path) => (allowedPaths.has(path.key) ? path : null))
-      .filter(isNotNull);
-  });
+      return state
+        .filter((path) => (allowedPaths.has(path.key) ? path : null))
+        .filter(isNotNull);
+    },
+  );
 });
 
 export const appReducer = combineReducers({

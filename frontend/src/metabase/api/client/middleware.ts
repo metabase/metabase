@@ -1,8 +1,11 @@
-import {
-  PLUGIN_API,
-  PLUGIN_EMBEDDING_IFRAME_SDK,
-  PLUGIN_EMBEDDING_SDK,
-} from "metabase/plugins";
+// Import the plugin objects from their leaf modules, not the `metabase/plugins`
+// barrel: the barrel pulls in the whole plugin graph (and, through it, modules
+// that import `metabase/api`) while the api client is still initializing —
+// a circular import. The leaves export the same live objects that EE code
+// mutates, so nothing behavioral changes.
+import { PLUGIN_API } from "metabase/plugins/oss/api";
+import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins/oss/embedding-iframe-sdk";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins/oss/embedding-sdk";
 
 import type { RequestMethod } from "./method";
 

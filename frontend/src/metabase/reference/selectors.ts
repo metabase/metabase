@@ -45,7 +45,7 @@ export type StateWithReference = State & {
   revisions?: Record<string, Record<string | number, unknown>>;
 };
 
-export const getUser = (state: StateWithReference) => state.currentUser;
+export { getUser } from "metabase/selectors/user";
 
 export const getSegmentId = (
   _state: StateWithReference,
