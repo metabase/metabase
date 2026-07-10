@@ -31,6 +31,7 @@ import { ExplorationSidebar } from "./ExplorationSidebar";
 import {
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
+  isHiddenTreeItem,
 } from "./utils";
 
 function getSidebarTestContext(
@@ -68,6 +69,7 @@ interface SetupOpts {
   selectedEntityId?: TestSelectedEntityId;
   prompt?: string | null;
   canWrite?: boolean;
+  showHidden?: boolean;
 }
 
 function setup({
@@ -79,8 +81,10 @@ function setup({
   selectedEntityId,
   prompt = null,
   canWrite = true,
+  showHidden = false,
 }: SetupOpts) {
   const setSelectedEntityId = jest.fn();
+  const onToggleShowHidden = jest.fn();
 
   fetchMock.get("express:/api/exploration/query/:id", {
     data: { rows: [], cols: [] },
@@ -133,8 +137,16 @@ function setup({
     explorationSidebarTabsInfo,
     selectedSidebarTab,
     getSelectedSidebarTabUrl,
-    getTree,
+    treeItemFilter,
   } = getSidebarTestContext(exploration);
+
+  // Mirror the page: exclude hidden pages from the tree unless "show hidden" is on.
+  const displayTree = getExplorationSidebarTree(
+    exploration,
+    showHidden
+      ? treeItemFilter
+      : (node) => treeItemFilter(node) && !isHiddenTreeItem(node),
+  );
 
   const sidebar = (
     <ExplorationSidebar
@@ -142,11 +154,13 @@ function setup({
       explorationSidebarTabsInfo={explorationSidebarTabsInfo}
       selectedSidebarTab={selectedSidebarTab}
       getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
-      tree={getTree()}
+      tree={displayTree}
       selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       isOpen
+      showHidden={showHidden}
+      onToggleShowHidden={onToggleShowHidden}
     />
   );
 
@@ -154,7 +168,12 @@ function setup({
     <Route path={explorationPath} component={() => sidebar} />,
     { withRouter: true, initialRoute: explorationPath },
   );
-  return { setSelectedEntityId, getSelectedEntityIdUrl, exploration };
+  return {
+    setSelectedEntityId,
+    onToggleShowHidden,
+    getSelectedEntityIdUrl,
+    exploration,
+  };
 }
 
 const pendingQuery = createQuery({
@@ -205,6 +224,177 @@ describe("ExplorationSidebar", () => {
     const row = getRow("Revenue by source");
     const marker = within(row).getByTestId("exploration-error-marker");
     expect(marker).toBeInTheDocument();
+  });
+
+  describe("show-hidden filter toggle", () => {
+    const toggle = () => screen.getByTestId("exploration-show-hidden-toggle");
+
+    it("renders inactive by default", () => {
+      setup({ queries: [doneQuery] });
+      expect(toggle()).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("renders active when hidden pages are being shown", () => {
+      setup({ queries: [doneQuery], showHidden: true });
+      expect(toggle()).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("calls onToggleShowHidden when clicked without changing selection", async () => {
+      const { onToggleShowHidden, setSelectedEntityId } = setup({
+        queries: [doneQuery],
+      });
+      await userEvent.click(toggle());
+      expect(onToggleShowHidden).toHaveBeenCalledTimes(1);
+      // toggling the filter must not navigate/select anything
+      expect(setSelectedEntityId).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("group hide button", () => {
+    const revenueBlock = createBlock({
+      id: 50,
+      name: "Revenue",
+      pages: [createPage({ id: 700, name: "Revenue by plan", query_ids: [7] })],
+    });
+    const revenueQuery = createQuery({
+      id: 7,
+      name: "Revenue by plan",
+      status: "done",
+    });
+
+    it("hides the whole group's pages when the group hide button is clicked", async () => {
+      fetchMock.put("path:/api/exploration/pages/hidden", 204);
+      setup({ queries: [revenueQuery], blocks: [revenueBlock] });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Hide Revenue" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          "path:/api/exploration/pages/hidden",
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          page_ids: [700],
+          hidden: true,
+        });
+      });
+    });
+
+    it("does not offer a hide button for the first thread group", () => {
+      setup({ queries: [revenueQuery], blocks: [revenueBlock] });
+
+      // metric sub-groups are hideable
+      expect(
+        screen.getByRole("button", { name: "Hide Revenue" }),
+      ).toBeInTheDocument();
+      // ...but the first thread ("Initial investigation") is not
+      expect(
+        screen.queryByRole("button", { name: "Hide Initial investigation" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("becomes a show button that reveals the group when every page is hidden", async () => {
+      fetchMock.put("path:/api/exploration/pages/hidden", 204);
+      const costsQuery = createQuery({
+        id: 8,
+        name: "Hidden chart",
+        status: "done",
+      });
+      setup({
+        queries: [costsQuery],
+        blocks: [
+          createBlock({
+            id: 60,
+            name: "Costs",
+            pages: [
+              createPage({
+                id: 800,
+                name: "Hidden chart",
+                query_ids: [8],
+                hidden: true,
+              }),
+            ],
+          }),
+        ],
+        showHidden: true,
+      });
+
+      // a fully-hidden group offers "Show", not "Hide"
+      expect(
+        screen.queryByRole("button", { name: "Hide Costs" }),
+      ).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Show Costs" }));
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          "path:/api/exploration/pages/hidden",
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          page_ids: [800],
+          hidden: false,
+        });
+      });
+    });
+  });
+
+  describe("all-hidden empty state", () => {
+    const hiddenBlock = createBlock({
+      id: 1,
+      name: "Revenue",
+      pages: [
+        createPage({
+          id: 900,
+          name: "Hidden chart",
+          query_ids: [9],
+          hidden: true,
+        }),
+      ],
+    });
+    const hiddenQuery = createQuery({
+      id: 9,
+      name: "Hidden chart",
+      status: "done",
+    });
+
+    it("keeps the first thread with an all-hidden message when every page is hidden", () => {
+      setup({ queries: [hiddenQuery], blocks: [hiddenBlock] });
+
+      expect(screen.getByTestId("exploration-all-hidden")).toBeInTheDocument();
+      expect(screen.getByText("Initial investigation")).toBeInTheDocument();
+      expect(
+        screen.getByText("All queries have been hidden."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the generic empty message when there is genuinely nothing", () => {
+      setup({ queries: [] });
+
+      expect(
+        screen.queryByTestId("exploration-all-hidden"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
+    });
+
+    it("renders the hidden pages instead of the message when the filter is on", () => {
+      setup({
+        queries: [hiddenQuery],
+        blocks: [hiddenBlock],
+        showHidden: true,
+      });
+
+      expect(
+        screen.queryByTestId("exploration-all-hidden"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Hidden chart")).toBeInTheDocument();
+    });
   });
 
   it("keeps a manually collapsed heading collapsed when the tree reloads", async () => {
@@ -274,6 +464,8 @@ describe("ExplorationSidebar", () => {
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
         isOpen
+        showHidden={false}
+        onToggleShowHidden={jest.fn()}
       />
     );
 
@@ -361,6 +553,8 @@ describe("ExplorationSidebar", () => {
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
           isOpen
+          showHidden={false}
+          onToggleShowHidden={jest.fn()}
         />
       );
       const { rerender } = renderWithProviders(
@@ -765,7 +959,11 @@ describe("ExplorationSidebar", () => {
     const findThreadMenuButton = () =>
       screen
         .getAllByRole("group", { name: /Initial investigation/ })
-        .find((el) => within(el).queryByRole("button"));
+        .find((el) =>
+          within(el)
+            .queryAllByRole("button")
+            .some((btn) => !btn.getAttribute("aria-label")?.startsWith("Hide")),
+        );
 
     it("calls cancel when Stop running is clicked on a running thread", async () => {
       fetchMock.post("path:/api/exploration/thread/1/cancel", {

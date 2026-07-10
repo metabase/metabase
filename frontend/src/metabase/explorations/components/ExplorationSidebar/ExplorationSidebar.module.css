@@ -38,6 +38,16 @@
   background: var(--mb-color-background-hover);
 }
 
+.hideGroupButton {
+  flex: none;
+  opacity: 0;
+}
+
+.treeRow:hover .hideGroupButton,
+.hideGroupButton:focus-visible {
+  opacity: 1;
+}
+
 .treeRowSelected {
   background: var(--mb-color-background-brand);
   color: var(--mb-color-brand);

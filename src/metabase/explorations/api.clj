@@ -316,7 +316,8 @@
    [:long_name [:maybe :string]]
    [:position  ms/IntGreaterThanOrEqualToZero]
    [:query_ids [:sequential ms/PositiveInt]]
-   [:starred   :boolean]])
+   [:starred   :boolean]
+   [:hidden    :boolean]])
 
 (mr/def ::ExplorationBlockNode
   "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is
@@ -952,6 +953,20 @@
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
     (t2/update! :model/ExplorationPage id {:starred starred}))
+  nil)
+
+(api.macros/defendpoint :put "/pages/hidden" :- :nil
+  "Set whether one or more exploration pages are hidden from the sidebar. Hiding a single
+  page passes a one-element `page_ids`; hiding a whole group passes all its page ids."
+  [_route-params
+   _query-params
+   {:keys [page_ids hidden]} :- [:map
+                                 [:page_ids [:sequential ms/PositiveInt]]
+                                 [:hidden :boolean]]]
+  (doseq [id page_ids]
+    (api/write-check (get-exploration-page-or-404 id)))
+  (when (seq page_ids)
+    (t2/update! :model/ExplorationPage :id [:in page_ids] {:hidden hidden}))
   nil)
 
 ;;; ----------------------------------------- routes -----------------------------------------

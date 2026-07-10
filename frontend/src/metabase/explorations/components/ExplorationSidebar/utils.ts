@@ -28,6 +28,9 @@ export interface ExplorationTreeHeading {
   thread?: ExplorationThread;
   status?: ExplorationQueryStatus;
   lastActivityAt?: string;
+  hideable?: boolean;
+  pageIds?: number[];
+  allHidden?: boolean;
 }
 
 export interface ExplorationTreePage {
@@ -38,12 +41,19 @@ export interface ExplorationTreePage {
   status: ExplorationQueryStatus;
   interestingness_score: number | null;
   parent_id: ExplorationPageNodeId | null;
+  hidden: boolean;
 }
 
 function isExplorationTreePage(
   node: ITreeNodeItem<ExplorationTreeNode>,
 ): node is ITreeNodeItem<ExplorationTreePage> {
   return node.data?.type === "page";
+}
+
+export function isHiddenTreeItem(
+  node: ITreeNodeItem<ExplorationTreeNode>,
+): boolean {
+  return isExplorationTreePage(node) && node.data?.hidden === true;
 }
 
 export interface ExplorationTreeDocument {
@@ -60,10 +70,30 @@ export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
 
 type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
 
+function collectHeadingPages(
+  nodes: ITreeNodeItem<ExplorationTreeNode>[],
+): ExplorationTreePage[] {
+  return flattenTree(nodes).flatMap((node) =>
+    node.data?.type === "page" ? [node.data] : [],
+  );
+}
+
+function getHeadingHideState(nodes: ITreeNodeItem<ExplorationTreeNode>[]): {
+  pageIds: number[];
+  allHidden: boolean;
+} {
+  const pages = collectHeadingPages(nodes);
+  return {
+    pageIds: pages.map((page) => Number(page.page_id)),
+    allHidden: pages.length > 0 && pages.every((page) => page.hidden),
+  };
+}
+
 export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
+  const initialThreadId = exploration.threads?.[0]?.id;
   const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
     .map((thread, index) => {
       const children = getExplorationQueryTree(thread, treeItemFilter);
@@ -86,11 +116,17 @@ export function getExplorationSidebarTree(
           lastActivityAt: latestTimestamp(
             (thread.queries ?? []).map((query) => query.finished_at),
           ),
+          // Every group is hideable except the first thread ("Initial investigation").
+          hideable: index > 0,
+          ...getHeadingHideState(children),
         },
         children,
       };
     })
-    .filter((heading) => (heading.children ?? []).length > 0);
+    .filter((heading) => {
+      const isInitialThread = initialThreadId && heading.id === initialThreadId;
+      return isInitialThread || (heading.children ?? []).length > 0;
+    });
   return tree;
 }
 
@@ -173,6 +209,7 @@ function getExplorationQueryTree(
                 ? getExplorationQueryGroupInterestingness(queries)
                 : null,
             parent_id: String(block.id),
+            hidden: page.hidden ?? false,
           },
         };
       })
@@ -192,6 +229,8 @@ function getExplorationQueryTree(
             isExplorationTreePage(child) ? (child.data?.queries ?? []) : [],
           ),
         ),
+        hideable: true,
+        ...getHeadingHideState(children),
       },
       children,
     };
@@ -295,7 +334,10 @@ function getExplorationDocumentStatus(
   return "running";
 }
 
-function getExplorationThreadName(thread: ExplorationThread, index: number) {
+export function getExplorationThreadName(
+  thread: ExplorationThread,
+  index: number,
+) {
   if (thread.name) {
     return thread.name;
   }

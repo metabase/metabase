@@ -195,6 +195,41 @@ export const explorationApi = Api.injectEndpoints({
         }
       },
     }),
+    setPagesHidden: builder.mutation<
+      void,
+      { pageIds: number[]; explorationId: ExplorationId; hidden: boolean }
+    >({
+      query: ({ pageIds, hidden }) => ({
+        method: "PUT",
+        url: `/api/exploration/pages/hidden`,
+        body: { page_ids: pageIds, hidden },
+      }),
+      async onQueryStarted(
+        { pageIds, explorationId, hidden },
+        { dispatch, queryFulfilled },
+      ) {
+        const hiddenPageIds = new Set(pageIds);
+        const patchResult = dispatch(
+          explorationApi.util.updateQueryData(
+            "getExploration",
+            explorationId,
+            (draft) => {
+              // casting as Exploration prevents excessively deep type error
+              for (const page of getExplorationPages(draft as Exploration)) {
+                if (hiddenPageIds.has(page.id)) {
+                  page.hidden = hidden;
+                }
+              }
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
+    }),
   }),
 });
 
@@ -211,4 +246,5 @@ export const {
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,
   useSetPageStarredMutation,
+  useSetPagesHiddenMutation,
 } = explorationApi;

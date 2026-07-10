@@ -411,4 +411,123 @@ describe("ActionToolbar", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("hide", () => {
+    it("shows the hide action when the page is not hidden", () => {
+      setup({ page: createPage({ id: PAGE_ID, hidden: false }) });
+
+      expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
+    });
+
+    it("shows the show action when the page is hidden", () => {
+      setup({ page: createPage({ id: PAGE_ID, hidden: true }) });
+
+      expect(screen.getByRole("button", { name: "Show" })).toBeInTheDocument();
+    });
+
+    it("hides the page on click", async () => {
+      fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
+
+      setup({ page: createPage({ id: PAGE_ID, hidden: false }) });
+
+      await userEvent.click(screen.getByRole("button", { name: "Hide" }));
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/pages/hidden`,
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          page_ids: [PAGE_ID],
+          hidden: true,
+        });
+      });
+    });
+
+    it("unhides the page on click", async () => {
+      fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
+
+      setup({ page: createPage({ id: PAGE_ID, hidden: true }) });
+
+      await userEvent.click(screen.getByRole("button", { name: "Show" }));
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/pages/hidden`,
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          page_ids: [PAGE_ID],
+          hidden: false,
+        });
+      });
+    });
+
+    it("toggles hidden with the h shortcut", async () => {
+      fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
+
+      setup({ page: createPage({ id: PAGE_ID, hidden: false }) });
+
+      fireEvent.keyDown(document.body, { key: "h" });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/exploration/pages/hidden`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1);
+      });
+    });
+
+    it("shows an undo toast after hiding the page", async () => {
+      fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
+
+      setup({
+        page: createPage({ id: PAGE_ID, hidden: false }),
+        withUndos: true,
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Hide" }));
+
+      expect(await screen.findByText("Chart hidden")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+    });
+
+    it("does not show an undo toast when unhiding", async () => {
+      fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
+
+      setup({
+        page: createPage({ id: PAGE_ID, hidden: true }),
+        withUndos: true,
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Show" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/exploration/pages/hidden`, {
+            method: "PUT",
+          }),
+        ).toHaveLength(1);
+      });
+      expect(screen.queryByText("Chart hidden")).not.toBeInTheDocument();
+    });
+
+    it("shows a toast when hiding fails", async () => {
+      fetchMock.put(`path:/api/exploration/pages/hidden`, 500);
+
+      setup({
+        page: createPage({ id: PAGE_ID, hidden: false }),
+        withUndos: true,
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Hide" }));
+
+      expect(
+        await screen.findByText("Failed to update visibility"),
+      ).toBeInTheDocument();
+    });
+  });
 });
