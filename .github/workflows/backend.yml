@@ -197,9 +197,7 @@ jobs:
           clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           ${{ matrix.job.test-args }}
-        # Trunk Quarantine controls the final state of the run in the CI!
-        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
-        # whether to fail or to pass the whole job, based on the quarantine list.
+        # Keep this step continue-on-error because the quarantine gate controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Report failed tests to ci-conductor
@@ -214,14 +212,15 @@ jobs:
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
           adapter: backend
 
-      - name: Quarantine gate (dry run)
-        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
-        continue-on-error: true
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
         timeout-minutes: 3
         uses: ./.github/actions/quarantine-gate
         with:
           adapter: backend
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -234,6 +233,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.run-java-tests.outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
       - name: Publish Test Report (JUnit)
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0

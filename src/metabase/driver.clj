@@ -844,6 +844,22 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
+    ;; Does this driver support creating an index (in the broad sense -- see the comment above
+    ;; [[supported-index-methods]]) as a standalone statement after the transform target table already exists?
+    ;; Drivers with this feature implement [[supported-index-methods]] and [[compile-create-index]]. Contrast with
+    ;; drivers that inline indexes into the table-creation statement itself (e.g. Redshift sortkeys).
+    :index/standalone-create
+    ;;
+    ;; Does this driver inline an index into the table-creation statement itself (e.g. Redshift SORTKEY, BigQuery
+    ;; CLUSTER BY) rather than creating it afterwards? Drivers with this feature implement [[supported-index-methods]]
+    ;; and render the index in [[compile-transform]] (the CTAS for a SQL transform) and/or [[create-table!]] (the
+    ;; CREATE TABLE for a Python transform).
+    :index/inline-create
+    ;;
+    ;; Does this driver support reading the indexes that physically exist on a table? Drivers with this feature
+    ;; implement [[fetch-table-indexes]].
+    :index/fetch
+    ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
     ;;
@@ -1542,6 +1558,122 @@
   {:added "0.58.0", :arglists '([driver database-id schema table-name index-name column-names & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; "Index" is used in the broad sense here: anything that shapes the physical layout of a transform's target table.
+;; Postgres/MySQL use real indexes, Snowflake/BigQuery clustering keys, Redshift sort/dist keys.
+
+(mr/def ::index-field
+  "One form field describing how to request an index: the same shape as a [[connection-properties]] descriptor, plus a
+  `:columns` type for the indexed columns."
+  [:map
+   ;; key written into the structured request body, e.g. "unique"
+   [:name :string]
+   ;; deferred-i18n label (or string)
+   [:display-name :any]
+   ;; deferred-i18n user facing description
+   [:description {:optional true} :any]
+   [:type [:enum :string :boolean :select :integer :columns]]
+   [:required {:optional true} :boolean]
+   ;; `:columns` only: whether per-column asc/desc is offered
+   [:directions {:optional true} :boolean]
+   ;; `:select` only: choices, each `:value` an enum value of the kind's `::index-structured` branch
+   [:options {:optional true} [:sequential [:map
+                                            [:name :any]
+                                            [:value :string]]]]])
+
+(mr/def ::index-method
+  "Metadata for one index kind a driver supports."
+  [:map
+   ;; deferred-i18n label for the index kind, e.g. "B-Tree" (localizable, so drivers own it rather than the FE)
+   [:display-name :any]
+   ;; deferred-i18n description of when to use this kind
+   [:description {:optional true} :any]
+   ;; :standalone = created by a separate statement after the table; :inline = part of the CREATE TABLE
+   [:lifecycle [:enum :standalone :inline]]
+   [:fields [:sequential [:ref ::index-field]]]])
+
+(mr/def ::supported-index-methods
+  "Return shape of [[supported-index-methods]]: index-kind -> metadata."
+  [:map-of :keyword [:ref ::index-method]])
+
+(defmulti supported-index-methods
+  "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata
+  matching `::supported-index-methods`. Defaults to `{}` for drivers with no index support."
+  {:added "0.63.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod supported-index-methods :default
+  [_driver _database]
+  {})
+
+(defmulti compile-create-index
+  "Render a `:standalone` index into the DDL statement(s) that create it on the existing `table` in `schema`.
+  `structured` is the index description, e.g. `{:kind :btree, :name \"foo_bar\", :columns [{:name \"bar\"}]}`; it may
+  also carry `:unique` and `:if-not-exists` booleans. The index's `:name` is rendered verbatim as the physical name.
+
+  Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]]."
+  {:added "0.63.0", :arglists '([driver schema table structured])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti refresh-table-stats!
+  "Refresh the database's table statistics (e.g. `ANALYZE`) for `table` after a transform run materializes it, so
+  query planners see fresh stats. Defaults to a no-op."
+  {:added "0.63.0", :arglists '([driver database schema table transform-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod refresh-table-stats! :default
+  [_driver _database _schema _table _transform-type]
+  nil)
+
+(mr/def ::table-index
+  "One physical index from [[fetch-table-indexes]], normalized into a cross-driver shape."
+  [:map
+   {:closed true}
+   ;; the physical index name, or nil for an unnamed inline key
+   [:name              [:maybe :string]]
+   ;; cross-driver category: :btree / :skip-index / :order-by / :sortkey
+   [:kind              :keyword]
+   ;; warehouse-native type/method: btree/gin/... (PG), minmax/set/... (CH skip-index), compound/interleaved
+   ;; (Redshift sortkey); nil for a ClickHouse ORDER BY
+   [:access-method     [:maybe :string]]
+   [:is-unique         :boolean]
+   [:is-primary        :boolean]
+   [:is-valid          :boolean]
+   ;; key columns in index order; an expression column carries its expression text (e.g. "lower(email)"). never nil:
+   ;; drivers fall back to the catalog's expression text rather than emit a missing name.
+   [:key-columns       [:sequential :string]]
+   ;; non-key INCLUDE / covering columns. nil-tolerant unlike :key-columns, since these aren't backfilled.
+   [:include-columns   [:sequential [:maybe :string]]]
+   ;; the WHERE clause of a partial index, else nil
+   [:partial-predicate [:maybe :string]]
+   ;; the catalog's own DDL/clause, the most faithful representation
+   [:definition        [:maybe :string]]])
+
+(mr/def ::fetch-table-indexes.result
+  [:sequential [:ref ::table-index]])
+
+(defmulti fetch-table-indexes
+  "Fetch the physical indexes on `table` in `schema` of `database`, one normalized map per catalog index, matching
+  `::fetch-table-indexes.result`. Inline sort keys (ClickHouse `ORDER BY`, Redshift `SORTKEY`) have `:name nil`.
+
+  Distinct from the sync-side [[describe-table-indexes]]/[[describe-indexes]], which capture only single-column indexes
+  to flag fields as indexed; this returns full physical detail (uniqueness, partial predicate, INCLUDE columns, key
+  order, raw DDL)."
+  {:added "0.63.0", :arglists '([driver database schema table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod fetch-table-indexes :default
+  [driver _database _schema _table]
+  (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
+                  {:driver driver})))
 
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified

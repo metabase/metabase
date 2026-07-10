@@ -159,7 +159,7 @@
                                  :import-with-context
                                  (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})
 
-(defmethod serdes/dependencies "OsiAiContext"
+(defmethod serdes/deserialization-dependencies "OsiAiContext"
   [entity]
   ;; Depend on the entity this row describes (its parent path), so it imports after that entity exists.
   [(vec (pop (serdes/path entity)))])

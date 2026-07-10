@@ -526,7 +526,7 @@
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]
                          [{:id "Linked database" :model "Database"}]}
-                       (set (serdes/dependencies extracted-dashboard))))
+                       (set (serdes/deserialization-dependencies extracted-dashboard))))
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
             (testing "ingest and load"
               ;; ingest

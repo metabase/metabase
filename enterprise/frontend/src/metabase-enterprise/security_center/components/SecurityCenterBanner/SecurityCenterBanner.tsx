@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import {
@@ -8,6 +7,7 @@ import {
 import { Banner } from "metabase/common/components/Banner";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
+import { Link } from "metabase/router";
 import { Anchor, Text } from "metabase/ui";
 
 import { isAffected } from "../../utils";

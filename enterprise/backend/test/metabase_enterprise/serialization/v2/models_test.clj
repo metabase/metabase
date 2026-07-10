@@ -138,7 +138,7 @@
 
 (def ^:private auto-synthesized-fk-targets
   "FK target models whose importers auto-create a stub entity if the target is missing, so
-  they don't have to be declared in `serdes/dependencies`. Everything else MUST be declared
+  they don't have to be declared in `serdes/deserialization-dependencies`. Everything else MUST be declared
   — otherwise `*import-fk*` throws \"Could not find foreign key target\" and aborts the
   whole import (see GDGT-2444 for an example)."
   #{:model/User :model/Table :model/Field})
@@ -174,7 +174,7 @@
 
 (deftest ^:parallel serialization-direct-fk-dependencies-completeness-test
   (testing (str "Every direct FK declared via `(serdes/fk ...)` in a loadable (non-inlined) "
-                "model's `make-spec` is surfaced in that model's `serdes/dependencies` — "
+                "model's `make-spec` is surfaced in that model's `serdes/deserialization-dependencies` — "
                 "otherwise `*import-fk*` will throw \"Could not find foreign key target\" at "
                 "import time (see GDGT-2444).")
     (let [inlined? (set serdes.models/inlined-models)]
@@ -194,13 +194,13 @@
           (let [entity     (into {:serdes/meta [{:model m :id "self"}]}
                                  (for [[field _] fks]
                                    [field (str "fake-eid-" (name field))]))
-                deps       (set (serdes/dependencies entity))
+                deps       (set (serdes/deserialization-dependencies entity))
                 dep-models (set (keep (comp :model peek) deps))]
             (doseq [[field target] fks]
-              (testing (format "FK `%s` -> `%s` must appear in `(serdes/dependencies)`"
+              (testing (format "FK `%s` -> `%s` must appear in `(serdes/deserialization-dependencies)`"
                                field target)
                 (is (contains? dep-models (name target))
-                    (format (str "`(serdes/dependencies %s)` did not include a `%s` entry "
+                    (format (str "`(serdes/deserialization-dependencies %s)` did not include a `%s` entry "
                                  "when `%s` was populated. Add the FK to the model's "
                                  "`dependencies` method (see Table/Transform for an example).")
                             m (name target) field))))))))))

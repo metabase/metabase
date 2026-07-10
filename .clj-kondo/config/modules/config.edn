@@ -829,7 +829,6 @@
            metabase.driver.common
            metabase.driver.connection
            metabase.driver.ddl.interface
-           metabase.driver.h2
            metabase.driver.impl
            metabase.driver.init
            metabase.driver.mysql
@@ -1065,6 +1064,27 @@
    :model-exports #{:model/ModelIndex :model/ModelIndexValue}
    :model-imports #{:model/Card :model/Collection}}
 
+  indexes
+  {:team "Gadget"
+   :api  #{metabase.indexes.models.table-index
+           metabase.indexes.reconcile
+           metabase.indexes.schema}
+   :uses #{driver
+           models
+           util}
+   :model-exports #{:model/TableIndex}}
+
+  indexes-rest
+  {:team "Gadget"
+   :api  #{metabase.indexes-rest.api}
+   :uses #{api
+           indexes
+           transforms-base
+           util}
+   :model-imports #{:model/Database
+                    :model/TableIndex
+                    :model/Transform}}
+
   initialization-status
   {:team "UX West"
    :api  #{metabase.initialization-status.core}
@@ -1227,13 +1247,17 @@
    :api  #{metabase.mcp.api
            metabase.mcp.callback-api
            metabase.mcp.core
-           metabase.mcp.init}
+           metabase.mcp.init
+           metabase.mcp.usage}
+   :model-exports #{:model/McpSessionLog
+                    :model/McpToolCallLog}
    :uses #{agent-api
            api
            app-db
            config
            llm
            oauth-server
+           premium-features
            request
            server
            session
@@ -1944,19 +1968,11 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{config
-           models
-           permissions
-           plugins
+   :uses #{plugins
            settings
            sync
            util}
-   :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
-                    :model/DataPermissions
-                    :model/Database
-                    :model/Field
+   :model-imports #{:model/Database
                     :model/Table}}
 
   search
@@ -2308,6 +2324,7 @@
            config
            lib
            lib-be
+           mcp
            permissions
            premium-features
            search
@@ -2375,6 +2392,7 @@
            database-routing
            driver
            events
+           indexes
            lib
            lib-be
            models
@@ -2404,6 +2422,7 @@
                     :model/Database
                     :model/Field
                     :model/Table
+                    :model/TableIndex
                     :model/User}}
 
   transforms-base
@@ -2417,11 +2436,13 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
+                    :model/TableIndex
                     :model/Transform
                     :model/TransformRun}
    :uses #{database-routing
            driver
            events
+           indexes
            lib
            lib-be
            premium-features
@@ -3254,6 +3275,18 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
+  enterprise/mcp
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.mcp.init}
+   :uses    #{analytics
+              mcp
+              metabot
+              premium-features
+              task
+              util}
+   :model-imports #{:model/McpSessionLog
+                    :model/McpToolCallLog}}
+
   enterprise/memoize-monitor
   {:team "Graphy"
    :api  #{metabase-enterprise.memoize-monitor.init}
@@ -3609,7 +3642,9 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.transforms.api}
    :uses #{premium-features
-           enterprise/transforms-inspector}}
+           util
+           enterprise/transforms-inspector}
+   :model-imports #{:model/Transform}}
 
   enterprise/transforms-inspector
   {:team "Gadget"

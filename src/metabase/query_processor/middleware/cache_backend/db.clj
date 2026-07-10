@@ -25,10 +25,9 @@
   {:arglists '([cached])}
   (comp type :results))
 
-;; H2 returns a blob type
-(defmethod results-as-bytes org.h2.jdbc.JdbcBlob
-  [{:keys [^org.h2.jdbc.JdbcBlob results]}]
-  (.getBytes results 1 (.length results)))
+(defmethod results-as-bytes java.sql.Blob
+  [{:keys [^java.sql.Blob results]}]
+  (.getBytes results 1 (int (.length results))))
 
 ;; MySQL/Mariadb/Postgresql return a byte array
 (defmethod results-as-bytes :default

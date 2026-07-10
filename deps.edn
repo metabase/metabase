@@ -32,8 +32,8 @@
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
-  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.4"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
-  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.4"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
+  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.5"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
+  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.5"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
@@ -177,7 +177,7 @@
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.11"}            ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.12"}            ; Postgres driver
   org.semver4j/semver4j                     {:mvn/version "6.0.0"}              ; Semantic versioning parsing & comparison
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath

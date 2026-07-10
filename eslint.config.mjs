@@ -50,6 +50,10 @@ const baseMetabaseRestrictedConfig = {
       message: "Please import from `metabase/redux` instead.",
     },
     {
+      name: "react-router",
+      message: "Please import routing from `metabase/router` instead.",
+    },
+    {
       name: "@mantine/core",
       message: "Please import from `metabase/ui` instead.",
     },
@@ -544,6 +548,13 @@ const configs = [
     },
   },
   {
+    // Standalone Node service — console logging is appropriate here.
+    files: ["frontend/src/static-viz-server/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/**/*"],
     plugins: {
       ttag: fixupPluginRules(ttagPlugin),
@@ -613,6 +624,14 @@ const configs = [
     },
   },
   {
+    // The router facade is the single seam allowed to import `react-router`
+    // directly; every other file goes through `metabase/router`.
+    files: ["frontend/src/metabase/router/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/ui/**/*.{js,jsx,ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -624,6 +643,10 @@ const configs = [
             "cljs/metabase.lib*",
           ],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
             {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
@@ -659,6 +682,10 @@ const configs = [
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
               message: "Please import from `metabase/redux` instead.",
+            },
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
             },
             {
               name: "@mantine/core",
@@ -835,6 +862,10 @@ const configs = [
           ],
           paths: [
             {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
             },
@@ -907,6 +938,10 @@ const configs = [
         {
           patterns: [{ group: ["cljs/metabase.lib*"] }],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
