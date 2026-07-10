@@ -23,7 +23,7 @@ import {
   useRegenerateRecoveryCodesMutation,
 } from "metabase-enterprise/api";
 
-import { TOTP_CODE_LENGTH } from "./constants";
+import { TOTP_CODE_LENGTH } from "../../constants";
 
 const LOW_RECOVERY_CODES = 3;
 

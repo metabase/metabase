@@ -21,7 +21,7 @@ import {
   useVerifyMfaMutation,
 } from "metabase-enterprise/api";
 
-import { RECOVERY_CODE_LENGTH, TOTP_CODE_LENGTH } from "./constants";
+import { RECOVERY_CODE_LENGTH, TOTP_CODE_LENGTH } from "../../constants";
 
 const CHALLENGE_SCHEMA = Yup.object({
   code: Yup.string()
@@ -158,7 +158,7 @@ function EmailOtpForm({ challengeToken }: EmailOtpFormProps) {
   );
 }
 
-export function MfaChallengeForm({
+export function ChallengeForm({
   challengeToken,
   methods,
   remember,

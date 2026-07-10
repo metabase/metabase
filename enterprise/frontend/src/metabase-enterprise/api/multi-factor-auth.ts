@@ -1,25 +1,11 @@
-import type { MfaMethod } from "metabase-types/api";
+import type {
+  MfaAdminOverview,
+  MfaEnrollResponse,
+  MfaStatus,
+} from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-
-export interface MfaStatus {
-  mfa_enabled: boolean;
-  enrolled: boolean;
-  pending: boolean;
-  method: MfaMethod | null;
-  recovery_codes_remaining: number;
-}
-
-export interface MfaEnrollResponse {
-  secret: string;
-  otpauth_uri: string;
-}
-
-export interface MfaAdminOverview {
-  encryption_key_set: boolean;
-  enrolled_count: number;
-  unenrolled_count: number;
-}
+import { invalidateTags, provideMfaStatusTags, tag } from "./tags";
 
 export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,7 +14,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/mfa/admin/overview",
       }),
-      providesTags: ["mfa-status"],
+      providesTags: () => provideMfaStatusTags(),
     }),
     verifyMfa: builder.mutation<
       { id: string },
@@ -45,7 +31,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/mfa/status",
       }),
-      providesTags: ["mfa-status"],
+      providesTags: () => provideMfaStatusTags(),
     }),
     enrollMfa: builder.mutation<MfaEnrollResponse, { password: string }>({
       query: (body) => ({
@@ -63,7 +49,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/enroll/confirm",
         body,
       }),
-      invalidatesTags: ["mfa-status"],
+      invalidatesTags: (_, error) => invalidateTags(error, [tag("mfa-status")]),
     }),
     disableMfa: builder.mutation<void, { code: string }>({
       query: (body) => ({
@@ -71,7 +57,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/disable",
         body,
       }),
-      invalidatesTags: ["mfa-status"],
+      invalidatesTags: (_, error) => invalidateTags(error, [tag("mfa-status")]),
     }),
     sendEmailOtp: builder.mutation<
       { success: true },
@@ -92,7 +78,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/recovery-codes",
         body,
       }),
-      invalidatesTags: ["mfa-status"],
+      invalidatesTags: (_, error) => invalidateTags(error, [tag("mfa-status")]),
     }),
   }),
 });
