@@ -26,12 +26,13 @@
       (:index_exists false)))
 
 (defn semantic-search-capable?
-  "Does this instance have the infrastructure for semantic search: a pgvector DB and the premium feature.
+  "Does this instance have the infrastructure for semantic search: the premium feature and a pgvector DB.
   Gates Quartz job scheduling at startup.
   Deliberately excludes the kill switch, which the job bodies check per execution so it works at runtime."
   []
-  (and (string? (not-empty semantic.db.datasource/db-url))
-       (premium-features/has-feature? :semantic-search)))
+  (and (premium-features/has-feature? :semantic-search)
+       ;; Cheap gates first: this check becomes a DB probe under BOT-1796.
+       (string? (not-empty semantic.db.datasource/db-url))))
 
 (defn semantic-search-available?
   "Whether semantic search can run on this instance: capable and not disabled by the kill switch.
