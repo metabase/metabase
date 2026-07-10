@@ -117,15 +117,6 @@ interface SelectedPageId {
 
 export type SelectedEntityId = SelectedDocumentId | SelectedPageId;
 
-function getFirstThreadPageId(thread: ExplorationThread): string | null {
-  for (const block of thread.blocks ?? []) {
-    for (const page of block.pages ?? []) {
-      return String(page.id);
-    }
-  }
-  return null;
-}
-
 export function ExplorationPage({
   params,
   route,
@@ -151,16 +142,29 @@ export function ExplorationPage({
     [location.pathname, location.search],
   );
 
+  const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
+
   const getSelectedEntityIdUrl = useCallback(
-    (entityId: SelectedEntityId) => {
-      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${location.search}`;
+    (entityId: SelectedEntityId, options?: { tab?: ExplorationSidebarTab }) => {
+      const search = new URLSearchParams(location.search);
+      if (options?.tab) {
+        search.set("tab", options.tab);
+      }
+      const searchString = search.toString();
+      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${searchString ? `?${searchString}` : ""}`;
     },
     [params.id, location.search],
   );
 
   const setSelectedEntityId = useCallback(
-    (entityId: SelectedEntityId) => {
-      dispatch(push(getSelectedEntityIdUrl(entityId)));
+    (
+      entityId: SelectedEntityId,
+      options?: { tab?: ExplorationSidebarTab; scrollIntoView?: boolean },
+    ) => {
+      if (options?.scrollIntoView) {
+        shouldScrollSelectionRef.current = true;
+      }
+      dispatch(push(getSelectedEntityIdUrl(entityId, options)));
     },
     [dispatch, getSelectedEntityIdUrl],
   );
@@ -171,9 +175,6 @@ export function ExplorationPage({
   const [shouldPoll, setShouldPoll] = useState(true);
   const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  // A new turn (e.g. "Explore further") started while a filtered tab is active lands in "All" but
-  // is hidden by the current filter — flag it so the "All" tab shows a dot until the user visits it.
-  const [hasUnviewedTurnInAll, setHasUnviewedTurnInAll] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
 
   const {
@@ -329,70 +330,46 @@ export function ExplorationPage({
     }
   }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
 
-  // Navigate to a freshly-started thread on the "All" tab (where it's always visible), landing on
-  // its first page.
-  const goToTurnInAll = useCallback(
-    (thread: ExplorationThread) => {
-      const firstPageId = getFirstThreadPageId(thread);
-      const nextSearchParams = new URLSearchParams(location.search);
-      nextSearchParams.set("tab", "all");
-      const base = Urls.exploration(Number(params.id));
-      const url =
-        firstPageId != null
-          ? `${base}/page/${encodeURIComponent(firstPageId)}?${nextSearchParams.toString()}`
-          : `${base}?${nextSearchParams.toString()}`;
-      dispatch(push(url));
-    },
-    [dispatch, location.search, params.id],
-  );
-
-  // Detect turns (threads) added since we last saw the exploration. A turn started from a filtered
-  // tab (Stars/Discussions) is hidden by that filter, so flag the "All" tab with a dot and offer a
-  // toast that jumps there. On the "All" tab it's already visible — no dot, no toast.
+  // Detect new threads (from "Explore further") and toast when their first
+  // page lands. Threads arrive without pages while query planning is still
+  // running, so we wait for a page before marking a thread as seen.
   const seenThreadIdsRef = useRef<Set<number> | null>(null);
   useEffect(() => {
     const threads = exploration?.threads;
     if (!threads) {
       return;
     }
+
     if (seenThreadIdsRef.current == null) {
-      // First load: remember existing threads so we don't announce them as new.
-      seenThreadIdsRef.current = new Set(threads.map((thread) => thread.id));
+      seenThreadIdsRef.current = new Set(threads.map((t) => t.id));
       return;
     }
+
     const seen = seenThreadIdsRef.current;
-    const newThreads = threads.filter((thread) => !seen.has(thread.id));
-    if (newThreads.length === 0) {
-      return;
+    for (const thread of threads) {
+      if (seen.has(thread.id)) {
+        continue;
+      }
+      const firstPage = thread.blocks?.flatMap((b) => b.pages ?? [])?.[0];
+      if (!firstPage) {
+        continue;
+      }
+      seen.add(thread.id);
+      if (thread.name) {
+        sendToast({
+          icon: "bolt",
+          message: c("{0} is the name of a new research thread")
+            .t`Added ${thread.name}`,
+          actionLabel: t`View`,
+          action: () =>
+            setSelectedEntityId(
+              { type: "page", id: String(firstPage.id) },
+              { tab: "all", scrollIntoView: true },
+            ),
+        });
+      }
     }
-    newThreads.forEach((thread) => seen.add(thread.id));
-    if (selectedSidebarTab === "all") {
-      return;
-    }
-    setHasUnviewedTurnInAll(true);
-    const newestTurn = newThreads[newThreads.length - 1];
-    sendToast({
-      icon: "bolt",
-      message: newestTurn.name
-        ? c("{0} is the name of a new research thread")
-            .t`${newestTurn.name} added to All`
-        : t`New research added to All`,
-      actionLabel: t`View`,
-      action: () => goToTurnInAll(newestTurn),
-    });
-  }, [exploration, selectedSidebarTab, sendToast, goToTurnInAll]);
-
-  // Once the user is on the "All" tab the new turn is visible, so drop the dot.
-  useEffect(() => {
-    if (selectedSidebarTab === "all") {
-      setHasUnviewedTurnInAll(false);
-    }
-  }, [selectedSidebarTab]);
-
-  const tabsWithNewContent = useMemo<ReadonlySet<ExplorationSidebarTab>>(
-    () => (hasUnviewedTurnInAll ? new Set(["all"]) : new Set()),
-    [hasUnviewedTurnInAll],
-  );
+  }, [exploration, sendToast, setSelectedEntityId]);
 
   const pageIdToPageAndQueries: Map<
     ExplorationPageNodeId,
@@ -552,12 +529,12 @@ export function ExplorationPage({
             exploration={exploration}
             explorationSidebarTabsInfo={explorationSidebarTabsInfo}
             selectedSidebarTab={selectedSidebarTab}
-            tabsWithNewContent={tabsWithNewContent}
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
             selectedEntityId={selectedEntityId}
             setSelectedEntityId={setSelectedEntityId}
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+            shouldScrollSelectionRef={shouldScrollSelectionRef}
             isOpen={isSidebarOpen}
             showHidden={showHidden}
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}

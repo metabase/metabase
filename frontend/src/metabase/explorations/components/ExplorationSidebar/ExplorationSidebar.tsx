@@ -66,12 +66,12 @@ interface ExplorationSidebarProps {
   exploration: Exploration;
   explorationSidebarTabsInfo: ExplorationSidebarTabsInfo;
   selectedSidebarTab: ExplorationSidebarTab;
-  tabsWithNewContent?: ReadonlySet<ExplorationSidebarTab>;
   getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNode>[];
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   isOpen: boolean;
   showHidden: boolean;
   onToggleShowHidden: () => void;
@@ -81,12 +81,12 @@ export function ExplorationSidebar({
   exploration,
   explorationSidebarTabsInfo,
   selectedSidebarTab,
-  tabsWithNewContent,
   getSelectedSidebarTabUrl,
   tree,
   selectedEntityId,
   setSelectedEntityId,
   getSelectedEntityIdUrl,
+  shouldScrollSelectionRef,
   isOpen,
   showHidden,
   onToggleShowHidden,
@@ -96,7 +96,6 @@ export function ExplorationSidebar({
     selectedId: selectedEntityId?.id,
     freezeAutoExpandOnManualToggle: true,
   });
-  const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
 
   const flatItems = useMemo(() => flattenTree(tree), [tree]);
 
@@ -124,6 +123,21 @@ export function ExplorationSidebar({
   // eslint complains when passing `treeController.collapse` to `useEffect` deps
   // so destructure it
   const { collapse, setExpandedIds } = treeController;
+
+  // When programmatic navigation sets shouldScrollSelectionRef, also expand
+  // the tree to reveal the selected item. useTree's auto-expand is frozen
+  // after a manual chevron toggle, so we bypass it here.
+  useEffect(() => {
+    if (shouldScrollSelectionRef.current && selectedEntityId) {
+      setExpandedIds(
+        (prev) =>
+          new Set([
+            ...prev,
+            ...getInitialExpandedIds(selectedEntityId.id, tree),
+          ]),
+      );
+    }
+  }, [selectedEntityId, shouldScrollSelectionRef, setExpandedIds, tree]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -198,6 +212,7 @@ export function ExplorationSidebar({
     handlePrefetch,
     collapse,
     exploration.id,
+    shouldScrollSelectionRef,
   ]);
 
   const TreeNode = useCallback(
@@ -215,6 +230,7 @@ export function ExplorationSidebar({
       exploration.id,
       exploration.can_write,
       handlePrefetch,
+      shouldScrollSelectionRef,
       getSelectedEntityIdUrl,
     ],
   );
@@ -247,9 +263,6 @@ export function ExplorationSidebar({
             <Tabs.Tab
               key={value}
               value={value}
-              rightSection={
-                tabsWithNewContent?.has(value) ? <NewContentDot /> : undefined
-              }
               renderRoot={(props) => (
                 <ForwardRefLink
                   {...props}
@@ -297,22 +310,6 @@ export function ExplorationSidebar({
         </Center>
       )}
     </Stack>
-  );
-}
-
-function NewContentDot() {
-  return (
-    <Tooltip label={t`New research to look at`}>
-      <Box
-        aria-label={t`New research to look at`}
-        data-testid="exploration-tab-new-content-dot"
-        bg="brand"
-        w="0.375rem"
-        h="0.375rem"
-        bdrs="50%"
-        flex="none"
-      />
-    </Tooltip>
   );
 }
 

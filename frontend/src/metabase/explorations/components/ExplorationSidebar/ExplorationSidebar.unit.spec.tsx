@@ -158,6 +158,7 @@ function setup({
       selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+      shouldScrollSelectionRef={{ current: true }}
       isOpen
       showHidden={showHidden}
       onToggleShowHidden={onToggleShowHidden}
@@ -463,6 +464,7 @@ describe("ExplorationSidebar", () => {
         selectedEntityId={{ type: "page", id: String(REVENUE_PAGE_ID) }}
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
+        shouldScrollSelectionRef={{ current: true }}
         isOpen
         showHidden={false}
         onToggleShowHidden={jest.fn()}
@@ -552,6 +554,7 @@ describe("ExplorationSidebar", () => {
           selectedEntityId={{ type: "page", id: selectedId }}
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
+          shouldScrollSelectionRef={{ current: true }}
           isOpen
           showHidden={false}
           onToggleShowHidden={jest.fn()}
