@@ -333,7 +333,29 @@ top level, or `:and`/`:or` inside another clause).
 `(lib.options/update-options expr assoc :case-sensitive false)`.)
 
 **R16 — Segments & time intervals.** `[:segment (:id segment)]` →
-`(lib/segment (:id segment))`.
+`(lib/segment (:id segment))` (`lib.common/defop segment [segment-id]`,
+`src/metabase/lib/filter.cljc:398`).
+
+A segment ref is valid **anywhere a boolean expression is required**, including as
+the condition argument of conditional aggregations (`count-where`, `sum-where`,
+`distinct-where`, `share`): `:segment` is schema-typed `:type/Boolean`
+(`src/metabase/lib/schema/filter.cljc:185`, `src/metabase/lib/schema/ref.cljc:273`),
+matching those constructors' `::expression/boolean` arg
+(`src/metabase/lib/schema/aggregation.cljc:33-38`). Do not re-derive this per file:
+
+```clojure
+;; OLD: :aggregation [[:count-where [:segment 1]]]
+;; NEW:
+(lib/aggregate q (lib/count-where (lib/segment 1)))
+;; OLD: :aggregation [[:sum-where $price [:segment 1]]]
+;; NEW:
+(lib/aggregate q (lib/sum-where venues-price (lib/segment 1)))
+```
+
+Precedent: pilot `count_where_test.clj` / `sum_where_test.clj` /
+`distinct_where_test.clj` `segment-test`s. Segment ports are on the §7 mandatory
+compiled-shape parity list.
+
 Time intervals: `[:time-interval $created_at -30 :day]` →
 `(lib/time-interval orders-created-at -30 :day)`.
 
@@ -373,20 +395,56 @@ Legacy normalization also accepted a single **un-nested** clause —
 `nested_queries_test.clj:117-135`, `case_test.clj:74-77`). Treat it as exactly one
 aggregation, not as multiple entries.
 
-**R17b — `[:metric N]` aggregation refs → `(lib/aggregate q (lib.metadata/metric mp N))`.**
-`lib.metadata/metric` (`src/metabase/lib/metadata.cljc:189-195`) returns the metric
-card's metadata; `lib/aggregate` accepts it directly. Precedent:
-`test/metabase/measures/models/measure_test.clj:106`.
+**R17b — `[:metric N]` aggregation refs: two distinct cases. Metric ports are on
+the §7 mandatory compiled-shape parity list.**
+
+*Case 1 — adding a metric aggregation to a NON-metric-sourced query* (the stage's
+source is a plain table/card with no pre-existing `[:metric]` entry):
+`(lib/aggregate q (lib.metadata/metric mp N))`. `lib.metadata/metric`
+(`src/metabase/lib/metadata.cljc:189-195`) returns the metric card's metadata —
+it only requires the card metadata to carry `:type :metric` — and `lib/aggregate`
+accepts it directly. Precedent: `test/metabase/measures/models/measure_test.clj:106`,
+`test/metabase/query_processor/middleware/metrics_test.clj:1128-1141`.
 
 - Arithmetic over metrics: `[:+ [:metric 1] [:metric 2]]` →
   `(lib/+ (lib.metadata/metric mp 1) (lib.metadata/metric mp 2))` (precedent
   `measure_test.clj:124` — metric metadata nests inside arithmetic ops).
-- When the old query pairs `[:metric N]` with `:source-table "card__N"` (the metric
-  used as its own source, e.g. `case_test.clj:86-87`), the port is
-  `(lib/query mp (lib.metadata/card mp N))` (R41) + `(lib/aggregate q (lib.metadata/metric mp N))`.
-- Fallback when metadata lookup is awkward (mock providers, forward references): a
-  raw MBQL-5 clause works — `(lib/aggregate q [:metric {:lib/uuid (str (random-uuid))} N])`
+- Fallback when metadata lookup is awkward (forward references): a raw MBQL-5
+  clause works — `(lib/aggregate q [:metric {:lib/uuid (str (random-uuid))} N])`
   (precedent `test/metabase/usage_metadata/extract_test.clj:218`).
+
+*Case 2 — the metric used as its own source*: the old query pairs
+`:source-table "card__N"` with `:aggregation [[:metric N]]` where card N IS the
+metric (e.g. `case_test.clj:86-87`, the pilot `metric-test`s). There is **no clean
+builder path**. Do NOT use `(lib/query mp (lib.metadata/card mp N))` +
+`lib/aggregate`: `lib/query` special-cases `:type :metric` cards through
+`metric-query` (`src/metabase/lib/query.cljc:257-284`), which already injects the
+`[:metric {} N]` aggregation AND re-sources the stage onto the metric's own
+first-stage `:source-table`/`:source-card` — adding `lib/aggregate` on top
+double-adds the aggregation, and no variant of that recipe reproduces the legacy
+`{:source-card N}` stage shape (see `test/metabase/lib/metric_test.cljc:210-220`).
+**Policy: use the R56 raw-map hybrid, with a TODO comment:**
+
+```clojure
+;; TODO(mbql5-migration): no builder path reproduces :source-card + [:metric] — lib/query on a
+;; :type :metric card re-sources the stage and pre-adds the aggregation (metric-query).
+(lib/query mp {:database (mt/id)
+               :type     :query
+               :query    {:source-table "card__N"
+                          :aggregation  [[:metric N]]}})
+```
+
+(`case_test.clj:86-87` is this same hybrid spelled
+`(lib/query mp (mt/mbql-query venues {:aggregation [[:metric 1]], :source-table "card__1"}))` —
+prefer the raw map above so the file sheds the deprecated macro.)
+
+*Mock metric cards*: a `lib.tu/mock-metadata-provider` `:cards` entry with
+`:type :metric` MAY carry an MBQL-5 lib query as its `:dataset-query` — both
+`metric-query` (`query.cljc:260`) and the QP metrics middleware
+(`src/metabase/query_processor/middleware/metrics.clj:183-192`) re-wrap the stored
+`:dataset-query` with `lib/query`, which accepts MBQL 5. Precedent:
+`metrics_test.clj:1128-1141,1165-1171`. See R42 for provider layering, naming
+(`mp` + `mock-mp`), and the keep-extra-card-keys rule.
 
 The metrics test module (`metrics/api_dataset_test.clj`, `metrics/api_test.clj`,
 `metrics/api_arithmetic_test.clj`) is dominated by this pattern.
@@ -645,7 +703,10 @@ otherwise use the R45 hybrid —
 
 **R41 — `:source-table "card__N"` → `(lib/query mp (lib.metadata/card mp N))`.**
 `lib.metadata/card` is at `src/metabase/lib/metadata.cljc:157`. If N comes from a
-`(str "card__" (:id card))` expression, use `(:id card)` directly.
+`(str "card__" (:id card))` expression, use `(:id card)` directly. **Exception:**
+if card N is a `:type :metric` card (typically paired with a `[:metric N]`
+aggregation), `lib/query` does NOT produce a `:source-card` stage — see R17b
+Case 2 for the decided port.
 
 **R42 — Source cards without touching the app DB → `lib.tu/mock-metadata-provider`
 layered over `(mt/metadata-provider)`** (keeps tests `^:parallel`):
@@ -659,7 +720,20 @@ layered over `(mt/metadata-provider)`** (keeps tests `^:parallel`):
   ...)
 ```
 
-Precedent `binning_test.clj:42-73`. When result metadata is needed, either compute
+Precedent `binning_test.clj:42-73`.
+
+- **When the BASE provider is still needed too** (e.g. to build a segment
+  `:definition` or a mock metric card's `:dataset-query` before the mock exists),
+  bind the base as `mp` and the wrapper as `mock-mp` (§8), and build AND run the
+  query with `mock-mp` — never with the base (§4.2). Fixture definitions inside the
+  mock (`:definition`, `:dataset-query`) are built with `mp`.
+- **Extra keys on old mock card/segment definitions (`:database-id`, `:name`, …)
+  are kept verbatim** — behavior preservation applies to fixtures too; do not prune
+  keys just because the provider tolerates their absence.
+- This rule covers `:type :metric` cards as well: their `:dataset-query` may be a
+  lib query (R17b, precedent `metrics_test.clj:1128-1141`).
+
+When result metadata is needed, either compute
 it (`(-> (qp/process-query card-query) :data :results_metadata :columns)` →
 `:result-metadata` key) or use
 `qp.test-util/metadata-provider-with-cards-with-metadata-for-queries`
@@ -760,20 +834,25 @@ already does; when in doubt use `lib/->legacy-MBQL` to match precedent.
                 (lib/with-fields [(lib.metadata/field mp (mt/id :venues :id))
                                   (lib.metadata/field mp (mt/id :venues :name))])
                 (lib/limit 2))]
-  (mt/formatted-rows [int str] (qp/process-query query)))
+  (mt/with-native-query-testing-context query
+    (mt/formatted-rows [int str] (qp/process-query query))))
 ```
 
 Notes:
 - The bare no-map form `(mt/run-mbql-query venues)` (common, e.g.
-  `distinct_where_test.clj`, `postgres_test.clj:205`) is R3 + run:
+  `postgres_test.clj:205`) is R3 + run:
   `(qp/process-query (lib/query mp (lib.metadata/table mp (mt/id :venues))))`.
   For dotted table symbols see the R3 note.
 - `mt/rows`, `mt/formatted-rows`, `mt/first-row`, `mt/rows+column-names`, `mt/cols`
   all operate on the results map and work unchanged.
 - You lose `run-mbql-query*`'s rethrow-with-query ex-data
-  (`test/metabase/test/data.clj:198-205`). Compensate by wrapping the run in
-  `(mt/with-native-query-testing-context query ...)` (lib-compatible; precedent
-  `cumulative_aggregation_test.clj:111`). If a test **asserts on** that
+  (`test/metabase/test/data.clj:198-205`). **MANDATORY: wrap every converted
+  `run-mbql-query` site in `(mt/with-native-query-testing-context query ...)`** —
+  no exceptions, so batch files stay uniform (the example above shows the wrapper;
+  lib-compatible, precedent `cumulative_aggregation_test.clj:111` and all pilot
+  files). For converted `mt/mbql-query` sites that already called
+  `qp/process-query` themselves, keep exactly what the old test had — do not add
+  the wrapper there (§8). If a test **asserts on** that
   `{:query ...}` ex-data, it is a manual case — do not port mechanically (§4).
 - `qp` should be `[metabase.query-processor.test :as qp]` (the test facade;
   `process-query` re-exported at `test/metabase/query_processor/test.clj:24`); some
@@ -858,9 +937,11 @@ Precedent: `cumulative_aggregation_test.clj:2-3` (both),
 call sites in the same pass **where they are query-construction sites**. Exception:
 call sites that build an EXPECTED value (§5) are NOT converted in this pass — for
 those, keep the macro, keep its kondo entry, and add a `TODO(mbql5-migration)`
-comment. The header entry for a var is prunable only when every remaining usage of
-that var is such a TODO-carrying expected-value/manual-case usage (consistent with
-§7 bullet 4), or there are zero usages.
+comment. **The header entry for a var may be removed ONLY when the file has zero
+remaining usages of that var.** Usages kept behind a `TODO(mbql5-migration)`
+comment still require the entry — deleting it would reintroduce `:deprecated-var`
+lint warnings. (§7 bullet 4's "every remaining usage carries a TODO" condition is
+about marking the FILE done, not about pruning the header.)
 
 ### Transitional escape hatch
 
@@ -907,6 +988,13 @@ The store WINS over the query's baked-in provider when both exist
 provider itself; keep the `with-metadata-provider` wrapper when the provider is a
 mock/override; drop the wrapper only when it was a redundant plain
 `(mt/metadata-provider)` around `process-query`.
+
+When the mock is layered over a still-needed base provider (R42), the query is
+built with the **wrapper** (`mock-mp`), and `qp.store/with-metadata-provider` also
+gets `mock-mp`. Unmocked lookups delegate to the base, so table/field metadata
+looked up through `mp` and `mock-mp` is identical for unmocked entities — reuse the
+`mp`-sourced field/table bindings inside the query rather than re-looking them up
+through `mock-mp`.
 
 **4.3 Files mixing `mt/mbql-query` with `meta/metadata-provider` mocks (pure-unit
 middleware tests).** **Policy:** port to `lib.tu.macros/mbql-5-query` or
@@ -1041,9 +1129,15 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
    lists.
 3. **Port test-by-test**, mechanical ones only, applying rules R1-R56. Within each
    test: one `let`, `mp` first, table binding, field bindings, then `query` (§8).
+   Every converted `run-mbql-query` site gets
+   `mt/with-native-query-testing-context` (R51 — mandatory, not optional).
 4. **Never delete or weaken an assertion.** Expected values are copied verbatim.
 5. For each test you *cannot* port behavior-preserving, leave it on the old macro
-   and add `;; TODO(mbql5-migration): <one-line reason>` directly above it.
+   and add `;; TODO(mbql5-migration): <one-line reason>` directly above it. When
+   the unportable site is a **single form inside an otherwise-ported `deftest`**
+   (e.g. a "normalization" `testing` block feeding string-keyed clauses — pilot
+   `basic-test`s), port the rest of the test and place the TODO directly above the
+   kept form, inside its `testing` block; the same one-line-reason format applies.
 6. **Prune the ns requires**: add `[metabase.lib.core :as lib]`,
    `[metabase.lib.metadata :as lib.metadata]` (and `lib.tu` / `lib.tu.notebook` /
    `medley.core :as m` only if used); keep requires sorted; remove requires that
@@ -1078,29 +1172,56 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
   force-port is strictly worse than an unported test.
 - Do not mark a file "done" while it still has a kondo `:deprecated-var` exclusion
   unless every remaining usage carries a TODO comment explaining why.
-- **Compiled-SQL parity check is MANDATORY, not discretionary, for:** any test
-  touched by R18/R19 (aggregation `:name`/`:display-name` — a wrong port changes
-  the SQL alias without failing any row-only assertion), and any join-alias rewrite
-  (R12/R35/R39, composed sigils included). Compare the compiled native query (or
-  `(lib/->legacy-MBQL new-query)` against the old macro's output) in a REPL
-  (`clojure-eval`), remembering `:lib/uuid`s are random. These are exactly the
-  changes that can pass an unchanged assertion suite while compiling different SQL.
+- **Compiled-SQL/query-shape parity check is MANDATORY, not discretionary, for:**
+  - any test touched by R18/R19 (aggregation `:name`/`:display-name` — a wrong port
+    changes the SQL alias without failing any row-only assertion);
+  - any join-alias rewrite (R12/R35/R39, composed sigils included);
+  - any `[:metric N]` port (R17b) and any `[:segment N]` port (R16). A structurally
+    different query can run down a different middleware path yet satisfy loose
+    assertions — the pilot's `metric-test` would pass `ffirst = 94` whether the
+    result was `[[94]]` or `[[94 94]]`. Diff `(lib/->legacy-MBQL new-query)` against
+    the old macro's output, or compare `qp.compile` output.
+
+  Compare in a REPL (`clojure-eval`), remembering `:lib/uuid`s are random. These
+  are exactly the changes that can pass an unchanged assertion suite while
+  compiling different SQL.
 - For everything else, spot-check compiled SQL parity when in doubt: wrap both old
   and new queries in `mt/with-native-query-testing-context` locally, or diff
   `lib/->legacy-MBQL` output as above.
+- **Static fallback when JVM tests cannot run** (network-restricted environments):
+  verification = a parse gate (load the file with bare `clojure.main`), plus
+  hand-tracing each builder expansion against the lib source and its unit tests
+  (e.g. `test/metabase/lib/metric_test.cljc` for R17b, `lib/filter.cljc` defops for
+  R16), plus the `lib/->legacy-MBQL` shape reasoning above — and the full suite
+  runs later in CI. This static tracing is exactly what caught the original R17b
+  defect; do not skip it just because tests can't execute locally.
 
 ---
 
 ## 8. Style rules
 
 - **Naming**: `mp` for `(mt/metadata-provider)` (575 in-tree precedents vs 42 for
-  the long name). Derived/wrapped providers: `mp0`, `mp2`, or descriptive. Field
+  the long name). When a test needs ONLY a mock provider, the mock is `mp` (R42's
+  simple case). When a test needs BOTH the base app-DB provider and a mock layered
+  over it (R42/§4.2 — segment `:definition`s, mock metric cards), the base is `mp`
+  and the wrapper is `mock-mp`; do not shadow `mp` with the mock in these tests.
+  Other derived/wrapped providers: `mp0`, `mp2`, or descriptive. Field
   bindings named after the column: `orders-created-at`, `venues-price`,
   `products-id`. Table bindings named after the table: `orders`, `venues`. The
   built query is `query` (or `q1`/`q2` when there are several).
 - **One `let` per deftest**, binding in order: `mp` → table metadata → field
-  metadata → `query`. Bind `results` once when asserting on both `mt/cols` and
+  metadata → `query`. When a `mock-mp` exists, it slots in after the table/field
+  bindings it consumes and directly before `query`:
+  `mp` → table → fields (looked up via `mp`) → `mock-mp` → `query` (built with
+  `mock-mp`, reusing the `mp`-sourced bindings — see §4.2). Bind `results` once
+  when asserting on both `mt/cols` and
   `mt/formatted-rows` (precedent `order_by_test.clj:141-164`).
+- **Table lookups**: binding the table in the `let` (as in the §2 canonical
+  example and the pilot files) is the default. Inline
+  `(lib/query mp (lib.metadata/table mp (mt/id :venues)))` — the form R2/R3/R51's
+  examples show — is fine when the table metadata is used exactly once and no
+  binding would be referenced again (same used-exactly-once rule as fields below).
+  Either way, do not mix styles within one file.
 - **Threading**: `->` by default. Switch to `as->` (binding `q` or `$query`/`$q`)
   the moment a step needs the query-so-far — `lib/expression-ref`,
   `lib/aggregation-ref`, `lib/filterable-columns`, `lib/orderable-columns`,
@@ -1131,6 +1252,62 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
   `m`. Do not invent alternates; do not alias `metabase.lib.test-util.macros` in
   app-DB test files at all.
 - Keep `mt/with-native-query-testing-context` wherever the old test had it (and add
-  it where R51 says to); it accepts lib queries unchanged.
+  it where R51 says to — mandatory on every converted `run-mbql-query` site); it
+  accepts lib queries unchanged.
 - `assoc` / `assoc-in` directly on lib queries for `:middleware`, `:parameters`,
   `:info`, etc. — no special API.
+
+---
+
+## Pilot findings (wave 0)
+
+**Date:** 2026-07-09. **Files ported** (branch `claude/mbql-query-tests-migration-rqy1be`):
+
+- `test/metabase/query_processor/count_where_test.clj`
+- `test/metabase/query_processor/sum_where_test.clj`
+- `test/metabase/query_processor/distinct_where_test.clj`
+
+All three fully converted except one `run-mbql-query` site per file (the
+"normalization" `testing` block feeding string-keyed legacy clauses — kept per §5
+with a TODO inside the otherwise-ported `deftest`); each kondo header therefore
+retains its `run-mbql-query` entry per R55.
+
+**Lessons folded back into the rules above:**
+
+1. **R17b was defective and has been rewritten.** Its original metric-as-own-source
+   recipe (`lib/query` on the metric card + `lib/aggregate` of the metric)
+   double-adds the aggregation and loses the `{:source-card N}` shape, because
+   `lib/query` routes `:type :metric` cards through `metric-query`
+   (`src/metabase/lib/query.cljc:257-284`). The decided port is the R56 raw-map
+   hybrid; `case_test.clj:86-87` (the rule's own cited precedent) already used the
+   hybrid, not the broken recipe. Caught by static tracing, not by test runs — the
+   loose `ffirst` assertions would have passed either way, hence the §7 parity-list
+   extension to R17b/R16 ports.
+2. **Mock `:type :metric` cards accept MBQL-5 lib `:dataset-query` values**
+   (verified in `lib/query.cljc:260` and
+   `query_processor/middleware/metrics.clj:183-192`; in-tree precedent
+   `metrics_test.clj:1128-1141`). Recorded in R17b/R42.
+3. **`(lib/segment N)` is valid as the boolean condition of conditional
+   aggregations** (`count-where`/`sum-where`/`distinct-where`/`share`) — schema-fit
+   verified, examples added to R16 so it isn't re-derived per file.
+4. **Naming for layered providers codified** (§8, R42, §4.2): base `mp` +
+   wrapper `mock-mp`; query built and run with the wrapper; `mp`-sourced field
+   bindings reused inside the query; `mock-mp` binds directly before `query`.
+5. **TODO placement for partially-ported deftests codified** (§6 step 5): TODO
+   directly above the kept form, inside its `testing` block.
+6. **`mt/with-native-query-testing-context` is mandatory on every converted
+   `run-mbql-query` site** (R51, §6 step 3). The pilot initially diverged between
+   files; all sites now wrapped.
+7. **Extra mock-card keys (`:database-id`, `:name`) are kept verbatim** (R42). The
+   originals themselves diverge (`count_where_test.clj`'s old mock card had
+   neither; `sum_where_test.clj` / `distinct_where_test.clj` had both) — preserve
+   whatever each file had; do not normalize across files.
+8. **R55's header-pruning sentence was tightened**: an exclusion entry is removable
+   only at zero remaining usages of that var; TODO-carrying usages keep it.
+9. **No-JVM verification fallback documented** (§7): parse gate + static expansion
+   tracing + `lib/->legacy-MBQL` shape diffing when tests cannot run locally.
+
+**Open item for wave 1:** the mock-metric `:dataset-query`-as-lib-query path
+(lesson 2) and the R56 metric hybrid (lesson 1) are verified by static tracing and
+in-tree precedent but the pilot files themselves have not yet run in CI — confirm
+green CI on these three files before batch-applying R17b Case 2.

@@ -160,12 +160,12 @@ test/metabase/query_processor/card_test.clj	4	0	4	pending
 test/metabase/query_processor/case_test.clj	6	5	11	pending	
 test/metabase/query_processor/cast_test.clj	1	0	1	pending	
 test/metabase/query_processor/constraints_test.clj	2	0	2	pending	
-test/metabase/query_processor/count_where_test.clj	3	8	11	pending	
+test/metabase/query_processor/count_where_test.clj	3	8	11	ported-wave0	1 site kept: legacy-normalization test (fenced); metric R56 hybrid
 test/metabase/query_processor/cumulative_aggregation_test.clj	12	2	14	pending	
 test/metabase/query_processor/dashboard_test.clj	7	0	7	pending	
 test/metabase/query_processor/date_bucketing_test.clj	9	18	27	pending	
 test/metabase/query_processor/date_time_zone_functions_test.clj	7	26	33	pending	
-test/metabase/query_processor/distinct_where_test.clj	2	9	11	pending	
+test/metabase/query_processor/distinct_where_test.clj	2	9	11	ported-wave0	1 site kept: legacy-normalization test (fenced); metric R56 hybrid
 test/metabase/query_processor/execute_test.clj	2	0	2	pending	
 test/metabase/query_processor/explicit_joins_test.clj	38	19	57	pending	
 test/metabase/query_processor/expression_aggregations_test.clj	5	25	30	pending	
@@ -220,7 +220,7 @@ test/metabase/query_processor/streaming/csv_test.clj	9	0	9	pending
 test/metabase/query_processor/streaming/json_test.clj	2	0	2	pending	
 test/metabase/query_processor/streaming_test.clj	8	0	8	pending	
 test/metabase/query_processor/string_extracts_test.clj	2	3	5	pending	
-test/metabase/query_processor/sum_where_test.clj	2	9	11	pending	
+test/metabase/query_processor/sum_where_test.clj	2	9	11	ported-wave0	1 site kept: legacy-normalization test (fenced); metric R56 hybrid
 test/metabase/query_processor/test_util.clj	4	1	5	pending	
 test/metabase/query_processor/time_field_test.clj	1	2	3	pending	
 test/metabase/query_processor/timeseries_test.clj	2	2	4	pending	
