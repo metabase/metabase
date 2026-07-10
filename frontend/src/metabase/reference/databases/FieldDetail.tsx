@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -14,6 +13,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
+import { push } from "metabase/router";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { FieldId, User } from "metabase-types/api";
 

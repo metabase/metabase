@@ -1,6 +1,5 @@
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
-import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -9,6 +8,7 @@ import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import type { InjectedRouter } from "metabase/router";
+import { push, replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 

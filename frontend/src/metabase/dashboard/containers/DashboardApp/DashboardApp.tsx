@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -34,6 +33,7 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Route, WithRouterProps } from "metabase/router";
+import { replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";

@@ -1,11 +1,11 @@
 import { useLayoutEffect } from "react";
-import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
 import { connect, metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { AdminPath } from "metabase/redux/store/admin";
+import { push, replace, routerActions } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getSetting } from "metabase/selectors/settings";
 
