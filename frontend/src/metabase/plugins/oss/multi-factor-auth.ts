@@ -2,7 +2,7 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { MfaMethod, MfaStatus } from "metabase-types/api";
+import type { MfaMethod } from "metabase-types/api";
 
 export type AuthChallengeFormProps = {
   challengeToken: string;
@@ -13,12 +13,7 @@ export type AuthChallengeFormProps = {
   onCancel: () => void;
 };
 
-export type UseGetMfaStatusResult = {
-  data?: MfaStatus;
-};
-
 const getDefaultPluginMultiFactorAuth = () => ({
-  useGetMfaStatus: (): UseGetMfaStatusResult => ({ data: undefined }),
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
   AccountSecurityPanel: NotFoundPlaceholder,
   AdminAuthCard: PluginPlaceholder,
