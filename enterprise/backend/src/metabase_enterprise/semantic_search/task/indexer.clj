@@ -10,7 +10,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.search.config :as search.config]
-   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.core :as search]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import (java.time Duration Instant)
@@ -45,8 +45,13 @@
               (semantic-search.indexer/quartz-job-run! pgvector index-metadata)
               ;; Engines can activate at runtime (license applied, kill switch re-enabled,
               ;; additional-search-engines set on another node); initializing from the next tick heals
-              ;; every such path within seconds.
-              (semantic.core/init! (search.ingestion/searchable-documents) {})))
+              ;; every such path within seconds. Initialize all active engines, not just semantic:
+              ;; activation may also have activated dependencies with no index.
+              (do
+                (search/init-index!)
+                (when (contains? search.config/hnsw-index-backed-strategies
+                                 (semantic.settings/semantic-search-vector-strategy))
+                  (semantic.core/build-hnsw-index-async!)))))
           (finally
             (locking execution-thread-ref
               (vreset! execution-thread-ref nil)))))))
