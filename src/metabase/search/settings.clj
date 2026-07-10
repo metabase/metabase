@@ -31,21 +31,6 @@
                 (some-> ((requiring-resolve 'metabase.search.engine/default-engine)) name keyword))
   :type       :keyword)
 
-(defn- trigger-init-for-newly-active-engines!
-  "Trigger the search index init task if any engine beyond `before` is now active.
-  A newly activated engine needs its index initialized before it can serve; already-active engines are
-  skipped because semantic init re-gates every searchable document.
-  No-op when the init task is not registered, i.e. the scheduler is not running (tests); env-var
-  configuration is covered by the startup init."
-  [before]
-  (let [active-engines (requiring-resolve 'metabase.search.engine/active-engines)
-        job-exists?    (requiring-resolve 'metabase.task.core/job-exists?)
-        trigger-now!   (requiring-resolve 'metabase.task.core/trigger-now!)
-        init-job-key   @(requiring-resolve 'metabase.search.task.search-index/init-job-key)]
-    (when (and (seq (remove before (active-engines)))
-               (job-exists? init-job-key))
-      (trigger-now! init-job-key))))
-
 (defsetting additional-search-engines
   (i18n/deferred-tru "Engines to keep active (indexed and queryable per-request) in addition to the default engine.")
   :visibility :internal
@@ -61,7 +46,8 @@
                   (mdb/do-after-commit
                    #(future
                       (try
-                        (trigger-init-for-newly-active-engines! before)
+                        ((requiring-resolve 'metabase.search.task.search-index/trigger-init-for-newly-active-engines!)
+                         before)
                         (catch Throwable t
                           (log/error t "Failed to trigger search index init for newly active engines")))))
                   result))

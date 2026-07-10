@@ -44,6 +44,16 @@
                            :path      "/"
                            :expires   (cookie-expiry)}))))
 
+(defn- clear-engine-cookie! [respond]
+  (fn [response]
+    (respond
+     (response/set-cookie response
+                          engine-cookie-name
+                          ""
+                          {:http-only true
+                           :path      "/"
+                           :max-age   0}))))
+
 (defn- process-non-temporal-dim-ids
   "Parse and process non-temporal dimension IDs JSON string.
   Filters out null values and sorts ascending, returning as JSON string."
@@ -98,10 +108,10 @@
          (and raw (not (string? raw)))
          (handler request respond raise)
 
-         ;; An explicit blank unpins: clear the engine cookie and resolve the default.
+         ;; An explicit blank unpins: delete the engine cookie and resolve the default.
          (and raw (str/blank? raw))
          (handler (assoc-in request [:query-params "search_engine"] nil)
-                  (set-engine-cookie! respond "")
+                  (clear-engine-cookie! respond)
                   raise)
 
          :else

@@ -30,7 +30,7 @@
           (log/error e "Failed to complete semantic search index repair"))))))
 
 (defmethod task/init! ::SemanticIndexRepair [_]
-  (when (semantic.u/semantic-search-capable?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticIndexRepair)
                (jobs/with-identity repair-job-key))

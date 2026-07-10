@@ -7,7 +7,8 @@
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.util :as tu]))
 
 (def ^:private all-engines
   #{:search.engine/semantic :search.engine/appdb :search.engine/in-place})
@@ -95,14 +96,7 @@
       (is (= [:search.engine/appdb :search.engine/semantic] (search.engine/active-engines))))))
 
 (deftest additional-search-engines-setter-test
-  (let [triggered  (atom [])
-        wait-until (fn [pred]
-                     ;; The setter triggers from a post-commit future; poll briefly for it.
-                     (loop [n 40]
-                       (cond
-                         (pred)    true
-                         (zero? n) false
-                         :else     (do (Thread/sleep 25) (recur (dec n))))))]
+  (let [triggered (atom [])]
     (mt/with-dynamic-fn-redefs [task/job-exists?             (constantly true)
                                 task/trigger-now!            (fn [k] (swap! triggered conj k))
                                 ;; Track the setting so the setter sees the newly added engine.
@@ -111,8 +105,10 @@
                                                                     (search.settings/additional-search-engines)))]
       (testing "activating an engine triggers the search index init task"
         (mt/with-temporary-setting-values [additional-search-engines ["semantic"]]
-          (is (true? (wait-until #(some #{task.search-index/init-job-key} @triggered))))
-          (testing "but a change that activates nothing new does not"
+          ;; The setter triggers from a post-commit future.
+          (is (tu/poll-until 10000 (some #{task.search-index/init-job-key} @triggered)))
+          (testing "but nothing triggers when no engine is newly active"
             (reset! triggered [])
-            (search.settings/additional-search-engines! ["semantic"])
-            (is (false? (wait-until #(seq @triggered))))))))))
+            ;; Deterministic negative: call the trigger check directly with the current engines as the baseline.
+            (task.search-index/trigger-init-for-newly-active-engines! (set (search.engine/active-engines)))
+            (is (empty? @triggered))))))))

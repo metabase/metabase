@@ -25,14 +25,22 @@
                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})
       (:index_exists false)))
 
+(defn semantic-search-configured?
+  "Is a pgvector DB configured for this instance?
+  The boot-static input: gates Quartz job scheduling, which happens once at startup.
+  The runtime gates (license, kill switch, engine activity) are checked per job execution instead, so
+  flipping them never requires a restart.
+  This check becomes a DB probe under BOT-1796."
+  []
+  (string? (not-empty semantic.db.datasource/db-url)))
+
 (defn semantic-search-capable?
   "Does this instance have the infrastructure for semantic search: the premium feature and a pgvector DB.
-  Gates Quartz job scheduling at startup.
-  Deliberately excludes the kill switch, which the job bodies check per execution so it works at runtime."
+  Deliberately excludes the kill switch, which is checked per execution so it works at runtime."
   []
+  ;; Cheap gate first: semantic-search-configured? becomes a DB probe under BOT-1796.
   (and (premium-features/has-feature? :semantic-search)
-       ;; Cheap gates first: this check becomes a DB probe under BOT-1796.
-       (string? (not-empty semantic.db.datasource/db-url))))
+       (semantic-search-configured?)))
 
 (defn semantic-search-available?
   "Whether semantic search can run on this instance: capable and not disabled by the kill switch.

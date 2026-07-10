@@ -33,7 +33,7 @@
 
 (defmethod task/init! ::SemanticSearchUsageTrimmer
   [_]
-  (when (semantic.u/semantic-search-capable?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticSearchUsageTrimmer)
                (jobs/with-identity trimmer-job-key))

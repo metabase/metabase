@@ -180,7 +180,7 @@
   (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
-  (when (semantic.u/semantic-search-capable?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticIndexCleanup)
                (jobs/with-identity cleanup-job-key))

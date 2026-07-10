@@ -5,10 +5,12 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.search.config :as search.config]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import (java.time Duration Instant)
@@ -37,7 +39,14 @@
       (log/with-context {:quartz-job-type 'SemanticSearchIndexer}
         (try
           (vreset! execution-thread-ref (Thread/currentThread))
-          (semantic-search.indexer/quartz-job-run! (semantic.env/get-pgvector-datasource!) (semantic.env/get-index-metadata))
+          (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                index-metadata (semantic.env/get-index-metadata)]
+            (if (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+              (semantic-search.indexer/quartz-job-run! pgvector index-metadata)
+              ;; Engines can activate at runtime (license applied, kill switch re-enabled,
+              ;; additional-search-engines set on another node); initializing from the next tick heals
+              ;; every such path within seconds.
+              (semantic.core/init! (search.ingestion/searchable-documents) {})))
           (finally
             (locking execution-thread-ref
               (vreset! execution-thread-ref nil)))))))
@@ -53,7 +62,7 @@
 (def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
 
 (defmethod task/init! ::SemanticSearchIndexer [_]
-  (when (semantic.u/semantic-search-capable?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job         (jobs/build
                        (jobs/of-type SemanticSearchIndexer)
                        (jobs/store-durably)

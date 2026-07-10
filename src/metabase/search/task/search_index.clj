@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
@@ -69,6 +70,16 @@
                                  (finally
                                    (deliver p true)))))
       .start)))
+
+(defn trigger-init-for-newly-active-engines!
+  "Trigger the init job if any engine beyond `before` is now active.
+  A newly activated engine needs its index initialized before it can serve; already-active engines are
+  skipped because semantic init re-gates every searchable document.
+  No-op when the init job is not registered, i.e. the scheduler is not running (tests)."
+  [before]
+  (when (and (seq (remove before (search.engine/active-engines)))
+             (task/job-exists? init-job-key))
+    (task/trigger-now! init-job-key)))
 
 ;; A durable job with no schedule: triggered on demand when an engine is activated at runtime,
 ;; e.g. by the additional-search-engines setter.

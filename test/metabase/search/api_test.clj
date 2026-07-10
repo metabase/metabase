@@ -405,11 +405,13 @@
               (mt/user-http-request :crowberto :get 200 "search"
                                     {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
                                     :q "x"))))
-    (testing "a blank explicit engine unpins: the response clears the cookie and the default serves"
+    (testing "a blank explicit engine unpins: the response deletes the cookie and the default serves"
       (let [response (mt/user-http-request-full-response :crowberto :get 200 "search"
                                                          {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
                                                          :q "x" :search_engine "")]
         (is (= "" (engine-cookie response)))
+        (is (str/includes? (str/join " " (u/one-or-many (get-in response [:headers "Set-Cookie"])))
+                           "Max-Age=0"))
         (is (=? {:engine (u/qualified-name (search.engine/default-engine))} (:body response)))))))
 
 (deftest vector-search-knobs-test
