@@ -586,9 +586,11 @@
      :dashcard_id id
      ;; action buttons carry their visible label here; nil for virtual cards
      :name        (:button.label visualization_settings)
+     ;; external link URLs only: an entity link's stored :link :entity snapshot (name etc.) may
+     ;; describe something this user can't read, so rendering it would bypass the read-check the
+     ;; REST path applies via the :dashcard/linkcard-info hydration
      :description (or (:text visualization_settings)
-                      (get-in visualization_settings [:link :url])
-                      (get-in visualization_settings [:link :entity :name]))}))
+                      (get-in visualization_settings [:link :url]))}))
 
 (defn- fetch-dashboard-items
   "One item per dashcard in row/col (layout) order, each carrying the `dashcard_id` that

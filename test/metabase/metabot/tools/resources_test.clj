@@ -764,7 +764,20 @@
                                               :link         {:url "https://status.example.com"}}}]
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
           (is (str/includes? output "virtual_link"))
-          (is (str/includes? output "https://status.example.com")))))))
+          (is (str/includes? output "https://status.example.com"))))))
+  (testing "an entity link card does NOT leak the stored target snapshot (it bypasses read-checks)"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id dash-id
+                                             :card_id nil
+                                             :row 0 :col 0 :size_x 4 :size_y 1
+                                             :visualization_settings
+                                             {:virtual_card {:display "link"}
+                                              :link         {:entity {:model "card" :id 12345
+                                                                      :name "Secret Question"}}}}]
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+          (is (str/includes? output "virtual_link"))
+          (is (not (str/includes? output "Secret Question"))))))))
 
 (deftest read-user-recents-test
   (mt/with-current-user (mt/user->id :crowberto)
