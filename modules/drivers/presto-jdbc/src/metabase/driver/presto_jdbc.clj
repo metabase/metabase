@@ -153,7 +153,7 @@
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+  (sql.qp/->honeysql driver (sql.qp/mbql ::sql.qp/cast expr "varchar")))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
@@ -312,7 +312,7 @@
   [driver [_ _opts pred]]
   ;; Presto will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
+  (sql.qp/->honeysql driver (sql.qp/mbql :sum-where 1.00M pred)))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_driver [_ _opts t]]

@@ -152,7 +152,7 @@
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+  (sql.qp/->honeysql driver (sql.qp/mbql ::sql.qp/cast expr "varchar")))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]

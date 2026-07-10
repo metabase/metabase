@@ -112,24 +112,24 @@
   If `boolean-field-types` is provided, it will override the set of types that are considered boolean for a :field
   ref. This is useful for drivers that do not have a separately distinguishable boolean type (for example Oracle uses
   a numeric type)."
-  ([driver clause]
-   (boolean->comparison driver clause default-boolean-types))
-  ([driver clause boolean-field-types]
+  ([clause]
+   (boolean->comparison clause default-boolean-types))
+  ([clause boolean-field-types]
    (if (or (boolean? clause)
            (boolean-value-clause? clause)
            (boolean-field-clause? clause boolean-field-types)
            (boolean-expression-clause? clause))
-     (sql.qp/mbql-clause driver := clause true)
+     (sql.qp/mbql := clause true)
      clause)))
 
 (defn case-boolean->comparison
   "Replace booleans with comparisons in a CASE clause."
-  ([driver clause]
-   (case-boolean->comparison driver clause default-boolean-types))
-  ([driver clause boolean-field-types]
+  ([clause]
+   (case-boolean->comparison clause default-boolean-types))
+  ([clause boolean-field-types]
    (letfn [(rewrite-cases [cond-cases]
              (mapv (fn [[e1 e2]]
-                     [(boolean->comparison driver e1 boolean-field-types) e2])
+                     [(boolean->comparison e1 boolean-field-types) e2])
                    cond-cases))]
      (driver-api/match-one clause
        [tag (opts :guard :lib/uuid) cond-cases & more] ;; mbql5

@@ -677,19 +677,19 @@
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
 
-(defn- boolean->comparison [driver clause]
-  (sql.qp.boolean-to-comparison/boolean->comparison driver clause))
+(defn- boolean->comparison [clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison clause))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
   [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :filter])]
-    (->> (update query :filter #(boolean->comparison driver %))
+    (->> (update query :filter boolean->comparison)
          (parent-method driver :filter honeysql-form))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filters]
   [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :filters])]
-    (->> (update query :filters #(mapv (partial boolean->comparison driver) %))
+    (->> (update query :filters #(mapv boolean->comparison %))
          (parent-method driver :filters honeysql-form))))
 
 ;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
@@ -708,22 +708,22 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :and]
   [driver clause]
-  (->> (mapv #(boolean->comparison driver %) clause)
+  (->> (mapv boolean->comparison clause)
        ((get-method sql.qp/->honeysql [:sql :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :or]
   [driver clause]
-  (->> (mapv #(boolean->comparison driver %) clause)
+  (->> (mapv boolean->comparison clause)
        ((get-method sql.qp/->honeysql [:sql :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :not]
   [driver clause]
-  (->> (mapv #(boolean->comparison driver %) clause)
+  (->> (mapv boolean->comparison clause)
        ((get-method sql.qp/->honeysql [:sql :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :case]
   [driver clause]
-  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison driver clause)
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause)
        ((get-method sql.qp/->honeysql [:sql :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver Time]
@@ -782,7 +782,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
+  (sql.qp/->honeysql driver (sql.qp/mbql :percentile arg 0.5)))
 
 (def ^:private ^:dynamic *compared-field-options*
   "This variable is set to the options of the field we are comparing
@@ -856,7 +856,7 @@
                                         (if (some? (driver-api/match-one expr
                                                      [_ (_opts :guard :lib/uuid) val & _] val
                                                      [_ val & _] val))
-                                          (sql.qp/mbql-clause driver ::cast expr field-database-type)
+                                          (sql.qp/mbql ::cast expr field-database-type)
                                           expr)))))
                              identity)
                          args)]
@@ -864,7 +864,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar(256)")))
+  (sql.qp/->honeysql driver (sql.qp/mbql ::sql.qp/cast expr "varchar(256)")))
 
 ;; This is used to wrap comparison expressions (e.g. [:> field1 field2]) in a case statement as
 ;; SQL server does not have a boolean data type. See #53805 for more details.

@@ -120,11 +120,11 @@
                                   (driver-api/fields (driver-api/metadata-provider) table-id)))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
-                           {base-type :base_type :as field} (get column->field col-name)]
+                           {base-type :base_type :as opts} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
                          (h2x/cast sql-type value)
                          (try
-                           (sql.qp/->honeysql driver (sql.qp/mbql-clause-with-opts driver :value field value))
+                           (sql.qp/->honeysql driver [:value opts value])
                            (catch Exception e
                              (throw (ex-info (str "column cast failed: " (pr-str col-name))
                                              {:column      col-name

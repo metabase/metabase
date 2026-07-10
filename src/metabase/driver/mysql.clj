@@ -450,7 +450,7 @@
 ;; `CHAR`.
 (defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "char")))
+  (sql.qp/->honeysql driver (sql.qp/mbql ::sql.qp/cast expr "char")))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ _opts arg pattern]]

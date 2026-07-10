@@ -623,11 +623,11 @@
                            (h2x/cast database-type raw-value)
                            (h2x/quoted-cast database-type raw-value))
       ((get-method sql.qp/->honeysql [:sql :value])
-       driver (sql.qp/mbql-clause-with-opts driver :value {:base_type base-type :database_type database-type} raw-value)))))
+       driver [:value {:base_type base-type :database_type database-type} raw-value]))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
+  (sql.qp/->honeysql driver (sql.qp/mbql :percentile arg 0.5)))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
@@ -840,7 +840,7 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql :desc]) driver (sql.qp/mbql-clause-with-opts driver :desc opts ordered-clause))))
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver [:desc opts ordered-clause])))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
@@ -848,7 +848,7 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql :asc]) driver (sql.qp/mbql-clause-with-opts driver :asc opts ordered-clause))))
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver [:asc opts ordered-clause])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
