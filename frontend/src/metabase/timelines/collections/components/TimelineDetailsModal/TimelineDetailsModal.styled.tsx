@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Input } from "metabase/common/components/Input";
 import { Link } from "metabase/common/components/Link";
 
 export const ModalRoot = styled.div`
@@ -14,10 +13,6 @@ export const ModalRoot = styled.div`
 export const ModalToolbar = styled.div`
   display: flex;
   padding: 1rem 2rem 0;
-`;
-
-export const ModalToolbarInput = styled(Input)`
-  flex: 1 1 auto;
 `;
 
 export const ModalToolbarLink = styled(Link)`

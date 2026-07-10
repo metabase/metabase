@@ -2,11 +2,16 @@ import { Fragment, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import type { InputProps } from "metabase/common/components/Input";
-import { Input } from "metabase/common/components/Input";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import {
+  ActionIcon,
+  Icon,
+  TextInput,
+  type TextInputProps,
+  Tooltip,
+} from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { IconName } from "metabase-types/api";
 
@@ -51,20 +56,26 @@ export const FilterableTree = ({
     return searchItems(itemGroups.flat(), trimmedFilter);
   }, [itemGroups, debouncedFilter]);
 
-  const handleFilterChange: InputProps["onChange"] = (e) =>
+  const handleFilterChange: TextInputProps["onChange"] = (e) =>
     setFilter(e.target.value);
 
   return (
     <FilterableTreeRoot>
       <FilterInputContainer>
-        <Input
-          fullWidth
+        <TextInput
           placeholder={placeholder}
           value={filter}
-          leftIcon="search"
-          colorScheme="core-filter"
+          leftSection={<Icon name="search" />}
+          rightSection={
+            filter.length > 0 && (
+              <Tooltip label={t`Clear`}>
+                <ActionIcon aria-label={t`Clear`} onClick={() => setFilter("")}>
+                  <Icon name="close" />
+                </ActionIcon>
+              </Tooltip>
+            )
+          }
           onChange={handleFilterChange}
-          onResetClick={() => setFilter("")}
         />
       </FilterInputContainer>
       <FilterableTreeContainer>
