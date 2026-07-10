@@ -22,7 +22,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -48,46 +47,52 @@
 
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
-    (let [original {:joins [{:alias        "C3"
-                             :source-query {:source-table 1
-                                            :order-by     [[:asc [:field 2 nil]]]}}
-                            {:alias        "C4"
-                             :source-query {:source-table 1
-                                            :order-by     [[:asc [:field 2 nil]]]
-                                            :limit        10}}]}
-          expected {:joins [{:alias        "C3"
-                             :source-query {:source-table 1}}
-                            {:alias        "C4"
-                             :source-query {:source-table 1
-                                            :order-by     [[:asc [:field 2 nil]]]
-                                            :limit        10}}]}]
+    (let [original [{:joins [{:alias  "C3"
+                              :stages [{:source-table 1
+                                        :order-by     [[:asc [:field 2 nil]]]}]}
+                             {:alias  "C4"
+                              :stages [{:source-table 1
+                                        :order-by     [[:asc [:field 2 nil]]]
+                                        :limit        10}]}]}]
+          expected [{:joins [{:alias  "C3"
+                              :stages [{:source-table 1}]}
+                             {:alias  "C4"
+                              :stages [{:source-table 1
+                                        :order-by     [[:asc [:field 2 nil]]]
+                                        :limit        10}]}]}]]
       (is (= expected
-             (#'sqlserver/fix-order-bys original)))
-      (testing "Inside `:source-query`"
-        (is (= {:source-query expected}
-               (#'sqlserver/fix-order-bys {:source-query original})))))))
+             (#'sqlserver/fix-order-bys original false)))
+      (testing "Inside a non-final stage"
+        (is (= (conj expected {})
+               (#'sqlserver/fix-order-bys (conj original {}) false)))))))
 
 (deftest ^:parallel fix-order-bys-test-2
-  (testing "Add limit for :source-query order bys"
+  (testing "Add limit for non-final stage order bys"
     (mt/$ids nil
       (let [original {:source-table 1
                       :order-by     [[:asc 2]]}]
-        (testing "Not in a source query -- don't do anything"
+        (testing "Final stage -- don't do anything"
           (is (= original
-                 (#'sqlserver/fix-order-bys original))))
-        (testing "In source query -- add `:limit`"
-          (is (= {:source-query (assoc original :limit limit/absolute-max-results)}
-                 (#'sqlserver/fix-order-bys {:source-query original}))))
-        (testing "In source query in source query-- add `:limit` at both levels"
-          (is (= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
-                                 :order-by     [[:asc [:field 1]]]
-                                 :limit        limit/absolute-max-results}}
-                 (#'sqlserver/fix-order-bys {:source-query {:source-query original
-                                                            :order-by     [[:asc [:field 1]]]}}))))
-        (testing "In source query inside source query for join -- add `:limit`"
-          (is (= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
+                 (first (#'sqlserver/fix-order-bys [original] false)))))
+        (testing "Non-final stage -- add `:limit`"
+          (is (= [(assoc original :limit driver-api/absolute-max-results)
+                  {}]
+                 (#'sqlserver/fix-order-bys [original {}] false))))
+        (testing "Nested non-final stages -- add `:limit` at both levels"
+          (is (= [(assoc original :limit driver-api/absolute-max-results)
+                  {:order-by [[:asc [:field 1]]]
+                   :limit    driver-api/absolute-max-results}
+                  {}]
+                 (#'sqlserver/fix-order-bys [original
+                                             {:order-by [[:asc [:field 1]]]}
+                                             {}]
+                                            false))))
+        (testing "Non-final stage inside join -- add `:limit`"
+          (is (= [{:joins [{:stages [(assoc original :limit driver-api/absolute-max-results)
+                                     {}]}]}]
                  (#'sqlserver/fix-order-bys
-                  {:joins [{:source-query {:source-query original}}]}))))))))
+                  [{:joins [{:stages [original {}]}]}]
+                  false))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 

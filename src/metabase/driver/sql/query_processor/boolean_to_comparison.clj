@@ -58,8 +58,8 @@
 (defn- boolean-field-clause? [clause boolean-types]
   (and (driver-api/is-clause? :field clause)
        (let [[id-or-name options] (driver-api/match-one clause
-                                    [_ id-or-name options] [id-or-name options]
-                                    [_ options id-or-name] [id-or-name options])
+                                    [_ (options :guard :lib/uuid) id-or-name] [id-or-name options]
+                                    [_ id-or-name options] [id-or-name options])
              has-some-type? (some-fn :base-type :base_type :effective-type :effective_type)]
          (or (boolean-typed? options boolean-types)
              ;; If :base-type is not present in the options, try looking it up in the metadata provider.
