@@ -917,7 +917,7 @@
   `AS`).
 
     (field-source-table-aliases [:field 1 nil]) ; -> [\"public\" \"venues\"]"
-  [[_ id-or-name opts]]
+  [[_ opts id-or-name]]
   (let [source-table (or (get opts driver-api/qp.add.source-table)
                          (when (integer? id-or-name)
                            (:table-id (driver-api/field (driver-api/metadata-provider) id-or-name))))]
@@ -934,7 +934,7 @@
   "Get alias that should be use to refer to a `:field` clause when compiling (e.g. left-hand side of an `AS`).
 
     (field-source-alias [:field 1 nil]) ; -> \"price\""
-  [[_field id-or-name opts]]
+  [[_field opts id-or-name]]
   (or (get opts driver-api/qp.add.source-alias)
       (when (string? id-or-name)
         id-or-name)
@@ -942,7 +942,7 @@
         (:name (driver-api/field (driver-api/metadata-provider) id-or-name)))))
 
 (defn- field-nfc-path
-  [[_field _id-or-name opts]]
+  [[_field opts _id-or-name]]
   ;; ignore nfc paths for fields that don't come from a source table
   (when (pos-int? (get opts driver-api/qp.add.source-table))
     (get opts driver-api/qp.add.nfc-path)))
@@ -1527,10 +1527,11 @@
   Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
   ([driver                                                :- :keyword
     clause :- vector?]
-   (let [[clause-type id-or-name opts] (driver-api/match-one clause
+   (let [[clause-type opts id-or-name] (driver-api/match-one clause
                                          [clause-type (opts :guard :lib/uuid) id-or-name] ;; mbql5
+                                         clause
                                          [clause-type id-or-name opts]
-                                         _ clause)
+                                         [clause-type opts id-or-name])
          desired-alias (or (get opts driver-api/qp.add.desired-alias)
                            ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
                            ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
