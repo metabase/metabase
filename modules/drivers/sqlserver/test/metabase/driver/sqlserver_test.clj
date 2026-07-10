@@ -19,6 +19,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
@@ -585,19 +586,33 @@
 (deftest ^:parallel top-level-boolean-expressions-test
   (mt/test-driver :sqlserver
     (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
-      (let [true-value  [:value true {:base_type :type/Boolean}]
-            false-value [:value false {:base_type :type/Boolean}]]
-        (letfn [(orders-query [args]
-                  (-> (mt/mbql-query orders
-                        {:expressions {"MyTrue"  true-value
-                                       "MyFalse" false-value}
-                         :fields      [[:expression "MyTrue"]]
-                         :limit       1})
-                      (update :query merge args)))]
+      (let [true-value  (fn [] (sql.qp/mbql-clause-with-opts :sqlserver :value {:base-type :type/Boolean :effective-type :type/Boolean} true))
+            false-value (fn [] (sql.qp/mbql-clause-with-opts :sqlserver :value {:base-type :type/Boolean :effective-type :type/Boolean} false))]
+        (letfn [(expression-ref [expression-name]
+                  (sql.qp/mbql-clause :sqlserver :expression expression-name))
+                (orders-query [{:keys [expressions fields filters]}]
+                  (let [returned-expression? (fn [[expr-name _]] ((set fields) expr-name))
+                        returned-exprs (filter returned-expression? expressions)
+                        hidden-exprs (remove returned-expression? expressions)
+                        mp    (mt/metadata-provider)
+                        query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        query (reduce (fn [query [expression-name expression]]
+                                        (lib/expression query expression-name expression))
+                                      query
+                                      returned-exprs)
+                        query (lib/with-fields query (mapv #(lib/expression-ref query %) fields))
+                        query (reduce (fn [query [expr-name expr]]
+                                        (lib.expression/expression query -1 expr-name expr {:add-to-fields? false}))
+                                      query
+                                      hidden-exprs)
+                        query (lib/limit query 1)]
+                    (reduce lib/filter query filters)))]
           (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
                   [{:desc "true filter"
                     :query
-                    (orders-query {:filter true-value})
+                    (orders-query {:filters [(true-value)]
+                                   :expressions [["MyTrue" (true-value)]]
+                                   :fields      ["MyTrue"]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -609,7 +624,9 @@
                     :expected-rows  [[true]]}
                    {:desc "false filter"
                     :query
-                    (orders-query {:filter false-value})
+                    (orders-query {:filters [(false-value)]
+                                   :expressions [["MyTrue" (true-value)]]
+                                   :fields      ["MyTrue"]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -621,7 +638,9 @@
                     :expected-rows  []}
                    {:desc "not filter"
                     :query
-                    (orders-query {:filter [:not false-value]})
+                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver :not (false-value))]
+                                   :expressions [["MyTrue" (true-value)]]
+                                   :fields      ["MyTrue"]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -633,11 +652,16 @@
                     :expected-rows  [[true]]}
                    {:desc "nested logical operators"
                     :query
-                    (orders-query {:filter [:and
-                                            [:not false-value]
-                                            [:or
-                                             [:expression "MyFalse"]
-                                             [:expression "MyTrue"]]]})
+                    (orders-query {:filters [(sql.qp/mbql-clause
+                                              :sqlserver :and
+                                              (sql.qp/mbql-clause :sqlserver :not (false-value))
+                                              (sql.qp/mbql-clause
+                                               :sqlserver :or
+                                               (expression-ref "MyFalse")
+                                               (expression-ref "MyTrue")))]
+                                   :expressions [["MyFalse" (false-value)]
+                                                 ["MyTrue" (true-value)]]
+                                   :fields      ["MyTrue"]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -652,27 +676,33 @@
                     :expected-types [:type/Boolean]
                     :expected-rows  [[true]]}
                    {:desc "case expression"
-                    :query
-                    (orders-query {:expressions {"MyTrue"  true-value
-                                                 "MyFalse" false-value
-                                                 "MyCase"  [:case [[[:expression "MyFalse"] false-value]
-                                                                   [[:expression "MyTrue"]  true-value]]]}
-                                   :fields [[:expression "MyCase"]]})
+                    :query (orders-query
+                            {:expressions [["MyTrue" (true-value)]
+                                           ["MyFalse" (false-value)]
+                                           ["MyCase" (sql.qp/mbql-clause
+                                                      :sqlserver :case
+                                                      [[(expression-ref "MyFalse") (false-value)]
+                                                       [(expression-ref "MyTrue") (true-value)]])]]
+                             :fields      ["MyCase" "MyTrue" "MyFalse"]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CASE"
                      "    WHEN 0 = 1 THEN 0"
                      "    WHEN 1 = 1 THEN 1"
-                     "  END AS MyCase"
+                     "  END AS MyCase,"
+                     "  CAST(1 AS bit) AS MyTrue,"
+                     "  CAST(0 AS bit) AS MyFalse"
                      "FROM"
                      "  dbo.orders"]
-                    :expected-types [:type/Integer]
-                    :expected-rows  [[1]]}
+                    :expected-types [:type/Integer :type/Boolean :type/Boolean]
+                    :expected-rows  [[1 true false]]}
                    ;; only top-level booleans should be transformed; otherwise an expression like 1 = 1 gets compiled
                    ;; to (1 = 1) = (1 = 1)
                    {:desc "non-top-level booleans"
                     :query
-                    (orders-query {:filter [:= true-value true-value]})
+                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver := (true-value) (true-value))]
+                                   :expressions [["MyTrue" (true-value)]]
+                                   :fields      ["MyTrue"]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -863,20 +893,22 @@
   (driver/with-driver :sqlserver
     (qp.store/with-metadata-provider (mt/id)
       (binding [sql.qp/*inner-query* {:expressions
-                                      {"NameEquals"
-                                       [:=
-                                        [:field
-                                         "LiteralString"
+                                      [(sql.qp/mbql-clause-with-opts
+                                        :sqlserver := {:lib/expression-name "NameEquals"}
+                                        (sql.qp/mbql-clause-with-opts
+                                         :sqlserver :field
                                          {:base-type                      :type/Text
                                           :join-alias                     "JoinedCategories"
                                           driver-api/qp.add.source-table  "JoinedCategories"
                                           driver-api/qp.add.source-alias  "LiteralString"
-                                          driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}]
-                                        [:field
-                                         (mt/id :venues :name)
+                                          driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}
+                                         "LiteralString")
+                                        (sql.qp/mbql-clause-with-opts
+                                         :sqlserver :field
                                          {driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
-                                          driver-api/qp.add.desired-alias "name"}]]}}]
+                                          driver-api/qp.add.desired-alias "name"}
+                                         (mt/id :venues :name)))]}]
         (is (= {:where
                 [:=
                  [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
@@ -885,11 +917,14 @@
                   {:database-type "varchar"}]]}
                (sql.qp/apply-top-level-clause
                 :sqlserver
-                :filter
+                :filters
                 {}
-                {:filter [:expression "NameEquals" {:base-type                      :type/Boolean
-                                                    driver-api/qp.add.source-table  driver-api/qp.add.none
-                                                    driver-api/qp.add.desired-alias nil}]})))))))
+                {:filters [(sql.qp/mbql-clause-with-opts
+                            :sqlserver :expression
+                            {:base-type :type/Boolean
+                             driver-api/qp.add.source-table  driver-api/qp.add.none
+                             driver-api/qp.add.desired-alias nil}
+                            "NameEquals")]})))))))
 
 (mt/defdataset ^:private bigint-identity-data
   [["bigint_identity_test"

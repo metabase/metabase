@@ -119,15 +119,21 @@
            (boolean-value-clause? clause)
            (boolean-field-clause? clause boolean-field-types)
            (boolean-expression-clause? driver clause))
-     [:= clause true]
+     (sql.qp/mbql-clause driver := clause true)
      clause)))
 
 (defn case-boolean->comparison
   "Replace booleans with comparisons in a CASE clause."
   ([driver clause]
    (case-boolean->comparison driver clause default-boolean-types))
-  ([driver [_ cond-cases :as clause] boolean-field-types]
-   (->> cond-cases
-        (mapv (fn [[e1 e2]]
-                [(boolean->comparison driver e1 boolean-field-types) e2]))
-        (assoc clause 1))))
+  ([driver clause boolean-field-types]
+   (letfn [(rewrite-cases [cond-cases]
+             (mapv (fn [[e1 e2]]
+                     [(boolean->comparison driver e1 boolean-field-types) e2])
+                   cond-cases))]
+     (driver-api/match-one clause
+       [tag (opts :guard :lib/uuid) cond-cases & more] ;; mbql5
+       (into [tag opts (rewrite-cases cond-cases)] more)
+
+       [tag cond-cases & more]
+       (into [tag (rewrite-cases cond-cases)] more)))))
