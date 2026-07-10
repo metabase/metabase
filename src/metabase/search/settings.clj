@@ -36,15 +36,19 @@
   :encryption :no
   :default    nil
   :type       :csv
-  ;; Trigger the search init task: a newly activated engine needs its index initialized before it can serve.
+  ;; Trigger the search init task when the change activates an engine: it needs its index initialized before
+  ;; it can serve. Only added engines trigger, since semantic init re-gates every searchable document.
   ;; The task is only registered when the scheduler runs (not in tests); env-var configuration is covered by
   ;; the startup init.
   :setter     (fn [new-value]
-                (let [result       (setting/set-value-of-type! :csv :additional-search-engines new-value)
-                      job-exists?  (requiring-resolve 'metabase.task.core/job-exists?)
-                      trigger-now! (requiring-resolve 'metabase.task.core/trigger-now!)
-                      init-job-key @(requiring-resolve 'metabase.search.task.search-index/init-job-key)]
-                  (when (job-exists? init-job-key)
+                (let [active-engines (requiring-resolve 'metabase.search.engine/active-engines)
+                      before         (set (active-engines))
+                      result         (setting/set-value-of-type! :csv :additional-search-engines new-value)
+                      added          (remove before (active-engines))
+                      job-exists?    (requiring-resolve 'metabase.task.core/job-exists?)
+                      trigger-now!   (requiring-resolve 'metabase.task.core/trigger-now!)
+                      init-job-key   @(requiring-resolve 'metabase.search.task.search-index/init-job-key)]
+                  (when (and (seq added) (job-exists? init-job-key))
                     (trigger-now! init-job-key))
                   result))
   :doc        false)

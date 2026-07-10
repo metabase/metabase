@@ -95,9 +95,17 @@
       (is (= [:search.engine/appdb :search.engine/semantic] (search.engine/active-engines))))))
 
 (deftest additional-search-engines-setter-test
-  (testing "setting additional engines triggers the search index init task when it is scheduled"
-    (let [triggered (atom [])]
-      (mt/with-dynamic-fn-redefs [task/job-exists?  (constantly true)
-                                  task/trigger-now! (fn [k] (swap! triggered conj k))]
+  (let [triggered (atom [])]
+    (mt/with-dynamic-fn-redefs [task/job-exists?             (constantly true)
+                                task/trigger-now!            (fn [k] (swap! triggered conj k))
+                                ;; Track the setting so the setter sees the newly added engine.
+                                search.engine/active-engines (fn []
+                                                               (map #(keyword "search.engine" %)
+                                                                    (search.settings/additional-search-engines)))]
+      (testing "activating an engine triggers the search index init task"
         (mt/with-temporary-setting-values [additional-search-engines ["semantic"]]
-          (is (some #{task.search-index/init-job-key} @triggered)))))))
+          (is (some #{task.search-index/init-job-key} @triggered))
+          (testing "but a change that activates nothing new does not"
+            (reset! triggered [])
+            (search.settings/additional-search-engines! ["semantic"])
+            (is (empty? @triggered))))))))
