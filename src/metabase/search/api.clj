@@ -27,7 +27,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private engine-cookie-name "metabase.SEARCH_ENGINE")
+;; Renamed from metabase.SEARCH_ENGINE so long-lived cookies written before engine validation existed stay inert.
+(def ^:private engine-cookie-name "metabase.SEARCH_ENGINE_OVERRIDE")
 
 (defn- cookie-expiry []
   ;; 20 years should be long enough to trial an experimental search engine

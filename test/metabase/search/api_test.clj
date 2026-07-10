@@ -367,8 +367,10 @@
     (is (=? {:errors {:search_engine some?}}
             (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine ["appdb" "in-place"])))))
 
+(def ^:private engine-cookie-name @#'search.api/engine-cookie-name)
+
 (deftest engine-cookie-staleness-test
-  (let [request-with-cookie {:cookies {"metabase.SEARCH_ENGINE" {:value "appdb"}}}]
+  (let [request-with-cookie {:cookies {engine-cookie-name {:value "appdb"}}}]
     (testing "a cookie engine that can still serve is honored"
       (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])]
         (is (= "appdb" (#'search.api/cookie-engine request-with-cookie)))))
@@ -376,16 +378,34 @@
       (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
         (is (nil? (#'search.api/cookie-engine request-with-cookie)))))
     (testing "an unknown cookie engine degrades to the default"
-      (is (nil? (#'search.api/cookie-engine {:cookies {"metabase.SEARCH_ENGINE" {:value "wut"}}}))))))
+      (is (nil? (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "wut"}}}))))))
 
 (deftest engine-cookie-request-test
-  (let [pinned {:request-options {:cookies {"metabase.SEARCH_ENGINE" {:value "in-place"}}}}]
+  (let [pinned {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}]
     (testing "a pinned engine cookie selects the engine"
       (is (=? {:engine "search.engine/in-place"}
               (mt/user-http-request :crowberto :get 200 "search" pinned :q "x"))))
     (testing "an explicit blank search_engine unpins: the cookie is ignored and the default serves"
       (is (=? {:engine (u/qualified-name (search.engine/default-engine))}
               (mt/user-http-request :crowberto :get 200 "search" pinned :q "x" :search_engine ""))))))
+
+(deftest engine-cookie-round-trip-test
+  (let [engine-cookie #(get-in % [:cookies engine-cookie-name :value])]
+    (testing "an explicit engine pins: the response sets the engine cookie"
+      (let [response (mt/user-real-request-full-response :crowberto :get 200 "search" :q "x" :search_engine "in-place")]
+        (is (= "in-place" (engine-cookie response)))
+        (is (=? {:engine "search.engine/in-place"} (:body response)))))
+    (testing "a request carrying the cookie serves the pinned engine"
+      (is (=? {:engine "search.engine/in-place"}
+              (mt/user-http-request :crowberto :get 200 "search"
+                                    {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
+                                    :q "x"))))
+    (testing "a blank explicit engine unpins: the response clears the cookie and the default serves"
+      (let [response (mt/user-real-request-full-response :crowberto :get 200 "search"
+                                                         {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
+                                                         :q "x" :search_engine "")]
+        (is (= "" (engine-cookie response)))
+        (is (=? {:engine (u/qualified-name (search.engine/default-engine))} (:body response)))))))
 
 (deftest vector-search-knobs-test
   (testing "the vector-search tuning/diagnostic knobs are admin-only"

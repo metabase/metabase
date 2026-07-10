@@ -36,9 +36,9 @@
   :encryption :no
   :default    nil
   :type       :csv
-  ;; A newly activated engine needs its index initialized before it can serve, so setting this triggers the
-  ;; search init task. The task is only registered when the scheduler runs (i.e. not in tests); engines
-  ;; configured via env var are covered by the startup init.
+  ;; Trigger the search init task: a newly activated engine needs its index initialized before it can serve.
+  ;; The task is only registered when the scheduler runs (not in tests); env-var configuration is covered by
+  ;; the startup init.
   :setter     (fn [new-value]
                 (let [result       (setting/set-value-of-type! :csv :additional-search-engines new-value)
                       job-exists?  (requiring-resolve 'metabase.task.core/job-exists?)
