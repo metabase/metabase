@@ -85,7 +85,7 @@
                 (is (= ["totp" "email"] (:methods challenge))))
               (is (true? (:success (mt/client :post 200 "session/mfa/send-email-otp"
                                               {:challenge_token (:challenge_token challenge)}))))
-              (let [[_ code] (re-find #"code is: (\d{6})" (:message @sent))]
+              (let [[_ code] (re-find #"(?s)sign-in code.*?(\d{6})" (:message @sent))]
                 (is (some? code) "the email contains the code")
                 (testing "the emailed code completes the login"
                   (is (=? {:id string?}
@@ -157,4 +157,4 @@
                                                             :logoHeader      false
                                                             :code            "123456"})]
         (is (string? html))
-        (is (re-find #"code is: (\d{6})" html))))))
+        (is (re-find #"(?s)sign-in code.*?(\d{6})" html))))))

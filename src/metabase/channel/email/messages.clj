@@ -117,7 +117,7 @@
    {:subject      (trs "[{0}] Two-factor authentication was enabled on your account" (app-name-trs))
     :recipients   [email]
     :message-type :html
-    :message      (channel.template/render "mfa_enabled" (common-context))}))
+    :message      (channel.template/render "mfa_enabled" (assoc (common-context) :logoHeader true))}))
 
 (defn send-mfa-disabled-email!
   "Send an email notifying `email` that two-factor authentication was disabled on their account.
@@ -129,7 +129,7 @@
    {:subject      (trs "[{0}] Two-factor authentication was disabled on your account" (app-name-trs))
     :recipients   [email]
     :message-type :html
-    :message      (channel.template/render "mfa_disabled" (common-context))}))
+    :message      (channel.template/render "mfa_disabled" (assoc (common-context) :logoHeader true))}))
 
 (defn send-mfa-removed-by-admin-email!
   "Send an email notifying `email` that an administrator removed their two-factor authentication."
@@ -139,7 +139,7 @@
    {:subject      (trs "[{0}] Two-factor authentication was removed from your account" (app-name-trs))
     :recipients   [email]
     :message-type :html
-    :message      (channel.template/render "mfa_removed_by_admin" (common-context))}))
+    :message      (channel.template/render "mfa_removed_by_admin" (assoc (common-context) :logoHeader true))}))
 
 (defn send-mfa-login-code-email!
   "Send an email containing a one-time sign-in `code` to `email`.
@@ -152,7 +152,7 @@
    {:subject      (trs "[{0}] Your sign-in code" (app-name-trs))
     :recipients   [email]
     :message-type :html
-    :message      (channel.template/render "mfa_login_code" (assoc (common-context) :code code))}))
+    :message      (channel.template/render "mfa_login_code" (assoc (common-context) :logoHeader true :code code))}))
 
 ;;; ---- end MFA notification emails ----
 
