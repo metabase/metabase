@@ -96,7 +96,11 @@
   (throttled :enroll
              (fn []
                (when-not (verify-user-password api/*current-user-id* password)
-                 (throw (ex-info (tru "Invalid password.") {:status-code 401})))
+                 ;; 400, not 401: the session is fine, the re-auth input is wrong. The FE (and any
+                 ;; well-behaved client) treats a 401 as an expired session and bounces to login.
+                 (throw (ex-info (tru "Invalid password.")
+                                 {:status-code 400
+                                  :errors      {:password (tru "Invalid password.")}})))
                (let [secret     (or (enrollment/start-enrollment! api/*current-user-id*)
                                     (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
                                                     {:status-code 400})))

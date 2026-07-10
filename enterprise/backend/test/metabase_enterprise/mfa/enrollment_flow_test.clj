@@ -33,8 +33,10 @@
   (mt/with-premium-features #{:multi-factor-auth}
     (mt/with-temporary-setting-values [mfa-enabled true]
       (with-fresh-user-session! [session-key email password]
-        (testing "enroll requires the right password"
-          (mt/client session-key :post 401 "ee/mfa/enroll" {:password "not-the-password"}))
+        (testing "enroll requires the right password — 400 with a field error, NOT 401 (clients
+                  treat a 401 on a session-authenticated endpoint as an expired session)"
+          (is (=? {:errors {:password some?}}
+                  (mt/client session-key :post 400 "ee/mfa/enroll" {:password "not-the-password"}))))
         (let [{:keys [secret otpauth_uri]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
           (is (re-find #"^otpauth://totp/" otpauth_uri))
           (testing "a wrong code does not confirm"
