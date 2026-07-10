@@ -10,6 +10,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- fresh-jti [] (str (random-uuid)))
 
 (deftest ^:parallel generate-codes-test

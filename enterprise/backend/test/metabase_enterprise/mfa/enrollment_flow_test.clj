@@ -11,11 +11,11 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- reset-throttlers! []
+(defn- reset-throttlers []
   (doseq [throttler (vals @#'mfa.management/throttlers)]
     (reset! (:attempts throttler) nil)))
 
-(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+(use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
 (defn- wrong-code [secret]
   (let [current (totp/generate-code secret)]

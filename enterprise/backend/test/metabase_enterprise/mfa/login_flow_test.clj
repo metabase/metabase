@@ -17,16 +17,18 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- reset-throttlers! []
+(defn- reset-throttlers []
   (doseq [throttler (concat (vals @#'api.session/verify-throttlers)
                             (vals @#'mfa.management/throttlers)
                             (vals @#'api.session/login-throttlers)
                             [@#'api.session/reset-password-throttler])]
     (reset! (:attempts throttler) nil)))
 
-(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+(use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
 (defn- wrong-code [secret]
   (let [current (totp/generate-code secret)]

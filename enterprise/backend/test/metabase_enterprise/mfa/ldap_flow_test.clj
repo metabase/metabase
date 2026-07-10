@@ -15,12 +15,12 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- reset-throttlers! []
+(defn- reset-throttlers []
   (doseq [throttler (concat (vals @#'api.session/verify-throttlers)
                             (vals @#'api.session/login-throttlers))]
     (reset! (:attempts throttler) nil)))
 
-(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+(use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
 (def ^:private sally-email "sally.brown@metabase.com")
 (def ^:private sally-directory-password "1234")

@@ -13,6 +13,8 @@
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- fresh-jti [] (str (random-uuid)))
 
 ;;; -------------------------------------------------- verify-attempt! unit tests --------------------------------------------------

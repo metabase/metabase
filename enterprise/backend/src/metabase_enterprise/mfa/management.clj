@@ -119,7 +119,7 @@
     (events/publish-event! :event/mfa-enrolled {:object user})
     {:recovery_codes codes}))
 
-(api.macros/defendpoint :post "/disable"
+(api.macros/defendpoint :post "/disable" :- nil
   "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a
   TOTP code or an unused recovery code — never just the password."
   [_route-params
@@ -155,7 +155,7 @@
 
 ;;; -------------------------------------------------- Admin --------------------------------------------------
 
-(api.macros/defendpoint :post "/admin/remove"
+(api.macros/defendpoint :post "/admin/remove" :- nil
   "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost
   authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
   lockouts permanent). The affected user is notified by email. They re-enroll from scratch —

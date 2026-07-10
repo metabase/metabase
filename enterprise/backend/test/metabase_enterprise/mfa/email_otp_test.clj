@@ -13,15 +13,17 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- reset-throttlers! []
+(defn- reset-throttlers []
   (doseq [throttler (concat (vals @#'api.session/verify-throttlers)
                             (vals @#'api.session/login-throttlers)
                             (vals @#'api.session/email-otp-send-throttlers))]
     (reset! (:attempts throttler) nil)))
 
-(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+(use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
 (defn- fresh-jti [] (str (random-uuid)))
 
@@ -66,7 +68,7 @@
         (let [ai (t2/select-one :model/AuthIdentity :id ai-id)]
           (t2/update! :model/AuthIdentity ai-id
                       {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
-                                              (- (quot (System/currentTimeMillis) 1000) 1))}))
+                                              (dec (quot (System/currentTimeMillis) 1000)))}))
         (is (false? (verification/verify-attempt! user-id code (fresh-jti))))))))
 
 (deftest send-email-otp-e2e-test
