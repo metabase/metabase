@@ -11,10 +11,15 @@ import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
-import type { WritebackAction } from "metabase-types/api";
+import type {
+  DatasetData,
+  RowValue,
+  WritebackAction,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
+  createMockDatasetData,
   createMockField,
   createMockImplicitQueryAction,
   createMockQueryAction,
@@ -552,6 +557,74 @@ describe("ObjectDetailPanel", () => {
       await userEvent.keyboard("{ArrowDown}");
       expect(mockViewNextObjectDetail).not.toHaveBeenCalled();
     });
+  });
+});
+
+// testDataset.cols order: 0=ID, 1=Ean, 2=Title, 3=Category, 4=Vendor, ...
+const idColumn = testDataset.cols[0];
+const titleColumn = testDataset.cols[2];
+const categoryColumn = testDataset.cols[3];
+const vendorColumn = testDataset.cols[4];
+
+// Initial column set includes Category (but not Vendor).
+const initialData = createMockDatasetData({
+  cols: [idColumn, titleColumn, categoryColumn],
+  rows: [["1", "Rustic Paper Wallet", "Gizmo"]],
+});
+const initialZoomedRow = initialData.rows[0];
+
+// Toggled column set: Category removed, Vendor added.
+const toggledData = createMockDatasetData({
+  cols: [idColumn, titleColumn, vendorColumn],
+  rows: [["1", "Rustic Paper Wallet", "Swaniawski, Casper and Hilll"]],
+});
+const toggledZoomedRow = toggledData.rows[0];
+
+function renderPanel(data: DatasetData, zoomedRow: RowValue[]) {
+  return (
+    <ObjectDetailPanel
+      data={data}
+      question={mockQuestion}
+      zoomedRow={zoomedRow}
+      zoomedRowID={0}
+      tableForeignKeys={[]}
+      settings={{
+        column: () => null,
+      }}
+      showHeader
+      canZoom={true}
+      canZoomPreviousRow={false}
+      canZoomNextRow={false}
+      onVisualizationClick={() => null}
+      visualizationIsClickable={() => false}
+      fetchTableFks={jest.fn()}
+      loadObjectDetailFKReferences={() => null}
+      viewPreviousObjectDetail={() => null}
+      viewNextObjectDetail={() => null}
+      closeObjectDetail={() => null}
+      isDashboard={false}
+    />
+  );
+}
+
+describe("ObjectDetailPanel column desync (metabase#63745)", () => {
+  it("renders headers from the latest passedData after a column toggle", () => {
+    const { rerender } = renderWithProviders(
+      renderPanel(initialData, initialZoomedRow),
+    );
+
+    // Sanity: the initial column set is rendered.
+    expect(screen.getByText("Category")).toBeInTheDocument();
+    expect(screen.queryByText("Vendor")).not.toBeInTheDocument();
+
+    // Simulate the toggle: a new `data` prop arrives with a different column set.
+    // ObjectDetailPanel keeps a local `data` state seeded from the initial prop,
+    // so it must read columns from the fresh prop, not the stale local copy.
+    rerender(renderPanel(toggledData, toggledZoomedRow));
+
+    // The rendered headers must reflect the NEW passedData, not the stale copy.
+    expect(screen.getByText("Vendor")).toBeInTheDocument();
+    expect(screen.queryByText("Category")).not.toBeInTheDocument();
   });
 });
 

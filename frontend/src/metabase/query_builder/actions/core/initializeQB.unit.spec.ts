@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
+import { replace } from "react-router-redux";
 
 import { createMockEntitiesState } from "__support__/store";
 import { databaseApi, snippetApi } from "metabase/api";
@@ -1012,6 +1013,27 @@ describe("QB Actions > initializeQB", () => {
           expect.objectContaining({ data: { error_code: "not-found" } }),
         ),
       );
+    });
+  });
+
+  describe("notebook mode without data access (metabase#58628)", () => {
+    it("redirects to the unauthorized page and bails when the user cannot create queries", async () => {
+      const { card } = TEST_CASE.SAVED_STRUCTURED_QUESTION;
+      const baseUrl = Urls.card(card);
+      const location = getLocationForCard(card, {
+        pathname: `${baseUrl}/notebook`,
+      });
+
+      const { dispatch, result } = await setup({
+        card,
+        location,
+        hasDataPermissions: false,
+      });
+
+      // Guard fires: redirect to /unauthorized ...
+      expect(dispatch).toHaveBeenCalledWith(replace(Urls.unauthorized()));
+      // ... and init bails without ever dispatching INITIALIZE_QB.
+      expect(result).toBeNull();
     });
   });
 });

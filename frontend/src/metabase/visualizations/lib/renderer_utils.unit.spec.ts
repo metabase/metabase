@@ -224,6 +224,10 @@ describe("getXValues", () => {
         "graph.x_axis.scale": "timeseries",
       },
     );
+    // The unparseable "abc" must be dropped entirely, not leaked as a null into
+    // xValues. Assert on the raw array so a leaked null flips the test.
+    expect(xValues).toHaveLength(2);
+    expect(xValues).not.toContain(null);
     const formattedXValues = xValues
       .filter((value): value is Dayjs => isObject(value) && "format" in value)
       .map((value) => value.format("YYYY-MM-DD"));

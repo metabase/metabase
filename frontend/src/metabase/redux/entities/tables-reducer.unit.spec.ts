@@ -114,6 +114,25 @@ describe("tablesReducer", () => {
       });
     });
 
+    it("should sync schema and schema_name into an existing virtual table when the collection changes on UPDATE", () => {
+      const { question, virtualTable } = getQuestion({ collection: null });
+      const state = { [virtualTable.id]: virtualTable };
+
+      const movedCollection = { id: 7, name: "foo" };
+      const moved = { ...question, collection: movedCollection };
+      const { virtualTable: movedVirtualTable } = getQuestion({
+        collection: movedCollection,
+      });
+
+      const nextState = tablesReducer(state, getUpdateAction(moved));
+
+      expect(nextState[virtualTable.id]).toMatchObject({
+        schema: movedVirtualTable.schema,
+        schema_name: movedVirtualTable.schema_name,
+      });
+      expect(nextState[virtualTable.id].schema).not.toBe(virtualTable.schema);
+    });
+
     it("should leave state untouched on UPDATE when nothing relevant changed", () => {
       const { question, virtualTable } = getQuestion();
       const state = { [virtualTable.id]: virtualTable };

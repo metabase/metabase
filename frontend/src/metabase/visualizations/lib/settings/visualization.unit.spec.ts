@@ -44,6 +44,23 @@ describe("visualization_settings", () => {
       });
     });
 
+    describe("graph.dimensions and graph.metrics (metabase#36027)", () => {
+      it("should recalculate defaults when stored dimensions and metrics are empty", () => {
+        const settings = getComputedSettingsForSeries(
+          cardWithTimeseriesBreakout({
+            unit: "month",
+            display: "bar",
+            visualization_settings: {
+              "graph.dimensions": [],
+              "graph.metrics": [],
+            },
+          }),
+        );
+        expect(settings["graph.dimensions"]).toEqual(["col1"]);
+        expect(settings["graph.metrics"]).toEqual(["col2"]);
+      });
+    });
+
     describe("graph.x_axis._is_histogram", () => {
       // NOTE: currently datetimes with unit are never considered histograms
       const HISTOGRAM_UNITS: string[] = [];

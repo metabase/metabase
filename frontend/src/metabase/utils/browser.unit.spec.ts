@@ -93,6 +93,11 @@ describe("browser", () => {
       { input: "foo=bar", expected: { foo: "bar" }, name: "without '#'" },
       { input: "#foo=123", expected: { foo: 123 }, name: "numbers" },
       { input: "#foo=-123", expected: { foo: -123 }, name: "negative numbers" },
+      {
+        input: "#foo=01",
+        expected: { foo: null },
+        name: "leading-zero numeric strings without throwing (metabase#41483)",
+      },
       { input: "#foo", expected: { foo: true }, name: "bare key as true" },
       { input: "#foo=true", expected: { foo: true }, name: "true" },
       { input: "#foo=false", expected: { foo: false }, name: "false" },

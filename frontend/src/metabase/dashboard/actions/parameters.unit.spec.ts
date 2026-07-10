@@ -22,6 +22,7 @@ import {
   setParameterIsMultiSelect,
   setParameterMapping,
   setParameterType,
+  setParameterValue,
 } from "./parameters";
 
 function setup(initialState: State) {
@@ -455,6 +456,32 @@ describe("setOrUnsetParameterValues", () => {
     );
 
     await store.dispatch(setOrUnsetParameterValues([["123", "current-value"]]));
+
+    const state = store.getState();
+    expect(state.dashboard.parameterValues["123"]).toBe(null);
+  });
+});
+
+describe("setParameterValue", () => {
+  it("should normalize an emptied value to null (metabase#25533)", async () => {
+    const store = setup(
+      createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            "1": createMockStoreDashboard({
+              id: 1,
+              parameters: [createMockParameter({ id: "123" })],
+            }),
+          },
+          parameterValues: {
+            "123": ["A", "B"],
+          },
+        }),
+      }),
+    );
+
+    await store.dispatch(setParameterValue("123", []));
 
     const state = store.getState();
     expect(state.dashboard.parameterValues["123"]).toBe(null);
