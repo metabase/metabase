@@ -3,7 +3,10 @@ import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupListMetabotConversationsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   type RenderWithProvidersOptions,
@@ -24,7 +27,11 @@ import {
 } from "metabase/api/ai-streaming/test-utils";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { MetabotInfo, User } from "metabase-types/api";
+import type {
+  MetabotConversation,
+  MetabotInfo,
+  User,
+} from "metabase-types/api";
 import {
   createMockMetabotInfo,
   createMockUser,
@@ -48,6 +55,8 @@ export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
 
 export const chat = () => screen.findByTestId("metabot-chat");
+export const chatTitle = () => screen.findByTestId("metabot-chat-title");
+export const queryChatTitle = () => screen.queryByTestId("metabot-chat-title");
 export const chatMessages = () =>
   screen.findAllByTestId("metabot-chat-message");
 export const lastChatMessage = async () => (await chatMessages()).at(-1);
@@ -74,7 +83,8 @@ export const stopResponseButton = () =>
 export const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 export const responseLoader = () =>
   screen.findByTestId("metabot-response-loader");
-export const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
+export const newConversationButton = () =>
+  screen.findByTestId("metabot-new-conversation");
 
 // Feedback helpers
 export const feedbackModal = () =>
@@ -200,6 +210,7 @@ export function setup(
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
     isConfigured?: boolean;
+    conversations?: MetabotConversation[];
   } | void,
 ) {
   const settings = mockSettings({
@@ -222,6 +233,7 @@ export function setup(
     promptSuggestions = [],
     storeInitialState = {},
     customReducers,
+    conversations = [],
   } = options || {};
 
   fetchMock.get(
@@ -233,6 +245,7 @@ export function setup(
     createMockUserMetabotPermissions(),
   );
   setupDatabaseListEndpoint([]);
+  setupListMetabotConversationsEndpoint(conversations);
 
   const { store, rerender } = renderWithProviders(
     <MetabotProvider>{ui}</MetabotProvider>,

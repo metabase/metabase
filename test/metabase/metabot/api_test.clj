@@ -20,6 +20,7 @@
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
@@ -67,15 +68,15 @@
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                   (testing "response is an SSE stream of typed events ending with [DONE]"
                     (is (= "data: [DONE]" (last lines)))
-                    (is (= ["start" "start-step"] (mapv :type (take 2 events))))
-                    (is (= ["finish-step" "finish" "data-chat-title"] (mapv :type (take-last 3 events))))
+                    (is (= ["start" "data-chat-title" "start-step"] (mapv :type (take 3 events))))
+                    (is (= ["finish-step" "finish"] (mapv :type (take-last 2 events))))
                     (is (=? {:type "data-chat-title" :data "Orders by Month"}
-                            (last events)))
+                            (second events)))
                     (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
                              (apply str (map :delta text-deltas)))))
                     (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
-                            (last (butlast events)))
+                            (u/seek #(= "finish" (:type %)) events))
                         "finish event carries accumulated usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
@@ -119,6 +120,43 @@
               (is (=? {:type "data-chat-title-pending"
                        :data {:conversation_id conversation-id}}
                       (last events))))))))))
+
+(deftest emits-title-event-inline-when-ready-during-stream-test
+  (testing "when the title becomes ready while streaming, the real title event is injected inline before the finish event"
+    (let [conversation-id (str (random-uuid))
+          title-future    (java.util.concurrent.CompletableFuture.)
+          start-line      (self.core/format-sse-event {:type "start" :messageId "msg-1"})
+          text-line       (self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta "Hello"})
+          finish-line     (self.core/format-sse-event {:type "finish"})
+          title-line      (self.core/format-sse-event {:type "data-chat-title" :data "Orders by Month"})
+          lines           (reify clojure.lang.IReduceInit
+                            (reduce [_ rf init]
+                              (let [result (rf init start-line)]
+                                (if (reduced? result)
+                                  @result
+                                  (do
+                                    (.complete title-future "Orders by Month")
+                                    (reduce rf result [text-line finish-line self.core/done-sse-line]))))))]
+      (is (= [start-line text-line title-line finish-line self.core/done-sse-line]
+             (into [] (#'api/inject-title-events-xf
+                       {:status :pending :future title-future}
+                       conversation-id)
+                   lines))))))
+
+(deftest emits-data-chat-title-pending-when-title-not-ready-by-stream-end-test
+  (testing "when the title is still not ready as the stream ends, emit data-chat-title-pending instead of the real data-chat-title"
+    (let [conversation-id (str (random-uuid))
+          title-future    (java.util.concurrent.CompletableFuture.) ; never completed
+          text-line       (self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta "Hello"})
+          pending-line    (self.core/format-sse-event {:type "data-chat-title-pending"
+                                                       :data {:conversation_id conversation-id}})
+          out             (into [] (#'api/inject-title-events-xf
+                                    {:status :pending :future title-future}
+                                    conversation-id)
+                                [text-line self.core/done-sse-line])]
+      (is (= [text-line pending-line self.core/done-sse-line] out))
+      (is (not-any? #(str/includes? % "\"data-chat-title\"") out)
+          "the real title event is never emitted once the stream has finished"))))
 
 (deftest conversation-title-generation-persists-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]

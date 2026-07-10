@@ -16,7 +16,7 @@ import {
   hideMetabot,
   lastReqBody,
   mockAgentEndpoint,
-  resetChatButton,
+  newConversationButton,
   setup,
   showMetabot,
   stopResponseButton,
@@ -166,7 +166,7 @@ describe("metabot > convo state", () => {
       message: "You, but don't tell anyone.",
     });
 
-    await userEvent.click(await resetChatButton());
+    await userEvent.click(await newConversationButton());
 
     const afterResetState = getState();
     expect(afterResetState.conversationId).not.toBe(

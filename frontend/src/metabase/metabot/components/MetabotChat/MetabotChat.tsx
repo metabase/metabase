@@ -74,13 +74,39 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
+  const hasSubmittedMessage = metabot.messages.some(
+    (message) => message.role === "user",
+  );
+  const title = hasSubmittedMessage
+    ? metabot.title || t`New conversation`
+    : undefined;
+
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
+  const shouldShowHeader = headerActions || title;
 
   return (
     <Box className={cx(Styles.container, className)} data-testid="metabot-chat">
-      {headerActions && (
-        <Box ref={headerRef} className={Styles.header}>
-          {headerActions}
+      {shouldShowHeader && (
+        <Box
+          ref={headerRef}
+          className={Styles.header}
+          data-testid="metabot-chat-header"
+        >
+          {title && (
+            <Text
+              className={Styles.headerTitle}
+              c={metabot.title ? "text-primary" : "text-secondary"}
+              fw={metabot.title ? "bold" : "normal"}
+              truncate
+              title={title}
+              data-testid="metabot-chat-title"
+            >
+              {title}
+            </Text>
+          )}
+          {headerActions && (
+            <Box className={Styles.headerActions}>{headerActions}</Box>
+          )}
         </Box>
       )}
 

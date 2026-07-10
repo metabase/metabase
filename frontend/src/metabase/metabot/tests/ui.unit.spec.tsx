@@ -9,7 +9,10 @@ import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { logout } from "metabase/redux/auth";
 import * as domModule from "metabase/utils/dom";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockMetabotConversation,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
 import { MetabotChat } from "../components/MetabotChat";
@@ -18,12 +21,16 @@ import {
   assertNotVisible,
   assertVisible,
   chat,
+  chatTitle,
   closeChatButton,
+  createMockSSEStream,
+  createPauses,
   enterChatMessage,
   hideMetabot,
   input,
   mockAgentEndpoint,
-  resetChatButton,
+  newConversationButton,
+  queryChatTitle,
   setup,
   showMetabot,
   whoIsYourFavoriteResponse,
@@ -41,7 +48,11 @@ describe("metabot > ui", () => {
     });
 
     expect(await screen.findByTestId("metabot-chat-input")).toBeInTheDocument();
-    expect(screen.queryByTestId("metabot-reset-chat")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat-header")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat-title")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-new-conversation"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId("metabot-close-chat")).not.toBeInTheDocument();
   });
 
@@ -356,7 +367,7 @@ describe("metabot > ui", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should make a request for new suggested prompts when the conversation is reset", async () => {
+    it("should make a request for new suggested prompts when starting a new conversation", async () => {
       setup({ promptSuggestions: [] });
       await waitFor(async () => {
         expect(
@@ -366,7 +377,7 @@ describe("metabot > ui", () => {
         ).toHaveLength(1);
       });
 
-      await userEvent.click(await resetChatButton());
+      await userEvent.click(await newConversationButton());
 
       await waitFor(async () => {
         expect(
@@ -375,6 +386,117 @@ describe("metabot > ui", () => {
           ),
         ).toHaveLength(2);
       });
+    });
+  });
+
+  describe("conversation title", () => {
+    it("shows a placeholder title once a message is sent, then the generated title when it arrives", async () => {
+      setup();
+
+      // no title before any messages are sent
+      expect(
+        await screen.findByTestId("metabot-empty-chat-info"),
+      ).toBeInTheDocument();
+      expect(queryChatTitle()).not.toBeInTheDocument();
+
+      // stream text first, then withhold the title until we resolve the pause
+      const [titlePause] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockSSEStream(
+          (async function* () {
+            yield { type: "text-delta", id: "t1", delta: "On it" };
+            await titlePause.promise;
+            yield { type: "data-chat-title", data: "Orders by Month" };
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Show me orders by month");
+
+      // a muted placeholder shows while title generation is pending
+      expect(await chatTitle()).toHaveTextContent("New conversation");
+
+      titlePause.resolve();
+
+      // the generated title replaces the placeholder once it arrives
+      await waitFor(() =>
+        expect(queryChatTitle()).toHaveTextContent("Orders by Month"),
+      );
+    });
+  });
+
+  describe("conversation history", () => {
+    it("renders the history control alongside the sidebar actions", async () => {
+      setup();
+
+      expect(
+        await screen.findByTestId("metabot-conversation-history"),
+      ).toBeInTheDocument();
+    });
+
+    it("lists past conversations when opened, falling back to a placeholder for untitled ones", async () => {
+      setup({
+        conversations: [
+          createMockMetabotConversation({
+            conversation_id: "11111111-1111-1111-1111-111111111111",
+            title: "Orders by month",
+          }),
+          createMockMetabotConversation({
+            conversation_id: "22222222-2222-2222-2222-222222222222",
+            title: null,
+          }),
+        ],
+      });
+
+      await userEvent.click(
+        await screen.findByTestId("metabot-conversation-history"),
+      );
+
+      const list = await screen.findByTestId(
+        "metabot-conversation-history-list",
+      );
+      expect(
+        await within(list).findByText("Orders by month"),
+      ).toBeInTheDocument();
+      expect(within(list).getByText("Untitled")).toBeInTheDocument();
+    });
+
+    it("shows an empty state when there are no past conversations", async () => {
+      setup({ conversations: [] });
+
+      await userEvent.click(
+        await screen.findByTestId("metabot-conversation-history"),
+      );
+
+      expect(
+        await screen.findByText("No past conversations"),
+      ).toBeInTheDocument();
+    });
+
+    it("filters conversations by the current agent's profile", async () => {
+      const metabotInitialState = getMetabotInitialState();
+      const omnibotConversation = metabotInitialState.conversations.omnibot;
+      if (!omnibotConversation) {
+        throw new Error("Expected omnibot conversation");
+      }
+      omnibotConversation.visible = true;
+      omnibotConversation.profileOverride = "sql";
+
+      setup({ metabotInitialState });
+
+      await userEvent.click(
+        await screen.findByTestId("metabot-conversation-history"),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/metabot/conversations"),
+        ).toHaveLength(1);
+      });
+      const { url } = fetchMock.callHistory.calls(
+        "path:/api/metabot/conversations",
+      )[0];
+      expect(url).toContain("profile_id=sql");
     });
   });
 });

@@ -4,6 +4,7 @@ import fetchMock, {
 } from "fetch-mock";
 
 import type {
+  MetabotConversation,
   MetabotGroupLimit,
   MetabotGroupPermission,
   MetabotId,
@@ -40,6 +41,22 @@ export function setupMetabotsEndpoints(
       return { ...metabot, ...JSON.parse(call.options?.body as string) };
     });
   });
+}
+
+export function setupListMetabotConversationsEndpoint(
+  conversations: MetabotConversation[] = [],
+) {
+  fetchMock.removeRoute("metabot-conversations-list");
+  fetchMock.get(
+    "path:/api/metabot/conversations",
+    {
+      data: conversations,
+      total: conversations.length,
+      limit: conversations.length,
+      offset: 0,
+    },
+    { name: "metabot-conversations-list" },
+  );
 }
 
 export function setupMetabotPromptSuggestionsEndpointError(

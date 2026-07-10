@@ -13,7 +13,7 @@ import {
   input,
   lastReqBody,
   mockAgentEndpoint,
-  resetChatButton,
+  newConversationButton,
   setup,
   whoIsYourFavoriteResponse,
 } from "./utils";
@@ -150,7 +150,7 @@ describe("metabot > errors", () => {
       ["agent", "You, but don't tell anyone."],
     ]);
 
-    await userEvent.click(await resetChatButton());
+    await userEvent.click(await newConversationButton());
 
     await assertConversation([]);
     expect(await input()).toHaveTextContent("");

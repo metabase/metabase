@@ -235,19 +235,20 @@
         (.interrupt (Thread/currentThread))
         nil))))
 
-(defn- pending-job?
-  [title-job]
-  (when-let [future (:future title-job)]
-    (not (.isDone ^Future future))))
-
-(defn stream-event
-  "Return the title SSE event, if one should be emitted before `[DONE]`."
+(defn ready-title-event
+  "A `data-chat-title` SSE event when the title is already available WITHOUT a
+   DB read while pending — i.e. the job is `:ready` or its future has completed.
+   Returns nil while the title is still being generated."
   [title-job conversation-id]
-  (when title-job
-    (if-let [title (or (:title title-job)
-                       (completed-future-title (:future title-job) conversation-id)
-                       (current-title conversation-id))]
-      {:type "data-chat-title" :data title}
-      (when (pending-job? title-job)
-        {:type "data-chat-title-pending"
-         :data {:conversation_id conversation-id}}))))
+  (when-let [title (or (:title title-job)
+                       (completed-future-title (:future title-job) conversation-id))]
+    {:type "data-chat-title" :data title}))
+
+(defn poll-title-event
+  "A `data-chat-title-pending` SSE event telling the client to poll for the
+   title after the stream ends, emitted when a title job was started but the
+   title was not streamed inline. Returns nil when no title job was started."
+  [title-job conversation-id]
+  (when (:future title-job)
+    {:type "data-chat-title-pending"
+     :data {:conversation_id conversation-id}}))

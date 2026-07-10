@@ -165,15 +165,29 @@
            (vreset! canceled? true)
            (reduced acc)))))))
 
-(defn- inject-title-before-done-xf
+(defn- inject-title-events-xf
   [title-job conversation-id]
-  (mapcat
-   (fn [line]
-     (if (and title-job (= self.core/done-sse-line line))
-       (if-let [event (conversation-title/stream-event title-job conversation-id)]
-         [(self.core/format-sse-event event) line]
-         [line])
-       [line]))))
+  (let [title-emitted? (volatile! false)]
+    (mapcat
+     (fn [line]
+       (cond
+         (not title-job)
+         [line]
+
+         (= self.core/done-sse-line line)
+         (if-let [event (when-not @title-emitted?
+                          (conversation-title/poll-title-event title-job conversation-id))]
+           [(self.core/format-sse-event event) line]
+           [line])
+
+         @title-emitted?
+         [line]
+
+         :else
+         (if-let [event (conversation-title/ready-title-event title-job conversation-id)]
+           (do (vreset! title-emitted? true)
+               [line (self.core/format-sse-event event)])
+           [line]))))))
 
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
@@ -216,7 +230,7 @@
                              (self.core/parts->aisdk-sse-xf
                               (cond-> {:message-id external-id}
                                 user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
-                             (inject-title-before-done-xf title-job conversation-id))]
+                             (inject-title-events-xf title-job conversation-id))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
