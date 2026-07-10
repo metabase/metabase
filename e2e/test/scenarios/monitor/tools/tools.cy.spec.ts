@@ -386,7 +386,13 @@ describe("monitor > tools > erroring questions ", () => {
   };
 
   function fixQuestion(name: string) {
-    cy.findByTestId("erroring-questions-table").findByText(name).click();
+    // the row opens in a new tab, which Cypress can't follow with a click,
+    // so navigating directly
+    cy.findByTestId("erroring-questions-table")
+      .findByText(name)
+      .closest("a")
+      .invoke("attr", "href")
+      .then((href) => cy.visit(href as string));
 
     cy.findByText("Open Editor").click();
 
