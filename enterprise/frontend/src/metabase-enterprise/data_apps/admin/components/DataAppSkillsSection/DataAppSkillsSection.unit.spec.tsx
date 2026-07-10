@@ -37,20 +37,18 @@ const DATA_APP_SKILLS = [
 ];
 
 describe("DataAppSkillsSection", () => {
-  it("shows the command wrapped on screen but copies it as one runnable line", async () => {
+  it("shows the command in a copy field, split across lines with shell continuations", async () => {
     setup("v0.64.0");
 
-    // On screen: wrapped across lines for readability. Raw textContent (not
-    // toHaveTextContent, which collapses whitespace) so the newline is visible.
-    const pre = screen.getByText(/npx skills add/);
-    expect(pre.tagName).toBe("PRE");
-    // eslint-disable-next-line jest-dom/prefer-to-have-text-content
-    expect(pre.textContent).toContain("\n--skill metabase-data-app-setup");
-
-    // Copied: a single runnable line.
     const command = await copyCommand();
-    expect(command).not.toContain("\n");
+
+    // The command is shown in a copy field (textarea) exactly as it is copied.
+    expect(screen.getByRole("textbox")).toHaveValue(command);
+
+    // Each --skill sits on its own line, joined by ` \` line-continuations, so
+    // the pasted command is still one runnable invocation.
     expect(command).toContain("npx skills add metabase/metabase/skills#");
+    expect(command).toContain(" \\\n--skill metabase-data-app-setup");
   });
 
   it.each(DATA_APP_SKILLS)(
