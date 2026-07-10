@@ -392,7 +392,7 @@
         [:= hsql-field hsql-value]
         false)
 
-      :else ((get-method sql.qp/->honeysql [:sql-mbql5 :=]) driver clause))))
+      :else ((get-method sql.qp/->honeysql [:sql :=]) driver clause))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
   [driver [_ _opts field value :as clause]]
@@ -410,7 +410,7 @@
          [:isNull hsql-field]]
         true)
 
-      :else ((get-method sql.qp/->honeysql [:sql-mbql5 :!=]) driver clause))))
+      :else ((get-method sql.qp/->honeysql [:sql :!=]) driver clause))))
 
 ;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)

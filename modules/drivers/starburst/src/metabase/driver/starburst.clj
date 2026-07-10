@@ -49,7 +49,7 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
-(driver/register! :starburst, :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :starburst, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (set! *warn-on-reflection* true)
 

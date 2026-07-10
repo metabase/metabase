@@ -21,7 +21,7 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :hive-like
-                  :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
+                  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
                   :abstract? true)
 
 (doseq [[feature supported?] {:now           true

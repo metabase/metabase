@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :presto-jdbc, :parent #{:sql-mbql5 :sql-jdbc
+(driver/register! :presto-jdbc, :parent #{:sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (doseq [[feature supported?] {:basic-aggregations               true

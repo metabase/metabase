@@ -51,7 +51,7 @@
   mysql.actions/keep-me
   mysql.ddl/keep-me)
 
-(driver/register! :mysql, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
@@ -500,7 +500,7 @@
   [driver [_ opts id-or-name :as mbql-clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
         honeysql-expr (parent-method driver mbql-clause)]
     (cond
       (not (driver-api/json-field? stored-field))
