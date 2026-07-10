@@ -273,7 +273,7 @@
     (if (str/blank? v)
       card-name
       (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")
-            head (str (str/upper-case (subs v 0 1)) (subs v 1))]
+            head (str (u/upper-case-en (subs v 0 1)) (subs v 1))]
         (str/trim (str head " " noun))))))
 
 ;;; ----------------------------------------- schemas -----------------------------------------

@@ -127,6 +127,30 @@
       (finalize-queries! (mapcat :queries (:threads hydrated)))
       (vectorize-clauses (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))))))
 
+(defn- explore-further-and-hydrate!
+  "POST explore-further, plan the new thread, and finalize its queries — mirrors
+  [[create-exploration!]] for the follow-up thread the endpoint adds."
+  [user expl-id page-id explore-filters]
+  (let [_resp (mt/user-http-request user :post 200
+                                    (format "exploration/%d/explore-further" expl-id)
+                                    {:page_id         page-id
+                                     :explore_filters explore-filters})
+        new-thread-id (->> (t2/select :model/ExplorationThread
+                                      :exploration_id expl-id
+                                      {:order-by [[:position :desc] [:id :desc]]})
+                           first :id)]
+    (query-plan/generate-query-plan! new-thread-id)
+    (let [hydrated (mt/user-http-request user :get 200 (format "exploration/%d" expl-id))]
+      (finalize-queries! (mapcat :queries (:threads hydrated)))
+      (vectorize-clauses (mt/user-http-request user :get 200 (format "exploration/%d" expl-id))))))
+
+(defn- filter-display-names
+  "Human-readable filter clause names from a finalized `dataset_query`."
+  [dataset-query]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))
+        q  (lib/query mp dataset-query)]
+    (mapv #(lib/display-name q %) (or (lib/filters q) []))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    GET /api/exploration/dimensions                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1463,6 +1487,80 @@
     (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
 
+(deftest exploration-explore-further-creates-filtered-thread-test
+  (testing "POST /:id/explore-further copies the clicked block into a new filtered thread"
+    (with-ai-summary-available
+      (mt/with-temp [:model/User u {:email "explore-further@example.com"}
+                     :model/Card metric (assoc (venues-metric-card (:id u)) :name "Number of venues")
+                     :model/Timeline tl {:creator_id (:id u) :name "Releases"}]
+        (let [filter-value 2
+              field-ref    ["field" {} (mt/id :venues :price)]
+              body         {:name         "base drill"
+                            :prompt       "why down?"
+                            :metrics      [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
+                            :dimensions   [{:dimension_id "category" :display_name "Category"}
+                                           {:dimension_id "price"    :display_name "Price"}]
+                            :timeline_ids [(:id tl)]}
+              created      (create-exploration! u body)
+              expl-id      (:id created)
+              orig-thread  (-> created :threads first)
+              page-id      (some :id (filter #(str/includes? (:name %) "Price")
+                                             (-> created :threads first :blocks first :pages)))
+              explore-body {:page_id         page-id
+                            :explore_filters [{:field_ref field-ref :value filter-value}]}
+              hydrated     (explore-further-and-hydrate! u expl-id page-id (:explore_filters explore-body))
+              threads      (sort-by :position (:threads hydrated))
+              [orig new]   threads
+              new-block    (-> new :blocks first)
+              new-queries  (:queries new)]
+          (is (= 2 (count threads)) "explore-further adds a thread; restart would keep 1")
+          (is (= (:id orig-thread) (:id orig)))
+          (is (= 1 (:position new)))
+          (is (= "2 venues" (:name new))
+              "thread name capitalizes the clicked value and strips the metric's aggregation prefix")
+          (testing "new block copies type/dimensions and appends explore_filters onto metrics"
+            (let [persisted (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new))]
+              (is (= "metric" (:type new-block)))
+              (is (= ["category" "price"] (mapv :dimension_id (:dimensions persisted))))
+              (is (= (:explore_filters explore-body) (:explore_filters (first (:metrics persisted)))))))
+          (testing "timelines are copied from the source thread"
+            (is (= 1 (count (:timelines new))))
+            (is (= (:id tl) (-> new :timelines first :timeline_id))))
+          (testing "every finalized query inherits the explore filter"
+            (is (pos? (count new-queries)))
+            (is (every? #(some (fn [fname]
+                                 (and (str/includes? fname "Price")
+                                      (str/includes? fname (str filter-value))))
+                               (filter-display-names (:dataset_query %)))
+                        new-queries)))
+          (testing "filtered page names prefix the clicked value in the blocks tree"
+            (let [page (first (:pages new-block))]
+              (is (some? page))
+              (is (str/starts-with? (:name page) "2 ")
+                  "filtered blocks use the long title as :name")
+              (is (= (:name page) (:long_name page)))))
+          (testing "explore-further skips the AI Summary placeholder — Scratchpad only"
+            (let [docs (t2/select :model/Document :exploration_thread_id (:id new))]
+              (is (= #{"Scratchpad"} (set (map :name docs)))))))))))
+
+(deftest exploration-explore-further-permissions-and-404-test
+  (testing "POST /:id/explore-further enforces write-check and 404s unknown pages"
+    (mt/with-temp [:model/User owner {:email "ef-owner@example.com"}
+                   :model/User other {:email "ef-other@example.com"}
+                   :model/Card metric (venues-metric-card (:id owner))]
+      (let [resp (create-exploration! owner
+                                      {:name         "private drill"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))
+                                       :metrics      [{:card_id (:id metric) :dimension_mappings (venues-dimension-mappings)}]
+                                       :dimensions   [{:dimension_id "category" :display_name "Category"}]})
+            expl-id (:id resp)
+            page-id (-> resp :threads first :blocks first :pages first :id)
+            body    {:page_id         page-id
+                     :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)] :value 1}]}]
+        (mt/user-http-request other :post 403 (format "exploration/%d/explore-further" expl-id) body)
+        (mt/user-http-request owner :post 404 (format "exploration/%d/explore-further" expl-id)
+                              (assoc body :page_id 9999999))))))
+
 (deftest exploration-create-auto-creates-scratchpad-document-test
   (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"
     (with-ai-summary-available
@@ -1656,9 +1754,9 @@
 (deftest blocks-tree-emits-blocks-and-pages-test
   (testing "Each block becomes a node; each of its pages bundles that page's queries by page_id"
     (let [blocks  [{:id 1 :metrics [{:card_id 10}]} {:id 2 :metrics [{:card_id 20}]}]
-          pages   [{:id 100 :exploration_block_id 1 :card_id 10 :dimension_id "d1" :query_type "default"}
-                   {:id 101 :exploration_block_id 1 :card_id 10 :dimension_id "d2" :query_type "default"}
-                   {:id 200 :exploration_block_id 2 :card_id 20 :dimension_id "d1" :query_type "default"}]
+          pages   [{:id 100 :exploration_block_id 1 :card_id 10 :dimension_id "d1" :query_type "default" :hidden false}
+                   {:id 101 :exploration_block_id 1 :card_id 10 :dimension_id "d2" :query_type "default" :hidden true}
+                   {:id 200 :exploration_block_id 2 :card_id 20 :dimension_id "d1" :query_type "default" :hidden false}]
           queries [{:id 1 :page_id 100 :segment_id nil :name "Rev by D1"      :interestingness_score 0.5}
                    {:id 2 :page_id 100 :segment_id 100 :name "Rev by D1 (S1)" :interestingness_score 0.7}
                    {:id 3 :page_id 100 :segment_id 101 :name "Rev by D1 (S2)" :interestingness_score 0.3}
@@ -1681,7 +1779,11 @@
         (is (= [4]     (:query_ids (p-> 101))))
         (is (= [5]     (:query_ids (p-> 200)))))
       (testing "page :position reifies score order within the block"
-        (is (= [0 1] (mapv :position (:pages (by-id 1)))))))))
+        (is (= [0 1] (mapv :position (:pages (by-id 1))))))
+      (testing "page :hidden is passed through from the persisted page row"
+        (is (false? (:hidden (p-> 100))))
+        (is (true?  (:hidden (p-> 101))))
+        (is (false? (:hidden (p-> 200))))))))
 
 (deftest blocks-tree-positions-test
   (testing "blocks in authoring order; pages within a block score-sorted; positions reified"
@@ -1710,6 +1812,20 @@
           "short name drops the metric, which the block heading already shows")
       (is (= "Revenue by Price" (:long_name page))
           "long name is self-describing — metric + dimension"))))
+
+(deftest blocks-tree-explore-further-naming-test
+  (testing "filtered blocks prefix every page title with the clicked segment values"
+    (let [blocks  [{:id 5 :metrics [{:card_id 10
+                                     :explore_filters [{:value "texas"} {:value "2024"}]}]}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
+          queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Category" :name "stored name"}]
+          [block] (explorations.blocks/blocks-tree blocks pages {10 "Orders"} queries)
+          [page]  (:pages block)]
+      (is (str/starts-with? (:name page) "Texas / 2024 ")
+          "multiple explore_filters join as capitalized values")
+      (is (= (:name page) (:long_name page))
+          "filtered blocks use the self-describing long title for :name")
+      (is (str/includes? (:long_name page) "Orders by Category")))))
 
 (deftest blocks-tree-page-sort-prefers-contextual-test
   (testing "page sort uses contextual_interestingness_score when present, else interestingness_score"

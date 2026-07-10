@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.query-plan.variants :as variants]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -125,7 +126,7 @@
   [s]
   (if (str/blank? s)
     s
-    (str (str/upper-case (subs s 0 1)) (subs s 1))))
+    (str (u/upper-case-en (subs s 0 1)) (subs s 1))))
 
 (defn- block-explore-filter-value
   "For an \"Explore further\" block (its metric selections carry `:explore_filters`), the clicked

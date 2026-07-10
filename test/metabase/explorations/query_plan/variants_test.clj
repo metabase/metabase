@@ -234,3 +234,25 @@
            (into {} (map (juxt identity variants/variant-qualifier))
                  ["default" "temporal-pattern-day" "temporal-pattern-hour" "time-facet"
                   "per-value-time-series" "top-n-other" "filtered-subset" "some-future-variant"])))))
+
+(deftest cached-discovery-isolates-filtered-queries-test
+  (testing "cached-discovery keys include the filtered dataset_query so segments don't share top-N results"
+    (let [card-id    9000100
+          mp         (mt/metadata-provider)
+          cat-col    (lib.metadata/field mp (mt/id :products :category))
+          unfiltered (products-count-card card-id)
+          filtered   (assoc unfiltered
+                            :dataset_query
+                            (lib/->legacy-MBQL
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/aggregate (lib/count))
+                                 (lib/filter (lib/= cat-col "Widget")))))
+          base-ctx   {:mp mp :target (category-target) :dim category-dim :segment nil :params {:k 2}}
+          discover           (fn [card]
+                               (#'variants/cached-discovery (assoc base-ctx :card card)))
+          unfiltered-results (discover unfiltered)
+          filtered-results   (discover filtered)]
+      (is (not= unfiltered-results filtered-results)
+          "unfiltered top-N must not be served from cache after a filtered query with the same card/dim/k")
+      (is (= ["Widget"] filtered-results)
+          "a Widget-scoped metric query only discovers that segment"))))
