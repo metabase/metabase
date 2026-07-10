@@ -1584,6 +1584,51 @@
         (is (= [b-dc a-dc] (:dashcard_ids resp))
             "after moving b to the top it should be listed first")))))
 
+(deftest update-dashboard-dashcards-update-text-test
+  (testing "update_text replaces a text card's text in place, keeping position and size"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retext Target"}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id nil
+                                                     :row 5 :col 3 :size_x 12 :size_y 3
+                                                     :visualization_settings
+                                                     {:virtual_card {:display "text"}
+                                                      :text         "Old narrative."}}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "New narrative."}]})
+      (is (=? {:row                    5
+               :col                    3
+               :size_x                 12
+               :size_y                 3
+               :visualization_settings {:virtual_card {:display "text"}
+                                        :text         "New narrative."}}
+              (t2/select-one :model/DashboardCard :id dc-id)))))
+  (testing "update_text works on headings too"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retitle Target"}]
+      (let [resp  (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                        {:dashcards [{:action "add_heading" :text "Old Title"}]})
+            dc-id (first (:dashcard_ids resp))]
+        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "update_text" :dashcard_id dc-id :text "New Title"}]})
+        (is (=? {:visualization_settings {:virtual_card {:display "heading"}
+                                          :text         "New Title"}}
+                (t2/select-one :model/DashboardCard :id dc-id))))))
+  (testing "update_text on a card-backed dashcard is a 400"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retext Chart"}
+                   :model/Card          {card-id :id} {:name "chart" :dataset_query (orders-count-query) :display :table}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id
+                                                     :row 0 :col 0 :size_x 12 :size_y 9}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "nope"}]})))
+  (testing "update_text on another dashboard's dashcard is a 404"
+    (mt/with-temp [:model/Dashboard {dash-id :id}  {:name "Retext Mine"}
+                   :model/Dashboard {other-id :id} {:name "Retext Other"}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id other-id :card_id nil
+                                                     :row 0 :col 0 :size_x 24 :size_y 1
+                                                     :visualization_settings
+                                                     {:virtual_card {:display "heading"}
+                                                      :text         "elsewhere"}}]
+      (mt/user-http-request :rasta :put 404 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "nope"}]}))))
+
 (deftest update-dashboard-dashcards-remove-virtual-card-test
   (testing "A text card can be removed by dashcard_id like any other dashcard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Remove Text Card"}]

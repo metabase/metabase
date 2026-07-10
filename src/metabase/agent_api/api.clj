@@ -1301,6 +1301,8 @@
    - `add_heading` : requires `text`. Adds a full-width section heading.
    - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`
                      (\"wide\", \"tall\", or \"full\").
+   - `update_text` : requires `dashcard_id` and `text`. Replaces a heading or text card's text
+                     in place, keeping its position and size.
    - `remove`      : requires `dashcard_id`.
    - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\").
 
@@ -1323,6 +1325,10 @@
                    [:text         ms/NonBlankString]
                    [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]
                    [:tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
+   ["update_text" [:map {:closed true}
+                   [:action      [:= "update_text"]]
+                   [:dashcard_id ms/PositiveInt]
+                   [:text        ms/NonBlankString]]]
    ["remove"      [:map {:closed true}
                    [:action      [:= "remove"]]
                    [:dashcard_id ms/PositiveInt]]]
@@ -1440,6 +1446,17 @@
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
                                   {:visualization_settings (dashboard-card/virtual-card-settings "text" text)}))
 
+          "update_text"
+          (let [existing (api/check-404
+                          (t2/select-one :model/DashboardCard
+                                         :id dashcard_id :dashboard_id dashboard-id))
+                display  (some-> (get-in existing [:visualization_settings :virtual_card :display]) name)]
+            (api/check (contains? #{"heading" "text"} display)
+                       [400 "Only heading and text cards support update_text."])
+            ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
+            (t2/update! :model/DashboardCard dashcard_id
+                        {:visualization_settings (assoc (:visualization_settings existing) :text text)}))
+
           "remove"
           (let [existing (api/check-404
                           (t2/select-one :model/DashboardCard
@@ -1508,9 +1525,9 @@
 
   Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations
   are submitted under `dashcards` as a list of
-  `{action: add|add_heading|add_text|remove|move, ...}` entries applied in order.
-  `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
-  for text cards); `remove` and `move` require `dashcard_id`."
+  `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in
+  order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
+  for text cards); `update_text`, `remove`, and `move` require `dashcard_id`."
   {:scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
            :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
@@ -1521,6 +1538,8 @@
                              "Markdown text card, both from a \"text\" field: "
                              "[{\"action\":\"add_heading\",\"text\":\"Revenue\"},"
                              "{\"action\":\"add_text\",\"text\":\"Orders *grew 12%* this quarter.\"}]. "
+                             "update_text rewrites an existing heading or text card in place "
+                             "(keeping its position) from dashcard_id and text. "
                              "Mutations apply in order. New cards auto-place into the first free "
                              "grid slot (left-to-right, top-to-bottom), so cards may sit side by "
                              "side; a full-width heading always starts its own row, so lead each "

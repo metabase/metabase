@@ -534,6 +534,8 @@ Dashcard mutations go under `dashcards` and are applied in order:
 - `add_heading` adds a full-width section heading from `text`
 - `add_text` adds a Markdown text card from `text` (optional `display_size`:
   `"wide"`, `"tall"`, or `"full"`)
+- `update_text` replaces the text of an existing heading or text card
+  (`dashcard_id` and `text`), keeping its position and size
 - `remove` removes a dashcard by `dashcard_id`
 - `move` moves a dashcard by `dashcard_id` to `position` `"top"` or `"bottom"`
 

@@ -572,7 +572,8 @@
 (defn- present-non-question-dashcard
   "Dashcards not rendered as a saved question — virtual cards (headings, text, links, ...) and
    action buttons (which may reference a backing model via `card_id` but render as a button).
-   They carry their `dashcard_id` — the handle `update_dashboard` remove/move mutations take. The
+   They carry their `dashcard_id` — the handle `update_dashboard` remove/move/update_text mutations
+   take. The
    card's text (when it has any) renders as the item body via `:description`."
   [{:keys [id action_id visualization_settings]}]
   (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
@@ -589,7 +590,8 @@
 
 (defn- fetch-dashboard-items
   "One item per dashcard in row/col (layout) order, each carrying the `dashcard_id` that
-   `update_dashboard` remove/move mutations take. On a tabbed dashboard the dashcards group under
+   `update_dashboard` remove/move/update_text mutations take. On a tabbed dashboard the dashcards
+   group under
    one `tab` item per tab (in display order, empty tabs included) and carry that tab's `tab_id` —
    nil-tab dashcards belong to the first tab, where the frontend renders them. Card-backed
    dashcards keep the card fields; virtual dashcards (headings, text, ...) render their text.
