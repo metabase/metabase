@@ -1,6 +1,4 @@
 (ns ^:mb/driver-tests metabase.query-processor.cumulative-aggregation-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.cumulative-aggregation-test]}
-                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.cumulative-aggregation-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -19,22 +17,30 @@
 (deftest ^:parallel cumulative-sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cum_sum w/o breakout should be treated the same as sum"
-      (let [result (mt/run-mbql-query users
-                     {:aggregation [[:cum-sum $id]]})]
-        (is (=? [{:display_name "Cumulative sum of ID"
-                  :source :aggregation}]
-                (-> result :data :cols)))
-        (is (= [[120]]
-               (mt/formatted-rows
-                [int]
-                result)))))))
+      (let [mp       (mt/metadata-provider)
+            users    (lib.metadata/table mp (mt/id :users))
+            users-id (lib.metadata/field mp (mt/id :users :id))
+            query    (-> (lib/query mp users)
+                         (lib/aggregate (lib/cum-sum users-id)))]
+        (mt/with-native-query-testing-context query
+          (let [result (qp/process-query query)]
+            (is (=? [{:display_name "Cumulative sum of ID"
+                      :source :aggregation}]
+                    (-> result :data :cols)))
+            (is (= [[120]]
+                   (mt/formatted-rows
+                    [int]
+                    result)))))))))
 
 (deftest ^:parallel cumulative-sum-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "Simple cumulative sum where breakout field is same as cum_sum field"
-      (let [query (mt/mbql-query users
-                    {:aggregation [[:cum-sum $id]]
-                     :breakout    [$id]})]
+      (let [mp       (mt/metadata-provider)
+            users    (lib.metadata/table mp (mt/id :users))
+            users-id (lib.metadata/field mp (mt/id :users :id))
+            query    (-> (lib/query mp users)
+                         (lib/aggregate (lib/cum-sum users-id))
+                         (lib/breakout users-id))]
         (mt/with-native-query-testing-context query
           (is (= [[1    1]
                   [2    3]
@@ -58,9 +64,13 @@
 (deftest ^:parallel cumulative-sum-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "Cumulative sum w/ a different breakout field"
-      (let [query (mt/mbql-query users
-                    {:aggregation [[:cum-sum $id]]
-                     :breakout    [$name]})]
+      (let [mp         (mt/metadata-provider)
+            users      (lib.metadata/table mp (mt/id :users))
+            users-id   (lib.metadata/field mp (mt/id :users :id))
+            users-name (lib.metadata/field mp (mt/id :users :name))
+            query      (-> (lib/query mp users)
+                           (lib/aggregate (lib/cum-sum users-id))
+                           (lib/breakout users-name))]
         (mt/with-native-query-testing-context query
           (is (= [["Broen Olujimi"        14]
                   ["Conchúr Tihomir"      21]
@@ -84,9 +94,13 @@
 (deftest ^:parallel cumulative-sum-test-4
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "Cumulative sum w/ a different breakout field that requires grouping"
-      (let [query (mt/mbql-query venues
-                    {:aggregation [[:cum-sum $id]]
-                     :breakout    [$price]})]
+      (let [mp           (mt/metadata-provider)
+            venues       (lib.metadata/table mp (mt/id :venues))
+            venues-id    (lib.metadata/field mp (mt/id :venues :id))
+            venues-price (lib.metadata/field mp (mt/id :venues :price))
+            query        (-> (lib/query mp venues)
+                             (lib/aggregate (lib/cum-sum venues-id))
+                             (lib/breakout venues-price))]
         (mt/with-native-query-testing-context query
           (is (= [[1 1211]
                   [2 4066]
@@ -120,8 +134,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
-        (let [query (mt/mbql-query users
-                      {:aggregation [[:cum-count $id]]})]
+        (let [mp       (mt/metadata-provider)
+              users    (lib.metadata/table mp (mt/id :users))
+              users-id (lib.metadata/field mp (mt/id :users :id))
+              query    (-> (lib/query mp users)
+                           (lib/aggregate (lib/cum-count users-id)))]
           (mt/with-native-query-testing-context query
             (is (= [[15]]
                    (mt/formatted-rows
@@ -131,9 +148,13 @@
 (deftest ^:parallel cumulative-count-with-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "w/ breakout on field with distinct values"
-      (let [query (mt/mbql-query users
-                    {:aggregation [[:cum-count $id]]
-                     :breakout    [$name]})]
+      (let [mp         (mt/metadata-provider)
+            users      (lib.metadata/table mp (mt/id :users))
+            users-id   (lib.metadata/field mp (mt/id :users :id))
+            users-name (lib.metadata/field mp (mt/id :users :name))
+            query      (-> (lib/query mp users)
+                           (lib/aggregate (lib/cum-count users-id))
+                           (lib/breakout users-name))]
         (mt/with-native-query-testing-context query
           (is (= [["Broen Olujimi"        1]
                   ["Conchúr Tihomir"      2]
@@ -157,9 +178,13 @@
 (deftest ^:parallel cumulative-count-with-breakout-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "w/ breakout on field that requires grouping"
-      (let [query (mt/mbql-query venues
-                    {:aggregation [[:cum-count $id]]
-                     :breakout    [$price]})]
+      (let [mp           (mt/metadata-provider)
+            venues       (lib.metadata/table mp (mt/id :venues))
+            venues-id    (lib.metadata/field mp (mt/id :venues :id))
+            venues-price (lib.metadata/field mp (mt/id :venues :price))
+            query        (-> (lib/query mp venues)
+                             (lib/aggregate (lib/cum-count venues-id))
+                             (lib/breakout venues-price))]
         (mt/with-native-query-testing-context query
           (is (= [[1 22]
                   [2 81]
@@ -172,11 +197,15 @@
 (deftest ^:parallel cumulative-count-with-multiple-breakouts-test
   (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [query (-> (mt/mbql-query orders
-                        {:aggregation [[:cum-count]]
-                         :breakout    [!month.created_at !year.created_at]
-                         :limit       12})
-                      (assoc-in [:middleware :format-rows?] false))]
+      (let [mp                (mt/metadata-provider)
+            orders            (lib.metadata/table mp (mt/id :orders))
+            orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            query             (-> (lib/query mp orders)
+                                  (lib/aggregate (lib/cum-count))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
+                                  (lib/limit 12)
+                                  (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           (is (= [[#t "2016-04-01" #t "2016-01-01" 1]
                   [#t "2016-05-01" #t "2016-01-01" 20]
@@ -197,11 +226,16 @@
 (deftest ^:parallel cumulative-count-with-three-breakouts-test
   (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY second and third BREAKOUTS (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [query (-> (mt/mbql-query orders
-                        {:aggregation [[:cum-count]]
-                         :breakout    [!day.created_at !year.created_at !month.created_at]
-                         :limit       4})
-                      (assoc-in [:middleware :format-rows?] false))]
+      (let [mp                (mt/metadata-provider)
+            orders            (lib.metadata/table mp (mt/id :orders))
+            orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            query             (-> (lib/query mp orders)
+                                  (lib/aggregate (lib/cum-count))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :day))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                  (lib/limit 4)
+                                  (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           (is (= [[#t "2016-04-30" #t "2016-01-01" #t "2016-04-01" 1]
                   [#t "2016-05-04" #t "2016-01-01" #t "2016-05-01" 1] ; <- count should reset here, when last two breakouts change
@@ -214,9 +248,12 @@
 (deftest ^:parallel cumulative-count-without-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative count without a field"
-      (let [query (mt/mbql-query venues
-                    {:aggregation [[:cum-count]]
-                     :breakout    [$price]})]
+      (let [mp           (mt/metadata-provider)
+            venues       (lib.metadata/table mp (mt/id :venues))
+            venues-price (lib.metadata/field mp (mt/id :venues :price))
+            query        (-> (lib/query mp venues)
+                             (lib/aggregate (lib/cum-count))
+                             (lib/breakout venues-price))]
         (mt/with-native-query-testing-context query
           (is (= [[1 22]
                   [2 81]
@@ -249,11 +286,16 @@
 (deftest ^:parallel cumulative-sum-with-multiple-breakouts-test
   (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [query (-> (mt/mbql-query orders
-                        {:aggregation [[:cum-sum $total]]
-                         :breakout    [!month.created_at !year.created_at]
-                         :limit       12})
-                      (assoc-in [:middleware :format-rows?] false))]
+      (let [mp                (mt/metadata-provider)
+            orders            (lib.metadata/table mp (mt/id :orders))
+            orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            orders-total      (lib.metadata/field mp (mt/id :orders :total))
+            query             (-> (lib/query mp orders)
+                                  (lib/aggregate (lib/cum-sum orders-total))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
+                                  (lib/limit 12)
+                                  (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;; you can sanity check these numbers by changing `:cum-sum` to `:sum` and adding them up manually
           (is (= [[#t "2016-04-01" #t "2016-01-01" 52.76]
@@ -275,11 +317,17 @@
 (deftest ^:parallel cumulative-sum-with-three-breakouts-test
   (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY last two BREAKOUTS (#2862, #42003)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [query (-> (mt/mbql-query orders
-                        {:aggregation [[:cum-sum $total]]
-                         :breakout    [!day.created_at !year.created_at !month.created_at]
-                         :limit       4})
-                      (assoc-in [:middleware :format-rows?] false))]
+      (let [mp                (mt/metadata-provider)
+            orders            (lib.metadata/table mp (mt/id :orders))
+            orders-created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            orders-total      (lib.metadata/field mp (mt/id :orders :total))
+            query             (-> (lib/query mp orders)
+                                  (lib/aggregate (lib/cum-sum orders-total))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :day))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
+                                  (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                  (lib/limit 4)
+                                  (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           ;; you can sanity check these numbers by changing `:cum-sum` to `:sum` and adding them up manually.
           (is (= [[#t "2016-04-30" #t "2016-01-01" #t "2016-04-01" 52.76]
