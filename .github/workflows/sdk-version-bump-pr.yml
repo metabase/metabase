@@ -15,16 +15,15 @@
 # human review. Merging that PR is what actually triggers a release, via the
 # `pull_request` trigger on release-embedding-sdk.yml.
 name: SDK Version Bump PR
-run-name: Bump Embedding SDK version (${{ inputs.release_type }}) on ${{ inputs.branch }}
+run-name: Bump Embedding SDK version (${{ inputs.release_type }}) on ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to bump the SDK version on (e.g. master, release-x.59.x, or any other branch for an on-demand/manual release)"
+        description: "Not used for anything - select the actual branch to bump the SDK version on using the 'Use workflow from' picker above this form when dispatching manually."
         type: string
-        required: true
-        default: "master"
+        required: false
       release_type:
         description: "Release type, passed to `semver -i` (alpha/beta bump the prerelease identifier; preminor bumps master to the next major's alpha; patch/minor graduate or bump a stable version)"
         type: choice
@@ -43,7 +42,7 @@ on:
 
 concurrency:
   # one version-bump in flight per branch at a time, to avoid racing PRs
-  group: ${{ github.workflow }}-${{ inputs.branch }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -57,10 +56,13 @@ jobs:
     env:
       package_template: enterprise/frontend/src/embedding-sdk-package/package.template.json
     steps:
-      - name: Check out the code using the provided branch
+      # No explicit `ref:` - actions/checkout defaults to the ref/SHA that
+      # triggered the run, which for workflow_dispatch is exactly the
+      # branch/tag selected via the "Use workflow from" picker
+      # (github.ref_name), so an explicit ref: here would be redundant.
+      - name: Check out the code
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Setup git user
@@ -76,7 +78,7 @@ jobs:
 
       - name: Validate branch / release_type combination
         env:
-          BRANCH: ${{ inputs.branch }}
+          BRANCH: ${{ github.ref_name }}
           RELEASE_TYPE: ${{ inputs.release_type }}
         run: |
           # `getNextSdkVersion` (the old version-computing logic this replaces)
@@ -97,7 +99,7 @@ jobs:
 
       - name: Ensure no other open version-bump PR targets this branch
         env:
-          BRANCH: ${{ inputs.branch }}
+          BRANCH: ${{ github.ref_name }}
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
           # The per-branch concurrency group above only serializes *runs* of
@@ -235,7 +237,7 @@ jobs:
 
       - name: Append workflow summary
         env:
-          BRANCH: ${{ inputs.branch }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           tee -a "$GITHUB_STEP_SUMMARY" << EOF
           **SDK version bump:**
@@ -272,7 +274,7 @@ jobs:
       - name: Open version-bump PR (using GitHub Metabase Automation account)
         id: open-pr
         env:
-          BRANCH: ${{ inputs.branch }}
+          BRANCH: ${{ github.ref_name }}
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
           gh pr create --base "$BRANCH" \

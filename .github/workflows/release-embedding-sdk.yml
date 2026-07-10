@@ -18,16 +18,15 @@
 # `0.N.x` placeholder there instead, which sdk-version-bump-pr.yml's bump
 # step now rejects with a clear error rather than failing silently.
 name: Release Metabase Embedding SDK for React
-run-name: Release SDK from ${{ inputs.branch || github.event.pull_request.base.ref }}
+run-name: Release SDK from ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.pull_request.base.ref }}
 
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch we want to release the SDK from (supports any branch - used for on-demand/manual releases, e.g. shipping a feature off a branch)"
+        description: "Not used for anything - select the actual branch/tag to release from using the 'Use workflow from' picker above this form when dispatching manually."
         type: string
-        required: true
-        default: "master"
+        required: false
   # Step 2 of the new release process: merging a version-bump PR (opened by
   # sdk-version-bump-pr.yml, labeled `sdk-release-trigger`) triggers a release
   # of whatever branch that PR targeted. See `prepare-release` below.
@@ -53,7 +52,7 @@ concurrency:
   # the first being killed mid-publish.
   group: >-
     ${{
-      github.event_name == 'workflow_dispatch' && format('{0}-{1}', github.workflow, inputs.branch) ||
+      github.event_name == 'workflow_dispatch' && format('{0}-{1}', github.workflow, github.ref_name) ||
       (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger')) && format('{0}-{1}', github.workflow, github.event.pull_request.base.ref) ||
       format('{0}-{1}', github.workflow, github.run_id)
     }}
@@ -77,7 +76,7 @@ jobs:
       - name: Resolve target branch
         id: resolve
         env:
-          BRANCH: ${{ inputs.branch }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
