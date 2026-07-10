@@ -150,28 +150,28 @@ test/metabase/queries/metadata_test.clj	2	0	2	pending
 test/metabase/queries/models/card_test.clj	44	0	44	pending	
 test/metabase/queries_rest/api/card_test.clj	51	2	53	pending	
 test/metabase/query_permissions/impl_test.clj	9	0	9	pending	
-test/metabase/query_processor/advanced_math_test.clj	3	3	6	pending	
+test/metabase/query_processor/advanced_math_test.clj	3	3	6	done	wave1
 test/metabase/query_processor/aggregation_test.clj	2	21	23	pending	
 test/metabase/query_processor/alternative_date_test.clj	12	4	16	pending	
 test/metabase/query_processor/api_test.clj	33	0	33	pending	
-test/metabase/query_processor/binning_test.clj	2	0	2	pending	
+test/metabase/query_processor/binning_test.clj	2	0	2	done	wave1
 test/metabase/query_processor/breakout_test.clj	8	19	27	pending	
 test/metabase/query_processor/card_test.clj	4	0	4	pending	
-test/metabase/query_processor/case_test.clj	6	5	11	pending	
+test/metabase/query_processor/case_test.clj	6	5	11	done	wave1; 1 site kept
 test/metabase/query_processor/cast_test.clj	1	0	1	pending	
-test/metabase/query_processor/constraints_test.clj	2	0	2	pending	
-test/metabase/query_processor/count_where_test.clj	3	8	11	ported-wave0	1 site kept: legacy-normalization test (fenced); metric R56 hybrid
-test/metabase/query_processor/cumulative_aggregation_test.clj	12	2	14	pending	
+test/metabase/query_processor/constraints_test.clj	2	0	2	done	wave1
+test/metabase/query_processor/count_where_test.clj	3	8	11	done	wave0; 1 site kept (normalization fixture)
+test/metabase/query_processor/cumulative_aggregation_test.clj	12	2	14	done	wave1
 test/metabase/query_processor/dashboard_test.clj	7	0	7	pending	
 test/metabase/query_processor/date_bucketing_test.clj	9	18	27	pending	
 test/metabase/query_processor/date_time_zone_functions_test.clj	7	26	33	pending	
-test/metabase/query_processor/distinct_where_test.clj	2	9	11	ported-wave0	1 site kept: legacy-normalization test (fenced); metric R56 hybrid
+test/metabase/query_processor/distinct_where_test.clj	2	9	11	done	wave0; 1 site kept (normalization fixture)
 test/metabase/query_processor/execute_test.clj	2	0	2	pending	
 test/metabase/query_processor/explicit_joins_test.clj	38	19	57	pending	
 test/metabase/query_processor/expression_aggregations_test.clj	5	25	30	pending	
 test/metabase/query_processor/expressions_test.clj	11	40	51	pending	
 test/metabase/query_processor/field_ref_repro_test.clj	11	0	11	pending	
-test/metabase/query_processor/field_visibility_test.clj	1	3	4	pending	
+test/metabase/query_processor/field_visibility_test.clj	1	3	4	done	wave1
 test/metabase/query_processor/fields_test.clj	1	2	3	pending	
 test/metabase/query_processor/filter_test.clj	6	56	62	pending	
 test/metabase/query_processor/implicit_joins_test.clj	5	8	13	pending	
@@ -203,9 +203,9 @@ test/metabase/query_processor/nested_array_test.clj	1	0	1	pending
 test/metabase/query_processor/nested_field_test.clj	3	10	13	pending	
 test/metabase/query_processor/nested_queries_test.clj	49	31	80	pending	
 test/metabase/query_processor/null_array_test.clj	1	0	1	pending	
-test/metabase/query_processor/offset_test.clj	3	0	3	pending	
-test/metabase/query_processor/order_by_test.clj	1	8	9	pending	
-test/metabase/query_processor/page_test.clj	2	0	2	pending	
+test/metabase/query_processor/offset_test.clj	3	0	3	done	wave1; 1 site kept (normalization fixture #42323)
+test/metabase/query_processor/order_by_test.clj	1	8	9	done	wave1; 1 site kept
+test/metabase/query_processor/page_test.clj	2	0	2	done	wave1
 test/metabase/query_processor/parameters/temporal_units_test.clj	1	0	1	pending	
 test/metabase/query_processor/parameters_test.clj	5	0	5	pending	
 test/metabase/query_processor/persistence_test.clj	10	0	10	pending	
@@ -215,14 +215,14 @@ test/metabase/query_processor/postprocess_test.clj	2	0	2	pending
 test/metabase/query_processor/preprocess_test.clj	4	0	4	pending	
 test/metabase/query_processor/query_to_native_test.clj	4	0	4	pending	
 test/metabase/query_processor/remapping_test.clj	12	9	21	pending	
-test/metabase/query_processor/share_test.clj	4	7	11	pending	
+test/metabase/query_processor/share_test.clj	4	7	11	done	wave1; 1 site kept
 test/metabase/query_processor/streaming/csv_test.clj	9	0	9	pending	
 test/metabase/query_processor/streaming/json_test.clj	2	0	2	pending	
 test/metabase/query_processor/streaming_test.clj	8	0	8	pending	
-test/metabase/query_processor/string_extracts_test.clj	2	3	5	pending	
-test/metabase/query_processor/sum_where_test.clj	2	9	11	ported-wave0	1 site kept: legacy-normalization test (fenced); metric R56 hybrid
+test/metabase/query_processor/string_extracts_test.clj	2	3	5	done	wave1; 1 site kept
+test/metabase/query_processor/sum_where_test.clj	2	9	11	done	wave0; 1 site kept (normalization fixture)
 test/metabase/query_processor/test_util.clj	4	1	5	pending	
-test/metabase/query_processor/time_field_test.clj	1	2	3	pending	
+test/metabase/query_processor/time_field_test.clj	1	2	3	done	wave1
 test/metabase/query_processor/timeseries_test.clj	2	2	4	pending	
 test/metabase/query_processor/timezones_test.clj	3	8	11	pending	
 test/metabase/query_processor/util/nest_query_test.clj	3	0	3	pending	
