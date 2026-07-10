@@ -6,11 +6,11 @@ import { FormModelPicker } from "metabase/actions/containers/ActionCreator/FormM
 import type { CreateQueryActionParams } from "metabase/actions/types";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { FormInput } from "metabase/common/components/FormInput";
 import {
   Form,
   FormProvider,
   FormSubmitButton,
+  FormTextInput,
   FormTextarea,
 } from "metabase/forms";
 import { Button } from "metabase/ui";
@@ -59,11 +59,12 @@ function CreateActionForm({
     >
       {({ isValid }) => (
         <Form disabled={!isValid} data-testid="create-action-form">
-          <FormInput
+          <FormTextInput
             name="name"
-            title={t`Name`}
+            label={t`Name`}
             placeholder={t`My new fantastic action`}
             data-autofocus
+            mb="md"
           />
           <FormTextarea
             name="description"

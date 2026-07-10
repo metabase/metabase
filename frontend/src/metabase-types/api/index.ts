@@ -30,6 +30,7 @@ export * from "./field";
 export * from "./geojson";
 export * from "./group";
 export * from "./icon";
+export * from "./index-manager";
 export * from "./insight";
 export * from "./llm";
 export * from "./logger";

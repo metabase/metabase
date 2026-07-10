@@ -35,6 +35,21 @@ const adHocQuestionPathProducts = buildAdHocPath({
   limit: 2,
 });
 
+// A native card with no numeric slug — the shape Metabot emits when it opens
+// the SQL editor. `CurrentChart drills` must render the editor, not just the
+// result window. Regression coverage for EMB-2042.
+const nativeQuestionPath = `/question#${btoa(
+  JSON.stringify({
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "native",
+      native: { query: "" },
+    },
+    display: "table",
+    visualization_settings: {},
+  }),
+)}`;
+
 const buildNavigateToResponse = (path: string) =>
   H.createMetabotSSEBody(
     H.metabotTextPart(`Here is the [question link](${path})`),
@@ -43,9 +58,10 @@ const buildNavigateToResponse = (path: string) =>
 
 type MetabotConsumerProps = {
   prompts: string[];
+  drills?: boolean;
 };
 
-const MetabotConsumer = ({ prompts }: MetabotConsumerProps) => {
+const MetabotConsumer = ({ prompts, drills = false }: MetabotConsumerProps) => {
   const metabot = useMetabot();
 
   if (!metabot) {
@@ -79,7 +95,7 @@ const MetabotConsumer = ({ prompts }: MetabotConsumerProps) => {
 
       {metabot.CurrentChart && (
         <div data-testid="metabot-current-chart">
-          <metabot.CurrentChart />
+          <metabot.CurrentChart drills={drills} />
         </div>
       )}
     </div>
@@ -117,6 +133,33 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
         .and("contain", "1")
         .and("contain", "Max of Quantity")
         .and("contain", "30");
+    });
+  });
+
+  it("opens the SQL editor when Metabot navigates to a native question (EMB-2042)", () => {
+    H.mockMetabotResponse({
+      statusCode: 200,
+      body: buildNavigateToResponse(nativeQuestionPath),
+    });
+
+    mountSdkContent(
+      <MetabotConsumer prompts={["Open the SQL editor"]} drills />,
+    );
+
+    getSdkRoot().within(() => {
+      cy.button("Open the SQL editor").click();
+    });
+
+    cy.wait("@metabotAgent", { timeout: 20_000 });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("native-query-editor-container")
+        .should("be.visible")
+        .within(() => {
+          // The run button lives inside the editor chrome, confirming the SQL
+          // builder actually rendered — not just an empty container.
+          cy.icon("play").should("be.visible");
+        });
     });
   });
 

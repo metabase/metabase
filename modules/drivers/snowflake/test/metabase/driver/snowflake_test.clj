@@ -1735,6 +1735,18 @@
             (is (some? (mt/rows (qp/process-query query)))
                 "Hour bucketing on a time field from a source query should not error")))))))
 
+(deftest ^:parallel compile-create-index-test
+  (testing "clustering renders ALTER TABLE ... CLUSTER BY with quoted identifiers"
+    (is (= [["ALTER TABLE \"sch\".\"t\" CLUSTER BY (\"category\", \"price\")"]]
+           (driver/compile-create-index :snowflake "sch" "t"
+                                        {:kind :clustering :name "by_cat"
+                                         :columns [{:name "category"} {:name "price"}]}))))
+  (testing "a SQL-injection payload in a clustering column is quoted+escaped, so it can only ever be an identifier"
+    (is (= [["ALTER TABLE \"t\" CLUSTER BY (\"c\"\"; DROP TABLE x; --\")"]]
+           (driver/compile-create-index :snowflake nil "t"
+                                        {:kind :clustering :name "by_cat"
+                                         :columns [{:name "c\"; DROP TABLE x; --"}]})))))
+
 (deftest upload-type->database-type-test
   (testing "upload types render to the expected Snowflake DDL via the generic create-table! path"
     ;; End-to-end behavior is covered by [[metabase.upload.impl-test]].
