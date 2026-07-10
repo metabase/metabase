@@ -32,7 +32,7 @@ export const AdminAuthCard = () => {
       />
       {enabled && overview && !overview.encryption_key_set && (
         <Alert color="warning">
-          {t`MB_ENCRYPTION_SECRET_KEY is not set, so authenticator secrets are stored unencrypted. Setting one is strongly recommended.`}
+          {t`Set MB_ENCRYPTION_SECRET_KEY to avoid storing authenticator secrets unencrypted.`}
         </Alert>
       )}
       {enabled && overview && <EnrollmentCounts overview={overview} />}
