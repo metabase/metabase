@@ -287,7 +287,7 @@
 (defenterprise apply-mfa-gate
   "Decide whether a successful first-factor login must complete a second factor before a session is
   created. OSS has no native MFA, so the login result passes through unchanged."
-  metabase-enterprise.mfa.gate
+  metabase-enterprise.mfa.core
   [_provider login-result]
   login-result)
 

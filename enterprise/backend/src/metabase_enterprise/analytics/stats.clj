@@ -1,7 +1,7 @@
 (ns metabase-enterprise.analytics.stats
   (:require
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
-   [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase-enterprise.mfa.core :as mfa]
    [metabase-enterprise.scim.core :as scim]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
@@ -28,7 +28,7 @@
    {:name      :multi-factor-auth
     :available (premium-features/enable-multi-factor-auth?)
     :enabled   (and (premium-features/enable-multi-factor-auth?)
-                    (mfa.settings/mfa-enabled))}
+                    (mfa/mfa-enabled))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
                     (t2/exists? :model/Database :engine [:in (descendants driver/hierarchy :sql)]))

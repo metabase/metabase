@@ -75,7 +75,7 @@
   (with-enrolled-rasta! [secret]
     (testing "'remember me' from step 1 must ride the verify request — that's what creates the session"
       (let [challenge (mt/client :post 200 "session" (assoc (mt/user->credentials :rasta) :remember true))
-            response  (mt/client-real-response :post 200 "ee/mfa/verify"
+            response  (mt/client-real-response :post 200 "session/mfa/verify"
                                                {:mfa_token (:mfa_token challenge)
                                                 :code      (totp/generate-code secret)
                                                 :remember  true})]
@@ -86,7 +86,7 @@
       ;; validation window, strictly greater than the consumed step) so replay protection passes
       (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))
             code      (totp/code-for-unix-time secret (+ (quot (System/currentTimeMillis) 1000) 30))
-            response  (mt/client-real-response :post 200 "ee/mfa/verify"
+            response  (mt/client-real-response :post 200 "session/mfa/verify"
                                                {:mfa_token (:mfa_token challenge)
                                                 :code      code})]
         (is (nil? (get-in response [:cookies request/metabase-session-cookie :expires])))))))

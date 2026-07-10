@@ -117,7 +117,7 @@
 
   The OSS fallback always throws: OSS can never have issued a challenge token (MFA gate lives in EE),
   so this path is unreachable without EE present."
-  metabase-enterprise.mfa.challenge
+  metabase-enterprise.mfa.core
   [_mfa-token _code _ip-address]
   (throw (ex-info (tru "Multi-factor authentication is not available.") {:status-code 400})))
 
@@ -127,7 +127,7 @@
 
   The OSS fallback always throws: OSS can never have issued a challenge token (MFA gate lives in EE),
   so this path is unreachable without EE present."
-  metabase-enterprise.mfa.challenge
+  metabase-enterprise.mfa.core
   [_mfa-token _ip-address]
   (throw (ex-info (tru "Multi-factor authentication is not available.") {:status-code 400})))
 
@@ -411,9 +411,13 @@
   their single-use recovery codes, or an emailed one-time code; on success sets the session cookie."
   [_route-params
    _query-params
+   ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
+   ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
+   ;; `POST /api/session` — for MFA users THIS request is the one that creates the session.
    {mfa-token :mfa_token, code :code} :- [:map
                                           [:mfa_token ms/NonBlankString]
-                                          [:code      ms/NonBlankString]]
+                                          [:code      ms/NonBlankString]
+                                          [:remember  {:optional true} :boolean]]
    request]
   (let [{:keys [user-id first-factor]} (verify-mfa-code mfa-token code (request/ip-address request))
         user (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]

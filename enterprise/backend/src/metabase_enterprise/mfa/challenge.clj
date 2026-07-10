@@ -20,7 +20,6 @@
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [throttle.core :as throttle]
@@ -73,12 +72,11 @@
   (ex-info (tru "Authentication session expired. Please log in again.")
            {:status-code 401}))
 
-(defenterprise verify-mfa-code
+(defn verify-mfa-code
   "Verify a second-factor `code` (TOTP, recovery, or emailed one-time code) against the `mfa-token`
   challenge issued by `POST /api/session`. Returns `{:user-id ..., :first-factor <provider keyword>}`
   on success; throws 401 otherwise. Only failures are throttled — a legitimately busy user is never
   throttled by their own successful logins."
-  :feature :none
   [mfa-token code ip-address]
   (let [claims  (or (verify-challenge-token mfa-token)
                     (throw (invalid-token-ex)))
@@ -100,12 +98,11 @@
            (throw (ex-info (tru "Invalid authentication code.")
                            {:status-code 401}))))))))
 
-(defenterprise send-mfa-email-otp!
+(defn send-mfa-email-otp!
   "Email a one-time code as a fallback second factor. Requires a valid challenge token from
   `POST /api/session`; a token that already minted a session is rejected (jti consumed). The code
   is single-use with a 10-minute expiry and is accepted by `POST /api/session/mfa/verify`.
   Returns nil on success; throws on error."
-  :feature :none
   [mfa-token ip-address]
   (let [claims  (or (verify-challenge-token mfa-token)
                     (throw (invalid-token-ex)))
