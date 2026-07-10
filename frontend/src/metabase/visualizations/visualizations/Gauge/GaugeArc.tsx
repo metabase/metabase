@@ -7,16 +7,15 @@ import type {
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, ResolvedGoalSegment } from "metabase-types/api";
 
 import { INNER_RADIUS_RATIO, OUTER_RADIUS } from "./constants";
-import type { GaugeSegment } from "./types";
 
 interface Props {
   column?: DatasetColumn;
   end: number;
   fill: string | undefined;
-  segment?: GaugeSegment;
+  segment?: ResolvedGoalSegment;
   settings?: ComputedVisualizationSettings;
   start: number;
   testId?: string;

@@ -94,3 +94,10 @@ export type ScalarSegment = {
   color: string;
   label?: string;
 };
+
+export type ResolvedGoalSegment = {
+  color?: string; // TODO: why optional?
+  label?: string;
+  min: number;
+  max: number;
+};

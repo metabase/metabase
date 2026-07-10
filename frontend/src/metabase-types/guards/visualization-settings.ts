@@ -3,6 +3,7 @@ import type {
   GoalSelfColumnRef,
   GoalStaticValue,
   GoalValue,
+  ResolvedGoalSegment,
 } from "metabase-types/api";
 
 import { isObject } from "./common";
@@ -34,3 +35,19 @@ export function isGoalValue(value: unknown): value is GoalValue {
     isGoalForeignColumnRef(value)
   );
 }
+
+export const isResolvedGoalSegment = (
+  value: unknown,
+): value is ResolvedGoalSegment => {
+  return (
+    isObject(value) &&
+    typeof value.min === "number" &&
+    typeof value.max === "number"
+  );
+};
+
+export const isResolvedGoalSegmentsArray = (
+  value: unknown,
+): value is ResolvedGoalSegment[] => {
+  return Array.isArray(value) && value.every(isResolvedGoalSegment);
+};
