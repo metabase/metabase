@@ -2,13 +2,17 @@
   "Public API of the mfa module. All cross-boundary entry points live here.
 
   Consumers outside this module must go through this namespace; they must not require mfa.gate,
-  mfa.challenge, or mfa.settings directly."
+  or mfa.settings directly."
   (:require
-   [metabase-enterprise.mfa.challenge :as challenge]
    [metabase-enterprise.mfa.gate :as gate]
    [metabase-enterprise.mfa.settings]
+   [metabase-enterprise.mfa.verification :as verification]
+   [metabase.channel.email :as email]
    [metabase.premium-features.core :refer [defenterprise]]
-   [potemkin :as p]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [potemkin :as p]
+   [toucan2.core :as t2]))
 
 (comment metabase-enterprise.mfa.settings/keep-me)
 
@@ -19,7 +23,8 @@
 (defenterprise apply-mfa-gate
   "Decide whether a successful first-factor login must complete a second factor before a session is
   created. Sets `:mfa-pending?` (which suppresses session creation in the `login!` pipeline) and,
-  for challenged providers, attaches a challenge token.
+  for challenged providers, attaches `:first-factor` and `:mfa-methods` so the OSS session API can
+  sign the relay token.
 
   Uses `:feature :none` deliberately: enforcement must not depend on the current token, so a lapsed
   license never silently stops challenging enrolled users. The token instead gates setup — turning
@@ -28,25 +33,42 @@
   [provider login-result]
   (gate/apply-mfa-gate provider login-result))
 
-(defenterprise verify-mfa-code
-  "Verify a second-factor `code` (TOTP, recovery, or emailed one-time code) against the `mfa-token`
-  challenge issued by `POST /api/session`. Returns `{:user-id ..., :first-factor <provider keyword>}`
-  on success; throws 401 otherwise.
+(defenterprise verify-second-factor!
+  "Verify a second-factor code (TOTP, recovery, or emailed one-time code) for user-id, atomically
+  consuming it plus the challenge jti. Returns boolean.
 
-  The OSS fallback always throws: OSS can never have issued a challenge token (MFA gate lives in EE),
-  so this path is unreachable without EE present."
+  OSS fallback returns false — OSS can never have issued a challenge token (the MFA gate lives in
+  EE), so this is unreachable in practice."
   :feature :none
-  [mfa-token code ip-address]
-  (challenge/verify-mfa-code mfa-token code ip-address))
+  [user-id code jti]
+  (verification/verify-attempt! user-id code jti))
 
 (defenterprise send-mfa-email-otp!
-  "Email a one-time code as a fallback second factor. Requires a valid challenge token from
-  `POST /api/session`; a token that already minted a session is rejected (jti consumed). The code
-  is single-use with a 10-minute expiry and is accepted by `POST /api/session/mfa/verify`.
-  Returns nil on success; throws on error.
+  "Generate + email a one-time fallback code for user-id's confirmed enrollment; rejects a jti that
+  already minted a session.
 
-  The OSS fallback always throws: OSS can never have issued a challenge token (MFA gate lives in EE),
-  so this path is unreachable without EE present."
+  OSS fallback throws (unreachable, as above)."
   :feature :none
-  [mfa-token ip-address]
-  (challenge/send-mfa-email-otp! mfa-token ip-address))
+  [user-id jti]
+  ;; a token that already minted a session must not keep sending codes for its remaining TTL
+  (when (verification/jti-consumed? user-id jti)
+    (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                    {:status-code 401})))
+  (let [code       (or (verification/set-email-otp! user-id)
+                       ;; nil = no confirmed enrollment — same message, no oracle semantics
+                       (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                                       {:status-code 401})))
+        user-email (t2/select-one-fn :email :model/User :id user-id)]
+    (try
+      (email/send-message-or-throw!
+       {:subject      (tru "Your Metabase sign-in code")
+        :recipients   [user-email]
+        :message-type :text
+        :message      (str (tru "Your one-time sign-in code is: {0}" code)
+                           "\n\n"
+                           (tru "It expires in 10 minutes. If you didn''t try to sign in, contact your administrator."))})
+      (catch Throwable e
+        (log/warn e "Failed to send MFA email OTP")
+        ;; don't tell an unauthenticated caller "the code exists but the email failed"
+        (throw (ex-info (tru "Failed to send the sign-in code. Please try again or contact your administrator.")
+                        {:status-code 500}))))))

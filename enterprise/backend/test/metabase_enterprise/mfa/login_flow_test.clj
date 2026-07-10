@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.mfa.challenge :as mfa.challenge]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
@@ -18,7 +17,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers! []
-  (doseq [throttler (concat (vals @#'mfa.challenge/verify-throttlers)
+  (doseq [throttler (concat (vals @#'api.session/verify-throttlers)
                             (vals @#'mfa.management/throttlers)
                             (vals @#'api.session/login-throttlers)
                             [@#'api.session/reset-password-throttler])]
@@ -49,34 +48,34 @@
       (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
         (is (true? (:mfa_required resp)))
         (is (some #{"totp"} (:methods resp)))
-        (is (string? (:mfa_token resp)))
+        (is (string? (:challenge_token resp)))
         (is (nil? (:id resp)) "no session id is issued yet")
         (testing "step 2: verifying a valid code yields a real session"
           (is (=? {:id string?}
                   (mt/client :post 200 "session/mfa/verify"
-                             {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)}))))
+                             {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)}))))
         (testing "the consumed challenge token cannot mint a second session (jti + step replay)"
           (mt/client :post 401 "session/mfa/verify"
-                     {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)}))))))
+                     {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)}))))))
 
 (deftest wrong-code-rejected-test
   (with-enrolled-rasta! [secret]
     (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
-      (mt/client :post 401 "session/mfa/verify" {:mfa_token (:mfa_token resp) :code (wrong-code secret)})
+      (mt/client :post 401 "session/mfa/verify" {:challenge_token (:challenge_token resp) :code (wrong-code secret)})
       (testing "a failed code does not invalidate the challenge token — retry with the right one"
         (is (=? {:id string?}
                 (mt/client :post 200 "session/mfa/verify"
-                           {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)})))))))
+                           {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)})))))))
 
 (deftest bogus-token-rejected-test
-  (mt/client :post 401 "session/mfa/verify" {:mfa_token "not-a-real-token" :code "000000"}))
+  (mt/client :post 401 "session/mfa/verify" {:challenge_token "not-a-real-token" :code "000000"}))
 
 (deftest remember-me-survives-mfa-test
   (with-enrolled-rasta! [secret]
     (testing "'remember me' from step 1 must ride the verify request — that's what creates the session"
       (let [challenge (mt/client :post 200 "session" (assoc (mt/user->credentials :rasta) :remember true))
             response  (mt/client-real-response :post 200 "session/mfa/verify"
-                                               {:mfa_token (:mfa_token challenge)
+                                               {:challenge_token (:challenge_token challenge)
                                                 :code      (totp/generate-code secret)
                                                 :remember  true})]
         (is (get-in response [:cookies request/metabase-session-cookie :expires])
@@ -87,7 +86,7 @@
       (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))
             code      (totp/code-for-unix-time secret (+ (quot (System/currentTimeMillis) 1000) 30))
             response  (mt/client-real-response :post 200 "session/mfa/verify"
-                                               {:mfa_token (:mfa_token challenge)
+                                               {:challenge_token (:challenge_token challenge)
                                                 :code      code})]
         (is (nil? (get-in response [:cookies request/metabase-session-cookie :expires])))))))
 
@@ -98,7 +97,7 @@
       (try
         (testing "a challenge token does not outlive the account: deactivated mid-challenge gets the same 401 as a bad token"
           (mt/client :post 401 "session/mfa/verify"
-                     {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)}))
+                     {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)}))
         (finally
           (t2/update! :model/User (mt/user->id :rasta) {:is_active true}))))))
 
@@ -107,17 +106,17 @@
     (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
       (is (=? {:id string?}
               (mt/client :post 200 "session/mfa/verify"
-                         {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)})))
+                         {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)})))
       (testing "only failures count — a busy legitimate user is never throttled by their own logins"
-        (is (empty? @(:attempts (@#'mfa.challenge/verify-throttlers :user-id))))))))
+        (is (empty? @(:attempts (@#'api.session/verify-throttlers :user-id))))))))
 
 (deftest verify-throttled-test
   (with-enrolled-rasta! [secret]
     (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
       (testing "6-digit codes need brute-force limits: repeated failures throttle the user"
         (dotimes [_ 5]
-          (mt/client :post 401 "session/mfa/verify" {:mfa_token (:mfa_token resp) :code (wrong-code secret)}))
-        (let [resp' (mt/client :post 400 "session/mfa/verify" {:mfa_token (:mfa_token resp) :code (wrong-code secret)})]
+          (mt/client :post 401 "session/mfa/verify" {:challenge_token (:challenge_token resp) :code (wrong-code secret)}))
+        (let [resp' (mt/client :post 400 "session/mfa/verify" {:challenge_token (:challenge_token resp) :code (wrong-code secret)})]
           (is (re-find #"Too many attempts!" (str resp'))))))))
 
 (deftest enforcement-survives-license-lapse-test
@@ -128,7 +127,7 @@
           (is (true? (:mfa_required resp)))
           (is (=? {:id string?}
                   (mt/client :post 200 "session/mfa/verify"
-                             {:mfa_token (:mfa_token resp) :code (totp/generate-code secret)}))))))))
+                             {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)}))))))))
 
 (deftest recovery-code-login-test
   (with-enrolled-rasta! [_secret]
@@ -136,17 +135,17 @@
           resp       (mt/client :post 200 "session" (mt/user->credentials :rasta))]
       (testing "a recovery code completes the two-step login in place of a TOTP code"
         (is (=? {:id string?}
-                (mt/client :post 200 "session/mfa/verify" {:mfa_token (:mfa_token resp) :code code}))))
+                (mt/client :post 200 "session/mfa/verify" {:challenge_token (:challenge_token resp) :code code}))))
       (testing "single-use: the same recovery code is dead afterwards"
         (let [resp' (mt/client :post 200 "session" (mt/user->credentials :rasta))]
-          (mt/client :post 401 "session/mfa/verify" {:mfa_token (:mfa_token resp') :code code}))))))
+          (mt/client :post 401 "session/mfa/verify" {:challenge_token (:challenge_token resp') :code code}))))))
 
 (deftest regenerate-recovery-codes-endpoint-test
   (with-enrolled-rasta! [secret]
     (let [user-id           (mt/user->id :rasta)
           [c1 & _]          (enrollment/reset-recovery-codes! user-id)
           login             (mt/client :post 200 "session" (mt/user->credentials :rasta))
-          {session-key :id} (mt/client :post 200 "session/mfa/verify" {:mfa_token (:mfa_token login)
+          {session-key :id} (mt/client :post 200 "session/mfa/verify" {:challenge_token (:challenge_token login)
                                                                        :code      (totp/generate-code secret)})]
       (testing "requires a session"
         (mt/client :post 401 "ee/mfa/recovery-codes" {:code c1}))

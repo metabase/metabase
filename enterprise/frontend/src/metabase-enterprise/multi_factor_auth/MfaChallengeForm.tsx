@@ -42,15 +42,15 @@ type ChallengeCodeValues = {
 };
 
 function ChallengeCodeForm({
-  mfaToken,
+  challengeToken,
   remember,
-}: Pick<MfaChallengeFormProps, "mfaToken" | "remember">) {
+}: Pick<MfaChallengeFormProps, "challengeToken" | "remember">) {
   const dispatch = useDispatch();
   const [verifyMfa] = useVerifyMfaMutation();
 
   const handleSubmit = async ({ code }: ChallengeCodeValues) => {
     await verifyMfa({
-      mfa_token: mfaToken,
+      challenge_token: challengeToken,
       code: code.trim(),
       remember,
     }).unwrap();
@@ -109,11 +109,11 @@ function ChallengeCodeForm({
   );
 }
 
-function EmailOtpForm({ mfaToken }: Pick<MfaChallengeFormProps, "mfaToken">) {
+function EmailOtpForm({ challengeToken }: Pick<MfaChallengeFormProps, "challengeToken">) {
   const [sendEmailOtp, { isSuccess: emailSent }] = useSendEmailOtpMutation();
 
   const handleSubmit = async () => {
-    await sendEmailOtp({ mfa_token: mfaToken }).unwrap();
+    await sendEmailOtp({ challenge_token: challengeToken }).unwrap();
   };
 
   if (emailSent) {
@@ -141,15 +141,15 @@ function EmailOtpForm({ mfaToken }: Pick<MfaChallengeFormProps, "mfaToken">) {
 }
 
 export function MfaChallengeForm({
-  mfaToken,
+  challengeToken,
   methods,
   remember,
   onCancel,
 }: MfaChallengeFormProps) {
   return (
     <Stack mt="2.5rem" gap="md">
-      <ChallengeCodeForm mfaToken={mfaToken} remember={remember} />
-      {methods?.includes("email") && <EmailOtpForm mfaToken={mfaToken} />}
+      <ChallengeCodeForm challengeToken={challengeToken} remember={remember} />
+      {methods?.includes("email") && <EmailOtpForm challengeToken={challengeToken} />}
       <Box ta="center">
         <AuthButton onClick={onCancel}>{t`Back to log in`}</AuthButton>
       </Box>

@@ -4,7 +4,8 @@
   Session-issuance coverage, decided per provider (the login! pipeline is the only place
   interactive sessions are minted; API keys and MCP OAuth never pass through it):
 
-  - `:provider/password`, `:provider/ldap` — challenged (a challenge token replaces the session).
+  - `:provider/password`, `:provider/ldap` — challenged (the OSS session API signs the relay token
+    from :first-factor; no token is issued here).
   - `:provider/emailed-secret-password-reset` — the password change completes but no session is
     issued for an enrolled user; they go through normal, gated login. Otherwise anyone who can
     trigger a reset email routes around the second factor.
@@ -12,7 +13,6 @@
     audited, and Metabase staff cannot hold the user's second factor.
   - SSO providers — exempt: the identity provider owns MFA there."
   (:require
-   [metabase-enterprise.mfa.challenge :as challenge]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase.channel.settings :as channel.settings]))
@@ -35,7 +35,8 @@
 (defn apply-mfa-gate
   "Decide whether a successful first-factor login must complete a second factor before a session is
   created. Sets `:mfa-pending?` (which suppresses session creation in the `login!` pipeline) and,
-  for challenged providers, attaches a challenge token."
+  for challenged providers, attaches `:first-factor` (the provider keyword) and `:mfa-methods` so
+  the OSS session API can sign the relay token."
   [provider login-result]
   (if-not (and (true? (:success? login-result))
                (:user login-result)
@@ -53,7 +54,7 @@
                :mfa-pending? true
                :mfa-required true
                :mfa-methods  (available-methods)
-               :mfa-token    (challenge/issue-challenge-token user-id provider))
+               :first-factor provider)
 
         (contains? session-suppressed-providers provider)
         (assoc login-result
