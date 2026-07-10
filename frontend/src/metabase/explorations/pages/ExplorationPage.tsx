@@ -58,6 +58,11 @@ import {
 } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
 import {
+  type ExplorationSortOrder,
+  getExplorationSortOrder,
+  setExplorationSortOrder,
+} from "../sidebar-preferences";
+import {
   type CommentDrafts,
   type ExplorationSidebarTab,
   isExplorationSidebarTab,
@@ -175,6 +180,17 @@ export function ExplorationPage({
   // is hidden by the current filter — flag it so the "All" tab shows a dot until the user visits it.
   const [hasUnviewedTurnInAll, setHasUnviewedTurnInAll] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
+  const [sortOrder, setSortOrder] = useState<ExplorationSortOrder>(() =>
+    getExplorationSortOrder(Number(params.id)),
+  );
+
+  const handleChangeSortOrder = useCallback(
+    (order: ExplorationSortOrder) => {
+      setSortOrder(order);
+      setExplorationSortOrder(Number(params.id), order);
+    },
+    [params.id],
+  );
 
   const {
     data: exploration,
@@ -231,8 +247,14 @@ export function ExplorationPage({
       ? tabFilter
       : (node: ITreeNodeItem<ExplorationTreeNode>) =>
           tabFilter(node) && !isHiddenTreeItem(node);
-    return getExplorationSidebarTree(exploration, treeItemFilter);
-  }, [exploration, selectedSidebarTab, explorationSidebarTabsInfo, showHidden]);
+    return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder);
+  }, [
+    exploration,
+    selectedSidebarTab,
+    explorationSidebarTabsInfo,
+    showHidden,
+    sortOrder,
+  ]);
 
   // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
@@ -561,6 +583,8 @@ export function ExplorationPage({
             isOpen={isSidebarOpen}
             showHidden={showHidden}
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}
+            sortOrder={sortOrder}
+            onChangeSortOrder={handleChangeSortOrder}
           />
           {selectedPage && (
             <ExplorationGroupVisualization

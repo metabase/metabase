@@ -12,6 +12,10 @@ import {
 } from "__support__/ui";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
+  DEFAULT_SORT_ORDER,
+  type ExplorationSortOrder,
+} from "metabase/explorations/sidebar-preferences";
+import {
   createBlock,
   createExploration,
   createExplorationDocument,
@@ -70,6 +74,7 @@ interface SetupOpts {
   prompt?: string | null;
   canWrite?: boolean;
   showHidden?: boolean;
+  sortOrder?: ExplorationSortOrder;
 }
 
 function setup({
@@ -82,9 +87,11 @@ function setup({
   prompt = null,
   canWrite = true,
   showHidden = false,
+  sortOrder = DEFAULT_SORT_ORDER,
 }: SetupOpts) {
   const setSelectedEntityId = jest.fn();
   const onToggleShowHidden = jest.fn();
+  const onChangeSortOrder = jest.fn();
 
   fetchMock.get("express:/api/exploration/query/:id", {
     data: { rows: [], cols: [] },
@@ -161,6 +168,8 @@ function setup({
       isOpen
       showHidden={showHidden}
       onToggleShowHidden={onToggleShowHidden}
+      sortOrder={sortOrder}
+      onChangeSortOrder={onChangeSortOrder}
     />
   );
 
@@ -171,6 +180,7 @@ function setup({
   return {
     setSelectedEntityId,
     onToggleShowHidden,
+    onChangeSortOrder,
     getSelectedEntityIdUrl,
     exploration,
   };
@@ -226,27 +236,45 @@ describe("ExplorationSidebar", () => {
     expect(marker).toBeInTheDocument();
   });
 
-  describe("show-hidden filter toggle", () => {
-    const toggle = () => screen.getByTestId("exploration-show-hidden-toggle");
+  describe("filter menu", () => {
+    const filterButton = () =>
+      screen.getByTestId("exploration-show-hidden-toggle");
 
-    it("renders inactive by default", () => {
+    it("is inactive when nothing is filtered or resorted", () => {
       setup({ queries: [doneQuery] });
-      expect(toggle()).toHaveAttribute("aria-pressed", "false");
+      expect(filterButton()).toHaveAttribute("aria-pressed", "false");
     });
 
-    it("renders active when hidden pages are being shown", () => {
+    it("is active when hidden pages are shown", () => {
       setup({ queries: [doneQuery], showHidden: true });
-      expect(toggle()).toHaveAttribute("aria-pressed", "true");
+      expect(filterButton()).toHaveAttribute("aria-pressed", "true");
     });
 
-    it("calls onToggleShowHidden when clicked without changing selection", async () => {
+    it("is active when a non-default sort order is set", () => {
+      setup({ queries: [doneQuery], sortOrder: "alphabetical" });
+      expect(filterButton()).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("toggles show-hidden from the menu without changing selection", async () => {
       const { onToggleShowHidden, setSelectedEntityId } = setup({
         queries: [doneQuery],
       });
-      await userEvent.click(toggle());
+      await userEvent.click(filterButton());
+      await userEvent.click(
+        await screen.findByTestId("exploration-show-hidden-item"),
+      );
       expect(onToggleShowHidden).toHaveBeenCalledTimes(1);
       // toggling the filter must not navigate/select anything
       expect(setSelectedEntityId).not.toHaveBeenCalled();
+    });
+
+    it("changes sort order from the menu", async () => {
+      const { onChangeSortOrder } = setup({ queries: [doneQuery] });
+      await userEvent.click(filterButton());
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Alphabetical/ }),
+      );
+      expect(onChangeSortOrder).toHaveBeenCalledWith("alphabetical");
     });
   });
 
@@ -466,6 +494,8 @@ describe("ExplorationSidebar", () => {
         isOpen
         showHidden={false}
         onToggleShowHidden={jest.fn()}
+        sortOrder={DEFAULT_SORT_ORDER}
+        onChangeSortOrder={jest.fn()}
       />
     );
 
@@ -555,6 +585,8 @@ describe("ExplorationSidebar", () => {
           isOpen
           showHidden={false}
           onToggleShowHidden={jest.fn()}
+          sortOrder={DEFAULT_SORT_ORDER}
+          onChangeSortOrder={jest.fn()}
         />
       );
       const { rerender } = renderWithProviders(

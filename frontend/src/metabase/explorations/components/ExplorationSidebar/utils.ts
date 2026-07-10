@@ -21,6 +21,10 @@ import {
 } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
+import {
+  DEFAULT_SORT_ORDER,
+  type ExplorationSortOrder,
+} from "../../sidebar-preferences";
 
 export interface ExplorationTreeHeading {
   type: "heading";
@@ -92,11 +96,16 @@ function getHeadingHideState(nodes: ITreeNodeItem<ExplorationTreeNode>[]): {
 export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
+  sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const initialThreadId = exploration.threads?.[0]?.id;
   const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
     .map((thread, index) => {
-      const children = getExplorationQueryTree(thread, treeItemFilter);
+      const children = getExplorationQueryTree(
+        thread,
+        treeItemFilter,
+        sortOrder,
+      );
       const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
       if (
         aiSummaryDocumentNode != null &&
@@ -175,6 +184,7 @@ export function getCompactRelativeTime(timestamp: string): string {
 function getExplorationQueryTree(
   thread: ExplorationThread,
   treeItemFilter: TreeItemFilter,
+  sortOrder: ExplorationSortOrder,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
@@ -240,14 +250,29 @@ function getExplorationQueryTree(
     .filter((heading) => (heading.children ?? []).length > 0)
     .map((heading) => ({
       ...heading,
-      children: heading.children?.toSorted(compareExplorationTreePages),
+      children: heading.children?.toSorted((a, b) =>
+        compareExplorationTreePages(a, b, sortOrder),
+      ),
     }))
-    .toSorted(compareExplorationTreeHeadings);
+    .toSorted((a, b) => compareExplorationTreeHeadings(a, b, sortOrder));
+}
+
+function compareByName(
+  a: ITreeNodeItem<ExplorationTreeNode>,
+  b: ITreeNodeItem<ExplorationTreeNode>,
+) {
+  const diff = a.name.localeCompare(b.name);
+  if (diff === 0) {
+    // sort by id as a fallback to keep sort stable
+    return String(a.id).localeCompare(String(b.id));
+  }
+  return diff;
 }
 
 function compareExplorationTreePages(
   a: ITreeNodeItem<ExplorationTreeNode>,
   b: ITreeNodeItem<ExplorationTreeNode>,
+  sortOrder: ExplorationSortOrder,
 ) {
   if (
     !a.data ||
@@ -256,6 +281,9 @@ function compareExplorationTreePages(
     !isExplorationTreePage(b)
   ) {
     return 0;
+  }
+  if (sortOrder === "alphabetical") {
+    return compareByName(a, b);
   }
   const getScore = (page: ExplorationTreePage) => {
     if (page.status === "error") {
@@ -277,7 +305,11 @@ function compareExplorationTreePages(
 function compareExplorationTreeHeadings(
   a: ITreeNodeItem<ExplorationTreeNode>,
   b: ITreeNodeItem<ExplorationTreeNode>,
+  sortOrder: ExplorationSortOrder,
 ) {
+  if (sortOrder === "alphabetical") {
+    return compareByName(a, b);
+  }
   const getScore = (heading: ITreeNodeItem<ExplorationTreeNode>) => {
     let max = 0;
     for (const child of heading.children ?? []) {

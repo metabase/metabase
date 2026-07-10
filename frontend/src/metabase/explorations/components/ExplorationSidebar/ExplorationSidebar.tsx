@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -28,16 +29,18 @@ import {
 } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
+import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
   Box,
   Center,
   Ellipsified,
+  Group,
   Icon,
   type IconProps,
   Menu,
+  SegmentedControl,
   Stack,
-  Tabs,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -50,6 +53,7 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
+import type { ExplorationSortOrder } from "../../sidebar-preferences";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
@@ -75,6 +79,8 @@ interface ExplorationSidebarProps {
   isOpen: boolean;
   showHidden: boolean;
   onToggleShowHidden: () => void;
+  sortOrder: ExplorationSortOrder;
+  onChangeSortOrder: (sortOrder: ExplorationSortOrder) => void;
 }
 
 export function ExplorationSidebar({
@@ -90,7 +96,10 @@ export function ExplorationSidebar({
   isOpen,
   showHidden,
   onToggleShowHidden,
+  sortOrder,
+  onChangeSortOrder,
 }: ExplorationSidebarProps) {
+  const dispatch = useDispatch();
   const treeController = useTree({
     data: tree,
     selectedId: selectedEntityId?.id,
@@ -236,52 +245,36 @@ export function ExplorationSidebar({
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Tabs
-        pl="0.5rem"
-        pr="1rem"
-        classNames={{ tab: S.tab }}
-        value={selectedSidebarTab}
-      >
-        <Tabs.List>
-          {Object.values(explorationSidebarTabsInfo).map(({ value, label }) => (
-            <Tabs.Tab
-              key={value}
-              value={value}
-              rightSection={
-                tabsWithNewContent?.has(value) ? <NewContentDot /> : undefined
-              }
-              renderRoot={(props) => (
-                <ForwardRefLink
-                  {...props}
-                  to={getSelectedSidebarTabUrl(value)}
-                />
-              )}
-            >
-              {label}
-            </Tabs.Tab>
-          ))}
-          <Tooltip
-            label={
-              showHidden
-                ? t`Don't display hidden pages`
-                : t`Display hidden pages`
+      <Group pl="0.5rem" pr="1rem" gap="xs" wrap="nowrap" align="center">
+        <Box flex={1} miw={0}>
+          <SegmentedControl<ExplorationSidebarTab>
+            fullWidth
+            radius="xl"
+            value={selectedSidebarTab}
+            onChange={(value) =>
+              dispatch(push(getSelectedSidebarTabUrl(value)))
             }
-          >
-            <ActionIcon
-              ml="auto"
-              my="auto"
-              variant={showHidden ? "filled" : "subtle"}
-              c={showHidden ? undefined : "icon-secondary"}
-              aria-label={t`Display hidden pages`}
-              aria-pressed={showHidden}
-              data-testid="exploration-show-hidden-toggle"
-              onClick={onToggleShowHidden}
-            >
-              <Icon name="filter" />
-            </ActionIcon>
-          </Tooltip>
-        </Tabs.List>
-      </Tabs>
+            data={Object.values(explorationSidebarTabsInfo).map(
+              ({ value, label }) => ({
+                value,
+                label: (
+                  <SidebarTabLabel
+                    tab={value}
+                    label={label}
+                    hasNewContent={tabsWithNewContent?.has(value) ?? false}
+                  />
+                ),
+              }),
+            )}
+          />
+        </Box>
+        <SidebarShowFilterMenu
+          showHidden={showHidden}
+          onToggleShowHidden={onToggleShowHidden}
+          sortOrder={sortOrder}
+          onChangeSortOrder={onChangeSortOrder}
+        />
+      </Group>
       {tree.length > 0 ? (
         <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
           <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
@@ -313,6 +306,125 @@ function NewContentDot() {
         flex="none"
       />
     </Tooltip>
+  );
+}
+
+function SidebarTabLabel({
+  tab,
+  label,
+  hasNewContent,
+}: {
+  tab: ExplorationSidebarTab;
+  label: string;
+  hasNewContent: boolean;
+}) {
+  let content: React.ReactNode = label;
+  if (tab === "stars") {
+    content = (
+      <Tooltip label={t`Stars`}>
+        <Center component="span" aria-label={t`Stars`}>
+          <Icon name="star_filled" />
+        </Center>
+      </Tooltip>
+    );
+  } else if (tab === "discussions") {
+    content = (
+      <Tooltip label={t`Discussions`}>
+        <Center component="span" aria-label={t`Discussions`}>
+          <Icon name="comment" />
+        </Center>
+      </Tooltip>
+    );
+  }
+
+  if (!hasNewContent) {
+    return content;
+  }
+
+  return (
+    <Group component="span" gap="xs" justify="center" wrap="nowrap">
+      {content}
+      <NewContentDot />
+    </Group>
+  );
+}
+
+function SidebarShowFilterMenu({
+  showHidden,
+  onToggleShowHidden,
+  sortOrder,
+  onChangeSortOrder,
+}: {
+  showHidden: boolean;
+  onToggleShowHidden: () => void;
+  sortOrder: ExplorationSortOrder;
+  onChangeSortOrder: (sortOrder: ExplorationSortOrder) => void;
+}) {
+  const hasActiveFilter = showHidden || sortOrder !== "interestingness";
+
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon
+          className={cx(S.filterButton, {
+            [S.filterButtonActive]: hasActiveFilter,
+          })}
+          radius="xl"
+          size="lg"
+          aria-label={t`Filter`}
+          aria-pressed={hasActiveFilter}
+          data-testid="exploration-show-hidden-toggle"
+        >
+          <Icon
+            name="filter"
+            c={hasActiveFilter ? "white" : "text-secondary"}
+          />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>{t`Sort order`}</Menu.Label>
+        <ShowFilterItem
+          label={t`Interestingness`}
+          checked={sortOrder === "interestingness"}
+          onToggle={() => onChangeSortOrder("interestingness")}
+        />
+        <ShowFilterItem
+          label={t`Alphabetical`}
+          checked={sortOrder === "alphabetical"}
+          onToggle={() => onChangeSortOrder("alphabetical")}
+        />
+        <Menu.Divider />
+        <ShowFilterItem
+          label={t`Show hidden items`}
+          checked={showHidden}
+          onToggle={onToggleShowHidden}
+          data-testid="exploration-show-hidden-item"
+        />
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
+function ShowFilterItem({
+  label,
+  checked,
+  onToggle,
+  "data-testid": dataTestId,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+  "data-testid"?: string;
+}) {
+  return (
+    <Menu.Item
+      closeMenuOnClick={false}
+      leftSection={<Icon name={checked ? "check" : "empty"} />}
+      onClick={onToggle}
+      data-testid={dataTestId}
+    >
+      {label}
+    </Menu.Item>
   );
 }
 

@@ -122,6 +122,46 @@ describe("getExplorationSidebarTree sorting", () => {
     expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
   });
 
+  it("orders pages and headings alphabetically by name when sortOrder is 'alphabetical'", () => {
+    // Banana scores higher than Apple, but alphabetical sort must win.
+    const banana = createQuery({
+      id: 1,
+      name: "Banana",
+      status: "done",
+      interestingness_score: 0.9,
+    });
+    const apple = createQuery({
+      id: 2,
+      name: "Apple",
+      status: "done",
+      interestingness_score: 0.2,
+    });
+
+    const exploration = createExploration({
+      queries: [banana, apple],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Metric A",
+          position: 0,
+          pages: [
+            createPage({ id: 1, name: "Banana", query_ids: [banana.id] }),
+            createPage({ id: 2, name: "Apple", query_ids: [apple.id] }),
+          ],
+        }),
+      ],
+    });
+
+    const tree = getExplorationSidebarTree(
+      exploration,
+      allTreeFilter,
+      "alphabetical",
+    );
+
+    // Apple (id 2, lower score) sorts before Banana (id 1) by name.
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
+  });
+
   it("prefers settled pages over running pages even when one sibling query already scored highly", () => {
     const doneSegment = createQuery({
       id: 1,

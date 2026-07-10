@@ -2,9 +2,23 @@
   overflow-wrap: break-word;
 }
 
-/* select the tab class twice as a specificity hack */
-.tab.tab {
-  padding: 0.6875rem 1rem;
+/* Circular filter button next to the segmented control: bordered/white by
+ * default, brand-blue when any filter is active. Doubled class outranks the
+ * base ActionIcon variant styles. */
+.filterButton.filterButton {
+  flex: none;
+  border: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background-primary);
+}
+
+.filterButton.filterButton:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.filterButtonActive.filterButtonActive,
+.filterButtonActive.filterButtonActive:hover {
+  border-color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand);
 }
 
 .tree {
