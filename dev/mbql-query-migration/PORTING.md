@@ -1291,7 +1291,7 @@ order-bys (`lib/order-by` dedups, R25 note), duplicate breakouts (`lib/breakout`
 drops them, R22 note), and any similar no-op clause the test exists to prove the
 legacy normalization middleware handles. A mechanical port compiles AND passes
 while no longer testing anything — invisible to the parse gate and to
-before/after test runs alike. **Policy:** keep legacy + 
+before/after test runs alike. **Policy:** keep legacy +
 `;; TODO(mbql5-migration): intentionally-redundant clause, normalized away by lib
 builders`. Precedent: `order_by_test.clj:39` (wave 1b).
 
