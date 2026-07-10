@@ -5,7 +5,6 @@ import _ from "underscore";
 import { color as colorHex } from "metabase/ui/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -13,7 +12,7 @@ import {
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { isGaugeSegmentsArray } from "./types";
+import { resolveGaugeSegments } from "./utils";
 
 export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Gauge`,
@@ -48,11 +47,11 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
-      getDefault(_series, vizSettings) {
-        const gaugeSegments = vizSettings["gauge.segments"];
-        const segments = isGaugeSegmentsArray(gaugeSegments)
-          ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-          : [];
+      getDefault(series, vizSettings) {
+        const { segments } = resolveGaugeSegments(
+          vizSettings["gauge.segments"],
+          series[0].data,
+        );
         const values = [
           ...segments.map((segment) => segment.max),
           ...segments.map((segment) => segment.min),

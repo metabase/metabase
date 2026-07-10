@@ -3,16 +3,16 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { getValue, resolveGaugeSegments } from "./utils";
+import { getValue, resolveGoalSegments } from "./utils";
 
-describe("Visualizations > Gauge > resolveGaugeSegments", () => {
+describe("Visualizations > Gauge > resolveGoalSegments", () => {
   const DATA = createMockDatasetData({
     cols: [createMockColumn({ name: "value" })],
     rows: [[50]],
   });
 
   it("keeps static numeric segments", () => {
-    const { segments, errors } = resolveGaugeSegments(
+    const { segments, errors } = resolveGoalSegments(
       [{ min: 0, max: 100, color: "red", label: "range" }],
       DATA,
     );
@@ -34,7 +34,7 @@ describe("Visualizations > Gauge > resolveGaugeSegments", () => {
       },
     });
 
-    const { segments, errors } = resolveGaugeSegments(
+    const { segments, errors } = resolveGoalSegments(
       [{ min: 0, max: { card_id: 9, column: "goal" }, color: "green" }],
       data,
     );
@@ -48,7 +48,7 @@ describe("Visualizations > Gauge > resolveGaugeSegments", () => {
       ...DATA,
       referenced_cards: { "9": { status: "failed", error: "boom" } },
     });
-    const { segments, errors } = resolveGaugeSegments(
+    const { segments, errors } = resolveGoalSegments(
       [{ min: 0, max: { card_id: 9, column: "goal" }, color: "green" }],
       data,
     );
