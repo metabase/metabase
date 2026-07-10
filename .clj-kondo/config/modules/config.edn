@@ -173,6 +173,7 @@
               query-permissions
               query-processor
               request
+              segments
               server
               settings
               util}
@@ -181,6 +182,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
+                    :model/Segment
                     :model/Table
                     :model/User}}
 

@@ -986,6 +986,121 @@
         (mt/user-http-request :rasta :put 403 (str "agent/v1/metric/" card-id)
                               {:name "Forbidden Rename"})))))
 
+;;; ------------------------------------------------ Create Segment Tests -------------------------------------------
+
+(defn- construct-orders-filter-query
+  "Construct a filter-only ORDERS query via /v2/construct-query (as `user`) and return the
+  base64 `:query` payload for the segment endpoints."
+  [user & filters]
+  (:query (mt/user-http-request user :post 200 "agent/v2/construct-query"
+                                {:query (orders-query :filters (vec filters))})))
+
+(deftest create-segment-test
+  (testing "Creates a segment from a filter-only query, deriving table_id from the query"
+    (let [encoded (construct-orders-filter-query :crowberto ["not-null" {} (orders-field-ref "ID")])
+          resp    (mt/user-http-request :crowberto :post 200 "agent/v1/segment"
+                                        {:name        "Agent Test Segment"
+                                         :query       encoded
+                                         :description "Orders with an ID"})]
+      (is (=? {:id                     pos?
+               :name                   "Agent Test Segment"
+               :table_id               (mt/id :orders)
+               :description            "Orders with an ID"
+               :definition_description string?
+               :archived               false}
+              resp))
+      (let [persisted (t2/select-one :model/Segment :id (:id resp))]
+        (is (= (mt/id :orders) (:table_id persisted)))
+        (is (seq (:filters (first (:stages (:definition persisted)))))))
+      (t2/delete! :model/Segment :id (:id resp)))))
+
+(deftest create-segment-rejects-invalid-definition-test
+  (testing "Returns 400 when the query has an aggregation"
+    (let [encoded (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                {:query (orders-query
+                                                         :aggregation [["count" {}]]
+                                                         :filters     [["not-null" {} (orders-field-ref "ID")]])}))]
+      (is (str/includes?
+           (mt/user-http-request :crowberto :post 400 "agent/v1/segment"
+                                 {:name  "Not A Segment"
+                                  :query encoded})
+           "segment"))))
+  (testing "Returns 400 when the query has no filters"
+    (let [encoded (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                {:query (orders-query :limit 10)}))]
+      (is (str/includes?
+           (mt/user-http-request :crowberto :post 400 "agent/v1/segment"
+                                 {:name  "Not A Segment Either"
+                                  :query encoded})
+           "segment")))))
+
+(deftest create-segment-permission-test
+  (testing "Returns 403 for a regular user (segments require admin or data-analyst)"
+    (let [encoded (construct-orders-filter-query :rasta ["not-null" {} (orders-field-ref "ID")])]
+      (mt/user-http-request :rasta :post 403 "agent/v1/segment"
+                            {:name  "Forbidden Segment"
+                             :query encoded}))))
+
+;;; ------------------------------------------------ Update Segment Tests -------------------------------------------
+
+(deftest update-segment-patch-fields-test
+  (testing "Patches simple fields (name, description) on a segment"
+    (mt/with-temp [:model/Segment {segment-id :id} {:name "Agent Segment Original"}]
+      (let [resp (mt/user-http-request :crowberto :put 200 (str "agent/v1/segment/" segment-id)
+                                       {:name        "Renamed Segment"
+                                        :description "Set by agent"})]
+        (is (=? {:id          segment-id
+                 :name        "Renamed Segment"
+                 :description "Set by agent"
+                 :archived    false}
+                resp)))
+      (is (= "Renamed Segment" (t2/select-one-fn :name :model/Segment :id segment-id))))))
+
+(deftest update-segment-archive-test
+  (testing "archived: true archives; archived: false unarchives"
+    (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment To Archive"}]
+      (is (true? (:archived (mt/user-http-request :crowberto :put 200 (str "agent/v1/segment/" segment-id)
+                                                  {:archived true}))))
+      (is (true? (t2/select-one-fn :archived :model/Segment :id segment-id)))
+      (is (false? (:archived (mt/user-http-request :crowberto :put 200 (str "agent/v1/segment/" segment-id)
+                                                   {:archived false}))))
+      (is (false? (t2/select-one-fn :archived :model/Segment :id segment-id))))))
+
+(deftest update-segment-replace-definition-test
+  (testing "Replacing the definition via :query persists and re-derives table_id"
+    (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment To Redefine"}]
+      (let [encoded (construct-orders-filter-query :crowberto [">" {} (orders-field-ref "TOTAL") 100])
+            resp    (mt/user-http-request :crowberto :put 200 (str "agent/v1/segment/" segment-id)
+                                          {:query            encoded
+                                           :revision_message "sharpened the filter"})]
+        (is (= (mt/id :orders) (:table_id resp)))
+        (let [persisted (t2/select-one :model/Segment :id segment-id)]
+          (is (= (mt/id :orders) (:table_id persisted)))
+          (is (seq (:filters (first (:stages (:definition persisted)))))))))))
+
+(deftest update-segment-rejects-invalid-definition-test
+  (testing "Returns 400 when a replacement query is not a valid segment, leaving the row untouched"
+    (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment With Bad Redefine"}]
+      (let [encoded (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                  {:query (orders-query :aggregation [["count" {}]]
+                                                                        :filters [["not-null" {} (orders-field-ref "ID")]])}))]
+        (is (str/includes?
+             (mt/user-http-request :crowberto :put 400 (str "agent/v1/segment/" segment-id)
+                                   {:query encoded})
+             "segment"))
+        (is (= "Segment With Bad Redefine" (t2/select-one-fn :name :model/Segment :id segment-id)))))))
+
+(deftest update-segment-not-found-test
+  (testing "Returns 404 when segment does not exist"
+    (mt/user-http-request :crowberto :put 404 "agent/v1/segment/999999"
+                          {:name "doesn't matter"})))
+
+(deftest update-segment-write-perm-test
+  (testing "Returns 403 for a regular user (segments require admin or data-analyst)"
+    (mt/with-temp [:model/Segment {segment-id :id} {:name "Protected Segment"}]
+      (mt/user-http-request :rasta :put 403 (str "agent/v1/segment/" segment-id)
+                            {:name "Forbidden Rename"}))))
+
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 
 (deftest create-dashboard-test

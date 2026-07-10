@@ -25,6 +25,8 @@
   agent-metric-update
   agent-resource-read
   agent-search
+  agent-segment-create
+  agent-segment-update
   agent-sql-construct
   agent-sql-create
   agent-sql-execute]

@@ -50,6 +50,12 @@
 (api-scope/defscope agent-metric-update "agent:metric:update"
   (deferred-tru "Update metrics"))
 
+;; Segment (table-scoped reusable filters via Agent API)
+(api-scope/defscope agent-segment-create "agent:segment:create"
+  (deferred-tru "Create segments"))
+(api-scope/defscope agent-segment-update "agent:segment:update"
+  (deferred-tru "Update segments"))
+
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
   (deferred-tru "View transforms"))
@@ -177,7 +183,8 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"
+                                        "agent:segment:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
                                         "agent:collection:*"}})
 

@@ -32,6 +32,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
+   [metabase.segments.schema :as segments.schema]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -1089,6 +1090,163 @@
                    (str "Card " id " is not a metric. Use update_question to update questions."))
     (apply-agent-card-patch! card-before-update body
                              {:validate-query! check-metric-query-can-be-saved!})))
+
+;;; -------------------------------------------------- Create Segment ------------------------------------------------
+;;
+;; A Segment (`:model/Segment`) is a table-scoped reusable filter, not a card: it has no collection,
+;; display, or visualization settings, and its permission model is table-based (admin or data
+;; analyst with unrestricted view-data on the parent table). So these endpoints don't share the
+;; card-mutation helper stack above; they mirror REST `/api/segment` instead.
+
+(mr/def ::create-segment-request
+  [:map
+   [:name        ms/NonBlankString]
+   [:query       ms/NonBlankString]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::update-segment-request
+  "Patch shape for `update_segment`. Every field is optional; only the fields the caller passes
+  are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID resolved
+  upstream in the MCP layer) and must still describe a valid segment. `:revision_message` is
+  recorded in the segment's revision history."
+  [:map
+   [:name             {:optional true} [:maybe ms/NonBlankString]]
+   [:description      {:optional true} [:maybe :string]]
+   [:archived         {:optional true} [:maybe :boolean]]
+   [:query            {:optional true} [:maybe ms/NonBlankString]]
+   [:revision_message {:optional true} [:maybe ms/NonBlankString]]])
+
+(mr/def ::segment-response
+  "Returned by `create_segment` / `update_segment`. `definition_description` is the
+  human-readable rendering of the segment's filters — the read-back an LLM should report."
+  [:map
+   [:id                     ms/PositiveInt]
+   [:name                   ms/NonBlankString]
+   [:table_id               ms/PositiveInt]
+   [:description            [:maybe :string]]
+   [:definition_description [:maybe :string]]
+   [:archived               :boolean]])
+
+(defn- segment-response
+  [segment]
+  (let [segment (t2/hydrate segment :definition_description)]
+    {:id                     (:id segment)
+     :name                   (:name segment)
+     :table_id               (:table_id segment)
+     :description            (:description segment)
+     :definition_description (:definition_description segment)
+     :archived               (boolean (:archived segment))}))
+
+(defn- decode-segment-definition
+  "Decode a base64 `:query` payload (a resolved query_handle) into a normalized MBQL 5 query map,
+  the shape `:model/Segment` stores as its `:definition`."
+  [encoded]
+  (-> encoded u/decode-base64 json/decode+kw lib-be/normalize-query))
+
+(defn- check-segment-definition-can-be-saved!
+  "Throw a 400 unless `definition` is a valid segment definition (see
+  `::segments.schema/segment`). The model's before-insert/update hooks run the same validation
+  via `mu/validate-throw`, but that surfaces as a 500; checking here first gives the LLM an
+  actionable message."
+  [definition]
+  (when-not (mr/validate ::segments.schema/segment definition)
+    (throw (ex-info (str "This query can't be saved as a segment. A segment is a reusable filter: "
+                         "a single-stage query over one table with at least one filter and no other "
+                         "clauses (no aggregation, breakout, joins, expressions, fields, order-by, "
+                         "or limit). Construct a query with only filters before saving it.")
+                    {:status-code 400}))))
+
+(api.macros/defendpoint :post "/v1/segment" :- ::segment-response
+  "Create a segment — a named, reusable filter for a table.
+
+  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`, or a
+  base64-encoded MBQL string. MCP callers should always use the handle. The query must be a
+  single-stage query against a table whose only clauses are filters. The segment's target table
+  is derived from the query's source table.
+
+  Requires curate permissions on the underlying data: admins and data analysts only."
+  {:scope metabot/agent-segment-create
+   :tool  {:name "create_segment"
+           :description (str "Save a query's filters as a reusable segment in Metabase. "
+                             "Pass the `query_handle` returned by `construct_query`. "
+                             "The query must be a single-stage query on a table containing ONLY "
+                             "filters — no aggregation, breakout, joins, expressions, order-by, or "
+                             "limit. The segment attaches to the query's source table. "
+                             "Requires admin or data-analyst permissions.")}}
+  [_route-params
+   _query-params
+   {:keys [query description] segment-name :name} :- ::create-segment-request]
+  (let [definition (decode-segment-definition query)
+        _          (check-segment-definition-can-be-saved! definition)
+        table-id   (lib/primary-source-table-id definition)]
+    (api/check-400 (int? table-id)
+                   "A segment must be built directly on a table, not on a saved question.")
+    (api/create-check :model/Segment {:table_id table-id})
+    (let [segment (api/check-500
+                   (first (t2/insert-returning-instances! :model/Segment
+                                                          :table_id    table-id
+                                                          :creator_id  api/*current-user-id*
+                                                          :name        segment-name
+                                                          :description description
+                                                          :definition  definition)))]
+      (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
+      (segment-response segment))))
+
+;;; -------------------------------------------------- Update Segment ------------------------------------------------
+
+(api.macros/defendpoint :put "/v1/segment/:id" :- ::segment-response
+  "Update a segment. Patch semantics - only fields that you pass are changed.
+
+  Set `archived: true` to archive (segments have no hard delete). Pass `query` (a query_handle
+  from construct_query, or a base64 MBQL string) to replace the segment's filter definition; the
+  replacement must still be a valid segment (single stage, filters only). An optional
+  `revision_message` is recorded in the segment's revision history.
+
+  Requires curate permissions on the underlying data: admins and data analysts only."
+  {:scope metabot/agent-segment-update
+   :tool  {:name "update_segment"
+           :description (str "Update a segment. Patch semantics - only fields you pass are changed. "
+                             "To archive, set archived true. Segments have no hard delete: to delete "
+                             "or remove a segment, archive it (set archived true) - this is a soft "
+                             "delete that can be reversed by setting archived false. "
+                             "To replace the filter definition, pass "
+                             "query (a query_handle from construct_query) - it must still be a "
+                             "single-stage table query containing only filters. Optionally pass "
+                             "revision_message to annotate the change in revision history.")}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- ::update-segment-request]
+  (api/write-check :model/Segment id)
+  (let [new-definition (when-some [encoded (:query body)]
+                         (let [definition (decode-segment-definition encoded)]
+                           (check-segment-definition-can-be-saved! definition)
+                           ;; Reject definitions referencing this segment (directly or transitively).
+                           ;; The model's before-update hook runs the same check, but without a
+                           ;; :status-code it would surface as a 500; mirror the metric path's
+                           ;; promotion to a 400.
+                           (try
+                             (lib/check-segment-overwrite id definition)
+                             (catch clojure.lang.ExceptionInfo e
+                               (let [data (ex-data e)]
+                                 (throw (ex-info (ex-message e)
+                                                 (assoc data :status-code (or (:status-code data) 400))
+                                                 e)))))
+                           definition))
+        ;; :name is non-nullable on the model, so an explicit null is ignored rather than applied;
+        ;; :description is nullable and an explicit null clears it.
+        changes        (cond-> {}
+                         (some? (:name body))          (assoc :name (:name body))
+                         (contains? body :description) (assoc :description (:description body))
+                         (contains? body :archived)    (assoc :archived (boolean (:archived body)))
+                         new-definition                (assoc :definition new-definition))]
+    (when (seq changes)
+      (t2/update! :model/Segment id changes))
+    (let [updated (t2/select-one :model/Segment :id id)]
+      (events/publish-event! :event/segment-update
+                             (cond-> {:object updated :user-id api/*current-user-id*}
+                               (:revision_message body)
+                               (assoc :revision-message (:revision_message body))))
+      (segment-response updated))))
 
 ;;; ------------------------------------------------- Update Question ------------------------------------------------
 

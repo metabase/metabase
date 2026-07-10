@@ -331,7 +331,8 @@
 ;; handle, but it's a UI tool that resolves the handle itself (see `metabase.mcp.resources`) and
 ;; never reaches this dispatch path, so it's intentionally absent here.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "query" "create_question" "update_question" "create_metric" "update_metric"})
+  #{"execute_query" "query" "create_question" "update_question" "create_metric" "update_metric"
+    "create_segment" "update_segment"})
 
 ;; Tools whose 200 body is `{:query base64}` and gets stored as a handle, returning `{:query_handle}`.
 ;; `construct_query` (MBQL) and `construct_native_query` (native SQL) both follow this contract.

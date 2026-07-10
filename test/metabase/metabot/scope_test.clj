@@ -121,6 +121,8 @@
     (is (api-scope/registered-scope? "agent:question:update"))
     (is (api-scope/registered-scope? "agent:metric:create"))
     (is (api-scope/registered-scope? "agent:metric:update"))
+    (is (api-scope/registered-scope? "agent:segment:create"))
+    (is (api-scope/registered-scope? "agent:segment:update"))
     (is (api-scope/registered-scope? "agent:dashboard:update"))
     (is (api-scope/registered-scope? "agent:collection:create"))
     (is (api-scope/registered-scope? "agent:sql:execute"))))
@@ -130,6 +132,8 @@
     (is (= "agent:question:update" scope/agent-question-update))
     (is (= "agent:metric:create" scope/agent-metric-create))
     (is (= "agent:metric:update" scope/agent-metric-update))
+    (is (= "agent:segment:create" scope/agent-segment-create))
+    (is (= "agent:segment:update" scope/agent-segment-update))
     (is (= "agent:dashboard:update" scope/agent-dashboard-update))
     (is (= "agent:collection:create" scope/agent-collection-create))
     (is (= "agent:sql:execute" scope/agent-sql-execute))))
@@ -144,6 +148,11 @@
   (testing "agent:metric:update granted via metabot-nlq wildcard"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
       (is (api-scope/scope-matches? scopes "agent:metric:update"))))
+  (testing "agent:segment:create/update granted via metabot-nlq wildcard"
+    (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-nlq :yes})]
+      (is (contains? scopes "agent:segment:*"))
+      (is (api-scope/scope-matches? scopes "agent:segment:create"))
+      (is (api-scope/scope-matches? scopes "agent:segment:update"))))
   (testing "agent:dashboard:update granted via metabot-other-tools wildcard"
     (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-other-tools :yes})]
       (is (api-scope/scope-matches? scopes "agent:dashboard:update"))))
@@ -159,6 +168,7 @@
                                                     :permission/metabot-other-tools    :no
                                                     :permission/metabot-sql-generation :no})]
       (is (not (api-scope/scope-matches? scopes "agent:question:update")))
+      (is (not (api-scope/scope-matches? scopes "agent:segment:create")))
       (is (not (api-scope/scope-matches? scopes "agent:dashboard:update")))
       (is (not (api-scope/scope-matches? scopes "agent:collection:create")))
       (is (not (api-scope/scope-matches? scopes "agent:sql:execute"))))))

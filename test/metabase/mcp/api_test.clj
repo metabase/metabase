@@ -276,6 +276,7 @@
     "create_dashboard"
     "create_metric"
     "create_question"
+    "create_segment"
     "execute_query"
     "execute_question"
     "execute_sql"
@@ -286,6 +287,7 @@
     "update_dashboard"
     "update_metric"
     "update_question"
+    "update_segment"
     "visualize_query"})
 
 (deftest ui-tools-declare-required-extensions-test
@@ -665,7 +667,8 @@
   #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "read_resource"
     "create_question" "execute_question" "create_metric" "create_dashboard"
-    "update_question" "update_metric" "update_dashboard" "create_collection"})
+    "update_question" "update_metric" "update_dashboard" "create_collection"
+    "create_segment" "update_segment"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -693,10 +696,17 @@
                                 :stages   [{:lib/type     "mbql.stage/mbql"
                                             :source-table [db-name "PUBLIC" "ORDERS"]
                                             :aggregation  [["count" {}]]}]}
+                ;; A segment needs a filters-only stage — `create_segment` rejects anything else.
+                segment-query  {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :filters      [["not-null" {}
+                                                            ["field" {} [db-name "PUBLIC" "ORDERS" "ID"]]]]}]}
                 ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
                 ;; assertion in `call-tool` fails partway through the sequence.
                 question-id    (atom nil)
                 metric-id      (atom nil)
+                segment-id     (atom nil)
                 dash-id        (atom nil)
                 coll-id        (atom nil)]
             (try
@@ -742,6 +752,15 @@
                     _              (call-tool session-id "update_metric"
                                               {:id          (:id metric-data)
                                                :description "Smoke updated metric"})
+                    segment-handle (call-tool session-id "construct_query" {:query segment-query})
+                    segment-data   (call-tool session-id "create_segment"
+                                              {:name         "Smoke Segment"
+                                               :query_handle (:query_handle segment-handle)})
+                    _              (reset! segment-id (:id segment-data))
+                    _              (is (= (mt/id :orders) (:table_id segment-data)))
+                    _              (call-tool session-id "update_segment"
+                                              {:id          (:id segment-data)
+                                               :description "Smoke updated segment"})
                     _              (call-tool session-id "execute_question"
                                               {:id (:id question-data)})
                     dash-data      (call-tool session-id "create_dashboard"
@@ -758,6 +777,7 @@
               (finally
                 (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
                 (when-let [mid @metric-id]   (t2/delete! :model/Card :id mid))
+                (when-let [sid @segment-id]  (t2/delete! :model/Segment :id sid))
                 (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
                 (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 
