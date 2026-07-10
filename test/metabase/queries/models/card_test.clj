@@ -1223,6 +1223,36 @@
           (is (= "Orders, Metric A"
                  (:query_description (t2/select-one :model/Card :id b-id)))))))))
 
+(deftest extract-temporal-info-metric-reference-cycle-test
+  (testing "extract-temporal-info on a query aggregating a cycle-involved metric throws a cycle error (#74954)"
+    (letfn [(metric-query [metric-id]
+              {:database (mt/id)
+               :type     :query
+               :query    {:source-table (mt/id :orders)
+                          :aggregation  [["metric" metric-id]]}})]
+      ;; keep the cyclic cards out of the shared ingestion queue, where concurrently-running tests would index them
+      (binding [search.ingestion/*disable-updates* true]
+        (mt/with-temp
+          [:model/Card
+           {a-id :id}
+           {:name "Metric A"
+            :type :metric
+            :dataset_query (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (lib/aggregate (lib/count))
+                                 lib.convert/->legacy-MBQL))}
+           :model/Card
+           {b-id :id}
+           {:name "Metric B"
+            :type :metric
+            :dataset_query (metric-query a-id)}]
+          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metric cycle detected"
+                                (#'card/extract-temporal-info
+                                 {:dataset_query (json/encode (metric-query a-id))
+                                  :query_type    "query"}))))))))
+
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"
     (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]

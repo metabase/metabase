@@ -538,7 +538,7 @@
   (let [query (metadata-spec->honey-sql database-id metadata-spec)]
     (try
       (t2/select metadata-type query)
-      (catch Throwable e
+      (catch Exception e
         (throw (ex-info "Error fetching metadata with spec"
                         {:metadata-spec metadata-spec, :query query}
                         e))))))

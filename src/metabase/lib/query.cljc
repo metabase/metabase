@@ -183,7 +183,7 @@
       (merge
        mbql5-query
        (query-with-stages mp (:stages mbql5-query))))
-    (catch #?(:clj Throwable :cljs :default) e
+    (catch #?(:clj Exception :cljs :default) e
       (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
                       {:legacy-query legacy-query}
                       e)))))
