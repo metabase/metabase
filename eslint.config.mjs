@@ -548,6 +548,13 @@ const configs = [
     },
   },
   {
+    // Standalone Node service — console logging is appropriate here.
+    files: ["frontend/src/static-viz-server/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/**/*"],
     plugins: {
       ttag: fixupPluginRules(ttagPlugin),

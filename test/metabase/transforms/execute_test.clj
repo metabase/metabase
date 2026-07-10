@@ -143,7 +143,7 @@
       (mt/as-admin
         (testing "create-table-from-schema! should create the table successfully"
           (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-          (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
+          (let [table-exists? (driver/table-exists? driver (mt/db) {:schema schema-name :name table-name})]
             (is (some? table-exists?) "Table should exist in the database schema")
             (driver/drop-table! driver db-id (:name table-schema))))))))
 

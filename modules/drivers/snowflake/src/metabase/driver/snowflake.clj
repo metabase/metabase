@@ -74,6 +74,7 @@
                               :now                                    true
                               :database-routing                       true
                               :transforms/index-ddl                   true
+                              :uploads                                true
                               :metadata/table-existence-check         true
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/accurate-rows-affected      false
@@ -384,6 +385,63 @@
 (defmethod driver/type->database-type :snowflake
   [_driver base-type]
   (type->database-type base-type))
+
+(defmethod driver/upload-type->database-type :snowflake
+  [_driver upload-type]
+  (case upload-type
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    ;; `_mb_row_id` must follow insertion order, but the default `NOORDER` allocates ids from per-cluster
+    ;; ranges, leaving gaps or even out-of-order values between inserts. `ORDER` fixes that by serializing
+    ;; id generation -- an acceptable cost, since uploads insert from a single connection.
+    :metabase.upload/auto-incrementing-int-pk [:number [:identity 1 1] :order]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp_ntz]
+    :metabase.upload/offset-datetime          [:timestamp_tz]))
+
+;; Snowflake's JDBC driver cannot bind `java.time` values: `setObject` handles temporal binds only via the
+;; legacy `java.sql.Date`/`Time`/`Timestamp` classes, and throws on anything else.
+;;
+;; Converting through those legacy classes is no better: `setTimestamp` binds nanos-since-epoch as
+;; `TIMESTAMP_LTZ` computed in the JVM default zone, while the session runs with `TIMEZONE=UTC`
+;; (see [[connection-details->spec]]), so wall-clock times would shift whenever the JVM zone isn't UTC.
+;;
+;; String binds sidestep both problems: Snowflake parses them server-side into the column's type, independent
+;; of any timezone. Nine fractional digits keep full nanosecond precision -- the CSV parser accepts arbitrary
+;; sub-second precision and Snowflake timestamps store up to 9 digits.
+(defn- temporal-bind->string
+  "Convert a temporal upload value to a string bind that Snowflake will coerce to the column type.
+  Non-temporal values pass through unchanged."
+  [v]
+  (condp instance? v
+    LocalDate      (u.date/format v)
+    LocalDateTime  (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS" v)
+    OffsetDateTime (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS xx" v)
+    v))
+
+(defmethod driver/insert-into! :snowflake
+  [driver db-id table-name column-names values]
+  ;; Snowflake's fast bulk path (`PUT` + `COPY INTO` from a stage) is unavailable because [[set-put-get]]
+  ;; enforces `enablePutGet=false` on every connection (#73578), so use the generic multi-row `INSERT`.
+  ((get-method driver/insert-into! :sql-jdbc)
+   driver db-id table-name column-names
+   (map #(mapv temporal-bind->string %) values)))
+
+(defmethod driver/add-columns! :snowflake
+  [driver db-id table-name column-definitions & args]
+  ;; Snowflake doesn't support adding multiple columns in one statement, so add them one at a time
+  (let [add-column! (get-method driver/add-columns! :sql-jdbc)]
+    (doseq [[column definition] column-definitions]
+      (apply add-column! driver db-id table-name {column definition} args))))
+
+(defmethod driver/allowed-promotions :snowflake
+  [_driver]
+  ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
+  ;; to a different one, so no promotions are possible
+  {})
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])

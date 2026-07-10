@@ -1968,19 +1968,11 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{config
-           models
-           permissions
-           plugins
+   :uses #{plugins
            settings
            sync
            util}
-   :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
-                    :model/DataPermissions
-                    :model/Database
-                    :model/Field
+   :model-imports #{:model/Database
                     :model/Table}}
 
   search

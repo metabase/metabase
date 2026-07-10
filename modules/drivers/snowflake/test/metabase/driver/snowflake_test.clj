@@ -1746,3 +1746,46 @@
            (driver/compile-create-index :snowflake nil "t"
                                         {:kind :clustering :name "by_cat"
                                          :columns [{:name "c\"; DROP TABLE x; --"}]})))))
+
+(deftest upload-type->database-type-test
+  (testing "upload types render to the expected Snowflake DDL via the generic create-table! path"
+    ;; End-to-end behavior is covered by [[metabase.upload.impl-test]].
+    (let [column-type (fn [upload-type]
+                        (driver/upload-type->database-type :snowflake upload-type))]
+      (is (= (str "CREATE TABLE \"PUBLIC\".\"test_uploads\" ("
+                  "\"_mb_row_id\" NUMBER IDENTITY(1, 1) ORDER, "
+                  "\"name\" VARCHAR(255), "
+                  "\"bio\" TEXT, "
+                  "\"count\" BIGINT, "
+                  "\"ratio\" DOUBLE, "
+                  "\"active\" BOOLEAN, "
+                  "\"birthday\" DATE, "
+                  "\"created\" TIMESTAMP_NTZ, "
+                  "\"updated\" TIMESTAMP_TZ, "
+                  "PRIMARY KEY(\"_mb_row_id\"))")
+             (@#'driver.sql-jdbc/create-table!-sql
+              :snowflake
+              "PUBLIC.test_uploads"
+              (array-map
+               :_mb_row_id (column-type :metabase.upload/auto-incrementing-int-pk)
+               :name       (column-type :metabase.upload/varchar-255)
+               :bio        (column-type :metabase.upload/text)
+               :count      (column-type :metabase.upload/int)
+               :ratio      (column-type :metabase.upload/float)
+               :active     (column-type :metabase.upload/boolean)
+               :birthday   (column-type :metabase.upload/date)
+               :created    (column-type :metabase.upload/datetime)
+               :updated    (column-type :metabase.upload/offset-datetime))
+              :primary-key [:_mb_row_id]))))))
+
+(deftest temporal-bind->string-test
+  (testing "temporal upload binds keep full nanosecond precision"
+    ;; The CSV parser accepts arbitrary sub-second precision, so formatting with fewer than 9 fractional
+    ;; digits would silently truncate values on upload.
+    (are [v expected] (= expected (#'driver.snowflake/temporal-bind->string v))
+      #t "2026-07-08"                                            "2026-07-08"
+      #t "2026-07-08T01:02:03.123456789"                         "2026-07-08 01:02:03.123456789"
+      (t/offset-date-time 2026 7 8 1 2 3 123456789
+                          (t/zone-offset "+02:00"))              "2026-07-08 01:02:03.123456789 +0200"
+      "not temporal"                                             "not temporal"
+      42                                                         42)))
