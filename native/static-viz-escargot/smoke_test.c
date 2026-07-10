@@ -8,9 +8,8 @@
 #include <string.h>
 
 typedef const char *(*version_fn)(void);
-typedef void *(*create_fn)(const char *, int, int, char **);
-typedef char *(*call_fn)(void *, const char *, const char *, int, char **);
-typedef int (*compile_fn)(const char *, const char *, int, char **);
+typedef void *(*create_fn)(const char *, char **);
+typedef char *(*call_fn)(void *, const char *, const char *, char **);
 typedef void (*free_string_fn)(char *);
 typedef void (*close_fn)(void *);
 
@@ -18,7 +17,8 @@ typedef void (*close_fn)(void *);
     "var MetabaseStaticViz = {" \
     "  echo: (s) => { console.warn('echoing', s); return s; }," \
     "  boom: () => { throw new Error('boom'); }," \
-    "  spin: () => { while (true) {} }" \
+    "  sig: () => new Intl.NumberFormat('en', { maximumSignificantDigits: 3 }).format(13.043)," \
+    "  tz: () => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }).format(0)" \
     "};"
 
 static int failures = 0;
@@ -44,58 +44,59 @@ int main(int argc, char **argv) {
     version_fn svq_version = (version_fn)dlsym(lib, "svq_version");
     create_fn svq_create = (create_fn)dlsym(lib, "svq_create");
     call_fn svq_call = (call_fn)dlsym(lib, "svq_call");
-    compile_fn svq_compile = (compile_fn)dlsym(lib, "svq_compile");
     free_string_fn svq_free_string = (free_string_fn)dlsym(lib, "svq_free_string");
     close_fn svq_close = (close_fn)dlsym(lib, "svq_close");
-    if (!svq_version || !svq_create || !svq_call || !svq_compile || !svq_free_string || !svq_close) {
+    if (!svq_version || !svq_create || !svq_call || !svq_free_string || !svq_close) {
         fprintf(stderr, "missing svq_* exports\n");
         return 2;
     }
 
     printf("%s\n", svq_version());
 
-    char js_path[] = "/tmp/svq-smoke-XXXXXX.js";
-    char qbc_path[] = "/tmp/svq-smoke-XXXXXX.qbc";
+    char js_path[] = "/tmp/svq-smoke-bundle.js";
     FILE *f = fopen(js_path, "w");
     fputs(STUB_BUNDLE, f);
     fclose(f);
 
     char *error = NULL;
 
-    expect(svq_compile(js_path, qbc_path, 64, &error) == 0, "compile succeeds");
-
-    void *handle = svq_create(qbc_path, 64, 8, &error);
-    expect(handle != NULL, "create from bytecode succeeds");
+    void *handle = svq_create(js_path, &error);
+    expect(handle != NULL, "create succeeds");
     if (handle == NULL) {
         fprintf(stderr, "create error: %s\n", error ? error : "(none)");
         return 1;
     }
 
-    char *result = svq_call(handle, "echo", "hello", 1000, &error);
+    char *result = svq_call(handle, "echo", "hello", &error);
     expect(result != NULL && strcmp(result, "hello") == 0, "echo returns its input");
     svq_free_string(result);
 
     error = NULL;
-    result = svq_call(handle, "boom", "", 1000, &error);
+    result = svq_call(handle, "boom", "", &error);
     expect(result == NULL && error != NULL && strstr(error, "boom") != NULL,
            "a throwing function reports its JS error");
     svq_free_string(error);
 
     error = NULL;
-    result = svq_call(handle, "spin", "", 100, &error);
-    expect(result == NULL && error != NULL && strcmp(error, "TIMEOUT") == 0,
-           "an infinite loop is interrupted as TIMEOUT");
-    svq_free_string(error);
+    result = svq_call(handle, "sig", "", &error);
+    expect(result != NULL && strcmp(result, "13") == 0,
+           "native Intl rounds significant digits per spec");
+    svq_free_string(result);
 
     error = NULL;
-    result = svq_call(handle, "echo", "still alive", 1000, &error);
+    result = svq_call(handle, "tz", "", &error);
+    expect(result != NULL && strcmp(result, "19") == 0,
+           "native Intl converts real timezones (epoch 0 in New York)");
+    svq_free_string(result);
+
+    error = NULL;
+    result = svq_call(handle, "echo", "still alive", &error);
     expect(result != NULL && strcmp(result, "still alive") == 0,
-           "the handle still works after error and timeout");
+           "the handle still works after an error");
     svq_free_string(result);
 
     svq_close(handle);
     remove(js_path);
-    remove(qbc_path);
 
     if (failures == 0) {
         printf("smoke test passed\n");

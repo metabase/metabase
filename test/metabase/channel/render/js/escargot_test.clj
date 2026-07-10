@@ -1,24 +1,24 @@
-(ns metabase.channel.render.js.quickjs-test
-  "Tests for the QuickJS static-viz renderer. These run only where a libstaticviz build is available —
-  build one locally with `native/static-viz-quickjs/build.sh`."
+(ns metabase.channel.render.js.escargot-test
+  "Tests for the Escargot static-viz renderer. These run only where a libstaticviz build is available —
+  build one locally with `native/static-viz-escargot/build.sh`."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.render.js.escargot :as escargot]
    [metabase.channel.render.js.protocol :as js.protocol]
-   [metabase.channel.render.js.quickjs :as quickjs]
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :each
-  (fn skip-without-worker
+  (fn skip-without-library
     [thunk]
-    (if (quickjs/available?)
+    (if (escargot/available?)
       (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n"
         (thunk))
       (log/warn (str "Skipping " (ns-name *ns*) " - no libstaticviz build for this platform;"
-                     " build one with native/static-viz-quickjs/build.sh")))))
+                     " build one with native/static-viz-escargot/build.sh")))))
 
 (def ^:private funnel-input
   {:kind          "funnel"
@@ -30,7 +30,7 @@
    :tokenFeatures {}})
 
 (deftest chart-test
-  (let [{:keys [type content]} (js.protocol/chart (quickjs/renderer) funnel-input)]
+  (let [{:keys [type content]} (js.protocol/chart (escargot/renderer) funnel-input)]
     (is (= "svg" type))
     (is (str/starts-with? content "<svg"))
     (is (str/includes? content "Visitors"))))
@@ -48,23 +48,17 @@
                             :highlight_row false}]}
                :cells    [[10.5 0 "score"] [99.9 1 "score"]]}]
     (is (= [nil "rgba(239, 140, 140, 0.65)"]
-           (js.protocol/cell-background-colors (quickjs/renderer) input)))))
+           (js.protocol/cell-background-colors (escargot/renderer) input)))))
 
 (deftest js-error-test
   (testing "a JS-level failure surfaces as an exception carrying the JS error and stack"
     (is (thrown-with-msg? Exception #"static-viz render failed"
-                          (js.protocol/chart (quickjs/renderer)
-                                             {:kind "gauge", :card nil, :data nil, :tokenFeatures {}})))))
-
-(deftest timeout-test
-  (testing "a render exceeding the wall-clock timeout is interrupted and throws"
-    (with-redefs [quickjs/render-timeout-ms (constantly 1)]
-      (is (thrown-with-msg? Exception #"timed out"
-                            (js.protocol/chart (quickjs/renderer) funnel-input)))))
-  (testing "rendering works again after a timeout"
-    (is (= "svg" (:type (js.protocol/chart (quickjs/renderer) funnel-input))))))
+                          (js.protocol/chart (escargot/renderer)
+                                             {:kind "gauge", :card nil, :data nil, :tokenFeatures {}}))))
+  (testing "rendering works again after an error"
+    (is (= "svg" (:type (js.protocol/chart (escargot/renderer) funnel-input))))))
 
 (deftest concurrent-renders-test
   (testing "concurrent renders each hold a pooled context exclusively"
     (is (= (repeat 4 "svg")
-           (mt/repeat-concurrently 4 #(:type (js.protocol/chart (quickjs/renderer) funnel-input)))))))
+           (mt/repeat-concurrently 4 #(:type (js.protocol/chart (escargot/renderer) funnel-input)))))))

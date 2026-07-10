@@ -1,31 +1,29 @@
-(ns metabase.channel.render.js.quickjs
-  "The QuickJS [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS on a
-  pool of QuickJS contexts embedded in-process via `libstaticviz` (`native/static-viz-quickjs`), a
-  small C library loaded with JNA.
+(ns metabase.channel.render.js.escargot
+  "The Escargot [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS on a
+  pool of Escargot contexts embedded in-process via `libstaticviz` (`native/static-viz-escargot`), a
+  small C++ library loaded with JNA.
 
-  Unlike the GraalVM renderer, whose contexts live on the managed JVM heap (sized into `-Xmx`, traced
-  by the GC), QuickJS allocates through plain malloc: native memory, invisible to the JVM heap. The
-  pool mirrors the GraalVM renderer's semantics — up to [[max-concurrent-renders]] contexts, each held
-  exclusively per render, shrinking to zero after ~1 minute idle so the memory returns to the OS when
-  nothing is rendering. Each context caps its JS heap and stack, renders are wall-clock-bounded via the
-  engine's interrupt handler, and a context that times out or exhausts its heap is disposed rather than
-  reused. The engine exposes no filesystem, network, timer, or host access of any kind.
+  Escargot is used for two properties GraalJS doesn't offer together: its contexts allocate native
+  memory (invisible to the JVM heap and GC — the JVM's footprint stays flat regardless of render
+  volume), and it implements the full ECMA-402 Intl API over real ICU, so charts format numbers,
+  currencies, and timezone-aware dates identically to a browser with no polyfill in the bundle.
 
-  On first use the library precompiles the bundle to QuickJS bytecode in a private temp directory,
-  cutting per-context bundle evaluation from ~750ms to ~300ms; renders on a warm context then cost
-  ~30-70ms.
+  The pool mirrors the GraalVM renderer's semantics — up to [[max-concurrent-renders]] contexts, each
+  held exclusively per render, shrinking to zero after ~1 minute idle so the memory returns to the OS
+  when nothing is rendering. Creating a context evaluates the bundle (~0.5s); renders on a warm context
+  then cost tens of milliseconds. The engine exposes no filesystem, network, timer, or host access of
+  any kind.
 
-  Selected via `MB_STATIC_VIZ_RENDERER=quickjs` (see [[metabase.channel.render.js.renderer]]). The
-  library is looked up on the classpath at `static-viz-quickjs/<os>-<arch>/libstaticviz.<ext>` (built
-  by `native/static-viz-quickjs/build.sh`) or taken from `MB_STATIC_VIZ_LIBRARY_PATH`."
+  Selected via `MB_STATIC_VIZ_RENDERER` (see [[metabase.channel.render.js.renderer]]). The library is
+  looked up on the classpath at `static-viz-escargot/<os>-<arch>/libstaticviz.<ext>` (built by
+  `native/static-viz-escargot/build.sh`) or taken from `MB_STATIC_VIZ_LIBRARY_PATH`."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.config.core :as config]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.json :as json])
   (:import
    (com.sun.jna Function NativeLibrary Pointer)
    (com.sun.jna.ptr PointerByReference)
@@ -39,18 +37,6 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private bundle-resource-path "frontend_client/app/dist/lib-static-viz.bundle.js")
-
-;;; ------------------------------------------------ config -----------------------------------------------
-
-(defn- render-timeout-ms
-  []
-  (or (config/config-int :mb-static-viz-timeout-ms) 30000))
-
-(defn- memory-limit-mb
-  []
-  (or (config/config-int :mb-static-viz-memory-limit-mb) 512))
-
-(def ^:private stack-limit-mb 8)
 
 (def ^:private max-concurrent-renders
   "Context pool cap. Each warm context retains a few hundred MB of native (off-JVM-heap) memory, so
@@ -97,8 +83,8 @@
                          (.delete f))))))
 
 (def ^:private work-dir
-  "Private (owner-only) temp directory holding the extracted library, the materialized bundle, and its
-  compiled bytecode. Deleted on JVM exit."
+  "Private (owner-only) temp directory holding the extracted library and the materialized bundle.
+  Deleted on JVM exit."
   (delay
     (let [dir (Files/createTempDirectory "metabase-static-viz-" (owner-only-permissions))]
       (delete-recursively-on-exit! dir)
@@ -114,7 +100,7 @@
   (delay
     (or (config/config-str :mb-static-viz-library-path)
         (when-let [resource (when-let [platform-dir (platform)]
-                              (io/resource (format "static-viz-quickjs/%s/%s"
+                              (io/resource (format "static-viz-escargot/%s/%s"
                                                    platform-dir
                                                    (library-file-name))))]
           (let [file (work-file (library-file-name))]
@@ -134,7 +120,7 @@
   (.getFunction ^NativeLibrary @library ^String fn-name))
 
 (defn available?
-  "Whether the QuickJS renderer can run: a libstaticviz build exists for this platform (or is
+  "Whether the Escargot renderer can run: a libstaticviz build exists for this platform (or is
   explicitly configured)."
   []
   (boolean @library-path))
@@ -158,12 +144,11 @@
     value))
 
 (defn- create-context!
-  "Create a QuickJS context with the bundle at `bundle-path` evaluated into it, returning an opaque
+  "Create an Escargot context with the bundle at `bundle-path` evaluated into it, returning an opaque
   native handle. The handle is not thread-safe and must be held exclusively per render."
   ^Pointer [^String bundle-path]
   (let [error-ref (PointerByReference.)
-        handle    (.invokePointer (library-fn "svq_create")
-                                  (to-array [bundle-path (int (memory-limit-mb)) (int stack-limit-mb) error-ref]))]
+        handle    (.invokePointer (library-fn "svq_create") (to-array [bundle-path error-ref]))]
     (or handle
         (throw (ex-info (str "cannot create static-viz context: " (take-error! error-ref)) {})))))
 
@@ -171,40 +156,18 @@
   [^Pointer handle]
   (.invokeVoid (library-fn "svq_close") (to-array [handle])))
 
-(defn- compile-bundle!
-  "Compile the bundle source at `in-path` to QuickJS bytecode at `out-path`. Bytecode is only valid for
-  the library build that produced it, which is also the build that will execute it."
-  [^String in-path ^String out-path]
-  (let [error-ref (PointerByReference.)
-        status    (.invokeInt (library-fn "svq_compile")
-                              (to-array [in-path out-path (int (memory-limit-mb)) error-ref]))]
-    (when-not (zero? status)
-      (throw (ex-info (str "cannot compile static-viz bundle: " (take-error! error-ref)) {})))))
-
 (defn- call-fn!
   "Call `MetabaseStaticViz.<fn-name>` on `handle` with the already-JSON-encoded string `input` and
-  return the result string. Throws on JS errors; a timeout or JS-heap exhaustion additionally marks the
-  exception with `::dispose-context?` so the caller retires the context instead of reusing it."
+  return the result string. Throws with the JS error and stack on failure."
   ^String [^Pointer handle ^String fn-name ^String input]
   (let [error-ref (PointerByReference.)
         result    (.invokePointer (library-fn "svq_call")
-                                  (to-array [handle fn-name input (int (render-timeout-ms)) error-ref]))]
+                                  (to-array [handle fn-name input error-ref]))]
     (if result
       (take-string! result)
-      (let [message (take-error! error-ref)]
-        (cond
-          (= message "TIMEOUT")
-          (throw (ex-info "static-viz render timed out"
-                          {:fn fn-name, :timeout-ms (render-timeout-ms), ::dispose-context? true}))
+      (throw (ex-info (str "static-viz render failed: " (take-error! error-ref)) {:fn fn-name})))))
 
-          (str/includes? (str message) "out of memory")
-          (throw (ex-info (str "static-viz render failed: " message)
-                          {:fn fn-name, ::dispose-context? true}))
-
-          :else
-          (throw (ex-info (str "static-viz render failed: " message) {:fn fn-name})))))))
-
-;;; ----------------------------------------- bundle bytecode cache ---------------------------------------
+;;; ------------------------------------------------ bundle -----------------------------------------------
 
 (defn- resource-sha1
   ^String [resource]
@@ -213,27 +176,11 @@
       (io/copy in (java.io.OutputStream/nullOutputStream)))
     (format "%040x" (BigInteger. 1 (.digest digest)))))
 
-(defn- prepare-bundle!
-  "Materialize the bundle from the classpath and precompile it to bytecode, returning the path contexts
-  should be created from. Falls back to evaluating from source if precompilation fails. Files are named
-  by the bundle's sha, so re-preparing a changed bundle (dev) never touches files a live context was
-  created from."
-  ^String [resource sha]
-  (let [source-file (work-file (str "lib-static-viz-" sha ".js"))
-        qbc-file    (work-file (str "lib-static-viz-" sha ".qbc"))]
-    (with-open [in (io/input-stream resource)]
-      (io/copy in source-file))
-    (try
-      (compile-bundle! (.getAbsolutePath source-file) (.getAbsolutePath qbc-file))
-      (.getAbsolutePath qbc-file)
-      (catch Exception e
-        (log/warn e "Failed to precompile static-viz bundle to QuickJS bytecode; evaluating from source")
-        (.getAbsolutePath source-file)))))
-
 (def ^:private bundle-state
-  "`{:sha .., :bundle-path ..}` for the currently prepared bundle. The sha is re-checked per context in
-  dev so a fresh `bun run build-static-viz` is picked up without a REPL restart; in prod the bundle
-  can't change under a running JVM, so it's prepared once."
+  "`{:sha .., :bundle-path ..}` for the currently materialized bundle. The sha is re-checked per context
+  in dev so a fresh `bun run build-static-viz` is picked up without a REPL restart; in prod the bundle
+  can't change under a running JVM, so it's materialized once. Files are named by sha, so a changed
+  bundle (dev) never touches the file a live context was created from."
   (atom nil))
 
 (defn- bundle-path!
@@ -246,20 +193,23 @@
       (locking bundle-state
         (let [sha (resource-sha1 resource)]
           (when-not (= sha (:sha @bundle-state))
-            (reset! bundle-state {:sha sha, :bundle-path (prepare-bundle! resource sha)}))
+            (let [file (work-file (str "lib-static-viz-" sha ".js"))]
+              (with-open [in (io/input-stream resource)]
+                (io/copy in file))
+              (reset! bundle-state {:sha sha, :bundle-path (.getAbsolutePath file)})))
           (:bundle-path @bundle-state))))))
 
 ;;; ---------------------------------------------- context pool -------------------------------------------
 
 (def ^:private pool-key
   "Dirigiste pools are keyed; the key itself is arbitrary, it just has to be the same for every operation."
-  :static-viz-quickjs)
+  :static-viz-escargot)
 
 (def ^:private context-pool
-  "A pool of up to [[max-concurrent-renders]] QuickJS contexts, each held exclusively from acquire to
+  "A pool of up to [[max-concurrent-renders]] Escargot contexts, each held exclusively from acquire to
   release. The utilization controller has min 0, so after ~1 minute idle the pool shrinks to zero and
   the contexts' native memory returns to the OS; the first render after an idle gap re-creates one
-  (~300ms bundle evaluation from bytecode)."
+  (~0.5s bundle evaluation)."
   (delay
     (let [max-queued-acquires 65000
           sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
@@ -276,10 +226,9 @@
              TimeUnit/MILLISECONDS))))
 
 (defn- do-with-context
-  "Borrow a pooled context and call `f` with it, held exclusively for the call. A context whose render
-  failed with `::dispose-context?` (timeout, JS heap exhaustion) is destroyed instead of returned to
-  the pool. In dev, creates and closes a throwaway context per call so a fresh
-  `bun run build-static-viz` is picked up without a REPL restart."
+  "Borrow a pooled context and call `f` with it, held exclusively for the call. In dev, creates and
+  closes a throwaway context per call so a fresh `bun run build-static-viz` is picked up without a REPL
+  restart."
   [f]
   (if config/is-dev?
     (let [handle (create-context! (bundle-path!))]
@@ -289,14 +238,8 @@
     (let [pool   ^Pool @context-pool
           handle (.acquire pool pool-key)]
       (try
-        (let [result (f handle)]
-          (.release pool pool-key handle)
-          result)
-        (catch Throwable t
-          (if (::dispose-context? (ex-data t))
-            (.dispose pool pool-key handle)
-            (.release pool pool-key handle))
-          (throw t))))))
+        (f handle)
+        (finally (.release pool pool-key handle))))))
 
 ;;; ------------------------------------------------ backend ----------------------------------------------
 
@@ -307,9 +250,10 @@
      (call-fn! handle fn-name input))))
 
 (defn renderer
-  "The QuickJS [[metabase.channel.render.js.protocol/StaticVizRenderer]] — runs the static-viz JS on
-  pooled in-process QuickJS contexts whose memory lives outside the JVM heap. Each method JSON-encodes
-  its `input` map for the bundle and decodes the bundle's JSON result back into Clojure data."
+  "The Escargot [[metabase.channel.render.js.protocol/StaticVizRenderer]] — runs the static-viz JS on
+  pooled in-process Escargot contexts whose memory lives outside the JVM heap and whose Intl is real
+  ICU. Each method JSON-encodes its `input` map for the bundle and decodes the bundle's JSON result
+  back into Clojure data."
   []
   (reify js.protocol/StaticVizRenderer
     (chart [_ input]
