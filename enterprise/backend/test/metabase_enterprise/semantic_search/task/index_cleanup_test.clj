@@ -162,20 +162,34 @@
           ;; outside this config's qualifier: must be invisible to its scan
           unqualified-table "index_ollama_decoytest_1024"
           registered-table (qualify "index_ollama_registered_1024")
+          ;; index-shaped VIEW: not a base table, so never an orphan candidate (and DROP TABLE would choke on it)
+          index-shaped-view (qualify "index_ollama_viewtest_1024")
+          ;; index-shaped, but outside current_schema(): the unqualified DROP could not reach it, so the
+          ;; scan must not see it either
+          side-schema (str "cleanup_side_" uniq-id)
+          side-schema-orphan (str side-schema "." (qualify "index_ollama_sidetest_1024"))
+          ;; a genuine orphan made undroppable by a dependent view: its failure must not abort the batch
+          blocked-orphan (qualify "index_ollama_blockedtest_1024")
+          blocking-view (qualify "blocked_orphan_dep")
           survivors (concat control-plane-decoys [non-index-shaped unqualified-table registered-table])]
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
         (try
-          (run! #(create-table! pgvector %) (concat orphan-tables survivors))
+          (run! #(create-table! pgvector %) (concat orphan-tables survivors [blocked-orphan]))
+          (jdbc/execute! pgvector [(str "CREATE SCHEMA " side-schema)])
+          (create-table! pgvector side-schema-orphan)
+          (jdbc/execute! pgvector [(str "CREATE VIEW " index-shaped-view " AS SELECT 1 AS id")])
+          (jdbc/execute! pgvector [(str "CREATE VIEW " blocking-view " AS SELECT id FROM " blocked-orphan)])
           (insert-metadata-with-timestamps! pgvector index-metadata {:table-name registered-table})
-          (testing "detects exactly the unregistered index-shaped tables under this config's qualifier"
-            (is (= (set orphan-tables)
+          (testing "detects exactly the unregistered index-shaped base tables under this config's qualifier and schema"
+            (is (= (set (conj orphan-tables blocked-orphan))
                    (set (orphan-index-tables pgvector index-metadata)))))
-          (testing "cleanup drops the orphans"
+          (testing "cleanup drops the orphans; an undroppable orphan is skipped without aborting the batch"
             (cleanup-stale-indexes! pgvector index-metadata)
             (doseq [table orphan-tables]
-              (is (not (semantic.tu/table-exists-in-db? table)) table)))
-          (testing "control-plane decoys, registered, differently-qualified, and non-index-shaped tables survive"
-            (doseq [table survivors]
+              (is (not (semantic.tu/table-exists-in-db? table)) table))
+            (is (semantic.tu/table-exists-in-db? blocked-orphan)))
+          (testing "control-plane decoys, registered, differently-qualified, view, and non-index-shaped tables survive"
+            (doseq [table (concat survivors [index-shaped-view side-schema-orphan])]
               (is (semantic.tu/table-exists-in-db? table) table)))
           (testing "the config's own metadata/control/gate tables survive"
             (doseq [table [(:metadata-table-name index-metadata)
@@ -183,7 +197,10 @@
                            (:gate-table-name index-metadata)]]
               (is (semantic.tu/table-exists-in-db? table) table)))
           (finally
-            (doseq [table (concat orphan-tables survivors)]
+            (jdbc/execute! pgvector [(str "DROP VIEW IF EXISTS " blocking-view)])
+            (jdbc/execute! pgvector [(str "DROP VIEW IF EXISTS " index-shaped-view)])
+            (jdbc/execute! pgvector [(str "DROP SCHEMA IF EXISTS " side-schema " CASCADE")])
+            (doseq [table (concat orphan-tables survivors [blocked-orphan])]
               (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " table)]))))))))
 
 (deftest orphan-index-tables-schema-scoping-test

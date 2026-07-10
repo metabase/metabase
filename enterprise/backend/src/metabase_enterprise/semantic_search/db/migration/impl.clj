@@ -282,7 +282,7 @@
                                             {:curated true :official_collection true}))))))))
 
 (defn migrate-dynamic-schema!
-  "Migrate runtime-managed schema, ie. schema of the `index_...` index tables. Migration author is responsible for
+  "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for
   removing leftovers if necessary."
   [tx {:keys [index-metadata] :as _opts}]
   ;; migration 1: all tables dropped in schema migration in single function call

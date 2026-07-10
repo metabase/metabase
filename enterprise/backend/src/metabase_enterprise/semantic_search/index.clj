@@ -304,13 +304,16 @@
 
   The provider/model segments are only lightly sanitized (see [[embedding/abbrev-model-name]]), so no
   character class is assumed for them; the trailing _<digits> (vector dimensions or force-reset suffix)
-  is what gives the shape structure. Deliberately does NOT match the control-plane tables
-  (index_metadata, index_control, index_gate): they have no trailing _<digits> and are not 40-hex."
-  #"index_(?:.+_\d+|[0-9a-f]{40})")
+  is what gives the shape structure. Legacy pre-BOT-337 names (index_table_<provider>_<model>_<dims>)
+  also match via the first alternative and must continue to: they are the bulk of historical orphans.
+  Deliberately does NOT match the control-plane tables (index_metadata, index_control, index_gate):
+  they have no trailing _<digits> and are not 40-hex."
+  #"\Aindex_(?:.+_\d+|[0-9a-f]{40})\z")
 
 (defn index-table-name?
   "Does the bare (schema- and qualifier-stripped) table name look like a semantic-search index table?
-  Used by the cleanup task to decide orphan candidacy; see [[index-table-name-pattern]] for the shapes."
+  Matching names are orphan-cleanup candidates, i.e. may be dropped if not registered in the metadata
+  table; see [[index-table-name-pattern]] for the shapes."
   [bare-table-name]
   (boolean (re-matches index-table-name-pattern bare-table-name)))
 
