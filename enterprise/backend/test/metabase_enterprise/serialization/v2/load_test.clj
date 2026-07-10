@@ -1258,7 +1258,11 @@
               (is (= {:model "Database" :id "bad-db"}
                      (select-keys (ex-data e) [:model :id])))
               (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
-                     (:referrer (ex-data e)))))))
+                     (:referrer (ex-data e)))))
+            ;; attaching the referrer must not nest the original beneath itself: error reporting renders the
+            ;; whole cause chain, and a self-nested exception prints the same message twice
+            (testing "attaching the referrer does not duplicate the error through the cause chain"
+              (is (nil? (ex-cause e))))))
         ;; `result-metadata-deps` derives deps only from each entry's `:field_ref`, never from its `:table_id`.
         ;; So a result_metadata `:table_id` naming an absent database gets past dependency resolution and only
         ;; fails inside `serdes/load-one!`, where `import-table-fk` raises ::database-not-found. (The Card's own

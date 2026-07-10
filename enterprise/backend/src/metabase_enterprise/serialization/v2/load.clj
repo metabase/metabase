@@ -121,12 +121,13 @@
   and unchanged otherwise.
 
   Only the nearest enclosing [[load-one!]] attaches itself, since it unwinds first and later frames see the key
-  already present. `e` becomes the cause, preserving the stack trace of the original detection site."
+  already present. The replacement inherits `e`'s cause rather than nesting `e` beneath itself: error reporting
+  renders the whole cause chain, so nesting would print the same message twice joined by `caused by:`."
   [e referrer]
   (let [data (ex-data e)]
     (if (and (= ::not-found (:error data))
              (not (contains? data :referrer)))
-      (throw (ex-info (ex-message e) (assoc data :referrer referrer) e))
+      (throw (ex-info (ex-message e) (assoc data :referrer referrer) (ex-cause e)))
       (throw e))))
 
 (defn- valid-model-name-for-load? [model-name]
