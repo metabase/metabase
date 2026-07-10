@@ -2852,6 +2852,7 @@
    :uses #{driver
            premium-features
            enterprise/advanced-config
+           enterprise/mfa
            enterprise/scim
            enterprise/semantic-search
            enterprise/sso}
@@ -3326,7 +3327,8 @@
   enterprise/mfa
   {:team "Graphy"
    :api  #{metabase-enterprise.mfa.init
-           metabase-enterprise.mfa.routes}
+           metabase-enterprise.mfa.routes
+           metabase-enterprise.mfa.settings}
    :uses #{api
            appearance
            auth-identity
