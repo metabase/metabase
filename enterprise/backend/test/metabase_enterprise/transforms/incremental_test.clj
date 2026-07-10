@@ -752,10 +752,10 @@
     (mt/test-drivers (incremental-index-test-drivers)
       (mt/with-premium-features #{:transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
-          (let [{:keys [expected physical-indexes]} (index-util/driver-cases driver/*driver*)
+          (let [{:keys [expected physical-indexes indexes]} (index-util/driver-cases driver/*driver*)
                 checkpoint-config (:integer checkpoint-configs)
                 checkpoint-field  (:field-name checkpoint-config)]
-            ;; name-set catalogs only (postgres/mysql); other drivers report shapes this test can't extend generically
+            ;; name-set catalogs only; other drivers report shapes this test can't extend generically
             (when (set? expected)
               (with-transform-cleanup! [{table-name :name :as target} (target-table-gen "incremental_midrun_idx")]
                 (mt/with-temp [:model/Transform transform (make-incremental-transform-payload
@@ -765,10 +765,10 @@
                     (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
                     (transforms.tu/wait-for-table table-name 10000)
                     (is (some? (get-checkpoint-value (:id transform)))))
+                  ;; the driver's own first index kind: a kind it doesn't advertise is dropped before any DDL runs.
                   (t2/insert! :model/TableIndex {:transform_id (:id transform)
                                                  :index_name   "mid_run_idx"
-                                                 :structured   {:kind :btree :name "mid_run_idx"
-                                                                :columns [{:name "price"}]}})
+                                                 :structured   (assoc (first indexes) :name "mid_run_idx")})
                   (testing "the watermark survives the request untouched"
                     (is (some? (get-checkpoint-value (:id transform)))))
                   (testing "the next run rebuilds and the index lands in the warehouse"
