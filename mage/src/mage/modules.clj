@@ -137,6 +137,7 @@
      sample-data
      search
      secrets
+     segments
      server
      session
      settings
