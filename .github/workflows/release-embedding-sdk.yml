@@ -27,14 +27,33 @@ on:
   # Step 2 of the new release process: merging a version-bump PR (opened by
   # sdk-version-bump-pr.yml, labeled `sdk-release-trigger`) triggers a release
   # of whatever branch that PR targeted. See `resolve-release` below.
+  #
+  # The `paths` filter keeps this from creating a run for every PR closed
+  # anywhere in the repo - version-bump PRs always touch package.template.json,
+  # so this is a reliable pre-filter ahead of the label/merge check below.
   pull_request:
     types: [closed]
+    paths:
+      - enterprise/frontend/src/embedding-sdk-package/package.template.json
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
-  # there could be a conflict when updating the readme file.
-  group: ${{ github.workflow }}-${{ inputs.branch || github.event.pull_request.base.ref }}
-  cancel-in-progress: true
+  # there could be a conflict when updating the readme file. The group is
+  # only ever a real release-branch group for the two triggers that actually
+  # run a release (workflow_dispatch, or a merged sdk-release-trigger PR) -
+  # any other pull_request event gets its own unique, harmless group keyed by
+  # run id, since `resolve-release`'s `if:` already no-ops the rest of the
+  # jobs for it. This also stops a stray PR-closed event from cancelling an
+  # in-flight release: cancel-in-progress is disabled, so two real releases
+  # queued back-to-back on the same branch run one after another instead of
+  # the first being killed mid-publish.
+  group: >-
+    ${{
+      github.event_name == 'workflow_dispatch' && format('{0}-{1}', github.workflow, inputs.branch) ||
+      (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger')) && format('{0}-{1}', github.workflow, github.event.pull_request.base.ref) ||
+      format('{0}-{1}', github.workflow, github.run_id)
+    }}
+  cancel-in-progress: false
 
 jobs:
   # Gates the whole workflow: either a manual workflow_dispatch, or a merged
@@ -376,12 +395,16 @@ jobs:
 
       - name: Create a PR updating the readme (using GitHub Metabase Automation account)
         if: needs.resolve-release.outputs.branch != 'master'
+        id: readme-pr
         run: |
           # Nothing to do if the readme was already up to date (e.g. a re-run) -
           # `git commit` with no diff would otherwise fail the job and fire a
-          # false "release failed" Slack alert.
+          # false "release failed" Slack alert. The `skipped` output lets the
+          # follow-up steps below (which assume a PR exists on the current
+          # branch) no-op too, instead of failing when they can't find one.
           if git diff --quiet; then
             echo "Readme already up to date, skipping PR."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -401,7 +424,7 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
-        if: needs.resolve-release.outputs.branch != 'master'
+        if: needs.resolve-release.outputs.branch != 'master' && steps.readme-pr.outputs.skipped != 'true'
         # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
         run: |
           gh pr edit --add-reviewer albertoperdomo --add-label no-backport
@@ -409,14 +432,14 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Auto approve PR (using GitHub Actions account)
-        if: needs.resolve-release.outputs.branch != 'master'
+        if: needs.resolve-release.outputs.branch != 'master' && steps.readme-pr.outputs.skipped != 'true'
         run: |
           gh pr review --approve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        if: needs.resolve-release.outputs.branch != 'master'
+        if: needs.resolve-release.outputs.branch != 'master' && steps.readme-pr.outputs.skipped != 'true'
         run: |
           gh pr merge --auto --squash
         env:

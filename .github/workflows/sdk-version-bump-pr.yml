@@ -62,6 +62,25 @@ jobs:
           VERSION=$(jq -r .version "$package_template")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Validate branch / release_type combination
+        run: |
+          # `getNextSdkVersion` (the old version-computing logic this replaces)
+          # used to hard-error on these combinations. Arbitrary other branches
+          # (e.g. one-off feature branches) are intentionally left unrestricted -
+          # the design supports on-demand releases from any branch.
+          BRANCH="${{ inputs.branch }}"
+          RELEASE_TYPE="${{ inputs.release_type }}"
+
+          if [ "$BRANCH" = "master" ] && [ "$RELEASE_TYPE" != "alpha" ]; then
+            echo "::error::Only 'alpha' releases can be bumped from the 'master' branch (got release_type=$RELEASE_TYPE)."
+            exit 1
+          fi
+
+          if [[ "$BRANCH" == release-x.* ]] && [ "$RELEASE_TYPE" = "alpha" ]; then
+            echo "::error::'alpha' releases cannot be bumped from a release branch (got branch=$BRANCH)."
+            exit 1
+          fi
+
       - name: Bump version with npm version
         id: bump
         run: |
@@ -107,18 +126,21 @@ jobs:
           # being released is the current "latest" major - that determination
           # is left to the reviewer.
           #
-          # "<major>-stable" IS a real, already-live npm dist-tag (confirmed
-          # via `npm dist-tag ls @metabase/embedding-sdk-react` - 51-stable
-          # through 62-stable are all in active use today), not a new
-          # concept - matches the Notion proposal's "59-stable" example.
-          # Patch/minor bumps default to "<major>-stable", alpha/beta to the
-          # plain channel name.
+          # "<major>-stable" and "<major>-beta" ARE real, already-live npm
+          # dist-tags (confirmed via `npm dist-tag ls @metabase/embedding-sdk-react`
+          # - 51-stable through 62-stable, and 57-beta through 62-beta, are all
+          # in active use today); plain "alpha" is also real and in use.
+          # Patch/minor bumps default to "<major>-stable", beta to
+          # "<major>-beta", alpha to the plain "alpha" channel name.
           RELEASE_TYPE="${{ inputs.release_type }}"
           MAJOR_VERSION="${{ steps.bump.outputs.major_version }}"
 
           case "$RELEASE_TYPE" in
-            alpha|beta)
-              DIST_TAG="$RELEASE_TYPE"
+            alpha)
+              DIST_TAG="alpha"
+              ;;
+            beta)
+              DIST_TAG="${MAJOR_VERSION}-beta"
               ;;
             patch|minor)
               DIST_TAG="${MAJOR_VERSION}-stable"
@@ -128,11 +150,18 @@ jobs:
           echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Write sdkRelease metadata block
+        id: write-metadata
         run: |
+          # tagAsLatest always resets to false here, even if a previous
+          # sdkRelease block already had it set to true - the reviewer opts
+          # in per release on the PR, it's never carried forward silently.
           jq --arg distTag "${{ steps.sdk-release.outputs.dist_tag }}" \
-             '.sdkRelease.distTag = $distTag | .sdkRelease.tagAsLatest = (.sdkRelease.tagAsLatest // false)' \
+             '.sdkRelease.distTag = $distTag | .sdkRelease.tagAsLatest = false' \
              "$package_template" > "$package_template.tmp"
           mv "$package_template.tmp" "$package_template"
+
+          TAG_AS_LATEST=$(jq -r '.sdkRelease.tagAsLatest' "$package_template")
+          echo "tag_as_latest=$TAG_AS_LATEST" >> "$GITHUB_OUTPUT"
 
       - name: Append workflow summary
         run: |
@@ -144,6 +173,7 @@ jobs:
           - \`previous_version\`: ${{ steps.current.outputs.version }}
           - \`new_version\`: ${{ steps.bump.outputs.new_version }}
           - \`distTag\` (default, review before merging): ${{ steps.sdk-release.outputs.dist_tag }}
+          - \`tagAsLatest\` (default, review before merging): ${{ steps.write-metadata.outputs.tag_as_latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
@@ -159,7 +189,10 @@ jobs:
 
       - name: Commit version bump
         run: |
-          git checkout -b sdk-version-bump-${{ steps.bump.outputs.new_version }}
+          # The run id is appended so a retry after a failed/abandoned attempt
+          # never collides with a still-existing branch of the same name on
+          # origin (which would otherwise fail this push as non-fast-forward).
+          git checkout -b sdk-version-bump-${{ steps.bump.outputs.new_version }}-${{ github.run_id }}
           git add "$package_template"
           git commit -m "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }} (${{ inputs.release_type }})"
           git push origin HEAD
@@ -176,7 +209,7 @@ jobs:
 
           **Review before merging:**
           - `sdkRelease.distTag` currently defaults to `${{ steps.sdk-release.outputs.dist_tag }}` - override it here if this release should publish under a different npm dist-tag.
-          - `sdkRelease.tagAsLatest` defaults to `false` - flip it to `true` only if this release should become the `latest` tag on npm.
+          - `sdkRelease.tagAsLatest` currently defaults to `${{ steps.write-metadata.outputs.tag_as_latest }}` - flip it to `true` only if this release should become the `latest` tag on npm.
 
           Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
 
@@ -186,8 +219,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      - name: Request review from code owners (using GitHub Actions account)
-        # metabase/embedding team is added automatically as code owner of package.template.json
+      - name: Add no-backport label (using GitHub Actions account)
+        # metabase/embedding team is added automatically as code owner of package.template.json,
+        # so no explicit --add-reviewer call is needed here (unlike the readme-update PR step).
         run: |
           gh pr edit --add-label no-backport
         env:
