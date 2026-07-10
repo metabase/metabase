@@ -54,7 +54,7 @@
         (str "sha_" (config/current-major-version) "_"
              (tx/hash-dataset db-def) "_" database-name)
         :else
-        (str "sha__" (tx/hash-dataset db-def) "_" database-name)))
+        (str "sha_58_" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
