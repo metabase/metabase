@@ -51,7 +51,7 @@
 
 (deftest can-read-write-on-orphaned-transform-test
   (testing "superusers can read/write a transform whose source database has been deleted, data analysts cannot"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Transform transform
                      {:name   "Orphan Transform"

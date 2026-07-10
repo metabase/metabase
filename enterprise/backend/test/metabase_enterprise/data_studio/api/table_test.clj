@@ -2,6 +2,7 @@
   "Tests for /api/ee/data-studio/table endpoints (enterprise-only: publish-tables, unpublish-tables)."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
@@ -18,7 +19,7 @@
 
 (deftest table-metadata-survives-deleted-transform-test
   (testing "a table whose creating transform has since been deleted (metabase#69904)"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/Transform transform {}
                      :model/Table     {table-id :id} {:transform_id (:id transform)}]
         (t2/delete! :model/Transform (:id transform))
@@ -99,6 +100,31 @@
          (is (=? {:collection_id subcollection-id
                   :is_published  true}
                  (t2/select-one :model/Table (mt/id :users)))))))))
+
+(deftest publish-tables-goes-through-toucan-hooks-test
+  (testing "publish/unpublish update via the Toucan pipeline, so model hooks fire"
+    (mt/with-premium-features #{:library}
+      (without-library
+       (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
+         ;; a bumped updated_at proves the write went through the Toucan pipeline (:hook/timestamped?),
+         ;; the same pipeline that fires :hook/search-index; a raw UPDATE would leave it unchanged
+         (let [baseline   (t/offset-date-time 2020)
+               ;; raw update, precisely to keep the timestamped hook from overwriting the backdate
+               backdate!  #(t2/query {:update (t2/table-name :model/Table)
+                                      :set    {:updated_at baseline}
+                                      :where  [:= :id (mt/id :venues)]})
+               updated-at #(t2/select-one-fn :updated_at :model/Table (mt/id :venues))]
+           (backdate!)
+           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                 {:table_ids     [(mt/id :venues)]
+                                  :collection_id collection-id})
+           (testing "updated_at bumps on publish"
+             (is (pos? (compare (updated-at) baseline))))
+           (backdate!)
+           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
+                                 {:table_ids [(mt/id :venues)]})
+           (testing "updated_at bumps on unpublish"
+             (is (pos? (compare (updated-at) baseline))))))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}

@@ -29,7 +29,12 @@ function renderPieSvg(
     height: side,
   });
   chart.setOption(option);
-  return sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook ?? false);
+  const chartSvg = sanitizeSvgForBatik(
+    chart.renderToSVGString(),
+    isStorybook ?? false,
+  );
+  chart.dispose();
+  return chartSvg;
 }
 
 export function PieChart({

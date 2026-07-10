@@ -74,8 +74,9 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
                   ) : (
                     <Group gap="sm">
                       <Badge
-                        m={0}
+                        color="brand"
                         variant="outline"
+                        size="sm"
                         title={effectiveEndDate.format("lll")}
                       >
                         {c("{0} is the time until expiration")

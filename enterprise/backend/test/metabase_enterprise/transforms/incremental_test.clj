@@ -81,11 +81,11 @@
   (let [{:keys [field-name]} checkpoint-config
         table-id (mt/id :transforms_products)
         timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
-        query (format "SELECT *, %s AS %s FROM {{source_table}} AS %s ORDER BY %s"
-                      timestamp-sql
-                      (sql.u/quote-name driver/*driver* :field "load_timestamp")
-                      (sql.u/quote-name driver/*driver* :field "source_table")
-                      (sql.u/quote-name driver/*driver* :field field-name))]
+        quoted (fn [field] (sql.u/quote-name driver/*driver* :field field))
+        query (format "SELECT %s, %s, %s, %s, %s AS %s FROM {{source_table}} AS %s ORDER BY %s"
+                      (quoted "name") (quoted "category") (quoted "price") (quoted "created_at")
+                      timestamp-sql (quoted "load_timestamp") (quoted "source_table")
+                      (quoted field-name))]
     {:database (mt/id)
      :type :native
      :native {:query query
@@ -98,10 +98,13 @@
 
 (defn- make-incremental-mbql-query
   "Create an MBQL query for incremental transforms. "
+
   [checkpoint-config]
   (let [{:keys [field-name]} checkpoint-config]
-    (mt/mbql-query transforms_products {:expressions {"load_timestamp" [:now]}
-                                        :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
+    (mt/mbql-query transforms_products
+      {:expressions {"load_timestamp" [:now]}
+       :fields [$name $category $price $created_at [:expression "load_timestamp"]]
+       :order-by [[:asc [:field (mt/id :transforms_products (keyword field-name))]]]})))
 
 (def incremental-python-body
   (str "import pandas as pd\n"
@@ -228,7 +231,7 @@
             :let [transform-type :native]]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms-basic}
+          (mt/with-premium-features #{:transforms-basic :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_test")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -312,7 +315,7 @@
 (deftest reset-checkpoint-endpoint-test
   (testing "POST /api/transform/:id/reset-checkpoint clears the checkpoint and forces a full reprocess"
     (mt/test-drivers (test-drivers)
-      (mt/with-premium-features #{:transforms-basic}
+      (mt/with-premium-features #{:transforms-basic :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table (target-table-gen "reset_checkpoint")]
             (let [checkpoint-config (get checkpoint-configs :integer)
@@ -341,7 +344,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms-basic :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_incr_to_non_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -394,7 +397,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms-basic :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -458,7 +461,7 @@
 (deftest unsupported-checkpoint-column-type-test
   (testing "Transform fails at runtime with unsupported checkpoint column type"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms-basic}
+      (mt/with-premium-features #{:transforms-basic :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "unsupported_type_test"]
             (let [name-field-id (mt/id :transforms_products :name)
