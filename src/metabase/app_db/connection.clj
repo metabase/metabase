@@ -183,9 +183,10 @@
                   callback-count (some-> *after-commit-callbacks* deref count)]
               (try
                 (let [result (f connection)]
-                  (when (= *transaction-depth* 1)
+                  (if (= *transaction-depth* 1)
                     ;; top-level transaction; post-commit side effects run after the transaction bindings unwind
-                    (.commit connection))
+                    (.commit connection)
+                    (.releaseSavepoint connection savepoint))
                   result)
                 (catch Throwable txn-e
                   ;; the nested body failed, so its callbacks must never fire — discard them before attempting
