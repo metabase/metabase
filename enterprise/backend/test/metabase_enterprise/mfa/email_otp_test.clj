@@ -69,7 +69,7 @@
 
 (deftest send-email-otp-e2e-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enabled true]
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (let [secret (totp/generate-secret)
             sent   (atom nil)]
         (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
@@ -98,7 +98,7 @@
 
 (deftest send-email-otp-surfaces-delivery-failure-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enabled true]
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (let [secret (totp/generate-secret)]
         (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
                                          :provider    "totp"
@@ -115,7 +115,7 @@
 
 (deftest send-email-otp-requires-configured-email-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enabled true]
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (let [secret (totp/generate-secret)]
         (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
                                          :provider    "totp"

@@ -40,7 +40,7 @@
   [provider login-result]
   (if-not (and (true? (:success? login-result))
                (:user login-result)
-               (mfa.settings/mfa-enabled))
+               (mfa.settings/mfa-enabled?))
     login-result
     (let [user-id (get-in login-result [:user :id])
           method  (when user-id (enrollment/enrolled-method user-id))]

@@ -90,7 +90,7 @@
    _query-params
    {:keys [password]} :- [:map [:password ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
-  (when-not (mfa.settings/mfa-enabled)
+  (when-not (mfa.settings/mfa-enabled?)
     (throw (ex-info (tru "Two-factor authentication is not enabled on this instance.")
                     {:status-code 400})))
   (throttled :enroll
@@ -157,7 +157,7 @@
   []
   (let [user-id api/*current-user-id*
         method  (enrollment/enrolled-method user-id)]
-    {:mfa_enabled              (mfa.settings/mfa-enabled)
+    {:mfa_enabled              (mfa.settings/mfa-enabled?)
      :enrolled                 (boolean method)
      :pending                  (enrollment/pending? user-id)
      :method                   (some-> method name)

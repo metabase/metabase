@@ -28,7 +28,9 @@ function setup({ user = getUser(), isMfaEnabled = false }: SetupOpts = {}) {
     <AccountHeader user={user} onChangeLocation={onChangeLocation} />,
     {
       storeInitialState: createMockState({
-        settings: mockSettings({ "mfa-enabled": isMfaEnabled }),
+        settings: mockSettings({
+          "mfa-enforcement": isMfaEnabled ? "optional" : "off",
+        }),
       }),
     },
   );

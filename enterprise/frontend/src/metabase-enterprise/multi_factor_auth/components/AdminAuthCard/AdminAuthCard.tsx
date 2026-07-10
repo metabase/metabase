@@ -1,16 +1,21 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { Alert, Text } from "metabase/ui";
+import { Alert, Switch, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
 import type { MfaAdminOverview } from "metabase-types/api";
 
 export function AdminAuthCard() {
   const hasFeature = useHasTokenFeature("multi-factor-auth");
-  const { value: enabled } = useAdminSetting("mfa-enabled");
+  const { value: enforcement, updateSetting } =
+    useAdminSetting("mfa-enforcement");
+
+  // enabled = setting is present and not "off"; safe against undefined (OSS where setting is absent)
+  const enabled = enforcement === "optional";
+
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
     skip: !enabled,
   });
@@ -20,15 +25,29 @@ export function AdminAuthCard() {
     return null;
   }
 
+  const handleChange = (checked: boolean) => {
+    updateSetting({
+      key: "mfa-enforcement",
+      value: checked ? "optional" : "off",
+    });
+  };
+
   return (
     <SettingsSection>
-      <AdminSettingInput
-        name="mfa-enabled"
-        inputType="boolean"
+      <SettingHeader
+        id="mfa-enforcement"
         title={t`Two-factor authentication`}
         description={t`Let users secure their account with an authenticator app.`}
+      />
+      <Switch
+        id="mfa-enforcement"
+        checked={enabled}
+        onChange={(e) => handleChange(e.target.checked)}
+        label={enabled ? t`Enabled` : t`Disabled`}
         // turning ON requires the feature; turning OFF always works (license-lapse escape hatch)
         disabled={!enabled && !hasFeature}
+        w="auto"
+        size="sm"
       />
       {enabled && overview && !overview.encryption_key_set && (
         <Alert color="warning">

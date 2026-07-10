@@ -18,7 +18,8 @@
 
 (p/import-vars
  [metabase-enterprise.mfa.settings
-  mfa-enabled])
+  mfa-enforcement
+  mfa-enabled?])
 
 (defenterprise apply-mfa-gate
   "Decide whether a successful first-factor login must complete a second factor before a session is
@@ -27,8 +28,8 @@
   sign the relay token.
 
   Uses `:feature :none` deliberately: enforcement must not depend on the current token, so a lapsed
-  license never silently stops challenging enrolled users. The token instead gates setup — turning
-  `mfa-enabled` on and (in later PRs) starting new enrollments."
+  license never silently stops challenging enrolled users. The token instead gates setup — setting
+  `mfa-enforcement` to a non-`:off` value and (in later PRs) starting new enrollments."
   :feature :none
   [provider login-result]
   (gate/apply-mfa-gate provider login-result))

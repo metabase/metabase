@@ -26,7 +26,8 @@ export const AccountHeader = ({
     () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
     [user],
   );
-  const isMfaEnabled = useSetting("mfa-enabled");
+  // explicit comparison: the setting is undefined on OSS instances
+  const isMfaEnabled = useSetting("mfa-enforcement") === "optional";
 
   const tabs = useMemo(
     () => [

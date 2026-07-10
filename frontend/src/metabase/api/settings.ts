@@ -57,7 +57,7 @@ export const settingsApi = Api.injectEndpoints({
           tag("session-properties"),
           ...(key === "uploads-settings" ? [listTag("database")] : []),
           ...(key === "llm-anthropic-api-key" ? [listTag("llm-models")] : []),
-          ...(key === "mfa-enabled" ? [tag("mfa-status")] : []),
+          ...(key === "mfa-enforcement" ? [tag("mfa-status")] : []),
 
           // Enabling tenants creates the "all-external-users" permission group
           ...(key === "use-tenants" ? [listTag("permissions-group")] : []),

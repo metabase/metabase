@@ -31,7 +31,7 @@
 
 (defmacro with-enrolled-rasta! [[secret-binding] & body]
   `(mt/with-premium-features #{:multi-factor-auth}
-     (mt/with-temporary-setting-values [~'mfa-enabled true]
+     (mt/with-temporary-setting-values [~'mfa-enforcement :optional]
        (let [~secret-binding (totp/generate-secret)]
          (try
            (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
@@ -159,7 +159,7 @@
 
 (deftest password-reset-issues-no-session-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enabled true]
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (mt/with-temp [:model/User {user-id :id, email :email} {:password (str "Old-" (random-uuid))}]
         (try
           (t2/insert! :model/AuthIdentity {:user_id     user-id

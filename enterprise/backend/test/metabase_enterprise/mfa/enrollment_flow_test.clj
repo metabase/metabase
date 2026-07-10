@@ -31,7 +31,7 @@
 
 (deftest full-enrollment-lifecycle-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enabled true]
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (with-fresh-user-session! [session-key email password]
         (testing "enroll requires the right password — 400 with a field error, NOT 401 (clients
                   treat a 401 on a session-authenticated endpoint as an expired session)"
@@ -59,7 +59,7 @@
 
 (deftest enroll-requires-feature-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enabled true]
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
       (with-fresh-user-session! [session-key _email password]
         (testing "starting an enrollment is setup — gated on the feature"
           (mt/with-premium-features #{}
@@ -67,7 +67,7 @@
 
 (deftest enroll-requires-setting-test
   (mt/with-premium-features #{:multi-factor-auth}
-    (mt/with-temporary-setting-values [mfa-enabled false]
+    (mt/with-temporary-setting-values [mfa-enforcement :off]
       (with-fresh-user-session! [session-key _email password]
         (mt/client session-key :post 400 "ee/mfa/enroll" {:password password})))))
 
@@ -95,7 +95,7 @@
 (deftest pending-re-enroll-overwrites-secret-test
   (testing "re-enrolling while pending generates a new secret; the OLD pending secret no longer confirms"
     (mt/with-premium-features #{:multi-factor-auth}
-      (mt/with-temporary-setting-values [mfa-enabled true]
+      (mt/with-temporary-setting-values [mfa-enforcement :optional]
         (with-fresh-user-session! [session-key _email password]
           (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})
                 {secret2 :secret} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
@@ -109,7 +109,7 @@
 (deftest confirm-code-cannot-replay-to-disable-test
   (testing "the code consumed by confirm-enrollment cannot then be used to disable (cross-operation replay)"
     (mt/with-premium-features #{:multi-factor-auth}
-      (mt/with-temporary-setting-values [mfa-enabled true]
+      (mt/with-temporary-setting-values [mfa-enforcement :optional]
         (with-fresh-user-session! [session-key _email password]
           (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})
                 code             (totp/generate-code secret)]
@@ -122,7 +122,7 @@
 (deftest disable-throttled-test
   (testing "repeated wrong codes on /disable are throttled — 6-digit codes need brute-force limits"
     (mt/with-premium-features #{:multi-factor-auth}
-      (mt/with-temporary-setting-values [mfa-enabled true]
+      (mt/with-temporary-setting-values [mfa-enforcement :optional]
         (with-fresh-user-session! [session-key _email password]
           (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
             (mt/client session-key :post 200 "ee/mfa/enroll/confirm" {:code (totp/generate-code secret)})

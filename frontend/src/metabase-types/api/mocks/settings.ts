@@ -445,5 +445,6 @@ export const createMockSettings = (
   "mcp-apps-cors-enabled-clients": [],
   "mcp-apps-cors-custom-origins": "",
   "transforms-meter-locked": null,
+  "mfa-enforcement": "off",
   ...opts,
 });

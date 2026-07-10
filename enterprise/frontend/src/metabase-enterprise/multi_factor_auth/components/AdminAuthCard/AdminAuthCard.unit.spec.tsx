@@ -27,8 +27,9 @@ function setup({
   hasFeature = true,
   overview = createMockMfaAdminOverview(),
 }: SetupOpts = {}) {
+  const enforcement = mfaEnabled ? ("optional" as const) : ("off" as const);
   const settings = createMockSettings({
-    "mfa-enabled": mfaEnabled,
+    "mfa-enforcement": enforcement,
     "token-features": createMockTokenFeatures({
       "multi-factor-auth": hasFeature,
     }),
@@ -36,7 +37,7 @@ function setup({
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([
-    createMockSettingDefinition({ key: "mfa-enabled", value: mfaEnabled }),
+    createMockSettingDefinition({ key: "mfa-enforcement", value: enforcement }),
   ]);
   setupMfaAdminOverviewEndpoint(overview);
 

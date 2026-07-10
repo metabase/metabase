@@ -583,7 +583,7 @@ interface PublicSettings {
   "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
-  "mfa-enabled"?: boolean;
+  "mfa-enforcement"?: "off" | "optional";
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
