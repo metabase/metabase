@@ -1422,9 +1422,6 @@
   ->legacy-MBQL
   ->mbql5
   legacy-default-join-alias
-  ;; only export in clj, cljs export doesn't work currently because it's a macro... [[metabase.lib.js]] will have to
-  ;; use directly
-  #?(:clj with-aggregation-list)
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -1669,6 +1666,8 @@
   any-native-stage-not-introduced-by-sandbox?
   replace-field-ids
   replace-table-ids])
+
+(shared.ns/import-macro lib.convert/with-aggregation-list)
 
 #?(:clj
    (defmacro with-card-clean-hook

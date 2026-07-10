@@ -261,6 +261,7 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+  | "table_index"
   | "text_bold"
   | "text_italic"
   | "text_strike"
