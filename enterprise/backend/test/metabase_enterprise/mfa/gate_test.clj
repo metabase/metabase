@@ -35,7 +35,7 @@
                 (is (= :mfa-required (:success? gated)))
                 (is (true? (:mfa-pending? gated)))
                 (is (some #{"totp"} (:mfa-methods gated)))
-                (is (string? (:mfa-token gated))))))
+                (is (= provider (:first-factor gated))))))
           (testing "an unenrolled user is untouched"
             (mt/with-temp [:model/User {other-id :id} {}]
               (let [result {:success? true :user {:id other-id}}]
@@ -50,7 +50,7 @@
             (mt/with-premium-features #{}
               (let [gated (auth-identity.provider/apply-mfa-gate :provider/password {:success? true :user {:id user-id}})]
                 (is (= :mfa-required (:success? gated)))
-                (is (string? (:mfa-token gated)))))))))))
+                (is (= :provider/password (:first-factor gated)))))))))))
 
 (deftest gate-provider-coverage-test
   (mt/with-premium-features #{:multi-factor-auth}
@@ -66,7 +66,7 @@
               (let [gated (auth-identity.provider/apply-mfa-gate :provider/emailed-secret-password-reset result)]
                 (is (true? (:success? gated)))
                 (is (true? (:mfa-pending? gated)))
-                (is (nil? (:mfa-token gated)))))))))))
+                (is (nil? (:first-factor gated)))))))))))
 
 (deftest mfa-enabled-write-path-test
   (mt/with-temporary-setting-values [mfa-enabled false]

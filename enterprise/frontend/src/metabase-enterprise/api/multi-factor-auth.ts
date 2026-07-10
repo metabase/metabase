@@ -32,11 +32,11 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
     }),
     verifyMfa: builder.mutation<
       { id: string },
-      { mfa_token: string; code: string; remember?: boolean }
+      { challenge_token: string; code: string; remember?: boolean }
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/mfa/verify",
+        url: "/api/session/mfa/verify",
         body,
       }),
     }),
@@ -73,10 +73,13 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: ["mfa-status"],
     }),
-    sendEmailOtp: builder.mutation<{ success: true }, { mfa_token: string }>({
+    sendEmailOtp: builder.mutation<
+      { success: true },
+      { challenge_token: string }
+    >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/mfa/send-email-otp",
+        url: "/api/session/mfa/send-email-otp",
         body,
       }),
     }),

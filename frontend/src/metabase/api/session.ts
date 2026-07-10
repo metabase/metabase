@@ -23,7 +23,7 @@ export interface SessionResponse {
 export interface MfaChallengeResponse {
   mfa_required: true;
   methods: MfaMethod[];
-  mfa_token: string;
+  challenge_token: string;
 }
 
 export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;

@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.mfa.api :as mfa.api]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.channel.email :as channel.email]
@@ -15,9 +14,9 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers! []
-  (doseq [throttler (concat (vals @#'mfa.api/verify-throttlers)
+  (doseq [throttler (concat (vals @#'api.session/verify-throttlers)
                             (vals @#'api.session/login-throttlers)
-                            (vals @#'mfa.api/email-otp-send-throttlers))]
+                            (vals @#'api.session/email-otp-send-throttlers))]
     (reset! (:attempts throttler) nil)))
 
 (use-fixtures :each (fn [f] (reset-throttlers!) (f)))
@@ -82,18 +81,18 @@
             (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
               (testing "the challenge advertises the email method when email is configured"
                 (is (= ["totp" "email"] (:methods challenge))))
-              (is (true? (:success (mt/client :post 200 "ee/mfa/send-email-otp"
-                                              {:mfa_token (:mfa_token challenge)}))))
+              (is (true? (:success (mt/client :post 200 "session/mfa/send-email-otp"
+                                              {:challenge_token (:challenge_token challenge)}))))
               (let [[_ code] (re-find #"code is: (\d{6})" (:message @sent))]
                 (is (some? code) "the email contains the code")
                 (testing "the emailed code completes the login"
                   (is (=? {:id string?}
-                          (mt/client :post 200 "ee/mfa/verify"
-                                     {:mfa_token (:mfa_token challenge) :code code}))))
+                          (mt/client :post 200 "session/mfa/verify"
+                                     {:challenge_token (:challenge_token challenge) :code code}))))
                 (testing "a consumed challenge token cannot keep sending codes"
-                  (mt/client :post 401 "ee/mfa/send-email-otp" {:mfa_token (:mfa_token challenge)})))))
+                  (mt/client :post 401 "session/mfa/send-email-otp" {:challenge_token (:challenge_token challenge)})))))
           (testing "a bogus challenge token cannot trigger a send"
-            (mt/client :post 401 "ee/mfa/send-email-otp" {:mfa_token "bogus"}))
+            (mt/client :post 401 "session/mfa/send-email-otp" {:challenge_token "bogus"}))
           (finally
             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
 
@@ -110,7 +109,7 @@
                                                                              (throw (Exception. "SMTP down")))]
             (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
               (testing "an SMTP failure is an error, not {:success true} with no email"
-                (mt/client :post 500 "ee/mfa/send-email-otp" {:mfa_token (:mfa_token challenge)}))))
+                (mt/client :post 500 "session/mfa/send-email-otp" {:challenge_token (:challenge_token challenge)}))))
           (finally
             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
 
@@ -126,6 +125,6 @@
             (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]
               (testing "the challenge does not advertise email"
                 (is (= ["totp"] (:methods challenge))))
-              (mt/client :post 400 "ee/mfa/send-email-otp" {:mfa_token (:mfa_token challenge)})))
+              (mt/client :post 400 "session/mfa/send-email-otp" {:challenge_token (:challenge_token challenge)})))
           (finally
             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))

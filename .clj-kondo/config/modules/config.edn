@@ -2074,6 +2074,7 @@
            channel
            config
            events
+           premium-features
            request
            settings
            sso
@@ -3326,9 +3327,9 @@
 
   enterprise/mfa
   {:team "Graphy"
-   :api  #{metabase-enterprise.mfa.init
-           metabase-enterprise.mfa.routes
-           metabase-enterprise.mfa.settings}
+   :api  #{metabase-enterprise.mfa.core
+           metabase-enterprise.mfa.init
+           metabase-enterprise.mfa.routes}
    :uses #{api
            appearance
            auth-identity
@@ -3336,7 +3337,6 @@
            config
            events
            premium-features
-           request
            settings
            sso
            util}

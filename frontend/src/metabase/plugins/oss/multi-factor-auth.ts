@@ -5,7 +5,7 @@ import {
 import type { MfaMethod } from "metabase-types/api";
 
 export type MfaChallengeFormProps = {
-  mfaToken: string;
+  challengeToken: string;
   methods: MfaMethod[];
   // the step-1 "remember me" choice; the verify request creates the session,
   // so the cookie lifetime decision rides on it

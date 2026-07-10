@@ -1,4 +1,4 @@
-(ns metabase-enterprise.mfa.challenge
+(ns metabase.session.challenge
   "Short-lived signed challenge tokens bridging the two steps of an MFA login.
 
   A challenge token is NOT a session: nothing is written to the session table and no cookie is set
@@ -7,7 +7,7 @@
   consumed on successful verification so one token cannot mint two sessions."
   (:require
    [buddy.sign.jwt :as jwt]
-   [metabase-enterprise.mfa.settings :as mfa.settings]
+   [metabase.session.settings :as session.settings]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +26,7 @@
              :purpose  "mfa-challenge"
              :jti      (str (random-uuid))
              :exp      (+ (quot (System/currentTimeMillis) 1000) ttl-seconds)}
-            (mfa.settings/mfa-challenge-signing-key)
+            (session.settings/mfa-challenge-signing-key)
             {:alg :hs256}))
 
 (defn verify-challenge-token
@@ -35,7 +35,7 @@
   second-factor verification, so a user can retry codes on the same token."
   [token]
   (try
-    (let [claims (jwt/unsign token (mfa.settings/mfa-challenge-signing-key) {:alg :hs256})]
+    (let [claims (jwt/unsign token (session.settings/mfa-challenge-signing-key) {:alg :hs256})]
       (when (= (:purpose claims) "mfa-challenge")
         claims))
     (catch Exception e

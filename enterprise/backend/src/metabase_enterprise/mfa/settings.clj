@@ -6,8 +6,6 @@
   `false` and silently fail open. Instead the feature check lives on the write path — and only for
   turning the setting ON, so an admin on a lapsed license can always turn MFA off."
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.nonce :as nonce]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
@@ -26,15 +24,3 @@
                   (when new-value
                     (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication")))
                   (setting/set-value-of-type! :boolean :mfa-enabled new-value))))
-
-(defsetting mfa-challenge-signing-key
-  (deferred-tru "Key used to sign MFA challenge tokens. Generated automatically on first use.")
-  :visibility :internal
-  :type       :string
-  :export?    false
-  :audit      :never
-  :encryption :when-encryption-key-set
-  ;; :init generates and persists on first access. Two nodes touching it simultaneously can still
-  ;; race (last write wins; the loser's in-flight 5-min challenge tokens fail verification), but
-  ;; the window is one first-ever MFA login. Generate eagerly at startup if this ever bites.
-  :init       (fn [] (codecs/bytes->hex (nonce/random-bytes 32))))
