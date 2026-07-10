@@ -10,15 +10,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
   MB_EDITION: ee
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
-  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  REPO_ID: ${{ github.event.repository.id }}
-  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
-  QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
-  # These suites have no Trunk wiring, so `Fail job if tests failed` is the arbiter
-  # until ci-conductor takes over. Exactly one of the two gates the job.
-  CI_CONDUCTOR_QUARANTINE_ACTIVE: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 jobs:
   get-sample-apps-data:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -107,7 +98,6 @@ jobs:
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
-      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-sample-app
       MB_EDITION: ee
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -193,25 +183,15 @@ jobs:
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7
-        if: ${{ !cancelled() && steps.run-e2e-tests.outcome == 'failure' }}
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-sample-app-${{ matrix.test_suite }}-${{ matrix.environment }}-latest
           path: |
             ./e2e/tmp/${{ steps.get-sample-app-name.outputs.sample_app_name }}/cypress
           if-no-files-found: ignore
 
-      - name: Quarantine gate
-        if: ${{ !cancelled() && steps.run-e2e-tests.outcome == 'failure' }}
-        continue-on-error: ${{ env.CI_CONDUCTOR_QUARANTINE_ACTIVE != 'true' }}
-        timeout-minutes: 3
-        uses: ./.github/actions/quarantine-gate
-        with:
-          adapter: e2e
-          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
-          enforce-quarantine: ${{ env.CI_CONDUCTOR_QUARANTINE_ACTIVE }}
-
       - name: Fail job if tests failed
-        if: ${{ !cancelled() && steps.run-e2e-tests.outcome == 'failure' && env.CI_CONDUCTOR_QUARANTINE_ACTIVE != 'true' }}
+        if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         run: |
           exit 1
 
@@ -229,7 +209,6 @@ jobs:
     timeout-minutes: 45
     name: e2e-sample-app-shoppy-e2e-tests-${{ matrix.environment }}-bundle
     env:
-      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-shoppy
       MB_EDITION: ee
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -273,25 +252,15 @@ jobs:
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7
-        if: ${{ !cancelled() && steps.run-e2e-tests.outcome == 'failure' }}
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         with:
           name: cypress-recording-sample-app-shoppy-e2e-${{ matrix.environment }}-latest
           path: |
             ./e2e/tmp/shoppy/cypress
           if-no-files-found: ignore
 
-      - name: Quarantine gate
-        if: ${{ !cancelled() && steps.run-e2e-tests.outcome == 'failure' }}
-        continue-on-error: ${{ env.CI_CONDUCTOR_QUARANTINE_ACTIVE != 'true' }}
-        timeout-minutes: 3
-        uses: ./.github/actions/quarantine-gate
-        with:
-          adapter: e2e
-          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
-          enforce-quarantine: ${{ env.CI_CONDUCTOR_QUARANTINE_ACTIVE }}
-
       - name: Fail job if tests failed
-        if: ${{ !cancelled() && steps.run-e2e-tests.outcome == 'failure' && env.CI_CONDUCTOR_QUARANTINE_ACTIVE != 'true' }}
+        if: ${{ steps.shoppy-prep.outputs.sample_app_branch_exists == 'true' && steps.run-e2e-tests.outcome != 'success' }}
         run: |
           exit 1
 
@@ -307,7 +276,6 @@ jobs:
     timeout-minutes: 45
     name: e2e-shoppy-synthetic-monitoring-tests
     env:
-      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-shoppy-synthetic
       MB_EDITION: ee
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -401,7 +369,19 @@ jobs:
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
+      # Host apps are the only suite here running through Metabase's Cypress config,
+      # whose `after:spec` hook reports failures and writes QUARANTINE_FAILURES_FILE.
+      # Sample-app suites load their own config (no-op), so ci-conductor is scoped to this job.
+      CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+      CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-host-app
+      REPO_ID: ${{ github.event.repository.id }}
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
+      # `Fail job if tests failed` is the arbiter until ci-conductor takes over.
+      # Exactly one of the two gates the job.
+      CI_CONDUCTOR_QUARANTINE_ACTIVE: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
