@@ -407,6 +407,17 @@
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
 
+(deftest claude-system-cache-breakpoint-blank-suffix-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (testing "a trailing sentinel with nothing after it produces a single cached block, not an empty text block (the API rejects empty text)"
+      (let [body (capture-claude-request-body!
+                  {:input  [{:role :user :content "hi"}]
+                   :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
+        (is (= [{:type          "text"
+                 :text          "Stable prefix content."
+                 :cache_control {:type "ephemeral"}}]
+               (:system body)))))))
+
 (deftest system-templates-cache-breakpoint-presence-test
   (testing "every selmer template that contains per-request volatile content carries exactly one cache breakpoint sentinel"
     (let [system-dir (io/file (io/resource "metabot/prompts/system"))
