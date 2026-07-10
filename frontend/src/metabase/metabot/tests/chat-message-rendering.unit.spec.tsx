@@ -4,6 +4,7 @@ import { assocIn } from "icepick";
 import {
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
+  setupDocumentEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
@@ -17,6 +18,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockCollection,
+  createMockDocument,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
@@ -162,6 +164,27 @@ describe("AgentMessage", () => {
       expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
       expect(screen.getByText(/saved/)).toBeInTheDocument();
       expect(screen.queryByText(/saved to/)).not.toBeInTheDocument();
+    });
+
+    it("resolves a document destination's current name", async () => {
+      setupDocumentEndpoints(createMockDocument({ id: 7, name: "Q3 report" }));
+      setupCardEndpoints(createMockCard({ id: 99, name: "Accounts by Day" }));
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-entity_saved",
+          data: {
+            entity_id: "chart-1",
+            card_id: 99,
+            location: { type: "document", id: 7 },
+          },
+        },
+      });
+
+      expect(await screen.findByText("Q3 report")).toBeInTheDocument();
+      expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
     });
   });
 

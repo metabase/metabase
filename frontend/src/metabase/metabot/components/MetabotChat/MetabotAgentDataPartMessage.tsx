@@ -9,6 +9,7 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
   useGetDashboardQuery,
+  useGetDocumentQuery,
 } from "metabase/api";
 import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
@@ -137,15 +138,31 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
         ? { id: destination.id, ignore_error: true }
         : skipToken,
     );
-  const container =
-    destination.type === "dashboard"
-      ? dashboard && { name: dashboard.name, url: Urls.dashboard(dashboard) }
-      : collection && {
-          name: collection.name,
-          url: Urls.collection(collection),
-        };
+  const { data: document, isLoading: isDocumentLoading } = useGetDocumentQuery(
+    destination.type === "document" ? { id: destination.id } : skipToken,
+  );
+  const container = match(destination)
+    .with({ type: "dashboard" }, () =>
+      dashboard
+        ? { name: dashboard.name, url: Urls.dashboard(dashboard) }
+        : null,
+    )
+    .with({ type: "document" }, () =>
+      document ? { name: document.name, url: Urls.document(document) } : null,
+    )
+    .with({ type: "collection" }, () =>
+      collection
+        ? { name: collection.name, url: Urls.collection(collection) }
+        : null,
+    )
+    .exhaustive();
 
-  if (isCardLoading || isCollectionLoading || isDashboardLoading) {
+  if (
+    isCardLoading ||
+    isCollectionLoading ||
+    isDashboardLoading ||
+    isDocumentLoading
+  ) {
     return <Skeleton h="1rem" w="18rem" data-testid="entity-saved-loading" />;
   }
 

@@ -140,6 +140,23 @@
                            {:object-id id
                             :user-id api/*current-user-id*})))
 
+(defn add-card-to-document!
+  "Insert an embed for the already-created card with `card-id` into `document`'s prose-mirror
+  ast and persist it. `position` is a 0-based index among the document's top-level blocks;
+  `nil` appends the embed at the end and out-of-range indexes are clamped.
+
+  The caller is responsible for write-checking `document` first. Publishes
+  `:event/document-update` and returns the updated document."
+  [document card-id position]
+  (t2/with-transaction [_conn]
+    (t2/update! :model/Document (:id document)
+                (select-keys (prose-mirror/insert-card-embed document card-id position) [:document]))
+    (collections/check-for-remote-sync-update document))
+  (u/prog1 (get-document (:id document))
+    (events/publish-event! :event/document-update
+                           {:object <>
+                            :user-id api/*current-user-id*})))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

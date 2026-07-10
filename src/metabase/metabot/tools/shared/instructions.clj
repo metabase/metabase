@@ -12,6 +12,7 @@ When using results:
 - Check available fields or metadata of promising results before recommending them to ensure they contain needed data
 - **Be proactive with clear matches**: When the top result(s) have names or descriptions that clearly match the user's request, use them to achieve the users goal first, then list alternatives at the end. Don't ask for confirmation when there's an obvious best choice.
 - **Collection metadata**: Results may include collection information (name, description, authority level) that can help you determine whether the result is relevant to the user's query. Use this context to assess relevance.
+- **Save destinations**: Dashboard and document results include `can_write`. Only offer or use destinations where `can_write=true`; `can_write=false` means the user can view but cannot save there.
 - **Present options for ambiguous results**: When search returns multiple plausible options without a clear best match, present them and ask the user to choose
 - Reference results using the metabase protocol link format: [display name](metabase://type/id)
 

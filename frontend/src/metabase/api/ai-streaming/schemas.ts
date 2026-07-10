@@ -74,7 +74,8 @@ export type GeneratedEntity = GeneratedCard;
 
 export type SavedEntityDestination =
   | { type: "collection"; id: number | null }
-  | { type: "dashboard"; id: number };
+  | { type: "dashboard"; id: number }
+  | { type: "document"; id: number };
 
 export type EntitySavedValue = {
   chart_id: string;

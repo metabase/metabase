@@ -24,11 +24,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  (sorted-set "card" "dashboard" "database" "dataset" "metric" "table" "transform"))
+  (sorted-set "card" "dashboard" "database" "dataset" "document" "metric" "table" "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection data_authority curated data_layer] :as result}]
+  [{:keys [verified moderated_status collection data_authority curated data_layer can_write] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
@@ -67,7 +67,15 @@
           (merge {:verified   verified?
                   :official   official?
                   :collection collection-info})
-          (m/assoc-some :curated curated))
+          (m/assoc-some :curated curated
+                        :can_write can_write))
+
+      "document"
+      (-> common-fields
+          (merge {:official   official?
+                  :collection collection-info})
+          (m/assoc-some :curated curated
+                        :can_write can_write))
 
       "transform"
       (merge common-fields
@@ -181,6 +189,31 @@
       (seq transform-ids) (filterv (fn [result]
                                      (or (not= "transform" (:type result))
                                          (contains? readable-ids (:id result))))))))
+
+(defn- validate-and-enrich-documents
+  "Remove stale or unreadable document hits and attach live write permission.
+
+  Search indexes are updated asynchronously, so a deleted document can briefly remain
+  searchable. Destination discovery must validate hits against the live model before the
+  agent attempts to save into them."
+  [results]
+  (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
+        id->document (when (seq document-ids)
+                       (->> (t2/select :model/Document
+                                       :id [:in document-ids]
+                                       :archived false)
+                            (filter mi/can-read?)
+                            (map (juxt :id identity))
+                            (into {})))]
+    (if (seq document-ids)
+      (into []
+            (keep (fn [result]
+                    (if (= "document" (:type result))
+                      (when-let [document (get id->document (:id result))]
+                        (assoc result :can_write (boolean (mi/can-write? document))))
+                      result)))
+            results)
+      results)))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -323,6 +356,7 @@
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-metric-base-tables
+         validate-and-enrich-documents
          remove-unreadable-transforms)))
 
 (defn- table-refs->results
@@ -514,15 +548,15 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "document" "question"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
   search-tool
-  "Find tables, models, metrics, dashboards, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
+  "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
-  (do-search "search" (sorted-set "dashboard" "metric" "model" "question" "table") {} args))
+  (do-search "search" (sorted-set "dashboard" "document" "metric" "model" "question" "table") {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -545,15 +579,20 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc}
+                          "table" "model" "metric" "question" "dashboard" "document"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
            :scope     scope/agent-search}
   nlq-search-tool
-  "Find NLQ-queryable data sources (tables, models, metrics, saved questions) by topic, to build a visualization from."
-  [args :- nlq-search-schema]
-  (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
+  "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
+  [{:keys [entity_types] :as args} :- nlq-search-schema]
+  (let [allowed-types (sorted-set "dashboard" "document" "metric" "model" "question" "table")
+        args          (cond-> args
+                        (not (seq entity_types))
+                        (assoc :entity_types ["metric" "model" "question" "table"]))]
+    (do-search "NLQ search" allowed-types {:profile-id "nlq"} args)))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
