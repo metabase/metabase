@@ -1645,14 +1645,8 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defmulti aggregation-name
-  "Returns the name of an aggregation clause."
-  {:added "0.61.0" :arglists '([driver inner-query ag-clause])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod aggregation-name :sql
-  [_driver inner-query ag-clause]
+(defn- aggregation-name
+  [inner-query ag-clause]
   (or (::add/desired-alias (lib/options ag-clause))
       (:name (lib/options ag-clause))
       (lib/column-name inner-query ag-clause)))
@@ -1661,7 +1655,7 @@
   [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
   (let [honeysql-ags (vec (for [ag   aggregations
                                 :let [ag-expr  (->honeysql driver ag)
-                                      ag-name  (aggregation-name driver inner-query ag)
+                                      ag-name  (aggregation-name inner-query ag)
                                       ag-alias (->honeysql driver (h2x/identifier
                                                                    :field-alias
                                                                    (driver/escape-alias driver ag-name)))]]
