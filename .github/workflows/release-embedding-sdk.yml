@@ -40,10 +40,11 @@ on:
       - enterprise/frontend/src/embedding-sdk-package/package.template.json
 
 concurrency:
-  # We want to ensure only one job is running at a time per branch because
-  # there could be a conflict when updating the readme file. The group is
-  # only ever a real release-branch group for the two triggers that actually
-  # run a release (workflow_dispatch, or a merged sdk-release-trigger PR) -
+  # We want to ensure only one job is running at a time per branch to avoid
+  # two releases racing (e.g. both publishing to npm, or one clobbering the
+  # other's git tag). The group is only ever a real release-branch group for
+  # the two triggers that actually run a release (workflow_dispatch, or a
+  # merged sdk-release-trigger PR) -
   # any other pull_request event gets its own unique, harmless group keyed by
   # run id, since `prepare-release`'s `if:` already no-ops the rest of the
   # jobs for it. This also stops a stray PR-closed event from cancelling an
@@ -396,86 +397,7 @@ jobs:
     permissions:
       id-token: write # OIDC handshake for npm trusted publishing
       actions: read # actions/download-artifact reads the Actions API via GITHUB_TOKEN
-      pull-requests: write # gh pr review --approve step uses GITHUB_TOKEN
-    env:
-      sdk_version: ${{ needs.read-sdk-release-metadata.outputs.sdk_version }}
-      branch: ${{ needs.prepare-release.outputs.branch }}
     steps:
-      # The README references specific version numbers (e.g. download links)
-      # that only matter for stable/beta release branches, not master's
-      # rolling alpha channel - so this whole follow-up PR is skipped on
-      # master (there's nothing left for it to update, since the version
-      # bump itself already happened, and was reviewed, before this run).
-      - name: Check out branch to prepare a README update PR
-        if: needs.prepare-release.outputs.branch != 'master'
-        uses: actions/checkout@v6
-        with:
-          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          ref: ${{ env.branch }}
-
-      - name: Setup git user
-        if: needs.prepare-release.outputs.branch != 'master'
-        run: |
-          git config --global user.email "github-automation@metabase.com"
-          git config --global user.name "Metabase Automation"
-
-      - name: Update readme
-        if: needs.prepare-release.outputs.branch != 'master'
-        run: |
-          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ env.sdk_version }}
-
-      - name: Create a PR updating the readme (using GitHub Metabase Automation account)
-        if: needs.prepare-release.outputs.branch != 'master'
-        id: readme-pr
-        run: |
-          # Nothing to do if the readme was already up to date (e.g. a re-run) -
-          # `git commit` with no diff would otherwise fail the job and fire a
-          # false "release failed" Slack alert. The `skipped` output lets the
-          # follow-up steps below (which assume a PR exists on the current
-          # branch) no-op too, instead of failing when they can't find one.
-          if git diff --quiet; then
-            echo "Readme already up to date, skipping PR."
-            echo "skipped=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          git checkout -b update-sdk-readme-${{ env.sdk_version }}
-
-          COMMIT_MSG="docs(sdk): Update Readme version references to ${{ env.sdk_version }}"
-          PR_TITLE="docs(sdk): Update SDK readme to ${{ env.sdk_version }}"
-          PR_BODY="Update Readme version references to ${{ env.sdk_version }}"
-
-          git commit -a -m "$COMMIT_MSG"
-          git push origin HEAD
-          gh pr create --base "$branch" \
-                       --assignee "${GITHUB_ACTOR}" \
-                       --title "$PR_TITLE" \
-                       --body "$PR_BODY"
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-
-      - name: Edit PR adding useful information (using Metabase bot app)
-        if: needs.prepare-release.outputs.branch != 'master' && steps.readme-pr.outputs.skipped != 'true'
-        # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
-        run: |
-          gh pr edit --add-reviewer albertoperdomo --add-label no-backport
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-
-      - name: Auto approve PR (using GitHub Actions account)
-        if: needs.prepare-release.outputs.branch != 'master' && steps.readme-pr.outputs.skipped != 'true'
-        run: |
-          gh pr review --approve
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        if: needs.prepare-release.outputs.branch != 'master' && steps.readme-pr.outputs.skipped != 'true'
-        run: |
-          gh pr merge --auto --squash
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v8
         with:
