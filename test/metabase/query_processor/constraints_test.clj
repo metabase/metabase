@@ -1,16 +1,21 @@
 (ns ^:mb/driver-tests metabase.query-processor.constraints-test
   "Test for MBQL `:constraints`"
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.constraints-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (defn- mbql-query []
-  (mt/mbql-query venues
-    {:fields   [$name]
-     :order-by [[:asc $id]]}))
+  (let [mp          (mt/metadata-provider)
+        venues      (lib.metadata/table mp (mt/id :venues))
+        venues-name (lib.metadata/field mp (mt/id :venues :name))
+        venues-id   (lib.metadata/field mp (mt/id :venues :id))]
+    (-> (lib/query mp venues)
+        (lib/with-fields [venues-name])
+        (lib/order-by venues-id))))
 
 (defn- native-query []
   (qp.compile/compile (mbql-query)))
@@ -56,7 +61,7 @@
              (mt/rows
               (qp/process-query
                (-> (mbql-query)
-                   (assoc-in [:query :limit] 10)
+                   (lib/limit 10)
                    (assoc :constraints {:max-results 3})))))))))
 
 (deftest ^:parallel override-limit-test-2
@@ -70,5 +75,5 @@
              (mt/rows
               (qp/process-query
                (-> (mbql-query)
-                   (assoc-in [:query :limit] 5)
+                   (lib/limit 5)
                    (assoc :constraints {:max-results 10})))))))))
