@@ -1,4 +1,4 @@
-(ns metabase.indexes-rest.api-test
+(ns ^:synchronous metabase.indexes-rest.api-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver]
@@ -8,6 +8,12 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; `transforms-enabled` is false unless explicitly set off-cloud, and every index endpoint inherits the transform's
+;; permission checks, which fail when transforms are disabled.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+                        (thunk))))
 
 (defn- temp-transform-spec
   "A real query transform over a test-data table. Query transforms are available without a premium feature on

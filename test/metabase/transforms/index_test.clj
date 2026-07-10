@@ -103,9 +103,11 @@
               (transforms.tu/wait-for-table table-name 10000)
               (testing "every managed row is verified succeeded"
                 (is (= #{:succeeded} (t2/select-fn-set :status :model/TableIndex :transform_id tid))))
+              ;; the index endpoints inherit the transform's permission checks, which fail when transforms are disabled
               (testing "GET /index lists them, flagged metabase_managed"
-                (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "index?transform-id=" tid))]
-                  (is (= (count indexes) (count (filter :metabase_managed data)))))))))))))
+                (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+                  (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "index?transform-id=" tid))]
+                    (is (= (count indexes) (count (filter :metabase_managed data))))))))))))))
 
 (deftest ^:synchronized declared-index-failure-fails-the-run-test
   (testing "a bad index declaration fails the whole run instead of being silently skipped"
