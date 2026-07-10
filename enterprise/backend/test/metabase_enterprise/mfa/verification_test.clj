@@ -24,7 +24,8 @@
     (mt/with-temp [:model/User        {user-id :id} {}
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
-                                          :credentials {:secret secret :confirmed_at (t/instant)}}]
+                                          :confirmed_at (t/instant)
+                                          :credentials  {:secret secret}}]
       (let [code (totp/generate-code secret)]
         (is (true? (verification/verify-attempt! user-id code (fresh-jti))))
         (testing "the same code is rejected on replay, even with a fresh challenge token (RFC 6238 SS5.2)"
@@ -37,8 +38,8 @@
     (mt/with-temp [:model/User        {user-id :id} {}
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
+                                          :confirmed_at (t/instant)
                                           :credentials {:secret       secret
-                                                        :confirmed_at (t/instant)
                                                         :used_jtis    [{:jti jti :exp (+ now 600)}]}}]
       (testing "a consumed challenge token cannot mint a second session, even with a fresh valid code"
         (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) jti)))))))
@@ -48,8 +49,8 @@
     (mt/with-temp [:model/User        {user-id :id} {}
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
+                                          :confirmed_at (t/instant)
                                           :credentials {:secret         secret
-                                                        :confirmed_at   (t/instant)
                                                         ;; pretend a code one step ahead was already accepted
                                                         :last_used_step (inc (totp/current-time-step))}}]
       (testing "codes at or before the last accepted step are rejected"
@@ -69,8 +70,8 @@
     (mt/with-temp [:model/User        {user-id :id} {}
                    :model/AuthIdentity {ai-id :id} {:user_id     user-id
                                                     :provider    "totp"
+                                                    :confirmed_at (t/instant)
                                                     :credentials {:secret       secret
-                                                                  :confirmed_at (t/instant)
                                                                   :used_jtis    [{:jti "stale" :exp (- now 10)}]}}]
       (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
       (let [jtis (get-in (t2/select-one :model/AuthIdentity :id ai-id) [:credentials :used_jtis])]
@@ -100,8 +101,8 @@
                                                                         :password   "unused"})]
           (t2/insert! :model/AuthIdentity {:user_id     user-id
                                            :provider    "totp"
+                                           :confirmed_at (t/instant)
                                            :credentials {:secret         secret
-                                                         :confirmed_at   (t/instant)
                                                          :recovery_codes (mapv u.password/hash-bcrypt all-codes)}})
           (let [latch   (java.util.concurrent.CountDownLatch. 1)
                 threads 8
@@ -138,8 +139,8 @@
                                                                         :password   "unused"})]
           (t2/insert! :model/AuthIdentity {:user_id     user-id
                                            :provider    "totp"
-                                           :credentials {:secret       secret
-                                                         :confirmed_at (t/instant)}})
+                                           :confirmed_at (t/instant)
+                                           :credentials  {:secret secret}})
           (let [code    (totp/generate-code secret)
                 latch   (java.util.concurrent.CountDownLatch. 1)
                 threads 8
@@ -173,8 +174,8 @@
         (encryption-test/with-secret-key k1
           (t2/insert! :model/AuthIdentity {:user_id     user-id
                                            :provider    "totp"
-                                           :credentials {:secret       secret
-                                                         :confirmed_at (t/instant)}}))
+                                           :confirmed_at (t/instant)
+                                           :credentials  {:secret secret}}))
         (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
               raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
               plaintext (encryption-test/with-secret-key k1

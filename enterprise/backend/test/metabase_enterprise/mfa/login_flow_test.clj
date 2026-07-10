@@ -41,8 +41,8 @@
          (try
            (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
                                             :provider    "totp"
-                                            :credentials {:secret       ~secret-binding
-                                                          :confirmed_at (t/instant)}})
+                                            :confirmed_at (t/instant)
+                                            :credentials  {:secret ~secret-binding}})
            ~@body
            (finally
              (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
@@ -221,8 +221,8 @@
         (try
           (t2/insert! :model/AuthIdentity {:user_id     user-id
                                            :provider    "totp"
-                                           :credentials {:secret       (totp/generate-secret)
-                                                         :confirmed_at (t/instant)}})
+                                           :confirmed_at (t/instant)
+                                           :credentials  {:secret (totp/generate-secret)}})
           (let [new-password (str "New-" (random-uuid))
                 resp         (mt/client :post 200 "session/reset_password"
                                         {:token    (auth-identity/create-password-reset! user-id)

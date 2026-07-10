@@ -37,8 +37,8 @@
           (try
             (t2/insert! :model/AuthIdentity {:user_id     user-id
                                              :provider    "totp"
-                                             :credentials {:secret       secret
-                                                           :confirmed_at (t/instant)}})
+                                             :confirmed_at (t/instant)
+                                             :credentials  {:secret secret}})
             (testing "an enrolled user's LDAP login gets a challenge, not a session"
               (let [resp (mt/client :post 200 "session" {:username sally-email
                                                          :password sally-directory-password})]

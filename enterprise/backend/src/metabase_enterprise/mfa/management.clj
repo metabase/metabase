@@ -170,25 +170,48 @@
       (events/publish-event! :event/mfa-disabled {:object user})))
   api/generic-204-no-content)
 
+(def ^:private unenrolled-users-page-size 50)
+
+(def ^:private unenrolled-user-where
+  ;; active personal users without a confirmed TOTP enrollment; enrollment state is the
+  ;; auth_identity.confirmed_at COLUMN (queryable), not the encrypted credentials JSON
+  [:and
+   [:= :core_user.is_active true]
+   [:= :core_user.type "personal"]
+   [:not [:exists {:select [1]
+                   :from   [:auth_identity]
+                   :where  [:and
+                            [:= :auth_identity.user_id :core_user.id]
+                            [:= :auth_identity.provider "totp"]
+                            [:not= :auth_identity.confirmed_at nil]]}]]])
+
 (api.macros/defendpoint :get "/admin/overview" :- [:map
                                                    [:encryption_key_set :boolean]
                                                    [:enrolled_count     :int]
-                                                   [:unenrolled_count   :int]]
-  "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and
-  whether the instance encrypts secrets at rest. Counts only; a browsable per-user list belongs to
-  the People page (Phase 2 visibility work) with proper pagination."
-  []
+                                                   [:unenrolled_count   :int]
+                                                   [:unenrolled_users   [:sequential
+                                                                         [:map
+                                                                          [:id    ms/PositiveInt]
+                                                                          [:email ms/NonBlankString]]]]
+                                                   [:limit              :int]
+                                                   [:offset             :int]]
+  "Admin: enrollment overview — how many users have (and haven't) set up a second factor, whether
+  the instance encrypts secrets at rest, and a paginated page of the users without 2FA (the v1
+  compensating control for deferred instance-wide enforcement: admins act on names, not counts)."
+  [_route-params
+   {:keys [offset]} :- [:map [:offset {:default 0} ms/IntGreaterThanOrEqualToZero]]]
   (api/check-superuser)
-  ;; Enrollment state lives inside the encrypted credentials JSON, so filter in memory rather
-  ;; than in SQL. Row count = users who ever started enrollment, so this stays small.
-  (let [enrolled-ids (->> (t2/select [:model/AuthIdentity :id :user_id :credentials] :provider "totp")
-                          (filter #(get-in % [:credentials :confirmed_at]))
-                          (map :user_id)
-                          set)
-        active-ids   (t2/select-pks-set :model/User :is_active true :type "personal")]
-    {:encryption_key_set (encryption/default-encryption-enabled?)
-     :enrolled_count     (count enrolled-ids)
-     :unenrolled_count   (count (remove enrolled-ids active-ids))}))
+  {:encryption_key_set (encryption/default-encryption-enabled?)
+   :enrolled_count     (t2/count :model/AuthIdentity :provider "totp" :confirmed_at [:not= nil])
+   :unenrolled_count   (t2/count :model/User {:where unenrolled-user-where})
+   :unenrolled_users   (map #(select-keys % [:id :email])
+                            (t2/select [:model/User :id :email]
+                                       {:where    unenrolled-user-where
+                                        :order-by [:%lower.email]
+                                        :limit    unenrolled-users-page-size
+                                        :offset   offset}))
+   :limit              unenrolled-users-page-size
+   :offset             offset})
 
 ;;; -------------------------------------------------- Recovery codes --------------------------------------------------
 

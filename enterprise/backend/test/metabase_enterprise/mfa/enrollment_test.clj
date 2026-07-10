@@ -11,7 +11,8 @@
     (mt/with-temp [:model/User        {confirmed-id :id} {}
                    :model/AuthIdentity _ {:user_id     confirmed-id
                                           :provider    "totp"
-                                          :credentials {:secret secret :confirmed_at (t/instant)}}
+                                          :confirmed_at (t/instant)
+                                          :credentials  {:secret secret}}
                    :model/User        {pending-id :id} {}
                    :model/AuthIdentity _ {:user_id     pending-id
                                           :provider    "totp"

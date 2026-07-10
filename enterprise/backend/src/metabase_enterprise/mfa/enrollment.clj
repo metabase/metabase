@@ -76,10 +76,10 @@
           (when-let [step (totp/matching-time-step secret code)]
             (let [codes (recovery-codes/generate-codes)]
               (t2/update! :model/AuthIdentity (:id auth-identity)
-                          {:credentials (assoc (:credentials auth-identity)
-                                               :confirmed_at   (t/instant)
-                                               :last_used_step step
-                                               :recovery_codes (mapv u.password/hash-bcrypt codes))})
+                          {:confirmed_at (t/instant)
+                           :credentials  (assoc (:credentials auth-identity)
+                                                :last_used_step step
+                                                :recovery_codes (mapv u.password/hash-bcrypt codes))})
               codes)))))))
 
 (defn disable!

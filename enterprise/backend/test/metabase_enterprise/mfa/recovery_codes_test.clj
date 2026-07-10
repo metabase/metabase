@@ -27,8 +27,8 @@
      (mt/with-temp [:model/User {~user-id-binding :id} {}
                     :model/AuthIdentity ~'_ {:user_id     ~user-id-binding
                                              :provider    "totp"
-                                             :credentials {:secret       ~secret-binding
-                                                           :confirmed_at (t/instant)}}]
+                                             :confirmed_at (t/instant)
+                                             :credentials  {:secret ~secret-binding}}]
        ~@body)))
 
 (deftest reset-recovery-codes-test

@@ -34,9 +34,13 @@
   (t2/select-one :model/AuthIdentity :user_id user-id :provider provider-name))
 
 (defn confirmed?
-  "Has `auth-identity` been confirmed (i.e. is it a usable second factor)?"
+  "Has `auth-identity` been confirmed (i.e. is it a usable second factor)?
+
+  Confirmation lives in the `confirmed_at` COLUMN (not the encrypted credentials JSON) so
+  enrollment state is queryable in SQL; rows written before the column existed are covered by
+  the BackfillMfaConfirmedAt migration."
   [auth-identity]
-  (some? (get-in auth-identity [:credentials :confirmed_at])))
+  (some? (:confirmed_at auth-identity)))
 
 (defn stored-secret
   "The TOTP secret from `auth-identity`'s credentials, or nil."

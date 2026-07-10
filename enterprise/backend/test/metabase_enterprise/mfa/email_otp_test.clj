@@ -32,7 +32,8 @@
     (mt/with-temp [:model/User {user-id :id} {}
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
-                                          :credentials {:secret secret :confirmed_at (t/instant)}}]
+                                          :confirmed_at (t/instant)
+                                          :credentials  {:secret secret}}]
       (let [code (verification/set-email-otp! user-id)]
         (is (re-matches #"\d{6}" code))
         (is (true? (verification/verify-attempt! user-id code (fresh-jti))))
@@ -44,7 +45,8 @@
     (mt/with-temp [:model/User {user-id :id} {}
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
-                                          :credentials {:secret secret :confirmed_at (t/instant)}}]
+                                          :confirmed_at (t/instant)
+                                          :credentials  {:secret secret}}]
       (let [email-code (verification/set-email-otp! user-id)]
         (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
         (testing "a successful TOTP verification kills the pending emailed code for its whole TTL"
@@ -62,7 +64,8 @@
     (mt/with-temp [:model/User {user-id :id} {}
                    :model/AuthIdentity {ai-id :id} {:user_id     user-id
                                                     :provider    "totp"
-                                                    :credentials {:secret secret :confirmed_at (t/instant)}}]
+                                                    :confirmed_at (t/instant)
+                                                    :credentials  {:secret secret}}]
       (let [code (verification/set-email-otp! user-id)]
         ;; back-date the expiry
         (let [ai (t2/select-one :model/AuthIdentity :id ai-id)]
@@ -78,7 +81,8 @@
             sent   (atom nil)]
         (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
                                          :provider    "totp"
-                                         :credentials {:secret secret :confirmed_at (t/instant)}})
+                                         :confirmed_at (t/instant)
+                                         :credentials  {:secret secret}})
         (try
           (mt/with-dynamic-fn-redefs [channel.settings/email-configured?    (constantly true)
                                       channel.email/send-message-or-throw! (fn [msg] (reset! sent msg) msg)]
@@ -106,7 +110,8 @@
       (let [secret (totp/generate-secret)]
         (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
                                          :provider    "totp"
-                                         :credentials {:secret secret :confirmed_at (t/instant)}})
+                                         :confirmed_at (t/instant)
+                                         :credentials  {:secret secret}})
         (try
           (mt/with-dynamic-fn-redefs [channel.settings/email-configured?    (constantly true)
                                       channel.email/send-message-or-throw! (fn [& _]
@@ -123,7 +128,8 @@
       (let [secret (totp/generate-secret)]
         (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
                                          :provider    "totp"
-                                         :credentials {:secret secret :confirmed_at (t/instant)}})
+                                         :confirmed_at (t/instant)
+                                         :credentials  {:secret secret}})
         (try
           (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)]
             (let [challenge (mt/client :post 200 "session" (mt/user->credentials :rasta))]

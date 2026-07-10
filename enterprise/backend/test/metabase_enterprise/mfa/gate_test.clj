@@ -11,8 +11,8 @@
   (mt/with-temp [:model/User        {user-id :id} {}
                  :model/AuthIdentity _ {:user_id     user-id
                                         :provider    "totp"
-                                        :credentials {:secret       (totp/generate-secret)
-                                                      :confirmed_at (t/instant)}}]
+                                        :confirmed_at (t/instant)
+                                        :credentials  {:secret (totp/generate-secret)}}]
     (f user-id)))
 
 (deftest gate-is-no-op-when-disabled-test
