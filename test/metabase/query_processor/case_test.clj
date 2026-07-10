@@ -72,12 +72,13 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Can we use segments in case"
       (let [mp           (mt/metadata-provider)
+            venues       (lib.metadata/table mp (mt/id :venues))
             venues-price (lib.metadata/field mp (mt/id :venues :price))
             mock-mp      (lib.tu/mock-metadata-provider
                           mp
                           {:segments [{:id         1
                                        :table-id   (mt/id :venues)
-                                       :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                       :definition (-> (lib/query mp venues)
                                                        (lib/filter (lib/< venues-price 4)))}]})]
         (is (= 179.0
                (test-case mock-mp (lib/sum (lib/case [[(lib/segment 1) venues-price]])))))))))

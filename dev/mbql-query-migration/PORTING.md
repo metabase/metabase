@@ -45,7 +45,9 @@ and every hard case has a decided policy.
 Both of these are real tests in
 `test/metabase/query_processor/cumulative_aggregation_test.clj` on this branch.
 
-**OLD** (`cumulative_aggregation_test.clj:33-37` area):
+**OLD** (`cumulative_aggregation_test.clj:33-37` as of commit `05bf1d32`; this test
+was itself ported in wave 1b — see `cumulative-sum-test-2` in the current file for
+its Lib form):
 
 ```clojure
 (deftest ^:parallel cumulative-sum-test-2
@@ -59,7 +61,7 @@ Both of these are real tests in
                  (mt/formatted-rows [int int] (qp/process-query query)))))))))
 ```
 
-**NEW** (`cumulative_aggregation_test.clj:99-117` — the canonical example):
+**NEW** (`cumulative_aggregation_test.clj:113-132` — the canonical example):
 
 ```clojure
 (deftest ^:parallel cumulative-sum-with-bucketed-breakout-test
@@ -149,6 +151,12 @@ metadata (`src/metabase/lib_be/metadata/jvm.clj:567-576`). If the test does
 `mp` and build the query *after* those mutations. If mutations happen *between*
 construction and execution, this file is a manual-review case — flag it (§4.7).
 
+Why per-call `(mt/metadata-provider)` after a mutation is safe (do not re-derive
+per file): `application-database-metadata-provider` returns a brand-new, uncached
+provider on every call outside a `*metadata-provider-cache*` binding
+(`src/metabase/lib_be/metadata/jvm.clj:610-621`), so a helper invoked once before
+and once after a `tu/with-temp-vals-in-db` mutation sees fresh metadata each time.
+
 ### Field & table refs (the sigil table)
 
 **R6 — `$field` → field metadata by ID.**
@@ -167,6 +175,12 @@ builder — no explicit `:field` clause needed. Bind each field once at the top 
 work because `mt/id` takes nested field names variadically
 (`test/metabase/test/data.clj:245-246`) and nested fields are real Field rows, so
 the ID lookup resolves.
+
+Redundantly-wrapped sigils like `[:field $category_id nil]` (a `:field` clause
+whose "id" is itself a `:field` clause) are equivalent to the bare sigil: legacy
+normalization flattens `[:field [:field id opts] opts2]` into one clause with the
+options merged (`src/metabase/legacy_mbql/schema.cljc:393-401`). Port them as a
+plain R6 field lookup (plus R23/R24 builders for any merged options).
 
 **R7 — `$$table` → table metadata (or raw `(mt/id :table)` in raw contexts).**
 
@@ -481,6 +495,14 @@ keys the old clause set:
 (lib/update-options (lib/sum venues-price) assoc :name "sum_2")
 ```
 
+Note: not every legacy options map arrives via an `:aggregation-options` wrapper.
+The legacy `[:offset opts expr n]` clause carries an MBQL-5-style options map
+inline as its second element (legacy→5 conversion keeps it verbatim,
+`src/metabase/lib/convert.cljc:436-440`). The same `lib/update-options` recipe
+applies directly to the constructed `(lib/offset ...)` clause — there is no
+wrapper to look for. A hard-coded `:lib/uuid` inside such a legacy opts map is
+non-semantic and may become a fresh random uuid in the port.
+
 **R20 — Custom aggregation expressions** compose from the arithmetic ops (R32):
 `[:aggregation-options [:/ [:sum $a] [:sum $b]] ...]` →
 `(lib// (lib/sum a) (lib/sum b))`.
@@ -500,6 +522,16 @@ find the aggregation column via `lib/orderable-columns` +
 ;; NEW:
 (-> q (lib/breakout venues-price) (lib/breakout venues-category-id))
 ```
+
+**Duplicate-breakout trap:** `lib/breakout` silently DROPS a duplicate breakout
+(`src/metabase/lib/breakout.cljc:48-58`, via `lib.schema.util/opts-distinct-key`).
+Differing `:temporal-unit`s count as distinct (only namespaced keys,
+`:base-type`/`:effective-type`, and `:temporal-unit :default` are stripped from
+the distinct key), so month/year/day breakouts of one field are safe — but an old
+test with a genuinely duplicate breakout entry, or a `!default.f` breakout
+alongside a bare `f` breakout of the same field, would silently lose a breakout in
+a "mechanical" port with no builder error. Such tests are §4.13 material — keep
+legacy + TODO.
 
 **R23 — `!unit.field` / `{:temporal-unit u}` → `lib/with-temporal-bucket`.**
 
@@ -522,8 +554,9 @@ join-condition columns. `!default.f` → `(lib/with-temporal-bucket f :default)`
 ```
 
 Precedent for both literal maps and `lib/available-binning-strategies` lookup:
-`test/metabase/query_processor/binning_test.clj:19-26`,
-`test/metabase/query_processor/expression_aggregations_test.clj:412`.
+`test/metabase/query_processor/binning_test.clj` (ported in wave 1a, commit
+`3823ec6e` — line numbers shift as the file evolves; look for the `lib/with-binning`
+calls), `test/metabase/query_processor/expression_aggregations_test.clj:412`.
 
 ### Order-by
 
@@ -537,6 +570,14 @@ Precedent for both literal maps and `lib/available-binning-strategies` lookup:
 
 Write the explicit `:asc` only when it aids symmetry with a neighboring `:desc`;
 both forms exist in converted files.
+
+**Duplicate-order-by trap:** `lib/order-by` silently drops a duplicate order-by
+(direction-insensitive; `src/metabase/lib/order_by.cljc:104-113`, QUE-1604) and
+the MBQL-5 `::order-by/order-bys` schema requires distinct clauses
+(`src/metabase/lib/schema/order_by.cljc:25-28`). A test whose legacy query
+deliberately contains duplicate order-bys (to exercise the normalization
+middleware's dedup) would compile and PASS after a mechanical port while no longer
+testing anything — §4.13 material, keep legacy + TODO.
 
 **R26 — Order-by on an aggregation:** `[[:asc [:aggregation 0]]]` →
 `(lib/order-by q (lib/aggregation-ref q 0))` or the `orderable-columns` lookup (R21).
@@ -558,6 +599,16 @@ identically to both idioms; row order is preserved for free.
 Elements may be column metadata or refs. For single-column add/remove there are
 `lib/add-field` / `lib/remove-field` (both take an explicit stage number, e.g.
 `(lib/remove-field q -1 col)` — precedent `remapping_test.clj:497-498`).
+
+**Expressions interaction (R28×R33):** `lib/with-fields` auto-appends refs for any
+stage expressions NOT matched among the refs you pass
+(`src/metabase/lib/field.cljc:536-545`). When the old `:fields` list already
+included every expression ref (the common case), the port is a no-op — but if the
+legacy `:fields` deliberately EXCLUDED an expression column, `lib/with-fields`
+silently adds it back: a result-shape change no assertion may catch. On a stage
+with `:expressions`, diff the ported stage's `:fields` against the legacy list
+before declaring the test ported; if the old list excluded an expression, treat as
+a manual case.
 
 **R29 — `:limit n` → `(lib/limit q n)`.**
 
@@ -601,13 +652,57 @@ is marked Deprecated ("test helper that crept into the public API") but is the
 standard idiom in converted tests (`expressions_test.clj:1237-1251`). Alternative:
 find the expression column in `lib/expressionable-columns` / `lib/visible-columns`.
 
-**R34 — Clause with no builder → `lib/expression-clause` escape hatch.**
+**R34 — Clause with no (suitable) builder → `lib/expression-clause` escape hatch.**
 
 ```clojure
 ;; e.g. (lib/expression-clause :datetime-diff [orders-created joined-created :hour] nil)
 ```
 
-Precedent: `explicit_joins_test.clj:1548-1551`.
+Precedent: `explicit_joins_test.clj:1548-1551`. "No suitable builder" includes
+**builder-exists-but-wrong-arity**: several `defop`s have FIXED arities stricter
+than their MBQL-5 schemas — e.g. `lib/substring` is `defop [s start end]`
+(`src/metabase/lib/expression.cljc:376`) while the schema's `length` arg is
+optional (`src/metabase/lib/schema/expression/string.cljc:35-38`), so a two-arg
+legacy `[:substring s start]` needs the escape hatch, not the builder.
+
+**R34a — the `:if` clause.** There is NO `lib/if` builder — `:if` is an alias tag
+of `:case` (`src/metabase/lib/schema/expression/conditional.cljc:79,267`). The
+decided port is `lib/expression-clause` with **FLAT** args:
+
+```clojure
+;; OLD: [:if pred1 e1 pred2 e2 fallback]   (also {:default fallback} spelling)
+;; NEW:
+(lib/expression-clause :if [pred1 e1 pred2 e2 fallback] nil)
+```
+
+This works because `expression-clause` routes through `group-case-or-if-args`
+(`src/metabase/lib/fe_util.cljc:205-223`), which regroups an odd-count flat arg
+list into `[[pred expr] ...]` pairs plus a trailing fallback — exactly matching
+the legacy `{:default}` conversion (`src/metabase/lib/convert.cljc:381-387,
+516-523`). Do NOT hand-nest the pairs yourself: `group-case-or-if-args` treats a
+passed pairs-vector as ONE even-count arg list and skips regrouping, so
+hand-nested args come out double-nested. The flat spelling is the only correct one.
+
+**R34b — runtime-dynamic operator** (a helper parameterized on the op keyword,
+e.g. `(time-query :between ...)` — R13 assumes a static constructor). Decided port:
+
+```clojure
+(lib/expression-clause op-keyword (into [col] args) nil)
+```
+
+Verified chain: `lib/expression-clause` is re-exported from `lib.fe-util`
+(`src/metabase/lib/core.cljc:1451`); its `:mbql/expression-parts` method
+(`fe_util.cljc:243-248`) builds `[op {} & args]`, mapping args through
+`lib.common/->op-arg` (column metadata → `lib.ref/ref`, i.e. an ID ref matching
+the old `$` sigil; literals pass through), then `ensure-uuid` + normalize;
+`fix-expression-clause` only rewrites `:case`/`:if`. Caveats:
+- `lib/expression-clause` does NOT auto-convert `:=` with >2 args to `:in` — that
+  is the separate, un-exported `expression-clause-with-in` (`fe_util.cljc:268-278`)
+  — so R13's arg-for-arg parity is preserved.
+- `lib.filter/filter-clause` (`src/metabase/lib/filter.cljc:548-558`) builds the
+  identical clause from a runtime operator, but is NOT re-exported from
+  `metabase.lib.core`; `lib/expression-clause` remains the correct lib-aliased
+  choice.
 
 ### Joins
 
@@ -720,7 +815,8 @@ layered over `(mt/metadata-provider)`** (keeps tests `^:parallel`):
   ...)
 ```
 
-Precedent `binning_test.clj:42-73`.
+Precedent `binning_test.clj` (the mock source-card test; ported in wave 1a commit
+`3823ec6e`, where it now also demonstrates the `mp` + `mock-mp` layered naming).
 
 - **When the BASE provider is still needed too** (e.g. to build a segment
   `:definition` or a mock metric card's `:dataset-query` before the mock exists),
@@ -730,6 +826,16 @@ Precedent `binning_test.clj:42-73`.
 - **Extra keys on old mock card/segment definitions (`:database-id`, `:name`, …)
   are kept verbatim** — behavior preservation applies to fixtures too; do not prune
   keys just because the provider tolerates their absence.
+- **snake_case keys on mock fixtures are kept verbatim too** (e.g. an old mock
+  metric card's `:dataset_query`), even when its value becomes an MBQL-5 lib
+  query: `mock-metadata-provider` coerces + normalizes every fixture map via
+  `lib.normalize`
+  (`test/metabase/lib/test_util/metadata_providers/mock.cljc:111-115`), and
+  `normalize-card` kebab-cases keys (`src/metabase/lib/schema/metadata.cljc:637-643`,
+  `schema/common.cljc:65-69`); its `:database-id` backfill reads
+  `[:dataset-query :database]`, which a lib query also carries. Do NOT rename the
+  key to `:dataset-query` just because this rule's examples spell it kebab-case —
+  that would violate keep-verbatim.
 - This rule covers `:type :metric` cards as well: their `:dataset-query` may be a
   lib query (R17b, precedent `metrics_test.clj:1128-1141`).
 
@@ -854,9 +960,48 @@ Notes:
   `qp/process-query` themselves, keep exactly what the old test had — do not add
   the wrapper there (§8). If a test **asserts on** that
   `{:query ...}` ex-data, it is a manual case — do not port mechanically (§4).
+  If a test asserts on the exception **class or message** (`thrown?` /
+  `thrown-with-msg?` around the run), see the §4.6 extension — the old macro
+  rewrapped everything as `ExceptionInfo`, so the port needs per-driver
+  verification before it is mechanical.
+- **Wrapper scope**: wrap the smallest form containing the `process-query` call,
+  and put dependent assertions INSIDE the wrapper so failures carry the context.
+  For the bind-result shape — old
+  `(let [result (mt/run-mbql-query ...)] (is ...) (is ...))` — the canonical port
+  nests the `let` inside the wrapper (precedent
+  `cumulative_aggregation_test.clj:19-33`, `cumulative-sum-test`):
+
+  ```clojure
+  (mt/with-native-query-testing-context query
+    (let [result (qp/process-query query)]
+      (is (=? [...] (-> result :data :cols)))
+      (is (= [...] (mt/formatted-rows [int] result)))))
+  ```
+- **Value-returning position is safe**: `do-with-native-query-testing-context`
+  returns `(thunk)` through `clojure.test/testing`, which returns its body value
+  (`test/metabase/driver/sql/query_processor_test_util.clj:145-154`) — so a
+  converted helper may return `ffirst`/rows through the wrapper. The context
+  string itself is built in an exception-guarded delay realized only on failure,
+  so the wrapper is lazy and behavior-neutral on the success path.
+- **Shared execution helpers** (a `defn-`/`letfn` helper running the query for
+  many call sites): the wrapper goes INSIDE the helper, around the
+  `process-query` call — see R57. This holds even when the helper ALSO serves
+  callers that were converted `mbql-query`+`process-query` sites (where the rule
+  above says "do not add the wrapper"): **the mandatory rule wins for shared
+  helpers** — one body cannot satisfy both, and the wrapper only enriches failure
+  output (precedent: `case_test.clj` `test-case`, wave 1a). Corollary: assertions
+  evaluated OUTSIDE the helper (e.g. `(is (= [] (mt/rows (run-query))))`) do not
+  carry the context — the testing scope pops when the helper returns. That
+  matches old behavior (`run-mbql-query` never provided this context), so it is
+  acceptable; precedent `share_test.clj` `empty-results-test` (wave 1a).
 - `qp` should be `[metabase.query-processor.test :as qp]` (the test facade;
   `process-query` re-exported at `test/metabase/query_processor/test.clj:24`); some
   files already alias `metabase.query-processor` — keep whichever the file has.
+  **`mt/process-query` is also a sanctioned facade**: `metabase.test` requires
+  `metabase.query-processor.test` (`test/metabase/test.clj:24`) and re-exports
+  `process-query` (line 193) — the same fn `run-mbql-query*` called. A file
+  already using `mt/process-query` keeps it for converted sites; do not add a new
+  `qp` require just for this.
 
 ### Top-level keys, middleware, parameters
 
@@ -893,6 +1038,11 @@ For inner-query keys with no builder, use the stage path directly —
 single-stage query; use `[:stages -1 ...]` semantics via `lib.util/update-query-stage`
 or index the last stage explicitly for multi-stage queries). Grep each file for
 `[:query` before declaring it ported.
+
+When the surgery target is a **helper-built** query (e.g.
+`(assoc-in (helper-query) [:query :limit] 0)`), the lib rewrite
+(`(lib/limit (helper-query) 0)`) goes at the CALL SITE, not inside the helper —
+other callers may not want the modification (R57).
 
 **R53 — `:parameters`:** `(assoc lib-query :parameters [...])`, keeping the
 parameter maps **byte-for-byte** — parameter `:target`s
@@ -931,8 +1081,15 @@ still used; delete the whole attr-map entry when the file reaches zero usages.**
 ;; fully converted: delete the header entirely
 ```
 
-Precedent: `cumulative_aggregation_test.clj:2-3` (both),
-`binning_test.clj:2` (one), `drill_thru_e2e_test.clj:1-13` (none).
+Precedent: `count_where_test.clj:2` (one entry — `run-mbql-query` kept for the
+TODO-fenced normalization site), `drill_thru_e2e_test.clj:1-13` (none);
+`binning_test.clj` had one entry pre-wave but is now fully header-free (wave 1a,
+commit `3823ec6e`).
+
+**Expect stale entries — grep, don't trust the header as an inventory of sites.**
+Files in the wild list vars with ZERO body usages (e.g. a header naming
+`mbql-query` when only `run-mbql-query` call sites exist). The zero-usages rule
+applies: prune stale entries without hesitation, after grepping the body.
 `mt/query` and `mt/native-query` are the same deprecated family — convert their
 call sites in the same pass **where they are query-construction sites**. Exception:
 call sites that build an EXPECTED value (§5) are NOT converted in this pass — for
@@ -953,6 +1110,44 @@ when a construct has no clean builder path and note it with
 `;; TODO(mbql5-migration)`. `lib/query-from-legacy-inner-query`
 (`query.cljc:321`) exists for inner maps but is not the preferred target.
 
+### Shared helper functions
+
+**R57 — Shared helpers (`defn-` / `letfn`) follow the same rules as deftest
+bodies, with these decided extensions:**
+
+- **Style/scope**: a helper that builds (and possibly runs) a query gets the same
+  `let` shape as a deftest body — `mp` first, table, fields, `query` (§8). Keep
+  the helper (§1's no-restructuring rule); do not inline it into its callers. The
+  helper must construct `mp` **inside its own body at call time** — never at load
+  time, and never accept a pre-built `mp` from an outer scope that could straddle
+  an `mt/dataset` boundary or an R5 mutation. R4/R5 then hold via each CALLER's
+  dynamic scope — reviewers must check every caller (the helper body alone cannot
+  show compliance).
+- **Two `mp`s across deftest + helper are fine**: a deftest may bind its own `mp`
+  to build a clause argument while the helper binds another `mp` to build the
+  query. Column metadata is a plain map; the ref built from it is identical. §8's
+  one-`let`-per-deftest wording does not forbid this.
+- **R51 wrapper**: for helpers that run converted `run-mbql-query` sites, the
+  `mt/with-native-query-testing-context` wrapper goes inside the helper around
+  the `process-query` call, even when other callers were
+  `mbql-query`+`process-query` sites (mandatory rule wins — see R51).
+- **Helpers whose PARAMETERS are legacy clause fragments** (e.g.
+  `(test-math-expression [:round 0.7])`, a helper splicing the vector into its
+  query): port the helper's contract to accept **lib clauses**, and convert
+  **every call site atomically in the same edit** — a missed caller would pass a
+  legacy vector into lib builders. This is behavior-preserving because the old
+  macro passed plain vectors through as runtime values that normalized to the
+  same MBQL-5 shapes the lib constructors now build. Audit ALL callers before
+  starting (broader than the per-deftest workflow of §6).
+- **One caller must stay legacy after the helper converts**: inline that call as
+  an explicit `mt/run-mbql-query` (or `mt/mbql-query`) map reproducing the
+  helper's query shape, with the usual kondo entry + TODO. `nil`-valued optional
+  keys the helper passed (e.g. `:filter nil`) may be dropped — legacy
+  normalization strips them, so argue equivalence from normalization, not byte
+  identity. Precedent: `string_extracts_test.clj` (wave 1b).
+- **Post-construction surgery on a helper-built query** is rewritten at the call
+  site, not inside the helper (R52b).
+
 ---
 
 ## 4. Hard cases & decisions
@@ -969,8 +1164,9 @@ IDs and `{}` option maps (`optimize_temporal_filters_test.clj:493-502`); (b)
 `lib.tu.macros/mbql-5-query` for expected values
 (`test/metabase/lib/test_util/macros.clj:71-89`); (c) convert the actual with
 `lib/->legacy-MBQL` and keep the legacy expected literal
-(`nested_queries_test.clj`, `binning_test.clj`, `breakout_test.clj`). Never expect
-stable uuids.
+(`nested_queries_test.clj`, `breakout_test.clj`; do NOT cite `binning_test.clj`
+for this — its only `->legacy-MBQL` use converts a query at a helper boundary,
+R48-style, not an assertion actual). Never expect stable uuids.
 
 **Technique (b) is ONLY for the pure-unit files of §4.3** (those already on
 `meta/metadata-provider`). The macro is hard-wired to the STATIC test metadata: it
@@ -995,6 +1191,12 @@ gets `mock-mp`. Unmocked lookups delegate to the base, so table/field metadata
 looked up through `mp` and `mock-mp` is identical for unmocked entities — reuse the
 `mp`-sourced field/table bindings inside the query rather than re-looking them up
 through `mock-mp`.
+
+(Both spellings are behavior-identical precisely because unmocked lookups
+delegate: the wave-0 pilot files inline the table lookup through `mock-mp` while
+this rule says to reuse the `mp`-sourced binding. The `mp`-sourced-binding form is
+the preferred style for NEW ports; do not flag the pilot's inline-through-`mock-mp`
+shape as a defect, and do not rewrite already-ported files either way.)
 
 **4.3 Files mixing `mt/mbql-query` with `meta/metadata-provider` mocks (pure-unit
 middleware tests).** **Policy:** port to `lib.tu.macros/mbql-5-query` or
@@ -1024,6 +1226,23 @@ without executing them. Files with composed sigils (`&alias.*table.field`,
 manual case; either keep `mt/run-mbql-query` for that test (with kondo exclusion +
 TODO) or rewrite the assertion knowingly in the manual pass. Do not silently drop
 the assertion.
+
+**4.6b Exception-CLASS/message assertions around a converted run site.**
+`run-mbql-query*` rewrapped ANY `Throwable` as `clojure.lang.ExceptionInfo`
+carrying `(ex-message e)` (`test/metabase/test/data.clj:198-205`), so an old
+`(is (thrown-with-msg? ExceptionInfo re (mt/run-mbql-query ...)))` passed no
+matter what the QP threw. A converted site newly depends on `qp/process-query`
+ITSELF throwing an `ExceptionInfo` whose message matches. **Policy:** such a port
+is mechanical only after verifying, for **every driver that reaches the throwing
+branch** in that test, that the QP path throws `ExceptionInfo` with a matching
+outer message; otherwise keep legacy + TODO. Verified once (do not re-derive for
+sql-jdbc drivers): the execute path wraps driver exceptions as
+`ex-info "Error executing query: {0}"` embedding the original driver message
+(`src/metabase/driver/sql_jdbc/execute.clj:848-857`), and the reduce path wraps as
+`"Error reducing result rows: {0}"`
+(`src/metabase/query_processor/pipeline.clj:92`) — so a `re-find`-style message
+regex still matches for sql-jdbc. Non-sql-jdbc drivers (Mongo, Druid, …) must be
+checked per file. Precedent: `share_test.clj` (wave 1a, `:vertica`-only branch).
 
 **4.7 Metadata mutations between build and run** (`t2/update!` on Field/Table/Card
 after the query is built). The cached provider serves stale metadata. **Policy:**
@@ -1065,12 +1284,36 @@ isolation, keep the legacy map (kondo exclusion + `TODO(mbql5-migration)`).
 Driver test directories (`modules/drivers/*/test`) are in scope for the migration —
 run them with the relevant `--drivers=` per §6 step 8.
 
+**4.13 Intentionally-REDUNDANT clauses that lib builders normalize away at
+construction.** Distinct from 4.4 (intentionally-invalid): the legacy query is
+valid, but the MBQL-5 builder silently drops/merges the redundancy — duplicate
+order-bys (`lib/order-by` dedups, R25 note), duplicate breakouts (`lib/breakout`
+drops them, R22 note), and any similar no-op clause the test exists to prove the
+legacy normalization middleware handles. A mechanical port compiles AND passes
+while no longer testing anything — invisible to the parse gate and to
+before/after test runs alike. **Policy:** keep legacy + 
+`;; TODO(mbql5-migration): intentionally-redundant clause, normalized away by lib
+builders`. Precedent: `order_by_test.clj:39` (wave 1b).
+
+**4.14 Legacy-only `:decode/normalize` VALUE coercions.** The legacy schema
+coerces some literal values that the MBQL-5 schema passes through unchanged —
+e.g. `:substring`'s start arg: non-positive coerced to 1 via
+`::IntGreaterThanZeroOrNumericExpression`
+(`src/metabase/legacy_mbql/schema.cljc:589-613`), while the MBQL-5 schema has no
+coercion (`src/metabase/lib/schema/expression/string.cljc:35-38`). The value is
+schema-VALID in MBQL 5, so nothing fails — behavior silently changes (neither 4.4
+nor §5 applies). **Policy:** an assertion exercising a legacy-schema value
+coercion absent from MBQL 5 stays on the old macro + TODO. Precedent:
+`string_extracts_test.clj:62-66` (wave 1b, the `substring` 0-start site).
+
 **Triage summary:** results-only tests (rows/cols assertions) = mechanical;
 query-shape-assertion tests = manual batch (4.1/4.3); mock-provider tests = unify
 build/run provider (4.2); metadata-mutating tests = reorder or flag (4.7);
 `*`-sigil tests = port then execute-verify (4.5); negative/error tests = skip (4.4);
 parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep legacy
-(4.12); GTAP fixtures = R54a; serialized-form fixtures = manual (§5).
+(4.12); exception-class assertions = per-driver verify or keep legacy (4.6b);
+intentionally-redundant clauses = keep legacy (4.13); legacy-only value coercions =
+keep legacy (4.14); GTAP fixtures = R54a; serialized-form fixtures = manual (§5).
 
 ---
 
@@ -1115,12 +1358,26 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
 - **Legacy maps passed to helpers that require legacy MBQL** where no converted
   precedent exists yet: keep, wrap with `lib/->legacy-MBQL` only at a boundary you
   can verify by running the test.
+- **Hand-rolled legacy-shaped maps that never used a deprecated macro** — e.g. a
+  literal outer native map
+  `{:database (mt/id), :type :native, :native (qp.compile/compile lib-query),
+  :constraints {...}}` fed to `qp/process-query`, or a raw legacy map passed to
+  `qp/userland-query-with-default-constraints`. Only `metabase.test.data` macro
+  call sites are migration targets; leave these byte-for-byte verbatim — do not
+  "helpfully" convert them to `lib/native-query`/`lib/query`. Precedent:
+  `constraints_test.clj` (wave 1a).
 - Anything in `src/` (production code).
 
 ---
 
 ## 6. Per-file workflow checklist
 
+0. **Check the file isn't already ported.** Wave manifests have double-counted
+   files across waves (e.g. `binning_test.clj` was assigned to wave 1 after being
+   ported in wave 1a). Run `git log --oneline -- <file>` and diff against the
+   pre-wave commit before starting; orchestrators should deduplicate work queues
+   against `git log <pre-wave-sha>..HEAD --name-only` before spawning implementers,
+   and reviewers should diff against the pre-wave commit, not HEAD.
 1. **Baseline**: run `./bin/test-agent :only '[<ns>]'` on the untouched file. Record
    test count, assertion count, failures (there may be pre-existing failures — note
    them; they are not yours to fix or to regress).
@@ -1144,7 +1401,11 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
    became unused.
 7. **Prune the kondo header** per R55 — delete it only when the file has zero
    usages of ALL of `mbql-query`, `run-mbql-query`, `query`, `native-query`
-   (from `metabase.test.data`).
+   (from `metabase.test.data`). When grepping for remaining sites, note that
+   `mt/with-native-query-testing-context` — the very wrapper R51 mandates —
+   matches a naive `native-query` grep; exclude it (e.g.
+   `grep -nE 'mbql-query|mt/query|mt/native-query|data/native-query'`) so R51
+   wrappers aren't mistaken for un-ported macro sites.
 8. **Run** `./bin/test-agent :only '[<ns>]'` again. Compare against the baseline:
    same tests run, same (or more) assertions, no new failures. Local runs are
    **H2-only** by default — for files under `mt/test-drivers`, also run with a
@@ -1188,6 +1449,12 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
 - For everything else, spot-check compiled SQL parity when in doubt: wrap both old
   and new queries in `mt/with-native-query-testing-context` locally, or diff
   `lib/->legacy-MBQL` output as above.
+- **Silent-normalization check**: whenever the OLD query contains repeated or
+  no-op clauses (duplicate order-bys/breakouts, redundant `:field` nesting),
+  check whether the lib builder silently alters the clause list at construction
+  (§4.13, R22/R25 notes). This class is invisible to the parse gate AND to
+  before/after test runs — the force-ported test still passes while testing
+  nothing.
 - **Static fallback when JVM tests cannot run** (network-restricted environments):
   verification = a parse gate (load the file with bare `clojure.main`), plus
   hand-tracing each builder expansion against the lib source and its unit tests
@@ -1195,6 +1462,15 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
   R16), plus the `lib/->legacy-MBQL` shape reasoning above — and the full suite
   runs later in CI. This static tracing is exactly what caught the original R17b
   defect; do not skip it just because tests can't execute locally.
+
+  Parse-gate caveat: a bare `clojure.main` reader CANNOT read auto-resolved
+  aliased keywords (`::driver/driver`, common in
+  `defmethod driver/database-supports?` scaffolding in QP test files) — the
+  UNEDITED file fails the gate too, which is easy to misread as port-introduced
+  breakage. Fix: bind a permissive `clojure.lang.LispReader$Resolver` as
+  `*reader-resolver*` in the gate script (scratchpad-only tooling, not a repo
+  file), and always confirm the pre-edit file passes the same gate with the same
+  top-level form count before blaming the port.
 
 ---
 
@@ -1209,6 +1485,10 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
   bindings named after the column: `orders-created-at`, `venues-price`,
   `products-id`. Table bindings named after the table: `orders`, `venues`. The
   built query is `query` (or `q1`/`q2` when there are several).
+  Table-prefixed vs bare field-binding names (`orders-total` vs `total`): when the
+  file already contains ported tests, **match the file's dominant existing style**
+  — that wins over the prefixed examples above; prefixed is the default for files
+  with no precedent (and mandatory when two tables have same-named columns).
 - **One `let` per deftest**, binding in order: `mp` → table metadata → field
   metadata → `query`. When a `mock-mp` exists, it slots in after the table/field
   bindings it consumes and directly before `query`:
@@ -1216,6 +1496,23 @@ parameters = verbatim (4.8); driver-internal compile fns = qp.compile or keep le
   `mock-mp`, reusing the `mp`-sourced bindings — see §4.2). Bind `results` once
   when asserting on both `mt/cols` and
   `mt/formatted-rows` (precedent `order_by_test.clj:141-164`).
+  For multi-table tests, grouping bindings by table (orders table + orders
+  fields, then products table + products field) is acceptable — the order rule
+  does not require all tables before all fields.
+  The same `let` shape applies to shared helper `defn-`s that build queries
+  outside any deftest — see R57.
+- **Builder-call order mirrors the old map's literal key order** (e.g. the old
+  map wrote `:aggregation` before `:breakout` → thread `lib/aggregate` before
+  `lib/breakout`). Stage keys are an unordered map so this is purely cosmetic,
+  but it keeps wave files uniform, makes diffs reviewable, and stops reviewers
+  flagging it inconsistently.
+- **Partially-pre-ported files keep their existing conventions**: pre-existing
+  Lib-ported tests using the long `metadata-provider` binding name or a
+  non-standard alias (e.g. `notebook-helpers` instead of `lib.tu.notebook`) are
+  left AS-IS — renaming them is scope creep under §1. Only NEW port code follows
+  the conventions in this section; do not copy a file's non-standard legacy style
+  into new code either, and reviewers must not flag the resulting mix as a
+  violation.
 - **Table lookups**: binding the table in the `let` (as in the §2 canonical
   example and the pilot files) is the default. Inline
   `(lib/query mp (lib.metadata/table mp (mt/id :venues)))` — the form R2/R3/R51's
@@ -1311,3 +1608,87 @@ retains its `run-mbql-query` entry per R55.
 (lesson 2) and the R56 metric hybrid (lesson 1) are verified by static tracing and
 in-tree precedent but the pilot files themselves have not yet run in CI — confirm
 green CI on these three files before batch-applying R17b Case 2.
+
+---
+
+## Wave log
+
+### Wave 1 — 2026-07-10
+
+**Files ported** (12; branch `claude/mbql-query-tests-migration-rqy1be`):
+
+- Wave 1a (commit `3823ec6e`): `test/metabase/query_processor/`
+  `advanced_math_test.clj`, `binning_test.clj`, `case_test.clj`,
+  `constraints_test.clj`, `page_test.clj`, `share_test.clj`
+- Wave 1b (commit `e3abd8e8`): `test/metabase/query_processor/`
+  `cumulative_aggregation_test.clj`, `field_visibility_test.clj`,
+  `offset_test.clj`, `order_by_test.clj`, `string_extracts_test.clj`,
+  `time_field_test.clj`
+
+Verification was the no-JVM static fallback (§7): parse gate + expansion tracing +
+adversarial review; the full suite runs in CI on the PR. deftest and assertion
+counts unchanged in every file; remaining legacy sites are
+`TODO(mbql5-migration)`-fenced.
+
+**Lessons folded back into the rules above:**
+
+1. **`:if` recipe added (R34a)** — no `lib/if` exists; `lib/expression-clause :if`
+   with FLAT args, regrouped by `group-case-or-if-args`; hand-nesting pairs
+   double-nests. From `case_test.clj`.
+2. **Runtime-dynamic operator recipe added (R34b)** —
+   `(lib/expression-clause op-kw (into [col] args) nil)`; no auto `:=`→`:in`.
+   From `time_field_test.clj`'s `time-query` helper. R34 also now covers
+   builder-exists-but-wrong-arity (`lib/substring`).
+3. **R57 added: shared helper functions** — same `let` shape as deftests, `mp`
+   built inside the helper at call time, atomic contract change when parameters
+   are legacy clause fragments (all callers in one edit), inline-as-legacy for a
+   caller that must stay legacy, surgery at call sites. From
+   `advanced_math_test.clj` (`test-math-expression`/`aggregation=`),
+   `string_extracts_test.clj` (`test-string-extract`, 14 callers),
+   `field_visibility_test.clj` (`venues-cols-from-query`), `page_test.clj`
+   (`page-is`).
+4. **R51 expanded** — shared-helper wrapper conflict decided (mandatory rule
+   wins; wrapper is lazy/behavior-neutral — `case_test.clj` `test-case`,
+   `share_test.clj` `empty-results-test`); wrapper scope + bind-result canonical
+   example (`cumulative_aggregation_test.clj:19-33`); value-returning position is
+   safe; `mt/process-query` blessed as a facade.
+5. **§4.6b added** — exception-class assertions around converted run sites need
+   per-driver verification that the QP throws `ExceptionInfo` with a matching
+   message (sql-jdbc verified once; from `share_test.clj`).
+6. **§4.13 added (intentionally-redundant clauses)** — `lib/order-by` and
+   `lib/breakout` silently drop duplicates; force-ports pass while testing
+   nothing (from `order_by_test.clj`); §7 gained the silent-normalization check.
+7. **§4.14 added (legacy-only value coercions)** — e.g. `:substring` 0→1 start
+   coercion exists only in the legacy schema (from `string_extracts_test.clj`).
+8. **R19 note added** — legacy `[:offset opts expr n]` carries its options map
+   inline; no `:aggregation-options` wrapper to hunt for (from `offset_test.clj`).
+9. **R42 note added** — snake_case fixture keys (`:dataset_query`) stay verbatim
+   even with lib-query values; `mock-metadata-provider` normalizes.
+10. **R28×R33 warning added** — `lib/with-fields` auto-appends unmatched
+    expression refs; a legacy `:fields` list that excluded an expression column
+    is not a mechanical port.
+11. **R6 note added** — legacy normalization flattens nested `:field`-in-`:field`
+    clauses with options merge, so `[:field $sigil nil]` ports as a plain lookup.
+12. **§5 extended** — hand-rolled legacy-shaped maps that never used a deprecated
+    macro (raw outer native maps, `qp/userland-query-with-default-constraints`
+    args) are out of scope, left verbatim (from `constraints_test.clj`).
+13. **§8 extended** — builder-call order mirrors the old map's key order;
+    field-binding naming follows the file's dominant style; multi-table `let`s
+    may group by table; partially-pre-ported files keep their old conventions.
+14. **Process fixes** — §6 step 0: dedupe wave manifests against `git log`
+    (`binning_test.clj` was double-assigned); §6 step 7: the completeness grep
+    must not match `mt/with-native-query-testing-context`; §7: bare-`clojure.main`
+    parse gates need a permissive `*reader-resolver*` for `::alias/kw` forms
+    (unedited files fail otherwise); R55: expect stale header entries — grep the
+    body, don't trust the header. Stale precedent citations into
+    `binning_test.clj` / `cumulative_aggregation_test.clj` were repointed or
+    pinned to commits.
+
+**Open items for wave 2:**
+
+- CI has still not run on any ported file (wave 0's open item stands, now for all
+  15 files). Confirm green CI before treating the R17b Case 2 hybrid, the R34a/b
+  recipes, and the 4.6b sql-jdbc verification as fully validated.
+- An uncommitted style tweak to `case_test.clj` (hoisting a `venues` table
+  binding per §8) is sitting in the working tree — commit or drop it with the
+  next wave.
