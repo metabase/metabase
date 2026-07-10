@@ -7,9 +7,13 @@
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.password :as u.password]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- fresh-jti [] (str (random-uuid)))
 
@@ -152,3 +156,40 @@
                 (is (not-any? #{:timeout} results)))
               (testing "exactly one attempt succeeds"
                 (is (= 1 (count (filter true? results))))))))))))
+
+;;; -------------------------------------------------- Encryption-key rollover --------------------------------------------------
+
+(deftest key-rollover-test
+  (testing "an enrollment written under key A verifies after the column is rotated to key B"
+    ;; The full `rotate-encryption-key` walk over `encrypted-json-columns` (which includes
+    ;; [:auth_identity :credentials]) is exercised by metabase.cmd.rotate-encryption-key-test;
+    ;; this covers the MFA-specific end of it: rotate this row the way the command does —
+    ;; decrypt raw value with the old key, re-encrypt with the new — then verify a login code
+    ;; under the new key.
+    (let [secret (totp/generate-secret)
+          k1     "0123456789abcdef-key-A"
+          k2     "fedcba9876543210-key-B"]
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (encryption-test/with-secret-key k1
+          (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                           :provider    "totp"
+                                           :credentials {:secret       secret
+                                                         :confirmed_at (t/instant)}}))
+        (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
+              raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
+              plaintext (encryption-test/with-secret-key k1
+                          (encryption/maybe-decrypt raw))
+              rotated   (encryption-test/with-secret-key k2
+                          (encryption/maybe-encrypt plaintext))]
+          (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
+          (t2/update! :auth_identity ai-id {:credentials rotated}))
+        (encryption-test/with-secret-key k2
+          (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))
+              "the rotated enrollment verifies under the new key"))
+        (encryption-test/with-secret-key k1
+          ;; encrypted-json-out falls back to the raw ciphertext string, on which the
+          ;; timestamp-parsing transform then blows up — either way the old key can't read the row
+          (is (thrown? Exception
+                       (t2/select-one-fn :credentials :model/AuthIdentity
+                                         :user_id user-id :provider "totp"))
+              "sanity: the old key can no longer read the row"))))))

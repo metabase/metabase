@@ -1,6 +1,7 @@
 (ns metabase-enterprise.mfa.login-flow-test
   "End-to-end two-step login over the HTTP API."
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.mfa.enrollment :as enrollment]
@@ -10,20 +11,24 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.session.api :as api.session]
+   [metabase.session.settings :as session.settings]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- reset-throttlers! []
+(defn- reset-throttlers []
   (doseq [throttler (concat (vals @#'api.session/verify-throttlers)
                             (vals @#'mfa.management/throttlers)
                             (vals @#'api.session/login-throttlers)
                             [@#'api.session/reset-password-throttler])]
     (reset! (:attempts throttler) nil)))
 
-(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+(use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
 (defn- wrong-code [secret]
   (let [current (totp/generate-code secret)]
@@ -69,6 +74,58 @@
 
 (deftest bogus-token-rejected-test
   (mt/client :post 401 "session/mfa/verify" {:challenge_token "not-a-real-token" :code "000000"}))
+
+(deftest expired-challenge-token-rejected-test
+  (with-enrolled-rasta! [secret]
+    (testing "a challenge token past its 5-minute TTL is rejected even with a valid code"
+      ;; correctly signed, already expired — what a real token looks like 5+ minutes later
+      (let [expired-token (jwt/sign {:user-id  (mt/user->id :rasta)
+                                     :provider "password"
+                                     :purpose  "mfa-challenge"
+                                     :jti      (str (random-uuid))
+                                     :exp      (- (quot (System/currentTimeMillis) 1000) 10)}
+                                    (session.settings/mfa-challenge-signing-key)
+                                    {:alg :hs256})]
+        (mt/client :post 401 "session/mfa/verify"
+                   {:challenge_token expired-token :code (totp/generate-code secret)})))))
+
+(deftest signing-key-survives-restart-test
+  (with-enrolled-rasta! [secret]
+    (testing "a challenge issued before a restart verifies after it (signing key is DB-backed, not in-memory)"
+      (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+        ;; restoring the settings cache from the DB is what a fresh node/restarted process does
+        (setting.cache/restore-cache!)
+        (is (=? {:id string?}
+                (mt/client :post 200 "session/mfa/verify"
+                           {:challenge_token (:challenge_token resp)
+                            :code            (totp/generate-code secret)})))))))
+
+(deftest recovery-code-regeneration-survives-license-lapse-test
+  ;; Rotating recovery codes for an EXISTING enrollment is management, not setup, so it is
+  ;; deliberately not feature-gated — a lapsed license must never strand an enrolled user.
+  (with-enrolled-rasta! [secret]
+    (let [[c1 & _]          (enrollment/reset-recovery-codes! (mt/user->id :rasta))
+          login             (mt/client :post 200 "session" (mt/user->credentials :rasta))
+          {session-key :id} (mt/client :post 200 "session/mfa/verify"
+                                       {:challenge_token (:challenge_token login)
+                                        :code            (totp/generate-code secret)})]
+      (mt/with-premium-features #{}
+        (testing "regeneration still works with zero premium features"
+          (is (= 10 (count (:recovery_codes
+                            (mt/client session-key :post 200 "ee/mfa/recovery-codes" {:code c1}))))))))))
+
+(deftest failed-verification-is-audited-test
+  (with-enrolled-rasta! [secret]
+    ;; audit rows require the :audit-app feature at event time (premium-features/log-enabled?);
+    ;; must nest inside with-enrolled-rasta!, whose with-premium-features replaces the set
+    (mt/with-additional-premium-features #{:audit-app}
+      (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+        (mt/client :post 401 "session/mfa/verify"
+                   {:challenge_token (:challenge_token resp) :code (wrong-code secret)})
+        (testing "a failed second-factor attempt lands in the audit log"
+          (is (=? {:topic    :mfa-verification-failed
+                   :model_id (mt/user->id :rasta)}
+                  (mt/latest-audit-log-entry :mfa-verification-failed (mt/user->id :rasta)))))))))
 
 (deftest remember-me-survives-mfa-test
   (with-enrolled-rasta! [secret]

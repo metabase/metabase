@@ -6,15 +6,16 @@
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.sso.core :as sso]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- reset-throttlers! []
+(defn- reset-throttlers []
   (doseq [throttler (vals @#'mfa.management/throttlers)]
     (reset! (:attempts throttler) nil)))
 
-(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+(use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
 (defn- wrong-code [secret]
   (let [current (totp/generate-code secret)]
@@ -56,6 +57,24 @@
                 (mt/client session-key :post 204 "ee/mfa/disable" {:code (first recovery_codes)})))
             (testing "after disable, login issues a session directly again"
               (is (string? (:id (mt/client :post 200 "session" {:username email :password password})))))))))))
+
+(deftest enrollment-lifecycle-is-audited-test
+  ;; audit rows are written only when the :audit-app feature is active AT EVENT TIME
+  ;; (premium-features/log-enabled?), so this runs the whole lifecycle with it on
+  (mt/with-premium-features #{:multi-factor-auth :audit-app}
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
+      (with-fresh-user-session! [session-key email password]
+        (let [{:keys [secret]}         (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})
+              {:keys [recovery_codes]} (mt/client session-key :post 200 "ee/mfa/enroll/confirm"
+                                                  {:code (totp/generate-code secret)})
+              user-id                  (t2/select-one-fn :id :model/User :email email)]
+          (testing "enrollment is audited"
+            (is (=? {:topic :mfa-enrolled}
+                    (mt/latest-audit-log-entry :mfa-enrolled user-id))))
+          (mt/client session-key :post 204 "ee/mfa/disable" {:code (first recovery_codes)})
+          (testing "self-disable is audited"
+            (is (=? {:topic :mfa-disabled}
+                    (mt/latest-audit-log-entry :mfa-disabled user-id)))))))))
 
 (deftest enroll-requires-feature-test
   (mt/with-premium-features #{:multi-factor-auth}

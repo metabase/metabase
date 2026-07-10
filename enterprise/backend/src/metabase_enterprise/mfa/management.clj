@@ -19,13 +19,12 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.email :as email]
+   [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [throttle.core :as throttle]
@@ -64,16 +63,9 @@
              (when-let [user-info (sso/find-user user-email)]
                (sso/verify-password user-info password))))))))
 
-(defn- notify! [user-id subject message event-topic]
-  (try
-    (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
-      (email/send-message! {:subject      subject
-                            :recipients   [user-email]
-                            :message-type :text
-                            :message      message}))
-    (catch Throwable e
-      (log/warn e "Failed to send MFA notification email")))
-  (events/publish-event! event-topic {:object (t2/select-one :model/User user-id)}))
+;; Notification emails here are fire-and-log by construction: the messages/send-mfa-*-email!
+;; senders route through email/send-message!, which catches and logs delivery failures — so an
+;; unreachable SMTP server never fails an operation that has already committed.
 
 (defn- invalid-code-ex []
   (ex-info (tru "Invalid authentication code.") {:status-code 400}))
@@ -121,14 +113,13 @@
   (let [codes (throttled :enroll
                          (fn []
                            (or (enrollment/confirm-enrollment! api/*current-user-id* code)
-                               (throw (invalid-code-ex)))))]
-    (notify! api/*current-user-id*
-             (tru "Two-factor authentication was enabled on your Metabase account")
-             (tru "Two-factor authentication is now required when you sign in. If you did not do this, reset your password and contact your administrator immediately.")
-             :event/mfa-enrolled)
+                               (throw (invalid-code-ex)))))
+        user  (t2/select-one :model/User :id api/*current-user-id*)]
+    (messages/send-mfa-enabled-email! (:email user))
+    (events/publish-event! :event/mfa-enrolled {:object user})
     {:recovery_codes codes}))
 
-(api.macros/defendpoint :post "/disable"
+(api.macros/defendpoint :post "/disable" :- nil
   "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a
   TOTP code or an unused recovery code — never just the password."
   [_route-params
@@ -141,10 +132,9 @@
                  (when-not (verification/verify-attempt! api/*current-user-id* code nil)
                    (throw (invalid-code-ex)))
                  (enrollment/disable! api/*current-user-id*))))
-  (notify! api/*current-user-id*
-           (tru "Two-factor authentication was disabled on your Metabase account")
-           (tru "Two-factor authentication was turned off for your account. If you did not do this, contact your administrator immediately.")
-           :event/mfa-disabled)
+  (let [user (t2/select-one :model/User :id api/*current-user-id*)]
+    (messages/send-mfa-disabled-email! (:email user))
+    (events/publish-event! :event/mfa-disabled {:object user}))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/status" :- [:map
@@ -165,7 +155,7 @@
 
 ;;; -------------------------------------------------- Admin --------------------------------------------------
 
-(api.macros/defendpoint :post "/admin/remove"
+(api.macros/defendpoint :post "/admin/remove" :- nil
   "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost
   authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
   lockouts permanent). The affected user is notified by email. They re-enroll from scratch —
@@ -175,10 +165,9 @@
    {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
   (api/check-superuser)
   (when (enrollment/disable! user-id)
-    (notify! user-id
-             (tru "Two-factor authentication was removed from your Metabase account")
-             (tru "An administrator removed two-factor authentication from your account. You can set it up again from your account settings. If you did not request this, contact your administrator immediately.")
-             :event/mfa-disabled))
+    (let [user (t2/select-one :model/User :id user-id)]
+      (messages/send-mfa-removed-by-admin-email! (:email user))
+      (events/publish-event! :event/mfa-disabled {:object user})))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/admin/overview" :- [:map

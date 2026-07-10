@@ -1,25 +1,29 @@
 (ns metabase-enterprise.mfa.email-otp-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.channel.email :as channel.email]
    [metabase.channel.settings :as channel.settings]
+   [metabase.channel.template.core :as channel.template]
    [metabase.session.api :as api.session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- reset-throttlers! []
+(defn- reset-throttlers []
   (doseq [throttler (concat (vals @#'api.session/verify-throttlers)
                             (vals @#'api.session/login-throttlers)
                             (vals @#'api.session/email-otp-send-throttlers))]
     (reset! (:attempts throttler) nil)))
 
-(use-fixtures :each (fn [f] (reset-throttlers!) (f)))
+(use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
 (defn- fresh-jti [] (str (random-uuid)))
 
@@ -64,7 +68,7 @@
         (let [ai (t2/select-one :model/AuthIdentity :id ai-id)]
           (t2/update! :model/AuthIdentity ai-id
                       {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
-                                              (- (quot (System/currentTimeMillis) 1000) 1))}))
+                                              (dec (quot (System/currentTimeMillis) 1000)))}))
         (is (false? (verification/verify-attempt! user-id code (fresh-jti))))))))
 
 (deftest send-email-otp-e2e-test
@@ -83,7 +87,7 @@
                 (is (= ["totp" "email"] (:methods challenge))))
               (is (true? (:success (mt/client :post 200 "session/mfa/send-email-otp"
                                               {:challenge_token (:challenge_token challenge)}))))
-              (let [[_ code] (re-find #"code is: (\d{6})" (:message @sent))]
+              (let [[_ code] (re-find #"(?s)sign-in code.*?(\d{6})" (:message @sent))]
                 (is (some? code) "the email contains the code")
                 (testing "the emailed code completes the login"
                   (is (=? {:id string?}
@@ -128,3 +132,31 @@
               (mt/client :post 400 "session/mfa/send-email-otp" {:challenge_token (:challenge_token challenge)})))
           (finally
             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+
+(deftest mfa-email-templates-render-test
+  (testing "all four MFA email templates render without error and contain their key sentences"
+    (testing "mfa_enabled template"
+      (let [html (channel.template/render "mfa_enabled" {:applicationName "Metabase"
+                                                         :siteUrl         "http://localhost:3000"
+                                                         :logoHeader      false})]
+        (is (string? html))
+        (is (str/includes? html "Two-factor authentication is now required"))))
+    (testing "mfa_disabled template"
+      (let [html (channel.template/render "mfa_disabled" {:applicationName "Metabase"
+                                                          :siteUrl         "http://localhost:3000"
+                                                          :logoHeader      false})]
+        (is (string? html))
+        (is (str/includes? html "using a verification code"))))
+    (testing "mfa_removed_by_admin template"
+      (let [html (channel.template/render "mfa_removed_by_admin" {:applicationName "Metabase"
+                                                                  :siteUrl         "http://localhost:3000"
+                                                                  :logoHeader      false})]
+        (is (string? html))
+        (is (str/includes? html "administrator removed two-factor authentication"))))
+    (testing "mfa_login_code template"
+      (let [html (channel.template/render "mfa_login_code" {:applicationName "Metabase"
+                                                            :siteUrl         "http://localhost:3000"
+                                                            :logoHeader      false
+                                                            :code            "123456"})]
+        (is (string? html))
+        (is (re-find #"(?s)sign-in code.*?(\d{6})" html))))))

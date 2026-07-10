@@ -29,11 +29,7 @@ Tell Metabase how long it should wait before asking people to log in again.
 
 Metabase offers several options for authentication.
 
-> For 2-step or multi-factor authentication (2FA or MFA), Pro and Enterprise plans can use [Metabase's built-in multi-factor authentication](./multi-factor-authentication.md), or one of the SSO options below (your identity provider handles MFA for SSO logins).
-
-### [Multi-factor authentication](./multi-factor-authentication.md)
-
-Require a code from an authenticator app when people sign in with email/password or LDAP. Available on Pro and Enterprise plans.
+> If you need to set up 2-step or multi-factor authentication (2FA or MFA) for your Metabase, consider using one of the SSO options below.
 
 ### SSO for Metabase Open Source and Starter plans
 

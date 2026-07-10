@@ -26,7 +26,8 @@ export const AccountHeader = ({
     () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
     [user],
   );
-  const isMfaEnabled = useSetting("mfa-enforcement") === "optional";
+  const mfaEnforcement = useSetting("mfa-enforcement");
+  const isMfaEnabled = mfaEnforcement != null && mfaEnforcement !== "off";
   const hasSecurityTab =
     isMfaEnabled && (hasPasswordChange || user.sso_source === "ldap");
 

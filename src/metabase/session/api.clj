@@ -52,8 +52,8 @@
 (defn- call-with-failure-throttling
   "Run `f` guarded by `pairs` of `[throttler throttle-key]`. Only a thrown exception counts as an
   attempt; successful calls are free. No-op when `MB_DISABLE_SESSION_THROTTLE` is set.
-  NOTE: management.clj also has throttling helpers (mfa.throttling) — that duplication is
-  intentional; consolidation into a shared util is tracked on GHY-4098."
+  The MFA management endpoints have their own throttling helpers (`mfa.throttling`); the two are
+  kept separate deliberately — this one lives in OSS session code, that one in the EE module."
   [pairs f]
   (if throttling-disabled?
     (f)
