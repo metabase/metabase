@@ -66,17 +66,20 @@ export interface TreemapRow {
   hidden: boolean;
 }
 
-export type GoalSource = {
-  card_id: CardId;
-  column: string;
-};
+export type GoalValue =
+  | GoalStaticValue
+  | GoalSelfColumnRef
+  | GoalForeignColumnRef;
 
 export type GoalStaticValue = number;
 
 // name of another column in the same question
-export type GoalSelfColumnReference = string;
+export type GoalSelfColumnRef = string;
 
-export type GoalValue = GoalStaticValue | GoalSelfColumnReference | GoalSource;
+export type GoalForeignColumnRef = {
+  card_id: CardId;
+  column: string;
+};
 
 export type GoalSegment = {
   min: GoalValue | null;

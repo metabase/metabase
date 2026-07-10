@@ -1,15 +1,15 @@
 import type {
   CardId,
   DatasetData,
-  GoalSource,
+  GoalForeignColumnRef,
   GoalValue,
   ReferencedCard,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
-  isGoalSelfColumnReference,
-  isGoalSource,
+  isGoalForeignColumnRef,
+  isGoalSelfColumnRef,
   isGoalStaticValue,
   isObject,
 } from "metabase-types/guards";
@@ -42,14 +42,14 @@ export const resolveGoalValue = (
     return { value: goalValue };
   }
 
-  if (isGoalSelfColumnReference(goalValue)) {
-    return resolveColumnValue(goalValue, data);
+  if (isGoalSelfColumnRef(goalValue)) {
+    return resolveSelfColumnValue(goalValue, data);
   }
 
-  return resolveGoalSource(goalValue, data);
+  return resolveForeignColumnRef(goalValue, data);
 };
 
-const resolveColumnValue = (
+const resolveSelfColumnValue = (
   columnName: string,
   data: DatasetData,
 ): ResolvedGoalValue => {
@@ -82,8 +82,8 @@ const resolveColumnValue = (
   return { value };
 };
 
-const resolveGoalSource = (
-  goalSource: GoalSource,
+const resolveForeignColumnRef = (
+  goalForeignColumnRef: GoalForeignColumnRef,
   data: DatasetData,
 ): ResolvedGoalValue => {
   // Referenced results are not available yet (e.g. still loading): treat as
@@ -92,28 +92,28 @@ const resolveGoalSource = (
     return { value: null };
   }
 
-  const result = data.referenced_cards?.[goalSource.card_id];
+  const result = data.referenced_cards?.[goalForeignColumnRef.card_id];
   if (result == null || result.status !== "completed" || result.data == null) {
     return {
       value: null,
       error: {
-        card_id: goalSource.card_id,
-        column: goalSource.column,
+        card_id: goalForeignColumnRef.card_id,
+        column: goalForeignColumnRef.column,
         reason: "query-failed",
       },
     };
   }
 
   const columnIndex = result.data.cols.findIndex(
-    (column) => column.name === goalSource.column,
+    (column) => column.name === goalForeignColumnRef.column,
   );
 
   if (columnIndex === -1) {
     return {
       value: null,
       error: {
-        card_id: goalSource.card_id,
-        column: goalSource.column,
+        card_id: goalForeignColumnRef.card_id,
+        column: goalForeignColumnRef.column,
         reason: "column-not-found",
       },
     };
@@ -125,8 +125,8 @@ const resolveGoalSource = (
     return {
       value: null,
       error: {
-        card_id: goalSource.card_id,
-        column: goalSource.column,
+        card_id: goalForeignColumnRef.card_id,
+        column: goalForeignColumnRef.column,
         reason: "not-a-number",
       },
     };
@@ -147,7 +147,7 @@ export const getReferencedCardsFromVizSettings = (
   settings: VisualizationSettings,
 ): ReferencedCard[] => {
   const sources = getSegmentGoalValues(settings["gauge.segments"]).filter(
-    isGoalSource,
+    isGoalForeignColumnRef,
   );
 
   const columnsByCard = sources.reduce((map, source) => {

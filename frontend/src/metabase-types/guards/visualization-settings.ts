@@ -1,6 +1,6 @@
 import type {
-  GoalSelfColumnReference,
-  GoalSource,
+  GoalForeignColumnRef,
+  GoalSelfColumnRef,
   GoalStaticValue,
   GoalValue,
 } from "metabase-types/api";
@@ -11,13 +11,15 @@ export function isGoalStaticValue(value: unknown): value is GoalStaticValue {
   return typeof value === "number";
 }
 
-export function isGoalSelfColumnReference(
+export function isGoalSelfColumnRef(
   value: unknown,
-): value is GoalSelfColumnReference {
+): value is GoalSelfColumnRef {
   return typeof value === "string";
 }
 
-export function isGoalSource(value: unknown): value is GoalSource {
+export function isGoalForeignColumnRef(
+  value: unknown,
+): value is GoalForeignColumnRef {
   return (
     isObject(value) &&
     typeof value.card_id === "number" &&
@@ -28,7 +30,7 @@ export function isGoalSource(value: unknown): value is GoalSource {
 export function isGoalValue(value: unknown): value is GoalValue {
   return (
     isGoalStaticValue(value) ||
-    isGoalSelfColumnReference(value) ||
-    isGoalSource(value)
+    isGoalSelfColumnRef(value) ||
+    isGoalForeignColumnRef(value)
   );
 }
