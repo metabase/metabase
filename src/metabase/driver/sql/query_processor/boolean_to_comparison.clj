@@ -80,12 +80,12 @@
 
   This function expects to be called in a context where sql.qp/*inner-query* is bound, so that it can lookup
   expression refs by name, if necessary, to determine whether their value is a boolean literal."
-  [driver clause]
+  [clause]
   (and (driver-api/is-clause? :expression clause)
        (->> (driver-api/match-one clause
               [_ (opts :guard :lib/uuid) name] name ;; mbql5
               [_ name] name)
-            (sql.qp/expression-by-name driver sql.qp/*inner-query*)
+            (sql.qp/expression-by-name sql.qp/*inner-query*)
             (boolean-value-clause?))))
 
 (defn predicate-expression-clause?
@@ -93,12 +93,12 @@
 
   This function expects to be called in a context where sql.qp/*inner-query* is bound, so that it can lookup
    expression refs by name, if necessary, to determine whether the expression is a predicate operator."
-  [driver clause]
+  [clause]
   (and (driver-api/is-clause? :expression clause)
        (->> (driver-api/match-one clause
               [_ (opts :guard :lib/uuid) name] name ;; mbql5
               [_ name] name)
-            (sql.qp/expression-by-name driver sql.qp/*inner-query*)
+            (sql.qp/expression-by-name sql.qp/*inner-query*)
             (driver-api/is-clause? lib.schema.filter/predicate-operators))))
 
 (defn boolean->comparison
@@ -118,7 +118,7 @@
    (if (or (boolean? clause)
            (boolean-value-clause? clause)
            (boolean-field-clause? clause boolean-field-types)
-           (boolean-expression-clause? driver clause))
+           (boolean-expression-clause? clause))
      (sql.qp/mbql-clause driver := clause true)
      clause)))
 

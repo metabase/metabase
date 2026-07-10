@@ -234,9 +234,7 @@
                     (sql.qp/mbql->native :h2))))))))
 
 (defn- legacy-join->honeysql [driver join]
-  (sql.qp/join->honeysql driver (if (isa? driver/hierarchy driver :sql-mbql5)
-                                  (lib.convert/->mbql5 (#'lib.util/join->pipeline join))
-                                  join)))
+  (sql.qp/join->honeysql driver (lib.convert/->mbql5 (#'lib.util/join->pipeline join))))
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"

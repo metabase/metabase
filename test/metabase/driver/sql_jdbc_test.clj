@@ -258,10 +258,8 @@
         ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
-      (let [mbql5-driver? (isa? driver/hierarchy driver/*driver* :sql-mbql5)
-            field (get (lib/ref col) 2)
-            col-ref (cond-> (lib/ref col)
-                      (not mbql5-driver?) lib/->legacy-MBQL)]
+      (let [field (get (lib/ref col) 2)
+            col-ref (lib/ref col)]
         (testing ":= uses indexable query"
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)

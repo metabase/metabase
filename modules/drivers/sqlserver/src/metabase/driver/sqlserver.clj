@@ -46,7 +46,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -229,7 +229,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :field]
   [driver [_ options _ :as field-clause]]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     (binding [*field-options* options]
       (parent-method driver field-clause))))
 
@@ -651,7 +651,7 @@
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :fields]
   [driver _ honeysql-form query]
-  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :fields])]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :fields])]
     (->> (update query :fields #(mapv (partial maybe-add-cast driver) %))
          (parent-method driver :fields honeysql-form))))
 
@@ -672,7 +672,7 @@
   ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
-        parent-method (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :order-by])]
+        parent-method (get-method sql.qp/apply-top-level-clause [:sql :order-by])]
     (-> (parent-method driver :order-by honeysql-form query)
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
@@ -682,13 +682,13 @@
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
   [driver _k honeysql-form query]
-  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filter])]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :filter])]
     (->> (update query :filter #(boolean->comparison driver %))
          (parent-method driver :filter honeysql-form))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filters]
   [driver _k honeysql-form query]
-  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filters])]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql :filters])]
     (->> (update query :filters #(mapv (partial boolean->comparison driver) %))
          (parent-method driver :filters honeysql-form))))
 
@@ -709,22 +709,22 @@
 (defmethod sql.qp/->honeysql [:sqlserver :and]
   [driver clause]
   (->> (mapv #(boolean->comparison driver %) clause)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :and]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :or]
   [driver clause]
   (->> (mapv #(boolean->comparison driver %) clause)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :or]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :not]
   [driver clause]
   (->> (mapv #(boolean->comparison driver %) clause)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :not]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :case]
   [driver clause]
   (->> (sql.qp.boolean-to-comparison/case-boolean->comparison driver clause)
-       ((get-method sql.qp/->honeysql [:sql-mbql5 :case]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver Time]
   [_ time-value]
@@ -860,7 +860,7 @@
                                           expr)))))
                              identity)
                          args)]
-        ((get-method sql.qp/->honeysql [:sql-mbql5 op]) driver clause)))))
+        ((get-method sql.qp/->honeysql [:sql op]) driver clause)))))
 
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
@@ -937,7 +937,7 @@
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
-  (let [parent-method (get-method sql.qp/preprocess :sql-mbql5)]
+  (let [parent-method (get-method sql.qp/preprocess :sql)]
     (fix-order-bys (parent-method driver inner-query) false)))
 
 ;; SQL server only supports setting holdability at the connection level, not the statement level, as per
