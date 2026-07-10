@@ -1,7 +1,7 @@
 (ns metabase-enterprise.mfa.recovery-codes
   "Recovery-code generation and format. Codes are single-use fallbacks for a lost authenticator:
   generated from a CSPRNG, shown to the user exactly once, and stored only as bcrypt hashes — a
-  recovery code is ever compared, never recovered, so hashed storage is safe even when no
+  recovery code is only ever compared, never recovered, so hashed storage is safe even when no
   `MB_ENCRYPTION_SECRET_KEY` is set."
   (:import
    (java.security SecureRandom)))

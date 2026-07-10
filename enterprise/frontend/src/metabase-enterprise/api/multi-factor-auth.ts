@@ -81,7 +81,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     regenerateRecoveryCodes: builder.mutation<
-      { codes: string[] },
+      { recovery_codes: string[] },
       { code: string }
     >({
       query: (body) => ({

@@ -50,7 +50,6 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
     return (
       <PLUGIN_MULTI_FACTOR_AUTH.ChallengeForm
         mfaToken={mfaChallenge.mfa_token}
-        method={mfaChallenge.method}
         methods={mfaChallenge.methods}
         remember={remember}
         onCancel={() => setMfaChallenge(null)}

@@ -137,7 +137,6 @@
                            ;; token instead of a session. No cookies are set yet.
                            {:status 200
                             :body   {:mfa_required true
-                                     :method       (:mfa-method result)
                                      :methods      (:mfa-methods result)
                                      :mfa_token    (:mfa-token result)}}
                            (let [{session-key :key, :as session} result

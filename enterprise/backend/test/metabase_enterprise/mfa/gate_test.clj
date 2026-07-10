@@ -34,7 +34,7 @@
               (let [gated (auth-identity.provider/apply-mfa-gate provider {:success? true :user {:id user-id}})]
                 (is (= :mfa-required (:success? gated)))
                 (is (true? (:mfa-pending? gated)))
-                (is (= "totp" (:mfa-method gated)))
+                (is (some #{"totp"} (:mfa-methods gated)))
                 (is (string? (:mfa-token gated))))))
           (testing "an unenrolled user is untouched"
             (mt/with-temp [:model/User {other-id :id} {}]

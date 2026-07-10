@@ -7,8 +7,8 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.mfa.challenge :as challenge]
-   [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
+   [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.macros :as api.macros]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email :as email]
@@ -68,7 +68,7 @@
      [[(verify-throttlers :ip-address) (request/ip-address request)]
       [(verify-throttlers :user-id) user-id]]
      (fn []
-       (if (enrollment/verify-attempt! user-id code jti)
+       (if (verification/verify-attempt! user-id code jti)
          (let [user (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]
            ;; the account can be deactivated (or deleted) between the password step and here; a
            ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
@@ -97,14 +97,14 @@
         {:keys [jti]} claims
         user-id (:user-id claims)]
     ;; a token that already minted a session must not keep sending codes for its remaining TTL
-    (when (or (not jti) (enrollment/jti-consumed? user-id jti))
+    (when (or (not jti) (verification/jti-consumed? user-id jti))
       (throw (invalid-token-ex)))
     (mfa.throttling/check (email-otp-send-throttlers :ip-address) (request/ip-address request))
     (mfa.throttling/check (email-otp-send-throttlers :user-id) user-id)
     (when-not (channel.settings/email-configured?)
       (throw (ex-info (tru "Email is not configured on this instance.")
                       {:status-code 400})))
-    (let [code       (or (enrollment/set-email-otp! user-id)
+    (let [code       (or (verification/set-email-otp! user-id)
                          (throw (invalid-token-ex)))
           user-email (t2/select-one-fn :email :model/User :id user-id)]
       (try

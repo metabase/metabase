@@ -10,10 +10,12 @@
   LDAP bind for LDAP users); disable/regenerate with the factor you're managing (a fresh TOTP or
   recovery code), so a stolen password alone can never remove or weaken 2FA."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -47,16 +49,20 @@
 
 (defn- verify-user-password
   "Re-verify the signed-in user's first-factor password, dispatched by how they authenticate:
-  against the local hash for password users, by LDAP bind for LDAP-only users."
+  against the local hash for password users, by LDAP bind for LDAP-only users.
+
+  Rejects blank passwords itself rather than trusting callers' schemas: an empty password sent to
+  `ldap/bind?` is an *anonymous bind*, which succeeds on directories that allow it."
   [user-id password]
   (boolean
-   (or (when-let [{:keys [password_hash password_salt]}
-                  (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
-         (and password_hash (u.password/verify-password password password_salt password_hash)))
-       (when (sso/ldap-enabled)
-         (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
-           (when-let [user-info (sso/find-user user-email)]
-             (sso/verify-password user-info password)))))))
+   (when-not (str/blank? password)
+     (or (when-let [{:keys [password_hash password_salt]}
+                    (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
+           (and password_hash (u.password/verify-password password password_salt password_hash)))
+         (when (sso/ldap-enabled)
+           (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
+             (when-let [user-info (sso/find-user user-email)]
+               (sso/verify-password user-info password))))))))
 
 (defn- notify! [user-id subject message event-topic]
   (try
@@ -70,7 +76,7 @@
   (events/publish-event! event-topic {:object (t2/select-one :model/User user-id)}))
 
 (defn- invalid-code-ex []
-  (ex-info (tru "Invalid authentication code.") {:status-code 401}))
+  (ex-info (tru "Invalid authentication code.") {:status-code 400}))
 
 ;;; -------------------------------------------------- Enrollment --------------------------------------------------
 
@@ -90,7 +96,11 @@
   (throttled :enroll
              (fn []
                (when-not (verify-user-password api/*current-user-id* password)
-                 (throw (ex-info (tru "Invalid password.") {:status-code 401})))
+                 ;; 400, not 401: the session is fine, the re-auth input is wrong. The FE (and any
+                 ;; well-behaved client) treats a 401 as an expired session and bounces to login.
+                 (throw (ex-info (tru "Invalid password.")
+                                 {:status-code 400
+                                  :errors      {:password (tru "Invalid password.")}})))
                (let [secret     (or (enrollment/start-enrollment! api/*current-user-id*)
                                     (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
                                                     {:status-code 400})))
@@ -128,7 +138,7 @@
              (fn []
                ;; one transaction so a consumed recovery code and the enrollment removal land together
                (t2/with-transaction [_conn]
-                 (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
+                 (when-not (verification/verify-attempt! api/*current-user-id* code nil)
                    (throw (invalid-code-ex)))
                  (enrollment/disable! api/*current-user-id*))))
   (notify! api/*current-user-id*
@@ -193,7 +203,7 @@
 
 ;;; -------------------------------------------------- Recovery codes --------------------------------------------------
 
-(api.macros/defendpoint :post "/recovery-codes" :- [:map [:codes [:sequential ms/NonBlankString]]]
+(api.macros/defendpoint :post "/recovery-codes" :- [:map [:recovery_codes [:sequential ms/NonBlankString]]]
   "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a
   fresh second factor — a TOTP code or an unused recovery code — so a stolen password alone can
   never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored."
@@ -203,6 +213,6 @@
   (throttled :regenerate
              (fn []
                (t2/with-transaction [_conn]
-                 (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
+                 (when-not (verification/verify-attempt! api/*current-user-id* code nil)
                    (throw (invalid-code-ex)))
-                 {:codes (enrollment/reset-recovery-codes! api/*current-user-id*)}))))
+                 {:recovery_codes (enrollment/reset-recovery-codes! api/*current-user-id*)}))))

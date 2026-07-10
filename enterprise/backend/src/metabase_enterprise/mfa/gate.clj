@@ -58,7 +58,6 @@
                :success?     :mfa-required
                :mfa-pending? true
                :mfa-required true
-               :mfa-method   (name method)
                :mfa-methods  (available-methods)
                :mfa-token    (challenge/issue-challenge-token user-id provider))
 
