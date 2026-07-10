@@ -168,6 +168,32 @@
             (is (not (contains? (set (map first @analytics-calls))
                                 :metabase-search/semantic-vector-inner-ms)))))))))
 
+(deftest index-table-name?-test
+  (testing "recognizes every shape the naming code produces"
+    (are [table-name] (semantic.index/index-table-name? table-name)
+      ;; model-table-name for the current default and mock models
+      (semantic.index/model-table-name {:provider "ai-service" :model-name "text-embedding-3-small" :vector-dimensions 1536})
+      (semantic.index/model-table-name semantic.tu/mock-embedding-model)
+      "index_ollama_mxbai_lg_1024"
+      ;; force-reset suffix (pgvector-api/fresh-index)
+      "index_ollama_mxbai_lg_1024_1234567"
+      ;; hashed shape for names exceeding the pg identifier limit
+      (semantic.index/hash-identifier-if-exceeds-pg-limit (apply str "index_" (repeat 60 "x")))
+      (str "index_" (apply str (repeat 40 "a")))))
+  (testing "rejects the control-plane and other non-index tables"
+    (are [table-name] (not (semantic.index/index-table-name? table-name))
+      "index_metadata"
+      "index_control"
+      "index_gate"
+      "migration"
+      "dlq_1"
+      "repair_1751000000000_1"
+      ;; the pre-BOT-337 naming: index_-prefixed but no trailing _<digits>
+      "index_table_stale"
+      ;; wrong-length hex
+      (str "index_" (apply str (repeat 39 "a")))
+      (str "index_" (apply str (repeat 41 "a"))))))
+
 (defn- expected-index-defs
   "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.
   Maps the name of each index it must create to a pattern its pg_indexes indexdef must match."
