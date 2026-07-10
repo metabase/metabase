@@ -267,6 +267,7 @@ export interface ExplorationPageNode {
   position: number;
   query_ids: ExplorationQueryId[];
   starred: boolean;
+  hidden?: boolean;
 }
 
 export interface ExplorationBlockNode {

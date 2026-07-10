@@ -1401,6 +1401,68 @@
     (mt/with-temp [:model/User u {:email "page-mark-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/page/9999999/starred" {:starred true}))))
 
+(deftest exploration-page-hidden-roundtrip-test
+  (testing "PUT /pages/hidden sets the flag both ways; reflected in GET /:id"
+    (mt/with-temp [:model/User u {:email "page-hide@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (create-exploration! u
+                                      {:name "page-hide"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
+            eid     (:id resp)
+            page-id (-> resp :threads first :blocks first :pages first :id)
+            fetch-page (fn []
+                         (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+                             :threads first :blocks first :pages first))]
+        (testing "fresh page defaults to not hidden"
+          (is (false? (:hidden (fetch-page)))))
+        (testing "PUT :hidden true hides the page"
+          (mt/user-http-request u :put 204 "exploration/pages/hidden" {:page_ids [page-id] :hidden true})
+          (is (true? (:hidden (fetch-page)))))
+        (testing "PUT :hidden false unhides the page"
+          (mt/user-http-request u :put 204 "exploration/pages/hidden" {:page_ids [page-id] :hidden false})
+          (is (false? (:hidden (fetch-page)))))))))
+
+(deftest exploration-pages-hidden-bulk-test
+  (testing "PUT /pages/hidden hides every page id it is given in one call"
+    (mt/with-temp [:model/User u {:email "pages-hide-bulk@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp (create-exploration! u
+                                      {:name "pages-hide-bulk"
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}
+                                                                       {:dimension_id "d2" :table_id 1 :target ["field" {} 2]}]}]
+                                       :dimensions [{:dimension_id "d1"} {:dimension_id "d2"}]})
+            eid      (:id resp)
+            page-ids (->> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+                          :threads first :blocks (mapcat :pages) (map :id))
+            hidden?  (fn []
+                       (->> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+                            :threads first :blocks (mapcat :pages) (map :hidden)))]
+        (is (<= 2 (count page-ids)) "sanity: exploration has multiple pages to bulk-hide")
+        (mt/user-http-request u :put 204 "exploration/pages/hidden" {:page_ids (vec page-ids) :hidden true})
+        (is (every? true? (hidden?)))))))
+
+(deftest exploration-page-hidden-permissions-test
+  (testing "PUT /pages/hidden enforces write-check — non-owner gets 403"
+    (mt/with-temp [:model/User owner {:email "page-hide-owner@example.com"}
+                   :model/User other {:email "page-hide-other@example.com"}
+                   :model/Card metric (valid-metric-card (:id owner))]
+      (let [resp (create-exploration! owner
+                                      {:name "page-hide-private"
+                                       :collection_id (:id (collection/user->personal-collection (:id owner)))
+                                       :metrics [{:card_id (:id metric)
+                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                       :dimensions [{:dimension_id "d1"}]})
+            page-id (-> resp :threads first :blocks first :pages first :id)]
+        (mt/user-http-request other :put 403 "exploration/pages/hidden" {:page_ids [page-id] :hidden true})))))
+
+(deftest exploration-page-hidden-404-test
+  (testing "PUT with a nonexistent page id returns 404"
+    (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
+      (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
+
 (deftest exploration-create-auto-creates-scratchpad-document-test
   (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"
     (with-ai-summary-available

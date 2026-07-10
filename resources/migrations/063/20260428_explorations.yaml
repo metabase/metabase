@@ -1629,3 +1629,19 @@ databaseChangeLog:
                   remarks: Optional context metadata about the comment (e.g., active timeline for exploration comments)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v63.exppagehidden
+      author: denisberezin
+      comment: Add hidden column to exploration_page (user can hide a page from the sidebar)
+      changes:
+        - addColumn:
+            tableName: exploration_page
+            columns:
+              - column:
+                  name: hidden
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True if the page is hidden from the sidebar
+                  constraints:
+                    nullable: false

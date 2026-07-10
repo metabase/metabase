@@ -6,6 +6,7 @@ import {
   explorationApi,
   useCancelExplorationThreadMutation,
   useRestartExplorationMutation,
+  useSetPagesHiddenMutation,
 } from "metabase/api/exploration";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree, useTree } from "metabase/common/components/tree";
@@ -38,6 +39,7 @@ import {
   Stack,
   Tabs,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import type {
   Exploration,
@@ -58,6 +60,8 @@ import {
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
+  getExplorationSidebarTree,
+  getExplorationThreadName,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -70,6 +74,8 @@ interface ExplorationSidebarProps {
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
   isOpen: boolean;
+  showHidden: boolean;
+  onToggleShowHidden: () => void;
 }
 
 export function ExplorationSidebar({
@@ -82,6 +88,8 @@ export function ExplorationSidebar({
   setSelectedEntityId,
   getSelectedEntityIdUrl,
   isOpen,
+  showHidden,
+  onToggleShowHidden,
 }: ExplorationSidebarProps) {
   const treeController = useTree({
     data: tree,
@@ -211,6 +219,21 @@ export function ExplorationSidebar({
     ],
   );
 
+  const isEmptyDueToHidden = useMemo(() => {
+    if (showHidden || tree.length > 0) {
+      return false;
+    }
+    const tabFilter =
+      explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
+    return getExplorationSidebarTree(exploration, tabFilter).length > 0;
+  }, [
+    exploration,
+    explorationSidebarTabsInfo,
+    selectedSidebarTab,
+    showHidden,
+    tree,
+  ]);
+
   if (!isOpen) {
     // we still want keyboard shortcuts to work, so the component should still be mounted
     return null;
@@ -218,6 +241,11 @@ export function ExplorationSidebar({
 
   const emptyTreeMessage =
     explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
+
+  const firstThread = exploration.threads?.[0];
+  const allHiddenThreadName = firstThread
+    ? getExplorationThreadName(firstThread, 0)
+    : t`Initial investigation`;
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
@@ -242,17 +270,58 @@ export function ExplorationSidebar({
               {label}
             </Tabs.Tab>
           ))}
+          <Tooltip
+            label={
+              showHidden
+                ? t`Don't display hidden pages`
+                : t`Display hidden pages`
+            }
+          >
+            <ActionIcon
+              ml="auto"
+              my="auto"
+              variant={showHidden ? "filled" : "subtle"}
+              c={showHidden ? undefined : "icon-secondary"}
+              aria-label={t`Display hidden pages`}
+              aria-pressed={showHidden}
+              data-testid="exploration-show-hidden-toggle"
+              onClick={onToggleShowHidden}
+            >
+              <Icon name="filter" />
+            </ActionIcon>
+          </Tooltip>
         </Tabs.List>
       </Tabs>
       {tree.length > 0 ? (
         <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
           <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
         </Box>
+      ) : isEmptyDueToHidden ? (
+        <ExplorationAllHiddenState threadName={allHiddenThreadName} />
       ) : (
         <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
           <Text fz="lg">{emptyTreeMessage}</Text>
         </Center>
       )}
+    </Stack>
+  );
+}
+
+function ExplorationAllHiddenState({ threadName }: { threadName: string }) {
+  return (
+    <Stack
+      flex={1}
+      gap="sm"
+      pl="0.5rem"
+      pr="1rem"
+      data-testid="exploration-all-hidden"
+    >
+      <Text size="md" fw={500} px="0.5rem">
+        {threadName}
+      </Text>
+      <Text c="text-secondary" px="0.5rem">
+        {t`All queries have been hidden.`}
+      </Text>
     </Stack>
   );
 }
@@ -298,9 +367,13 @@ function ExplorationTreeHeading({
   isExpanded,
   onToggleExpand,
   depth,
+  explorationId,
   canWrite,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
+  const pageIds = item.data?.pageIds ?? [];
+  const canHideGroup =
+    canWrite && item.data?.hideable === true && pageIds.length > 0;
   return (
     <Box
       role="group"
@@ -329,8 +402,79 @@ function ExplorationTreeHeading({
       {item.data?.lastActivityAt && isSettled(item.data.status) && (
         <ExplorationLastActivity lastActivityAt={item.data.lastActivityAt} />
       )}
+      {canHideGroup && (
+        <ExplorationGroupHideButton
+          explorationId={explorationId}
+          groupName={item.name}
+          pageIds={pageIds}
+          allHidden={item.data?.allHidden === true}
+        />
+      )}
       <ExplorationThreadMenu item={item} canWrite={canWrite} />
     </Box>
+  );
+}
+
+function ExplorationGroupHideButton({
+  explorationId,
+  groupName,
+  pageIds,
+  allHidden,
+}: {
+  explorationId: ExplorationId;
+  groupName: string;
+  pageIds: number[];
+  allHidden: boolean;
+}) {
+  const [setPagesHidden] = useSetPagesHiddenMutation();
+  const [sendToast] = useToast();
+
+  const handleClick = useCallback(
+    async (event: React.MouseEvent) => {
+      // don't toggle the group's expanded state when hiding/showing it
+      event.stopPropagation();
+      // when the whole group is already hidden, the control shows it again
+      const nextHidden = !allHidden;
+      try {
+        await setPagesHidden({
+          pageIds,
+          explorationId,
+          hidden: nextHidden,
+        }).unwrap();
+      } catch {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+          message: t`Failed to update ${groupName}`,
+        });
+        return;
+      }
+      if (nextHidden) {
+        sendToast({
+          icon: "eye_crossed_out",
+          message: t`${groupName} hidden`,
+          actionLabel: t`Undo`,
+          actions: [
+            () => setPagesHidden({ pageIds, explorationId, hidden: false }),
+          ],
+        });
+      }
+    },
+    [setPagesHidden, pageIds, explorationId, groupName, allHidden, sendToast],
+  );
+
+  return (
+    <Tooltip label={allHidden ? t`Show` : t`Hide`}>
+      <ActionIcon
+        className={S.hideGroupButton}
+        size="1rem"
+        c="icon-primary"
+        aria-label={allHidden ? t`Show ${groupName}` : t`Hide ${groupName}`}
+        onClick={handleClick}
+      >
+        <Icon name={allHidden ? "eye" : "eye_crossed_out"} size="1rem" />
+      </ActionIcon>
+    </Tooltip>
   );
 }
 

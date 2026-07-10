@@ -9,7 +9,10 @@ import {
 import { t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
-import { useSetPageStarredMutation } from "metabase/api/exploration";
+import {
+  useSetPageStarredMutation,
+  useSetPagesHiddenMutation,
+} from "metabase/api/exploration";
 import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
@@ -57,6 +60,7 @@ export function ActionToolbar({
   interestingTimelineIds,
 }: ActionToolbarProps) {
   const [setPageStarred] = useSetPageStarredMutation();
+  const [setPagesHidden] = useSetPagesHiddenMutation();
 
   const [isCommentEditorOpen, setCommentEditorOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
@@ -93,6 +97,40 @@ export function ActionToolbar({
     }
   }, [page.starred, setPageStarred, page.id, explorationId, sendToast]);
 
+  const setHidden = useCallback(
+    async (hidden: boolean) => {
+      try {
+        await setPagesHidden({
+          pageIds: [page.id],
+          explorationId,
+          hidden,
+        }).unwrap();
+        return true;
+      } catch (error) {
+        sendToast({
+          icon: "warning_triangle_filled",
+          iconColor: "warning",
+          message: t`Failed to update visibility`,
+        });
+        return false;
+      }
+    },
+    [setPagesHidden, page.id, explorationId, sendToast],
+  );
+
+  const handleToggleHidden = useCallback(async () => {
+    const nextHidden = !page.hidden;
+    const succeeded = await setHidden(nextHidden);
+    if (succeeded && nextHidden) {
+      sendToast({
+        icon: "eye_crossed_out",
+        message: t`Chart hidden`,
+        actionLabel: t`Undo`,
+        actions: [() => setHidden(false)],
+      });
+    }
+  }, [page.hidden, setHidden, sendToast]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (shouldIgnoreKeyboardEvent(event)) {
@@ -120,6 +158,11 @@ export function ActionToolbar({
         event.preventDefault();
       }
 
+      if (event.key === "h") {
+        handleToggleHidden();
+        event.preventDefault();
+      }
+
       if (event.key === "c") {
         setCommentEditorOpen(true);
         event.preventDefault();
@@ -133,6 +176,7 @@ export function ActionToolbar({
     selectedTimelineId,
     handleSelectTimelineId,
     handleToggleStarred,
+    handleToggleHidden,
     setCommentEditorOpen,
   ]);
 
@@ -267,6 +311,12 @@ export function ActionToolbar({
           </div>
         </Popover.Dropdown>
       </Popover>
+      <ToolbarButton
+        icon={page.hidden ? "eye" : "eye_crossed_out"}
+        tooltipLabel={page.hidden ? t`Show` : t`Hide`}
+        iconProps={{ size: "1.125rem" }}
+        onClick={handleToggleHidden}
+      />
     </Group>
   );
 }
