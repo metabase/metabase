@@ -198,27 +198,34 @@
 ;;;; ---------------------------------------------------------------------------
 
 (defn compute-desired
-  "Compute the desired value of every generated key for every module. Runs the three independent
-  file-scanning passes concurrently so a warm REPL finishes in a few seconds.
+  "Compute the desired value of every generated key for every module.
 
-  Returns `{module-sym {:api set, :uses set, :model-exports set, :model-imports set}}`."
-  []
-  (let [config     (deps-graph/kondo-config)
-        f-deps     (future (deps-graph/dependencies))
-        f-own      (future (deps-graph/model-ownership))
-        f-refs     (future (deps-graph/model-references-by-module))
-        api+uses   (deps-graph/generate-config @f-deps config)
-        boundaries (mbc/compute-model-boundaries config @f-own @f-refs)
-        modules    (into #{} (concat (keys api+uses)
-                                     (keys (:model-exports boundaries))
-                                     (keys (:model-imports boundaries))))]
-    (into {}
-          (map (fn [module]
-                 [module {:api            (get-in api+uses [module :api] #{})
-                          :uses           (get-in api+uses [module :uses] #{})
-                          :model-exports  (get-in boundaries [:model-exports module] #{})
-                          :model-imports  (get-in boundaries [:model-imports module] #{})}]))
-          modules)))
+  Returns `{module-sym {:api set, :uses set, :model-exports set, :model-imports set}}`.
+
+  The 4-arity is pure: it derives the answer purely from the four inputs (the parsed Kondo `config`, the
+  `dependencies` file-scan, `model-ownership`, and `model-references`), so it can be exercised in tests
+  with mock data and no file or REPL state. The 0-arity gathers those four inputs from [[dev.deps-graph]]
+  for real, running the independent file-scanning passes concurrently so a warm REPL finishes in a few
+  seconds."
+  ([]
+   (let [config (deps-graph/kondo-config)
+         f-deps (future (deps-graph/dependencies))
+         f-own  (future (deps-graph/model-ownership))
+         f-refs (future (deps-graph/model-references-by-module))]
+     (compute-desired config @f-deps @f-own @f-refs)))
+  ([config dependencies model-ownership model-references]
+   (let [api+uses   (deps-graph/generate-config dependencies config)
+         boundaries (mbc/compute-model-boundaries config model-ownership model-references)
+         modules    (into #{} (concat (keys api+uses)
+                                      (keys (:model-exports boundaries))
+                                      (keys (:model-imports boundaries))))]
+     (into {}
+           (map (fn [module]
+                  [module {:api            (get-in api+uses [module :api] #{})
+                           :uses           (get-in api+uses [module :uses] #{})
+                           :model-exports  (get-in boundaries [:model-exports module] #{})
+                           :model-imports  (get-in boundaries [:model-imports module] #{})}]))
+           modules))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Structural warnings (things this tool won't auto-fix)
@@ -245,13 +252,18 @@
 ;;;; Entry point
 ;;;; ---------------------------------------------------------------------------
 
-(defn update-config!
-  "Rewrite `.clj-kondo/config/modules/config.edn` so the generated keys are correct and sorted.
-  Idempotent: a clean config is left byte-for-byte unchanged. Returns `:updated` or `:unchanged`."
-  []
-  (let [desired      (compute-desired)
-        original     (slurp config-path)
-        pos-root     (z/of-string original {:track-position? true})
+(defn rewrite-config
+  "Pure core of the tool. Given the current config.edn `original` text and the `desired` per-module
+  generated-key map (see [[compute-desired]]), return
+
+    {:text     the rewritten config text
+     :warnings [human-readable strings for structural mismatches this tool won't touch]}
+
+  Idempotent: a config already matching `desired` yields `:text` byte-for-byte equal to `original`. Only
+  modules present in `desired` are touched, so library-sourced entries like `connection-pool` (dissoc'd
+  from the deps graph) are left alone."
+  [original desired]
+  (let [pos-root     (z/of-string original {:track-position? true})
         indents      (collect-indents pos-root)
         ;; full `:forms` node: keeps the header/footer comment blocks that surround the top-level map.
         full-root    (z/root pos-root)
@@ -266,18 +278,24 @@
                          root-node
                          generated-keys))
                       full-root
-                      ;; only touch modules we actually computed config for — leaves library-sourced
-                      ;; modules like `connection-pool` (dissoc'd from the deps graph) untouched.
-                      (filter desired file-modules))
-        new-str      (n/string edited)]
+                      (filter desired file-modules))]
+    {:text     (n/string edited)
+     :warnings (structural-warnings file-modules desired)}))
+
+(defn update-config!
+  "Rewrite `.clj-kondo/config/modules/config.edn` so the generated keys are correct and sorted.
+  Idempotent: a clean config is left byte-for-byte unchanged. Returns `:updated` or `:unchanged`."
+  []
+  (let [original                (slurp config-path)
+        {:keys [text warnings]} (rewrite-config original (compute-desired))]
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (doseq [w (structural-warnings file-modules desired)]
+    (doseq [w warnings]
       (println (str "WARNING: " w)))
-    (if (= new-str original)
+    (if (= text original)
       (do #_{:clj-kondo/ignore [:discouraged-var]}
        (println "config.edn already up to date.")
           :unchanged)
-      (do (spit config-path new-str)
+      (do (spit config-path text)
           #_{:clj-kondo/ignore [:discouraged-var]}
           (println "Updated" config-path)
           :updated))))
