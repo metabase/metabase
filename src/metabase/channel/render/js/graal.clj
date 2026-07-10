@@ -15,14 +15,14 @@
   neither context nor engine on GC). The first render after an idle gap rebuilds them."
   (:require
    [clojure.java.io :as io]
+   [metabase.channel.render.js.common :as common]
    [metabase.channel.render.js.protocol :as js.protocol]
    [metabase.config.core :as config]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
-   (io.aleph.dirigiste IPool$Generator Pool Pools)
-   (java.util.concurrent TimeUnit)
+   (io.aleph.dirigiste Pool)
    (org.graalvm.polyglot Context Engine HostAccess Source Value)))
 
 (set! *warn-on-reflection* true)
@@ -93,17 +93,6 @@
 
 ;;; ---------------------------------------- shared engine + contexts -------------------------------------
 
-(def ^:private bundle-resource-path "frontend_client/app/dist/lib-static-viz.bundle.js")
-
-(defn- assert-tests-not-initializing!
-  "Guard against loading the static-viz bundle as a side effect of loading namespaces: it might not have
-  been built yet. If it hasn't, we want a meaningful error (see the fixture in
-  [[metabase.channel.render.js.svg-test]]) rather than a meaningless compilation error at test-runner
-  startup."
-  []
-  (when config/tests-available?
-    ((requiring-resolve 'mb.hawk.init/assert-tests-are-not-initializing) "(mt/id ...) or (data/id ...)")))
-
 (def ^:private engine-lock (Object.))
 
 (def ^:private shared-engine
@@ -119,7 +108,7 @@
   []
   (locking engine-lock
     (let [state (or @shared-engine
-                    {:source (build-source bundle-resource-path)
+                    {:source (build-source common/bundle-resource-path)
                      :engine (create-engine)
                      :refs   0})]
       (reset! shared-engine (update state :refs inc))
@@ -139,7 +128,7 @@
   "Build a context on the shared engine and evaluate the bundle into it (creating the engine + parsing the
   bundle if this is the first context)."
   ^Context []
-  (assert-tests-not-initializing!)
+  (common/assert-tests-not-initializing!)
   (let [{:keys [^Engine engine ^Source source]} (acquire-engine!)]
     (try
       (doto (create-context engine)
@@ -161,29 +150,11 @@
   :static-viz)
 
 (def ^:private ^Pool static-viz-context-pool
-  "A pool of up to two static-viz contexts (change the controller's max to run 1 or 3), each held
-  exclusively from acquire to release, so at most two renders run at once — one per context, on the
-  shared engine.
-
-  The utilization controller targets 100% utilization with a max of 2 and a min of 0, so when nothing is
-  rendering it shrinks to 0 and the generator's `destroy` closes the context (and, on the last one, the
-  shared engine). It rechecks once a minute, so an idle context lingers up to ~1 minute before being
-  reaped (keeping it warm through short gaps between renders). The other constructor args (queue size,
-  sampling interval) don't matter much."
-  (let [max-pool-size       2
-        max-queued-acquires 65000
-        sample-period-ms    (.toMillis TimeUnit/MILLISECONDS 25)
-        control-period-ms   (.toMillis TimeUnit/MINUTES 1)]
-    (Pool. (reify IPool$Generator
-             (generate [_ _]
-               (generate-context!))
-             (destroy [_ _ context]
-               (destroy-context! context)))
-           (Pools/utilizationController 1.0 max-pool-size max-pool-size)
-           max-queued-acquires
-           sample-period-ms
-           control-period-ms
-           TimeUnit/MILLISECONDS)))
+  "A pool of up to two static-viz contexts, each held exclusively from acquire to release, so at most two
+  renders run at once — one per context, on the shared engine. When idle the pool shrinks to 0 and the
+  generator's `destroy` closes the context (and, on the last one, the shared engine); the first render
+  after an idle gap rebuilds them. See [[metabase.channel.render.js.common/create-pool]]."
+  (common/create-pool generate-context! destroy-context! {:max-size 2}))
 
 (defn- do-with-static-viz-context
   "Borrow a pooled static-viz context and call `f` with it, held exclusively for the call (never let it —
@@ -216,6 +187,6 @@
   []
   (reify js.protocol/StaticVizRenderer
     (chart [_ input]
-      (json/decode+kw (call-js "renderChart" [(json/encode input)])))
+      (json/decode+kw (call-js "renderChartJSON" [(json/encode input)])))
     (cell-background-colors [_ input]
-      (json/decode (call-js "getCellBackgroundColors" [(json/encode input)])))))
+      (json/decode (call-js "getCellBackgroundColorsJSON" [(json/encode input)])))))
