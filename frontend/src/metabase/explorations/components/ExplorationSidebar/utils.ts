@@ -73,16 +73,9 @@ type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
 function collectHeadingPages(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
 ): ExplorationTreePage[] {
-  const pages: ExplorationTreePage[] = [];
-  for (const node of nodes) {
-    if (node.data?.type === "page") {
-      pages.push(node.data);
-    }
-    if (node.children?.length) {
-      pages.push(...collectHeadingPages(node.children));
-    }
-  }
-  return pages;
+  return flattenTree(nodes).flatMap((node) =>
+    node.data?.type === "page" ? [node.data] : [],
+  );
 }
 
 function getHeadingHideState(nodes: ITreeNodeItem<ExplorationTreeNode>[]): {
@@ -100,6 +93,7 @@ export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
+  const initialThreadId = exploration.threads?.[0]?.id;
   const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
     .map((thread, index) => {
       const children = getExplorationQueryTree(thread, treeItemFilter);
@@ -129,7 +123,10 @@ export function getExplorationSidebarTree(
         children,
       };
     })
-    .filter((heading) => (heading.children ?? []).length > 0);
+    .filter((heading) => {
+      const isInitialThread = initialThreadId && heading.id === initialThreadId;
+      return isInitialThread || (heading.children ?? []).length > 0;
+    });
   return tree;
 }
 

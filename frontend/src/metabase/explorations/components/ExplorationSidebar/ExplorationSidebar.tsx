@@ -60,8 +60,6 @@ import {
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
-  getExplorationSidebarTree,
-  getExplorationThreadName,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -220,19 +218,11 @@ export function ExplorationSidebar({
   );
 
   const isEmptyDueToHidden = useMemo(() => {
-    if (showHidden || tree.length > 0) {
+    if (showHidden || (tree[0]?.children?.length || 0) > 0) {
       return false;
     }
-    const tabFilter =
-      explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
-    return getExplorationSidebarTree(exploration, tabFilter).length > 0;
-  }, [
-    exploration,
-    explorationSidebarTabsInfo,
-    selectedSidebarTab,
-    showHidden,
-    tree,
-  ]);
+    return (tree[0]?.children?.length || 0) === 0;
+  }, [showHidden, tree]);
 
   if (!isOpen) {
     // we still want keyboard shortcuts to work, so the component should still be mounted
@@ -241,11 +231,6 @@ export function ExplorationSidebar({
 
   const emptyTreeMessage =
     explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
-
-  const firstThread = exploration.threads?.[0];
-  const allHiddenThreadName = firstThread
-    ? getExplorationThreadName(firstThread, 0)
-    : t`Initial investigation`;
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
@@ -295,33 +280,17 @@ export function ExplorationSidebar({
       {tree.length > 0 ? (
         <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
           <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
+          {isEmptyDueToHidden && (
+            <Text c="text-secondary" fs="italic" px="0.5rem" pl="1.75rem">
+              {t`All items have been hidden.`}
+            </Text>
+          )}
         </Box>
-      ) : isEmptyDueToHidden ? (
-        <ExplorationAllHiddenState threadName={allHiddenThreadName} />
       ) : (
         <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
           <Text fz="lg">{emptyTreeMessage}</Text>
         </Center>
       )}
-    </Stack>
-  );
-}
-
-function ExplorationAllHiddenState({ threadName }: { threadName: string }) {
-  return (
-    <Stack
-      flex={1}
-      gap="sm"
-      pl="0.5rem"
-      pr="1rem"
-      data-testid="exploration-all-hidden"
-    >
-      <Text size="md" fw={500} px="0.5rem">
-        {threadName}
-      </Text>
-      <Text c="text-secondary" px="0.5rem">
-        {t`All queries have been hidden.`}
-      </Text>
     </Stack>
   );
 }
@@ -399,9 +368,6 @@ function ExplorationTreeHeading({
       >
         {item.name}
       </Ellipsified>
-      {item.data?.lastActivityAt && isSettled(item.data.status) && (
-        <ExplorationLastActivity lastActivityAt={item.data.lastActivityAt} />
-      )}
       {canHideGroup && (
         <ExplorationGroupHideButton
           explorationId={explorationId}
@@ -409,6 +375,9 @@ function ExplorationTreeHeading({
           pageIds={pageIds}
           allHidden={item.data?.allHidden === true}
         />
+      )}
+      {item.data?.lastActivityAt && isSettled(item.data.status) && (
+        <ExplorationLastActivity lastActivityAt={item.data.lastActivityAt} />
       )}
       <ExplorationThreadMenu item={item} canWrite={canWrite} />
     </Box>

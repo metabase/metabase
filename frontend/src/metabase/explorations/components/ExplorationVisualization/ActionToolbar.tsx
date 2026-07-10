@@ -124,12 +124,12 @@ export function ActionToolbar({
     if (succeeded && nextHidden) {
       sendToast({
         icon: "eye_crossed_out",
-        message: t`Chart hidden`,
+        message: t`Hidden "${page.name}"`,
         actionLabel: t`Undo`,
         actions: [() => setHidden(false)],
       });
     }
-  }, [page.hidden, setHidden, sendToast]);
+  }, [page.hidden, page.name, setHidden, sendToast]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
