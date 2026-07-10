@@ -10,6 +10,7 @@ import { makeDistortionCallback } from "./sandbox/distortions";
 export const DATA_APP_PROVIDER_PROP_KEYS = [
   "theme",
   "allowedCustomVisualizations",
+  "errorComponent",
 ] as const;
 
 export type DataAppMetabaseProviderProps = Pick<
@@ -24,7 +25,7 @@ export type DataAppMetabaseProviderProps = Pick<
  *     inside — the host owns the provider wrap so the SDK store/theme/
  *     portal context live in host realm.
  *   - `providerProps` — the `MetabaseProvider` props the data app wants to
- *     customize (theme, allowedCustomVisualizations).
+ *     customize (theme, allowedCustomVisualizations, errorComponent).
  */
 export type DataAppFactory = () => {
   component: React.ComponentType<Record<string, unknown>>;

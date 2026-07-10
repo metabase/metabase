@@ -45,6 +45,29 @@
                 (data-app.sync/import-from-snapshot!
                  (snapshot (app-files "a" {:name "A renamed" :slug "a" :path "index.js" :bundle "V2"})))))))))
 
+(deftest sync-across-repos-keeps-overrides-and-adds-test
+  (testing "linking repo A, unlinking, then linking repo B: keep A-only apps, override shared slugs with B, add B-only apps"
+    (mt/with-model-cleanup [:model/DataApp]
+      ;; Repo A: Foo + Bar
+      (data-app.sync/import-from-snapshot!
+       (snapshot (merge (app-files "foo" {:name "Foo" :slug "foo" :path "index.js" :bundle "FOO"})
+                        (app-files "bar" {:name "Bar A" :slug "bar" :path "index.js" :bundle "BAR-A"}))))
+      (is (= #{"foo" "bar"} (t2/select-fn-set :name :model/DataApp)))
+      ;; Unlinking A doesn't sync (nothing prunes). Linking repo B (Bar + Baz)
+      ;; and importing it keeps Foo, overrides Bar by slug, and adds Baz.
+      (data-app.sync/import-from-snapshot!
+       (snapshot (merge (app-files "bar" {:name "Bar B" :slug "bar" :path "index.js" :bundle "BAR-B"})
+                        (app-files "baz" {:name "Baz" :slug "baz" :path "index.js" :bundle "BAZ"}))))
+      (is (= #{"foo" "bar" "baz"} (t2/select-fn-set :name :model/DataApp))
+          "Foo (from repo A) is kept and Baz (from repo B) is added")
+      (is (= "Foo" (:display_name (t2/select-one :model/DataApp :name "foo")))
+          "Foo is untouched by repo B")
+      (let [bar (t2/select-one :model/DataApp :name "bar")]
+        (is (= "Bar B" (:display_name bar))
+            "Bar is overridden in place by repo B (slug conflict)")
+        (is (= "BAR-B" (String. ^bytes (:bundle bar) "UTF-8"))
+            "Bar's cached bundle is repo B's")))))
+
 (defn- oversized-bundle ^String []
   (.repeat "a" (int (inc data-app.sync/max-bundle-bytes))))
 

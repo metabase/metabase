@@ -4,11 +4,11 @@ import { t } from "ttag";
 import { Center, Loader } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 
-import { DataAppProvider } from "./components/DataAppProvider";
-import { type ErrorDetail, describeError } from "./lib/describe-error";
-import { readNameFromUrl } from "./lib/read-name-from-url";
-import { reportErrorToParent } from "./lib/report-error-to-parent";
-import { useDataAppBundle } from "./lib/use-data-app-bundle";
+import { type ErrorDetail, describeError } from "../../lib/describe-error";
+import { readNameFromUrl } from "../../lib/read-name-from-url";
+import { reportErrorToParent } from "../../lib/report-error-to-parent";
+import { useDataAppBundle } from "../../lib/use-data-app-bundle";
+import { DataAppProvider } from "../DataAppProvider/DataAppProvider";
 
 /**
  * Catches errors thrown while *rendering* the bundle's React tree (the async

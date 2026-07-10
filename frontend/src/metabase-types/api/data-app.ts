@@ -40,6 +40,8 @@ export interface DataApp {
 export interface DataAppRepoStatus {
   /** Whether a repository is connected via remote-sync. */
   configured: boolean;
+  /** The connected repository URL, or `null` when none is connected. */
+  url: string | null;
 }
 
 export interface SetDataAppEnabledRequest {

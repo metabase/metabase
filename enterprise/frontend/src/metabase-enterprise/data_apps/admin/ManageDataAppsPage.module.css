@@ -1,9 +1,3 @@
 .appList > *:not(:last-child) {
   border-bottom: 1px solid var(--mb-color-border);
 }
-
-.command {
-  font-family: var(--mb-default-monospace-font-family, monospace);
-  font-size: 0.75rem;
-  background-color: var(--mb-color-background-secondary);
-}

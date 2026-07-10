@@ -84,6 +84,39 @@ export default function App() {
 
 Run `yarn dev`, click the links, watch the URL bar change. Reload at `http://localhost:5174/customers/42` and the dev preview lands on the customer route directly.
 
+## Always preselect the default (leftmost) tab on load
+
+**If the app presents multiple tabs (or any top-level page switcher), the base path `/` MUST render the default — leftmost / first — tab's content, never a blank page, a "Not found", or an empty shell.** This is the single most common mistake: the app boots at `/`, no branch matches, and the user sees nothing until they click a tab. Don't rely on the user (or a later navigation) to select the first tab — the default tab is the initial state.
+
+Two equivalent ways to guarantee it, depending on whether tabs are route-backed:
+
+- **Route-backed tabs** — give `/` an explicit branch that renders the first tab, so an unmatched/base path resolves to it:
+
+  ```tsx
+  const TABS = [
+    { path: "/", label: "Overview", render: () => <Overview /> },
+    { path: "/customers", label: "Customers", render: () => <Customers /> },
+    { path: "/reports", label: "Reports", render: () => <Reports /> },
+  ];
+
+  function Page() {
+    const { pathname } = useDataAppLocation();
+    // Exact-or-prefix match; fall back to the FIRST tab so `/` (and any
+    // unknown sub-path) always shows the default tab, never a blank page.
+    const active =
+      TABS.find((t) => t.path !== "/" && pathname.startsWith(t.path)) ?? TABS[0];
+    return active.render();
+  }
+  ```
+
+- **Local-state tabs (no routing)** — initialize the active-tab state to the first tab, so the very first render shows it:
+
+  ```tsx
+  const [active, setActive] = useState(TABS[0].id); // default = leftmost tab
+  ```
+
+Verify by reloading the app at its base path (`/`) with a fresh load: the leftmost tab's content must be visible immediately, and that tab must read as selected in the tab bar.
+
 ## How navigation translates to the parent URL
 
 You don't need to do anything for this. For context:

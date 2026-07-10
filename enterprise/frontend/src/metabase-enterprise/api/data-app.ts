@@ -46,6 +46,14 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { name }) =>
         invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
     }),
+    deleteDataApp: builder.mutation<void, string>({
+      query: (name) => ({
+        method: "DELETE",
+        url: `/api/apps/${encodeURIComponent(name)}`,
+      }),
+      invalidatesTags: (_, error, name) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+    }),
   }),
 });
 
@@ -54,4 +62,5 @@ export const {
   useGetDataAppQuery,
   useGetDataAppRepoStatusQuery,
   useSetDataAppEnabledMutation,
+  useDeleteDataAppMutation,
 } = dataAppApi;

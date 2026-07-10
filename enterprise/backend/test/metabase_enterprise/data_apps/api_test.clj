@@ -149,17 +149,33 @@
        (snapshot (app-files "sales" {:name "Sales" :slug "sales" :path "dist/index.js" :bundle "B"})))
       (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
 
-(deftest import-prunes-removed-apps-test
+(deftest import-keeps-apps-absent-from-snapshot-test
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
      (snapshot (merge (app-files "keep" {:name "Keep" :slug "keep" :path "index.js" :bundle "KEEP"})
-                      (app-files "drop" {:name "Drop" :slug "drop" :path "index.js" :bundle "DROP"}))))
-    (is (= #{"keep" "drop"} (t2/select-fn-set :name :model/DataApp)))
-    ;; a later snapshot without "drop" prunes it
+                      (app-files "gone" {:name "Gone" :slug "gone" :path "index.js" :bundle "GONE"}))))
+    (is (= #{"keep" "gone"} (t2/select-fn-set :name :model/DataApp)))
+    ;; A sync never deletes: an app missing from a later snapshot is kept, not
+    ;; pruned. Removal is an explicit admin action (DELETE /api/apps/:slug).
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "keep" {:name "Keep" :slug "keep" :path "index.js" :bundle "KEEP"})))
-    (is (= #{"keep"} (t2/select-fn-set :name :model/DataApp))
-        "the removed app is pruned")))
+    (is (= #{"keep" "gone"} (t2/select-fn-set :name :model/DataApp))
+        "the app absent from the later snapshot is kept")))
+
+(deftest delete-endpoint-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (create-app!)
+        (testing "a non-superuser cannot remove an app"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 "apps/demo")))
+          (is (t2/exists? :model/DataApp :name "demo")))
+        (testing "a superuser removes the app"
+          (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
+          (is (not (t2/exists? :model/DataApp :name "demo"))))
+        (testing "removing a non-existent app 404s"
+          (mt/user-http-request :crowberto :delete 404 "apps/missing"))))))
 
 (deftest import-preserves-enabled-across-syncs-test
   (mt/with-model-cleanup [:model/DataApp]
@@ -251,11 +267,14 @@
 
 (deftest repo-status-endpoint-test
   (mt/with-premium-features #{:data-apps}
-    (testing "configured reflects whether a repository is connected"
-      (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly false)]
-        (is (=? {:configured false} (mt/user-http-request :crowberto :get 200 "apps/repo-status"))))
-      (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly true)]
-        (is (=? {:configured true} (mt/user-http-request :crowberto :get 200 "apps/repo-status")))))))
+    (testing "reports no repository when none is connected"
+      (mt/with-dynamic-fn-redefs [data-app.sync/repo-url (constantly nil)]
+        (is (=? {:configured false :url nil}
+                (mt/user-http-request :crowberto :get 200 "apps/repo-status")))))
+    (testing "reports the connected repository URL"
+      (mt/with-dynamic-fn-redefs [data-app.sync/repo-url (constantly "https://github.com/metabase/stats-remote-sync")]
+        (is (=? {:configured true :url "https://github.com/metabase/stats-remote-sync"}
+                (mt/user-http-request :crowberto :get 200 "apps/repo-status")))))))
 
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
