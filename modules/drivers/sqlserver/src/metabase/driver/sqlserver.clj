@@ -594,11 +594,11 @@
   query is much more efficient. See #9934 for more details."
   [field-clause]
   (when (driver-api/is-clause? :field field-clause)
-    (let [[_ id-or-name {:keys [temporal-unit], :as opts}] field-clause]
+    (let [[_ {:keys [temporal-unit], :as opts} id-or-name] field-clause]
       (when (#{:year :month :day} temporal-unit)
         (mapv
          (fn [unit]
-           [:field id-or-name (assoc opts :temporal-unit unit, ::optimized-bucketing? true)])
+           [:field (assoc opts :temporal-unit unit, ::optimized-bucketing? true) id-or-name])
          (case temporal-unit
            :year  [:year]
            :month [:year :month]
@@ -660,10 +660,10 @@
   [subclauses]
   (vec
    (mapcat
-    (fn [[direction field :as subclause]]
+    (fn [[direction opts field :as subclause]]
       (if-let [optimized (optimized-temporal-buckets field)]
         (for [optimized-clause optimized]
-          [direction optimized-clause])
+          [direction opts optimized-clause])
         [subclause]))
     subclauses)))
 
@@ -848,9 +848,11 @@
                          ;; just use Lib metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
-                                 (map (fn [[_type _opts val :as expr]]
+                                 (map (fn [expr]
                                         ;; Do not cast nil arguments to enable transformation to IS NULL.
-                                        (if (some? val)
+                                        (if (some? (driver-api/match-one expr
+                                                     [_ (_opts :guard :lib/uuid) val & _] val
+                                                     [_ val & _] val))
                                           (sql.qp/mbql-clause driver ::cast expr field-database-type)
                                           expr)))))
                              identity)
