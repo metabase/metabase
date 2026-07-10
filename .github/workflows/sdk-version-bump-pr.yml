@@ -273,6 +273,7 @@ jobs:
         run: |
           gh pr create --base "$BRANCH" \
                        --assignee "${GITHUB_ACTOR}" \
+                       --reviewer metabase/embedding \
                        --label sdk-release-trigger \
                        --title "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }}" \
                        --body "$(cat <<'BODY'
@@ -290,8 +291,16 @@ jobs:
           )"
 
       - name: Add no-backport label (using GitHub Actions account)
-        # metabase/embedding team is added automatically as code owner of package.template.json,
-        # so no explicit --add-reviewer call is needed here (unlike the readme-update PR step).
+        # CODEOWNERS does NOT cover this on release branches - the embedding
+        # team's CODEOWNERS entries are deliberately commented out there as
+        # part of a repo-wide practice to cut auto-backport review noise
+        # (unrelated to this workflow; see the embedding-release-checklist's
+        # beta-prep step). EMB-1000 hit this exact gap on the old release
+        # follow-up PR, which silently lost its review request the same way.
+        # The fix here is an explicit `--reviewer metabase/embedding` on the
+        # "Open version-bump PR" step above (using the automation PAT, which
+        # - unlike GITHUB_TOKEN - has org read access to resolve the team),
+        # so the bump PR always gets a review request regardless of branch.
         run: |
           gh pr edit --add-label no-backport
         env:
