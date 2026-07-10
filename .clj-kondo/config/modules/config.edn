@@ -2982,14 +2982,19 @@
 
   enterprise/content-diagnostics
   {:team "Gadget"
-   :api  #{metabase-enterprise.content-diagnostics.init}
-   :uses #{models
+   :api  #{metabase-enterprise.content-diagnostics.api
+           metabase-enterprise.content-diagnostics.init}
+   :uses #{api
+           collections
+           models
            premium-features
+           request
            settings
            task
            util
            enterprise/stale}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/Document
                     :model/Transform

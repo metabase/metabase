@@ -14,6 +14,7 @@
    [metabase-enterprise.billing.api.routes]
    [metabase-enterprise.cloud-add-ons.api]
    [metabase-enterprise.cloud-proxy.api]
+   [metabase-enterprise.content-diagnostics.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.custom-viz-plugin.api]
@@ -57,6 +58,7 @@
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
+   :content-diagnostics        (deferred-tru "Content Diagnostics")
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :library                    (deferred-tru "Library")
@@ -106,6 +108,7 @@
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
