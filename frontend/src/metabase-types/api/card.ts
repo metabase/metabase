@@ -1,6 +1,6 @@
 import type { CurrencyStyle } from "metabase/utils/formatting";
 import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
-import type { IconName } from "metabase-types/api";
+import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -588,9 +588,20 @@ export type ReferencedCard = {
   columns?: string[];
 };
 
+export type ReferencedCardsResults = Record<CardId, ReferencedCardResult>;
+
+export interface ReferencedCardResult {
+  status: string;
+  error?: string;
+  data?: {
+    cols: DatasetColumn[];
+    rows: RowValues[];
+  };
+}
+
 export type ScalarSegment = {
-  min: number | null;
-  max: number | null;
+  min: GoalStaticValue | null;
+  max: GoalStaticValue | null;
   color: string;
   label?: string;
 };
