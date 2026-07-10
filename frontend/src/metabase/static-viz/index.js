@@ -1,4 +1,3 @@
-import "./mock-environment";
 import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";

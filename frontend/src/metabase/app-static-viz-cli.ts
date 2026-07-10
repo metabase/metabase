@@ -6,8 +6,7 @@
 // its own dependency-free module imported first: it must run *before* the viz code loads — stdout carries
 // the line protocol, so anything the bundle logs during init has to go to stderr instead.
 import "metabase/static-viz/console";
-// v60 predates the polyfill module; mock-environment plays the same role here
-import "metabase/static-viz/mock-environment";
+import "metabase/static-viz/polyfill";
 
 import readline from "readline";
 
