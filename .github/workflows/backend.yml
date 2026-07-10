@@ -45,7 +45,7 @@ jobs:
 
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
+    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -167,7 +167,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||

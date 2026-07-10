@@ -138,7 +138,7 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
+          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-x') }}
         shell: bash
 
   be-tests-athena-ee:
@@ -703,7 +703,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -1125,7 +1125,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||

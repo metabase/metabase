@@ -76,7 +76,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -193,7 +193,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -311,7 +311,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
