@@ -1,11 +1,8 @@
 import type { DataAppTestEnv } from "e2e/support/assets/data-apps/renders-interactive-question/src/test-env";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as Urls from "metabase/urls/data-apps";
 import type { DataApp } from "metabase-types/api";
 
 import { getIframeBody } from "./e2e-embedding-helpers";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /**
  * The e2e data-app fixture that `mockDataApp` builds and serves — its directory
@@ -20,29 +17,6 @@ export const DATA_APP_DISPLAY_NAME = "Renders Interactive Question";
  */
 export const visitDataAppRoute = (route: string) =>
   cy.visit(`/apps/${DATA_APP_NAME}/${route}`);
-
-/**
- * A raw numeric field dimension for the query-builder combinators, shaped like a
- * generated `metabase.data.ts` schema entry.
- */
-export const dataAppNumericField = (fieldId: number, name: string) => ({
-  type: "column" as const,
-  fieldId,
-  tableId: ORDERS_ID,
-  name,
-  jsType: "number" as const,
-});
-
-const source = { type: "table" as const, id: ORDERS_ID };
-
-/** The `testEnv` the fixture's Overview page reads (Orders count + question). */
-export const DATA_APP_TEST_ENV: DataAppTestEnv = {
-  scalarQuery: {
-    source,
-    aggregations: [{ type: "operator", operator: "count", args: [] }],
-  },
-  questionQuery: { source },
-};
 
 /**
  * A minimal `DataApp`-shaped row. Admin-list state tests use it directly (they

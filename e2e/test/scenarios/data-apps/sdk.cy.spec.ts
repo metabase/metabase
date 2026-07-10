@@ -2,10 +2,13 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
-  DATA_APP_TEST_ENV as TEST_ENV,
-  dataAppNumericField as numericField,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
+
+import {
+  DATA_APP_TEST_ENV as TEST_ENV,
+  dataAppNumericField as numericField,
+} from "./helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 

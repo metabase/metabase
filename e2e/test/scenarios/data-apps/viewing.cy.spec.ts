@@ -1,10 +1,11 @@
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
-  DATA_APP_TEST_ENV as TEST_ENV,
   fakeDataApp as fakeApp,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
+
+import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
 const { H } = cy;
 
