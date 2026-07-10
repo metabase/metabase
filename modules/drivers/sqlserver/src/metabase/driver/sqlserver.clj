@@ -686,7 +686,7 @@
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filters]
   [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filters])]
-    (->> (update query :filters #(sql.qp.boolean-to-comparison/boolean->comparison driver %))
+    (->> (update query :filters #(mapv (partial sql.qp.boolean-to-comparison/boolean->comparison driver) %))
          (parent-method driver :filters honeysql-form))))
 
 ;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
