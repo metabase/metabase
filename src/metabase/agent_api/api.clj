@@ -1424,6 +1424,8 @@
                 ;; Archived cards can't be added — except a question internal to THIS dashboard:
                 ;; it was auto-archived when its last dashcard was removed, and re-adding it
                 ;; unarchives it via the internal-question sync after the mutations.
+                ;; TODO (Chris 2026-07-10) -- this surfaces as check-not-archived's standard 404,
+                ;; matching REST; a 400 naming the archived card would guide an LLM caller better.
                 _       (when-not (= (:dashboard_id card) dashboard-id)
                           (api/check-not-archived card))
                 display (or (:display card) :table)
@@ -1565,6 +1567,9 @@
                        (contains? body :archived)      (assoc :archived (boolean (:archived body))))
         ;; Keep `archived_directly` in sync (and drop any `collection_id` sent alongside an
         ;; archive), mirroring the REST PUT-dashboard path.
+        ;; TODO (Chris 2026-07-10) -- the drop is silent: archive + move in one request returns
+        ;; 200 but discards the move. Matching REST for now; rejecting the combination with a 400
+        ;; may serve LLM callers better.
         updates      (api/updates-with-archived-directly current-dash updates)
         ;; A move requires write on BOTH source and target collection. `api/write-check :model/Dashboard`
         ;; above only covered the source entity. Mirror the REST endpoint's gate.
