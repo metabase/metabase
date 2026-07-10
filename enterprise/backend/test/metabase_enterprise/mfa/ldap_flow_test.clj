@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.session.api :as api.session]
    [metabase.sso.ldap-test-util :as ldap.test]
@@ -50,6 +51,27 @@
                                       :code            (totp/generate-code secret)}))))))
             (finally
               (t2/delete! :model/AuthIdentity :user_id user-id :provider "totp"))))))))
+
+(deftest ldap-enroll-rejects-blank-password-test
+  ;; An empty (or whitespace) password sent to ldap/bind? is an *anonymous* bind, which succeeds on
+  ;; permissive directories — and the in-memory UnboundID server is one. verify-user-password must
+  ;; reject blank passwords itself, before the bind, so this attack can never re-auth. Tested at two
+  ;; layers: the endpoint schema, and the helper that owns the invariant (a future caller inherits
+  ;; the guard only if it lives in the helper, not the schema).
+  (mt/with-premium-features #{:multi-factor-auth}
+    (mt/with-temporary-setting-values [mfa-enforcement :optional]
+      (ldap.test/with-ldap-server!
+        (let [{session-key :id} (mt/client :post 200 "session" {:username sally-email
+                                                                :password sally-directory-password})
+              user-id           (t2/select-one-fn :id :model/User :email sally-email)]
+          (testing "the helper rejects blank passwords rather than letting an anonymous bind pass"
+            (is (false? (#'mfa.management/verify-user-password user-id "")))
+            (is (false? (#'mfa.management/verify-user-password user-id "   ")))
+            (is (false? (#'mfa.management/verify-user-password user-id nil)))
+            (is (true?  (#'mfa.management/verify-user-password user-id sally-directory-password))
+                "sanity: a real directory password still binds"))
+          (testing "the enroll endpoint's schema also refuses a blank password"
+            (mt/client session-key :post 400 "ee/mfa/enroll" {:password ""})))))))
 
 (deftest ldap-only-user-enrolls-with-directory-password-test
   (mt/with-premium-features #{:multi-factor-auth}
