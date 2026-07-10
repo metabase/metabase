@@ -3,6 +3,12 @@
 # and .github/workflows/release-embedding-sdk.yml for the other half of the
 # two-step release process this sets up.
 #
+# MIGRATION NOTE: package.template.json needs a concrete semver `version`
+# before its first bump here. Branches that went gold under the
+# pre-EMB-1518 after-gold checklist have a `0.N.x` placeholder instead - the
+# "Bump version with semver" step below errors clearly on that rather than
+# letting the semver CLI fail silently.
+#
 # Step 1 of the new SDK release process: bump the version (and the
 # sdkRelease metadata that controls the npm dist-tag / `latest` promotion)
 # in package.template.json, then open a PR labeled `sdk-release-trigger` for
@@ -23,6 +29,11 @@ on:
         description: "Release type, passed to `semver -i` (alpha/beta bump the prerelease identifier; preminor bumps master to the next major's alpha; patch/minor graduate or bump a stable version)"
         type: choice
         required: true
+        # OPEN QUESTION (EMB-1518 review cycle 3, finding #17, for Nicolo/Roman):
+        # `minor` on an old release branch (e.g. release-x.62.x) bumps to the
+        # *next* major's version line (0.62.1 -> 0.63.0), colliding with
+        # master's own 0.63.0 graduation - `patch` already covers the intended
+        # "graduate a beta to stable" case, so `minor` may not have a safe use.
         options:
           - alpha
           - beta
@@ -113,6 +124,15 @@ jobs:
           # modules, so npx always fetches `semver` fresh from the registry.
           CURRENT_VERSION=$(jq -r .version "$package_template")
           RELEASE_TYPE="${{ inputs.release_type }}"
+
+          # Branches that went gold under the pre-EMB-1518 after-gold
+          # checklist have a `0.N.x` placeholder version instead of a
+          # concrete semver string - `semver -i` exits 1 with no output on
+          # that, which is a cryptic failure. Fail clearly instead.
+          if ! npx --yes semver "$CURRENT_VERSION" >/dev/null 2>&1; then
+            echo "::error::'$CURRENT_VERSION' is not a valid semver version - old release branches use a '0.N.x' placeholder (pre-EMB-1518 convention); set a concrete version in $package_template first."
+            exit 1
+          fi
 
           case "$RELEASE_TYPE" in
             alpha|beta)
