@@ -736,7 +736,9 @@
             (is (str/includes? output (str "dashcard_id=\"" dc-id "\""))))))))
   (testing "an action dashcard that also references its backing model card still reads as an action"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-actions [{model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+      (mt/with-actions [{model-id :id} {:type :model
+                                        :dataset_query (let [mp (mt/metadata-provider)]
+                                                         (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
                         {:keys [action-id]} {:type :query :visualization_settings {}}]
         (mt/with-temp [:model/Dashboard {dash-id :id} {}
                        :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
