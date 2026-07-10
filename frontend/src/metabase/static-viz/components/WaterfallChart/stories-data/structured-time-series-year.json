@@ -92,8 +92,12 @@
         "type": null
       },
       "visualization_settings": {
-        "graph.dimensions": ["CREATED_AT"],
-        "graph.metrics": ["sum"]
+        "graph.dimensions": [
+          "CREATED_AT"
+        ],
+        "graph.metrics": [
+          "sum"
+        ]
       },
       "last-edit-info": {
         "id": 1,
@@ -153,7 +157,15 @@
               }
             ]
           },
-          "aggregation": [["sum", ["expression", "Total with negative"]]],
+          "aggregation": [
+            [
+              "sum",
+              [
+                "expression",
+                "Total with negative"
+              ]
+            ]
+          ],
           "breakout": [
             [
               "field",
@@ -239,7 +251,10 @@
         },
         {
           "display_name": "Sum of Total with negative",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "name": "sum",
           "base_type": "type/Float",
           "effective_type": "type/Float",
@@ -270,10 +285,22 @@
     },
     "data": {
       "rows": [
-        ["2022-01-01T00:00:00-03:00", -21968.572846717416],
-        ["2023-01-01T00:00:00-03:00", -181201.09294470557],
-        ["2024-01-01T00:00:00-03:00", 19654.361286730542],
-        ["2025-01-01T00:00:00-03:00", 19968.801347418932]
+        [
+          "2022-01-01T00:00:00-03:00",
+          -21968.572846717416
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          -181201.09294470557
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          19654.361286730542
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          19968.801347418932
+        ]
       ],
       "cols": [
         {
@@ -320,7 +347,10 @@
           "name": "sum",
           "display_name": "Sum of Total with negative",
           "source": "aggregation",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "aggregation_index": 0,
           "effective_type": "type/Float"
         }
@@ -368,7 +398,10 @@
           },
           {
             "display_name": "Sum of Total with negative",
-            "field_ref": ["aggregation", 0],
+            "field_ref": [
+              "aggregation",
+              0
+            ],
             "name": "sum",
             "base_type": "type/Float",
             "effective_type": "type/Float",
@@ -401,7 +434,15 @@
           "col": "sum",
           "slope": 89.44219464946718,
           "last-value": 19968.801347418932,
-          "best-fit": ["+", -1788665.3711602255, ["*", 89.44219464946718, "x"]]
+          "best-fit": [
+            "+",
+            -1788665.3711602255,
+            [
+              "*",
+              89.44219464946718,
+              "x"
+            ]
+          ]
         }
       ]
     }
