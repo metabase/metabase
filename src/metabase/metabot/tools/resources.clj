@@ -572,9 +572,9 @@
 (defn- present-non-question-dashcard
   "Dashcards not rendered as a saved question — virtual cards (headings, text, links, ...) and
    action buttons (which may reference a backing model via `card_id` but render as a button).
-   They carry their `dashcard_id` — the handle `update_dashboard` remove/move/update_text mutations
-   take. The
-   card's text (when it has any) renders as the item body via `:description`."
+   They carry their `dashcard_id` — the handle `update_dashboard` remove/move/update_text
+   mutations take. The card's text (or a link card's target) renders as the item body via
+   `:description`."
   [{:keys [id action_id visualization_settings]}]
   (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
     ;; action_id wins over the virtual display: frontend-created action buttons carry BOTH an
@@ -586,27 +586,28 @@
      :dashcard_id id
      ;; action buttons carry their visible label here; nil for virtual cards
      :name        (:button.label visualization_settings)
-     :description (:text visualization_settings)}))
+     :description (or (:text visualization_settings)
+                      (get-in visualization_settings [:link :url])
+                      (get-in visualization_settings [:link :entity :name]))}))
 
 (defn- fetch-dashboard-items
   "One item per dashcard in row/col (layout) order, each carrying the `dashcard_id` that
-   `update_dashboard` remove/move/update_text mutations take. On a tabbed dashboard the dashcards
-   group under
-   one `tab` item per tab (in display order, empty tabs included) and carry that tab's `tab_id` —
-   nil-tab dashcards belong to the first tab, where the frontend renders them. Card-backed
-   dashcards keep the card fields; virtual dashcards (headings, text, ...) render their text.
-   Dashcards whose card is archived or unreadable are omitted."
+   `update_dashboard` remove/move/update_text mutations take. On a tabbed dashboard the items come
+   grouped by tab (nil-tab dashcards belong to the first tab, where the frontend renders them),
+   each carries its `tab_id`, and the response's `:tabs` lists every tab — empty ones included —
+   in display order. Card-backed dashcards keep the card fields; virtual dashcards (headings,
+   text, links, ...) render their text; action buttons keep a `uri` to their backing model when
+   it's readable. Dashcards whose card is archived or unreadable are omitted."
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
         tabs         (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
-                                {:order-by [[:position :asc]]})
+                                {:order-by [[:position :asc] [:id :asc]]})
         dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
                                  :visualization_settings]
                                 :dashboard_id dashboard-id
                                 {:order-by [[:row :asc] [:col :asc]]})
-        ;; action buttons render via action_id, so their card_id is never looked up
-        card-ids     (into #{} (comp (remove :action_id) (keep :card_id)) dashcards)
+        card-ids     (into #{} (keep :card_id) dashcards)
         readable     (when (seq card-ids)
                        (->> (t2/select [:model/Card :id :name :type :description :card_schema
                                         :collection_id :database_id :table_id]
@@ -616,22 +617,25 @@
                             (into {} (map (juxt :id identity)))))
         ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
                        ;; action_id wins over card_id: an action button may reference its backing
-                       ;; model through card_id but renders as a button.
+                       ;; model through card_id but renders as a button — with a uri to that model
+                       ;; so it stays drillable.
                        (if (and card_id (not action_id))
                          (when-let [card (get readable card_id)]
                            (assoc (present-card card) :dashcard_id id))
-                         (present-non-question-dashcard dashcard)))
+                         (cond-> (present-non-question-dashcard dashcard)
+                           (get readable card_id) (assoc :uri (:uri (present-card (get readable card_id)))))))
         items        (if (seq tabs)
-                       (let [by-tab (group-by #(or (:dashboard_tab_id %) (:id (first tabs)))
-                                              dashcards)]
+                       ;; group by tab without emitting tab pseudo-items — those would inflate the
+                       ;; paginated total; the tab list rides on the response as `:tabs` instead
+                       (let [tab-pos (into {} (map-indexed (fn [i {:keys [id]}] [id i])) tabs)
+                             eff-tab #(or (:dashboard_tab_id %) (:id (first tabs)))]
                          (into []
-                               (mapcat (fn [{tab-id :id tab-name :name}]
-                                         (cons {:type "tab" :tab_id tab-id :name tab-name}
-                                               (keep #(some-> (->item %) (assoc :tab_id tab-id))
-                                                     (get by-tab tab-id)))))
-                               tabs))
+                               (keep (fn [dashcard]
+                                       (some-> (->item dashcard) (assoc :tab_id (eff-tab dashcard)))))
+                               (sort-by (comp tab-pos eff-tab) dashcards)))
                        (into [] (keep ->item) dashcards))]
-    (list-result :dashboard-items items query-params)))
+    (cond-> (list-result :dashboard-items items query-params)
+      (seq tabs) (update :structured-output assoc :tabs (mapv #(select-keys % [:id :name]) tabs)))))
 
 ;; ----- Dispatch -----
 

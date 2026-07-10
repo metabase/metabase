@@ -891,13 +891,22 @@
       :page      1
       :pages     1}
 
+   An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
+   block ahead of the items; items reference tabs via their `tab_id` attribute.
+
    Output shape:
      <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages]}]
+  [{:keys [list-type items total page pages tabs]}]
   (let [type-attr (clojure.core/name (or list-type :items))
+        tabs-xml  (when (seq tabs)
+                    (str "<tabs>\n"
+                         (str/join "\n" (map (fn [{:keys [id name]}]
+                                               (str "  <tab tab_id=\"" id "\" name=\"" (escape-xml name) "\"/>"))
+                                             tabs))
+                         "\n</tabs>"))
         item-xml  (str/join "\n" (map list-item->xml items))
         showing   (count items)
         truncated (< page pages)
@@ -909,6 +918,7 @@
          "\" pages=\"" (or pages 1)
          "\" showing=\"" showing
          "\" truncated=\"" (boolean truncated) "\">\n"
+         (when tabs-xml (str tabs-xml "\n"))
          (when (seq items) (str item-xml "\n"))
          (when note (str note "\n"))
          "</list>")))

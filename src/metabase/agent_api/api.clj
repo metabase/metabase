@@ -1214,7 +1214,7 @@
   [dashboard-id]
   (mapv #(select-keys % [:id :name])
         (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
-                   {:order-by [[:position :asc]]})))
+                   {:order-by [[:position :asc] [:id :asc]]})))
 
 (mr/def ::create-dashboard-response
   [:map
@@ -1377,14 +1377,6 @@
                       (update :placed conj new-dashcard)
                       (update :added conj new-dashcard)))))
 
-(defn- first-tab-id
-  "Id of the dashboard's first tab, or nil when the dashboard has no tabs. New dashcards land there,
-   alongside any nil-tab dashcards, which the frontend renders on the first tab."
-  [dashboard-id]
-  (t2/select-one-fn :id :model/DashboardTab
-                    :dashboard_id dashboard-id
-                    {:order-by [[:position :asc] [:id :asc]]}))
-
 (defn- apply-dashcard-mutations!
   "Apply a sequence of LLM-friendly dashcard mutations. Returns {:added [...] :removed [...] :moved [...]}.
 
@@ -1397,13 +1389,18 @@
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
   (let [current        (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-        default-tab-id (first-tab-id dashboard-id)
+        ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
+        tab-ids        (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id
+                                          {:order-by [[:position :asc] [:id :asc]]})
+        ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
+        ;; frontend renders there; nil when the dashboard has no tabs
+        default-tab-id (first tab-ids)
+        tab-id?        (set tab-ids)
         ;; A tab_id that isn't a tab on this dashboard -> 404, so a typo can't silently create a
         ;; dashcard that no tab displays.
         target-tab-id  (fn [tab-id]
                          (if tab-id
-                           (:id (api/check-404 (t2/select-one [:model/DashboardTab :id]
-                                                              :id tab-id :dashboard_id dashboard-id)))
+                           (do (api/check-404 (tab-id? tab-id)) tab-id)
                            default-tab-id))
         ;; Dashcards with a nil tab id still render on a tabbed dashboard's first tab, so for
         ;; collision/reflow purposes they count as first-tab cards.
@@ -1421,8 +1418,9 @@
           (let [card    (api/read-check :model/Card card_id)
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
-                _       (api/check-400 (or (nil? (:dashboard_id card))
-                                           (= (:dashboard_id card) dashboard-id)))
+                _       (api/check (or (nil? (:dashboard_id card))
+                                       (= (:dashboard_id card) dashboard-id))
+                                   [400 "Can't add a question that is internal to another dashboard."])
                 ;; Archived cards can't be added — except a question internal to THIS dashboard:
                 ;; it was auto-archived when its last dashcard was removed, and re-adding it
                 ;; unarchives it via the internal-question sync after the mutations.
@@ -1450,12 +1448,18 @@
           (let [existing (api/check-404
                           (t2/select-one :model/DashboardCard
                                          :id dashcard_id :dashboard_id dashboard-id))
-                display  (some-> (get-in existing [:visualization_settings :virtual_card :display]) name)]
-            (api/check (contains? #{"heading" "text"} display)
+                vs       (:visualization_settings existing)
+                display  (some-> (get-in vs [:virtual_card :display]) name)]
+            (api/check (or (contains? #{"heading" "text"} display)
+                           ;; legacy text cards predate virtual_card and carry only a :text setting
+                           (and (nil? display)
+                                (nil? (:card_id existing))
+                                (nil? (:action_id existing))
+                                (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
             (t2/update! :model/DashboardCard dashcard_id
-                        {:visualization_settings (assoc (:visualization_settings existing) :text text)}))
+                        {:visualization_settings (assoc vs :text text)}))
 
           "remove"
           (let [existing (api/check-404
@@ -1570,7 +1574,10 @@
         ;; a dashboard being archived by THIS request — otherwise the post-mutation
         ;; internal-question sync could unarchive dashboard questions on a just-archived dashboard.
         _            (when (seq mutations)
-                       (api/check-not-archived current-dash)
+                       ;; unless THIS request unarchives it first — restore-and-edit is one call,
+                       ;; and the update runs before the mutations inside the transaction
+                       (when-not (false? (:archived updates))
+                         (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
         result       (t2/with-transaction [_conn]

@@ -1497,6 +1497,15 @@
               (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id nil))
           "the heading must land below the nil-tab card, not on top of it"))))
 
+(deftest update-dashboard-restore-and-edit-test
+  (testing "unarchiving and mutating dashcards in the same request works — restore-and-edit is one call"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Restore And Edit" :archived true}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:archived  false
+                             :dashcards [{:action "add_heading" :text "Back from the trash"}]})
+      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id)))))
+
 (deftest update-dashboard-lifecycle-checks-test
   (testing "dashcard mutations on an archived dashboard are rejected"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Archived Dash" :archived true}
@@ -1611,6 +1620,15 @@
         (is (=? {:visualization_settings {:virtual_card {:display "heading"}
                                           :text         "New Title"}}
                 (t2/select-one :model/DashboardCard :id dc-id))))))
+  (testing "update_text works on a legacy text card that predates virtual_card settings"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Legacy Retext"}
+                   :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id nil
+                                                     :row 0 :col 0 :size_x 12 :size_y 3
+                                                     :visualization_settings {:text "legacy words"}}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "update_text" :dashcard_id dc-id :text "fresh words"}]})
+      (is (=? {:visualization_settings {:text "fresh words"}}
+              (t2/select-one :model/DashboardCard :id dc-id)))))
   (testing "update_text on a card-backed dashcard is a 400"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Retext Chart"}
                    :model/Card          {card-id :id} {:name "chart" :dataset_query (orders-count-query) :display :table}

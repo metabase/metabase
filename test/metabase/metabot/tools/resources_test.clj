@@ -686,12 +686,12 @@
                                                                     :text "Legacy Heading"}}]
       (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})
             idx              #(str/index-of output %)]
-        (testing "dashcards group under one tab item per tab, in tab display order"
-          (is (< (idx "Tab One") (idx "Legacy Heading") (idx "First Tab Heading")
-                 (idx "Tab Two") (idx "Second Tab Heading"))))
-        (testing "empty tabs are listed too"
-          (is (str/includes? output "Empty Tab")))
+        (testing "a <tabs> block lists every tab in display order, empty ones included"
+          (is (< (idx "Tab One") (idx "Tab Two") (idx "Empty Tab"))))
+        (testing "dashcards come grouped by tab, not interleaved by raw row/col"
+          (is (< (idx "Legacy Heading") (idx "First Tab Heading") (idx "Second Tab Heading"))))
         (testing "items carry the tab_id that add mutations accept; nil-tab dashcards get the first tab's"
+          ;; tab1: its <tab> element + the legacy (nil-tab) heading + the first-tab heading
           (is (= 3 (count (re-seq (re-pattern (str "tab_id=\"" tab1-id "\"")) output))))
           (is (= 2 (count (re-seq (re-pattern (str "tab_id=\"" tab2-id "\"")) output)))))))))
 
@@ -750,7 +750,21 @@
           (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
             (is (str/includes? output "type=\"action\""))
             (is (str/includes? output "name=\"Create Row\""))
-            (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))))))))
+            (is (str/includes? output (str "dashcard_id=\"" dc-id "\"")))
+            (testing "the backing model stays drillable via the item's uri"
+              (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
+  (testing "a link card renders its target URL as the item body"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id dash-id
+                                             :card_id nil
+                                             :row 0 :col 0 :size_x 4 :size_y 1
+                                             :visualization_settings
+                                             {:virtual_card {:display "link"}
+                                              :link         {:url "https://status.example.com"}}}]
+        (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
+          (is (str/includes? output "virtual_link"))
+          (is (str/includes? output "https://status.example.com")))))))
 
 (deftest read-user-recents-test
   (mt/with-current-user (mt/user->id :crowberto)
