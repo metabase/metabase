@@ -1,9 +1,4 @@
-import {
-  type ParentedChatMessage,
-  activePath,
-  activeResponses,
-  indexChildrenByParent,
-} from "./message-tree";
+import { type ParentedChatMessage, activeResponses } from "./message-tree";
 
 function user(id: string, parentId: string | null): ParentedChatMessage {
   return {
@@ -26,8 +21,6 @@ function agent(id: string, parentId: string | null): ParentedChatMessage {
   };
 }
 
-// A prompt with two agent replies (a1 older, a2 newest), then a follow-up prompt
-// that branched off the newest reply.
 const regenerated: ParentedChatMessage[] = [
   user("u1", null),
   agent("a1", "u1"),
@@ -36,57 +29,74 @@ const regenerated: ParentedChatMessage[] = [
   agent("b1", "u2"),
 ];
 
-describe("indexChildrenByParent", () => {
-  it("groups children under their parent id, roots under null", () => {
-    const index = indexChildrenByParent(regenerated);
-
-    expect(index.get(null)).toEqual([user("u1", null)]);
-    expect(index.get("u1")).toEqual([agent("a1", "u1"), agent("a2", "u1")]);
-    expect(index.get("a2")).toEqual([user("u2", "a2")]);
-  });
-});
-
-describe("activePath", () => {
-  const index = indexChildrenByParent(regenerated);
-
+describe("activeResponses", () => {
   it("defaults each branch to its newest reply", () => {
-    expect(activePath(index, {}).map((node) => node.id)).toEqual([
-      "u1",
-      "a2",
-      "u2",
-      "b1",
-    ]);
+    const responses = activeResponses(regenerated, {}, { isSlack: false });
+
+    expect(
+      responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
+    ).toEqual(["u1", "a2", "u2", "b1"]);
   });
 
   it("follows a selected older reply and truncates everything downstream", () => {
-    expect(activePath(index, { u1: "a1" }).map((node) => node.id)).toEqual([
-      "u1",
-      "a1",
-    ]);
-  });
-});
+    const responses = activeResponses(
+      regenerated,
+      { u1: "a1" },
+      { isSlack: false },
+    );
 
-describe("activeResponses", () => {
-  const index = indexChildrenByParent(regenerated);
+    expect(
+      responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
+    ).toEqual(["u1", "a1"]);
+  });
 
   it("marks a regenerated reply with its branch and alternatives", () => {
-    const [prompt, reply] = activeResponses(index, {}, { isSlack: false });
+    const [prompt, reply] = activeResponses(
+      regenerated,
+      {},
+      {
+        isSlack: false,
+      },
+    );
 
     expect(prompt.branch).toBeNull();
     expect(reply.branch).toEqual({
       parentId: "u1",
       currentIndex: 1,
-      siblingIds: ["a1", "a2"],
+      replyIds: ["a1", "a2"],
     });
   });
 
   it("leaves a single reply unbranched", () => {
-    const [reply] = activeResponses(
-      indexChildrenByParent([user("u1", null), agent("a1", "u1")]),
+    const [, reply] = activeResponses(
+      [user("u1", null), agent("a1", "u1")],
       {},
       { isSlack: false },
     );
 
     expect(reply.branch).toBeNull();
+  });
+
+  it("groups a multi-message reply", () => {
+    const messages = [
+      user("u1", null),
+      agent("a1", "u1"),
+      agent("a2", "u1"),
+      agent("a2-tool", "a2"),
+      user("u2", "a2-tool"),
+    ];
+    const [, reply, followUp] = activeResponses(
+      messages,
+      {},
+      { isSlack: false },
+    );
+
+    expect(reply.messages.map(({ id }) => id)).toEqual(["a2", "a2-tool"]);
+    expect(reply.branch).toEqual({
+      parentId: "u1",
+      currentIndex: 1,
+      replyIds: ["a1", "a2"],
+    });
+    expect(followUp.messages[0].id).toBe("u2");
   });
 });

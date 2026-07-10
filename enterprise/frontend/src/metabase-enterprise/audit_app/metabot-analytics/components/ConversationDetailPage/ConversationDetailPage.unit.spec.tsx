@@ -1,14 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import type {
-  ConversationDetail,
-  ConversationFeedback,
-  ConversationMessage,
-} from "../../types";
+import type { ConversationDetail, ConversationFeedback } from "../../types";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
@@ -16,7 +12,7 @@ jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
   MetabotAdminLayout: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// The header fires permission-group / tenant fetches irrelevant to these tests.
+// Avoid unrelated permission and tenant requests.
 jest.mock("./ConversationHeader", () => ({
   ConversationHeader: () => null,
 }));
@@ -27,34 +23,45 @@ jest.mock("../../api", () => ({
     mockUseGetMetabotConversationQuery(...args),
 }));
 
-type NodeSpec = {
-  // `externalId` doubles as the message's `id` (the tree key parents point at)
-  // and, for agent messages, its feedback `externalId`. The current-path reply is
-  // just the newest sibling, so fixtures list it last rather than flagging it.
-  externalId: string;
-  parentId: string | null;
-  role: "user" | "assistant";
-  message: string;
-  inFlight?: boolean;
-};
+type ConversationMessage = ConversationDetail["messages"][number];
 
-// One flat, single-level chat message in the parent-pointer list the backend now
-// returns — a normal chat message plus `parent_message_id`.
-function node({
-  externalId,
-  parentId,
-  role,
-  message,
-  inFlight = false,
-}: NodeSpec): ConversationMessage {
-  const common = { id: externalId, parent_message_id: parentId };
-  if (inFlight) {
-    return { ...common, role: "agent", type: "turn_in_progress", externalId };
-  }
-  if (role === "user") {
-    return { ...common, role: "user", type: "text", message };
-  }
-  return { ...common, role: "agent", type: "text", message, externalId };
+function userMessage(
+  id: string,
+  parentId: string | null,
+  message: string,
+): ConversationMessage {
+  return {
+    id,
+    parent_message_id: parentId,
+    role: "user",
+    type: "text",
+    message,
+  };
+}
+
+function agentMessage(
+  id: string,
+  parentId: string,
+  message: string,
+): ConversationMessage {
+  return {
+    id,
+    parent_message_id: parentId,
+    role: "agent",
+    type: "text",
+    message,
+    externalId: id,
+  };
+}
+
+function inProgressMessage(id: string, parentId: string): ConversationMessage {
+  return {
+    id,
+    parent_message_id: parentId,
+    role: "agent",
+    type: "turn_in_progress",
+    externalId: id,
+  };
 }
 
 function createConversation(
@@ -101,56 +108,19 @@ function setup(conversation: ConversationDetail) {
   );
 }
 
-describe("ConversationDetailPage attempts", () => {
-  it("renders a single-attempt turn with no pager", () => {
-    setup(
-      createConversation([
-        node({ externalId: "u1", parentId: null, role: "user", message: "hi" }),
-        node({
-          externalId: "a1",
-          parentId: "u1",
-          role: "assistant",
-          message: "only answer",
-        }),
-      ]),
-    );
-
-    expect(screen.getByText("only answer")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Previous version" }),
-    ).not.toBeInTheDocument();
-  });
-
+describe("ConversationDetailPage", () => {
   it("defaults a regenerated turn to the latest attempt and pages between attempts", async () => {
     setup(
       createConversation([
-        node({
-          externalId: "u1",
-          parentId: null,
-          role: "user",
-          message: "count orders",
-        }),
-        node({
-          externalId: "a1",
-          parentId: "u1",
-          role: "assistant",
-          message: "first try",
-        }),
-        node({
-          externalId: "a2",
-          parentId: "u1",
-          role: "assistant",
-          message: "kept answer",
-        }),
+        userMessage("u1", null, "count orders"),
+        agentMessage("a1", "u1", "first try"),
+        agentMessage("a2", "u1", "kept answer"),
       ]),
     );
 
-    // Latest attempt is shown by default; earlier attempt is hidden.
     expect(screen.getByText("kept answer")).toBeInTheDocument();
     expect(screen.queryByText("first try")).not.toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
-
-    // At the newest attempt, forward is disabled and back is enabled.
     expect(screen.getByRole("button", { name: "Next version" })).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Previous version" }),
@@ -163,47 +133,36 @@ describe("ConversationDetailPage attempts", () => {
     expect(screen.getByText("first try")).toBeInTheDocument();
     expect(screen.queryByText("kept answer")).not.toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
-
-    // At the oldest attempt, back is disabled and forward is enabled.
     expect(
       screen.getByRole("button", { name: "Previous version" }),
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Next version" })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Next version" }));
+
+    expect(screen.getByText("kept answer")).toBeInTheDocument();
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
 
   it("shows an in-progress row with a reachable pager while a regeneration streams", async () => {
     setup(
       createConversation([
-        node({
-          externalId: "u1",
-          parentId: null,
-          role: "user",
-          message: "count orders",
-        }),
-        node({
-          externalId: "a1",
-          parentId: "u1",
-          role: "assistant",
-          message: "first try",
-        }),
-        node({
-          externalId: "a2",
-          parentId: "u1",
-          role: "assistant",
-          message: "",
-          inFlight: true,
-        }),
+        userMessage("u1", null, "count orders"),
+        agentMessage("a1", "u1", "first try"),
+        inProgressMessage("a2", "u1"),
       ]),
     );
 
-    // The streaming attempt renders an explicit in-progress row (not a blank),
-    // and the pager stays visible so prior attempts remain reachable.
     expect(
       screen.getByTestId("metabot-response-in-progress"),
     ).toBeInTheDocument();
     expect(screen.getByText(/Response in progress/)).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
     expect(screen.queryByText("first try")).not.toBeInTheDocument();
+    const [, inProgressElement] = screen.getAllByTestId("metabot-chat-message");
+    expect(
+      within(inProgressElement).queryByTestId("metabot-chat-message-copy"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Previous version" }),
@@ -219,46 +178,17 @@ describe("ConversationDetailPage attempts", () => {
   it("truncates the conversation after a superseded attempt", async () => {
     setup(
       createConversation([
-        node({
-          externalId: "u1",
-          parentId: null,
-          role: "user",
-          message: "count orders",
-        }),
-        node({
-          externalId: "a1",
-          parentId: "u1",
-          role: "assistant",
-          message: "first try",
-        }),
-        node({
-          externalId: "a2",
-          parentId: "u1",
-          role: "assistant",
-          message: "kept answer",
-        }),
-        // The next prompt branched off the kept reply (a2).
-        node({
-          externalId: "u2",
-          parentId: "a2",
-          role: "user",
-          message: "and by month?",
-        }),
-        node({
-          externalId: "b1",
-          parentId: "u2",
-          role: "assistant",
-          message: "monthly answer",
-        }),
+        userMessage("u1", null, "count orders"),
+        agentMessage("a1", "u1", "first try"),
+        agentMessage("a2", "u1", "kept answer"),
+        userMessage("u2", "a2", "and by month?"),
+        agentMessage("b1", "u2", "monthly answer"),
       ]),
     );
 
-    // The latest branch shows both turns.
     expect(screen.getByText("kept answer")).toBeInTheDocument();
     expect(screen.getByText("monthly answer")).toBeInTheDocument();
 
-    // Going back to the first turn's earlier attempt drops everything after it,
-    // since the rest of the conversation followed from the kept response.
     await userEvent.click(
       screen.getByRole("button", { name: "Previous version" }),
     );
@@ -271,17 +201,11 @@ describe("ConversationDetailPage attempts", () => {
   it("does not let admins submit feedback ratings from the transcript", () => {
     setup(
       createConversation([
-        node({ externalId: "u1", parentId: null, role: "user", message: "hi" }),
-        node({
-          externalId: "a1",
-          parentId: "u1",
-          role: "assistant",
-          message: "an answer",
-        }),
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "an answer"),
       ]),
     );
 
-    // The transcript is read-only for admins — no rating controls at all.
     expect(
       screen.queryByTestId("metabot-chat-message-thumbs-up"),
     ).not.toBeInTheDocument();
@@ -304,31 +228,14 @@ describe("ConversationDetailPage attempts", () => {
     setup(
       createConversation(
         [
-          node({
-            externalId: "u1",
-            parentId: null,
-            role: "user",
-            message: "count orders",
-          }),
-          node({
-            externalId: "a1",
-            parentId: "u1",
-            role: "assistant",
-            message: "discarded answer",
-          }),
-          node({
-            externalId: "a2",
-            parentId: "u1",
-            role: "assistant",
-            message: "kept answer",
-          }),
+          userMessage("u1", null, "count orders"),
+          agentMessage("a1", "u1", "discarded answer"),
+          agentMessage("a2", "u1", "kept answer"),
         ],
         [feedback],
       ),
     );
 
-    // The transcript defaults to the kept answer, so the discarded response only
-    // appears because the feedback card resolved it via the discarded attempt's id.
     expect(screen.getByText("discarded answer")).toBeInTheDocument();
   });
 });

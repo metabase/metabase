@@ -129,20 +129,48 @@
     (is (= "hello!" (:message (nth result 1))))
     (is (= {:output "ok"} (json/decode+kw (:result (nth result 2)))))))
 
-(deftest ^:parallel rows->turns-groups-attempts-test
-  (testing "each user row starts a turn; assistant rows (soft-deleted attempts + the live one) append to it"
-    (let [now   (t/offset-date-time)
-          rows  [{:role :user      :external_id "u1"}
-                 {:role :assistant :external_id "a1" :deleted_at now}
-                 {:role :assistant :external_id "a2" :deleted_at now}
-                 {:role :assistant :external_id "a3"}
-                 {:role :user      :external_id "u2"}
-                 {:role :assistant :external_id "b1"}]
-          turns (metabot-persistence/rows->turns rows)]
-      (is (= 2 (count turns)))
-      (is (= ["u1" "a1" "a2" "a3"] (map :external_id (first turns)))
-          "a regenerated prompt keeps all of its attempts in one turn")
-      (is (= ["u2" "b1"] (map :external_id (second turns)))))))
+(deftest ^:parallel messages->flat-messages-test
+  (let [deleted-at (t/offset-date-time)
+        messages   (metabot-persistence/messages->flat-messages
+                    [{:role :user :data [{:type "text" :text "q1"}]}
+                     {:role       :assistant
+                      :deleted_at deleted-at
+                      :data       [{:type "text" :text "discarded-1"}
+                                   {:type "text" :text "discarded-2"}]}
+                     {:role :assistant :data [{:type "text" :text "older-live"}]}
+                     {:role :assistant :data [{:type "text" :text "kept-1"}
+                                              {:type "text" :text "kept-2"}]}
+                     {:role :user :data [{:type "text" :text "q2"}]}])
+        by-text    #(u/seek (fn [message] (= % (:message message))) messages)
+        q1         (by-text "q1")
+        discarded-1 (by-text "discarded-1")
+        discarded-2 (by-text "discarded-2")
+        older-live (by-text "older-live")
+        kept-1     (by-text "kept-1")
+        kept-2     (by-text "kept-2")
+        q2         (by-text "q2")]
+    (is (= ["q1" "discarded-1" "discarded-2" "older-live" "kept-1" "kept-2" "q2"]
+           (map :message messages)))
+    (is (= (:id q1) (:parent_message_id discarded-1)))
+    (is (= (:id discarded-1) (:parent_message_id discarded-2)))
+    (is (= (:id q1) (:parent_message_id older-live)))
+    (is (= (:id q1) (:parent_message_id kept-1)))
+    (is (= (:id kept-1) (:parent_message_id kept-2)))
+    (is (= (:id kept-2) (:parent_message_id q2)))))
+
+(deftest ^:parallel messages->flat-messages-deleted-placeholder-test
+  (let [now      (t/offset-date-time)
+        messages (metabot-persistence/messages->flat-messages
+                  [{:role :user :data [{:type "text" :text "q1"}]}
+                   {:id          1
+                    :role        :assistant
+                    :external_id "a1"
+                    :created_at  now
+                    :deleted_at  now
+                    :finished    nil
+                    :data        []}])]
+    (is (= ["text" "text"] (map :type messages)))
+    (is (false? (:finished (second messages))))))
 
 (deftest start-turn-persists-slack-conversation-metadata-test
   (t2/with-transaction [_conn nil {:rollback-only true}]

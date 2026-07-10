@@ -5,119 +5,108 @@ import {
   normalizeFetchedChatMessages,
 } from "./normalize-fetched-chat-messages";
 
-// The backend can return a conversation as a flat list of messages, each
-// pointing at its parent. That makes a tree: a prompt's replies are its
-// children, and a regenerated reply is just another child sharing the same
-// parent. This module rebuilds that tree and walks one path through it.
-
-// A fetched chat message annotated with its parent, so the flat list forms a tree.
 export type ParentedChatMessage = FetchedChatMessage & {
   parent_message_id: string | null;
 };
 
-type TreeNode = { id: string; parent_message_id: string | null };
+type BranchIndex = Map<string | null, ParentedChatMessage[]>;
 
-// Children grouped under each parent id (null holds the roots), preserving the
-// backend's oldest-to-newest order.
-export type BranchIndex<T extends TreeNode> = Map<string | null, T[]>;
+type SelectedReplyByParentId = Record<string, string>;
 
-// The reply chosen at each branch point: parent id → chosen child id. A branch
-// left unset defaults to the newest reply.
-export type SelectedBranch = Record<string, string>;
-
-// Which reply is showing at a branch point, and its alternatives, so a picker
-// can page between them.
-export type BranchChoice = {
+type ResponseBranch = {
   parentId: string;
   currentIndex: number;
-  siblingIds: string[];
+  replyIds: string[];
 };
 
-// One response along the active path: its rendered messages, plus the branch it
-// belongs to when the prompt was answered more than once.
-export type ActiveResponse = {
+type ActiveResponse = {
   messages: MetabotChatMessage[];
-  branch: BranchChoice | null;
+  branch: ResponseBranch | null;
 };
 
-export function indexChildrenByParent<T extends TreeNode>(
-  nodes: T[],
-): BranchIndex<T> {
-  return nodes.reduce<BranchIndex<T>>((index, node) => {
-    const siblings = index.get(node.parent_message_id) ?? [];
-    return index.set(node.parent_message_id, [...siblings, node]);
-  }, new Map());
+function indexChildrenByParent(messages: ParentedChatMessage[]): BranchIndex {
+  const index: BranchIndex = new Map();
+  for (const message of messages) {
+    const siblings = index.get(message.parent_message_id);
+    if (siblings) {
+      siblings.push(message);
+    } else {
+      index.set(message.parent_message_id, [message]);
+    }
+  }
+  return index;
 }
 
-// Walk from the root, taking the selected (or newest) reply at each branch, into
-// the flat list of messages on the active path. An older reply has no children,
-// so choosing it naturally truncates everything downstream.
-export function activePath<T extends TreeNode>(
-  index: BranchIndex<T>,
-  selected: SelectedBranch,
-  parentId: string | null = null,
-): T[] {
-  const children = index.get(parentId) ?? [];
-  if (children.length === 0) {
-    return [];
+function activePath(
+  index: BranchIndex,
+  selectedReplyByParentId: SelectedReplyByParentId,
+): ParentedChatMessage[] {
+  const path: ParentedChatMessage[] = [];
+  let parentId: string | null = null;
+
+  while (true) {
+    const siblings = index.get(parentId);
+    if (!siblings?.length) {
+      return path;
+    }
+
+    const selectedId: string | undefined =
+      parentId === null ? undefined : selectedReplyByParentId[parentId];
+    // Siblings arrive oldest first; default to the newest.
+    const node: ParentedChatMessage =
+      siblings.find(({ id }) => id === selectedId) ??
+      siblings[siblings.length - 1];
+    path.push(node);
+    parentId = node.id;
   }
-  const node = chooseReply(children, selected);
-  return [node, ...activePath(index, selected, node.id)];
 }
 
 export function activeResponses(
-  index: BranchIndex<ParentedChatMessage>,
-  selected: SelectedBranch,
+  messages: ParentedChatMessage[],
+  selectedReplyByParentId: SelectedReplyByParentId,
   { isSlack }: { isSlack: boolean },
 ): ActiveResponse[] {
-  const path = activePath(index, selected);
+  const index = indexChildrenByParent(messages);
+  const path = activePath(index, selectedReplyByParentId);
   return groupIntoResponses(path).map((response) => ({
     messages: normalizeFetchedChatMessages(response, { isSlack }),
     branch: branchAt(index, response),
   }));
 }
 
-function chooseReply<T extends TreeNode>(
-  siblings: T[],
-  selected: SelectedBranch,
-): T {
-  const newest = siblings[siblings.length - 1];
-  const parentId = siblings[0].parent_message_id;
-  const chosenId = parentId == null ? undefined : selected[parentId];
-  return siblings.find((sibling) => sibling.id === chosenId) ?? newest;
-}
-
-// Split the path into responses: each user prompt stands alone, and its agent
-// reply (one or more chained blocks) groups into a single response.
 function groupIntoResponses(
   path: ParentedChatMessage[],
 ): ParentedChatMessage[][] {
-  return path.reduce<ParentedChatMessage[][]>((responses, node) => {
-    const current = responses[responses.length - 1];
-    const continuesReply =
-      current?.[0].role === "agent" && node.role === "agent";
-    return continuesReply
-      ? [...responses.slice(0, -1), [...current, node]]
-      : [...responses, [node]];
-  }, []);
+  const responses: ParentedChatMessage[][] = [];
+  for (const node of path) {
+    const current = responses.at(-1);
+    if (current?.[0].role === "agent" && node.role === "agent") {
+      current.push(node);
+    } else {
+      responses.push([node]);
+    }
+  }
+  return responses;
 }
 
 function branchAt(
-  index: BranchIndex<ParentedChatMessage>,
+  index: BranchIndex,
   response: ParentedChatMessage[],
-): BranchChoice | null {
-  const [head] = response;
-  const siblings = index.get(head.parent_message_id) ?? [];
-  const isRegenerated =
-    head.role === "agent" &&
-    head.parent_message_id != null &&
-    siblings.length > 1;
-  if (!isRegenerated) {
+): ResponseBranch | null {
+  const head = response[0];
+  const parentId = head.parent_message_id;
+  if (head.role !== "agent" || parentId === null) {
     return null;
   }
+
+  const siblings = index.get(head.parent_message_id) ?? [];
+  if (siblings.length < 2) {
+    return null;
+  }
+
   return {
-    parentId: head.parent_message_id as string,
-    currentIndex: siblings.indexOf(head),
-    siblingIds: siblings.map((sibling) => sibling.id),
+    parentId,
+    currentIndex: siblings.findIndex(({ id }) => id === head.id),
+    replyIds: siblings.map(({ id }) => id),
   };
 }

@@ -99,10 +99,6 @@
    [:updated_at        ms/TemporalInstant]])
 
 (def ^:private ConversationMessage
-  "One chat message in the conversation's flat message list. `:parent_message_id`
-   points at another message's `:id` (nil at the root); the client rebuilds the
-   branch tree from it, treating the newest of a set of sibling replies as the
-   current one. Extra chat-payload keys vary by `:type` and are left unconstrained."
   [:map
    [:id                :string]
    [:parent_message_id [:maybe :string]]

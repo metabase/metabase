@@ -84,9 +84,7 @@
    "ip_address"        [:c.ip_address]})
 
 (def ^:private list-query
-  "HoneySQL query that selects one row per conversation with its aggregate message
-   stats. Counts every message, including soft-deleted regenerated attempts.
-   Filters, sorting, and paging are applied by [[list-conversations]]."
+  "Conversation rows with aggregate stats, including deleted attempts."
   {:select    [:c.*
                [[:count :m.id] :message_count]
                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
@@ -223,8 +221,7 @@
     (t2/hydrate rows :user)))
 
 (defn fetch-conversation-detail
-  "Fetch a conversation with its user info, flat message list, generated queries,
-  and user feedback. 404s if no conversation matches `conversation-id`."
+  "Fetch a conversation detail or throw a 404."
   [conversation-id]
   (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-404 conversation)

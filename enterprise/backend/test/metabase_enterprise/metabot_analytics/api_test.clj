@@ -22,7 +22,8 @@
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data data-version
-           deleted-at external-id finished in-flight]
+           deleted-at external-id finished]
+    :as   options
     :or   {data-version 2}}]
   (first (t2/insert-returning-pks!
           :model/MetabotMessage
@@ -35,8 +36,7 @@
                    :external_id     (or external-id (str (random-uuid)))}
             created-at       (assoc :created_at created-at)
             deleted-at       (assoc :deleted_at deleted-at)
-            (some? finished) (assoc :finished finished)
-            in-flight        (assoc :finished nil)))))
+            (contains? options :finished) (assoc :finished finished)))))
 
 (defn- insert-usage!
   "Insert an `ai_usage_log` row for a conversation. `cache-read-tokens` may be
@@ -50,6 +50,11 @@
                        :completion_tokens 1
                        :total_tokens      2}
                 cache-read-tokens (assoc :cache_read_tokens cache-read-tokens))))
+
+(defn- delete-conversations!
+  [conversation-ids]
+  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id (vec conversation-ids)]})
+  (t2/delete! :model/MetabotConversation {:where [:in :id (vec conversation-ids)]}))
 
 (defn- insert-feedback!
   [{:keys [message-id user-id positive issue-type freeform created-at updated-at]}]
@@ -85,7 +90,7 @@
             jan-3         (offset-date-time "2026-01-03T00:00:00Z")
             jan-4         (offset-date-time "2026-01-04T00:00:00Z")
             jan-5         (offset-date-time "2026-01-05T00:00:00Z")]
-        (mt/with-model-cleanup [:model/MetabotMessage :model/AiUsageLog [:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id convo-1
                                  :user-id         test-user-id
                                  :created-at      jan-1
@@ -145,7 +150,9 @@
                   :response-path response-path
                   :convo-1       convo-1
                   :convo-2       convo-2
-                  :convo-3       convo-3}))))))
+                  :convo-3       convo-3})
+          (finally
+            (delete-conversations! [convo-1 convo-2 convo-3])))))))
 
 (deftest list-conversations-requires-superuser-test
   (mt/with-premium-features #{:audit-app}
@@ -200,38 +207,50 @@
 
 (deftest list-and-detail-agree-for-regenerated-conversation-test
   (mt/with-premium-features #{:audit-app}
-    (testing "the list summary and the detail view report identical spend counts for a regenerated conversation"
+    (testing "the list summary and detail report the same counts for a regenerated conversation"
       (mt/with-temp [:model/User {owner-id :id} {}]
-        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-          (let [conversation-id (str (random-uuid))
-                t    #(offset-date-time (format "2026-01-0%dT00:00:00Z" %))
-                msg! #(insert-message! (assoc % :conversation-id conversation-id))]
-            (insert-conversation! {:conversation-id conversation-id :user-id owner-id
-                                   :created-at (t 1) :summary "Regeneration parity"})
-            (msg! {:created-at (t 1) :role "user" :profile-id "ignored-user-profile" :total-tokens 2
-                   :data [{:type "text" :text "find orders"}]})
-            ;; regenerated-away attempt that ran a search before being replaced
-            (msg! {:created-at (t 2) :role "assistant" :profile-id "internal" :total-tokens 10 :deleted-at (t 3)
-                   :data [{:type "text" :text "first"}
-                          {:type "tool-search" :toolCallId "s1" :state "output-available"
-                           :input {} :output {:output "results"}}]})
-            ;; the live reply that replaced it
-            (msg! {:created-at (t 3) :role "assistant" :profile-id "internal" :total-tokens 20
-                   :data [{:type "text" :text "kept"}]})
+        (let [conversation-id (str (random-uuid))
+              day             #(offset-date-time (format "2026-01-0%dT00:00:00Z" %))
+              insert!         #(insert-message! (assoc % :conversation-id conversation-id))]
+          (try
+            (insert-conversation! {:conversation-id conversation-id
+                                   :user-id         owner-id
+                                   :created-at      (day 1)
+                                   :summary         "Regeneration parity"})
+            (insert! {:created-at (day 1)
+                      :role "user"
+                      :profile-id "ignored-user-profile"
+                      :total-tokens 2
+                      :data [{:type "text" :text "find orders"}]})
+            (insert! {:created-at (day 2)
+                      :role "assistant"
+                      :profile-id "internal"
+                      :total-tokens 10
+                      :deleted-at (day 3)
+                      :data [{:type "text" :text "first"}
+                             {:type "tool-search"
+                              :toolCallId "s1"
+                              :state "output-available"
+                              :input {}
+                              :output {:output "results"}}]})
+            (insert! {:created-at (day 3)
+                      :role "assistant"
+                      :profile-id "internal"
+                      :total-tokens 20
+                      :data [{:type "text" :text "kept"}]})
             (let [summary (find-conversation
                            (:data (mt/user-http-request :crowberto :get 200
                                                         (str "ee/metabot-analytics/conversations?user_id=" owner-id)))
                            conversation-id)
                   detail  (mt/user-http-request :crowberto :get 200
                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
-              (is (some? summary) "the conversation appears in the list")
+              (is (some? summary))
               (doseq [k [:message_count :total_tokens :search_count :query_count]]
-                (is (= (get detail k) (get summary k))
-                    (format "%s must agree between list and detail" (name k))))
-              (testing "and the counts include the regenerated attempt"
-                (is (= 3 (:message_count detail)))
-                (is (= 32 (:total_tokens detail)) "2 + 10 (regenerated) + 20 (kept)")
-                (is (= 1 (:search_count detail)) "the search from the regenerated attempt still counts")))))))))
+                (is (= (get detail k) (get summary k))))
+              (is (= [3 32 1]
+                     ((juxt :message_count :total_tokens :search_count) detail))))
+            (finally
+              (delete-conversations! [conversation-id]))))))))
 
 (deftest list-conversations-pagination-test
   (with-list-conversations-fixture!
@@ -295,7 +314,7 @@
                                               :profile-id      profile-id
                                               :total-tokens    tokens
                                               :data            [{:type "text" :text "hi"}]}))]
-        (mt/with-model-cleanup [:model/MetabotMessage :model/AiUsageLog [:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id convo-a :user-id user-a
                                  :created-at jan-1 :ip-address "10.0.0.3"})
           (insert-conversation! {:conversation-id convo-m :user-id user-m
@@ -315,7 +334,9 @@
           (thunk {:response-path response-path
                   :convo-a       convo-a
                   :convo-m       convo-m
-                  :convo-z       convo-z}))))))
+                  :convo-z       convo-z})
+          (finally
+            (delete-conversations! [convo-a convo-m convo-z])))))))
 
 (deftest list-conversations-sort-test
   (with-sortable-conversations-fixture!
@@ -379,7 +400,7 @@
       (let [convo-1 (str (random-uuid))
             convo-2 (str (random-uuid))
             convo-3 (str (random-uuid))]
-        (mt/with-model-cleanup [[:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id convo-1 :user-id user-a
                                  :created-at (offset-date-time "2026-01-01T00:00:00Z")})
           (insert-conversation! {:conversation-id convo-2 :user-id user-a
@@ -392,7 +413,9 @@
                   :user-a-id   user-a
                   :convo-1     convo-1
                   :convo-2     convo-2
-                  :convo-3     convo-3}))))))
+                  :convo-3     convo-3})
+          (finally
+            (delete-conversations! [convo-1 convo-2 convo-3])))))))
 
 (deftest list-conversations-filter-test
   (with-filters-fixture!
@@ -431,7 +454,7 @@
             user-id         (mt/user->id :crowberto)
             jan-1           (offset-date-time "2026-01-01T00:00:00Z")
             jan-2           (offset-date-time "2026-01-02T00:00:00Z")]
-        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
@@ -472,120 +495,119 @@
               (is (= ["agent" "text"] [(:role asst-msg) (:type asst-msg)]))
               (is (= (:id user-msg) (:parent_message_id asst-msg))
                   "the reply points at its prompt's message id")
-              (is (string? (:externalId asst-msg)) "the agent message keeps its feedback external id"))))))))
+              (is (string? (:externalId asst-msg)) "the agent message keeps its feedback external id")))
+          (finally
+            (delete-conversations! [conversation-id])))))))
 
 (defn- with-detail-conversation!
-  "Seed one audit-app conversation owned by :crowberto and invoke `thunk` with a
-  map of helpers for filling it in and reading it back:
-  `:conversation-id`; `:user-id` (:crowberto); `:t`, a jan-day (1-9) →
-  OffsetDateTime for ordering rows; `:msg!`, which inserts a message into the
-  conversation and returns its pk; and `:detail!`, which GETs and returns the
-  detail response. Rows are cleaned up automatically."
   [thunk]
   (mt/with-premium-features #{:audit-app}
     (let [conversation-id (str (random-uuid))
           user-id         (mt/user->id :crowberto)
-          t               #(offset-date-time (format "2026-01-0%dT00:00:00Z" %))
-          msg!            #(insert-message! (assoc % :conversation-id conversation-id))]
-      (mt/with-model-cleanup [:model/MetabotFeedback :model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (insert-conversation! {:conversation-id conversation-id :user-id user-id :created-at (t 1)})
-        (thunk {:conversation-id conversation-id
-                :user-id         user-id
-                :t               t
-                :msg!            msg!
-                :detail!         #(mt/user-http-request :crowberto :get 200
-                                                        (format "ee/metabot-analytics/conversations/%s" conversation-id))})))))
+          day             #(offset-date-time (format "2026-01-0%dT00:00:00Z" %))
+          insert!         #(insert-message! (assoc % :conversation-id conversation-id))
+          fetch           #(mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
+      (try
+        (insert-conversation! {:conversation-id conversation-id :user-id user-id :created-at (day 1)})
+        (thunk {:user-id user-id :day day :insert! insert! :fetch fetch})
+        (finally
+          (delete-conversations! [conversation-id]))))))
+
+(defn- message-by-text
+  [messages text]
+  (or (some #(when (= text (:message %)) %) messages)
+      (throw (ex-info (str "Message not found: " text) {:text text}))))
 
 (deftest get-conversation-detail-attempts-test
   (testing "a prompt's regenerated attempts surface as flat, chronologically ordered sibling messages"
     (with-detail-conversation!
-      (fn [{:keys [msg! t detail!]}]
-        (msg! {:created-at (t 1) :role "user" :profile-id "p" :total-tokens 2 :data [{:type "text" :text "count the orders"}]})
-        (msg! {:created-at (t 2) :role "assistant" :profile-id "internal" :total-tokens 10 :deleted-at (t 4) :data [{:type "text" :text "first try"}]})
-        (msg! {:created-at (t 3) :role "assistant" :profile-id "internal" :total-tokens 20 :deleted-at (t 4) :data [{:type "text" :text "second try"}]})
-        (msg! {:created-at (t 4) :role "assistant" :profile-id "internal" :total-tokens 30 :data [{:type "text" :text "kept answer"}]})
-        (let [response  (detail!)
-              messages  (:messages response)
-              prompt    (first (filter #(= "user" (:role %)) messages))
-              attempts  (filter #(= "agent" (:role %)) messages)]
-          (is (= 4 (count messages)) "one prompt + three attempts, as flat single-level chat messages")
-          (is (= 3 (count attempts)))
-          (is (= ["first try" "second try" "kept answer"] (map :message attempts))
-              "attempts are ordered chronologically, so the newest (kept) reply is last")
-          (is (every? #(= (:id prompt) (:parent_message_id %)) attempts)
-              "every attempt is a sibling child of the one prompt")
-          (is (= 62 (:total_tokens response)) "totals include the discarded attempts' tokens (2 + 10 + 20 + 30)")
-          (is (= 4 (:message_count response))))))))
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 2
+                  :data [{:type "text" :text "count the orders"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 10
+                  :deleted-at (day 4) :data [{:type "text" :text "first try"}]})
+        (insert! {:created-at (day 3) :role "assistant" :profile-id "internal" :total-tokens 20
+                  :deleted-at (day 4) :data [{:type "text" :text "second try"}]})
+        (insert! {:created-at (day 4) :role "assistant" :profile-id "internal" :total-tokens 30
+                  :data [{:type "text" :text "kept answer"}]})
+        (let [{:keys [messages total_tokens message_count]} (fetch)
+              [prompt & attempts] messages]
+          (is (= ["first try" "second try" "kept answer"] (map :message attempts)))
+          (is (every? #(= (:id prompt) (:parent_message_id %)) attempts))
+          (is (= [62 4] [total_tokens message_count])))))))
 
 (deftest get-conversation-detail-parent-pointers-test
   (testing "a follow-up prompt points at the kept (live) reply, not a regenerated-away one"
     (with-detail-conversation!
-      (fn [{:keys [msg! t detail!]}]
-        (msg! {:created-at (t 1) :role "user" :profile-id "p" :total-tokens 1 :data [{:type "text" :text "q1"}]})
-        (msg! {:created-at (t 2) :role "assistant" :profile-id "internal" :total-tokens 1 :deleted-at (t 3) :data [{:type "text" :text "discarded"}]})
-        (msg! {:created-at (t 3) :role "assistant" :profile-id "internal" :total-tokens 1 :data [{:type "text" :text "kept"}]})
-        (msg! {:created-at (t 4) :role "user" :profile-id "p" :total-tokens 1 :data [{:type "text" :text "q2"}]})
-        (msg! {:created-at (t 5) :role "assistant" :profile-id "internal" :total-tokens 1 :data [{:type "text" :text "a2"}]})
-        (let [messages (:messages (detail!))
-              by-text  (fn [txt] (first (filter #(= txt (:message %)) messages)))
-              q1 (by-text "q1"), kept (by-text "kept"), q2 (by-text "q2")]
-          (is (nil? (:parent_message_id q1)) "the first prompt is the root")
-          (is (= (:id q1) (:parent_message_id kept)) "the kept reply points at its prompt")
-          (is (= (:id kept) (:parent_message_id q2))
-              "the follow-up prompt branches off the kept reply, not the discarded one"))))))
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q1"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :deleted-at (day 3) :data [{:type "text" :text "discarded"}]})
+        (insert! {:created-at (day 3) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :data [{:type "text" :text "kept"}]})
+        (insert! {:created-at (day 4) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q2"}]})
+        (insert! {:created-at (day 5) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :data [{:type "text" :text "a2"}]})
+        (let [messages (:messages (fetch))
+              q1       (message-by-text messages "q1")
+              kept     (message-by-text messages "kept")
+              q2       (message-by-text messages "q2")]
+          (is (nil? (:parent_message_id q1)))
+          (is (= (:id q1) (:parent_message_id kept)))
+          (is (= (:id kept) (:parent_message_id q2))))))))
 
 (deftest get-conversation-detail-turn-with-no-live-reply-test
   (testing "a turn whose only reply was soft-deleted still keeps the following turn on the path"
     (with-detail-conversation!
-      (fn [{:keys [msg! t detail!]}]
-        (msg! {:created-at (t 1) :role "user" :profile-id "p" :total-tokens 1 :data [{:type "text" :text "q1"}]})
-        ;; the only reply to q1 is soft-deleted, so this turn has no live reply
-        (msg! {:created-at (t 2) :role "assistant" :profile-id "internal" :total-tokens 1 :deleted-at (t 3) :data [{:type "text" :text "orphaned"}]})
-        (msg! {:created-at (t 4) :role "user" :profile-id "p" :total-tokens 1 :data [{:type "text" :text "q2"}]})
-        (msg! {:created-at (t 5) :role "assistant" :profile-id "internal" :total-tokens 1 :data [{:type "text" :text "a2"}]})
-        (let [messages (:messages (detail!))
-              by-text  (fn [txt] (first (filter #(= txt (:message %)) messages)))
-              q1 (by-text "q1"), q2 (by-text "q2")]
-          (is (some? q2) "the follow-up turn is not dropped")
-          (is (= (:id q1) (:parent_message_id q2))
-              "the follow-up prompt falls back to its predecessor prompt, not the previous turn"))))))
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q1"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :deleted-at (day 3) :data [{:type "text" :text "orphaned"}]})
+        (insert! {:created-at (day 4) :role "user" :profile-id "p" :total-tokens 1
+                  :data [{:type "text" :text "q2"}]})
+        (insert! {:created-at (day 5) :role "assistant" :profile-id "internal" :total-tokens 1
+                  :data [{:type "text" :text "a2"}]})
+        (let [messages (:messages (fetch))
+              q1       (message-by-text messages "q1")
+              q2       (message-by-text messages "q2")]
+          (is (= (:id q1) (:parent_message_id q2))))))))
 
 (deftest get-conversation-detail-in-flight-attempt-test
   (testing "a still-streaming reply surfaces as an in-progress message"
     (with-detail-conversation!
-      (fn [{:keys [msg! detail!]}]
-        ;; No :created-at: the placeholder must be "just now" (within the grace
-        ;; window) to read as a live in-flight stream rather than an aborted turn.
-        (msg! {:role "user" :profile-id "p" :total-tokens 3 :data [{:type "text" :text "still thinking?"}]})
-        (msg! {:role "assistant" :profile-id "internal" :total-tokens 0 :data [] :in-flight true})
-        (let [response  (detail!)
-              attempts  (filter #(= "agent" (:role %)) (:messages response))]
-          (is (= 2 (count (:messages response))))
-          (is (= 1 (count attempts)))
-          (is (= "turn_in_progress" (:type (first attempts)))
-              "a still-streaming placeholder renders as an in-progress message")
-          (is (= 2 (:message_count response))
-              "every row counts (prompt + placeholder), so the count stays stable as the turn finishes"))))))
+      (fn [{:keys [insert! fetch]}]
+        (insert! {:role "user" :profile-id "p" :total-tokens 3
+                  :data [{:type "text" :text "still thinking?"}]})
+        (insert! {:role "assistant" :profile-id "internal" :total-tokens 0 :data [] :finished nil})
+        (let [{:keys [messages message_count]} (fetch)]
+          (is (= ["user" "agent"] (map :role messages)))
+          (is (= "turn_in_progress" (:type (second messages))))
+          (is (= 2 message_count)))))))
 
 (deftest get-conversation-detail-feedback-on-discarded-attempt-test
   (testing "feedback on a regenerated-away attempt still resolves to that attempt's message"
     (with-detail-conversation!
-      (fn [{:keys [msg! t user-id detail!]}]
+      (fn [{:keys [insert! day user-id fetch]}]
         (let [discarded-ext (str (random-uuid))]
-          (msg! {:created-at (t 1) :role "user" :profile-id "p" :total-tokens 2 :data [{:type "text" :text "help"}]})
-          (let [discarded-id (msg! {:created-at (t 2) :role "assistant" :profile-id "internal" :total-tokens 10
-                                    :deleted-at (t 3) :external-id discarded-ext :data [{:type "text" :text "thumbs-downed answer"}]})]
-            (msg! {:created-at (t 3) :role "assistant" :profile-id "internal" :total-tokens 20 :data [{:type "text" :text "kept answer"}]})
+          (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 2
+                    :data [{:type "text" :text "help"}]})
+          (let [discarded-id (insert! {:created-at (day 2) :role "assistant" :profile-id "internal"
+                                       :total-tokens 10 :deleted-at (day 3) :external-id discarded-ext
+                                       :data [{:type "text" :text "thumbs-downed answer"}]})]
+            (insert! {:created-at (day 3) :role "assistant" :profile-id "internal" :total-tokens 20
+                      :data [{:type "text" :text "kept answer"}]})
             (insert-feedback! {:message-id discarded-id :user-id user-id :positive false
-                               :issue-type "incorrect" :freeform "wrong table" :created-at (t 2) :updated-at (t 2)})
-            (let [response     (detail!)
-                  feedback     (:feedback response)
-                  attempt-exts (->> (:messages response) (filter #(= "agent" (:role %))) (map :externalId) set)]
+                               :issue-type "incorrect" :freeform "wrong table"
+                               :created-at (day 2) :updated-at (day 2)})
+            (let [{:keys [feedback messages]} (fetch)
+                  attempt-exts (into #{} (keep :externalId) messages)]
               (is (= 1 (count feedback)))
-              (is (= discarded-ext (:external_id (first feedback)))
-                  "feedback carries the discarded attempt's external_id")
-              (is (contains? attempt-exts discarded-ext)
-                  "the discarded attempt is present in the messages so the FE can resolve the feedback"))))))))
+              (is (= discarded-ext (:external_id (first feedback))))
+              (is (contains? attempt-exts discarded-ext)))))))))
 
 (deftest get-conversation-detail-queries-test
   (mt/with-premium-features #{:audit-app}
@@ -596,7 +618,7 @@
             jan-2           (offset-date-time "2026-01-02T00:00:00Z")
             jan-3           (offset-date-time "2026-01-03T00:00:00Z")
             sql             "SELECT * FROM orders"]
-        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
@@ -650,7 +672,9 @@
               (is (nil?                  (:mbql q)))
               (is (= (mt/id)             (:database_id q)))
               ;; Tables extraction goes through the real Macaw path — sample data has an "orders" table.
-              (is (contains? (set (:tables q)) "orders")))))))))
+              (is (contains? (set (:tables q)) "orders"))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
 
 (defn- search-part
   [call-id]
@@ -675,7 +699,7 @@
             jan-1         (offset-date-time "2026-02-01T00:00:00Z")
             jan-2         (offset-date-time "2026-02-02T00:00:00Z")
             jan-3         (offset-date-time "2026-02-03T00:00:00Z")]
-        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id convo-none
                                  :user-id         test-user-id
                                  :created-at      jan-1
@@ -724,7 +748,9 @@
           (thunk {:test-user-id  test-user-id
                   :convo-none    convo-none
                   :convo-two     convo-two
-                  :convo-errored convo-errored}))))))
+                  :convo-errored convo-errored})
+          (finally
+            (delete-conversations! [convo-none convo-two convo-errored])))))))
 
 (deftest search-count-test
   (with-search-count-fixture!
@@ -773,7 +799,7 @@
             mar-1       (offset-date-time "2026-03-10T00:00:00Z")
             mar-2       (offset-date-time "2026-03-11T00:00:00Z")
             mar-3       (offset-date-time "2026-03-12T00:00:00Z")]
-        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id convo-none
                                  :user-id         test-user-id
                                  :created-at      mar-1
@@ -821,7 +847,9 @@
           (thunk {:test-user-id test-user-id
                   :convo-none   convo-none
                   :convo-mixed  convo-mixed
-                  :convo-edits  convo-edits}))))))
+                  :convo-edits  convo-edits})
+          (finally
+            (delete-conversations! [convo-none convo-mixed convo-edits])))))))
 
 (deftest query-count-test
   (with-query-count-fixture!
@@ -845,7 +873,7 @@
       (let [conversation-id (str (random-uuid))
             user-id         (mt/user->id :crowberto)
             permalink       "https://example.slack.com/archives/C123/p1712785577123456"]
-        (mt/with-model-cleanup [[:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id  conversation-id
                                  :user-id          user-id
                                  :summary          "Slack conversation"
@@ -858,7 +886,9 @@
                                                                             permalink)]
             (let [response (mt/user-http-request :crowberto :get 200
                                                  (format "ee/metabot-analytics/conversations/%s" conversation-id))]
-              (is (= permalink (:slack_permalink response))))))))))
+              (is (= permalink (:slack_permalink response)))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
 
 (defn- with-ip-address-fixture!
   "Seed conversations with varying IP-address state so we can assert both list
@@ -874,7 +904,7 @@
             jan-1       (offset-date-time "2026-03-01T00:00:00Z")
             jan-2       (offset-date-time "2026-03-02T00:00:00Z")
             jan-3       (offset-date-time "2026-03-03T00:00:00Z")]
-        (mt/with-model-cleanup [[:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id convo-web
                                  :user-id         test-user-id
                                  :created-at      jan-1
@@ -894,7 +924,9 @@
           (thunk {:test-user-id test-user-id
                   :convo-web    convo-web
                   :convo-slack  convo-slack
-                  :convo-null   convo-null}))))))
+                  :convo-null   convo-null})
+          (finally
+            (delete-conversations! [convo-web convo-slack convo-null])))))))
 
 (deftest ^:parallel get-conversation-detail-requires-superuser-test
   (mt/with-premium-features #{:audit-app}
@@ -919,7 +951,7 @@
             jan-1           (offset-date-time "2026-04-01T00:00:00Z")
             jan-2           (offset-date-time "2026-04-02T00:00:00Z")
             jan-3           (offset-date-time "2026-04-03T00:00:00Z")]
-        (mt/with-model-cleanup [:model/MetabotFeedback :model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (try
           (insert-conversation! {:conversation-id conversation-id
                                  :user-id         user-id
                                  :created-at      jan-1
@@ -956,7 +988,9 @@
                        :first_name "Crowberto"
                        :last_name  "Corv"}]
                      (map #(select-keys (:user %) [:id :email :first_name :last_name]) feedback))
-                  "submitter is hydrated on each feedback row"))))))))
+                  "submitter is hydrated on each feedback row")))
+          (finally
+            (delete-conversations! [conversation-id])))))))
 
 (deftest get-conversation-detail-feedback-multi-user-test
   (mt/with-premium-features #{:audit-app}
@@ -969,7 +1003,7 @@
               apr-1           (offset-date-time "2026-04-10T00:00:00Z")
               apr-2           (offset-date-time "2026-04-11T00:00:00Z")
               apr-3           (offset-date-time "2026-04-12T00:00:00Z")]
-          (mt/with-model-cleanup [:model/MetabotFeedback :model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (try
             (insert-conversation! {:conversation-id conversation-id
                                    :user-id         owner-id
                                    :created-at      apr-1
@@ -1005,7 +1039,9 @@
                        (select-keys (:user (get by-user participant-id)) [:id :email :first_name :last_name])))
                 (is (true? (:positive (get by-user owner-id))))
                 (is (false? (:positive (get by-user participant-id))))
-                (is (= "not-factual" (:issue_type (get by-user participant-id))))))))))))
+                (is (= "not-factual" (:issue_type (get by-user participant-id))))))
+            (finally
+              (delete-conversations! [conversation-id]))))))))
 
 (deftest ip-address-test
   (with-ip-address-fixture!

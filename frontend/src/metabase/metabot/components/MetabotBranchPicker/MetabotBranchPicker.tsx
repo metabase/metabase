@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { ActionIcon, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
-// Pages between a prompt's regenerated replies, ChatGPT/Claude style.
 export const MetabotBranchPicker = ({
   index,
   count,

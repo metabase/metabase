@@ -61,15 +61,19 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     conversation?.profile_id === "slackbot" ||
     conversation?.profile_id === "slack";
 
-  const nodes = useMemo(() => conversation?.messages ?? [], [conversation]);
+  const conversationMessages = useMemo(
+    () => conversation?.messages ?? [],
+    [conversation?.messages],
+  );
 
-  const { messages, getExtraAgentActions } = useBranchableMessages(nodes, {
-    isSlack,
-  });
+  const { messages, getExtraAgentActions } = useBranchableMessages(
+    conversationMessages,
+    { isSlack },
+  );
 
-  const feedbackChatMessages = useMemo(
-    () => normalizeFetchedChatMessages(nodes, { isSlack }),
-    [nodes, isSlack],
+  const feedbackChatMessages = normalizeFetchedChatMessages(
+    conversationMessages,
+    { isSlack },
   );
 
   if (isLoading || error) {
@@ -179,18 +183,14 @@ function FeedbackCard({
   feedback: ConversationFeedback;
   chatMessages: MetabotChatMessage[];
 }) {
-  const agentResponse = useMemo(
-    () =>
-      feedback.external_id
-        ? chatMessages.find(
-            (m): m is MetabotAgentTextChatMessage =>
-              m.role === "agent" &&
-              m.type === "text" &&
-              m.externalId === feedback.external_id,
-          )
-        : undefined,
-    [feedback.external_id, chatMessages],
-  );
+  const agentResponse = feedback.external_id
+    ? chatMessages.find(
+        (message): message is MetabotAgentTextChatMessage =>
+          message.role === "agent" &&
+          message.type === "text" &&
+          message.externalId === feedback.external_id,
+      )
+    : undefined;
 
   const submitterName = feedback.user
     ? getUserName(feedback.user) || null

@@ -195,7 +195,9 @@ export const AgentMessage = ({
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
-  const canGiveFeedback = !!(setFeedbackMessage && messageId);
+  const isInProgress = message.type === "turn_in_progress";
+  const canGiveFeedback =
+    !readonly && !isInProgress && !!setFeedbackMessage && !!messageId;
   const clipboard = useClipboard({ timeout: 2000 });
 
   return (
@@ -234,15 +236,17 @@ export const AgentMessage = ({
         .exhaustive()}
       {!hideActions && (
         <Flex className={Styles.messageActions} align="center">
-          <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
-            <ActionIcon
-              h="sm"
-              data-testid="metabot-chat-message-copy"
-              onClick={() => clipboard.copy(getCopyText())}
-            >
-              <Icon name="copy" size="1rem" />
-            </ActionIcon>
-          </Tooltip>
+          {!isInProgress && (
+            <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
+              <ActionIcon
+                h="sm"
+                data-testid="metabot-chat-message-copy"
+                onClick={() => clipboard.copy(getCopyText())}
+              >
+                <Icon name="copy" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
+          )}
           {canGiveFeedback && (
             <>
               <Tooltip label={t`Give positive feedback`}>
@@ -434,7 +438,7 @@ export const Messages = ({
   debug: boolean;
   readonly?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
-  getExtraAgentActions?: (message: MetabotChatMessage) => ReactNode;
+  getExtraAgentActions?: (messageId: string) => ReactNode;
 }) => {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
@@ -502,11 +506,8 @@ export const Messages = ({
             readonly={readonly}
             onRetry={isLastUserMessage ? onRetryMessage : undefined}
             getCopyText={() => getAgentReplyCopyText(message.id)}
-            setFeedbackMessage={
-              readonly
-                ? undefined
-                : (data) =>
-                    setFeedbackState((prev) => ({ ...prev, modal: data }))
+            setFeedbackMessage={(data) =>
+              setFeedbackState((prev) => ({ ...prev, modal: data }))
             }
             submittedFeedback={
               "externalId" in message && message.externalId
@@ -514,7 +515,7 @@ export const Messages = ({
                 : undefined
             }
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
-            extraActions={getExtraAgentActions?.(message)}
+            extraActions={getExtraAgentActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
