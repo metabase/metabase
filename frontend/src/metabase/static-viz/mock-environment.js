@@ -1,6 +1,18 @@
 /* eslint-disable no-prototype-builtins */
 import ResizeObserver from "resize-observer-polyfill";
 
+// Node.js (>= 21) defines `navigator` and `crypto` as accessor properties with only a getter, so plain
+// assignment throws under the node static-viz renderer. `defineProperty` replaces them (they are
+// configurable) with the same last-write-wins semantics as assignment on engines where they are absent
+// (GraalJS).
+const setGlobal = (name, value) => {
+  Object.defineProperty(global, name, {
+    value,
+    writable: true,
+    configurable: true,
+  });
+};
+
 global.ResizeObserver = ResizeObserver;
 
 global.EventTarget = function () {
@@ -127,7 +139,7 @@ Object.assign(global.document, {
   cookie: "",
 });
 
-global.navigator = {
+setGlobal("navigator", {
   userAgent: "GraalJS",
   language: "en-US",
   languages: ["en-US", "en"],
@@ -144,7 +156,7 @@ global.navigator = {
   mediaDevices: {
     getUserMedia: function () {},
   },
-};
+});
 
 const navigator = {
   userAgent: "GraalJS",
@@ -153,7 +165,7 @@ const navigator = {
   languages: ["en-US", "en"],
 };
 
-global.navigator = navigator;
+setGlobal("navigator", navigator);
 global.window.navigator = navigator;
 
 global.location = {
@@ -366,10 +378,10 @@ global.File = function (parts, filename, options) {
   return new global.Blob(parts, options);
 };
 
-global.crypto = {
+setGlobal("crypto", {
   getRandomValues: function () {},
   subtle: {},
-};
+});
 
 global.Headers = function () {
   return {
