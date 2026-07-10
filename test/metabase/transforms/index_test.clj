@@ -166,11 +166,21 @@
                     (is (= expected (physical-indexes db schema table-name)))))))))))))
 
 (defn- fetch-schema
-  "Schema the fetch-correctness suite creates its table in and passes to fetch-table-indexes. nil for sql-jdbc drivers
-  (the connection default); bigquery has none, so it uses its session dataset and qualifies the DDL with it."
+  "Schema the fetch-correctness suite creates its table in and passes to fetch-table-indexes. nil when the connection
+  has a default schema to fall back on; bigquery has no schema concept and snowflake's test connection sets none, so
+  both qualify the DDL with their session schema."
   [driver]
-  (when-not (isa? driver/hierarchy driver :sql-jdbc)
+  (when (or (= driver :snowflake)
+            (not (isa? driver/hierarchy driver :sql-jdbc)))
     (sql.tx/session-schema driver)))
+
+(defn- qualify-fetch-table
+  "`schema`.`table` in the driver's own identifier quoting. Snowflake needs the double quotes: unquoted identifiers
+  upper-case, and the fetch-case columns are asserted lower-case."
+  [driver schema table]
+  (if (= driver :snowflake)
+    (format "\"%s\".\"%s\"" schema table)
+    (format "`%s`.%s" schema table)))
 
 (defn- run-fetch-ddl!
   "Run raw fetch-case DDL through execute-raw-queries! (both sql-jdbc and bigquery implement it). Each statement is
@@ -192,8 +202,8 @@
         (is (some? cases) (index-util/missing-case-message driver/*driver*))
         (doseq [{:keys [label table create expected definition-contains]} cases]
           (testing label
-            ;; sql-jdbc drivers create in the connection default (schema nil, bare name); bigquery needs the dataset.
-            (let [qualified (if schema (format "`%s`.%s" schema table) table)
+            ;; most sql-jdbc drivers create in the connection default (schema nil, bare name); the rest qualify.
+            (let [qualified (if schema (qualify-fetch-table driver/*driver* schema table) table)
                   drop-sql  (str "DROP TABLE IF EXISTS " qualified)
                   creates   (cond->> create schema (mapv #(str/replace-first % table qualified)))]
               (run-fetch-ddl! driver/*driver* db [drop-sql])

@@ -291,14 +291,15 @@
      :create ["CREATE TABLE mb_fetch_bq_empty (a INT64, b INT64)"]
      :expected #{}}]
 
+   ;; columns are quoted so snowflake keeps them lower-case; unquoted, the clustering key reads back as `CATEGORY`.
    :snowflake
    [{:label  "the clustering key, unnamed, reconciled by kind + columns"
      :table  "mb_fetch_sf"
-     :create ["CREATE TABLE mb_fetch_sf (category TEXT, price FLOAT) CLUSTER BY (category)"]
+     :create ["CREATE TABLE mb_fetch_sf (\"category\" TEXT, \"price\" FLOAT) CLUSTER BY (\"category\")"]
      :expected #{(idx nil :clustering nil ["category"])}}
     {:label "a table with no clustering key returns []"
      :table "mb_fetch_sf_empty"
-     :create ["CREATE TABLE mb_fetch_sf_empty (a INT, b INT)"]
+     :create ["CREATE TABLE mb_fetch_sf_empty (\"a\" INT, \"b\" INT)"]
      :expected #{}}]
 
    :sqlserver
