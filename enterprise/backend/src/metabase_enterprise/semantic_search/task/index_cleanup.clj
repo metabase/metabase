@@ -208,24 +208,35 @@
 
 (defn- drop-index-table!
   "Drops one stale/orphaned index table, isolating failures: one undroppable table (e.g. one with a
-  dependent view) must not abort the rest of the cleanup batch."
+  dependent view) must not abort the rest of the cleanup batch.
+  Returns :dropped, :missing (referenced table no longer exists), or :failed."
   [pgvector kind table-name]
   (try
     (log/infof "Dropping %s semantic search index: %s" kind table-name)
-    (jdbc/execute! pgvector (sql/format (sql.helpers/drop-table :if-exists (keyword table-name))
-                                        :quoted true))
+    (jdbc/execute! pgvector (sql/format (sql.helpers/drop-table (keyword table-name)) :quoted true))
+    :dropped
+    ;; no IF EXISTS: a vacuous drop must not count as :dropped, so let 42P01 (undefined_table) tell us
+    (catch java.sql.SQLException e
+      (if (= "42P01" (.getSQLState e))
+        (do (log/infof "Skipping %s semantic search index %s: table no longer exists" kind table-name)
+            :missing)
+        (do (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+            :failed)))
     (catch Exception e
-      (log/warnf e "Failed to drop %s semantic search index %s" kind table-name))))
+      (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+      :failed)))
 
 (defn- cleanup-stale-indexes!
   [pgvector index-metadata]
   (let [stale-table-names    (stale-index-tables pgvector index-metadata)
-        orphaned-table-names (orphan-index-tables pgvector index-metadata)]
-    (when (or (seq stale-table-names) (seq orphaned-table-names))
-      (log/infof "Found %d semantic search index tables to clean up"
-                 (+ (count stale-table-names) (count orphaned-table-names)))
-      (run! #(drop-index-table! pgvector "stale" %) stale-table-names)
-      (run! #(drop-index-table! pgvector "orphaned" %) orphaned-table-names))))
+        orphaned-table-names (orphan-index-tables pgvector index-metadata)
+        found                (+ (count stale-table-names) (count orphaned-table-names))]
+    (when (pos? found)
+      (log/infof "Found %d semantic search index tables to clean up" found)
+      (let [outcomes (concat (mapv #(drop-index-table! pgvector "stale" %) stale-table-names)
+                             (mapv #(drop-index-table! pgvector "orphaned" %) orphaned-table-names))
+            dropped  (count (filter #{:dropped} outcomes))]
+        (log/infof "Dropped %d of %d semantic search index tables" dropped found)))))
 
 (defn- cleanup-stale-indexes-and-gate-tombstones!
   []

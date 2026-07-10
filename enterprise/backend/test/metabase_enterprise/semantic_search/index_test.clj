@@ -181,8 +181,9 @@
       ;; hashed shape for names exceeding the pg identifier limit
       (semantic.index/hash-identifier-if-exceeds-pg-limit (apply str "index_" (repeat 60 "x")))
       (str "index_" (apply str (repeat 40 "a")))
-      ;; legacy pre-BOT-337 naming: these historical orphans must stay recognizable so cleanup reaps them
-      "index_table_ollama_mxbai_lg_1024"))
+      ;; legacy pre-BOT-337 era: anything under the index_table_ prefix is reapable
+      "index_table_ollama_mxbai_lg_1024"
+      "index_table_stale"))
   (testing "rejects the control-plane and other non-index tables"
     (are [table-name] (not (semantic.index/index-table-name? table-name))
       "index_metadata"
@@ -191,8 +192,9 @@
       "migration"
       "dlq_1"
       "repair_1751000000000_1"
-      ;; index_-prefixed but no trailing _<digits>
-      "index_table_stale"
+      ;; index_-prefixed but no trailing _<digits> and not the legacy index_table_ prefix
+      "index_tablex"
+      "index_table_"
       ;; a valid shape as a substring must not match
       "xindex_ollama_mxbai_lg_1024"
       "index_ollama_mxbai_lg_1024 junk"

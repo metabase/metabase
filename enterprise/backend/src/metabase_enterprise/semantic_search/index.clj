@@ -295,20 +295,20 @@
 
 (def ^:private index-table-name-pattern
   "Recognizes every table-name shape produced by [[model-table-name]] (optionally with the force-reset
-  suffix appended by [[metabase-enterprise.semantic-search.pgvector-api/fresh-index]]) and
-  [[hash-identifier-if-exceeds-pg-limit]]:
+  suffix appended by [[metabase-enterprise.semantic-search.pgvector-api/fresh-index]]),
+  [[hash-identifier-if-exceeds-pg-limit]], and the legacy pre-BOT-337 naming era:
 
     index_<provider>_<model>_<dims>            e.g. index_ais_text_3_sm_1536
     index_<provider>_<model>_<dims>_<digits>   force-reset suffix ([[model-table-suffix]])
     index_<40-hex-sha1>                        names exceeding the 63-byte pg identifier limit
+    index_table_<anything>                     legacy pre-BOT-337 naming (index_table_<provider>_<model>_<dims>)
 
   The provider/model segments are only lightly sanitized (see [[embedding/abbrev-model-name]]), so no
   character class is assumed for them; the trailing _<digits> (vector dimensions or force-reset suffix)
-  is what gives the shape structure. Legacy pre-BOT-337 names (index_table_<provider>_<model>_<dims>)
-  also match via the first alternative and must continue to: they are the bulk of historical orphans.
-  Deliberately does NOT match the control-plane tables (index_metadata, index_control, index_gate):
-  they have no trailing _<digits> and are not 40-hex."
-  #"\Aindex_(?:.+_\d+|[0-9a-f]{40})\z")
+  gives the modern shapes their structure, while the index_table_ prefix — used exclusively by the
+  legacy era — claims anything under it. Deliberately does NOT match the control-plane tables
+  (index_metadata, index_control, index_gate): no trailing _<digits>, not 40-hex, not index_table_."
+  #"\Aindex_(?:.+_\d+|[0-9a-f]{40}|table_.+)\z")
 
 (defn index-table-name?
   "Does the bare (schema- and qualifier-stripped) table name look like a semantic-search index table?

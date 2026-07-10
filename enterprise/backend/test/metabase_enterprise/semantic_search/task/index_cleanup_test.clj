@@ -149,10 +149,12 @@
           qualify #(format (:index-table-qualifier index-metadata) %)
           orphan-index-tables #'sut/orphan-index-tables
           cleanup-stale-indexes! #'sut/cleanup-stale-indexes!
-          ;; the three shapes model-table-name/fresh-index produce, none registered in metadata
+          ;; the shapes model-table-name/fresh-index produce plus a legacy pre-BOT-337 straggler,
+          ;; none registered in metadata
           orphan-tables [(qualify "index_ollama_decoytest_1024")
                          (qualify "index_ollama_decoytest_1024_1234567")
-                         (qualify (str "index_" (apply str (repeat 40 "a"))))]
+                         (qualify (str "index_" (apply str (repeat 40 "a"))))
+                         (qualify "index_table_legacytest")]
           ;; share the index_ prefix but must never be treated as orphans
           control-plane-decoys [(qualify "index_metadata")
                                 (qualify "index_control")
