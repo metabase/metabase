@@ -2074,6 +2074,7 @@
            channel
            config
            events
+           premium-features
            request
            settings
            sso

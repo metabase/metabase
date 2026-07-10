@@ -9,6 +9,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.session.schema :as session.schema]
@@ -102,6 +103,34 @@
                 {:status-code 401
                  :errors      {:password password-fail-snippet}}))))
 
+(defn- session-response
+  "Ring response that sets the session cookies for a freshly created `session`.
+  Body shape: `{:id <session-key>}`. The body is the same as the `POST /api/session` success path."
+  [session request]
+  (let [response (vary-meta {:id (str (:key session))} assoc :metabase-user-id (:user_id session))]
+    (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
+
+(defenterprise verify-mfa-code
+  "Verify a second-factor `code` (TOTP, recovery, or emailed one-time code) against the `mfa-token`
+  challenge issued by `POST /api/session`. Returns `{:user-id ..., :first-factor <provider keyword>}`
+  on success; throws 401 otherwise.
+
+  The OSS fallback always throws: OSS can never have issued a challenge token (MFA gate lives in EE),
+  so this path is unreachable without EE present."
+  metabase-enterprise.mfa.challenge
+  [_mfa-token _code _ip-address]
+  (throw (ex-info (tru "Multi-factor authentication is not available.") {:status-code 400})))
+
+(defenterprise send-mfa-email-otp!
+  "Email a one-time code as a fallback second factor. Requires a valid challenge token from
+  `POST /api/session`. Returns nil on success; throws on error.
+
+  The OSS fallback always throws: OSS can never have issued a challenge token (MFA gate lives in EE),
+  so this path is unreachable without EE present."
+  metabase-enterprise.mfa.challenge
+  [_mfa-token _ip-address]
+  (throw (ex-info (tru "Multi-factor authentication is not available.") {:status-code 400})))
+
 (defn- do-http-401-on-error [f]
   (try
     (f)
@@ -128,21 +157,17 @@
                                    [:username ms/NonBlankString]
                                    [:password ms/NonBlankString]]
    request]
-  (let [ip-address   (request/ip-address request)
-        request-time (t/zoned-date-time (t/zone-id "GMT"))
-        do-login     (fn []
-                       (let [result (login username password (request/device-info request))]
-                         (if (:mfa-pending? result)
-                           ;; First factor OK, but a second factor is required: hand back a challenge
-                           ;; token instead of a session. No cookies are set yet.
-                           {:status 200
-                            :body   {:mfa_required true
-                                     :methods      (:mfa-methods result)
-                                     :mfa_token    (:mfa-token result)}}
-                           (let [{session-key :key, :as session} result
-                                 response                        (vary-meta {:id (str session-key)}
-                                                                            assoc :metabase-user-id (:user_id session))]
-                             (request/set-session-cookies request response session request-time)))))]
+  (let [ip-address (request/ip-address request)
+        do-login   (fn []
+                     (let [result (login username password (request/device-info request))]
+                       (if (:mfa-pending? result)
+                         ;; First factor OK, but a second factor is required: hand back a challenge
+                         ;; token instead of a session. No cookies are set yet.
+                         {:status 200
+                          :body   {:mfa_required true
+                                   :methods      (:mfa-methods result)
+                                   :mfa_token    (:mfa-token result)}}
+                         (session-response result request))))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -375,6 +400,42 @@
              [:password ms/ValidPassword]]]
   ;; if we pass the [[ms/ValidPassword]] test we're g2g
   {:valid true})
+
+;; No response schema: the success path returns a full ring response (session cookies must be set),
+;; which the response-schema machinery would validate as the body. Same constraint as
+;; `POST /api/session`. Body shape: `{:id <session-key>}`.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/verify"
+  "Complete a two-step login by verifying a one-time code. Takes the `mfa_token` returned by
+  `POST /api/session` and either the 6-digit `code` from the user's authenticator app, one of
+  their single-use recovery codes, or an emailed one-time code; on success sets the session cookie."
+  [_route-params
+   _query-params
+   {mfa-token :mfa_token, code :code} :- [:map
+                                          [:mfa_token ms/NonBlankString]
+                                          [:code      ms/NonBlankString]]
+   request]
+  (let [{:keys [user-id first-factor]} (verify-mfa-code mfa-token code (request/ip-address request))
+        user (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]
+    ;; the account can be deactivated (or deleted) between the password step and here; a
+    ;; challenge token must not outlive the account. Same 401 as a bad token — no oracle.
+    (when-not (:is_active user)
+      (throw (ex-info (tru "Authentication session expired. Please log in again.")
+                      {:status-code 401})))
+    (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
+                      request)))
+
+(api.macros/defendpoint :post "/mfa/send-email-otp" :- [:map [:success [:= true]]]
+  "Email a one-time code as a fallback second factor (for a user who lost their authenticator but
+  still has recovery codes disabled or unavailable). Requires a valid challenge token from
+  `POST /api/session`; the code is single-use with a 10-minute expiry and is accepted by
+  `POST /mfa/verify` like any other code."
+  [_route-params
+   _query-params
+   {mfa-token :mfa_token} :- [:map [:mfa_token ms/NonBlankString]]
+   request]
+  (send-mfa-email-otp! mfa-token (request/ip-address request))
+  {:success true})
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec
