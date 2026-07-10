@@ -94,6 +94,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
       {isConfigured && (
         <MetabotConversationHistory
           profileId={metabot.profile}
+          activeConversationId={metabot.conversationId}
           onConversationSelect={metabot.loadConversation}
         />
       )}

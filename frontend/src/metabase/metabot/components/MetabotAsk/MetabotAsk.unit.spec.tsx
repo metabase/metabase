@@ -22,6 +22,23 @@ type SetupOpts = Exclude<Parameters<typeof setup>[0], void>;
 const setupMetabotAsk = (options?: Omit<SetupOpts, "ui">) =>
   setup({ ...options, ui: <MetabotAsk /> });
 
+// The history control lives in the chat header, which only renders once the ask
+// conversation has messages (i.e. past the greeting).
+const askStateWithMessage = () => {
+  const state = getMetabotInitialState();
+  const ask = state.conversations.ask;
+  if (!ask) {
+    throw new Error("Expected ask conversation");
+  }
+  ask.messages.push({
+    id: "seed-message",
+    role: "user",
+    type: "text",
+    message: "Earlier question",
+  });
+  return state;
+};
+
 describe("MetabotAsk", () => {
   it("shows the greeting and closes the global Metabot sidebar", async () => {
     const metabotInitialState = assocIn(
@@ -89,5 +106,32 @@ describe("MetabotAsk", () => {
       screen.getByRole("button", { name: "connect to a model" }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
+  });
+
+  it("shows the conversation history control on the greeting", async () => {
+    setupMetabotAsk();
+
+    expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("metabot-conversation-history"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the conversation history control in the chat header", async () => {
+    setupMetabotAsk({ metabotInitialState: askStateWithMessage() });
+
+    expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("metabot-conversation-history"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the conversation history control when not configured", async () => {
+    setupMetabotAsk({ isConfigured: false });
+
+    expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-conversation-history"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -2,7 +2,11 @@ import { useEffect } from "react";
 
 import type { MetabotConfig } from "metabase/metabot/components/Metabot";
 import { MetabotChat } from "metabase/metabot/components/MetabotChat";
-import { useMetabotAgent } from "metabase/metabot/hooks";
+import { MetabotConversationHistory } from "metabase/metabot/components/MetabotChat/MetabotConversationHistory";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Flex } from "metabase/ui";
 
@@ -25,7 +29,9 @@ const askConfig: MetabotConfig = {
 
 export const MetabotAsk = () => {
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
-  const { messages, isDoingScience } = useMetabotAgent("ask");
+  const askAgent = useMetabotAgent("ask");
+  const { messages, isDoingScience } = askAgent;
+  const { isConfigured } = useUserMetabotPermissions();
 
   useEffect(
     function closeSidebarOnMount() {
@@ -36,14 +42,33 @@ export const MetabotAsk = () => {
 
   const showGreeting = messages.length === 0 && !isDoingScience;
 
+  const historyAction = isConfigured ? (
+    <MetabotConversationHistory
+      profileId={askAgent.profile}
+      activeConversationId={askAgent.conversationId}
+      onConversationSelect={askAgent.loadConversation}
+    />
+  ) : undefined;
+
   return (
-    <Flex h="100%" w="100%" justify="center" bg="background_page-primary">
+    <Flex direction="column" h="100%" w="100%" bg="background_page-primary">
       {showGreeting ? (
-        <MetabotGreeting agentId="ask" suggestionModels={SUGGESTION_MODELS} />
+        <>
+          {historyAction && (
+            <Flex justify="flex-end" px="md" pt="md">
+              {historyAction}
+            </Flex>
+          )}
+          <MetabotGreeting agentId="ask" suggestionModels={SUGGESTION_MODELS} />
+        </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
           <Box className={S.topFade} />
-          <MetabotChat config={askConfig} className={S.chat} />
+          <MetabotChat
+            config={askConfig}
+            className={S.chat}
+            headerActions={historyAction}
+          />
         </Box>
       )}
     </Flex>

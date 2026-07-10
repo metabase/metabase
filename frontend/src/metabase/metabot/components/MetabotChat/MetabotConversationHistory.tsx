@@ -18,6 +18,8 @@ import {
 
 import type { MetabotProfileId } from "../../constants";
 
+import S from "./MetabotConversationHistory.module.css";
+
 const HISTORY_LIMIT = 25;
 
 const formatTimestamp = (timestamp: string) => {
@@ -44,9 +46,11 @@ const formatTimestamp = (timestamp: string) => {
 
 export const MetabotConversationHistory = ({
   profileId,
+  activeConversationId,
   onConversationSelect,
 }: {
   profileId: MetabotProfileId | undefined;
+  activeConversationId: string | undefined;
   onConversationSelect: (conversationId: string) => void;
 }) => {
   const [opened, setOpened] = useState(false);
@@ -99,28 +103,34 @@ export const MetabotConversationHistory = ({
               {t`No past conversations`}
             </Text>
           ) : (
-            conversations.map((conversation) => (
-              <Menu.Item
-                key={conversation.conversation_id}
-                onClick={() =>
-                  onConversationSelect(conversation.conversation_id)
-                }
-                leftSection={
-                  <Icon c="text-secondary" name="message_circle" size={16} />
-                }
-              >
-                <Flex align="center" gap="sm" wrap="nowrap">
-                  <Text truncate fw="bold" fz="sm" c="text-primary" flex={1}>
-                    {conversation.title || t`Untitled`}
-                  </Text>
-                  <Text c="text-secondary" fz="xs" style={{ flexShrink: 0 }}>
-                    {formatTimestamp(
-                      conversation.last_message_at ?? conversation.created_at,
-                    )}
-                  </Text>
-                </Flex>
-              </Menu.Item>
-            ))
+            conversations.map((conversation) => {
+              const isActive =
+                conversation.conversation_id === activeConversationId;
+              return (
+                <Menu.Item
+                  key={conversation.conversation_id}
+                  aria-current={isActive || undefined}
+                  className={isActive ? S.activeItem : undefined}
+                  onClick={() =>
+                    onConversationSelect(conversation.conversation_id)
+                  }
+                  leftSection={
+                    <Icon c="text-secondary" name="message_circle" size={16} />
+                  }
+                >
+                  <Flex align="center" gap="sm" wrap="nowrap">
+                    <Text truncate fw="bold" fz="sm" c="text-primary" flex={1}>
+                      {conversation.title || t`Untitled`}
+                    </Text>
+                    <Text c="text-secondary" fz="xs" style={{ flexShrink: 0 }}>
+                      {formatTimestamp(
+                        conversation.last_message_at ?? conversation.created_at,
+                      )}
+                    </Text>
+                  </Flex>
+                </Menu.Item>
+              );
+            })
           )}
         </Box>
       </Menu.Dropdown>
