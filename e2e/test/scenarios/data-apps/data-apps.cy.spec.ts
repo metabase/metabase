@@ -4,10 +4,24 @@ import type { DataApp } from "metabase-types/api";
 
 const { H } = cy;
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const APP_NAME = "renders-interactive-question";
 const APP_DISPLAY_NAME = "Renders Interactive Question";
+
+// Visit a nested route inside a data app. `H.openDataApp` encodes the slug, so
+// it can't carry a sub-path — deep-links go through a raw `cy.visit`.
+const visitAppRoute = (route: string) => cy.visit(`/apps/${APP_NAME}/${route}`);
+
+// A raw numeric field dimension for the query-builder combinators, shaped like a
+// generated `metabase.data.ts` entry.
+const numericField = (fieldId: number, name: string) => ({
+  type: "column" as const,
+  fieldId,
+  tableId: ORDERS_ID,
+  name,
+  jsType: "number" as const,
+});
 
 const source = { type: "table" as const, id: ORDERS_ID };
 const TEST_ENV: DataAppTestEnv = {
@@ -435,6 +449,349 @@ describe("scenarios > data apps", () => {
 
       // The parent window never sees the app's global.
       cy.window().should("not.have.property", "__DATA_APP_ISOLATION_MARKER__");
+    });
+  });
+
+  describe("query hooks & question components", () => {
+    it("surfaces the useMetabaseQuery error state and lets the app refetch", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: {
+          ...TEST_ENV,
+          // A table id that doesn't exist → the query resolves to an error.
+          errorQuery: { source: { type: "table", id: 999999 } },
+        },
+      });
+
+      visitAppRoute("query-states");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId("query-error", { timeout: 30000 }).should(
+          "have.text",
+          "error",
+        );
+        // refetch is exposed and callable (stays in the error state here).
+        cy.findByTestId("query-refetch").click();
+        cy.findByTestId("query-error").should("have.text", "error");
+      });
+    });
+
+    it("renders a StaticQuestion from useMetabaseQueryObject", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      visitAppRoute("static-question");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByText("Subtotal", { timeout: 30000 }).should("be.visible");
+      });
+    });
+
+    it("builds a query with filter/breakout/orderBy/aggregations helpers", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: {
+          ...TEST_ENV,
+          combinators: {
+            source: { type: "table", id: ORDERS_ID },
+            filterField: numericField(ORDERS.TOTAL, "TOTAL"),
+            filterValue: 50,
+            breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
+          },
+        },
+      });
+
+      visitAppRoute("combinators");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId("combinators-loading", { timeout: 30000 }).should(
+          "have.text",
+          "done",
+        );
+        cy.findByTestId("combinators-error").should("have.text", "no-error");
+        // `.should(callback)` retries until the query resolves with rows.
+        cy.findByTestId("combinators-rowcount", { timeout: 30000 }).should(
+          ($el) => {
+            expect(Number($el.text())).to.be.greaterThan(0);
+          },
+        );
+      });
+    });
+  });
+
+  describe("actions (useAction)", () => {
+    const setupActionsApp = (actionId: number | undefined) =>
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: { ...TEST_ENV, actionId },
+      });
+
+    it("executes an action and exposes isExecuting + result, then resets", () => {
+      cy.intercept("POST", "/api/action/*/execute", (req) =>
+        req.reply({
+          statusCode: 200,
+          body: { "rows-affected": 1 },
+          delay: 300,
+        }),
+      ).as("execute");
+      setupActionsApp(99);
+
+      visitAppRoute("actions");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId("action-execute").click();
+        cy.findByTestId("action-executing").should("have.text", "executing");
+        cy.findByTestId("action-result", { timeout: 30000 }).should(
+          "have.text",
+          "has-result",
+        );
+        cy.findByTestId("action-output").should("have.text", "returned-result");
+
+        // reset() clears result and error.
+        cy.findByTestId("action-reset").click();
+        cy.findByTestId("action-result").should("have.text", "no-result");
+        cy.findByTestId("action-error").should("have.text", "no-error");
+      });
+    });
+
+    it("surfaces a validation error from a failed execute", () => {
+      cy.intercept("POST", "/api/action/*/execute", {
+        statusCode: 400,
+        body: { message: "Invalid", errors: { name: "required" } },
+      });
+      setupActionsApp(99);
+
+      visitAppRoute("actions");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId("action-execute").click();
+        cy.findByTestId("action-error", { timeout: 30000 }).should(
+          "have.text",
+          "has-error",
+        );
+        cy.findByTestId("action-result").should("have.text", "no-result");
+      });
+    });
+  });
+
+  describe("clipboard (copy)", () => {
+    it("writes text to the clipboard from a user click", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      visitAppRoute("clipboard");
+
+      // Headless Chrome reports the iframe document as unfocused, so the real
+      // `navigator.clipboard.writeText` rejects ("Document is not focused").
+      // Stub it: the test still verifies the app reaches the sanctioned `copy`
+      // (not blocked by the sandbox) with the right text — the OS write itself
+      // is browser behavior, not ours.
+      H.dataAppIframe(APP_DISPLAY_NAME).then(($body) => {
+        const win = $body[0].ownerDocument.defaultView;
+        if (win) {
+          const writeText = cy.stub(win.navigator.clipboard, "writeText");
+          writeText.resolves();
+          writeText.as("writeText");
+        }
+      });
+
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId("clipboard-copy").click();
+        cy.findByTestId("clipboard-status", { timeout: 30000 }).should(
+          "have.text",
+          "copied",
+        );
+      });
+
+      cy.get("@writeText").should(
+        "have.been.calledOnceWith",
+        "data-app-clipboard-payload",
+      );
+    });
+  });
+
+  describe("error component", () => {
+    it("shows the default neutral error state for a missing question", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      visitAppRoute("missing-question");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByText(/not found/i, { timeout: 30000 }).should("be.visible");
+      });
+    });
+
+    it("lets an app override the default with its own errorComponent", () => {
+      const CUSTOM_APP = "custom-error-component";
+      const CUSTOM_DISPLAY = "Custom Error App";
+
+      H.mockDataApp(CUSTOM_APP, { displayName: CUSTOM_DISPLAY });
+
+      H.openDataApp(CUSTOM_APP);
+      H.dataAppIframe(CUSTOM_DISPLAY).within(() => {
+        cy.findByTestId("custom-error-component", { timeout: 30000 })
+          .should("be.visible")
+          .and("contain", "Custom app error");
+      });
+    });
+  });
+
+  describe("sandbox breadth", () => {
+    const ALLOWED_ORIGIN = "https://allowed.data-app.test";
+    const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
+    const BLOCKED_URL = "https://blocked.data-app.test/ping";
+
+    // Method/constructor calls the sandbox distortion replaces with a throwing
+    // shim. (Getter-only reads like `localStorage` aren't intercepted, so they
+    // aren't asserted here.)
+    const BLOCKED_PROBE_IDS = [
+      "script",
+      "window-open",
+      "alert",
+      "history",
+      "keydown-listener",
+      "websocket",
+      "sendbeacon",
+    ];
+
+    it("blocks a broad set of dangerous globals, strips innerHTML, and gates XHR", () => {
+      cy.intercept("GET", ALLOWED_URL, {
+        statusCode: 200,
+        headers: { "access-control-allow-origin": "*" },
+        body: "pong",
+      });
+
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        allowedHosts: [ALLOWED_ORIGIN],
+        testEnv: {
+          ...TEST_ENV,
+          sandbox: {
+            allowedUrl: ALLOWED_URL,
+            blockedUrl: BLOCKED_URL,
+            xhrAllowedUrl: ALLOWED_URL,
+            xhrBlockedUrl: BLOCKED_URL,
+          },
+        },
+      });
+
+      visitAppRoute("sandboxing");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        BLOCKED_PROBE_IDS.forEach((id) => {
+          cy.findByTestId(`probe-${id}`, { timeout: 30000 }).should(
+            "have.text",
+            "blocked",
+          );
+        });
+
+        cy.findByTestId("probe-innerhtml").should("have.text", "stripped");
+
+        // XHR obeys the same allowlist as fetch.
+        cy.findByTestId("blocked-xhr-result").should("contain", "blocked");
+        cy.findByTestId("allowed-xhr-result", { timeout: 30000 }).should(
+          "have.text",
+          "ok: 200",
+        );
+      });
+    });
+  });
+
+  describe("routing (extended)", () => {
+    it("renders the target page when deep-linked directly to a sub-route", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      visitAppRoute("details");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Order details" }).should(
+          "be.visible",
+        );
+        cy.findByTestId("current-pathname").should("have.text", "/details");
+      });
+      cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
+    });
+
+    it("navigates imperatively via useDataAppLocation().navigate", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      H.openDataApp(APP_NAME);
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Orders overview" }).should(
+          "be.visible",
+        );
+        cy.findByTestId("navigate-to-details").click();
+        cy.findByRole("heading", { name: "Order details" }).should(
+          "be.visible",
+        );
+        cy.findByTestId("current-pathname").should("have.text", "/details");
+      });
+      cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
+    });
+  });
+
+  describe("host error / not-ready screens", () => {
+    it("shows a themed host error screen when the bundle throws while rendering", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      visitAppRoute("throw");
+      // The throw is caught in the iframe and reported to the parent, which
+      // renders its themed failure screen in the host realm.
+      H.main()
+        .findByText(/couldn.t be loaded/i, { timeout: 30000 })
+        .should("be.visible");
+    });
+
+    it("shows a not-ready screen when the bundle hasn't synced (404)", () => {
+      cy.intercept("GET", "/api/apps/repo-status", { configured: true });
+      cy.intercept("GET", `/api/apps/${APP_NAME}`, fakeApp());
+      cy.intercept("GET", `/api/apps/${APP_NAME}/bundle*`, {
+        statusCode: 404,
+        body: { error: "Bundle not synced yet" },
+      });
+
+      cy.visit(`/apps/${APP_NAME}`);
+      H.main()
+        .findByText(/isn.t ready yet/i, { timeout: 30000 })
+        .should("be.visible");
+    });
+  });
+
+  describe("iframe security headers", () => {
+    it("serves the embed document with the expected CSP + framing headers", () => {
+      cy.request({
+        url: `/embed/apps/${APP_NAME}`,
+        failOnStatusCode: false,
+      }).then((res) => {
+        const csp = String(res.headers["content-security-policy"] ?? "");
+        expect(csp).to.contain("frame-ancestors 'self'");
+        expect(csp).to.contain("default-src 'none'");
+        expect(csp).to.contain("form-action 'none'");
+        expect(csp).to.contain("'unsafe-eval'");
+        expect(String(res.headers["x-frame-options"] ?? "")).to.match(
+          /sameorigin/i,
+        );
+      });
+    });
+
+    it("renders the app in a locked-down sandboxed iframe", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      H.openDataApp(APP_NAME);
+      cy.get(`iframe[title="${APP_DISPLAY_NAME}"]`)
+        .should("have.attr", "sandbox")
+        .and("contain", "allow-scripts");
     });
   });
 });

@@ -1,7 +1,16 @@
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 import {
+  InteractiveQuestion,
+  StaticQuestion,
+  useAction,
+} from "@metabase/embedding-sdk-react";
+import {
+  aggregations,
+  breakout,
+  copy,
   DataAppLink,
   DataAppRouter,
+  filter,
+  orderBy,
   useDataAppLocation,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -78,24 +87,228 @@ function Details() {
   );
 }
 
-// Exercises the Near-Membrane sandbox: a blocked DOM API, a fetch to a host that
-// is NOT in `allowed_hosts` (rejected), and a fetch to a host that IS in
-// `allowed_hosts` (reaches the network). Each outcome is rendered so a test can
-// assert it. The sandbox surfaces blocks as a synchronous throw (blocked API)
-// or a promise rejection (blocked fetch).
+// `useMetabaseQuery` states: a deliberately invalid query resolves to an error;
+// `refetch` re-runs it (used to assert the hook exposes loading/error/refetch).
+function QueryStates() {
+  const { errorQuery } = getTestEnv();
+  const q = useMetabaseQuery(
+    errorQuery ?? { source: { type: "table", id: -1 } },
+  );
+
+  return (
+    <div data-testid="data-app-query-states" style={{ padding: 24 }}>
+      <h1>Query states</h1>
+      <div data-testid="query-loading">{q.isLoading ? "loading" : "done"}</div>
+      <div data-testid="query-error">{q.error ? "error" : "no-error"}</div>
+      <button
+        type="button"
+        data-testid="query-refetch"
+        onClick={() => {
+          void q.refetch();
+        }}
+      >
+        refetch
+      </button>
+    </div>
+  );
+}
+
+// `useMetabaseQueryObject` feeding a non-drillable `StaticQuestion`.
+function StaticQuestionPage() {
+  const { questionQuery } = getTestEnv();
+  const q = useMetabaseQueryObject(questionQuery);
+
+  return (
+    <div data-testid="data-app-static-question" style={{ padding: 24 }}>
+      <h1>Static question</h1>
+      <div style={{ height: 360 }}>
+        {q.query ? (
+          <StaticQuestion card={{ query: q.query }} />
+        ) : (
+          <div data-testid="static-question-loading">…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Exercises the query-builder helpers `filter` / `breakout` / `orderBy` /
+// `aggregations` and renders the resulting row count.
+function Combinators() {
+  const { combinators } = getTestEnv();
+  const countAgg = aggregations.count();
+
+  const q = useMetabaseQuery(
+    combinators
+      ? {
+          source: combinators.source,
+          filters: [
+            filter(combinators.filterField, ">", combinators.filterValue),
+          ],
+          aggregations: [countAgg],
+          breakouts: [breakout(combinators.breakoutField)],
+          orderBys: [orderBy(countAgg, "desc")],
+        }
+      : { source: { type: "table", id: -1 }, enabled: false },
+  );
+
+  return (
+    <div data-testid="data-app-combinators" style={{ padding: 24 }}>
+      <h1>Combinators</h1>
+      <div data-testid="combinators-loading">
+        {q.isLoading ? "loading" : "done"}
+      </div>
+      <div data-testid="combinators-error">
+        {q.error ? "error" : "no-error"}
+      </div>
+      <div data-testid="combinators-rowcount">
+        {String(q.data?.rows?.length ?? 0)}
+      </div>
+    </div>
+  );
+}
+
+// `useAction`: execute / isExecuting / result / error / reset. The execute
+// endpoint is stubbed by the spec.
+function Actions() {
+  const { actionId } = getTestEnv();
+  const action = useAction(actionId ?? null);
+  const [output, setOutput] = useState("idle");
+
+  const onExecute = async () => {
+    try {
+      const res = await action.execute({ name: "e2e" });
+      setOutput(res ? "returned-result" : "returned-null");
+    } catch {
+      setOutput("threw");
+    }
+  };
+
+  return (
+    <div data-testid="data-app-actions" style={{ padding: 24 }}>
+      <h1>Actions</h1>
+      <button type="button" data-testid="action-execute" onClick={onExecute}>
+        execute
+      </button>
+      <button
+        type="button"
+        data-testid="action-reset"
+        onClick={() => action.reset()}
+      >
+        reset
+      </button>
+      <div data-testid="action-executing">
+        {action.isExecuting ? "executing" : "idle"}
+      </div>
+      <div data-testid="action-result">
+        {action.result ? "has-result" : "no-result"}
+      </div>
+      <div data-testid="action-error">
+        {action.error ? "has-error" : "no-error"}
+      </div>
+      <div data-testid="action-output">{output}</div>
+    </div>
+  );
+}
+
+// `copy` — the sanctioned clipboard-write capability endowed into the sandbox.
+function Clipboard() {
+  const [status, setStatus] = useState("idle");
+
+  const onCopy = async () => {
+    try {
+      await copy("data-app-clipboard-payload");
+      setStatus("copied");
+    } catch (err) {
+      setStatus(`failed: ${describeError(err)}`);
+    }
+  };
+
+  return (
+    <div data-testid="data-app-clipboard" style={{ padding: 24 }}>
+      <h1>Clipboard</h1>
+      <button type="button" data-testid="clipboard-copy" onClick={onCopy}>
+        copy
+      </button>
+      <div data-testid="clipboard-status">{status}</div>
+    </div>
+  );
+}
+
+// Renders a question that doesn't exist; with no app-supplied `errorComponent`,
+// the host shows its default neutral data-app error state ("Question not found").
+function MissingQuestion() {
+  return (
+    <div
+      data-testid="data-app-missing-question"
+      style={{ padding: 24, height: 300 }}
+    >
+      <StaticQuestion questionId={999999999} />
+    </div>
+  );
+}
+
+// Throws during render so the host's BundleErrorBoundary reports the failure to
+// the parent, which renders its themed error screen.
+function ThrowingPage(): JSX.Element {
+  throw new Error("intentional data-app bundle render error");
+}
+
+// A synchronous probe of a blocked global — expected to throw inside the sandbox.
+type Probe = { id: string; run: () => void };
+
+// The sandbox distortion replaces blocked *function values* (methods and
+// constructors) with a throwing shim; a plain getter read (e.g.
+// `window.localStorage`) returns a non-function value and is not intercepted, so
+// only method/constructor calls reliably throw. These are all such calls.
+const BLOCKED_PROBES: Probe[] = [
+  { id: "script", run: () => void document.createElement("script") },
+  { id: "window-open", run: () => void window.open("https://blocked.test") },
+  { id: "alert", run: () => window.alert("x") },
+  { id: "history", run: () => window.history.pushState({}, "", "/x") },
+  {
+    id: "keydown-listener",
+    run: () => document.addEventListener("keydown", () => {}),
+  },
+  { id: "websocket", run: () => void new WebSocket("wss://blocked.test") },
+  {
+    id: "sendbeacon",
+    run: () => void navigator.sendBeacon("https://blocked.test"),
+  },
+];
+
+// Exercises the Near-Membrane sandbox. A broad set of blocked DOM/global APIs
+// (each expected to throw), `innerHTML` DOMPurify stripping, and network egress
+// gated by `allowed_hosts` (fetch + XHR, block AND allow paths). Each outcome is
+// rendered so a test can assert it.
 function Sandbox() {
   const { sandbox } = getTestEnv();
-  const [blockedApi, setBlockedApi] = useState("pending");
+  const [blocked, setBlocked] = useState<Record<string, string>>({});
+  const [innerHtml, setInnerHtml] = useState("pending");
   const [blockedFetch, setBlockedFetch] = useState("pending");
   const [allowedFetch, setAllowedFetch] = useState("pending");
+  const [blockedXhr, setBlockedXhr] = useState("pending");
+  const [allowedXhr, setAllowedXhr] = useState("pending");
 
   useEffect(() => {
+    const results: Record<string, string> = {};
+    for (const probe of BLOCKED_PROBES) {
+      try {
+        probe.run();
+        results[probe.id] = "not blocked";
+      } catch {
+        results[probe.id] = "blocked";
+      }
+    }
+    setBlocked(results);
+
+    // `innerHTML` is distorted through DOMPurify, which strips <script>.
     try {
-      // Plain elements are fine; creating a <script> is blocked by the sandbox.
-      document.createElement("script");
-      setBlockedApi("ok: created");
+      const el = document.createElement("div");
+      el.innerHTML = "<script>window.x=1</script><b>ok</b>";
+      setInnerHtml(el.querySelector("script") ? "not stripped" : "stripped");
     } catch (err) {
-      setBlockedApi(`blocked: ${describeError(err)}`);
+      setInnerHtml(`threw: ${describeError(err)}`);
     }
 
     if (sandbox) {
@@ -106,15 +319,50 @@ function Sandbox() {
       fetch(sandbox.allowedUrl)
         .then((res) => setAllowedFetch(`ok: ${res.status}`))
         .catch((err) => setAllowedFetch(`blocked: ${describeError(err)}`));
+
+      if (sandbox.xhrBlockedUrl) {
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", sandbox.xhrBlockedUrl);
+          setBlockedXhr("not blocked");
+        } catch (err) {
+          setBlockedXhr(`blocked: ${describeError(err)}`);
+        }
+      }
+
+      if (sandbox.xhrAllowedUrl) {
+        const xhr = new XMLHttpRequest();
+        xhr.addEventListener("load", () => setAllowedXhr(`ok: ${xhr.status}`));
+        xhr.addEventListener("error", () => setAllowedXhr("blocked: error"));
+        try {
+          xhr.open("GET", sandbox.xhrAllowedUrl);
+          xhr.send();
+        } catch (err) {
+          setAllowedXhr(`blocked: ${describeError(err)}`);
+        }
+      }
     }
   }, [sandbox]);
 
   return (
     <div data-testid="data-app-sandbox" style={{ padding: 24 }}>
       <h1 style={{ margin: "0 0 16px" }}>Sandbox</h1>
-      <div data-testid="blocked-api-result">{blockedApi}</div>
+      {BLOCKED_PROBES.map((probe) => (
+        <div key={probe.id} data-testid={`probe-${probe.id}`}>
+          {blocked[probe.id] ?? "pending"}
+        </div>
+      ))}
+      <div data-testid="probe-innerhtml">{innerHtml}</div>
+      {/* Retained for the existing test's assertions. */}
+      <div data-testid="blocked-api-result">
+        {blocked.script === "blocked"
+          ? "blocked createElement: script"
+          : "ok: created"}
+      </div>
       <div data-testid="blocked-fetch-result">{blockedFetch}</div>
       <div data-testid="allowed-fetch-result">{allowedFetch}</div>
+      <div data-testid="blocked-xhr-result">{blockedXhr}</div>
+      <div data-testid="allowed-xhr-result">{allowedXhr}</div>
     </div>
   );
 }
@@ -164,10 +412,17 @@ const ROUTES: Record<string, ComponentType> = {
   "/details": Details,
   "/sandboxing": Sandbox,
   "/isolation": Isolation,
+  "/query-states": QueryStates,
+  "/static-question": StaticQuestionPage,
+  "/combinators": Combinators,
+  "/actions": Actions,
+  "/clipboard": Clipboard,
+  "/missing-question": MissingQuestion,
+  "/throw": ThrowingPage,
 };
 
 function Shell() {
-  const { pathname } = useDataAppLocation();
+  const { pathname, navigate } = useDataAppLocation();
   const Page = ROUTES[pathname] ?? Overview;
 
   return (
@@ -178,13 +433,25 @@ function Shell() {
           borderBottom: "1px solid #e0e0e0",
           display: "flex",
           gap: 16,
+          flexWrap: "wrap",
         }}
       >
         <DataAppLink to="/">Overview</DataAppLink>
         <DataAppLink to="/details">Details</DataAppLink>
         <DataAppLink to="/sandboxing">Sandbox</DataAppLink>
         <DataAppLink to="/isolation">Isolation</DataAppLink>
+        <button
+          type="button"
+          data-testid="navigate-to-details"
+          onClick={() => navigate("/details")}
+        >
+          navigate to details
+        </button>
       </nav>
+
+      <div data-testid="current-pathname" style={{ padding: "0 16px" }}>
+        {pathname}
+      </div>
 
       <Page />
     </div>
