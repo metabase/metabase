@@ -1,22 +1,12 @@
 import { t } from "ttag";
 
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { useSetting } from "metabase/common/hooks";
-import {
-  ActionIcon,
-  Box,
-  CopyButton,
-  Icon,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from "metabase/ui";
+import { Stack, Text, Title } from "metabase/ui";
 import {
   isLocalOrSnapshotVersion,
   versionToNumericComponents,
 } from "metabase/utils/version";
-
-import S from "./DataAppSkillsSection.module.css";
 
 const REPOSITORY_NAME = "metabase/metabase";
 const MAIN_BRANCH_NAME = "master";
@@ -45,12 +35,7 @@ export const DataAppSkillsSection = () => {
 
   const skillCommandBase = `npx skills add ${REPOSITORY_NAME}${PUBLIC_SKILLS_PATH}#${skillBranch}`;
   const skillSelectors = DATA_APP_SKILLS.map((skill) => `--skill ${skill}`);
-  // One line to copy (a runnable command); shown wrapped across lines for
-  // readability.
   const installSkillCommand = [skillCommandBase, ...skillSelectors].join(" ");
-  const installSkillCommandDisplay = [skillCommandBase, ...skillSelectors].join(
-    "\n",
-  );
 
   return (
     <Stack gap="sm">
@@ -59,28 +44,10 @@ export const DataAppSkillsSection = () => {
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin UI string */}
       <Text>{t`Install Metabase Data App skills in your project, then ask your AI agent to create a data app.`}</Text>
 
-      <Box className={S.command} pos="relative">
-        <CopyButton value={installSkillCommand} timeout={2000}>
-          {({ copied, copy }) => (
-            <Tooltip label={copied ? t`Copied!` : t`Copy`}>
-              <ActionIcon
-                className={S.copyButton}
-                variant="subtle"
-                c="text-secondary"
-                aria-label={t`Copy`}
-                data-testid="copy-button"
-                onClick={copy}
-              >
-                <Icon name="copy" />
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
-
-        <Text component="pre" className={S.commandText}>
-          {installSkillCommandDisplay}
-        </Text>
-      </Box>
+      <CopyTextInput
+        value={installSkillCommand}
+        aria-label={t`Install command`}
+      />
     </Stack>
   );
 };

@@ -243,9 +243,13 @@ describe("scenarios > data apps", () => {
           .should("have.attr", "href")
           .and("contain", "/admin/settings/remote-sync");
 
-        // The AI skills install command lists the data-app skills.
-        cy.findByText(/npx skills add metabase\/metabase/).should("be.visible");
-        cy.findByText(/--skill metabase-data-app-setup/).should("be.visible");
+        // The AI skills install command (a copy field) lists the data-app skills.
+        cy.findByDisplayValue(/npx skills add metabase\/metabase/).should(
+          "be.visible",
+        );
+        cy.findByDisplayValue(/--skill metabase-data-app-setup/).should(
+          "be.visible",
+        );
       });
     });
   });
