@@ -31,7 +31,7 @@
          ~@body))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-new-search-if-available*
+(defmacro with-appdb-search-if-available*
   "Create a temporary index table for the duration of the body."
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)
@@ -46,19 +46,19 @@
        ~@body)))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-new-search-if-available-otherwise-legacy
+(defmacro with-appdb-search-if-available-otherwise-legacy
   "Create a temporary index table for the duration of the body."
   [& body]
   `(if (search/supports-index?)
-     (with-new-search-if-available* ~@body)
+     (with-appdb-search-if-available* ~@body)
      ~@body))
 
-(defmacro with-new-search-if-available-without-fallback
+(defmacro with-appdb-search-if-available-without-fallback
   "Create a temporary index table for the duration of the body.
    Only runs if the appdb search engine is supported."
   [& body]
   `(when (search.engine/supported-engine? :search.engine/appdb)
-     (with-new-search-if-available* ~@body)))
+     (with-appdb-search-if-available* ~@body)))
 
 (defmacro with-legacy-search
   "Ensure legacy search, which doesn't require an index, is used.
@@ -73,12 +73,12 @@
                                                                 [:search.engine/semantic]))]
      ~@body))
 
-(defmacro with-new-search-and-legacy-search
+(defmacro with-appdb-search-and-legacy-search
   "Run the body twice, once with the legacy search engine, and once with the appdb search engine."
   [& body]
   `(do
      (with-legacy-search ~@body)
-     (with-new-search-if-available-without-fallback ~@body)))
+     (with-appdb-search-if-available-without-fallback ~@body)))
 
 (defmacro with-index-disabled
   "Skip any index maintenance during this test."
