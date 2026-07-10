@@ -1,0 +1,37 @@
+issue: 36788
+issue_url: https://github.com/metabase/metabase/issues/36788
+fix_commits: ["b0a54aa12de8d3d45e1368ca9339249dbf2aa1e1"]
+fix_subject: "Display chart caption even where there is no title"
+area: viz/ChartCaption
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Re-added the `if (!title) return null` early-return in ChartCaption (the fix removed it so captions render even with an empty title).
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/visualizations/components/ChartCaption.unit.spec.tsx", clean_baseline: pass, reconstructed_result: "2/8 fail (caption not rendered when title empty)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A chart with no title renders no caption at all (so e.g. the settings/download affordances in the caption disappear).
+  repro_failure: >
+    'should render without a title (metabase#36788)': legend-caption testid not found.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/visualizations/components/ChartCaption.unit.spec.tsx"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-3. Killed by shipped FE unit (jest) test => e2e repro cullable."

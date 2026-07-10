@@ -1,0 +1,21 @@
+issue: 36027
+status: reconstruction_failed
+failure_category: cypress_only
+hole_closable: true  # bug reintroduces cleanly but no surviving jest spec discriminates; closable with a direct/locale-aware unit test
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: 6cca5fb3440f36aa34a462b6b0990312176a4ab8
+validation:
+  oracle:
+    kind: cypress
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole_closed  # was hole; closed this session with a targeted unit test
+# detail: see reconstruction-report.md
+hole_closed:
+  patch_file: hole-closer-test.patch
+  test: frontend/src/metabase/visualizations/lib/settings/visualization.unit.spec.ts
+  verified: fail_on_reverted_fix__pass_on_clean
+  applied_to_working_tree: true

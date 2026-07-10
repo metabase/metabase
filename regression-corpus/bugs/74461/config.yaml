@@ -1,0 +1,37 @@
+issue: 74461
+issue_url: https://github.com/metabase/metabase/issues/74461
+fix_commits: ["b6fe71475dc1aa119937e489aaa3f386412ea664"]
+fix_pr: 74536
+fix_subject: "Fix deletion of tenant collections (#74536)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/collections/tenant-collection-trash.cy.spec.ts
+      line: 32
+      kind: it
+      title: "can permanently delete a trashed shared tenant collection (metabase#74461)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - metabase.collections-rest.api-test/collection-deletion-prohibitions
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.unit.spec.tsx
+  notes: null

@@ -1,0 +1,16 @@
+issue: 47097
+status: reconstruction_failed
+failure_category: cypress_only
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR#63074 drill-filter no-perms — honest-negative. canUseCard/DashboardEndpoints; even forcing both to false trips 0/74 jest; shipped jest edits were flake-fix + prop rename
+validation:
+  oracle:
+    kind: cypress
+    test: e2e dashboard-filters-reproductions.cy.spec.js
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole

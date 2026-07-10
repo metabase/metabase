@@ -1,0 +1,38 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.tsx b/frontend/src/metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.tsx
+index 94a7dc652e8..66f29d05b96 100644
+--- a/frontend/src/metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.tsx
++++ b/frontend/src/metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.tsx
+@@ -207,7 +207,6 @@ export function ViewTitleHeader({
+       {QuestionFiltersHeader.shouldRender({
+         question,
+         queryBuilderMode,
+-        isObjectDetail,
+       }) && (
+         <QuestionFiltersHeader
+           expanded={areFiltersExpanded}
+diff --git a/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader.tsx b/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader.tsx
+index 5160bf83619..b00eb28c600 100644
+--- a/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader.tsx
++++ b/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader.tsx
+@@ -30,20 +30,14 @@ export function QuestionFiltersHeader({
+ type RenderCheckOpts = {
+   question: Question;
+   queryBuilderMode: QueryBuilderMode;
+-  isObjectDetail: boolean;
+ };
+ 
+-const shouldRender = ({
+-  question,
+-  queryBuilderMode,
+-  isObjectDetail,
+-}: RenderCheckOpts) => {
++const shouldRender = ({ question, queryBuilderMode }: RenderCheckOpts) => {
+   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+   return (
+     queryBuilderMode === "view" &&
+     !isNative &&
+     isEditable &&
+-    !isObjectDetail &&
+     !question.isArchived()
+   );
+ };

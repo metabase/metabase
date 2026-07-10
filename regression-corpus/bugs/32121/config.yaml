@@ -1,0 +1,37 @@
+issue: 32121
+issue_url: https://github.com/metabase/metabase/issues/32121
+fix_commits: ["54109eeb3afbc5bd3cf5206ae3c9aff9426af5e3"]
+fix_subject: "Use :database to check for a Mongo native query"
+area: qp/fetch-source-query
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  oracle_source: modified_deftest
+  reconstruction_notes: >
+    Reverted the Mongo-detection heuristic in fix-mongodb-first-stage from the fix's driver check (= driver/*driver* :mongo) back to (:collection first-stage). The 2023 fix's semantic lever survived into the MBQL5 rewrite.
+
+validation:
+  oracle: {kind: be_unit, test: "metabase.query-processor.middleware.fetch-source-query-test/card-id->source-query-and-metadata-test", clean_baseline: pass, reconstructed_result: "1-2 fail (native stage wrongly wrapped into a Mongo collection map); main-tree spot-validated 1 fail"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A non-Mongo native source query carrying a :collection key is mistaken for Mongo and wrapped into a {:collection :query} map, corrupting the native stage.
+  repro_failure: >
+    card-id->source-query-and-metadata-test: :native expected raw pipeline vector, actual {:collection 'checkins' :query [...]}.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.query-processor.middleware.fetch-source-query-test/card-id->source-query-and-metadata-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 wave-2 (no_added_deftest / modified-deftest oracle). Killed by shipped BE test => e2e repro cullable."

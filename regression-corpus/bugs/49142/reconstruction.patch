@@ -1,0 +1,14 @@
+diff --git a/src/metabase/server/middleware/security.clj b/src/metabase/server/middleware/security.clj
+index dc2b7369aa8..a2d6df141ad 100644
+--- a/src/metabase/server/middleware/security.clj
++++ b/src/metabase/server/middleware/security.clj
+@@ -144,8 +144,7 @@
+                (when (and port (not= domain "*")) (format ":%s" port))))))))
+ 
+ (def ^:private always-allowed-iframe-hosts
+-  ["'self'"
+-   "https://www.metabase.com/"
++  ["https://www.metabase.com/"
+    "https://metabase.com/"])
+ 
+ (def ^:private always-allowed-resource-hosts

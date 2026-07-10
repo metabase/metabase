@@ -1,0 +1,16 @@
+issue: 40064
+status: reconstruction_failed
+failure_category: cypress_only
+hole_closable: true  # bug reintroduces cleanly but no surviving jest spec discriminates (drift/deleted spec); closable with a direct unit test
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: e5e0c2ccd03428c622ffa3d1bc468dd98201c3cd
+validation:
+  oracle:
+    kind: cypress
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole
+# detail: see reconstruction-report.md

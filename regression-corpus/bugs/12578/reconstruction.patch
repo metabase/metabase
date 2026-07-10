@@ -1,0 +1,14 @@
+diff --git a/frontend/src/metabase/dashboard/reducers-typed.ts b/frontend/src/metabase/dashboard/reducers-typed.ts
+index 14c7930dd83..b378876dad3 100644
+--- a/frontend/src/metabase/dashboard/reducers-typed.ts
++++ b/frontend/src/metabase/dashboard/reducers-typed.ts
+@@ -365,7 +365,8 @@ export const loadingDashCards = createReducer(
+         loadingStatus: "idle",
+       }))
+       .addCase(fetchDashboardCardDataAction, (state, action) => {
+-        const { currentTime, loadingIds } = action.payload;
++        const { currentTime, dashcardIds } = action.payload as any;
++        const loadingIds = Array.isArray(dashcardIds) ? dashcardIds : [];
+         return {
+           ...state,
+           loadingIds,

@@ -1,0 +1,61 @@
+issue: 66957
+issue_url: https://github.com/metabase/metabase/issues/66957
+fix_commits: ["34996f11d31c2d55f6a237df4043e31b387fe4b9"]
+fix_pr: 67246
+fix_subject: "Keep filters header visible when details view is open (#67246)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/visualizations-tabular/object_detail.cy.spec.js
+      line: 1005
+      kind: describe
+      title: "issue 66957"
+    - spec: e2e/test/scenarios/visualizations-tabular/object_detail.cy.spec.js
+      line: 1012
+      kind: it
+      title: "filter header should not hide when opening object details (metabase#66957)"
+  green_baseline: untested
+  repro_confirmed: null
+
+failure_shape:
+  observed: true          # observed at unit level this session, not yet via e2e
+  source: observed_unit
+  symptom: >
+    When the object-detail (single-row) view is opened on a filtered question,
+    the active-filters header (the filter pills) disappears instead of staying
+    visible.
+  repro_failure: >
+    In ViewTitleHeader (queryBuilderMode=view, isObjectDetail=true) the filter
+    pills are not rendered — getByText("Total is less than 50") throws
+    "Unable to find an element". The e2e repro asserts the filter header stays
+    visible when object details open; expect the same missing-header shape.
+  not_setup_crash: true
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: HOLE — 2511 related unit tests all pass with bug reintroduced (jest --findRelatedTests)
+
+hole_closed:
+  status: closed
+  by: targeted_unit_test
+  test_file: frontend/src/metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.unit.spec.tsx
+  test_title: "keeps the filters header visible in object detail view (metabase#66957)"
+  killed: true          # fails on mutated tree (filter pills absent), passes on clean
+  clean_baseline: green
+  notes: >
+    Drives ViewTitleHeader with queryBuilderMode=view, isObjectDetail=true on the
+    filtered ad-hoc GUI question; asserts the filter pills stay visible. On the
+    mutated tree shouldRender re-adds !isObjectDetail so the filters header is
+    hidden and the pills disappear — exact original-issue shape. Type-checks on
+    clean (only valid ViewTitleHeader props; does not reference shouldRender's
+    isObjectDetail param, which the fix removed). Verified: -R mutate → FAIL,
+    forward restore → PASS.

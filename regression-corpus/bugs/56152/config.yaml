@@ -1,0 +1,17 @@
+issue: 56152
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: all_specs_gone
+fix_commit: 4187e57c4a7870182807a38beee959878af70866
+validation:
+  oracle:
+    kind: fe_unit
+    reconstructed_result: fail_on_mutant__pass_on_clean
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure
+# detail (oracle path, relocation, mutation): see reconstruction-report.md

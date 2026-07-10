@@ -1,0 +1,17 @@
+diff --git a/frontend/src/metabase/visualizations/click-actions/lib/dashboard-click-drill.js b/frontend/src/metabase/visualizations/click-actions/lib/dashboard-click-drill.js
+index 689fe04d1ee..759c7455042 100644
+--- a/frontend/src/metabase/visualizations/click-actions/lib/dashboard-click-drill.js
++++ b/frontend/src/metabase/visualizations/click-actions/lib/dashboard-click-drill.js
+@@ -169,11 +169,7 @@ export function getClickBehavior(clicked) {
+     return columnClickBehavior;
+   }
+ 
+-  const dimensionClickBehavior = (clicked?.dimensions || [])
+-    .map((dimension) => getColumnClickBehavior(settings, dimension.column))
+-    .find(Boolean);
+-
+-  return dimensionClickBehavior || settings.click_behavior;
++  return settings.click_behavior;
+ }
+ 
+ function getColumnClickBehavior(settings, column) {

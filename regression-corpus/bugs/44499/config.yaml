@@ -1,0 +1,29 @@
+issue: 44499
+issue_url: https://github.com/metabase/metabase/issues/44499
+fix_commits: ["4120da5c4e1b692b48bafba68e53d4060c401f51"]
+fix_pr: 67148
+fix_subject: "Fix: Bookmark list is not updated when you archive a collection containing a bookmarked item (#67148)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js
+      line: 77
+      kind: it
+      title: "should update bookmarks list when restoring a collection containing bookmarked items (metabase#44499)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: "HOLE — raw findRelatedTests fe_exit=1 was a LOAD-FLAKE (DelayedLoadingAndErrorWrapper, data-fetching, DataModel, TimelineDetailsModal); isolation-confirmed those pass on the mutated tree => MISS. 11388 related tests otherwise pass with the bug live."

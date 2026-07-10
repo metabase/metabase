@@ -1,0 +1,42 @@
+diff --git a/src/metabase/lib/aggregation.cljc b/src/metabase/lib/aggregation.cljc
+index a8bbe29f85e..33cbc32ef97 100644
+--- a/src/metabase/lib/aggregation.cljc
++++ b/src/metabase/lib/aggregation.cljc
+@@ -514,13 +514,9 @@
+    (aggregable-columns query -1 aggregation-position))
+   ([query :- ::lib.schema/query
+     stage-number :- :int
+-    aggregation-position :- [:maybe nat-int?]]
+-   (let [agg-cols (aggregations-metadata query stage-number)
+-         columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
+-                       (cond->> agg-cols
+-                         aggregation-position (keep-indexed (fn [i a]
+-                                                              (when (not= i aggregation-position)
+-                                                                a)))))]
++    _aggregation-position :- [:maybe nat-int?]]
++   (let [columns (into (vec (lib.metadata.calculation/visible-columns query stage-number))
++                       (aggregations-metadata query stage-number))]
+      (not-empty columns))))
+ 
+ (defmethod lib.metadata.calculation/type-of-method :aggregation
+diff --git a/src/metabase/lib/expression.cljc b/src/metabase/lib/expression.cljc
+index 92f845d44ad..8cda8fec98b 100644
+--- a/src/metabase/lib/expression.cljc
++++ b/src/metabase/lib/expression.cljc
+@@ -504,14 +504,8 @@
+     ;; Clojure map, so there are plenty of possibilities to mess this up.)
+     ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
+     ;; endeavor.
+-    expression-position :- [:maybe nat-int?]]
+-   (let [expr-name (when expression-position
+-                     (some-> (expressions query stage-number)
+-                             (nth expression-position nil)
+-                             lib.util/expression-name))
+-         columns (cond->> (lib.metadata.calculation/visible-columns query stage-number)
+-                   expr-name (into [] (remove #(and (= (:lib/source %) :source/expressions)
+-                                                    (= (:name %) expr-name)))))]
++    _expression-position :- [:maybe nat-int?]]
++   (let [columns (lib.metadata.calculation/visible-columns query stage-number)]
+      (not-empty columns))))
+ 
+ (mu/defn expression-ref :- :mbql.clause/expression

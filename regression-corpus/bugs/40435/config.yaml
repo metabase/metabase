@@ -1,0 +1,27 @@
+issue: 40435
+issue_url: https://github.com/metabase/metabase/issues/40435
+fix_commits: ["f41cd82f5b750b02ef5324428eef3e0862e85c20"]
+fix_subject: "Fix missing columns after query fields update"
+area: viz/TableColumnPanel
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__fix_deleted_discriminating_test
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (revert getColumnItems to iterate over columns). But the fix DELETED the one discriminating test ('columns without matching setting') which had INVERTED polarity (asserted the buggy behavior); no positive replacement was added. All remaining tests use fully-matching columns/settings so buggy and fixed algorithms produce identical output. Reconstructable but no surviving unit oracle => FE HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "no_unit_oracle__fix_deleted_discriminating_test"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-4 NEGATIVE (no_unit_oracle__fix_deleted_discriminating_test). Reconstructable but no discriminating FE unit oracle => FE HOLE."

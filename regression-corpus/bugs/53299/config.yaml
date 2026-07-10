@@ -1,0 +1,26 @@
+issue: 53299
+issue_url: https://github.com/metabase/metabase/issues/53299
+fix_commits: ["495776dc1e354c733246001966e5cf11c06cadec"]
+fix_subject: "Pass missing native extras when switching databases"
+area: lib/native
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_be_oracle__fix_deleted_its_throw_test
+  repro_reconstructable: true    # true = bug CAN be reintroduced, but no BE unit oracle catches it
+  reason: >
+    Bug IS reconstructable (REPL-verified: re-adding (with-native-extras nil) makes a MongoDB switch throw 'Missing extra #{:collection}'). But NO oracle flips: the fix's discriminating test was a throw-assertion that the fix DELETED (the call stopped throwing) rather than converting to a positive assertion. Surviving deftest assertions use non-requiring providers -> invariant to the bug. => genuine BE unit-coverage HOLE (only e2e guards it).
+
+validation:
+  oracle: {kind: be_unit, note: "no discriminating BE unit oracle survives on HEAD"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: hole, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 NEGATIVE (no_be_oracle__fix_deleted_its_throw_test). Bug reconstructable but no BE oracle => unit HOLE (e2e/FE guarded)."

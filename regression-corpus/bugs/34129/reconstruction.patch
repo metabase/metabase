@@ -1,0 +1,43 @@
+diff --git a/frontend/src/metabase/parameters/utils/date-formatting.ts b/frontend/src/metabase/parameters/utils/date-formatting.ts
+index 5e64aae7567..b1cc39c0fb3 100644
+--- a/frontend/src/metabase/parameters/utils/date-formatting.ts
++++ b/frontend/src/metabase/parameters/utils/date-formatting.ts
+@@ -1,7 +1,26 @@
++import type { DateFilterValue } from "metabase/querying/common/types";
+ import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
+ import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
+ import type { DateFormattingSettings, Parameter } from "metabase-types/api";
+ 
++function getExpectedFilterType(
++  parameterType: string,
++): DateFilterValue["type"] | null {
++  switch (parameterType) {
++    case "date/month-year":
++      return "month";
++    case "date/quarter-year":
++      return "quarter";
++    case "date/single":
++    case "date/range":
++      return "specific";
++    case "date/relative":
++      return "relative";
++    default:
++      return null;
++  }
++}
++
+ export function formatDateValue(
+   parameter: Parameter,
+   value: string,
+@@ -12,6 +31,11 @@ export function formatDateValue(
+     return null;
+   }
+ 
++  const expectedType = getExpectedFilterType(parameter.type);
++  if (expectedType != null && filter.type !== expectedType) {
++    return null;
++  }
++
+   return getDateFilterDisplayName(filter, {
+     withPrefix: parameter.type !== "date/single",
+     formattingSettings,

@@ -1,0 +1,37 @@
+issue: 51020
+issue_url: https://github.com/metabase/metabase/issues/51020
+fix_commits: ["08771ef685a2d07d1387ab22f03d202af9f0501c"]
+fix_subject: "Updating a filter via click behavior drops prefilled values"
+area: actions/use-action-form
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Re-added the getChangedValues transform in the use-action-form hook (getCleanValues returns changed-only), so submit values equal to their prefetched initial are dropped.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/actions/hooks/use-action-form/use-action-form.unit.spec.ts", clean_baseline: pass, reconstructed_result: "2/7 fail (prefilled values filtered out)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    An action executed via click-behavior drops parameter values that equal their prefetched initial (e.g. a PK id from the URL), so they never reach the execute endpoint.
+  repro_failure: >
+    getCleanValues: expected {param1:'some value'}, received {}.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/actions/hooks/use-action-form/use-action-form.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-3. Killed by shipped FE unit (jest) test => e2e repro cullable."

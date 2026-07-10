@@ -1,0 +1,37 @@
+issue: 70311
+issue_url: https://github.com/metabase/metabase/issues/70311
+fix_commits: ["d6a45bdf993e7510325d9f9dd7a5e52966a39155"]
+fix_pr: 71097
+fix_subject: "Don't show run overlay on between field filter with no values (#71097)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js
+      line: 1317
+      kind: describe
+      title: "issue 70311"
+    - spec: e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js
+      line: 1324
+      kind: it
+      title: "should not show the run overlay for a saved question with an empty between field filter (metabase#70311)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - metabase.lib.schema.parameter-test/normalize-number-between-test
+  fe_unit: {status: untested, killed_by: []}
+  notes: null

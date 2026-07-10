@@ -1,0 +1,29 @@
+diff --git a/frontend/src/metabase/dashboard/selectors.ts b/frontend/src/metabase/dashboard/selectors.ts
+index 69936cf1917..8017f566157 100644
+--- a/frontend/src/metabase/dashboard/selectors.ts
++++ b/frontend/src/metabase/dashboard/selectors.ts
+@@ -604,24 +604,6 @@ function getInitialSelectedTabId(
+   siteUrl: string,
+   isWebApp: boolean,
+ ) {
+-  const pathname = window.location.pathname.replace(siteUrl, "");
+-  const isDashboardUrl = pathname.includes("/dashboard/");
+-
+-  if (isDashboardUrl) {
+-    const dashboardSlug = pathname.replace("/dashboard/", "");
+-    const dashboardUrlId = Urls.extractEntityId(dashboardSlug);
+-    const isNavigationInProgress = dashboardUrlId !== dashboard.id;
+-    if (!isNavigationInProgress || !isWebApp) {
+-      const searchParams = new URLSearchParams(window.location.search);
+-      const tabParam = searchParams.get("tab");
+-      const tabId = tabParam ? parseInt(tabParam, 10) : null;
+-      const hasTab = dashboard.tabs?.some?.((tab) => tab.id === tabId);
+-      if (hasTab) {
+-        return tabId;
+-      }
+-    }
+-  }
+-
+   return dashboard.tabs?.[0]?.id || null;
+ }
+ 

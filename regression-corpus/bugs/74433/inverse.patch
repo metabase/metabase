@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/ui/components/overlays/Tooltip/Tooltip.module.css b/frontend/src/metabase/ui/components/overlays/Tooltip/Tooltip.module.css
+index 2c9f95147dc..4845cd042dc 100644
+--- a/frontend/src/metabase/ui/components/overlays/Tooltip/Tooltip.module.css
++++ b/frontend/src/metabase/ui/components/overlays/Tooltip/Tooltip.module.css
+@@ -5,6 +5,8 @@
+   padding: 0.6rem 0.75rem;
+   white-space: unset;
+   max-width: 320px;
++  /* Break long unbreakable strings so the tooltip can't overflow its max-width (metabase#74433). */
++  overflow-wrap: anywhere;
+ }
+ 
+ .arrow {

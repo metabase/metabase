@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/querying/expressions/mode.ts b/frontend/src/metabase/querying/expressions/mode.ts
+index 8d9de96714b..7f57deb8c6d 100644
+--- a/frontend/src/metabase/querying/expressions/mode.ts
++++ b/frontend/src/metabase/querying/expressions/mode.ts
+@@ -31,12 +31,7 @@ export function checkExpressionModeSupportsClause(
+     throw new DiagnosticError(t`Unknown operator ${operator}`);
+   }
+ 
+-  const clause = getClauseDefinition(operator);
+-  if (clause.type === "aggregation" && expressionMode !== "aggregation") {
+-    return new DiagnosticError(
+-      t`Aggregations like ${clause.displayName} are not allowed when building a custom ${expressionModeDisplayName(expressionMode)}`,
+-    );
+-  }
++  getClauseDefinition(operator);
+ 
+   return null;
+ }

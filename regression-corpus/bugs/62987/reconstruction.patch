@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase-lib/query/clauses/clauses.ts b/frontend/src/metabase-lib/query/clauses/clauses.ts
+index a9d15e26336..c5f809a74c0 100644
+--- a/frontend/src/metabase-lib/query/clauses/clauses.ts
++++ b/frontend/src/metabase-lib/query/clauses/clauses.ts
+@@ -1885,7 +1885,6 @@ export const EXPRESSION_FUNCTIONS = {
+ } as const;
+ 
+ export const AGGREGATION_FUNCTIONS = {
+-  ...EXPRESSION_FUNCTIONS,
+   ...AGGREGATION,
+   ...WINDOW,
+ } as const;

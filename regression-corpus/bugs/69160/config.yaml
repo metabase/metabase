@@ -1,0 +1,39 @@
+issue: 69160
+issue_url: https://github.com/metabase/metabase/issues/69160
+fix_commits: ["0ab5a0f603ecc5aa44ffc4a14d22a2c6451b9c15"]
+fix_pr: 71209
+fix_subject: "Fix parameter tags reordering in the presence of snippet tags (#71209)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/native/native-reproductions.cy.spec.ts
+      line: 1023
+      kind: describe
+      title: "issue 69160"
+    - spec: e2e/test/scenarios/native/native-reproductions.cy.spec.ts
+      line: 1044
+      kind: it
+      title: "should be possible to reorder parameters when there are snippets in the query (metabase#69160)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.unit.spec.tsx
+      - frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.unit.spec.tsx
+      - frontend/src/metabase/reference/segments/SegmentList/tests/premium.unit.spec.ts
+  notes: null

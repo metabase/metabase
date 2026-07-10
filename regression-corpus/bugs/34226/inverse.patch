@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx b/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx
+index 76bd55fc9e3..9e679842855 100644
+--- a/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx
++++ b/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx
+@@ -138,7 +138,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+   }, [previousLocation, location]);
+ 
+   useEffect(() => {
+-    if (previousLocation !== location) {
++    if (previousLocation !== location && location.action !== "REPLACE") {
+       // deactivate search when page changes
+       setInactive();
+     }

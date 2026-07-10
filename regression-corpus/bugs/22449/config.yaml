@@ -1,0 +1,49 @@
+issue: 22449
+issue_url: https://github.com/metabase/metabase/issues/22449
+fix_commits: ["bf85745bbb896ea5f42298cc1b264d20a1dd51b0"]
+fix_pr: 60231
+fix_subject: "add-alias-info => Lib and misc bug fixes (#60231)"
+area: driver/sql-qp (alias system)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  status: qualified_impure      # oracle flips but as a CRASH, not a clean assertion failure
+  reconstruction_notes: >
+    41-file omnibus refactor ("add-alias-info => Lib and misc bug fixes"), 32 shipped
+    deftests, no single "the bug". Agent picked multiple-counts-test and reverted the
+    aggregation-name guard. Drift: the fix's original hunk (legacy_helper_fns.clj) no
+    longer flips the oracle (H2 now compiles via a NEWER :sql-mbql5 path added after the
+    fix, #3728dbb5a51); only reverting the drifted sql_mbql5.clj copy flips it. In that
+    path inner-query is a stage, so lib/column-name THROWS -> the oracle catches an
+    ExceptionInfo (:error), NOT a clean assertion :fail, and it reintroduces a CRASH
+    rather than the original wrong-alias-dedup behavior.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: metabase.driver.sql.query-processor-test/multiple-counts-test
+    clean_baseline: pass
+    reconstructed_result: "1 ERROR (thrown ExceptionInfo during qp.compile), not a clean :fail"
+  repro_confirmed: false        # does NOT meet the validity bar (crash, not assertion; wrong shape)
+  confidence: medium
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    (original bug) SQL aggregation aliases not deduplicated when a breakout column is
+    literally named the same as an aggregation -> colliding AS alias. The reconstruction
+    does NOT reproduce this shape; it crashes instead (see status).
+  repro_failure: >
+    multiple-counts-test: thrown ExceptionInfo ":source-table is not allowed in the top
+    level of a query" during compile (an :error, not a value-mismatch :fail).
+  not_setup_crash: false        # the failure IS effectively a crash -> excluded by the bar
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-4 QUALIFIED/IMPURE: omnibus refactor + heavy MBQL5 drift; oracle flips causally but as a crash not an assertion. Not counted as a clean kill. Candidate to drop or retry against a different (undrifted) oracle."

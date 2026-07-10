@@ -1,0 +1,37 @@
+issue: 8490
+issue_url: https://github.com/metabase/metabase/issues/8490
+fix_commits: ["57d786df8b8cc59f6060fe2f2425ddcf6287acbd"]
+fix_subject: "Support localization in static embeds (#49441)"
+area: request/session (was server/middleware/session)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  oracle_source: modified_deftest
+  reconstruction_notes: >
+    Removed the fix-added :user-locale i18n/*user-locale* binding from the as-admin map (relocated to do-as-admin in request/session.clj).
+
+validation:
+  oracle: {kind: be_unit, test: "metabase.request.session-test/as-admin-test", clean_baseline: pass, reconstructed_result: "2/5 fail (locale not preserved through as-admin)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Running work under as-admin drops the user's locale (binds nil), so localized output falls back to English.
+  repro_failure: >
+    as-admin-test 'preserves locale': expected 'fr'/'French', actual nil/'English'.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.request.session-test/as-admin-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 wave-2 (no_added_deftest / modified-deftest oracle). Killed by shipped BE test => e2e repro cullable."

@@ -1,0 +1,40 @@
+issue: 31926
+issue_url: https://github.com/metabase/metabase/issues/31926
+fix_commits: ["44bc8c72f2896a2d7b620f9842be50484625ac4a"]
+fix_pr: 54453
+fix_subject: "Clean template tags when changing databases (#54453)"
+area: lib/native
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # RECONSTRUCTION patch applies; original fix diff does NOT (conflict)
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted with-different-database to pass (:stages query) through unchanged instead of stripping :dimension from template tags. Left the inert schema change (template_tag :dimension optional) alone. SPOT-VALIDATED in main tree (1 fail applied / 0 clean).
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.lib.native-test/remove-template-tags-when-changing-database"
+    clean_baseline: pass
+    reconstructed_result: "1/1 fail (template tag retains stale :dimension after DB change)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    After switching a native query's database, field-filter template tags keep their :dimension pointing at the old database's fields (stale dimensions not cleaned up).
+  repro_failure: >
+    (empty? (filter :dimension ...)) fails; mytag retains :dimension [:field ... 1].
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.native-test/remove-template-tags-when-changing-database"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-2. Conflict target reconstructed into current code + killed by shipped BE test => e2e repro cullable."

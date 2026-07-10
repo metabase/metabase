@@ -1,0 +1,15 @@
+diff --git a/src/metabase/driver/sql_mbql5.clj b/src/metabase/driver/sql_mbql5.clj
+index a2754920f60..403d076d73b 100644
+--- a/src/metabase/driver/sql_mbql5.clj
++++ b/src/metabase/driver/sql_mbql5.clj
+@@ -168,9 +168,7 @@
+ 
+ (defmethod sql.qp/aggregation-name :sql-mbql5
+   [_driver inner-query ag-clause]
+-  (or (::add/desired-alias (lib/options ag-clause))
+-      (:name (lib/options ag-clause))
+-      (lib/column-name inner-query ag-clause)))
++  (lib/column-name inner-query ag-clause))
+ 
+ (defmethod sql.qp/clause-value-idx :sql-mbql5 [_driver] 2)
+ 

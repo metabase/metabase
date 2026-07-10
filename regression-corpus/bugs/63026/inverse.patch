@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css b/frontend/src/metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css
+index 6e89464186b..67194c8297b 100644
+--- a/frontend/src/metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css
++++ b/frontend/src/metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css
+@@ -79,6 +79,7 @@
+   padding-left: 0.375rem;
+   font-weight: 400;
+   text-align: left;
++  max-width: 360px;
+ }
+ 
+ .MainValueCell,

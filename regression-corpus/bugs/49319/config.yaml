@@ -1,0 +1,33 @@
+issue: 49319
+issue_url: https://github.com/metabase/metabase/issues/49319
+fix_commits: ["affd550c24703768aa837a1243cfd1261819d4b6"]
+fix_pr: 62680
+fix_subject: "Ignore unsaved parameters when executing dashboard card queries in edit mode (#62680)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
+      line: 2595
+      kind: describe
+      title: "issue 49319"
+    - spec: e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
+      line: 2601
+      kind: it
+      title: "should ignore parameters that not exist in the saved dashboard in edit mode (metabase#49319)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: "HOLE — raw findRelatedTests fe_exit=1 was a LOAD-FLAKE (premium.unit.spec); isolation-confirmed those pass on the mutated tree => MISS. 9857 related tests otherwise pass with the bug live."

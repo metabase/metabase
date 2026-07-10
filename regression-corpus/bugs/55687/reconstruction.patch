@@ -1,0 +1,15 @@
+diff --git a/src/metabase/legacy_mbql/schema.cljc b/src/metabase/legacy_mbql/schema.cljc
+index 375555a1446..025b4cb67f8 100644
+--- a/src/metabase/legacy_mbql/schema.cljc
++++ b/src/metabase/legacy_mbql/schema.cljc
+@@ -1067,8 +1067,8 @@
+ 
+ ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
+ ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
+-(defclause is-empty  field [:ref ::Emptyable])
+-(defclause not-empty field [:ref ::Emptyable])
++(defclause is-empty  field [:ref ::FieldOrExpressionRef])
++(defclause not-empty field [:ref ::FieldOrExpressionRef])
+ 
+ (mr/def ::StringFilterOptions
+   [:map

@@ -1,0 +1,12 @@
+diff --git a/src/metabase/types/core.cljc b/src/metabase/types/core.cljc
+index 4e73cf3389a..7077729d4e2 100644
+--- a/src/metabase/types/core.cljc
++++ b/src/metabase/types/core.cljc
+@@ -326,6 +326,7 @@
+ ;;
+ ;; but for the time being we'll have to live with these being "weird" semantic types.
+ (derive :type/Structured :Semantic/*)
++(derive :type/Structured :type/Text)
+ 
+ (derive :type/SerializedJSON :type/Structured)
+ (derive :type/XML :type/Structured)

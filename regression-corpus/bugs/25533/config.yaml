@@ -1,0 +1,21 @@
+issue: 25533
+status: reconstruction_failed
+failure_category: cypress_only
+hole_closable: true  # product code survives; only cypress asserts it; closable with an action-layer unit test
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: 9420edfd69ff5e6b8cc70dd7a54bfc9a83c25cae
+validation:
+  oracle:
+    kind: cypress
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole_closed  # was hole; closed this session with a targeted unit test
+# detail: see reconstruction-report.md
+hole_closed:
+  patch_file: hole-closer-test.patch
+  test: frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts
+  verified: fail_on_reverted_fix__pass_on_clean
+  applied_to_working_tree: true

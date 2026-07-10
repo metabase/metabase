@@ -1,0 +1,33 @@
+issue: 57685
+issue_url: https://github.com/metabase/metabase/issues/57685
+fix_commits: ["6dd011110e0badf25b78a86d8ca0c2625b429f41"]
+fix_pr: 72996
+fix_subject: "Allow empty column aliases (#72996)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js
+      line: 1558
+      kind: describe
+      title: "issue 57685"
+    - spec: e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js
+      line: 1573
+      kind: it
+      title: "should handle empty column names without error (metabase#57685)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: miss, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: "HOLE — FE 3447 + BE 1723 related tests pass with the bug reintroduced."

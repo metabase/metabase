@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/common/components/Pickers/MiniPicker/utils.ts b/frontend/src/metabase/common/components/Pickers/MiniPicker/utils.ts
+index 2c5ea3d43d6..c05a9333422 100644
+--- a/frontend/src/metabase/common/components/Pickers/MiniPicker/utils.ts
++++ b/frontend/src/metabase/common/components/Pickers/MiniPicker/utils.ts
+@@ -294,6 +294,7 @@ export function getFolderAndHiddenFunctions(
+     }
+ 
+     return (
++      item.model !== "metric" &&
+       !modelSet.has(item.model as MiniPickerPickableItem["model"]) &&
+       !isFolder(item)
+     );

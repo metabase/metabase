@@ -1,0 +1,19 @@
+diff --git a/frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.tsx b/frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.tsx
+index 6f38f38d0b7..b6b67f81814 100644
+--- a/frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.tsx
++++ b/frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.tsx
+@@ -188,12 +188,8 @@ export const ParameterSidebar = (): JSX.Element | null => {
+     if (!parameterId) {
+       return;
+     }
+-    if (affectedSubscriptions.length > 0) {
+-      setIsRemoveConfirmOpen(true);
+-    } else {
+-      performRemove();
+-    }
+-  }, [parameterId, affectedSubscriptions.length, performRemove]);
++    performRemove();
++  }, [parameterId, performRemove]);
+ 
+   const handleConfirmRemove = useCallback(() => {
+     setIsRemoveConfirmOpen(false);

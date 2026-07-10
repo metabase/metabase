@@ -1,0 +1,14 @@
+diff --git a/src/metabase/lib/fe_util.cljc b/src/metabase/lib/fe_util.cljc
+index 6eccb57b92d..d0cca7ff856 100644
+--- a/src/metabase/lib/fe_util.cljc
++++ b/src/metabase/lib/fe_util.cljc
+@@ -348,9 +348,6 @@
+     (value :guard number?)
+     value
+ 
+-    [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
+-    (u.number/parse-bigint value)
+-
+     _ nil))
+ 
+ (def ^:private NumberFilterParts

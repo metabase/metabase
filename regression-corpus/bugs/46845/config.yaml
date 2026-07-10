@@ -1,0 +1,37 @@
+issue: 46845
+issue_url: https://github.com/metabase/metabase/issues/46845
+fix_commits: ["2b7a5352fbe467120f27b585be4945b8bd5d8c6d"]
+fix_subject: "Fix implicit field refs when the source-field comes from a join"
+area: qp/add-implicit-joins (named schema.cljc inert)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  oracle_source: modified_deftest
+  reconstruction_notes: >
+    NAMED product file legacy_mbql/schema.cljc was behaviorally INERT (open-map schema doesn't strip the key). Real fix is in the add_implicit_joins middleware: removed :fk-join-alias source-field-join-alias from field-opts->fk-field-info.
+
+validation:
+  oracle: {kind: be_unit, test: "metabase.query-processor.middleware.add-implicit-joins-test/source-field-join-alias-test", clean_baseline: pass, reconstructed_result: "1/1 fail (implicit join loses its disambiguating alias)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    An implicit join whose FK comes from an explicit join isn't disambiguated by the source join alias, so the generated join alias/condition/:fk-join-alias are wrong.
+  repro_failure: >
+    source-field-join-alias-test: join alias 'PRODUCTS__via__PRODUCT_ID' instead of '...__via__Orders'; missing :fk-join-alias.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.query-processor.middleware.add-implicit-joins-test/source-field-join-alias-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 wave-2 (no_added_deftest / modified-deftest oracle). Killed by shipped BE test => e2e repro cullable."

@@ -1,0 +1,33 @@
+issue: 66742
+issue_url: https://github.com/metabase/metabase/issues/66742
+fix_commits: ["60b86d85a507ae86360a807b19b82773e266da0b"]
+fix_pr: 69623
+fix_subject: "Fixes isSticky class not being properly applied to dashboard parameters (#69623)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js
+      line: 280
+      kind: it
+      title: "should not apply IsSticky class to the parameter panel before it actually becomes sticky (metabase#66742)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - enterprise/frontend/src/metabase-enterprise/tenants/containers/TenantsListingApp.unit.spec.tsx
+  notes: null

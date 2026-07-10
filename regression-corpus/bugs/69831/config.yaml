@@ -1,0 +1,27 @@
+issue: 69831
+issue_url: https://github.com/metabase/metabase/issues/69831
+fix_commits: ["92017bab3fa888c8a2d98f52381650a5e8527eeb"]
+fix_subject: "fixed table width in guest embed (#70418)"
+area: viz/TableInteractive
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Bug IS reconstructable (agent produced the real revert: drop `|| isEmbeddingSdk` from the minGridWidth calc in TableInteractive.tsx). But the fix's JEST-spec change (SdkQuestion.unit.spec) was an async-robustness refactor (findByText -> waitFor), NOT a width assertion; reverting the fix leaves the jest oracle 19/19. The discriminating width assertion lives in a Cypress e2e spec (sdk-iframe-embedding.cy.spec.ts). => FE unit HOLE (Cypress-guarded).
+
+validation:
+  oracle: {kind: fe_unit, note: "shipped jest spec change was non-behavioral; real assertion is in a Cypress e2e spec"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-1 NEGATIVE: reconstructable but no discriminating FE unit oracle => FE unit HOLE (Cypress/e2e guarded)."

@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/query_builder/containers/QueryBuilder.tsx b/frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
+index 6faf27d64d0..7bbf39c110e 100644
+--- a/frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
++++ b/frontend/src/metabase/query_builder/containers/QueryBuilder.tsx
+@@ -437,7 +437,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
+     }
+   };
+ 
+-  useHotkeys([["mod+Enter", handleCmdEnter]]);
++  useHotkeys([["mod+Enter", handleCmdEnter]], []);
+ 
+   return (
+     <>

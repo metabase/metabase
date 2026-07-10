@@ -1,0 +1,38 @@
+issue: 53595
+issue_url: https://github.com/metabase/metabase/issues/53595
+fix_commits: ["db12bcbd4f58744b621c240079f50d2caef30b52"]
+fix_subject: "Fix - Filtering the semantic types list is slow/broken"
+area: admin/SemanticTypePicker
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  fe_bucket: all_specs_gone
+  oracle_source: "relocated_spec_assertion_dropped__authored"
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the Mantine `searchable` prop from SemanticTypePicker (the fix's mechanism), so the semantic-type list can't be filtered by typing. Specs relocated (admin/datamodel/metadata -> metadata/components) BUT the relocated SemanticTypePicker spec had DROPPED the type-to-filter assertion, so the agent AUTHORED the discriminating test (hole-closer + reconstruction). CAVEAT: failure is a thrown error (read-only input can't be typed into), not a clean value mismatch.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.unit.spec.tsx (authored assertion)", clean_baseline: pass, reconstructed_result: "1/1 authored test fails (list can't be filtered)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Typing in the field semantic-type picker doesn't filter the list (slow/broken), so you can't narrow to the type you want.
+  repro_failure: >
+    typing 'cu' into the picker: clear()/type throws 'only supported on editable elements' (read-only, non-searchable).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.unit.spec.tsx (authored assertion)"], clean_baseline: pass}
+  notes: "FE reconstruction from all_specs_gone bucket; oracle via relocated_spec_assertion_dropped__authored. Killed by FE unit (jest) => e2e repro cullable."

@@ -1,0 +1,13 @@
+diff --git a/src/metabase/query_processor/middleware/fetch_source_query.clj b/src/metabase/query_processor/middleware/fetch_source_query.clj
+index 27cb177c729..b3b7c743df3 100644
+--- a/src/metabase/query_processor/middleware/fetch_source_query.clj
++++ b/src/metabase/query_processor/middleware/fetch_source_query.clj
+@@ -32,7 +32,7 @@
+   hardcoding driver-specific behavior in generic QP middleware."
+   [[first-stage & more]]
+   (let [first-stage (cond-> first-stage
+-                      (and (= driver/*driver* :mongo)
++                      (and (:collection first-stage)
+                            (= (:lib/type first-stage) :mbql.stage/native))
+                       (update :native (fn [x]
+                                         (if (map? x)

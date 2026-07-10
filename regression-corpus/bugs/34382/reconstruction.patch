@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/dashboard/reducers.ts b/frontend/src/metabase/dashboard/reducers.ts
+index 904eae94722..6201958a622 100644
+--- a/frontend/src/metabase/dashboard/reducers.ts
++++ b/frontend/src/metabase/dashboard/reducers.ts
+@@ -212,8 +212,8 @@ const draftParameterValues = createReducer(
+   INITIAL_DASHBOARD_STATE.draftParameterValues,
+   (builder) => {
+     builder
+-      .addCase(initialize, (state, { payload: { clearCache = true } = {} }) => {
+-        return clearCache ? {} : state;
++      .addCase(initialize, () => {
++        return {};
+       })
+       .addCase(fetchDashboard.fulfilled, (state, { payload }) =>
+         payload.preserveParameters && !payload.dashboard.auto_apply_filters

@@ -1,0 +1,16 @@
+diff --git a/frontend/src/metabase/querying/common/utils/dates.ts b/frontend/src/metabase/querying/common/utils/dates.ts
+index b9a53066181..8b2a83c0dcb 100644
+--- a/frontend/src/metabase/querying/common/utils/dates.ts
++++ b/frontend/src/metabase/querying/common/utils/dates.ts
+@@ -113,10 +113,7 @@ function abbreviateFormat(
+   format: string,
+   formattingSettings: DateFormattingSettings = {},
+ ) {
+-  if (!formattingSettings.date_abbreviate) {
+-    return format;
+-  }
+-  return format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
++  return format;
+ }
+ 
+ function formatMonth(

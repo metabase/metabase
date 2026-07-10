@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts b/frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts
+index e88d8a53f58..8145b6a6852 100644
+--- a/frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts
++++ b/frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts
+@@ -38,7 +38,9 @@ export const underlyingRecordsDrill: Drill<
+       question: () =>
+         applyDrill(drill)
+           .setDisplay("table")
+-          .updateSettings({ "table.pivot": false }),
++          // Sometimes the "graph.dimensions" setting lingers around
++          // from a previous graph visualization, so we reset it here. (see metabase#55484)
++          .updateSettings({ "table.pivot": false, "graph.dimensions": [] }),
+     },
+   ];
+ };

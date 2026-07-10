@@ -1,0 +1,21 @@
+issue: 45670
+fix_commits: []  # see reconstruction-report.md
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    (parseParameterValueForFields numeric) — reverted numeric branch to parseFloat; line 310 [NaN] vs []; 1 failed/47 passed
+    Oracle relocation: metabase-lib/v1/parameters/utils → metabase/parameters/utils
+    Product: parameter-values parseParameterValueForFields
+validation:
+  oracle:
+    kind: fe_unit
+    test: frontend/src/metabase/parameters/utils/parameter-parsing.unit.spec.js
+    reconstructed_result: fail_on_mutant__pass_on_clean
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure

@@ -1,0 +1,20 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx b/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx
+index caac1781e60..c30b3483b55 100644
+--- a/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx
++++ b/frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu/QuestionMoreActionsMenu.tsx
+@@ -88,11 +88,10 @@ export const QuestionMoreActionsMenu = ({
+   const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");
+ 
+   const handleTurnToModel = () => {
+-    if (!ackedModelModal) {
+-      const modal = checkCanBeModel(question)
+-        ? MODAL_TYPES.TURN_INTO_DATASET
+-        : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+-      onOpenModal(modal);
++    if (!checkCanBeModel(question)) {
++      onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
++    } else if (!ackedModelModal) {
++      onOpenModal(MODAL_TYPES.TURN_INTO_DATASET);
+     } else {
+       dispatch(turnQuestionIntoModel());
+     }

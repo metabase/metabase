@@ -1,0 +1,16 @@
+diff --git a/frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePicker.tsx b/frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePicker.tsx
+index b83e0eeaf23..bd31419f0b1 100644
+--- a/frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePicker.tsx
++++ b/frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePicker.tsx
+@@ -35,7 +35,10 @@ export function SingleDatePicker({
+   };
+ 
+   const handleTimeToggle = () => {
+-    onChange({ date: clearTimePart(date), hasTime: !hasTime });
++    const nextDate = clearTimePart(date);
++    const nextHasTime =
++      nextDate.getHours() !== 0 || nextDate.getMinutes() !== 0;
++    onChange({ date: nextDate, hasTime: nextHasTime });
+   };
+ 
+   const handleSubmit = (event: FormEvent) => {

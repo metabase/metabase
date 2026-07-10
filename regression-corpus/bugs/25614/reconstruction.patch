@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts b/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
+index fe4e4f4e922..40d0ff86e5e 100644
+--- a/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
++++ b/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
+@@ -267,7 +267,7 @@ export const getNormalizedDatasetTransform = (
+       // Compute normalized values for metrics
+       return stackModel.seriesKeys.reduce((acc, key) => {
+         const numericValue = getNumberOrZero(datum[key]);
+-        acc[key] = numericValue / total;
++        acc[key] = numericValue;
+         return acc;
+       }, normalizedDatum);
+     });

@@ -1,0 +1,26 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts b/frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+index f5e796653ff..b325f1e4c2e 100644
+--- a/frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
++++ b/frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.ts
+@@ -271,17 +271,12 @@ function getCurrentMetricData({
+   }
+ 
+   // get latest value and date
+-  const latestRowIndex = findPreviousNonEmptyRowIndex(
+-    rows,
+-    dimensionColIndex,
+-    metricColIndex,
+-    rows.length,
+-  );
+-  if (latestRowIndex === -1) {
+-    throw Error("No rows contain a valid value.");
+-  }
++  const latestRowIndex = rows.length - 1;
+   const date = rows[latestRowIndex][dimensionColIndex] as string;
+   const value = rows[latestRowIndex][metricColIndex];
++  if (isEmpty(value) || isEmpty(date)) {
++    throw Error("The latest data point contains a null value");
++  }
+ 
+   // get metric column metadata
+   const metricColumn = cols[metricColIndex];

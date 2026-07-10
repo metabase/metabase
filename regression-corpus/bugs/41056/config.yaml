@@ -1,0 +1,40 @@
+issue: 41056
+issue_url: https://github.com/metabase/metabase/issues/41056
+fix_commits: ["a304019cf6c161d66768a12c6720f64ccdfa3fc9"]
+fix_pr: null
+fix_subject: "Fix brush filters for longitudes that lie outside the normal range (antimeridian)"
+area: lib/filter/update
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted the antimeridian split (single :inside via (sort [east west]) instead of an :or of two :inside spanning +/-180) AND the subclause-aware existing-filter removal. SPOT-VALIDATED in main tree (1 fail applied / 0 restored).
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.lib.filter.update-test/update-lat-lon-filter-antimerdian-test (+ -remove-existing-antimerdian-test)"
+    clean_baseline: pass
+    reconstructed_result: "3/5 fail (antimeridian tests; non-crossing control passes)"
+  repro_confirmed: true
+  confidence: very_high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A map-brush zoom whose longitude bounds cross the 180 antimeridian (west>east) produces a single :inside filter spanning the whole normal range (selecting the wrong side of the globe) instead of an :or of two slivers around +/-180; re-brushing leaves stale filters.
+  repro_failure: >
+    expected [:or [:inside ... 179 180] [:inside ... -180 -179]], actual single [:inside ... -179 179].
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.filter.update-test/update-lat-lon-filter-antimerdian-test (+ -remove-existing-antimerdian-test)"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-3 (medium). Conflict target reconstructed + killed by shipped BE test => e2e repro cullable."

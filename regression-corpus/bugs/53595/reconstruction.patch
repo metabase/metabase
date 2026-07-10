@@ -1,0 +1,40 @@
+diff --git a/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx b/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx
+index cb46bb5eaaf..5b1f56537ab 100644
+--- a/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx
++++ b/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.tsx
+@@ -52,7 +52,6 @@ export const SemanticTypePicker = ({
+       data={data}
+       nothingFoundMessage={t`Didn't find any results`}
+       placeholder={t`Select a semantic type`}
+-      searchable
+       value={stringifyValue(value)}
+       onChange={handleChange}
+       {...props}
+diff --git a/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.unit.spec.tsx b/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.unit.spec.tsx
+index fd3efd572b2..8b3eff373b1 100644
+--- a/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.unit.spec.tsx
++++ b/frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.unit.spec.tsx
+@@ -203,6 +203,23 @@ describe("SemanticTypePicker", () => {
+     );
+   });
+ 
++  it("filters the semantic types list as the user types (metabase#53595)", async () => {
++    setup({ fieldId: NUMBER_FIELD.id });
++
++    const picker = screen.getByPlaceholderText("Select a semantic type");
++    await userEvent.click(picker);
++
++    expect(within(screen.getByRole("listbox")).getByText("Currency"));
++    expect(within(screen.getByRole("listbox")).getByText("Score"));
++
++    await userEvent.clear(picker);
++    await userEvent.type(picker, "cu");
++
++    const dropdown = within(screen.getByRole("listbox"));
++    expect(dropdown.getByText("Currency")).toBeInTheDocument();
++    expect(dropdown.queryByText("Score")).not.toBeInTheDocument();
++  });
++
+   it("does not show semantic types derived from type/Number when field's effective_type is derived from type/Text", async () => {
+     setup({ fieldId: TEXT_FIELD.id });
+ 

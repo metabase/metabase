@@ -1,0 +1,3 @@
+# stray harness symlinks created when running jest from this dir
+/target
+/node_modules

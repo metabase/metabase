@@ -1,0 +1,11 @@
+diff --git a/frontend/src/metabase/querying/expressions/suggestions/functions.ts b/frontend/src/metabase/querying/expressions/suggestions/functions.ts
+index e7ee5d2a68d..03454d8a513 100644
+--- a/frontend/src/metabase/querying/expressions/suggestions/functions.ts
++++ b/frontend/src/metabase/querying/expressions/suggestions/functions.ts
+@@ -69,5 +69,5 @@ export function suggestFunctions({ expressionMode, query, metadata }: Options) {
+ const PREFIX_OPERATORS = new Set([LOGICAL_OR, LOGICAL_AND, LOGICAL_NOT]);
+ 
+ function isPotentialFunctionPrefix(token: Token) {
+-  return isIdentifier(token) || PREFIX_OPERATORS.has(token.type);
++  return isIdentifier(token);
+ }

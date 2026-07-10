@@ -1,0 +1,40 @@
+issue: 41635
+issue_url: https://github.com/metabase/metabase/issues/41635
+fix_commits: ["2455537bc1392a9919b520f1a2d0f4b5a600f194"]
+fix_pr: null
+fix_subject: "Dashboard Param Values Common Impl for Embedding/Preview Embedding"
+area: embedding-rest/api/preview-embed (was api/)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    The 'fix' ADDED a new endpoint (/dashboard/:token/params/:param-key/values in preview-embed didn't exist pre-fix). Semantic inverse: delete that endpoint definition -> 404. File relocated api/preview_embed.clj -> embedding_rest/api/preview_embed.clj. Left common.clj/dashboard-param-values alone so the sibling /search route still works.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.embedding-rest.api.preview-embed-test/params-with-static-list-test"
+    clean_baseline: pass
+    reconstructed_result: "2/2 fail (endpoint returns 404 'API endpoint does not exist' instead of 200 + values)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Embedding preview has no dashboard param-values endpoint, so static-list dashboard filter dropdowns can't fetch their values in preview embeds (inconsistent with real static embeds).
+  repro_failure: >
+    GET /dashboard/:token/params/:param-key/values expected 200 {:values [['African']...]}, actual 404.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.embedding-rest.api.preview-embed-test/params-with-static-list-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-4 (large/epic). Conflict target localized + killed by shipped BE test => e2e repro cullable."

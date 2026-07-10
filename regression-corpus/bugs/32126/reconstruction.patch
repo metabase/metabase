@@ -1,0 +1,20 @@
+diff --git a/src/metabase/parameters/dashboard.clj b/src/metabase/parameters/dashboard.clj
+index a6ab42f9ae2..8b44e8dd9ca 100644
+--- a/src/metabase/parameters/dashboard.clj
++++ b/src/metabase/parameters/dashboard.clj
+@@ -100,11 +100,10 @@
+          param       (get-in dashboard [:resolved-params param-key])
+          field-ids   (into #{} (map :field-id (param->fields param)))]
+      (if (empty? field-ids)
+-       (or (filter-values-from-field-refs dashboard param-key)
+-           (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+-                           {:param       (get (:resolved-params dashboard) param-key)
+-                            :param-key   param-key
+-                            :status-code 400})))
++       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
++                       {:param       (get (:resolved-params dashboard) param-key)
++                        :param-key   param-key
++                        :status-code 400}))
+        (try
+          (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].
+                results         (map (if (seq query)

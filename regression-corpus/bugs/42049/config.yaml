@@ -1,0 +1,27 @@
+issue: 42049
+issue_url: https://github.com/metabase/metabase/issues/42049
+fix_commits: ["1fe63c52bfed1aacb70923bac9f60850709871c2"]
+fix_subject: "Partially fix columns and viz settings mismatch"
+area: metabase-lib/dataset
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: dead_target__mechanism_removed
+  repro_reconstructable: false
+  reason: >
+    The fix threaded an ignoreBaseType flag through a ref-key matcher (getColumnKey/getColumnSettingKey/getBaseDimensionReference). A LATER refactor (#45180 'Remove field ref matching from table.columns') DELETED that whole mechanism -> matching is now name-based (structurally ignores base-type), and the oracle spec's discriminating base-type data was removed too. The bug's condition (base-type equality between two refs) can no longer be expressed; architecturally gone. Not a hole - the behavior is not reachable in the current design.
+
+validation:
+  oracle: {kind: fe_unit, note: "dead_target__mechanism_removed"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untestable, killed_by: []}
+  notes: "FE semantic-reconstruction batch-3 NEGATIVE (dead_target__mechanism_removed)."

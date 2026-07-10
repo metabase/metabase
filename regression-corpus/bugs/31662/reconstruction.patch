@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/parameters/utils/parsing.ts b/frontend/src/metabase/querying/parameters/utils/parsing.ts
+index 9f38bba3856..3cd1b1c400a 100644
+--- a/frontend/src/metabase/querying/parameters/utils/parsing.ts
++++ b/frontend/src/metabase/querying/parameters/utils/parsing.ts
+@@ -55,7 +55,7 @@ export function deserializeNumberParameterValue(
+       return item;
+     }
+     if (typeof item === "string") {
+-      return parseNumber(item);
++      return item;
+     }
+     return null;
+   }, []);

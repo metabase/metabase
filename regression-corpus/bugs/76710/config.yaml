@@ -1,0 +1,37 @@
+issue: 76710
+issue_url: https://github.com/metabase/metabase/issues/76710
+fix_commits: ["8e47d62c2c782691660812a9bef58c68d39c2246"]
+fix_pr: 76740
+fix_subject: "Don't error when table has a foreign key reference to an inaccessible table (#76740)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/permissions/permissions-reproductions.cy.spec.ts
+      line: 116
+      kind: describe
+      title: "issue 76710"
+    - spec: e2e/test/scenarios/permissions/permissions-reproductions.cy.spec.ts
+      line: 141
+      kind: it
+      title: "can view a table whose foreign key targets a table the user can't access (metabase#76710)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/metabase/redux/tables.unit.spec.ts
+  notes: null

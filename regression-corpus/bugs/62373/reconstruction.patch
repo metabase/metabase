@@ -1,0 +1,20 @@
+diff --git a/enterprise/frontend/src/metabase-enterprise/content_translation/utils.ts b/enterprise/frontend/src/metabase-enterprise/content_translation/utils.ts
+index 5de413f41c0..3fb649d0bba 100644
+--- a/enterprise/frontend/src/metabase-enterprise/content_translation/utils.ts
++++ b/enterprise/frontend/src/metabase-enterprise/content_translation/utils.ts
+@@ -218,7 +218,6 @@ export const translateFieldValuesInSeries = (
+       if (!singleSeries.data) {
+         return singleSeries;
+       }
+-      const untranslatedRows = singleSeries.data.rows.concat();
+ 
+       const defaultFn = () => {
+         return singleSeries.data.rows.map((row) =>
+@@ -279,7 +278,6 @@ export const translateFieldValuesInSeries = (
+         ...singleSeries,
+         data: {
+           ...singleSeries.data,
+-          untranslatedRows,
+           rows: translatedRows,
+         },
+       };

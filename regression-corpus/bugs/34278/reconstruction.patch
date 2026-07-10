@@ -1,0 +1,25 @@
+diff --git a/src/metabase/query_processor/pivot.clj b/src/metabase/query_processor/pivot.clj
+index cb3d209be78..230aa9114d8 100644
+--- a/src/metabase/query_processor/pivot.clj
++++ b/src/metabase/query_processor/pivot.clj
+@@ -418,16 +418,10 @@
+ 
+   Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
+   questions we need to support both old- and new-style settings until they are fully migrated."
+-  [query        :- [:map
+-                    [:database ::lib.schema.id/database]]
+-   viz-settings :- [:maybe :map]]
+-  (when viz-settings
+-    (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+-      (merge
+-       (if (and (every? string? rows) (every? string? columns))
+-         (column-name-pivot-options query viz-settings)
+-         (field-ref-pivot-options query viz-settings))
+-       {:column-sort-order (column-sort-order query viz-settings)}))))
++  [query         :- [:map
++                     [:database ::lib.schema.id/database]]
++   _viz-settings :- [:maybe :map]]
++  (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+ 
+ (defn- remapped-field
+   [breakout]

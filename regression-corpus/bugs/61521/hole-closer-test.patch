@@ -1,0 +1,82 @@
+diff --git a/frontend/src/metabase/visualizer/visualizations/cartesian.unit.spec.ts b/frontend/src/metabase/visualizer/visualizations/cartesian.unit.spec.ts
+index 74c29ac0487..f4b34def39b 100644
+--- a/frontend/src/metabase/visualizer/visualizations/cartesian.unit.spec.ts
++++ b/frontend/src/metabase/visualizer/visualizations/cartesian.unit.spec.ts
+@@ -875,6 +875,77 @@ describe("cartesian", () => {
+       });
+     });
+ 
++    it("should remap the incoming card's column_settings onto the new column refs (metabase#61521)", () => {
++      const settings = {
++        "graph.metrics": ["COLUMN_1"],
++        "graph.dimensions": ["COLUMN_2"],
++      };
++      const state: VisualizerVizDefinitionWithColumns = {
++        display: "line",
++        columns: [
++          createMockNumericColumn({ name: "COLUMN_1", display_name: "Count" }),
++          createMockDatetimeColumn({
++            name: "COLUMN_2",
++            display_name: "Created At",
++          }),
++        ],
++        columnValuesMapping: {
++          COLUMN_1: [
++            { sourceId: "card:1", name: "COLUMN_1", originalName: "Count" },
++          ],
++          COLUMN_2: [
++            {
++              sourceId: "card:1",
++              name: "COLUMN_2",
++              originalName: "Created At",
++            },
++          ],
++        },
++        settings,
++      };
++
++      // Incoming metric that will become COLUMN_3 once combined.
++      const newMetricColumn = createMockNumericColumn({
++        name: "AVG",
++        display_name: "Average",
++      });
++      const newDimensionColumn = createMockDatetimeColumn({
++        name: "DATE",
++        display_name: "Date",
++      });
++
++      // The second datasource's viz settings carry per-metric formatting keyed
++      // to its own column name ("AVG"). After combining it must survive under
++      // the remapped COLUMN_3 key, not the original AVG key.
++      const vizSettings = createMockVisualizationSettings({
++        "graph.dimensions": ["DATE"],
++        "graph.metrics": ["AVG"],
++        column_settings: {
++          '["name","AVG"]': { number_style: "percent" },
++        },
++      });
++
++      const nextState = _.clone(state);
++      combineWithCartesianChart(
++        nextState,
++        settings,
++        createMockDataset({
++          data: { cols: [newMetricColumn, newDimensionColumn] },
++        }),
++        createDataSource("card", 2, "Card 2"),
++        vizSettings,
++      );
++
++      expect(nextState.settings["graph.metrics"]).toEqual([
++        "COLUMN_1",
++        "COLUMN_3",
++      ]);
++      // The percent formatting is preserved, remapped onto the new COLUMN_3 ref.
++      expect(nextState.settings.column_settings).toEqual({
++        '["name","COLUMN_3"]': { number_style: "percent" },
++      });
++    });
++
+     it("should add multiple metrics and dimensions", () => {
+       const settings = {
+         "graph.metrics": ["COLUMN_1"],

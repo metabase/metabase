@@ -1,0 +1,50 @@
+issue: 66670
+issue_url: https://github.com/metabase/metabase/issues/66670
+fix_commits: ["bbddb39150dbcaecb748220f5e307ad4fee2e224"]
+fix_pr: 68871
+fix_subject: "fix: cannot save dashboard when dashboard was reverted to one with deleted filter (#68871)"
+area: dashboards/revisions
+fe_be_boundary: false
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
+      line: 2641
+      kind: describe
+      title: "issue #66670"
+    - spec: e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
+      line: 2666
+      kind: it
+      title: "should handle dashboard filter with permanently deleted question value source (metabase#66670)"
+  green_baseline: pass
+  repro_confirmed: true  # fails with 500-on-save, matching original bug shape; BE hot-reload picked up mutation without restart
+
+failure_shape:
+  observed: true
+  source: observed_e2e
+  symptom: >
+    Saving a dashboard that was reverted to a revision containing a
+    permanently-deleted filter value-source question fails; the save is rejected.
+  repro_failure: >
+    The save request (POST /api/dashboard/:id) returns HTTP 500 instead of 200;
+    the spec's save-and-expect-success step fails on the 500.
+  not_setup_crash: true
+
+coverage:
+  be_unit:
+    status: kill
+    killed_by:
+      - metabase.revisions.impl.dashboard-test/revert-dashboard-with-archived-parameter-card-source-test
+      - metabase.revisions.impl.dashboard-test/revert-dashboard-with-deleted-parameter-card-source-test
+    scope: "./bin/test-agent :module revisions (96 tests; 2 fail + 1 error on mutated tree)"
+    clean_baseline: pass
+  fe_unit: {status: untested, killed_by: []}
+  notes: null

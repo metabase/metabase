@@ -1,0 +1,23 @@
+diff --git a/frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.ts b/frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.ts
+index ce922e9f23b..50991d5d150 100644
+--- a/frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.ts
++++ b/frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.ts
+@@ -117,7 +117,9 @@ export function getInitialStateForCardDataSource(
+       : DEFAULT_VISUALIZER_DISPLAY,
+     columns: [],
+     columnValuesMapping: {},
+-    settings: {},
++    settings: {
++      "card.title": card.name,
++    },
+     preloadedDatasets: { [card.id]: dataset },
+   };
+ 
+@@ -235,6 +237,7 @@ export function getInitialStateForCardDataSource(
+   state.settings = {
+     ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
+     ...Object.fromEntries(entries),
++    "card.title": card.name,
+   };
+ 
+   return state;

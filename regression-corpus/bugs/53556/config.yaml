@@ -1,0 +1,40 @@
+issue: 53556
+issue_url: https://github.com/metabase/metabase/issues/53556
+fix_commits: ["f617c871735914be8d812f06d6dc6648dc16ec40"]
+fix_pr: 54057
+fix_subject: "Fix drills for mapped model metadata (#54057)"
+area: lib/card + drill-thru
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    8-file fix localized to ONE line: forced source-card-is-model? to false (via a sentinel keyword compare) = the pre-fix 'models never detected' state at the sole consumer gate possible-model-mapped-breakout-column?. NOTE: synthetic mechanism (sentinel) rather than literal pre-fix code, but faithfully reproduces the bug's effect. SPOT-VALIDATED in main tree (1 fail / restored clean).
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.lib.card-test/source-card-is-model?-test"
+    clean_baseline: pass
+    reconstructed_result: "1/6 fail (source-card-is-model?-test fails; source-card-type-test still passes -> surgical)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    source-card-is-model? returns false for a query whose source card is a model, so model-mapped breakout columns aren't resolved -> drills generate id-based field refs matching the underlying column name rather than the model's native AS-renamed name.
+  repro_failure: >
+    source-card-is-model?-test: (source-card-is-model? (query-with-source-model)) expected true, actual false.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.card-test/source-card-is-model?-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-4 (large/epic). Conflict target localized + killed by shipped BE test => e2e repro cullable."

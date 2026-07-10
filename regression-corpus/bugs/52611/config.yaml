@@ -1,0 +1,15 @@
+issue: 52611
+status: reconstruction_failed
+failure_category: dead_target
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: 18e423c8df60e7f108c18eb31c50ca9f64354c6b
+validation:
+  oracle:
+    kind: none
+    reconstructed_result: dead_target__code_and_spec_deleted
+coverage:
+  fe_unit: untestable
+# detail: see reconstruction-report.md

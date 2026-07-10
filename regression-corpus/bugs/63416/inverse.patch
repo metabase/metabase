@@ -1,0 +1,26 @@
+diff --git a/frontend/src/metabase-types/api/dataset.ts b/frontend/src/metabase-types/api/dataset.ts
+index 498c1e23fed..a501e59a0ba 100644
+--- a/frontend/src/metabase-types/api/dataset.ts
++++ b/frontend/src/metabase-types/api/dataset.ts
+@@ -177,7 +177,7 @@ export type SingleSeries = {
+    * COLUMN_2, etc.) to their original values (count, avg, etc.).
+    */
+   columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
+-} & Pick<Dataset, "error" | "started_at" | "data">;
++} & Pick<Dataset, "error" | "started_at" | "data" | "json_query">;
+ 
+ export type SingleSeriesWithTranslation = SingleSeries & {
+   data: Dataset["data"] & {
+diff --git a/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx b/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
+index ef42a5e2302..ff5f1654426 100644
+--- a/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
++++ b/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
+@@ -334,6 +334,8 @@ export function DashCardVisualization({
+         started_at: new Date().toISOString(),
+ 
+         columnValuesMapping,
++
++        json_query: rawSeries[0].json_query,
+       },
+     ];
+ 

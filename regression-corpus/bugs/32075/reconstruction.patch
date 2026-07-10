@@ -1,0 +1,19 @@
+diff --git a/frontend/src/metabase-lib/v1/Question.ts b/frontend/src/metabase-lib/v1/Question.ts
+index 8645864e84f..f5d1f55df88 100644
+--- a/frontend/src/metabase-lib/v1/Question.ts
++++ b/frontend/src/metabase-lib/v1/Question.ts
+@@ -271,13 +271,9 @@ class Question {
+       previousSensibleDisplays.includes(this.display());
+     const isSensible = sensibleDisplays.includes(this.display());
+     const shouldUnlock = wasSensible && !isSensible;
+-    const defaultDisplay = this.setDefaultDisplay().display();
+ 
+     let question;
+-    if (isSensible && defaultDisplay === "table") {
+-      // any sensible display is better than the default table display
+-      question = this;
+-    } else if (shouldUnlock && this.displayIsLocked()) {
++    if (shouldUnlock && this.displayIsLocked()) {
+       question = this.setDisplayIsLocked(false).setDefaultDisplay();
+     } else {
+       question = this.setDefaultDisplay();

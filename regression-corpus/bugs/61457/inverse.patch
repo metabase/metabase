@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizer/components/VizSettingsSidebar/VizSettingsSidebar.tsx b/frontend/src/metabase/visualizer/components/VizSettingsSidebar/VizSettingsSidebar.tsx
+index fffb77b4114..3c199efa7b7 100644
+--- a/frontend/src/metabase/visualizer/components/VizSettingsSidebar/VizSettingsSidebar.tsx
++++ b/frontend/src/metabase/visualizer/components/VizSettingsSidebar/VizSettingsSidebar.tsx
+@@ -14,7 +14,7 @@ import {
+ import { updateSettings } from "metabase/visualizer/visualizer.slice";
+ import type { VisualizationSettings } from "metabase-types/api";
+ 
+-const HIDDEN_SETTING_WIDGETS = ["card.title", "card.description"];
++const HIDDEN_SETTING_WIDGETS = ["card.title"];
+ 
+ export function VizSettingsSidebar({ className }: { className?: string }) {
+   const series = useSelector(getVisualizerRawSeries);

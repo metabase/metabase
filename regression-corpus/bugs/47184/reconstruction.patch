@@ -1,0 +1,13 @@
+diff --git a/src/metabase/app_db/custom_migrations.clj b/src/metabase/app_db/custom_migrations.clj
+index 2fdb9042497..42e27a71349 100644
+--- a/src/metabase/app_db/custom_migrations.clj
++++ b/src/metabase/app_db/custom_migrations.clj
+@@ -1654,7 +1654,7 @@
+   [outer-query]
+   (loop [query (:query outer-query), i 0]
+     (if-let [source-query (:source-query query)]
+-      (recur source-query (inc i))
++      (recur source-query i)
+       i)))
+ 
+ (defn- set-target-stage-number

@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx b/frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
+index 9c8180c0df7..3358130f174 100644
+--- a/frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
++++ b/frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
+@@ -105,8 +105,6 @@ export const CopyCardForm = ({
+       {...formProviderProps}
+       onSubmit={handleDuplicate}
+       enableReinitialize
+-      // shows validation errors if the name is too long for being saved
+-      initialTouched={{ name: true }}
+     >
+       {({ values }) => (
+         <Form>

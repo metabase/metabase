@@ -1,0 +1,45 @@
+issue: 67903
+issue_url: https://github.com/metabase/metabase/issues/67903
+fix_commits: ["c902d22458b36c4fc5962087018dbd3db7d724da"]
+fix_pr: 68448
+fix_subject: "Contain layout for notebook preview (#68448)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts
+      line: 1468
+      kind: describe
+      title: "issue #67903"
+    - spec: e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts
+      line: 1475
+      kind: it
+      title: "should not show preview table headers on top of other elements (metabase#67903)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: HOLE — 2465 related unit tests all pass with bug reintroduced (jest --findRelatedTests)
+
+failure_shape:
+  observed: false
+  source: fix_diff
+  symptom: >
+    The notebook-step preview is not layout-contained; its content can overflow /
+    reflow the surrounding layout (visual).
+  repro_failure: >
+    CSS-adjacent (mutated tree drops the `contain: strict` class). e2e signal is
+    weak/visual and may be hard to assert deterministically — candidate to
+    reclassify with the CSS-untestable entries rather than close with a unit test.
+  not_setup_crash: null

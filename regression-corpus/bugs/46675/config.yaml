@@ -1,0 +1,36 @@
+issue: 46675
+issue_url: https://github.com/metabase/metabase/issues/46675
+fix_commits: ["6deb7b700c862cdd336f715581014deecf68236c"]
+fix_subject: "Reset join condition state when the rhs table changes"
+area: notebook/JoinStep
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the useLayoutEffect keyed on [rhsTable] that resets the draft join condition columns (JoinConditionDraft.tsx). The fix's 3-file span is partly Cypress-only; the unit oracle exercises this effect.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/querying/notebook/components/JoinStep/JoinStep.unit.spec.tsx", clean_baseline: pass, reconstructed_result: "1/64 fail (LHS column not cleared on RHS table change)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Changing the RHS table of a draft join leaves the previously-picked LHS/RHS columns stale instead of resetting them.
+  repro_failure: >
+    'reset draft join condition when rhs table changed': findByText('Pick a column…') not found; stale 'ID' still present.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/querying/notebook/components/JoinStep/JoinStep.unit.spec.tsx"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-2. Killed by shipped FE unit (jest) test => e2e repro cullable."

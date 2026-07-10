@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/metadata/components/SemanticTypePicker/utils.ts b/frontend/src/metabase/metadata/components/SemanticTypePicker/utils.ts
+index 46ec02d5b0c..fd151daaa33 100644
+--- a/frontend/src/metabase/metadata/components/SemanticTypePicker/utils.ts
++++ b/frontend/src/metabase/metadata/components/SemanticTypePicker/utils.ts
+@@ -10,7 +10,7 @@ export function getCompatibleSemanticTypes(
+   },
+   currentValue: string | null,
+ ) {
+-  const fieldType = field.effective_type ?? field.base_type;
++  const fieldType = field.base_type;
+   const isFieldText = isa(fieldType, TYPE.Text);
+   const isFieldBoolean = isa(fieldType, TYPE.Boolean);
+   const fieldLevelOneTypes = LEVEL_ONE_TYPES.filter((levelOneType) => {

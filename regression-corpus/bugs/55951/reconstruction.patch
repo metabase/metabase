@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/common/components/DataSelector/DataSelector.jsx b/frontend/src/metabase/querying/common/components/DataSelector/DataSelector.jsx
+index b8d48e8b695..879a1402b00 100644
+--- a/frontend/src/metabase/querying/common/components/DataSelector/DataSelector.jsx
++++ b/frontend/src/metabase/querying/common/components/DataSelector/DataSelector.jsx
+@@ -464,7 +464,7 @@ export class UnconnectedDataSelector extends Component {
+   }
+ 
+   isSearchLoading = () => {
+-    return this.props.loading;
++    return this.props.allLoading;
+   };
+ 
+   getCardType() {

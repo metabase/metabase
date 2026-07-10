@@ -1,0 +1,55 @@
+issue: 65908
+issue_url: https://github.com/metabase/metabase/issues/65908
+fix_commits: ["cf7026a6a241de2b3cfece08ceadb9c7f7e59887"]
+fix_pr: 67581
+fix_subject: "Fix empty cards with no results making dashboard longer than expected (#67581)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/dashboard/visualizer/reproductions.cy.spec.ts
+      line: 173
+      kind: describe
+      title: "issue 65908 (UXW-2293)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: HOLE — 2401 related unit tests all pass with bug reintroduced (jest --findRelatedTests)
+
+hole_closed:
+  status: closed
+  by: targeted_unit_test
+  test_file: frontend/src/metabase/dashboard/components/grid/GridLayout.unit.spec.tsx
+  test_title: "sizes the container to the visible layout, not hidden cards (metabase#65908)"
+  killed: true          # -R mutate -> FAIL (1 failed); forward restore -> PASS
+  clean_baseline: green
+  notes: >
+    Renders GridLayout with a prop layout containing a hidden card (y:100,h:2) that is
+    absent from items; react-grid-layout fires onLayoutChange with only the visible
+    cards, so the fixed code (localLayout ?? layout) computes height 220px. The
+    mutation reads the prop layout directly -> 11220px. Asserts the .react-grid-layout
+    inline style height == "220px". Pure-JS height calc, no real browser layout needed.
+
+failure_shape:
+  observed: true          # observed at unit level via the hole_closed test
+  source: observed_unit
+  symptom: >
+    Empty/hidden dashcards with no results inflate the dashboard grid height,
+    making the dashboard taller than expected (extra blank vertical space below).
+  repro_failure: >
+    Repro asserts the dashboard/grid height; on the mutated tree height is computed
+    from the full layout (incl. hidden cards) instead of localLayout, so the
+    measured height exceeds the expected value.
+  not_setup_crash: true

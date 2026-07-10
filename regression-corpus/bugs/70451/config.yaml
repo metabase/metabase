@@ -1,0 +1,30 @@
+issue: 70451
+issue_url: https://github.com/metabase/metabase/issues/70451
+fix_commits: ["2b11a3bed2997728d662c43938b12556bab623d8"]
+fix_pr: 70760
+fix_subject: "Update react-grid-layout and react-resizeable (#70760)"
+area: dependencies
+excluded: dependency-bump fix — reverting deps is environment-level, not a code mutation
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/dashboard-cards/dashboard-card-resizing.cy.spec.js
+      line: 245
+      kind: it
+      title: "should keep the resize handle connected to the cursor while resizing (metabase#70451)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: null

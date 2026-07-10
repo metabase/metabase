@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts b/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
+index fe4e4f4e922..a544610bb2f 100644
+--- a/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
++++ b/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
+@@ -296,7 +296,6 @@ export const applyXAxisTransformations = (
+ ): TransformFn => {
+   return (datum) => {
+     const transformedRecord = { ...datum };
+-    transformedRecord[X_AXIS_RAW_VALUE_DATA_KEY] = datum[X_AXIS_DATA_KEY];
+     transformedRecord[X_AXIS_DATA_KEY] = xAxisTransformFn(
+       datum[X_AXIS_DATA_KEY],
+     );

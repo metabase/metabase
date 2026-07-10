@@ -1,0 +1,23 @@
+diff --git a/frontend/src/metabase/redux/downloads.ts b/frontend/src/metabase/redux/downloads.ts
+index 0e907a252b6..0501dd53751 100644
+--- a/frontend/src/metabase/redux/downloads.ts
++++ b/frontend/src/metabase/redux/downloads.ts
+@@ -578,14 +578,14 @@ export function getDatasetDownloadUrl(
+   params?: URLSearchParams | string,
+ ) {
+   const basename = getBasename();
+-  if (basename && url.startsWith(basename)) {
+-    url = url.slice(basename.length); // make url relative if it's not
+-  }
++  url = url.replace(basename, ""); // make url relative if it's not
++  url = basename + url;
+   if (params) {
+     url += `?${params.toString()}`;
+   }
+ 
+-  return url;
++  const requestUrl = new URL(url, location.origin);
++  return requestUrl.href;
+ }
+ 
+ const getDatasetFileName = (headers: Headers, type: string) => {

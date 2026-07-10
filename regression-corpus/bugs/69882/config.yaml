@@ -1,0 +1,37 @@
+issue: 69882
+issue_url: https://github.com/metabase/metabase/issues/69882
+fix_commits: ["3c693179e40be4fc1314d71d3bc71369170532ca"]
+fix_subject: "fix content translations break visualization settings"
+area: echarts/cartesian/dataset
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Redirected the breakout dataset-key derivation from the stable untranslatedBreakoutValue back to the translated row[breakoutIndex] (kept all fix scaffolding). Localized a ~16-file fix to one line.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.unit.spec.ts", clean_baseline: pass, reconstructed_result: "1/31 fail (dataset keys use translated breakout value)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Content-translated breakout values produce unstable dataset keys in viz settings, so series/colors break when translations are active.
+  repro_failure: >
+    'use untranslatedRows for breakout dataset keys': key '2:type:Translated Type1' vs '2:type:type1'.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-5 (final). Killed by shipped FE unit (jest) test => e2e repro cullable."

@@ -1,0 +1,40 @@
+issue: 34278
+issue_url: https://github.com/metabase/metabase/issues/34278
+fix_commits: ["42bd30c6a699250134573c9393994413c6049f3f"]
+fix_pr: 34583
+fix_subject: "Determine pivot-cols and pivot-rows on the backend using viz settings"
+area: query-processor/pivot
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted pivot-options to ignore viz-settings and read pivot keys straight off the query (pre-fix frontend-supplied path). HEAVY DRIFT: the fix's single fn became a dispatcher (column-name vs field-ref pivot options) since 2023; localized to the pivot-options dispatcher = the commit boundary.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.query-processor.pivot-test/pivot-options-test"
+    clean_baseline: pass
+    reconstructed_result: "1/3 fail (pivot-options returns nil instead of derived rows/cols)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    The backend no longer derives pivot-rows/pivot-cols from the card's pivot_table.column_split viz-settings; saved-card/dashboard/embedded/subscription pivots collapse to a degenerate single-group pivot.
+  repro_failure: >
+    (pivot-options query viz-settings) expected {:pivot-rows [1 0] :pivot-cols [2] ...}, actual nil.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.query-processor.pivot-test/pivot-options-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-3 (medium). Conflict target reconstructed + killed by shipped BE test => e2e repro cullable."

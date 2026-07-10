@@ -1,0 +1,27 @@
+issue: 57113
+issue_url: https://github.com/metabase/metabase/issues/57113
+fix_commits: ["4578d66e2e4f2c2fd73f15a2fb1e772bada1731c"]
+fix_subject: "Fix some modals not closing properly without browser history"
+area: modals/close
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (rewire Cancel from onClose back to the removed onCancel). But the fix's edits to the named specs were pure DELETION of an unused onCancel:jest.fn() (no assertions); the specs only assert the submit path, never Cancel/close. The bug surfaces as navigation-on-close with an empty history stack -> Cypress oracle. FE unit HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "shipped jest spec change non-behavioral; real assertion is a Cypress e2e spec"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-5 NEGATIVE (cypress). Reconstructable but no discriminating FE unit oracle => FE HOLE."

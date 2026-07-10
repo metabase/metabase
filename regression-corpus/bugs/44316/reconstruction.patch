@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.ts b/frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.ts
+index c93f200f335..6c66b122d0c 100644
+--- a/frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.ts
++++ b/frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.ts
+@@ -383,7 +383,7 @@ async function getCollectionPathFromValue({
+ 
+   const location = PLUGIN_LIBRARY.isLibraryCollectionType(collection?.type)
+     ? collection?.location
+-    : (collection?.effective_location ?? collection?.location);
++    : collection?.location;
+ 
+   const locationPath = [rootCollectionItem];
+ 

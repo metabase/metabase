@@ -1,0 +1,138 @@
+diff --git a/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.tsx b/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.tsx
+index 77301627ab6..909094d56bb 100644
+--- a/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.tsx
++++ b/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.tsx
+@@ -99,24 +99,14 @@ export function DashCardCardParameterMapper({
+   const shouldShowAutoConnectHint =
+     isRecentlyAutoConnected && !!selectedMappingOption;
+ 
+-  const additionalActionParametersContent =
+-    target && isParameterVariableTarget(target) && isAction
+-      ? editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+-        ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+-        : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+-      : undefined;
+-
+-  const shouldShowActionParametersWarningInTooltip =
+-    isMobile || dashcard.size_y * dashcard.size_x <= 30 || dashcard.size_x < 4;
+-
+   return (
+     <Flex
+       direction="column"
+       align="center"
+       w="100%"
++      p="xs"
+       pos="relative"
+       my={!isMobile && dashcard.size_y < 2 ? "0" : "0.5rem"}
+-      py="lg"
+     >
+       {hasSeries && (
+         <Box maw="100px" mb="sm" fz="0.83em" className={S.CardLabel}>
+@@ -139,11 +129,6 @@ export function DashCardCardParameterMapper({
+         shouldShowAutoConnectHint={shouldShowAutoConnectHint}
+         layoutHeight={layoutHeight}
+         compact={compact}
+-        additionalActionParametersContent={
+-          (shouldShowActionParametersWarningInTooltip &&
+-            additionalActionParametersContent) ||
+-          undefined
+-        }
+       />
+       <Transition
+         mounted={shouldShowAutoConnectHint && layoutHeight > 3}
+@@ -174,10 +159,13 @@ export function DashCardCardParameterMapper({
+           );
+         }}
+       </Transition>
+-      {additionalActionParametersContent &&
+-        !shouldShowActionParametersWarningInTooltip && (
+-          <span className={S.Warning}>{additionalActionParametersContent}</span>
+-        )}
++      {target && isParameterVariableTarget(target) && isAction && (
++        <span className={S.Warning}>
++          {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
++            ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
++            : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
++        </span>
++      )}
+     </Flex>
+   );
+ }
+diff --git a/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx b/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx
+index eb9c2751be0..422bce9e0bd 100644
+--- a/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx
++++ b/frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapperContent.tsx
+@@ -55,7 +55,6 @@ interface DashCardCardParameterMapperContentProps {
+   layoutHeight: number;
+   editingParameterInlineDashcard?: DashboardCard;
+   compact?: boolean;
+-  additionalActionParametersContent?: string;
+ }
+ 
+ export const DashCardCardParameterMapperContent = ({
+@@ -74,7 +73,6 @@ export const DashCardCardParameterMapperContent = ({
+   shouldShowAutoConnectHint,
+   editingParameterInlineDashcard,
+   compact,
+-  additionalActionParametersContent,
+ }: DashCardCardParameterMapperContentProps) => {
+   const isVirtual = isVirtualDashCard(dashcard);
+   const virtualCardType = getVirtualCardType(dashcard);
+@@ -145,32 +143,17 @@ export const DashCardCardParameterMapperContent = ({
+ 
+   if (isVirtual && isDisabled) {
+     return showVirtualDashCardInfoText(dashcard, isMobile) ? (
+-      <Flex className={S.TextCardDefault} gap="sm" m={0}>
+-        <Icon
+-          name="info"
+-          size={12}
+-          className={S.InfoIcon}
+-          tooltip={additionalActionParametersContent}
+-        />
+-        <Box>{mappingInfoText}</Box>
++      <Flex className={S.TextCardDefault}>
++        <Icon name="info" size={12} className={CS.pr1} />
++        {mappingInfoText}
+       </Flex>
+     ) : (
+-      <Flex
+-        className={S.TextCardDefault}
+-        gap="sm"
+-        m={0}
+-        aria-label={mappingInfoText}
+-      >
++      <Flex className={S.TextCardDefault} aria-label={mappingInfoText}>
+         <Icon
+           name="info"
+           size={16}
+-          className={classNames(CS.textDarkHover, S.InfoIcon)}
+-          tooltip={
+-            <Stack>
+-              <Box>{mappingInfoText}</Box>
+-              <Box>{additionalActionParametersContent}</Box>
+-            </Stack>
+-          }
++          className={CS.textDarkHover}
++          tooltip={mappingInfoText}
+         />
+       </Flex>
+     );
+diff --git a/frontend/src/metabase/dashboard/utils.ts b/frontend/src/metabase/dashboard/utils.ts
+index 11d60e6d178..27efd402203 100644
+--- a/frontend/src/metabase/dashboard/utils.ts
++++ b/frontend/src/metabase/dashboard/utils.ts
+@@ -189,9 +189,11 @@ export function showVirtualDashCardInfoText(
+   dashcard: DashboardCard,
+   isMobile: boolean,
+ ) {
+-  const dashcardAreaSize = dashcard.size_y * dashcard.size_x;
+-
+-  return isMobile || (dashcardAreaSize >= 12 && dashcard.size_x > 3);
++  if (isVirtualDashCard(dashcard)) {
++    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
++  } else {
++    return true;
++  }
+ }
+ 
+ export function getAllDashboardCards(dashboard: Dashboard) {

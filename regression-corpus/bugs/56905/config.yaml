@@ -1,0 +1,33 @@
+issue: 56905
+issue_url: https://github.com/metabase/metabase/issues/56905
+fix_commits: ["453eab244c748ed099a20cda0e2209b3c324268b"]
+fix_pr: 58630
+fix_subject: "Do not prevent cmd+enter from working when inputs are focused (#58630)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/native/native-reproductions.cy.spec.ts
+      line: 577
+      kind: describe
+      title: "issue 56905"
+    - spec: e2e/test/scenarios/native/native-reproductions.cy.spec.ts
+      line: 584
+      kind: it
+      title: "It should be possible to run the native query when a parameter value input is focused (metabase#56905)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: "HOLE — 52 related unit tests pass with the bug reintroduced (findRelatedTests)."

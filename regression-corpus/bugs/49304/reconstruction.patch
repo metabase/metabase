@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase-lib/query/clauses/clauses.ts b/frontend/src/metabase-lib/query/clauses/clauses.ts
+index a9d15e26336..a723c22e4f8 100644
+--- a/frontend/src/metabase-lib/query/clauses/clauses.ts
++++ b/frontend/src/metabase-lib/query/clauses/clauses.ts
+@@ -672,7 +672,6 @@ const STRING = defineClauses(
+     contains: {
+       displayName: "contains",
+       type: "boolean",
+-      multiple: true,
+       hasOptions: true,
+       description: () =>
+         t`Returns \`true\` if \`$string1\` contains \`$string2\` within it (or \`$string3\`, etc. if specified).`,

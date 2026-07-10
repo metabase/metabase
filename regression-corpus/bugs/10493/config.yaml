@@ -1,0 +1,16 @@
+issue: 10493
+status: reconstruction_failed
+failure_category: dead_target
+dead_reason: fix_reverted_out  # fix later removed from tree and never restored (repro @skip)
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: ffbad1d6ae2d56f634102f90a8d77a129765b004
+validation:
+  oracle:
+    kind: none
+    reconstructed_result: dead_target__fix_reverted
+coverage:
+  fe_unit: untestable
+# detail: see reconstruction-report.md

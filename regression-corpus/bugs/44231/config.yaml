@@ -1,0 +1,40 @@
+issue: 44231
+issue_url: https://github.com/metabase/metabase/issues/44231
+fix_commits: ["337dbbe074c9dcc06926c395607780568ea59c7d"]
+fix_pr: 44254
+fix_subject: "Fix remapped values in public dashboards (#44254)"
+area: parameters/dashboard+params (was api/dashboard, models/params)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Two coordinated reverts: (1) combine-chained-filter-results back to (distinct (mapcat :values)) + single count-sort, dropping the remapped-shape merge; (2) params-columns-only drops :fk_target_field_id and param-field-ids->fields drops the [:target :name_field] hydrate. Both files relocated. malli/schema.clj left untouched (current FieldValuesList is a superset; doesn't reject the buggy output).
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.dashboards-rest.api-test/get-dashboard-param-fields-has-target-test (+ chain-filter-result-can-have-mixed-of-remapped-and-non-remapped-values-test, metabase.parameters.dashboard-test/combined-chained-filter-results-test)"
+    clean_baseline: pass
+    reconstructed_result: "3/3 fail (agent hand-predicted the exact corrupted output before running)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Public/embedded dashboards silently drop remapped (human-readable) values for FK parameters; chain-filter dropdowns show raw IDs, and :param_fields loses :target/:fk_target_field_id metadata.
+  repro_failure: >
+    combined-chained-filter: expected merged [[1] [2 'B'] [3] [4 'A'] [5 'C'] [6 'D']], actual unmerged dupes ([1] [2] [2 'B'] [3] [4] [4 'A'] ...).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.dashboards-rest.api-test/get-dashboard-param-fields-has-target-test (+ chain-filter-result-can-have-mixed-of-remapped-and-non-remapped-values-test, metabase.parameters.dashboard-test/combined-chained-filter-results-test)"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-3 (medium). Conflict target reconstructed + killed by shipped BE test => e2e repro cullable."

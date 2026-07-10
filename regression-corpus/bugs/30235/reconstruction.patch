@@ -1,0 +1,14 @@
+diff --git a/src/metabase/collections_rest/api.clj b/src/metabase/collections_rest/api.clj
+index 7183835e91d..e2e76791a67 100644
+--- a/src/metabase/collections_rest/api.clj
++++ b/src/metabase/collections_rest/api.clj
+@@ -1606,7 +1606,8 @@
+       (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
+       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
+   ;; finally, return the updated object
+-  (collection-detail (t2/select-one :model/Collection :id id)))
++  (-> (t2/select-one :model/Collection :id id)
++      (t2/hydrate :parent_id)))
+ 
+ ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+ ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

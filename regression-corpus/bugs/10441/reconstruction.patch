@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/common/components/BucketPickerPopover/BucketPickerPopover.tsx b/frontend/src/metabase/common/components/BucketPickerPopover/BucketPickerPopover.tsx
+index 3b34164dadb..af310a211e4 100644
+--- a/frontend/src/metabase/common/components/BucketPickerPopover/BucketPickerPopover.tsx
++++ b/frontend/src/metabase/common/components/BucketPickerPopover/BucketPickerPopover.tsx
+@@ -46,9 +46,7 @@ export function BucketPickerPopover({
+ }: BucketPickerPopoverProps) {
+   const [isOpened, setIsOpened] = useState(false);
+ 
+-  const canExpand =
+-    initiallyVisibleItemsCount != null &&
+-    items.length > initiallyVisibleItemsCount;
++  const canExpand = false;
+ 
+   const shouldBeExpanded = useMemo(
+     () => shouldAutoExpand(items, canExpand, initiallyVisibleItemsCount),

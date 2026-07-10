@@ -1,0 +1,22 @@
+diff --git a/src/metabase/parameters/chain_filter.clj b/src/metabase/parameters/chain_filter.clj
+index 717510338bf..aa0c2dd5344 100644
+--- a/src/metabase/parameters/chain_filter.clj
++++ b/src/metabase/parameters/chain_filter.clj
+@@ -701,7 +701,7 @@
+       (-> (unremapped-chain-filter field-id constraints options)
+           (update :values add-human-readable-values v->human-readable))
+ 
+-      (and (use-cached-field-values? field-id) (nil? @remapping))
++      (use-cached-field-values? field-id)
+       (do
+         (check-field-value-query-permissions field-id constraints options)
+         (cached-field-values field-id constraints options))
+@@ -835,7 +835,7 @@
+       (some? @v->human-readable)
+       (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query-string options)
+ 
+-      (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
++      (search-cached-field-values? field-id constraints)
+       (do
+         (check-field-value-query-permissions field-id constraints options)
+         (cached-field-values-search field-id query-string constraints options))

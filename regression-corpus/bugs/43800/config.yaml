@@ -1,0 +1,27 @@
+issue: 43800
+issue_url: https://github.com/metabase/metabase/issues/43800
+fix_commits: ["f106ffa776bd621029e24f581ad605253442ac24"]
+fix_subject: "Fix stacked redirects to homepage dashboard"
+area: nav/homepage-redirect
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (drop the isAtHomepageDashboard/preventDefault guard). But the AppBar.unit.spec fix-change was purely render->renderWithProviders (forced by a new redux hook), no behavioral assertion; the redirect logic moved to a separate hook not in AppBar's import graph. Real oracle = Cypress (homepage.cy.spec.js). FE unit HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "no_unit_oracle__real_oracle_cypress"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-4 NEGATIVE (no_unit_oracle__real_oracle_cypress). Reconstructable but no discriminating FE unit oracle => FE HOLE."

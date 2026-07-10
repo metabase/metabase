@@ -1,0 +1,21 @@
+issue: 37100
+fix_commits: []  # see reconstruction-report.md
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR#37072 MultiAutocomplete dedup — return fieldValues (no dedup); onChange [a,a] vs [a]; 1 failed
+    Oracle relocation: shouldCreate dedup migrated into MultiAutocomplete hook
+    Product: use-multi-autocomplete getFieldValuesWithoutDuplicates
+validation:
+  oracle:
+    kind: fe_unit
+    test: frontend/src/metabase/querying/filters/components/FilterPicker/FilterValuePicker/FilterValuePicker.unit.spec.tsx
+    reconstructed_result: fail_on_mutant__pass_on_clean
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure

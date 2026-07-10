@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx b/frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx
+index e3d53a69c1e..b60dd4bf6b1 100644
+--- a/frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx
++++ b/frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.tsx
+@@ -44,9 +44,7 @@ export function DashboardEmptyState({
+ }: DashboardEmptyStateProps) {
+   let title = getDefaultTitle(isDashboardEmpty);
+   if (isEditing) {
+-    title = canCreateQuestions
+-      ? t`Create a new question or browse your collections for an existing one.`
+-      : t`Browse your collections to find and add existing questions.`;
++    title = t`Create a new question or browse your collections for an existing one.`;
+   }
+ 
+   return (

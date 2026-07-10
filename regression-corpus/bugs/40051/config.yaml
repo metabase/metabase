@@ -1,0 +1,27 @@
+issue: 40051
+issue_url: https://github.com/metabase/metabase/issues/40051
+fix_commits: ["d12c549a1f29aedc48aefb478c60aa55d7d1e150"]
+fix_subject: "Do not put js code into page title (#40901)"
+area: qb/document-title
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (assign the loading-message factory fn into the title instead of calling it, in querying.ts). But the fix's ONLY behavioral site is querying.ts/setDocumentTitle; the named unit specs' fix-edits were mechanical getLoadingMessage->getLoadingMessageFactory renames with unchanged assertions. Real oracle = Cypress cy.title(). FE unit HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "shipped jest spec change non-behavioral; real assertion is a Cypress e2e spec"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-5 NEGATIVE (cypress). Reconstructable but no discriminating FE unit oracle => FE HOLE."

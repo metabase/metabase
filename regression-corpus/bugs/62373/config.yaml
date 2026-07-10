@@ -1,0 +1,37 @@
+issue: 62373
+issue_url: https://github.com/metabase/metabase/issues/62373
+fix_commits: ["8ac41c5b9164f795b3d20582442ee50d3e08d770"]
+fix_subject: "Closes EMB-756 translations for static embedded viz custom colors"
+area: EE/content-translation
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Dropped the fix-added untranslatedRows (captured pre-translation rows) from translateFieldValuesInSeries. NOTE: detector named the WRONG oracle - the designated tests/utils.unit.spec.ts edit was scaffolding (switch to leaveUntranslated, hits an early-return); the real assertion is in the SIBLING spec content_translation/utils.unit.spec.ts (added during later drift). Re-derived + validated against the sibling: 2 fail.
+
+validation:
+  oracle: {kind: fe_unit, test: "enterprise/frontend/src/metabase-enterprise/content_translation/utils.unit.spec.ts", clean_baseline: pass, reconstructed_result: "2 fail (result[0].data.untranslatedRows toEqual)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Translated viz legend labels can't be mapped back to original keys (untranslatedRows missing), so custom colors on translated static-embedded charts are lost.
+  repro_failure: >
+    utils.unit.spec.ts: expect(result[0].data?.untranslatedRows).toEqual(...) fails (2 assertions).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["enterprise/frontend/src/metabase-enterprise/content_translation/utils.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-1. Killed by shipped FE unit (jest) test => e2e repro cullable."

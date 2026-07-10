@@ -1,0 +1,35 @@
+issue: 56839
+issue_url: https://github.com/metabase/metabase/issues/56839
+fix_commits: ["9a4f9cc59d36d55a5971c1f16f8abeac71b54e9d"]
+fix_pr: 56916
+fix_subject: "Fix - Filtering the foreign key dropdown randomly works (#56916)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/data-model/data-model-shared-2.cy.spec.ts
+      line: 532
+      kind: it
+      title: "should correctly filter out options in Foreign Key picker (metabase#56839)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    killed_by:
+      - frontend/src/metabase/data-studio/data-model/pages/DataModel/DataModel.unit.spec.tsx
+      - frontend/src/metabase/metadata/components/FkTargetPicker/FkTargetPicker.unit.spec.tsx
+      - frontend/src/metabase/metadata/pages/DataModelV1/DataModelV1.unit.spec.tsx
+    clean_baseline: pass
+  notes: "Isolation-confirmed FE KILL (FK dropdown filtering fix). Discounted load-flake: SegmentApp.unit.spec (passes in isolation)."

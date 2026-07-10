@@ -1,0 +1,38 @@
+issue: 63537
+issue_url: https://github.com/metabase/metabase/issues/63537
+fix_commits: ["48376d3f63a64b246dadc20ced6a73a1ccebb11b"]
+fix_pr: 64045
+fix_subject: "Fix field filters for type/TextLike (#64045)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js
+      line: 1290
+      kind: describe
+      title: "issue 63537"
+    - spec: e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js
+      line: 1298
+      kind: it
+      title: "should allow to use postgres enums in field filters (metabase#63537)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/metabase/metrics-viewer/components/DimensionPickerSidebar/DimensionPickerSidebar.unit.spec.tsx
+      - frontend/src/metabase-lib/v1/parameters/utils/template-tag-options.unit.spec.js
+  notes: null

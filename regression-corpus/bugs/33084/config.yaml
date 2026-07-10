@@ -1,0 +1,29 @@
+issue: 33084
+issue_url: https://github.com/metabase/metabase/issues/33084
+fix_commits: ["11f8b0366772946b2d53afa1432a4e95d04fb3a1"]
+fix_pr: 33087
+fix_subject: "Fix - Can't subsequently run actions for different objects from dashboards (#33087)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/actions/actions-on-dashboards.cy.spec.js
+      line: 1154
+      kind: it
+      title: "refetches form values when id changes (metabase#33084)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: "HOLE — 3587 related unit tests pass with the bug reintroduced (findRelatedTests)."

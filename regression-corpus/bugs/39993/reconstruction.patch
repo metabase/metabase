@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/viz-settings/utils/sync-viz-settings.ts b/frontend/src/metabase/querying/viz-settings/utils/sync-viz-settings.ts
+index 947a0dda577..88217935ab8 100644
+--- a/frontend/src/metabase/querying/viz-settings/utils/sync-viz-settings.ts
++++ b/frontend/src/metabase/querying/viz-settings/utils/sync-viz-settings.ts
+@@ -134,7 +134,7 @@ function syncColumns<T>({
+     if (!oldKey) {
+       settings.push(setting);
+     } else if (newName) {
+-      settings.push(setColumnName(setting, newName));
++      settings.push(setting);
+     }
+     return settings;
+   }, []);

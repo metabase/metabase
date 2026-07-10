@@ -1,0 +1,37 @@
+issue: 54364
+issue_url: https://github.com/metabase/metabase/issues/54364
+fix_commits: ["ed9ed5b85f0b3b021a0bfeff3e690e6cb82a3f41"]
+fix_subject: "Fix the UI for partial between parameter values"
+area: querying/parameters/parsing (was v1/parameters)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the number/between partial-null special case in deserializeNumberParameterValue, so [10,null]/[null,20] collapse via filter(isNotNull). File relocated v1/parameters/utils/parameter-parsing.ts -> querying/parameters/utils/parsing.ts.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts", clean_baseline: pass, reconstructed_result: "4/167 fail (partial between values truncated)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A number/between filter with only a min or only a max (e.g. [10,null]) loses the empty slot on deserialization, breaking one-sided between filters.
+  repro_failure: >
+    deserializeNumberParameterValue('number/between',[10,null]) expected [10,null], received [10].
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-5 (final). Killed by shipped FE unit (jest) test => e2e repro cullable."

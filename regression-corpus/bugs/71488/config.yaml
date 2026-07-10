@@ -1,0 +1,33 @@
+issue: 71488
+issue_url: https://github.com/metabase/metabase/issues/71488
+fix_commits: ["f01f753ff24fa460b4dde29b6e9af461bb0d7292"]
+fix_pr: 71810
+fix_subject: "fixed translation issue with funnels (#71810)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/admin/i18n/content-translation/dashboards.cy.spec.ts
+      line: 1065
+      kind: describe
+      title: "funnel chart with translated dimension values (metabase#71488)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/metabase/visualizations/components/FunnelNormal.unit.spec.ts
+  notes: null

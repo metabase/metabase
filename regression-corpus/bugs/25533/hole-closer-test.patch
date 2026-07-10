@@ -1,0 +1,42 @@
+diff --git a/frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts b/frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts
+index 9b7bf07c0c1..5453fe2ab2f 100644
+--- a/frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts
++++ b/frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts
+@@ -22,6 +22,7 @@ import {
+   setParameterIsMultiSelect,
+   setParameterMapping,
+   setParameterType,
++  setParameterValue,
+ } from "./parameters";
+ 
+ function setup(initialState: State) {
+@@ -460,3 +461,29 @@ describe("setOrUnsetParameterValues", () => {
+     expect(state.dashboard.parameterValues["123"]).toBe(null);
+   });
+ });
++
++describe("setParameterValue", () => {
++  it("should normalize an emptied value to null (metabase#25533)", async () => {
++    const store = setup(
++      createMockState({
++        dashboard: createMockDashboardState({
++          dashboardId: 1,
++          dashboards: {
++            "1": createMockStoreDashboard({
++              id: 1,
++              parameters: [createMockParameter({ id: "123" })],
++            }),
++          },
++          parameterValues: {
++            "123": ["A", "B"],
++          },
++        }),
++      }),
++    );
++
++    await store.dispatch(setParameterValue("123", []));
++
++    const state = store.getState();
++    expect(state.dashboard.parameterValues["123"]).toBe(null);
++  });
++});

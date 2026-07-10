@@ -1,0 +1,48 @@
+diff --git a/src/metabase/search/impl.clj b/src/metabase/search/impl.clj
+index 35b2bc21516..eeeebf0a9f1 100644
+--- a/src/metabase/search/impl.clj
++++ b/src/metabase/search/impl.clj
+@@ -56,11 +56,9 @@
+   (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-query? instance)))
+ 
+ (defmethod check-permissions-for-model :default
+-  [search-ctx instance]
+-  (if (:archived? search-ctx)
+-    (can-write? search-ctx instance)
+-    ;; We filter what we can (i.e., everything in a collection) out already when querying
+-    true))
++  [_search-ctx _instance]
++  ;; We filter what we can (i.e., everything in a collection) out already when querying
++  true)
+ 
+ (defmethod check-permissions-for-model :document
+   [search-ctx instance]
+@@ -84,15 +82,11 @@
+ 
+ (defmethod check-permissions-for-model :metric
+   [search-ctx instance]
+-  (if (:archived? search-ctx)
+-    (can-write? search-ctx instance)
+-    (can-read? search-ctx instance)))
++  (can-read? search-ctx instance))
+ 
+ (defmethod check-permissions-for-model :segment
+   [search-ctx instance]
+-  (if (:archived? search-ctx)
+-    (can-write? search-ctx instance)
+-    (can-read? search-ctx instance)))
++  (can-read? search-ctx instance))
+ 
+ (defmethod check-permissions-for-model :measure
+   [search-ctx instance]
+@@ -102,9 +96,7 @@
+ 
+ (defmethod check-permissions-for-model :database
+   [search-ctx instance]
+-  (if (:archived? search-ctx)
+-    (can-write? search-ctx instance)
+-    (can-read? search-ctx instance)))
++  (can-read? search-ctx instance))
+ 
+ (defn- hydrate-user-metadata
+   "Hydrate common-name for last_edited_by and created_by for each result."

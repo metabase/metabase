@@ -1,0 +1,40 @@
+issue: 61521
+issue_url: https://github.com/metabase/metabase/issues/61521
+fix_commits: ["8bd9ea4b3ffce4fab532fb8a579d94f1645df3f3"]
+fix_subject: "Fix multiple datasource viz settings in visualizer"
+area: visualizer/cartesian
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (delete the column_settings remap block in combineWithCartesianChart). But the named specs' fix-edits were purely a mechanical arity change (removed datasets param); no behavioral assertion. Real oracle = Cypress (preserve column settings when adding 2nd datasource). FE unit HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "shipped jest spec change was mechanical (mock/arity/scoping); real assertion is a Cypress e2e spec"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-2 NEGATIVE: reconstructable but no discriminating FE unit oracle => FE unit HOLE (Cypress-guarded)."
+
+hole_closed:
+  status: closed
+  by: targeted_unit_test
+  approach: "integration-point (combine fn applying the helper, not the isolated helper)"
+  test: "visualizer/visualizations/cartesian.unit.spec (combineWithCartesianChart column_settings remap #61521)"
+  test_patch: hole-closer-test.patch
+  report_file: hole-closer-report.md
+  verified: "passes on clean HEAD; FAILS as a clean assertion when the fix is reverted (agent-verified both directions)"
+  notes: >
+    Demonstrates FE-TEST-GUIDANCE: this Cypress-guarded hole was a test-authoring gap, not
+    a fundamental jsdom limit. Closed with a cheap jest test at the right level =>
+    regression now unit-guarded and the e2e repro becomes cullable.

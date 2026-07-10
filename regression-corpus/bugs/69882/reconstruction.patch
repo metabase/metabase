@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts b/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
+index fe4e4f4e922..e428872cc90 100644
+--- a/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
++++ b/frontend/src/metabase/visualizations/echarts/cartesian/model/dataset.ts
+@@ -116,7 +116,7 @@ const aggregateColumnValuesForDatum = (
+     const seriesKey =
+       breakoutIndex == null
+         ? getDatasetKey(column, cardId)
+-        : getDatasetKey(column, cardId, untranslatedBreakoutValue);
++        : getDatasetKey(column, cardId, row[breakoutIndex]);
+ 
+     // The dimension values should not be aggregated, only metrics
+     if (isMetric && !isDimensionColumn) {

@@ -1,0 +1,40 @@
+issue: 63745
+issue_url: https://github.com/metabase/metabase/issues/63745
+fix_commits: ["102025c69c8fc9127dc74edfaddeec0b6765a42d"]
+fix_subject: "UXW-753 Fix issues with Detail visualization columns"
+area: viz/ObjectDetail
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Bug IS reconstructable (stale-state desync fix in the call site, now ObjectDetailPanel.tsx). But the jest oracle specs render the LEAF components directly with explicit props and never mount the call site, so the stale-state bug is unreachable; the specs' fix-edits were mechanical prop-signature adaptations (data->columns), not behavioral assertions. Real assertion in a Cypress e2e spec. => FE unit HOLE (Cypress-guarded).
+
+validation:
+  oracle: {kind: fe_unit, note: "shipped jest spec change was non-behavioral; real assertion is in a Cypress e2e spec"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-1 NEGATIVE: reconstructable but no discriminating FE unit oracle => FE unit HOLE (Cypress/e2e guarded)."
+
+hole_closed:
+  status: closed
+  by: targeted_unit_test
+  approach: "container-level (mount ObjectDetailPanel + rerender with toggled passedData)"
+  test: "visualizations/components/ObjectDetail/ObjectDetailPanel.unit.spec (column desync #63745)"
+  test_patch: hole-closer-test.patch
+  report_file: hole-closer-report.md
+  verified: "passes on clean HEAD; FAILS as a clean assertion when the fix is reverted (agent-verified both directions)"
+  notes: >
+    Demonstrates FE-TEST-GUIDANCE: this Cypress-guarded hole was a test-authoring gap, not
+    a fundamental jsdom limit. Closed with a cheap jest test at the right level =>
+    regression now unit-guarded and the e2e repro becomes cullable.

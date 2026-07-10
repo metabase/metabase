@@ -1,0 +1,26 @@
+diff --git a/src/metabase/permissions/settings.clj b/src/metabase/permissions/settings.clj
+index 9d8e5272f8b..d3c0e882783 100644
+--- a/src/metabase/permissions/settings.clj
++++ b/src/metabase/permissions/settings.clj
+@@ -22,9 +22,7 @@
+     (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted)))
+ 
+ (defn- -show-updated-permission-modal []
+-  (if (t/after? (instance-create-time) (v-fifty-migration-time))
+-    false
+-    (setting/get-value-of-type :boolean :show-updated-permission-modal)))
++  (setting/get-value-of-type :boolean :show-updated-permission-modal))
+ 
+ (defsetting show-updated-permission-modal
+   (deferred-tru
+@@ -38,9 +36,7 @@
+   :audit      :never)
+ 
+ (defn- -show-updated-permission-banner []
+-  (if (t/after? (instance-create-time) (v-fifty-migration-time))
+-    false
+-    (setting/get-value-of-type :boolean :show-updated-permission-banner)))
++  (setting/get-value-of-type :boolean :show-updated-permission-banner))
+ 
+ (defsetting show-updated-permission-banner
+   (deferred-tru

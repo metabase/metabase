@@ -1,0 +1,44 @@
+issue: 63026
+issue_url: https://github.com/metabase/metabase/issues/63026
+fix_commits: ["b263bd0bc0678bfd500a90efc8b8cfb1f25209c7"]
+fix_pr: 63353
+fix_subject: "fix missing tooltip max width (#63353)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts
+      line: 473
+      kind: describe
+      title: "issue 63026"
+    - spec: e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts
+      line: 479
+      kind: it
+      title: "should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untestable, killed_by: []}
+  notes: CSS-only fix; unit tests categorically cannot catch — needs e2e/visual coverage
+
+failure_shape:
+  observed: false
+  source: fix_diff
+  symptom: >
+    Visualization/ECharts tooltip lacks a max-width, so long content stretches the
+    tooltip too wide (visual).
+  repro_failure: >
+    CSS-only (mutated tree removes the tooltip max-width). Visual assertion; weak
+    e2e signal — belongs with the CSS-untestable entries.
+  not_setup_crash: null
