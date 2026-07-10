@@ -37,12 +37,14 @@ import type {
 } from "metabase-types/api";
 
 import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
+import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-messages";
 
 import { metabot } from "./reducer";
 import {
   getAgentRequestMetadata,
   getDebugMode,
   getDeveloperMessage,
+  getIsCurrentConversation,
   getIsProcessing,
   getMessageIdToRewind,
   getMetabotConversation,
@@ -65,6 +67,7 @@ export const {
   addUserMessage,
   setIsProcessing,
   setMessageExternalIds,
+  setConversationSnapshot,
   setConversationTitle,
   setNavigateToPath,
   setProfileOverride,
@@ -460,6 +463,17 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { agentId, ...request } = payload;
 
+    // guard against user having switched conversations mid stream
+    // at this time, we do not abort the underly request to prevent it getting recorded as aborted
+    // allowing the user to safely switch to another conversation and back
+    const dispatchToConvo = (action: Parameters<typeof dispatch>[0]) => {
+      if (
+        getIsCurrentConversation(getState(), agentId, request.conversation_id)
+      ) {
+        dispatch(action);
+      }
+    };
+
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
     let receivedTitle = false;
@@ -483,14 +497,16 @@ export const sendAgentRequest = createAsyncThunk<
                 MetabotAgentDataPartMessage,
                 "id" | "role" | "externalId"
               >,
-            ) => dispatch(addAgentMessage({ ...message, agentId }));
+            ) => dispatchToConvo(addAgentMessage({ ...message, agentId }));
 
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "data-state" }, (part) => (state = part.data))
               .with({ type: "data-chat-title" }, (part) => {
                 receivedTitle = true;
-                dispatch(setConversationTitle({ agentId, title: part.data }));
+                dispatchToConvo(
+                  setConversationTitle({ agentId, title: part.data }),
+                );
               })
               .with({ type: "data-chat-title-pending" }, (part) => {
                 pendingTitleConversationId = part.data.conversation_id;
@@ -499,10 +515,12 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-code_edit" }, (part) => {
-                dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
+                dispatchToConvo(
+                  addSuggestedCodeEdit({ ...part.data, active: true }),
+                );
 
                 if (part.data.buffer_id === "qb") {
-                  dispatch(setIsNativeEditorOpen(true));
+                  dispatchToConvo(setIsNativeEditorOpen(true));
                 }
                 pushDataPart({
                   type: "data_part",
@@ -516,11 +534,11 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.data));
+                dispatchToConvo(setNavigateToPath(part.data));
 
                 if (!isEmbeddingSdk()) {
                   // Unjustified type cast. FIXME
-                  dispatch(push(part.data) as UnknownAction);
+                  dispatchToConvo(push(part.data) as UnknownAction);
                 }
                 pushDataPart({ type: "data_part", part });
               })
@@ -532,7 +550,7 @@ export const sendAgentRequest = createAsyncThunk<
                   active: true,
                   suggestionId,
                 };
-                dispatch(addSuggestedTransform(suggestedTransform));
+                dispatchToConvo(addSuggestedTransform(suggestedTransform));
 
                 const editorTransform = request.context.user_is_viewing
                   .filter(
@@ -556,7 +574,7 @@ export const sendAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onStart: function handleStart(event) {
-            dispatch(
+            dispatchToConvo(
               setMessageExternalIds({
                 agentId,
                 agentMessageId: event.messageId,
@@ -565,10 +583,10 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onTextPart: function handleTextPart(delta) {
-            dispatch(addAgentTextDelta({ agentId, text: delta }));
+            dispatchToConvo(addAgentTextDelta({ agentId, text: delta }));
           },
           onToolInputStart: function handleToolInputStart(event) {
-            dispatch(
+            dispatchToConvo(
               toolCallStart({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
@@ -577,7 +595,7 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onToolInputAvailable: function handleToolInputAvailable(event) {
-            dispatch(
+            dispatchToConvo(
               toolCallArgs({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
@@ -587,7 +605,7 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onToolResultPart: function handleToolResultPart(event) {
-            dispatch(
+            dispatchToConvo(
               toolCallEnd({
                 toolCallId: event.toolCallId,
                 result:
@@ -599,7 +617,7 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onToolErrorPart: function handleToolErrorPart(event) {
-            dispatch(
+            dispatchToConvo(
               toolCallEnd({
                 toolCallId: event.toolCallId,
                 result: event.errorText,
@@ -773,5 +791,59 @@ export const resetConversation = createAsyncThunk(
   (payload: { agentId: MetabotAgentId }, { dispatch }) => {
     dispatch(cancelInflightAgentRequests(payload.agentId));
     dispatch(metabot.actions.resetConversation(payload));
+  },
+);
+
+export const loadConversation = createAsyncThunk(
+  "metabase/metabot/loadConversation",
+  async (
+    {
+      agentId,
+      conversationId,
+    }: { agentId: MetabotAgentId; conversationId: string },
+    { dispatch },
+  ) => {
+    // NOTE: deliberately doesn't cancel the inflight streaming-request;
+    // as we do not want to record it as an aborted response.
+
+    const { data: detail, error } = await dispatch(
+      metabotApi.endpoints.getMetabotConversationDetail.initiate(
+        conversationId,
+        { forceRefetch: true, subscribe: false },
+      ),
+    );
+
+    if (error || !detail) {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "feedback-negative",
+          message: t`Sorry, we couldn't load that conversation.`,
+        }),
+      );
+      return;
+    }
+
+    // resuming slack conversations within the app is not yet supported
+    if (detail.profile_id === "slack" || detail.profile_id === "slackbot") {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "feedback-negative",
+          message: t`Unable to load Slack conversation.`,
+        }),
+      );
+    }
+
+    dispatch(
+      setConversationSnapshot({
+        agentId,
+        conversationId: detail.conversation_id,
+        title: detail.title ?? undefined,
+        messages: normalizeFetchedChatMessages(detail.chat_messages),
+        state: detail.state,
+        activeToolCalls: [],
+      }),
+    );
   },
 );

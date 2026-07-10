@@ -66,7 +66,7 @@ function createConversation(
   return {
     conversation_id: "convo-1",
     created_at: "2026-01-01T00:00:00Z",
-    summary: "A conversation",
+    title: "A conversation",
     user: null,
     message_count: 2,
     total_tokens: 30,

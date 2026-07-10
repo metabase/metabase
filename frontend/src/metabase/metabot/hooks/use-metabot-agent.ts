@@ -22,6 +22,7 @@ import {
   getMetabotRequestId,
   getMetabotVisible,
   getProfile,
+  loadConversation as loadConversationAction,
   resetConversation as resetConversationAction,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
@@ -145,6 +146,13 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     dispatch(resetConversationAction({ agentId }));
   }, [agentId, dispatch]);
 
+  const loadConversation = useCallback(
+    (conversationId: string) => {
+      dispatch(loadConversationAction({ agentId, conversationId }));
+    },
+    [agentId, dispatch],
+  );
+
   return {
     prompt,
     setPrompt,
@@ -153,6 +161,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     setVisible,
     setProfileOverride,
     resetConversation,
+    loadConversation,
     submitInput,
     retryMessage,
     cancelRequest,

@@ -97,6 +97,17 @@ export const getMetabotConversation = createSelector(
   },
 );
 
+export const getMetabotConversationId = createSelector(
+  getMetabotConversation,
+  (convo) => convo.conversationId,
+);
+
+export const getIsCurrentConversation = (
+  state: State,
+  agentId: MetabotAgentId,
+  conversationId: string,
+) => getMetabotConversationId(state, agentId) === conversationId;
+
 export const getMetabotVisible = createSelector(
   getMetabotConversation,
   (convo) => convo.visible,

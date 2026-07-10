@@ -2,7 +2,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import {
+  createMockMetabotConversationDetail,
+  setupGetMetabotConversationEndpoint,
+  setupGetMetabotConversationEndpointError,
+} from "__support__/server-mocks";
 import { act, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
@@ -18,6 +24,7 @@ import { Metabot } from "../components/Metabot";
 import { MetabotChat } from "../components/MetabotChat";
 
 import {
+  assertConversation,
   assertNotVisible,
   assertVisible,
   chat,
@@ -28,6 +35,7 @@ import {
   enterChatMessage,
   hideMetabot,
   input,
+  lastReqBody,
   mockAgentEndpoint,
   newConversationButton,
   queryChatTitle,
@@ -497,6 +505,169 @@ describe("metabot > ui", () => {
         "path:/api/metabot/conversations",
       )[0];
       expect(url).toContain("profile_id=sql");
+    });
+
+    const PAST_CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
+
+    const setupWithPastConversation = () => {
+      setup({
+        conversations: [
+          createMockMetabotConversation({
+            conversation_id: PAST_CONVERSATION_ID,
+            title: "Orders by month",
+          }),
+        ],
+      });
+      setupGetMetabotConversationEndpoint(
+        createMockMetabotConversationDetail({
+          conversation_id: PAST_CONVERSATION_ID,
+          title: "Orders by month",
+          chat_messages: [
+            {
+              id: "u1",
+              role: "user",
+              type: "text",
+              message: "How many orders?",
+            },
+            {
+              id: "a1",
+              role: "agent",
+              type: "text",
+              message: "There are 42 orders.",
+            },
+          ],
+        }),
+      );
+    };
+
+    const selectPastConversation = async () => {
+      await userEvent.click(
+        await screen.findByTestId("metabot-conversation-history"),
+      );
+      const list = await screen.findByTestId(
+        "metabot-conversation-history-list",
+      );
+      await userEvent.click(await within(list).findByText("Orders by month"));
+    };
+
+    it("loads a past conversation into the chat when a history item is clicked", async () => {
+      setupWithPastConversation();
+
+      await selectPastConversation();
+
+      await assertConversation([
+        ["user", "How many orders?"],
+        ["agent", "There are 42 orders."],
+      ]);
+      expect(await chatTitle()).toHaveTextContent("Orders by month");
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(
+            `path:/api/metabot/conversations/${PAST_CONVERSATION_ID}`,
+          ),
+        ).toHaveLength(1);
+      });
+    });
+
+    it("continues the loaded conversation when a new message is submitted", async () => {
+      setupWithPastConversation();
+      const agentSpy = mockAgentEndpoint({
+        stream: createMockSSEStream(whoIsYourFavoriteResponse),
+      });
+
+      await selectPastConversation();
+      await assertConversation([
+        ["user", "How many orders?"],
+        ["agent", "There are 42 orders."],
+      ]);
+
+      await enterChatMessage("Who is your favorite?");
+
+      const body = await lastReqBody(agentSpy);
+      expect(body.conversation_id).toBe(PAST_CONVERSATION_ID);
+    });
+
+    it("ignores an in-flight stream's output after switching conversations", async () => {
+      setupWithPastConversation();
+
+      const [pause] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockSSEStream(
+          (async function* () {
+            yield { type: "start", messageId: "msg_bg" };
+            yield { type: "text-start", id: "t1" };
+            yield {
+              type: "text-delta",
+              id: "t1",
+              delta: "partial answer",
+            };
+            await pause.promise;
+            yield {
+              type: "text-delta",
+              id: "t1",
+              delta: " that should be dropped",
+            };
+            yield { type: "text-end", id: "t1" };
+            yield { type: "data-state", data: {} };
+          })(),
+        ),
+      });
+
+      // start a streaming response in the current (new) conversation
+      await enterChatMessage("Tell me a long story");
+      expect(
+        await within(await chat()).findByText("partial answer"),
+      ).toBeInTheDocument();
+
+      // switch to a different conversation while the stream is paused
+      await selectPastConversation();
+      await assertConversation([
+        ["user", "How many orders?"],
+        ["agent", "There are 42 orders."],
+      ]);
+
+      // resume the background stream — its remaining output must be ignored
+      pause.resolve();
+      await waitFor(() => {
+        expect(screen.queryByText(/should be dropped/)).not.toBeInTheDocument();
+      });
+      // still exactly the loaded conversation; the background stream left no trace
+      await assertConversation([
+        ["user", "How many orders?"],
+        ["agent", "There are 42 orders."],
+      ]);
+    });
+
+    it("shows an error toast and keeps the current chat when loading fails", async () => {
+      setup({
+        ui: (
+          <>
+            <Metabot />
+            <UndoListing />
+          </>
+        ),
+        conversations: [
+          createMockMetabotConversation({
+            conversation_id: PAST_CONVERSATION_ID,
+            title: "Orders by month",
+          }),
+        ],
+      });
+      setupGetMetabotConversationEndpointError(PAST_CONVERSATION_ID);
+
+      await selectPastConversation();
+
+      expect(
+        await screen.findByText("Sorry, we couldn't load that conversation."),
+      ).toBeInTheDocument();
+      // the empty current conversation is untouched
+      expect(
+        await screen.findByTestId("metabot-empty-chat-info"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-chat-title"),
+      ).not.toBeInTheDocument();
     });
   });
 });

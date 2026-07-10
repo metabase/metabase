@@ -44,8 +44,10 @@ const formatTimestamp = (timestamp: string) => {
 
 export const MetabotConversationHistory = ({
   profileId,
+  onConversationSelect,
 }: {
   profileId: MetabotProfileId | undefined;
+  onConversationSelect: (conversationId: string) => void;
 }) => {
   const [opened, setOpened] = useState(false);
 
@@ -100,6 +102,9 @@ export const MetabotConversationHistory = ({
             conversations.map((conversation) => (
               <Menu.Item
                 key={conversation.conversation_id}
+                onClick={() =>
+                  onConversationSelect(conversation.conversation_id)
+                }
                 leftSection={
                   <Icon c="text-secondary" name="message_circle" size={16} />
                 }

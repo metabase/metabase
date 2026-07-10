@@ -1,3 +1,4 @@
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   DeleteSuggestedMetabotPromptRequest,
   ListMetabotConversationsRequest,
@@ -52,6 +53,15 @@ export const metabotApi = Api.injectEndpoints({
       query: (conversationId) => ({
         method: "GET",
         url: `/api/metabot/conversations/${conversationId}/title`,
+      }),
+    }),
+    getMetabotConversationDetail: builder.query<
+      MetabotConversationDetail,
+      string
+    >({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}`,
       }),
     }),
     getMetabotSettings: builder.query<
@@ -185,6 +195,8 @@ export const metabotApi = Api.injectEndpoints({
 export const {
   useGetMetabotSettingsQuery,
   useGetMetabotConversationTitleQuery,
+  useGetMetabotConversationDetailQuery,
+  useLazyGetMetabotConversationDetailQuery,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotSettingsMutation,

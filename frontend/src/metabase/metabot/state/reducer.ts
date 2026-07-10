@@ -6,6 +6,7 @@ import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,
+  MetabotStateContext,
   MetabotSuggestedTransform,
   SuggestedTransform,
 } from "metabase-types/api";
@@ -324,38 +325,40 @@ export const metabot = createSlice({
     ) => {
       delete state.reactions.suggestedCodeEdits[action.payload];
     },
-    setConversationSnapshot: (
-      state,
-      action: PayloadAction<{
-        messages: MetabotChatMessage[];
-        state: any;
-        suggestedTransforms: MetabotSuggestedTransform[];
-        activeToolCalls: MetabotToolCall[];
-        conversationId: string;
-      }>,
-    ) => {
-      const convo = state.conversations["omnibot"];
-      if (!convo) {
-        return;
-      }
+    setConversationSnapshot: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          messages: MetabotChatMessage[];
+          state?: MetabotStateContext;
+          activeToolCalls?: MetabotToolCall[];
+          conversationId: string;
+          title?: string;
+        }>,
+        state,
+      ) => {
+        const {
+          agentId,
+          messages,
+          state: snapshotState,
+          activeToolCalls,
+          conversationId,
+          title,
+        } = action.payload;
 
-      const {
-        messages,
-        state: snapshotState,
-        suggestedTransforms,
-        activeToolCalls,
-        conversationId,
-      } = action.payload;
+        convo.messages = castDraft(messages ?? []);
+        convo.state = snapshotState ?? {};
+        convo.activeToolCalls = activeToolCalls ?? [];
+        convo.conversationId = conversationId ?? uuid();
+        convo.title = title;
+        convo.isProcessing = false;
+        convo.stateBeforeTurn = undefined;
+        convo.pendingMessageExternalId = undefined;
 
-      convo.messages = castDraft(messages ?? []);
-      convo.state = snapshotState ?? {};
-      convo.activeToolCalls = activeToolCalls ?? [];
-      convo.conversationId = conversationId ?? uuid();
-      convo.isProcessing = false;
-
-      // Unjustified type cast. FIXME
-      state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;
-    },
+        // NOTE: live reactions aren't reconstructed from a fetched snapshot
+        resetReactionState(state, agentId);
+      },
+    ),
   },
   extraReducers: (builder) => {
     builder

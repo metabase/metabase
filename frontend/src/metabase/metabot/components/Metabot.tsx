@@ -92,7 +92,10 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
         </Tooltip>
       )}
       {isConfigured && (
-        <MetabotConversationHistory profileId={metabot.profile} />
+        <MetabotConversationHistory
+          profileId={metabot.profile}
+          onConversationSelect={metabot.loadConversation}
+        />
       )}
       <ActionIcon onClick={handleCloseChat} data-testid="metabot-close-chat">
         <Icon c="text-primary" name="close" />

@@ -1,4 +1,5 @@
 import { createMessageId } from "metabase/metabot/state/utils";
+import type { MetabotStateContext } from "metabase-types/api";
 
 import type { MetabotAgentTurnError, MetabotChatMessage } from "../state/types";
 
@@ -7,6 +8,20 @@ import { convertSlackChatMessage } from "./slack-mrkdwn";
 export type FetchedChatMessage = MetabotChatMessage & {
   finished?: boolean | null;
   error?: MetabotAgentTurnError | null;
+};
+
+/**
+ * A single conversation with its flattened chat messages, as returned by
+ * `GET /api/metabot/conversations/:id`.
+ */
+export type MetabotConversationDetail = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  profile_id?: string | null;
+  state?: MetabotStateContext;
+  chat_messages: FetchedChatMessage[];
 };
 
 // NOTE: this should go away long-term. The FE should refactor around turns instead of a flat list of message.

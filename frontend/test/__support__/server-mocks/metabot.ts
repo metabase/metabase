@@ -3,6 +3,7 @@ import fetchMock, {
   type UserRouteConfig,
 } from "fetch-mock";
 
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   MetabotConversation,
   MetabotGroupLimit,
@@ -56,6 +57,46 @@ export function setupListMetabotConversationsEndpoint(
       offset: 0,
     },
     { name: "metabot-conversations-list" },
+  );
+}
+
+export function createMockMetabotConversationDetail(
+  opts?: Partial<MetabotConversationDetail>,
+): MetabotConversationDetail {
+  return {
+    conversation_id: "00000000-0000-0000-0000-000000000000",
+    created_at: new Date().toISOString(),
+    title: null,
+    user_id: 1,
+    profile_id: null,
+    state: {},
+    chat_messages: [],
+    ...opts,
+  };
+}
+
+export function setupGetMetabotConversationEndpoint(
+  detail: MetabotConversationDetail,
+) {
+  const routeName = `metabot-conversation-detail-${detail.conversation_id}`;
+  fetchMock.removeRoute(routeName);
+  fetchMock.get(
+    `path:/api/metabot/conversations/${detail.conversation_id}`,
+    detail,
+    { name: routeName },
+  );
+}
+
+export function setupGetMetabotConversationEndpointError(
+  conversationId: string,
+  status = 500,
+) {
+  const routeName = `metabot-conversation-detail-${conversationId}`;
+  fetchMock.removeRoute(routeName);
+  fetchMock.get(
+    `path:/api/metabot/conversations/${conversationId}`,
+    { status },
+    { name: routeName },
   );
 }
 
