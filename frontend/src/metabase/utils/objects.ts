@@ -5,7 +5,7 @@ export const getObjectEntries = <K extends string, V>(
 };
 
 export const getObjectKeys = <K extends string>(
-  obj: Record<K, unknown>,
+  obj: Partial<Record<K, unknown>>,
 ): K[] => {
   return Object.keys(obj) as K[];
 };
