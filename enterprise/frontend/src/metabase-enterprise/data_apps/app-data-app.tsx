@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
-import { DataAppIframeApp } from "./DataAppIframeApp";
+import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
 
 /**
  * Entry point loaded by `data-app.html` and served from `/embed/apps/:name`.

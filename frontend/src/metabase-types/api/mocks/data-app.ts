@@ -1,4 +1,4 @@
-import type { DataApp, DataAppRepoStatus } from "metabase-types/api";
+import type { DataApp } from "metabase-types/api";
 
 export const createMockDataApp = (opts?: Partial<DataApp>): DataApp => ({
   id: 1,
@@ -13,12 +13,5 @@ export const createMockDataApp = (opts?: Partial<DataApp>): DataApp => ({
   sync_error: null,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
-  ...opts,
-});
-
-export const createMockDataAppRepoStatus = (
-  opts?: Partial<DataAppRepoStatus>,
-): DataAppRepoStatus => ({
-  configured: true,
   ...opts,
 });

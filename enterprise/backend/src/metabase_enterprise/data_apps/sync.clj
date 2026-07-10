@@ -12,7 +12,6 @@
    reads, so a failed sync never takes a working app offline, and the admin
    `enabled` toggle is preserved across syncs."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase.settings.core :as setting]
@@ -37,12 +36,15 @@
 (defn- ->bytes ^bytes [^String s]
   (.getBytes s "UTF-8"))
 
-(defn repo-configured?
-  "True when a repository is connected via remote-sync. Read by keyword so this
-   OSS namespace has no compile-time dependency on the enterprise remote-sync
-   module; returns false when that module (and its setting) isn't loaded."
+(defn repo-url
+  "The connected remote-sync repository URL, or nil when none is configured. Read
+   by keyword so this OSS namespace has no compile-time dependency on the
+   enterprise remote-sync module; returns nil when that module (and its setting)
+   isn't loaded."
   []
-  (not (str/blank? (try (setting/get :remote-sync-url) (catch Throwable _ nil)))))
+  (let [url (try (setting/get :remote-sync-url) (catch Throwable _ nil))]
+    (when-not (str/blank? url)
+      url)))
 
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 
@@ -136,10 +138,11 @@
       :list-files (fn [] -> [<path-string> ...])
       :sha        <commit-sha-string>}
 
-   Discovers every `data_apps/<dir>/data_app.yml`, upserts a row per app, and
-   prunes rows whose directory is gone — all in one transaction. Returns
+   Discovers every `data_apps/<dir>/data_app.yml` and upserts a row per app in a
+   single transaction. Apps not present in the snapshot are left untouched (a
+   sync never deletes — removal is an explicit admin action). Returns
    `{:synced <n>, :changed <n>, :sha <sha>, :config-errors [<message> ...]}`,
-   where `:changed` is how many apps this sync actually created/updated/removed
+   where `:changed` is how many apps this sync actually created/updated
    (a `last_synced_sha` bump on an unchanged app does not count). A malformed
    `data_app.yml` is isolated (collected into `:config-errors`, that app skipped)
    rather than aborting the others; per-app bundle failures are recorded on the
@@ -159,23 +162,17 @@
       (throw (ex-info (tru "Two data apps in the repository share a slug.")
                       {:status-code 400})))
     (let [changed
+          ;; Upsert-only: a sync never deletes. Apps materialized from a previous
+          ;; repo are kept (they survive unlinking, and switching repos), and an
+          ;; app sharing a slug is overridden in place by `upsert-by-name!`. Rows
+          ;; are removed only by an explicit admin action (see the API's DELETE).
           (t2/with-transaction [_conn]
-            (let [upserted (reduce (fn [n cfg]
-                                     (cond-> n
-                                       (sync-app! (get existing (:slug cfg))
-                                                  (assoc cfg :sha sha :read-file read-file))
-                                       inc))
-                                   0 good)
-                  ;; Prune apps whose directory is gone — but only when every config
-                  ;; parsed. With an unparsed config we can't tell a removed app from
-                  ;; one we failed to read this sync, so we leave existing rows alone.
-                  orphans  (when (empty? errors)
-                             (set/difference (set (keys existing)) (set slugs)))]
-              (when (seq orphans)
-                (t2/delete! :model/DataApp :name [:in orphans])
-                (log/infof "[data-app] pruned %d app(s) removed from the repo: %s"
-                           (count orphans) (str/join ", " orphans)))
-              (+ upserted (count orphans))))]
+            (reduce (fn [n cfg]
+                      (cond-> n
+                        (sync-app! (get existing (:slug cfg))
+                                   (assoc cfg :sha sha :read-file read-file))
+                        inc))
+                    0 good))]
       (log/infof "[data-app] synced sha=%s apps=%d changed=%d errors=%d"
                  sha (count good) changed (count errors))
       {:synced (count good), :changed changed, :sha sha, :config-errors errors})))

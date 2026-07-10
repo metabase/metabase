@@ -13,7 +13,7 @@ export const DataAppsNav = () => {
   return (
     <SettingsNavItem
       path={Urls.DATA_APP_URL_SEGMENT}
-      icon="dashboard"
+      icon="app"
       label={
         <Flex gap="sm" align="center">
           <span>{t`Data apps`}</span>

@@ -4,8 +4,9 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
-import { AppView } from "./AppView";
-import { DATA_APP_ERROR_MESSAGE_TYPE } from "./constants";
+import { DATA_APP_ERROR_MESSAGE_TYPE } from "../../constants";
+
+import { DataAppView } from "./DataAppView";
 
 jest.mock("metabase-enterprise/api", () => ({
   ...jest.requireActual("metabase-enterprise/api"),
@@ -33,10 +34,10 @@ function setup({
     error,
   } as unknown as ReturnType<typeof useGetDataAppQuery>);
 
-  renderWithProviders(<AppView params={{ name }} />);
+  renderWithProviders(<DataAppView params={{ name }} />);
 }
 
-describe("AppView", () => {
+describe("DataAppView", () => {
   afterEach(() => jest.clearAllMocks());
 
   it("shows a not-found screen when the name is empty", () => {

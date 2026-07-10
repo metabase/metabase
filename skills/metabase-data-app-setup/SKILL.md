@@ -240,6 +240,14 @@ src/
 
 Vite bundles everything reachable from `src/index.tsx` into a single `dist/index.js` IIFE — the folder layout is purely for your own readability.
 
+**If the app has multiple tabs (or any top-level screen switcher), the default — leftmost / first — tab MUST be selected on initial load.** The app should never boot to a blank page, an empty shell, or a "nothing selected" state that waits for the user to click. Agents repeatedly forget this. For local-state tabs, initialize the active tab to the first one so the very first render shows it:
+
+```tsx
+const [active, setActive] = useState(TABS[0].id); // default = leftmost tab
+```
+
+If the tabs are instead backed by URL routes (multiple pages), the same rule applies via the router — see the `metabase-data-app-routing` skill for making the base path `/` resolve to the default tab. Either way, verify by loading the app fresh: the leftmost tab's content is visible immediately and reads as selected.
+
 **The build output is one self-contained `.js` file — nothing else.** The backend serves a single bundle, so there are no sidecar files: CSS is inlined into the JS, and every imported asset (images, fonts, SVGs-as-URLs) is base64-inlined as a data URI. So `import logo from "./logo.png"` / `import iconUrl from "./icon.svg"` give you a ready-to-use data-URI string, and SVGs can also be imported as React components with the **`?react`** suffix (built-in `svgr`): `import Icon from "./icon.svg?react"`. Everything gets baked into `dist/index.js` — just keep large binaries out, since inlining inflates the bundle. (If your editor doesn't recognize a `?react` import, add `declare module "*.svg?react";` to a `.d.ts` in `src/`.)
 
 ### 3. Import SDK values from the correct SDK entrypoint
@@ -299,6 +307,42 @@ use a pale hover surface like `#EAF4FF`, not the brand blue itself.
 **The theme only styles SDK widgets — never your own UI.** For your page background, headers, card wrappers, etc., use inline `style={{ background: "#f5f5f7" }}` or CSS modules on your own elements.
 
 **Don't expect per-subtree theming.** Multiple `<MetabaseProvider>`s on the page fight for the single CSS-variable slot. If the look needs to change with state, recompute `sdkTheme` at the App level and re-render — the whole tree re-themes.
+
+## Custom error UI (optional)
+
+When an embedded question or dashboard can't load — its `questionId` was removed, the user lacks access, or a request fails — the host renders a **neutral built-in error state** in place of that component (a muted icon + the SDK's message). This needs no setup; leave it alone unless the app has a strong reason to restyle it.
+
+To match the app's look, return your own `errorComponent` in the factory's `providerProps` (the same object that carries `theme`). It's an ordinary `providerProps` key, not a change to the factory shape — safe to add:
+
+```tsx
+// src/components/AppError.tsx
+import type { SdkErrorComponentProps } from "@metabase/embedding-sdk-react";
+
+export default function AppError({ message }: SdkErrorComponentProps) {
+  return (
+    <div style={{ padding: 16, textAlign: "center", color: "#6b7280" }}>
+      {message}
+    </div>
+  );
+}
+```
+
+```tsx
+// src/index.tsx — add the key alongside `theme`
+import AppError from "./components/AppError";
+
+const factory: DataAppFactory = () => ({
+  component: App,
+  providerProps: { theme: sdkTheme, errorComponent: AppError },
+});
+```
+
+Rules:
+
+- **It replaces the error UI for *every* SDK component in the app**, not just not-found — so keep the copy generic. Render `message` (or your own wording), not an assumption about which error occurred.
+- `message` is a `ReactNode` — render it as-is; don't call `.toString()` or index into it.
+- Keep it a small **presentational** component. It renders inside the host's provider, but treat it as leaf UI — no data hooks, no `useMetabaseQuery`.
+- Omit `errorComponent` entirely to keep the neutral default. There's no need to re-implement it.
 
 ## Available SDK surface
 

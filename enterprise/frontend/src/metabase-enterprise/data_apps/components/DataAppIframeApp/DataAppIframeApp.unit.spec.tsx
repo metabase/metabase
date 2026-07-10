@@ -2,17 +2,22 @@ import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { DataAppIframeApp } from "./DataAppIframeApp";
-import { readNameFromUrl } from "./lib/read-name-from-url";
-import { reportErrorToParent } from "./lib/report-error-to-parent";
-import { useDataAppBundle } from "./lib/use-data-app-bundle";
+import { readNameFromUrl } from "../../lib/read-name-from-url";
+import { reportErrorToParent } from "../../lib/report-error-to-parent";
+import { useDataAppBundle } from "../../lib/use-data-app-bundle";
 
-jest.mock("./lib/read-name-from-url", () => ({ readNameFromUrl: jest.fn() }));
-jest.mock("./lib/use-data-app-bundle", () => ({ useDataAppBundle: jest.fn() }));
-jest.mock("./lib/report-error-to-parent", () => ({
+import { DataAppIframeApp } from "./DataAppIframeApp";
+
+jest.mock("../../lib/read-name-from-url", () => ({
+  readNameFromUrl: jest.fn(),
+}));
+jest.mock("../../lib/use-data-app-bundle", () => ({
+  useDataAppBundle: jest.fn(),
+}));
+jest.mock("../../lib/report-error-to-parent", () => ({
   reportErrorToParent: jest.fn(),
 }));
-jest.mock("./components/DataAppProvider", () => ({
+jest.mock("../DataAppProvider/DataAppProvider", () => ({
   DataAppProvider: ({ children }: { children: ReactNode }) => (
     <div data-testid="data-app-provider">{children}</div>
   ),
