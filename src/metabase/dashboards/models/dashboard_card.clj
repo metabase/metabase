@@ -81,11 +81,10 @@
   "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
   card or heading. `display` is the virtual display type as a string (\"text\", \"heading\", ...).
   Mirrors the shape the frontend saves; see `createVirtualCard` in
-  frontend/src/metabase/dashboard/utils.ts."
+  frontend/src/metabase/common/utils/dashboard.ts."
   [display text]
   (cond-> {:virtual_card {:name                   nil
                           :display                display
-                          :dataset_query          {}
                           :visualization_settings {}
                           :archived               false}
            :text         text}

@@ -1339,7 +1339,7 @@
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
-   add/add_heading/add_text/remove/move mutations applied in order."
+   add/add_heading/add_text/update_text/remove/move mutations applied in order."
   [:map
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
