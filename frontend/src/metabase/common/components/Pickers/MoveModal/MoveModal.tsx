@@ -91,7 +91,7 @@ export const MoveModal = ({
       }
 
       if (isDisabledItem) {
-        return isDisabledItem(item as OmniPickerCollectionItem);
+        return isDisabledItem(item);
       }
 
       return false;
@@ -166,7 +166,7 @@ export const MoveModal = ({
         return onMove({
           id: destination.id,
           model: destination.model,
-        } as MoveDestination);
+        });
       }
     },
     [onMove, canMoveToDashboard],
@@ -266,10 +266,7 @@ export const BulkMoveModal = ({
       if (item.model === "collection") {
         const hasInvalidItem = selectedItems.some(
           (selectedItem) =>
-            !canMoveCollectionToLibraryDestination(
-              selectedItem as OmniPickerCollectionItem,
-              item,
-            ) ||
+            !canMoveCollectionToLibraryDestination(selectedItem, item) ||
             !canPlaceEntityInCollectionOrDescendants(
               selectedItem.model,
               getCollectionType(item),

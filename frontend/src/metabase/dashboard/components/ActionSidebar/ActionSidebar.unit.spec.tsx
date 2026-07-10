@@ -99,7 +99,7 @@ describe("Dashboard > ActionSidebar", () => {
     const textInput = screen.getByLabelText("Button text");
 
     expect(textInput).toHaveValue(
-      actionDashcard.visualization_settings["button.label"] as string,
+      actionDashcard.visualization_settings["button.label"],
     );
     await userEvent.clear(textInput);
     await userEvent.type(textInput, "xyz");

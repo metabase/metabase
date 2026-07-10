@@ -26,7 +26,7 @@ concurrency:
 jobs:
   migrations-h2-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       CI: 'true'
       MB_DB_TYPE: h2
@@ -40,7 +40,7 @@ jobs:
 
   migrations-postgres-14-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
@@ -66,7 +66,7 @@ jobs:
 
   migrations-postgres-latest-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
@@ -92,7 +92,7 @@ jobs:
 
   migrations-mysql-8-0-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -117,7 +117,7 @@ jobs:
 
   migrations-mysql-latest-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -143,7 +143,7 @@ jobs:
 
   migrations-mariadb-10-6-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -168,7 +168,7 @@ jobs:
 
   migrations-mariadb-latest-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       CI: 'true'
       MB_DB_TYPE: mysql

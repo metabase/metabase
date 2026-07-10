@@ -85,7 +85,7 @@ export function ListViewItem({
             cols={cols}
             column={titleColumn}
             settings={settings}
-            rawValue={row[cols.indexOf(titleColumn as DatasetColumn)]}
+            rawValue={row[cols.indexOf(titleColumn)]}
           />
         )}
       </Flex>

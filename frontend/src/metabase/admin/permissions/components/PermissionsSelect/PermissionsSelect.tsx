@@ -1,7 +1,6 @@
 import { Fragment, memo, useState } from "react";
 
-import { Toggle } from "metabase/common/components/Toggle";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
@@ -147,10 +146,10 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {hasChildren && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
-              <Toggle
-                small
-                value={toggleState || false}
-                onChange={onToggleChange}
+              <Switch
+                size="sm"
+                checked={toggleState || false}
+                onChange={(e) => onToggleChange(e.currentTarget.checked)}
                 disabled={toggleDisabled ?? false}
               />
             </ToggleContainer>

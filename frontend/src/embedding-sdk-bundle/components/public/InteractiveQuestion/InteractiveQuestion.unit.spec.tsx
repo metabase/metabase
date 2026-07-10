@@ -5,6 +5,7 @@ import {
   setupEnterprisePlugins,
 } from "__support__/enterprise";
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -45,6 +46,7 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
+import { utf8_to_b64url } from "metabase/utils/encoding";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -345,5 +347,63 @@ describe('questionId: "new"', () => {
     ).not.toBeInTheDocument();
     expect(withinPopover.getByText("Raw Data")).toBeVisible();
     expect(withinPopover.getByText("Models")).toBeVisible();
+  });
+});
+
+// Regression test for EMB-2042: the `useMetabot` hook renders `CurrentChart`
+// via `InteractiveQuestionInternal` with a `query` prop (Metabot's
+// `navigate_to` path). When that card is native, the SQL editor must open.
+describe("native query prop (Metabot SQL editor)", () => {
+  const NATIVE_QUERY_PATH = `/question#${utf8_to_b64url(
+    JSON.stringify({
+      dataset_query: {
+        database: TEST_DB.id,
+        type: "native",
+        native: { query: "" },
+      },
+    }),
+  )}`;
+
+  async function setup() {
+    setupDatabasesEndpoints([TEST_DB]);
+    setupAdhocQueryMetadataEndpoint(
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: 1 })],
+    });
+    setupSearchEndpoints([]);
+
+    renderWithSDKProviders(
+      <InteractiveQuestionInternal query={NATIVE_QUERY_PATH} />,
+      {
+        componentProviderProps: {
+          authConfig: createMockSdkConfig(),
+        },
+      },
+    );
+
+    await waitForLoaderToBeRemoved();
+  }
+
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  beforeEach(() => {
+    setupEnterprisePlugins();
+  });
+
+  it("opens the SQL editor when the query is a native card", async () => {
+    await setup();
+
+    const editor = await screen.findByTestId("mock-native-query-editor");
+    expect(editor).toBeInTheDocument();
+
+    // Assert the SQL builder chrome actually rendered inside the editor, not
+    // just an empty container: the data source selector shows the database.
+    expect(within(editor).getByTestId("selected-database")).toHaveTextContent(
+      TEST_DB.name,
+    );
   });
 });

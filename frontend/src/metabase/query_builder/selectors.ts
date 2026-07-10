@@ -792,7 +792,7 @@ export const getTimeseriesXValues = createSelector(
       : null,
 );
 
-const getTimeseriesDataInterval = createSelector(
+export const getTimeseriesDataInterval = createSelector(
   [
     getTransformedSeries,
     getVisualizationSettings,

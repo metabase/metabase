@@ -82,12 +82,14 @@ export function useTemporalGranularity(
     ? Lib.availableTemporalBuckets(query, stageIndex, temporalColumn)
     : [];
 
-  const availableItems: TemporalGranularityItem[] = availableBuckets.map(
+  const availableItems: TemporalGranularityItem[] = availableBuckets.flatMap(
     (bucket) => {
       const info = Lib.displayInfo(query, stageIndex, bucket);
-      const unit = info.shortName as TemporalUnit;
-
-      return { bucket, unit, label: Lib.describeTemporalUnit(unit) };
+      if (info.shortName === "default") {
+        return [];
+      }
+      const unit = info.shortName;
+      return [{ bucket, unit, label: Lib.describeTemporalUnit(unit) }];
     },
   );
 

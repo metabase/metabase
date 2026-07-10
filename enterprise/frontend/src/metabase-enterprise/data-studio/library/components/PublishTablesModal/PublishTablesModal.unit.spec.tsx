@@ -76,7 +76,7 @@ function setup({
   });
   setupCollectionByIdEndpoint({ collections: [dataCollection] });
   setupCollectionItemsEndpoint({
-    collection: { id: dataCollection.id as number },
+    collection: { id: dataCollection.id },
     collectionItems: [],
   });
   setupRootCollectionItemsEndpoint({

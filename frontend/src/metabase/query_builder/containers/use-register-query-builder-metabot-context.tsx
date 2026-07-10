@@ -109,7 +109,7 @@ function transformSeries(rawSeries: RawSeries): RawSeries {
   const remappedSeries = extractRemappings(rawSeries);
   return rawSeries[0]?.card.display === "row"
     ? transformCartesianSeries(remappedSeries)
-    : (getVisualizationTransformed(remappedSeries).series as RawSeries);
+    : getVisualizationTransformed(remappedSeries).series;
 }
 
 export function processSeriesData(

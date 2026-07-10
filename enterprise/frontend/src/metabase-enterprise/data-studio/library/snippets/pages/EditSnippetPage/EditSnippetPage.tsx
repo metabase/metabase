@@ -1,6 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -20,6 +19,7 @@ import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHe
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

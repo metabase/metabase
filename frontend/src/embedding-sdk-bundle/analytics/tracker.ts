@@ -13,6 +13,7 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import { initMetaplow } from "metabase/utils/metaplow";
 
 export function deriveAuthMethod(
   authConfig: MetabaseAuthConfig,
@@ -40,6 +41,12 @@ export function useInitSdkTracker(
     if (isEmbeddingEajs() || !isTrackingEnabled) {
       return;
     }
+    initMetaplow({
+      // Via frontend/src/embedding-sdk-bundle/analytics/snowplow.ts
+      // Omits userId — unlike the main-app tracker, SDK component usage is tracked at instance granularity;
+      // the analytics-uuid already identifies the account.
+      getUserId: () => undefined,
+    });
 
     const authMethod = deriveAuthMethod(authConfig);
     const wasJustInitialized = initSdkTracker({
