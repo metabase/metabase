@@ -4,6 +4,7 @@ import type {
   GoalForeignColumnRef,
   GoalValue,
   ReferencedCard,
+  ResolvedGoalSegment,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -11,8 +12,12 @@ import {
   isGoalForeignColumnRef,
   isGoalSelfColumnRef,
   isGoalStaticValue,
+  isGoalValue,
   isObject,
+  isResolvedGoalSegment,
 } from "metabase-types/guards";
+
+import { segmentIsValid } from "./utils";
 
 export type GoalRefErrorReason =
   | "query-failed"
@@ -172,4 +177,63 @@ const getSegmentGoalValues = (rawSegments: unknown[]): unknown[] => {
   return rawSegments.flatMap((segment) =>
     isObject(segment) ? [segment.min, segment.max] : [],
   );
+};
+
+type ResolvedGoalSegments = {
+  segments: ResolvedGoalSegment[];
+  errors: GoalRefError[];
+};
+
+// Resolves the possibly dynamic min/max of every gauge segment to concrete numbers
+export const resolveGoalSegments = (
+  rawSegments: unknown, // TODO: unknown
+  data: DatasetData,
+): ResolvedGoalSegments => {
+  if (!Array.isArray(rawSegments)) {
+    return { segments: [], errors: [] };
+  }
+
+  const errors: GoalRefError[] = [];
+  const segments: ResolvedGoalSegment[] = [];
+
+  for (const rawSegment of rawSegments) {
+    if (!isObject(rawSegment)) {
+      continue;
+    }
+
+    const min = resolveGoalValue(
+      isGoalValue(rawSegment.min) ? rawSegment.min : null,
+      data,
+    );
+    const max = resolveGoalValue(
+      isGoalValue(rawSegment.max) ? rawSegment.max : null,
+      data,
+    );
+
+    if (min.error) {
+      errors.push(min.error);
+    }
+
+    if (max.error) {
+      errors.push(max.error);
+    }
+
+    const resolvedSegment = {
+      color:
+        typeof rawSegment.color === "string" ? rawSegment.color : undefined,
+      label:
+        typeof rawSegment.label === "string" ? rawSegment.label : undefined,
+      min: min.value,
+      max: max.value,
+    };
+
+    if (
+      isResolvedGoalSegment(resolvedSegment) &&
+      segmentIsValid(resolvedSegment)
+    ) {
+      segments.push(resolvedSegment);
+    }
+  }
+
+  return { segments, errors };
 };

@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
 import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
+import { resolveGoalSegments } from "metabase/visualizations/lib/dynamic-goals";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -11,8 +12,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
-
-import { resolveGaugeSegments } from "./utils";
 
 export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Gauge`,
@@ -48,7 +47,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
       getDefault(series, vizSettings) {
-        const { segments } = resolveGaugeSegments(
+        const { segments } = resolveGoalSegments(
           vizSettings["gauge.segments"],
           series[0].data,
         );
