@@ -58,7 +58,7 @@
 (defn- boolean-field-clause? [clause boolean-types]
   (and (driver-api/is-clause? :field clause)
        (let [[id-or-name options] (driver-api/match-one clause
-                                    [_ (options :guard :lib/uuid) id-or-name] [id-or-name options]
+                                    [_ (options :guard :lib/uuid) id-or-name] [id-or-name options] ;; mbql5
                                     [_ id-or-name options] [id-or-name options])
              has-some-type? (some-fn :base-type :base_type :effective-type :effective_type)]
          (or (boolean-typed? options boolean-types)
@@ -71,7 +71,7 @@
 (defn- boolean-value-clause? [clause]
   (and (driver-api/is-clause? :value clause)
        (or (boolean? (driver-api/match-one clause
-                       [_ (opts :guard :lib/uuid) val] val
+                       [_ (opts :guard :lib/uuid) val] val ;; mbql5
                        [_ val] val))
            (boolean-typed-clause? clause))))
 
@@ -83,7 +83,7 @@
   [driver clause]
   (and (driver-api/is-clause? :expression clause)
        (->> (driver-api/match-one clause
-              [_ (opts :guard :lib/uuid) name] name
+              [_ (opts :guard :lib/uuid) name] name ;; mbql5
               [_ name] name)
             (sql.qp/expression-by-name driver sql.qp/*inner-query*)
             (boolean-value-clause?))))
@@ -96,7 +96,7 @@
   [driver clause]
   (and (driver-api/is-clause? :expression clause)
        (->> (driver-api/match-one clause
-              [_ (opts :guard :lib/uuid) name] name
+              [_ (opts :guard :lib/uuid) name] name ;; mbql5
               [_ name] name)
             (sql.qp/expression-by-name driver sql.qp/*inner-query*)
             (driver-api/is-clause? lib.schema.filter/predicate-operators))))

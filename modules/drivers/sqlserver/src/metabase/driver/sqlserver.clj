@@ -644,7 +644,7 @@
   [driver clause]
   (cond-> clause
     (sql.qp.boolean-to-comparison/predicate-expression-clause? driver clause)
-    (lib.options/update-options assoc ::sql.qp/wrap-in-case true ::sql.qp/add-cast :bit)
+    (lib.options/update-options assoc ::sql.qp/add-cast :bit ::sql.qp/wrap-in-case true)
 
     (sql.qp.boolean-to-comparison/boolean-expression-clause? driver clause)
     (lib.options/update-options assoc ::sql.qp/add-cast :bit)))
@@ -677,16 +677,19 @@
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
 
+(defn- boolean->comparison [driver clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison driver clause))
+
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
   [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filter])]
-    (->> (update query :filter #(sql.qp.boolean-to-comparison/boolean->comparison driver %))
+    (->> (update query :filter #(boolean->comparison driver %))
          (parent-method driver :filter honeysql-form))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filters]
   [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filters])]
-    (->> (update query :filters #(mapv (partial sql.qp.boolean-to-comparison/boolean->comparison driver) %))
+    (->> (update query :filters #(mapv (partial boolean->comparison driver) %))
          (parent-method driver :filters honeysql-form))))
 
 ;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
@@ -705,17 +708,17 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :and]
   [driver clause]
-  (->> (mapv #(sql.qp.boolean-to-comparison/boolean->comparison driver %) clause)
+  (->> (mapv #(boolean->comparison driver %) clause)
        ((get-method sql.qp/->honeysql [:sql-mbql5 :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :or]
   [driver clause]
-  (->> (mapv #(sql.qp.boolean-to-comparison/boolean->comparison driver %) clause)
+  (->> (mapv #(boolean->comparison driver %) clause)
        ((get-method sql.qp/->honeysql [:sql-mbql5 :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :not]
   [driver clause]
-  (->> (mapv #(sql.qp.boolean-to-comparison/boolean->comparison driver %) clause)
+  (->> (mapv #(boolean->comparison driver %) clause)
        ((get-method sql.qp/->honeysql [:sql-mbql5 :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :case]
