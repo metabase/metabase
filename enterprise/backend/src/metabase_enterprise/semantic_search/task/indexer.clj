@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
@@ -30,6 +31,10 @@
 ;; but if I do that quartz cannot initialize the job - there is probably a way around this.
 (defonce ^:private execution-thread-ref (volatile! nil))
 
+(defn- hnsw-strategy? []
+  (contains? search.config/hnsw-index-backed-strategies
+             (semantic.settings/semantic-search-vector-strategy)))
+
 (deftype ^{DisallowConcurrentExecution true
            :doc                        "Runs an indexer process for a time, expects to be rescheduled to continue"}
  SemanticSearchIndexer []
@@ -41,16 +46,22 @@
           (vreset! execution-thread-ref (Thread/currentThread))
           (let [pgvector       (semantic.env/get-pgvector-datasource!)
                 index-metadata (semantic.env/get-index-metadata)]
-            (if (semantic.index-metadata/get-active-index-state pgvector index-metadata)
-              (semantic-search.indexer/quartz-job-run! pgvector index-metadata)
+            (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
+              (do
+                ;; The strategy setter's build event no-ops while semantic is inactive, so an index-backed
+                ;; strategy configured before (re)activation arrives here with no HNSW index. CONCURRENTLY
+                ;; registers the index in pg_indexes as soon as the build starts, so this fires only once.
+                (when (and (hnsw-strategy?)
+                           (not (semantic.u/index-exists? pgvector (semantic.index/hnsw-index-name index))))
+                  (semantic.core/build-hnsw-index-async!))
+                (semantic-search.indexer/quartz-job-run! pgvector index-metadata))
               ;; Engines can activate at runtime (license applied, kill switch re-enabled,
               ;; additional-search-engines set on another node); initializing from the next tick heals
               ;; every such path within seconds. Initialize all active engines, not just semantic:
               ;; activation may also have activated dependencies with no index.
               (do
                 (search/init-index!)
-                (when (contains? search.config/hnsw-index-backed-strategies
-                                 (semantic.settings/semantic-search-vector-strategy))
+                (when (hnsw-strategy?)
                   (semantic.core/build-hnsw-index-async!)))))
           (finally
             (locking execution-thread-ref
@@ -85,6 +96,5 @@
     ;; Safety net: an instance that booted already configured for an HNSW-index-backed strategy (set via env
     ;; var, or set before an active index existed) never saw the setter's transition event, so build the
     ;; index now. Covers :hnsw and the :hnsw-iterative-* strategies, which all query through the index.
-    (when (contains? search.config/hnsw-index-backed-strategies
-                     (semantic.settings/semantic-search-vector-strategy))
+    (when (hnsw-strategy?)
       (semantic.core/build-hnsw-index-async!))))
