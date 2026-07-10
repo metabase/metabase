@@ -25,20 +25,14 @@ on:
         type: string
         required: false
       release_type:
-        description: "Release type, passed to `semver -i` (alpha/beta bump the prerelease identifier; preminor bumps master to the next major's alpha; patch/minor graduate or bump a stable version)"
+        description: "Release type, passed to `semver -i` (alpha/beta bump the prerelease identifier; preminor bumps master to the next major's alpha; patch graduates or bumps a stable version)"
         type: choice
         required: true
-        # OPEN QUESTION (EMB-1518 review cycle 3, finding #17, for Nicolo/Roman):
-        # `minor` on an old release branch (e.g. release-x.62.x) bumps to the
-        # *next* major's version line (0.62.1 -> 0.63.0), colliding with
-        # master's own 0.63.0 graduation - `patch` already covers the intended
-        # "graduate a beta to stable" case, so `minor` may not have a safe use.
         options:
           - alpha
           - beta
           - preminor
           - patch
-          - minor
 
 concurrency:
   # one version-bump in flight per branch at a time, to avoid racing PRs
@@ -146,7 +140,7 @@ jobs:
               # prerelease counter, never bump the minor version.
               NEW_VERSION=$(npx --yes semver -i preminor --preid=alpha "$CURRENT_VERSION")
               ;;
-            patch|minor)
+            patch)
               NEW_VERSION=$(npx --yes semver -i "$RELEASE_TYPE" "$CURRENT_VERSION")
               ;;
             *)
@@ -174,7 +168,7 @@ jobs:
           # dist-tags (confirmed via `npm dist-tag ls @metabase/embedding-sdk-react`
           # - 51-stable through 62-stable, and 57-beta through 62-beta, are all
           # in active use today); plain "alpha" is also real and in use.
-          # Patch/minor bumps default to "<major>-stable", beta to
+          # Patch bumps default to "<major>-stable", beta to
           # "<major>-beta", alpha/preminor to the plain "alpha" channel name
           # (preminor is still an alpha release, just of the next major).
           RELEASE_TYPE="${{ inputs.release_type }}"
@@ -187,12 +181,12 @@ jobs:
             beta)
               DIST_TAG="${MAJOR_VERSION}-beta"
               ;;
-            patch|minor)
+            patch)
               DIST_TAG="${MAJOR_VERSION}-stable"
               ;;
           esac
 
-          # tagAsLatest: for patch/minor (the stable-channel case), it's true
+          # tagAsLatest: for patch (the stable-channel case), it's true
           # only when this bump's major version matches `vars.LATEST_VERSION`
           # (the major version of the most recent gold/stable release) - that
           # repo variable is the one reliable signal this workflow has for
@@ -201,7 +195,7 @@ jobs:
           # `vars.LATEST_VERSION` can be unset (forks, local testing) - an
           # empty value is treated as "no match", not an error.
           case "$RELEASE_TYPE" in
-            patch|minor)
+            patch)
               if [ -n "$LATEST_VERSION" ] && [ "$MAJOR_VERSION" = "$LATEST_VERSION" ]; then
                 TAG_AS_LATEST=true
               else
