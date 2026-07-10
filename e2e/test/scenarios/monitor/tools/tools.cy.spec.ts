@@ -433,9 +433,9 @@ describe("monitor > tools > erroring questions ", () => {
           .should("be.visible");
         // nothing selected -> the bulk action bar (and its button) is hidden
         cy.button("Rerun selected").should("not.exist");
-        cy.findByPlaceholderText("Error contents").should("be.enabled");
-        cy.findByPlaceholderText("DB name").should("be.enabled");
-        cy.findByPlaceholderText("Collection name").should("be.enabled");
+        cy.findByPlaceholderText(
+          "Search by question, error, database, or collection",
+        ).should("be.enabled");
       });
     });
 
@@ -464,9 +464,9 @@ describe("monitor > tools > erroring questions ", () => {
         // rerunning clears the selection, so the bulk action bar closes
         cy.button("Rerun selected").should("not.exist");
 
-        cy.findByPlaceholderText("Error contents").should("be.enabled");
-        cy.findByPlaceholderText("DB name").should("be.enabled");
-        cy.findByPlaceholderText("Collection name")
+        cy.findByPlaceholderText(
+          "Search by question, error, database, or collection",
+        )
           .should("be.enabled")
           .type("foo");
 
@@ -476,7 +476,9 @@ describe("monitor > tools > erroring questions ", () => {
           .findByText("No results")
           .should("be.visible");
 
-        cy.findByPlaceholderText("Collection name").clear();
+        cy.findByPlaceholderText(
+          "Search by question, error, database, or collection",
+        ).clear();
 
         fixQuestion(brokenQuestionDetails.name);
 

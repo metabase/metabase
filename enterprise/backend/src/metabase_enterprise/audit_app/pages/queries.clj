@@ -9,11 +9,9 @@
 ;; List of all failing questions
 (defmethod audit.i/internal-query ::bad-table
   ([_]
-   (audit.i/internal-query ::bad-table nil nil nil nil nil))
+   (audit.i/internal-query ::bad-table nil nil nil))
   ([_
-    error-filter
-    db-filter
-    collection-filter
+    search-term
     sort-column
     sort-direction]
    (let [total-count (volatile! nil)]
@@ -84,9 +82,7 @@
                                 [:= :card.archived false]
                                 [:<> :latest_qe.error nil]
                                 [:not= :card.database_id audit/audit-db-id]]}
-                   (common/add-search-clause error-filter :latest_qe.error)
-                   (common/add-search-clause db-filter :db.name)
-                   (common/add-search-clause collection-filter coll-name)
+                   (common/add-search-clause search-term :card.name :latest_qe.error :db.name coll-name)
                    (common/add-sort-clause
                     (or sort-column "card.name")
                     (or sort-direction "asc")))))})))

@@ -22,6 +22,7 @@ import { type ErroringCard, SORT_COLUMNS } from "./types";
 import { PAGE_SIZE } from "./utils";
 
 const COLUMN_NAMES = ["card_id", ...SORT_COLUMNS];
+const SEARCH_PLACEHOLDER = "Search by question, error, database, or collection";
 
 function createDatasetResponse(cards: Partial<ErroringCard>[], total?: number) {
   const fullCards = cards.map(createMockErroringCard);
@@ -115,7 +116,7 @@ describe("ErrorOverview", () => {
     expect(query.fn).toBe(
       "metabase-enterprise.audit-app.pages.queries/bad-table",
     );
-    expect(query.args).toEqual(["", "", "", "last_run_at", "desc"]);
+    expect(query.args).toEqual(["", "last_run_at", "desc"]);
     expect(query.limit).toBe(PAGE_SIZE);
     expect(query.offset).toBe(0);
     // the QP schema rejects an explicit null database; the key must be absent
@@ -144,7 +145,7 @@ describe("ErrorOverview", () => {
 
     expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
     expect(
-      screen.queryByPlaceholderText("Error contents"),
+      screen.queryByPlaceholderText(SEARCH_PLACEHOLDER),
     ).not.toBeInTheDocument();
   });
 
@@ -168,7 +169,7 @@ describe("ErrorOverview", () => {
       await screen.findByText("Internal audit query blew up"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByPlaceholderText("Error contents"),
+      screen.queryByPlaceholderText(SEARCH_PLACEHOLDER),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("erroring-questions-table"),
@@ -190,18 +191,12 @@ describe("ErrorOverview", () => {
     });
 
     await userEvent.type(
-      await screen.findByPlaceholderText("Error contents"),
+      await screen.findByPlaceholderText(SEARCH_PLACEHOLDER),
       "timeout",
     );
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.args[0]).toBe("timeout");
-    });
-
-    await userEvent.type(screen.getByPlaceholderText("DB name"), "pg");
-    await waitFor(async () => {
-      const query = await getLastDatasetQuery();
-      expect(query.args).toEqual(["timeout", "pg", "", "last_run_at", "desc"]);
+      expect(query.args).toEqual(["timeout", "last_run_at", "desc"]);
     });
 
     await waitFor(async () => {
@@ -222,7 +217,7 @@ describe("ErrorOverview", () => {
     );
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.args.slice(3)).toEqual(["card_name", "asc"]);
+      expect(query.args.slice(1)).toEqual(["card_name", "asc"]);
     });
 
     await userEvent.click(
@@ -230,7 +225,7 @@ describe("ErrorOverview", () => {
     );
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.args.slice(3)).toEqual(["card_name", "desc"]);
+      expect(query.args.slice(1)).toEqual(["card_name", "desc"]);
     });
 
     await userEvent.click(
@@ -238,7 +233,7 @@ describe("ErrorOverview", () => {
     );
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.args.slice(3)).toEqual(["card_name", "asc"]);
+      expect(query.args.slice(1)).toEqual(["card_name", "asc"]);
     });
   });
 

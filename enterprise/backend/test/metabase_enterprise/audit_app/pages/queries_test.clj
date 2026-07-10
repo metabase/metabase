@@ -43,16 +43,16 @@
                                                      :executor_id (mt/user->id :crowberto)
                                                      :started_at  #t "2026-01-01T11:00:00Z"})]
         (testing "an error filter matching only the erroring card"
-          (is (= 1 (bad-table-total "unique-broken-table-xyz" nil nil nil nil))))
+          (is (= 1 (bad-table-total "unique-broken-table-xyz" nil nil))))
         (testing "an error filter matching nothing -> no rows -> total 0"
-          (is (= 0 (bad-table-total "no-such-error-substring-abc" nil nil nil nil))))
+          (is (= 0 (bad-table-total "no-such-error-substring-abc" nil nil))))
         (testing "the total matches the number of returned rows"
           (is (= (count (mt/rows (run-query ::queries/bad-table
-                                            :args ["unique-broken-table-xyz" nil nil nil nil])))
-                 (bad-table-total "unique-broken-table-xyz" nil nil nil nil))))))))
+                                            :args ["unique-broken-table-xyz" nil nil])))
+                 (bad-table-total "unique-broken-table-xyz" nil nil))))))))
 
-(deftest bad-table-total-count-filter-clauses-test
-  (testing "the bad-table total_count honors the db-name and collection-name filters, not just the error filter"
+(deftest bad-table-search-term-matches-any-field-test
+  (testing "the single search term matches against question name, error text, db name, or collection name (OR, not AND)"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Database   {db-a :id} {:name "erroring-db-alpha"}
                      :model/Database   {db-b :id} {:name "erroring-db-beta"}
@@ -60,7 +60,7 @@
                      ;; two erroring cards sharing a unique error marker (so they can be
                      ;; isolated from any other erroring cards in the app DB) but living in
                      ;; different databases/collections
-                     :model/Card {card-a :id} {:name          "Filter card A"
+                     :model/Card {card-a :id} {:name          "Erroring Card Name Alpha"
                                                :database_id   db-a
                                                :collection_id coll-a}
                      ;; null collection -> "Our Analytics" fallback, different database
@@ -75,14 +75,23 @@
                                                      :executor_id (mt/user->id :crowberto)
                                                      :started_at  #t "2026-03-03T13:00:00Z"
                                                      :error       "shared-filter-marker-qq"})]
-        (testing "no db/collection filter matches both erroring cards"
-          (is (= 2 (bad-table-total "shared-filter-marker-qq" nil nil nil nil))))
-        (testing "the db-name filter narrows the count to the matching database"
-          (is (= 1 (bad-table-total "shared-filter-marker-qq" "erroring-db-alpha" nil nil nil))))
-        (testing "the collection-name filter narrows the count to the matching collection"
-          (is (= 1 (bad-table-total "shared-filter-marker-qq" nil "Erroring Collection Alpha" nil nil))))
+        (testing "a term matching the shared error text matches both cards"
+          (is (= 2 (bad-table-total "shared-filter-marker-qq" nil nil))))
+        (testing "a term matching only a question name reaches that field, not just error text"
+          (is (= 1 (bad-table-total "Erroring Card Name Alpha" nil nil))))
+        (testing "a term matching only a db name reaches that field, not just error text"
+          (is (= 1 (bad-table-total "erroring-db-alpha" nil nil))))
+        (testing "a term matching only a collection name reaches that field too"
+          (is (= 1 (bad-table-total "Erroring Collection Alpha" nil nil))))
         (testing "the null-collection card is reachable via the Our Analytics fallback name"
-          (is (= 1 (bad-table-total "shared-filter-marker-qq" nil "Our Analytics" nil nil))))))))
+          ;; "Our Analytics" is a common fallback shared by every uncollected card in the
+          ;; app db, so unlike the other terms above this can't be isolated to an exact
+          ;; total; assert card-b is included in the results instead.
+          (let [rows (mt/rows (run-query ::queries/bad-table
+                                         :args ["Our Analytics" nil nil]))]
+            (is (contains? (set (map first rows)) card-b))))
+        (testing "a term shared by both db names matches both cards via the db-name field"
+          (is (= 2 (bad-table-total "erroring-db" nil nil))))))))
 
 (deftest bad-table-no-duplicate-cards-test
   (testing "cards aren't duplicated when executions across cards share a started_at (latest_qe joins on card_id, not timestamp alone)"
@@ -101,9 +110,9 @@
                                                        :executor_id (mt/user->id :crowberto)
                                                        :started_at  shared-ts})]
           (let [rows (mt/rows (run-query ::queries/bad-table
-                                         :args ["collision-error-marker-abc" nil nil nil nil]))]
+                                         :args ["collision-error-marker-abc" nil nil]))]
             (testing "exactly one row, for the erroring card only (buggy join returns two)"
               (is (= 1 (count rows)))
               (is (= [erroring-id] (map first rows))))
             (testing "and the total_count agrees"
-              (is (= 1 (bad-table-total "collision-error-marker-abc" nil nil nil nil))))))))))
+              (is (= 1 (bad-table-total "collision-error-marker-abc" nil nil))))))))))

@@ -17,9 +17,7 @@ export type ErroringCard = {
 };
 
 export type ErroringQuestionsFilters = {
-  errorFilter: string;
-  dbFilter: string;
-  collectionFilter: string;
+  search: string;
 };
 
 export const SORT_COLUMNS = [

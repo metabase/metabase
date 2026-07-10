@@ -1,8 +1,8 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { type ChangeEvent, type ReactNode, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
-import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
+import { FixedSizeIcon, Loader, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type { ErroringQuestionsFilters } from "./types";
@@ -16,44 +16,9 @@ export function ErroringQuestionsFilterBar({
   hasLoader,
   onFiltersChange,
 }: ErroringQuestionsFilterBarProps) {
-  return (
-    <Group gap="md" align="center" wrap="wrap">
-      <FilterInput
-        flex={2}
-        placeholder={t`Error contents`}
-        rightSection={hasLoader ? <Loader size="sm" /> : undefined}
-        onChange={(errorFilter) => onFiltersChange({ errorFilter })}
-      />
-      <FilterInput
-        flex={1}
-        placeholder={t`DB name`}
-        onChange={(dbFilter) => onFiltersChange({ dbFilter })}
-      />
-      <FilterInput
-        flex={1}
-        placeholder={t`Collection name`}
-        onChange={(collectionFilter) => onFiltersChange({ collectionFilter })}
-      />
-    </Group>
-  );
-}
-
-type FilterInputProps = {
-  flex: number;
-  placeholder: string;
-  rightSection?: ReactNode;
-  onChange: (value: string) => void;
-};
-
-function FilterInput({
-  flex,
-  placeholder,
-  rightSection,
-  onChange,
-}: FilterInputProps) {
   const [value, setValue] = useState("");
   const handleChangeDebounced = useDebouncedCallback(
-    onChange,
+    (search: string) => onFiltersChange({ search }),
     SEARCH_DEBOUNCE_DURATION,
   );
 
@@ -65,11 +30,10 @@ function FilterInput({
   return (
     <TextInput
       value={value}
-      placeholder={placeholder}
-      flex={flex}
-      miw="8rem"
+      placeholder={t`Search by question, error, database, or collection`}
+      w="100%"
       leftSection={<FixedSizeIcon name="search" />}
-      rightSection={rightSection}
+      rightSection={hasLoader ? <Loader size="sm" /> : undefined}
       onChange={handleChange}
     />
   );

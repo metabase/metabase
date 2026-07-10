@@ -29,9 +29,7 @@ function parsePage(param: QueryParam): number {
 }
 
 export const DEFAULT_FILTERS: ErroringQuestionsFilters = {
-  errorFilter: "",
-  dbFilter: "",
-  collectionFilter: "",
+  search: "",
 };
 
 export const DEFAULT_SORTING: ErroringQuestionsSorting = {
@@ -54,14 +52,14 @@ const toDatasetQuery = (query: InternalDatasetQuery): DatasetQuery =>
   query as unknown as DatasetQuery;
 
 export function getErroringQuestionsQuery(
-  { errorFilter, dbFilter, collectionFilter }: ErroringQuestionsFilters,
+  { search }: ErroringQuestionsFilters,
   { column, direction }: ErroringQuestionsSorting,
   page: number,
 ): DatasetQuery {
   return toDatasetQuery({
     type: "internal",
     fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
-    args: [errorFilter, dbFilter, collectionFilter, column, direction],
+    args: [search, column, direction],
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
   });
