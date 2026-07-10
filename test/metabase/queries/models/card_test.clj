@@ -1177,6 +1177,52 @@
         (is (= "Orders, Count"
                (:query_description (t2/select-one :model/Card :id id))))))))
 
+(deftest ^:parallel query-description-skipped-for-metadata-provider-fetches-test
+  (testing "metadata-provider fetches of metric cards do not compute a query description (#74954)"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp
+        [:model/Card
+         {id :id}
+         {:name "My metric"
+          :type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             lib.convert/->legacy-MBQL)}]
+        (is (not (contains? (t2/select-one :metadata/metric :id id) :query-description)))
+        (is (not (contains? (t2/select-one :metadata/card :id id) :query-description)))))))
+
+(deftest query-description-metric-reference-cycle-test
+  (testing "selecting a metric card whose :metric references form a cycle completes with a :query_description (#74954)"
+    (letfn [(metric-query [metric-id]
+              {:database (mt/id)
+               :type     :query
+               :query    {:source-table (mt/id :orders)
+                          :aggregation  [["metric" metric-id]]}})]
+      ;; Search ingestion of a cycle-involved card recurses unboundedly in `lib.metadata.calculation/metadata-method
+      ;; :metric` (a separate defect from the one under test), so keep these cards out of the ingestion queue where
+      ;; concurrently-running tests would index them.
+      (binding [search.ingestion/*disable-updates* true]
+        (mt/with-temp
+          [:model/Card
+           {a-id :id}
+           {:name "Metric A"
+            :type :metric
+            :dataset_query (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (lib/aggregate (lib/count))
+                                 lib.convert/->legacy-MBQL))}
+           :model/Card
+           {b-id :id}
+           {:name "Metric B"
+            :type :metric
+            :dataset_query (metric-query a-id)}]
+          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (is (= "Orders, Metric B"
+                 (:query_description (t2/select-one :model/Card :id a-id))))
+          (is (= "Orders, Metric A"
+                 (:query_description (t2/select-one :model/Card :id b-id)))))))))
+
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"
     (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
