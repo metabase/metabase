@@ -82,10 +82,10 @@ export type GoalForeignColumnRef = {
 };
 
 export type GoalSegment = {
-  min: GoalValue | null;
-  max: GoalValue | null;
   color: string;
   label?: string;
+  min: GoalValue | null;
+  max: GoalValue | null;
 };
 
 export type ScalarSegment = {
