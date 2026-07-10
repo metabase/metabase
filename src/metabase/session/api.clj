@@ -73,7 +73,7 @@
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
-(mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa-pending? [:= true]]]]]
+(mu/defn- ldap-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
   result map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username password device-info :- request/DeviceInfo]
@@ -93,13 +93,13 @@
                          :errors {:password password-fail-snippet}}))
 
         (:success? result)
-        (if (:mfa-pending? result) result (:session result))
+        (if (:mfa/pending? result) result (:session result))
 
         :else
         (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                  :status-code 401}))))))
 
-(mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa-pending? [:= true]]]]]
+(mu/defn- email-login :- [:maybe [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]]
   "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
   map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
@@ -111,7 +111,7 @@
                                       :device-info device-info})]
     (cond
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
-      (:success? result) (if (:mfa-pending? result) result (:session result))
+      (:success? result) (if (:mfa/pending? result) result (:session result))
       :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                      :status-code 401})))))
 
@@ -121,7 +121,7 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- [:or session.schema/SessionSchema [:map [:mfa-pending? [:= true]]]]
+(mu/defn- login :- [:or session.schema/SessionSchema [:map [:mfa/pending? [:= true]]]]
   "Attempt to login with different available methods with `username` and `password`, returning a new Session (or an
   MFA-pending result map when a second factor is required) or throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
@@ -192,16 +192,16 @@
   (let [ip-address (request/ip-address request)
         do-login   (fn []
                      (let [result (login username password (request/device-info request))]
-                       (if (:mfa-pending? result)
+                       (if (:mfa/pending? result)
                          ;; First factor OK, but a second factor is required: build and sign a
                          ;; challenge token here (OSS session machinery) and return it instead of
                          ;; a session. No cookies are set yet.
                          {:status 200
                           :body   {:mfa_required    true
-                                   :methods         (:mfa-methods result)
+                                   :methods         (:mfa/methods result)
                                    :challenge_token (session.challenge/issue-challenge-token
                                                      (get-in result [:user :id])
-                                                     (:first-factor result))}}
+                                                     (:mfa/first-factor result))}}
                          (session-response result request))))]
     (if throttling-disabled?
       (do-login)
@@ -343,7 +343,7 @@
       ;; The password change succeeded, but the user is MFA-enrolled: issue no session, or anyone
       ;; who can trigger a reset email routes around the second factor. They log in normally (and
       ;; get challenged) with the new password.
-      (:mfa-pending? auth-result)
+      (:mfa/pending? auth-result)
       {:success true}
 
       :else

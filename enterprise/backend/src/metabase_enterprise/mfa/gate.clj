@@ -5,7 +5,7 @@
   interactive sessions are minted; API keys and MCP OAuth never pass through it):
 
   - `:provider/password`, `:provider/ldap` — challenged (the OSS session API signs the relay token
-    from :first-factor; no token is issued here).
+    from :mfa/first-factor; no token is issued here).
   - `:provider/emailed-secret-password-reset` — the password change completes but no session is
     issued for an enrolled user; they go through normal, gated login. Otherwise anyone who can
     trigger a reset email routes around the second factor.
@@ -34,8 +34,8 @@
 
 (defn apply-mfa-gate
   "Decide whether a successful first-factor login must complete a second factor before a session is
-  created. Sets `:mfa-pending?` (which suppresses session creation in the `login!` pipeline) and,
-  for challenged providers, attaches `:first-factor` (the provider keyword) and `:mfa-methods` so
+  created. Sets `:mfa/pending?` (which suppresses session creation in the `login!` pipeline) and,
+  for challenged providers, attaches `:mfa/first-factor` (the provider keyword) and `:mfa/methods` so
   the OSS session API can sign the relay token."
   [provider login-result]
   (if-not (and (true? (:success? login-result))
@@ -50,16 +50,14 @@
 
         (contains? challenged-providers provider)
         (assoc login-result
-               :success?     :mfa-required
-               :mfa-pending? true
-               :mfa-required true
-               :mfa-methods  (available-methods)
-               :first-factor provider)
+               :success?         :mfa-required
+               :mfa/pending?     true
+               :mfa/methods      (available-methods)
+               :mfa/first-factor provider)
 
         (contains? session-suppressed-providers provider)
         (assoc login-result
-               :mfa-pending? true
-               :mfa-required true)
+               :mfa/pending? true)
 
         :else
         login-result))))
