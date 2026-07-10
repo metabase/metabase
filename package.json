@@ -508,6 +508,7 @@
     "dev-hot-be": "bun install && bun run clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red,cyan' 'clojure -M:run:dev:dev-start --hot' 'ENABLE_CLJS_HOT_RELOAD=true bun run build-hot:js-wait' 'bun run build-hot:cljs' 'bun run build-static-viz:watch-wait'",
     "dev-ee": "bun install && bun run clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red,cyan' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee bun run build-hot:js-wait' 'MB_EDITION=ee bun run build:cljs' 'bun run build-static-viz:watch-wait'",
     "dev-ee-hot-be": "bun install && bun run clean-dev:cljs && concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red,cyan' 'clojure -M:run:ee:dev:dev-start --hot' 'MB_EDITION=ee ENABLE_CLJS_HOT_RELOAD=true bun run build-hot:js-wait' 'MB_EDITION=ee bun run build-hot:cljs' 'bun run build-static-viz:watch-wait'",
+    "email-dev": "bun dev/email-preview/serve.ts",
     "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:generate-package-support-files": "tsx enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts",
