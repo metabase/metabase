@@ -1,5 +1,6 @@
 (ns metabase.search.settings
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :as i18n]))
@@ -29,6 +30,21 @@
                 (some-> ((requiring-resolve 'metabase.search.engine/default-engine)) name keyword))
   :type       :keyword)
 
+(defn- trigger-init-for-newly-active-engines!
+  "Trigger the search index init task if any engine beyond `before` is now active.
+  A newly activated engine needs its index initialized before it can serve; already-active engines are
+  skipped because semantic init re-gates every searchable document.
+  No-op when the init task is not registered, i.e. the scheduler is not running (tests); env-var
+  configuration is covered by the startup init."
+  [before]
+  (let [active-engines (requiring-resolve 'metabase.search.engine/active-engines)
+        job-exists?    (requiring-resolve 'metabase.task.core/job-exists?)
+        trigger-now!   (requiring-resolve 'metabase.task.core/trigger-now!)
+        init-job-key   @(requiring-resolve 'metabase.search.task.search-index/init-job-key)]
+    (when (and (seq (remove before (active-engines)))
+               (job-exists? init-job-key))
+      (trigger-now! init-job-key))))
+
 (defsetting additional-search-engines
   (i18n/deferred-tru "Engines to keep active (indexed and queryable per-request) in addition to the default engine.")
   :visibility :internal
@@ -36,20 +52,13 @@
   :encryption :no
   :default    nil
   :type       :csv
-  ;; Trigger the search init task when the change activates an engine: it needs its index initialized before
-  ;; it can serve. Only added engines trigger, since semantic init re-gates every searchable document.
-  ;; The task is only registered when the scheduler runs (not in tests); env-var configuration is covered by
-  ;; the startup init.
+  ;; Post-commit + future: the trigger check must observe the final committed settings state (a surrounding
+  ;; set-many! may include the setting that makes the engine supported) and stay off the transaction's thread.
   :setter     (fn [new-value]
-                (let [active-engines (requiring-resolve 'metabase.search.engine/active-engines)
-                      before         (set (active-engines))
-                      result         (setting/set-value-of-type! :csv :additional-search-engines new-value)
-                      added          (remove before (active-engines))
-                      job-exists?    (requiring-resolve 'metabase.task.core/job-exists?)
-                      trigger-now!   (requiring-resolve 'metabase.task.core/trigger-now!)
-                      init-job-key   @(requiring-resolve 'metabase.search.task.search-index/init-job-key)]
-                  (when (and (seq added) (job-exists? init-job-key))
-                    (trigger-now! init-job-key))
+                (let [before (set ((requiring-resolve 'metabase.search.engine/active-engines)))
+                      result (setting/set-value-of-type! :csv :additional-search-engines new-value)]
+                  (mdb/do-after-commit
+                   #(future (trigger-init-for-newly-active-engines! before)))
                   result))
   :doc        false)
 

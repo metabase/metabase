@@ -390,9 +390,13 @@
               (mt/user-http-request :crowberto :get 200 "search" pinned :q "x" :search_engine ""))))))
 
 (deftest engine-cookie-round-trip-test
-  (let [engine-cookie #(get-in % [:cookies engine-cookie-name :value])]
+  ;; The in-process client is required here: it runs the handler on the test thread, inside the fixture's
+  ;; engine and index bindings.
+  (let [engine-cookie (fn [response]
+                        (some #(second (re-find (re-pattern (str engine-cookie-name "=([^;]*)")) %))
+                              (u/one-or-many (get-in response [:headers "Set-Cookie"]))))]
     (testing "an explicit engine pins: the response sets the engine cookie"
-      (let [response (mt/user-real-request-full-response :crowberto :get 200 "search" :q "x" :search_engine "in-place")]
+      (let [response (mt/user-http-request-full-response :crowberto :get 200 "search" :q "x" :search_engine "in-place")]
         (is (= "in-place" (engine-cookie response)))
         (is (=? {:engine "search.engine/in-place"} (:body response)))))
     (testing "a request carrying the cookie serves the pinned engine"
@@ -401,7 +405,7 @@
                                     {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
                                     :q "x"))))
     (testing "a blank explicit engine unpins: the response clears the cookie and the default serves"
-      (let [response (mt/user-real-request-full-response :crowberto :get 200 "search"
+      (let [response (mt/user-http-request-full-response :crowberto :get 200 "search"
                                                          {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}
                                                          :q "x" :search_engine "")]
         (is (= "" (engine-cookie response)))

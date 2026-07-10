@@ -95,7 +95,14 @@
       (is (= [:search.engine/appdb :search.engine/semantic] (search.engine/active-engines))))))
 
 (deftest additional-search-engines-setter-test
-  (let [triggered (atom [])]
+  (let [triggered  (atom [])
+        wait-until (fn [pred]
+                     ;; The setter triggers from a post-commit future; poll briefly for it.
+                     (loop [n 40]
+                       (cond
+                         (pred)    true
+                         (zero? n) false
+                         :else     (do (Thread/sleep 25) (recur (dec n))))))]
     (mt/with-dynamic-fn-redefs [task/job-exists?             (constantly true)
                                 task/trigger-now!            (fn [k] (swap! triggered conj k))
                                 ;; Track the setting so the setter sees the newly added engine.
@@ -104,8 +111,8 @@
                                                                     (search.settings/additional-search-engines)))]
       (testing "activating an engine triggers the search index init task"
         (mt/with-temporary-setting-values [additional-search-engines ["semantic"]]
-          (is (some #{task.search-index/init-job-key} @triggered))
+          (is (true? (wait-until #(some #{task.search-index/init-job-key} @triggered))))
           (testing "but a change that activates nothing new does not"
             (reset! triggered [])
             (search.settings/additional-search-engines! ["semantic"])
-            (is (empty? @triggered))))))))
+            (is (false? (wait-until #(seq @triggered))))))))))
