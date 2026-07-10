@@ -1,0 +1,95 @@
+diff --git a/frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.unit.spec.tsx b/frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.unit.spec.tsx
+index 5a177cf46a2..3c906f54701 100644
+--- a/frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.unit.spec.tsx
++++ b/frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.unit.spec.tsx
+@@ -1,3 +1,5 @@
++import userEvent from "@testing-library/user-event";
++
+ import { setupTableEndpoints } from "__support__/server-mocks";
+ import { createMockEntitiesState } from "__support__/store";
+ import { testDataset } from "__support__/testDataset";
+@@ -6,6 +8,7 @@ import {
+   screen,
+   waitForLoaderToBeRemoved,
+ } from "__support__/ui";
++import type { DatasetData } from "metabase-types/api";
+ import {
+   createMockQueryBuilderState,
+   createMockState,
+@@ -75,7 +78,76 @@ async function setup(options?: Partial<ObjectDetailProps>) {
+   await waitForLoaderToBeRemoved();
+ }
+ 
++async function setupRerenderable(data: DatasetData) {
++  setupTableEndpoints(MOCK_TABLE);
++
++  const state = createMockState({
++    entities: createMockEntitiesState({
++      questions: [MOCK_CARD],
++      tables: [MOCK_TABLE],
++    }),
++    qb: createMockQueryBuilderState({ card: MOCK_CARD }),
++  });
++  const metadata = getMetadata(state);
++
++  const question = checkNotNull(metadata.question(MOCK_CARD.id));
++  const table = checkNotNull(metadata.table(MOCK_TABLE.id));
++
++  const buildElement = (rowData: DatasetData) => (
++    <ObjectDetail
++      data={rowData}
++      question={question}
++      table={table}
++      zoomedRow={rowData.rows[0]}
++      zoomedRowID={0}
++      tableForeignKeys={table.fks}
++      settings={{
++        column: () => null,
++      }}
++      showHeader
++      canZoom={true}
++      canZoomPreviousRow={false}
++      canZoomNextRow={false}
++      onVisualizationClick={() => null}
++      visualizationIsClickable={() => false}
++      isDashboard={false}
++    />
++  );
++
++  const { rerender } = renderWithProviders(buildElement(data), {
++    storeInitialState: state,
++  });
++
++  await waitForLoaderToBeRemoved();
++
++  return {
++    rerenderWithData: (rowData: DatasetData) => rerender(buildElement(rowData)),
++  };
++}
++
+ describe("ObjectDetail", () => {
++  it("resets navigation state when the query result shrinks (metabase#54317)", async () => {
++    // testDataset has 10 rows -> "Item 1 of 10"
++    const { rerenderWithData } = await setupRerenderable(testDataset);
++
++    // Navigate forward to the 6th object (index 5).
++    for (let i = 0; i < 5; i++) {
++      await userEvent.click(screen.getByLabelText("Next page"));
++    }
++    expect(screen.getByText(/Item 6 of 10/i)).toBeInTheDocument();
++
++    // The query changes and returns fewer rows than the current index (3 < 5).
++    const smallerDataset: DatasetData = {
++      ...testDataset,
++      rows: testDataset.rows.slice(0, 3),
++    };
++    rerenderWithData(smallerDataset);
++
++    // The selected index must be capped/reset so it stays in range.
++    expect(screen.getByText(/Item 1 of 3/i)).toBeInTheDocument();
++    expect(screen.queryByText(/Item 6 of 3/i)).not.toBeInTheDocument();
++  });
++
+   it("renders an object detail with a paginator", async () => {
+     await setup();
+ 

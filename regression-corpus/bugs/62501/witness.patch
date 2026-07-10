@@ -1,0 +1,42 @@
+diff --git a/frontend/src/metabase/api/utils/lifecycle.unit.spec.ts b/frontend/src/metabase/api/utils/lifecycle.unit.spec.ts
+new file mode 100644
+index 00000000000..6bbcf2d0bc8
+--- /dev/null
++++ b/frontend/src/metabase/api/utils/lifecycle.unit.spec.ts
+@@ -0,0 +1,36 @@
++import { handleQueryFulfilled } from "./lifecycle";
++
++describe("handleQueryFulfilled", () => {
++  it("calls handleSuccess with the resolved object data", async () => {
++    const handleSuccess = jest.fn();
++    const data = { foo: "bar" };
++
++    await handleQueryFulfilled(Promise.resolve({ data }), handleSuccess);
++
++    expect(handleSuccess).toHaveBeenCalledWith(data);
++  });
++
++  it("does not call handleSuccess when the response is an HTML string from a redirect (metabase#62501)", async () => {
++    const handleSuccess = jest.fn();
++    const htmlBody =
++      "<html><body><h1>Those aren't the droids you're looking for</h1></body></html>";
++
++    await handleQueryFulfilled(Promise.resolve({ data: htmlBody }), handleSuccess);
++
++    expect(handleSuccess).not.toHaveBeenCalled();
++  });
++
++  it("calls handleError when the query rejects", async () => {
++    const handleSuccess = jest.fn();
++    const handleError = jest.fn();
++
++    await handleQueryFulfilled(
++      Promise.reject(new Error("boom")),
++      handleSuccess,
++      handleError,
++    );
++
++    expect(handleSuccess).not.toHaveBeenCalled();
++    expect(handleError).toHaveBeenCalled();
++  });
++});

@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx
+index e670b1950bf..c2edc2a0485 100644
+--- a/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx
++++ b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx
+@@ -97,7 +97,6 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
+     <Visualization
+       rawSeries={rawSeries}
+       error={err}
+-      queryBuilderMode="notebook"
+       className={cx(
+         S.PreviewVisualization,
+         CS.bordered,

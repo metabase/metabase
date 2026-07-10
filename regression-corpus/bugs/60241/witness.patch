@@ -1,0 +1,60 @@
+diff --git a/frontend/src/metabase/api/user.unit.spec.ts b/frontend/src/metabase/api/user.unit.spec.ts
+index cf1347292cc..a80a66d0154 100644
+--- a/frontend/src/metabase/api/user.unit.spec.ts
++++ b/frontend/src/metabase/api/user.unit.spec.ts
+@@ -6,6 +6,7 @@ import { findRequests } from "__support__/server-mocks";
+ import { createMockUser } from "metabase-types/api/mocks";
+ 
+ import { Api } from "./api";
++import { permissionApi } from "./permission";
+ import { userApi } from "./user";
+ 
+ let activeStore: ReturnType<typeof getStore> | undefined;
+@@ -45,6 +46,47 @@ describe("userApi", () => {
+     });
+   });
+ 
++  describe("createUser (metabase#60241)", () => {
++    it("invalidates the permissions-group list so a subscribed group query refetches", async () => {
++      fetchMock.get("path:/api/permissions/group", [
++        { id: 2, name: "Administrators", member_count: 1 },
++      ]);
++      fetchMock.post("path:/api/user", createMockUser({ id: 42 }));
++
++      const { store } = setup();
++
++      // Hold a live subscription to the permissions-group list, the way the
++      // admin People page does while it is open.
++      const groupsSubscription = store.dispatch(
++        permissionApi.endpoints.listPermissionsGroups.initiate(undefined),
++      );
++      await groupsSubscription;
++
++      await waitFor(async () => {
++        const gets = await findRequests("GET");
++        expect(gets).toHaveLength(1);
++      });
++
++      await store.dispatch(
++        userApi.endpoints.createUser.initiate({
++          email: "new@example.com",
++          first_name: "New",
++          last_name: "Admin",
++          user_group_memberships: [{ id: 2, is_group_manager: false }],
++        }),
++      );
++
++      // Creating a user that joins the Administrators group must invalidate the
++      // permissions-group cache, forcing a refetch of the subscribed list.
++      await waitFor(async () => {
++        const gets = await findRequests("GET");
++        expect(gets).toHaveLength(2);
++      });
++
++      groupsSubscription.unsubscribe();
++    });
++  });
++
+   describe("updateUserModalQbnewb", () => {
+     it("marks the qbnewb modal as seen for the given user", async () => {
+       fetchMock.put("path:/api/user/7/modal/qbnewb", 204);

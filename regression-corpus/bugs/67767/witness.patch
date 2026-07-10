@@ -1,0 +1,101 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.unit.spec.tsx b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.unit.spec.tsx
+new file mode 100644
+index 00000000000..3d229d673c9
+--- /dev/null
++++ b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.unit.spec.tsx
+@@ -0,0 +1,95 @@
++import { renderWithProviders, screen } from "__support__/ui";
++import {
++  createMockQueryBuilderState,
++  createMockQueryBuilderUIControlsState,
++  createMockState,
++} from "metabase/redux/store/mocks";
++import type Question from "metabase-lib/v1/Question";
++
++import { NotebookContainer } from "./NotebookContainer";
++
++// Keep the render light: we only care about which layout branch renders,
++// not the internals of the notebook or the native preview.
++jest.mock("metabase/querying/notebook/components/Notebook", () => ({
++  Notebook: () => null,
++}));
++
++jest.mock("./NotebookNativePreview", () => ({
++  NotebookNativePreview: () => <div data-testid="native-preview" />,
++}));
++
++jest.mock("../../ViewHeader/utils", () => ({
++  ...jest.requireActual("../../ViewHeader/utils"),
++  canShowNativePreview: () => true,
++}));
++
++const RESIZE_HANDLE_TESTID = "notebook-native-preview-resize-handle";
++
++/**
++ * Install a `matchMedia` mock that resolves `(max-width: NNem|NNpx)` queries
++ * against a fixed viewport width. 1em = 16px.
++ */
++const mockViewportWidth = (width: number) => {
++  window.matchMedia = ((query: string) => {
++    const match = query.match(/max-width:\s*(\d+(?:\.\d+)?)(em|px)/);
++    let matches = false;
++    if (match) {
++      const value = parseFloat(match[1]);
++      const maxWidthPx = match[2] === "em" ? value * 16 : value;
++      matches = width <= maxWidthPx;
++    }
++    return {
++      matches,
++      media: query,
++      addEventListener: () => {},
++      removeEventListener: () => {},
++      addListener: () => {},
++      removeListener: () => {},
++      onchange: null,
++      dispatchEvent: () => false,
++    };
++  }) as unknown as typeof window.matchMedia;
++};
++
++const setup = ({ viewportWidth }: { viewportWidth: number }) => {
++  mockViewportWidth(viewportWidth);
++
++  const state = createMockState({
++    qb: createMockQueryBuilderState({
++      uiControls: createMockQueryBuilderUIControlsState({
++        isShowingNotebookNativePreview: true,
++      }),
++    }),
++  });
++
++  const question = {
++    setType: () => ({}),
++  } as unknown as Question;
++
++  renderWithProviders(
++    <NotebookContainer
++      isOpen
++      question={question}
++      updateQuestion={jest.fn()}
++      reportTimezone="UTC"
++      readOnly={false}
++      isDirty={false}
++      isRunnable={false}
++      isResultDirty={false}
++      hasVisualizeButton={false}
++      runQuestionQuery={jest.fn()}
++      setQueryBuilderMode={jest.fn()}
++    />,
++    { storeInitialState: state },
++  );
++};
++
++describe("NotebookContainer native preview layout (metabase#67767)", () => {
++  it("shows the resizable (not full-width) native preview at a medium viewport (900px)", () => {
++    // 900px is below the old, too-aggressive 1280px breakpoint but above the
++    // correct 640px one. The preview must stay resizable, not jump full-width.
++    setup({ viewportWidth: 900 });
++
++    expect(screen.getByTestId(RESIZE_HANDLE_TESTID)).toBeInTheDocument();
++  });
++});

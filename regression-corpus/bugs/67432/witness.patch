@@ -1,0 +1,92 @@
+diff --git a/frontend/src/metabase/data-grid/hooks/use-cell-selection.unit.spec.tsx b/frontend/src/metabase/data-grid/hooks/use-cell-selection.unit.spec.tsx
+new file mode 100644
+index 00000000000..56ee9e6bb5b
+--- /dev/null
++++ b/frontend/src/metabase/data-grid/hooks/use-cell-selection.unit.spec.tsx
+@@ -0,0 +1,86 @@
++import {
++  type Table,
++  getCoreRowModel,
++  getSortedRowModel,
++  useReactTable,
++} from "@tanstack/react-table";
++import type { RefObject } from "react";
++
++import { renderHook } from "__support__/ui";
++import type { CellId } from "metabase/data-grid/types";
++
++import { getCellValues } from "./use-cell-selection";
++
++type Row = { id: number; title: string; category: string };
++
++// Rows are supplied in ID order; sorting by category (desc) makes the visual
++// order differ from both the source-data order and the numeric row-id order.
++const DATA: Row[] = [
++  { id: 1, title: "Apple", category: "Aardvark" },
++  { id: 2, title: "Banana", category: "Buffalo" },
++  { id: 3, title: "Cherry", category: "Cheetah" },
++];
++
++// Visual order after sorting category descending: Cheetah, Buffalo, Aardvark.
++const EXPECTED_VISUAL_CATEGORIES = ["Cheetah", "Buffalo", "Aardvark"];
++
++const useSortedTable = () =>
++  useReactTable<Row>({
++    data: DATA,
++    columns: [
++      { id: "title", accessorKey: "title", header: "Title" },
++      { id: "category", accessorKey: "category", header: "Category" },
++    ],
++    state: { sorting: [{ id: "category", desc: true }] },
++    getCoreRowModel: getCoreRowModel(),
++    getSortedRowModel: getSortedRowModel(),
++  });
++
++// Build a detached DOM node exposing the column headers that getCellValues
++// looks up via gridRef so it takes the header (full-table) code path.
++const makeGridRef = (): RefObject<HTMLDivElement> => {
++  const root = document.createElement("div");
++  for (const [id, label] of [
++    ["title", "Title"],
++    ["category", "Category"],
++  ]) {
++    const header = document.createElement("div");
++    header.setAttribute("data-header-id", id);
++    header.textContent = label;
++    root.appendChild(header);
++  }
++  return { current: root };
++};
++
++// Select the Title + Category cells for every row, in numeric row-id order,
++// mirroring how selection state is stored.
++const selectAllCells = (table: Table<Row>): CellId[] =>
++  table
++    .getCoreRowModel()
++    .rows.flatMap((row) =>
++      ["title", "category"].map((columnId) => ({
++        rowId: row.id,
++        columnId,
++        cellId: `${row.id}_${columnId}`,
++      })),
++    );
++
++describe("getCellValues (metabase#67432)", () => {
++  it("copies rows in the table's visual (sorted) order", () => {
++    const { result } = renderHook(() => useSortedTable());
++    const table = result.current as unknown as Table<unknown>;
++    const cells = selectAllCells(result.current);
++
++    const text = getCellValues(makeGridRef(), table, cells);
++
++    const lines = text.split("\n");
++    // Header row + one line per data row.
++    expect(lines).toHaveLength(DATA.length + 1);
++
++    const copiedCategories = lines
++      .slice(1)
++      .map((line) => line.split("\t")[1]);
++
++    expect(copiedCategories).toEqual(EXPECTED_VISUAL_CATEGORIES);
++  });
++});

@@ -1,0 +1,7 @@
+issue: 59049
+fix_commit: 15e73ac7cf0d1891a68aa39861022646c7625af9
+e2e_repro: e2e/test/scenarios/dashboard-cards/click-behavior-reproductions.cy.spec.ts
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/dashboard/actions/parameters.tsx"]
+layer: frontend

@@ -1,0 +1,7 @@
+issue: 63711
+fix_commit: 33070f6e0685bfd3acaf63ea9ac15d97b4e57534
+e2e_repro: e2e/test/scenarios/native/native-reproductions.cy.spec.ts
+population: e2e_only
+witness_outcome: no_witness_layout
+mutation_files: ["frontend/src/metabase/common/components/CodeMirror/CodeMirror.module.css"]
+layer: frontend

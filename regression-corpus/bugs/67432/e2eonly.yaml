@@ -1,0 +1,7 @@
+issue: 67432
+fix_commit: c63fd746d814368972f6bbd67a2fa90473af3cdc
+e2e_repro: e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/data-grid/hooks/use-cell-selection.tsx"]
+layer: frontend

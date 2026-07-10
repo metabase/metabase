@@ -1,0 +1,7 @@
+issue: 68998
+fix_commit: b57eb0d2c76c344b08bf0e95527796eef7608f3f
+e2e_repro: e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-text-category.cy.spec.js
+population: e2e_only
+witness_outcome: no_witness_backend
+mutation_files: ["src/metabase/parameters/params.clj"]
+layer: backend

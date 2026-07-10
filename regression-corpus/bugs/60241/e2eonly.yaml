@@ -1,0 +1,8 @@
+issue: 60241
+fix_commit: 75917ecd3ba0bfbd32c961992f4d43841a4df908
+e2e_repro: e2e/test/scenarios/admin-2/people.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/api/user.ts"]
+layer: frontend
+witness_test: frontend/src/metabase/api/user.unit.spec.ts

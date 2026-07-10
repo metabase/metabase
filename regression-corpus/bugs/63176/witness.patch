@@ -1,0 +1,34 @@
+diff --git a/frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx b/frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx
+index eb97551b9be..556678077fe 100644
+--- a/frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx
++++ b/frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx
+@@ -124,6 +124,29 @@ describe("CreateDashboardModal", () => {
+     ).toBeDisabled();
+   });
+ 
++  it("surfaces a server validation error when creating with a blank name (metabase#63176)", async () => {
++    setup({ mockCreateDashboardResponse: false });
++    fetchMock.post(`path:/api/dashboard`, {
++      status: 400,
++      body: { errors: { name: "value must be a non-blank string." } },
++    });
++
++    const nameField = screen.getByRole("textbox", { name: /name/i });
++    // A single space passes the client-side `required` check, so it reaches
++    // the server, which rejects it as a blank string.
++    await userEvent.type(nameField, " ");
++
++    const createButton = await screen.findByRole("button", { name: "Create" });
++    await waitFor(() => expect(createButton).toBeEnabled());
++    await userEvent.click(createButton);
++
++    expect(
++      await screen.findByText("value must be a non-blank string."),
++    ).toBeInTheDocument();
++    expect(nameField).toHaveAttribute("aria-invalid", "true");
++    expect(await screen.findByText("Failed")).toBeInTheDocument();
++  });
++
+   it("calls onClose when Cancel button is clicked", async () => {
+     const { onClose } = setup();
+     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));

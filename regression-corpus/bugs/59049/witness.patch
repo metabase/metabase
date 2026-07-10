@@ -1,0 +1,75 @@
+diff --git a/frontend/src/metabase/dashboard/actions/set-or-unset-parameter-values.unit.spec.ts b/frontend/src/metabase/dashboard/actions/set-or-unset-parameter-values.unit.spec.ts
+new file mode 100644
+index 00000000000..0f4cd461138
+--- /dev/null
++++ b/frontend/src/metabase/dashboard/actions/set-or-unset-parameter-values.unit.spec.ts
+@@ -0,0 +1,69 @@
++import {
++  createMockDashboardState,
++  createMockState,
++  createMockStoreDashboard,
++} from "metabase/redux/store/mocks";
++import { createMockParameter } from "metabase-types/api/mocks";
++
++import { setOrUnsetParameterValues } from "./parameters";
++
++// Minimal thunk-capable dispatch that records the plain `setParameterValue`
++// actions that are ultimately dispatched (unwrapping nested thunks), so we can
++// assert exactly which parameter values `setOrUnsetParameterValues` sets/resets.
++// `setParameterValue` is wrapped by `createThunkAction`, which dispatches its
++// plain action asynchronously, so the caller must flush microtasks.
++function makeRecordingDispatch(getState: () => any) {
++  const dispatched: any[] = [];
++  const dispatch = (action: any): any => {
++    if (typeof action === "function") {
++      return action(dispatch, getState);
++    }
++    dispatched.push(action);
++    return action;
++  };
++  return { dispatch, dispatched };
++}
++
++const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
++
++describe("setOrUnsetParameterValues (metabase#59049)", () => {
++  it("should not reset a parameter that already matches when only partially equal", async () => {
++    const state = createMockState({
++      dashboard: createMockDashboardState({
++        dashboardId: 1,
++        dashboards: {
++          "1": createMockStoreDashboard({
++            id: 1,
++            parameters: [
++              createMockParameter({ id: "1" }),
++              createMockParameter({ id: "2" }),
++            ],
++          }),
++        },
++        parameterValues: {
++          "1": "Gadget",
++          "2": "old-vendor",
++        },
++      }),
++    });
++
++    const { dispatch, dispatched } = makeRecordingDispatch(() => state);
++
++    dispatch(
++      setOrUnsetParameterValues([
++        ["1", "Gadget"], // already equal to the current value
++        ["2", "new-vendor"], // differs from the current value
++      ]),
++    );
++    await flush();
++
++    const byId = Object.fromEntries(
++      dispatched.map((a) => [a.payload.id, a.payload.value]),
++    );
++
++    // Not all pairs match the current values, so nothing should be reset:
++    // param "1" must keep "Gadget" (the bug resets it to null / empty).
++    expect(byId["1"]).toBe("Gadget");
++    expect(byId["2"]).toBe("new-vendor");
++  });
++});

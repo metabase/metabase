@@ -1,0 +1,8 @@
+issue: 63070
+fix_commit: 6b8e95a34fbeb72d08689dcac131d63240862099
+e2e_repro: e2e/test/scenarios/question/notebook.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx"]
+layer: frontend
+witness_test: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.unit.spec.tsx

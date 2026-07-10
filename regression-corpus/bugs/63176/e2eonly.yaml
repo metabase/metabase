@@ -1,0 +1,8 @@
+issue: 63176
+fix_commit: 908eda55b5b6ef4dbdab498b6b57a709c45ad94b
+e2e_repro: e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx

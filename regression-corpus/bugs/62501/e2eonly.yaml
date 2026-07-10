@@ -1,0 +1,7 @@
+issue: 62501
+fix_commit: d2e66d00812328debae10c1f91fea337b1aa9ad9
+e2e_repro: e2e/test/scenarios/sharing/public-dashboard.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/api/utils/lifecycle.ts"]
+layer: frontend

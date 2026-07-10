@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/search/containers/SearchApp.tsx b/frontend/src/metabase/search/containers/SearchApp.tsx
+index 85796404e26..bfea01882d5 100644
+--- a/frontend/src/metabase/search/containers/SearchApp.tsx
++++ b/frontend/src/metabase/search/containers/SearchApp.tsx
+@@ -82,10 +82,14 @@ export function SearchApp({ location }: { location: SearchAwareLocation }) {
+     (newFilters: URLSearchFilterQueryParams) => {
+       onChangeLocation({
+         pathname: "search",
+-        query: { q: searchText.trim(), ...newFilters },
++        query: {
++          q: searchText.trim(),
++          ...newFilters,
++          page: String(page),
++        },
+       });
+     },
+-    [onChangeLocation, searchText],
++    [onChangeLocation, searchText, page],
+   );
+ 
+   const advancePage = (howMany = 1) => {

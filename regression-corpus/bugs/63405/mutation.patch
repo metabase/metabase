@@ -1,0 +1,33 @@
+diff --git a/frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx b/frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+index 9f3dfcfd450..3b59f42eb0d 100644
+--- a/frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
++++ b/frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+@@ -139,15 +139,14 @@ class SnippetSidebarInner extends Component<
+         )
+       : _.sortBy(search, "model").map(hydrateSearchItem); // relies on "collection" sorting before "snippet";
+ 
++    const hasParentCollection = snippetCollection.parent_id !== null;
+     const onSnippetCollectionBack = () => {
+-      const parentCollectionId = snippetCollection.parent_id ?? "root";
+-
+       // if this collection's parent isn't in the list,
+       // we don't have perms to see it, return to the root instead
+       const hasPermissionToSeeParent = snippetCollections.some(
+         (collection) =>
+           canonicalCollectionId(collection.id) ===
+-          canonicalCollectionId(parentCollectionId),
++          canonicalCollectionId(snippetCollection.parent_id),
+       );
+ 
+       const targetId = hasPermissionToSeeParent
+@@ -207,7 +206,9 @@ class SnippetSidebarInner extends Component<
+                   ) : (
+                     <SidebarHeader
+                       title={snippetCollection.name}
+-                      onBack={onSnippetCollectionBack}
++                      onBack={
++                        hasParentCollection ? onSnippetCollectionBack : null
++                      }
+                     />
+                   )}
+ 

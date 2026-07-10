@@ -1,0 +1,17 @@
+diff --git a/frontend/src/metabase/api/user.ts b/frontend/src/metabase/api/user.ts
+index cc48fd08b7e..cde938067c3 100644
+--- a/frontend/src/metabase/api/user.ts
++++ b/frontend/src/metabase/api/user.ts
+@@ -57,11 +57,7 @@ export const userApi = Api.injectEndpoints({
+         body,
+       }),
+       invalidatesTags: (_, error) =>
+-        invalidateTags(error, [
+-          listTag("user"),
+-          listTag("tenant"),
+-          listTag("permissions-group"),
+-        ]),
++        invalidateTags(error, [listTag("user"), listTag("tenant")]),
+     }),
+     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
+       query: ({ id, old_password, password }) => ({

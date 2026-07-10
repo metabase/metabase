@@ -1,0 +1,8 @@
+issue: 54317
+fix_commit: 0e247c2772c1141cae61db0538348023ef0935a4
+e2e_repro: e2e/test/scenarios/visualizations-tabular/object_detail.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.unit.spec.tsx
