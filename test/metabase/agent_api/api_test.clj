@@ -986,6 +986,120 @@
         (mt/user-http-request :rasta :put 403 (str "agent/v1/metric/" card-id)
                               {:name "Forbidden Rename"})))))
 
+;;; ------------------------------------------------ Create Measure Tests -------------------------------------------
+
+(defn- construct-orders-aggregation-query
+  "Construct an aggregation-only ORDERS query via /v2/construct-query (as `user`) and return the
+  base64 `:query` payload for the measure endpoints."
+  [user aggregation]
+  (:query (mt/user-http-request user :post 200 "agent/v2/construct-query"
+                                {:query (orders-query :aggregation [aggregation])})))
+
+(deftest create-measure-test
+  (testing "Creates a measure from an aggregation-only query, deriving table_id from the query"
+    (let [encoded (construct-orders-aggregation-query :crowberto ["count" {}])
+          resp    (mt/user-http-request :crowberto :post 200 "agent/v1/measure"
+                                        {:name        "Agent Test Measure"
+                                         :query       encoded
+                                         :description "Count of orders"})]
+      (is (=? {:id                     pos?
+               :name                   "Agent Test Measure"
+               :table_id               (mt/id :orders)
+               :description            "Count of orders"
+               :definition_description string?
+               :archived               false}
+              resp))
+      (let [persisted (t2/select-one :model/Measure :id (:id resp))]
+        (is (= (mt/id :orders) (:table_id persisted)))
+        (is (= 1 (count (:aggregation (first (:stages (:definition persisted))))))))
+      (t2/delete! :model/Measure :id (:id resp)))))
+
+(deftest create-measure-rejects-invalid-definition-test
+  (testing "Returns 400 when the query has no aggregation"
+    (let [encoded (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                {:query (orders-query :limit 10)}))]
+      (is (str/includes?
+           (mt/user-http-request :crowberto :post 400 "agent/v1/measure"
+                                 {:name  "Not A Measure"
+                                  :query encoded})
+           "measure"))))
+  (testing "Returns 400 when the query has a filter alongside the aggregation"
+    (let [encoded (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                {:query (orders-query
+                                                         :aggregation [["count" {}]]
+                                                         :filters     [["not-null" {} (orders-field-ref "ID")]])}))]
+      (is (str/includes?
+           (mt/user-http-request :crowberto :post 400 "agent/v1/measure"
+                                 {:name  "Not A Measure Either"
+                                  :query encoded})
+           "measure")))))
+
+(deftest create-measure-permission-test
+  (testing "Returns 403 for a regular user (measures require admin or data-analyst)"
+    (let [encoded (construct-orders-aggregation-query :rasta ["count" {}])]
+      (mt/user-http-request :rasta :post 403 "agent/v1/measure"
+                            {:name  "Forbidden Measure"
+                             :query encoded}))))
+
+;;; ------------------------------------------------ Update Measure Tests -------------------------------------------
+
+(deftest update-measure-patch-fields-test
+  (testing "Patches simple fields (name, description) on a measure"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name "Agent Measure Original"}]
+      (let [resp (mt/user-http-request :crowberto :put 200 (str "agent/v1/measure/" measure-id)
+                                       {:name        "Renamed Measure"
+                                        :description "Set by agent"})]
+        (is (=? {:id          measure-id
+                 :name        "Renamed Measure"
+                 :description "Set by agent"
+                 :archived    false}
+                resp)))
+      (is (= "Renamed Measure" (t2/select-one-fn :name :model/Measure :id measure-id))))))
+
+(deftest update-measure-archive-test
+  (testing "archived: true archives; archived: false unarchives"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure To Archive"}]
+      (is (true? (:archived (mt/user-http-request :crowberto :put 200 (str "agent/v1/measure/" measure-id)
+                                                  {:archived true}))))
+      (is (true? (t2/select-one-fn :archived :model/Measure :id measure-id)))
+      (is (false? (:archived (mt/user-http-request :crowberto :put 200 (str "agent/v1/measure/" measure-id)
+                                                   {:archived false}))))
+      (is (false? (t2/select-one-fn :archived :model/Measure :id measure-id))))))
+
+(deftest update-measure-replace-definition-test
+  (testing "Replacing the definition via :query persists and re-derives table_id"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure To Redefine"}]
+      (let [encoded (construct-orders-aggregation-query :crowberto ["sum" {} (orders-field-ref "TOTAL")])
+            resp    (mt/user-http-request :crowberto :put 200 (str "agent/v1/measure/" measure-id)
+                                          {:query            encoded
+                                           :revision_message "swapped count for sum"})]
+        (is (= (mt/id :orders) (:table_id resp)))
+        (let [persisted (t2/select-one :model/Measure :id measure-id)]
+          (is (= (mt/id :orders) (:table_id persisted)))
+          (is (= 1 (count (:aggregation (first (:stages (:definition persisted))))))))))))
+
+(deftest update-measure-rejects-invalid-definition-test
+  (testing "Returns 400 when a replacement query is not a valid measure, leaving the row untouched"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure With Bad Redefine"}]
+      (let [encoded (:query (mt/user-http-request :crowberto :post 200 "agent/v2/construct-query"
+                                                  {:query (orders-query :filters [["not-null" {} (orders-field-ref "ID")]])}))]
+        (is (str/includes?
+             (mt/user-http-request :crowberto :put 400 (str "agent/v1/measure/" measure-id)
+                                   {:query encoded})
+             "measure"))
+        (is (= "Measure With Bad Redefine" (t2/select-one-fn :name :model/Measure :id measure-id)))))))
+
+(deftest update-measure-not-found-test
+  (testing "Returns 404 when measure does not exist"
+    (mt/user-http-request :crowberto :put 404 "agent/v1/measure/999999"
+                          {:name "doesn't matter"})))
+
+(deftest update-measure-write-perm-test
+  (testing "Returns 403 for a regular user (measures require admin or data-analyst)"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name "Protected Measure"}]
+      (mt/user-http-request :rasta :put 403 (str "agent/v1/measure/" measure-id)
+                            {:name "Forbidden Rename"}))))
+
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 
 (deftest create-dashboard-test

@@ -50,6 +50,12 @@
 (api-scope/defscope agent-metric-update "agent:metric:update"
   (deferred-tru "Update metrics"))
 
+;; Measure (table-scoped reusable aggregations via Agent API)
+(api-scope/defscope agent-measure-create "agent:measure:create"
+  (deferred-tru "Create measures"))
+(api-scope/defscope agent-measure-update "agent:measure:update"
+  (deferred-tru "Update measures"))
+
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
   (deferred-tru "View transforms"))
@@ -177,7 +183,8 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*" "agent:metric:*"
+                                        "agent:measure:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
                                         "agent:collection:*"}})
 

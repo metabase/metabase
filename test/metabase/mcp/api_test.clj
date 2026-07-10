@@ -274,6 +274,7 @@
     "construct_native_query"
     "create_collection"
     "create_dashboard"
+    "create_measure"
     "create_metric"
     "create_question"
     "execute_query"
@@ -284,6 +285,7 @@
     "render_drill_through"
     "search"
     "update_dashboard"
+    "update_measure"
     "update_metric"
     "update_question"
     "visualize_query"})
@@ -665,7 +667,8 @@
   #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "read_resource"
     "create_question" "execute_question" "create_metric" "create_dashboard"
-    "update_question" "update_metric" "update_dashboard" "create_collection"})
+    "update_question" "update_metric" "update_dashboard" "create_collection"
+    "create_measure" "update_measure"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -693,10 +696,17 @@
                                 :stages   [{:lib/type     "mbql.stage/mbql"
                                             :source-table [db-name "PUBLIC" "ORDERS"]
                                             :aggregation  [["count" {}]]}]}
+                ;; A measure needs an aggregation-only stage — `create_measure` rejects anything else.
+                ;; Same shape as `metric-query`, but constructed separately: each handle is single-use.
+                measure-query  {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :aggregation  [["count" {}]]}]}
                 ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
                 ;; assertion in `call-tool` fails partway through the sequence.
                 question-id    (atom nil)
                 metric-id      (atom nil)
+                measure-id     (atom nil)
                 dash-id        (atom nil)
                 coll-id        (atom nil)]
             (try
@@ -742,6 +752,15 @@
                     _              (call-tool session-id "update_metric"
                                               {:id          (:id metric-data)
                                                :description "Smoke updated metric"})
+                    measure-handle (call-tool session-id "construct_query" {:query measure-query})
+                    measure-data   (call-tool session-id "create_measure"
+                                              {:name         "Smoke Measure"
+                                               :query_handle (:query_handle measure-handle)})
+                    _              (reset! measure-id (:id measure-data))
+                    _              (is (= (mt/id :orders) (:table_id measure-data)))
+                    _              (call-tool session-id "update_measure"
+                                              {:id          (:id measure-data)
+                                               :description "Smoke updated measure"})
                     _              (call-tool session-id "execute_question"
                                               {:id (:id question-data)})
                     dash-data      (call-tool session-id "create_dashboard"
@@ -758,6 +777,7 @@
               (finally
                 (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
                 (when-let [mid @metric-id]   (t2/delete! :model/Card :id mid))
+                (when-let [sid @measure-id]  (t2/delete! :model/Measure :id sid))
                 (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
                 (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 

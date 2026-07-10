@@ -66,6 +66,8 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:question:execute`  | `execute_question`                                                                                             |
 | `agent:metric:create`     | `create_metric`                                                                                                |
 | `agent:metric:update`     | `update_metric` (also covers "move metric to collection")                                                      |
+| `agent:measure:create`    | `create_measure`                                                                                               |
+| `agent:measure:update`    | `update_measure` (also covers archiving, which doubles as deletion)                                            |
 | `agent:dashboard:create`  | `create_dashboard`                                                                                             |
 | `agent:dashboard:update`  | `update_dashboard`                                                                                             |
 | `agent:collection:create` | `create_collection`                                                                                            |
@@ -108,6 +110,8 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `create_metric`     | Save a query as a reusable metric. Accepts a `query_handle` from `construct_query`. The query needs one aggregation and at most one date grouping. |
 | `update_metric`     | Update a saved metric. Patch semantics. Setting `collection_id` moves it; setting `archived` archives it. A replacement `query` must still be a valid metric. |
+| `create_measure`    | Save a query's aggregation as a reusable measure on a table. Accepts a `query_handle` from `construct_query`; the query must be a single-stage table query with exactly one aggregation and nothing else. Admin/data-analyst only. |
+| `update_measure`    | Update a measure. Patch semantics. Setting `archived: true` archives it — measures have no hard delete, so this is also how one is deleted. A replacement `query` must still be a valid measure. Admin/data-analyst only. |
 | `create_question`   | Save a query as a named question (card). Accepts a `query_handle` from `construct_query` (MBQL) or `construct_native_query` (native SQL). Saving native requires native-query DB permission. |
 | `update_question`   | Update a saved question. Patch semantics. Setting `collection_id` moves the card. Setting `archived` archives it. Replacing the query accepts a `construct_query` or `construct_native_query` handle. |
 | `create_dashboard`  | Create a new dashboard, optionally populated with saved questions (auto-positioned on the grid).                  |

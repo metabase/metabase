@@ -18,6 +18,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.feedback :as metabot.feedback]
@@ -1089,6 +1090,169 @@
                    (str "Card " id " is not a metric. Use update_question to update questions."))
     (apply-agent-card-patch! card-before-update body
                              {:validate-query! check-metric-query-can-be-saved!})))
+
+;;; -------------------------------------------------- Create Measure ------------------------------------------------
+;;
+;; A Measure (`:model/Measure`) is a table-scoped reusable aggregation, not a card: it has no
+;; collection, display, or visualization settings, and its permission model is table-based (admin
+;; or data analyst with unrestricted view-data on the parent table). So these endpoints don't share
+;; the card-mutation helper stack above; they mirror REST `/api/measure` instead.
+
+(mr/def ::create-measure-request
+  [:map
+   [:name        ms/NonBlankString]
+   [:query       ms/NonBlankString]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::update-measure-request
+  "Patch shape for `update_measure`. Every field is optional; only the fields the caller passes
+  are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID resolved
+  upstream in the MCP layer) and must still describe a valid measure. `:revision_message` is
+  recorded in the measure's revision history."
+  [:map
+   [:name             {:optional true} [:maybe ms/NonBlankString]]
+   [:description      {:optional true} [:maybe :string]]
+   [:archived         {:optional true} [:maybe :boolean]]
+   [:query            {:optional true} [:maybe ms/NonBlankString]]
+   [:revision_message {:optional true} [:maybe ms/NonBlankString]]])
+
+(mr/def ::measure-response
+  "Returned by `create_measure` / `update_measure`. `definition_description` is the
+  human-readable rendering of the measure's aggregation — the read-back an LLM should report."
+  [:map
+   [:id                     ms/PositiveInt]
+   [:name                   ms/NonBlankString]
+   [:table_id               ms/PositiveInt]
+   [:description            [:maybe :string]]
+   [:definition_description [:maybe :string]]
+   [:archived               :boolean]])
+
+(defn- measure-response
+  [measure]
+  (let [measure (t2/hydrate measure :definition_description)]
+    {:id                     (:id measure)
+     :name                   (:name measure)
+     :table_id               (:table_id measure)
+     :description            (:description measure)
+     :definition_description (:definition_description measure)
+     :archived               (boolean (:archived measure))}))
+
+(defn- decode-measure-definition
+  "Decode a base64 `:query` payload (a resolved query_handle) into a normalized MBQL 5 query map,
+  the shape `:model/Measure` stores as its `:definition`."
+  [encoded]
+  (-> encoded u/decode-base64 json/decode+kw lib-be/normalize-query))
+
+(defn- check-measure-definition-can-be-saved!
+  "Throw a 400 unless `definition` is a valid measure definition (see
+  `::lib.schema.measure/definition`). The model's before-insert/update hooks run the same
+  validation via `mu/validate-throw`, but that surfaces as a 500; checking here first gives the
+  LLM an actionable message."
+  [definition]
+  (when-not (mr/validate ::lib.schema.measure/definition definition)
+    (throw (ex-info (str "This query can't be saved as a measure. A measure is a reusable "
+                         "aggregation: a single-stage query over one table with exactly one "
+                         "aggregation and no other clauses (no filters, breakout, joins, "
+                         "expressions, fields, order-by, or limit), and it can't reference "
+                         "metrics. Construct a query with a single aggregation before saving it.")
+                    {:status-code 400}))))
+
+(defn- check-measure-overwrite-400!
+  "Run `lib/check-measure-overwrite` (cycle detection and referenced-measure existence), promoting
+  any failure to a 400. The model's before-insert/update hooks run the same check, but without a
+  :status-code it would surface as a 500; a 400 gives the LLM an actionable message."
+  [measure-id definition]
+  (try
+    (lib/check-measure-overwrite measure-id definition)
+    (catch clojure.lang.ExceptionInfo e
+      (let [data (ex-data e)]
+        (throw (ex-info (ex-message e)
+                        (assoc data :status-code (or (:status-code data) 400))
+                        e))))))
+
+(api.macros/defendpoint :post "/v1/measure" :- ::measure-response
+  "Create a measure — a named, reusable aggregation for a table.
+
+  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`, or a
+  base64-encoded MBQL string. MCP callers should always use the handle. The query must be a
+  single-stage query against a table whose only clause is exactly one aggregation. The measure's
+  target table is derived from the query's source table.
+
+  Requires curate permissions on the underlying data: admins and data analysts only."
+  {:scope metabot/agent-measure-create
+   :tool  {:name "create_measure"
+           :description (str "Save a query's aggregation as a reusable measure in Metabase. "
+                             "Pass the `query_handle` returned by `construct_query`. "
+                             "The query must be a single-stage query on a table containing ONLY "
+                             "one aggregation (e.g. count, sum, average) — no filters, breakout, "
+                             "joins, expressions, order-by, or limit. The measure attaches to the "
+                             "query's source table. Requires admin or data-analyst permissions.")}}
+  [_route-params
+   _query-params
+   {:keys [query description] measure-name :name} :- ::create-measure-request]
+  (let [definition (decode-measure-definition query)
+        _          (check-measure-definition-can-be-saved! definition)
+        table-id   (lib/primary-source-table-id definition)]
+    (api/check-400 (int? table-id)
+                   "A measure must be built directly on a table, not on a saved question.")
+    (api/create-check :model/Measure {:table_id table-id})
+    (check-measure-overwrite-400! nil definition)
+    (let [measure (api/check-500
+                   (first (t2/insert-returning-instances! :model/Measure
+                                                          :table_id    table-id
+                                                          :creator_id  api/*current-user-id*
+                                                          :name        measure-name
+                                                          :description description
+                                                          :definition  definition)))]
+      (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
+      (measure-response measure))))
+
+;;; -------------------------------------------------- Update Measure ------------------------------------------------
+
+(api.macros/defendpoint :put "/v1/measure/:id" :- ::measure-response
+  "Update a measure. Patch semantics - only fields that you pass are changed.
+
+  Set `archived: true` to archive the measure — this is also how a measure is deleted; there is
+  no hard delete. Pass `query` (a query_handle from construct_query, or a base64 MBQL string)
+  to replace the measure's aggregation definition;
+  the replacement must still be a valid measure (single stage, exactly one aggregation, nothing
+  else). An optional `revision_message` is recorded in the measure's revision history.
+
+  Requires curate permissions on the underlying data: admins and data analysts only."
+  {:scope metabot/agent-measure-update
+   :tool  {:name "update_measure"
+           :description (str "Update a measure. Patch semantics - only fields you pass are changed. "
+                             "To delete (archive) a measure, set archived true - measures have no "
+                             "hard delete, so this is also the tool for deleting one. To replace the "
+                             "aggregation definition, pass query (a query_handle from construct_query) "
+                             "- it must still be a single-stage table query containing only one "
+                             "aggregation. Optionally pass revision_message to annotate the change "
+                             "in revision history.")}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- ::update-measure-request]
+  (api/write-check :model/Measure id)
+  (let [new-definition (when-some [encoded (:query body)]
+                         (let [definition (decode-measure-definition encoded)]
+                           (check-measure-definition-can-be-saved! definition)
+                           ;; Reject definitions referencing this measure (directly or transitively).
+                           (check-measure-overwrite-400! id definition)
+                           definition))
+        ;; :name is non-nullable on the model, so an explicit null is ignored rather than applied;
+        ;; :description is nullable and an explicit null clears it.
+        changes        (cond-> {}
+                         (some? (:name body))          (assoc :name (:name body))
+                         (contains? body :description) (assoc :description (:description body))
+                         (contains? body :archived)    (assoc :archived (boolean (:archived body)))
+                         new-definition                (assoc :definition new-definition))]
+    (when (seq changes)
+      (t2/update! :model/Measure id changes))
+    (let [updated (t2/select-one :model/Measure :id id)]
+      (events/publish-event! :event/measure-update
+                             (cond-> {:object updated :user-id api/*current-user-id*}
+                               (:revision_message body)
+                               (assoc :revision-message (:revision_message body))))
+      (measure-response updated))))
 
 ;;; ------------------------------------------------- Update Question ------------------------------------------------
 

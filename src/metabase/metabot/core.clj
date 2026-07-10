@@ -21,6 +21,8 @@
   agent-question-create
   agent-question-execute
   agent-question-update
+  agent-measure-create
+  agent-measure-update
   agent-metric-create
   agent-metric-update
   agent-resource-read
