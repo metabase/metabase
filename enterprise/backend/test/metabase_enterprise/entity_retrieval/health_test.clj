@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private ready-status
-  {:pgvector? true :licensed? true :index-compatible? true :populated? true})
+  {:pgvector? true :licensed? true :embedder-configured? true :index-compatible? true :populated? true})
 
 (defn- check [status & {:keys [circuit-open? reachable]
                         :or   {circuit-open? false reachable {:reachable? true :error nil}}}]
@@ -21,9 +21,10 @@
     (entity-retrieval.health/nlq-retrieval-health-check)))
 
 (deftest not-enabled-is-omitted-test
-  (testing "unlicensed or unconfigured -> nil (omitted, not a misleading 100)"
-    (is (nil? (check {:pgvector? false :licensed? true :index-compatible? false :populated? false})))
-    (is (nil? (check {:pgvector? true :licensed? false :index-compatible? false :populated? false})))))
+  (testing "unlicensed or unconfigured (pgvector or embedder) -> nil (omitted, not a misleading 100)"
+    (is (nil? (check (assoc ready-status :pgvector? false :index-compatible? false :populated? false))))
+    (is (nil? (check (assoc ready-status :licensed? false :index-compatible? false :populated? false))))
+    (is (nil? (check (assoc ready-status :embedder-configured? false :index-compatible? false :populated? false))))))
 
 (deftest incompatible-index-is-degraded-test
   (testing "enabled but the index isn't built for the current model -> degraded, names the rebuild"
@@ -71,8 +72,10 @@
 (deftest nlq-metrics-omitted-when-unavailable-test
   (testing "coverage/garbage/staleness skip (nil, so omitted) when unlicensed or the index is incompatible"
     (mt/with-dynamic-fn-redefs
-      [entity-retrieval.core/retrieval-status (constantly {:pgvector? true :licensed? false
-                                                           :index-compatible? false :populated? false})]
+      [entity-retrieval.core/retrieval-status (constantly (assoc ready-status
+                                                                 :licensed? false
+                                                                 :index-compatible? false
+                                                                 :populated? false))]
       (is (nil? (#'entity-retrieval.health/nlq-coverage)))
       (is (nil? (#'entity-retrieval.health/nlq-garbage)))
       (is (nil? (#'entity-retrieval.health/nlq-staleness))))))

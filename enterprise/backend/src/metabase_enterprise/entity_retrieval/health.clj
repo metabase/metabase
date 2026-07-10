@@ -37,9 +37,10 @@
   map: healthy when the curated index can serve queries and the embedding service is reachable; degraded
   (naming the cause) whenever the agent would silently fall back to general search."
   []
-  (let [{:keys [pgvector? licensed? index-compatible? populated? probe-error]} (entity-retrieval/retrieval-status)]
+  (let [{:keys [pgvector? licensed? embedder-configured? index-compatible? populated? probe-error]}
+        (entity-retrieval/retrieval-status)]
     (cond
-      (not (and pgvector? licensed?))
+      (not (and pgvector? licensed? embedder-configured?))
       nil ;; not enabled — nothing to check (omitted rather than reported as healthy)
 
       ;; A thrown probe is a pgvector-connectivity fault, not a model mismatch: report it as such rather than
@@ -82,13 +83,15 @@
 (def ^:private garbage-critical-count 100)
 
 (defn- library-datasource*
-  "pgvector datasource when NLQ library retrieval is licensed, configured, and the index is built for the
-  current model; else nil (the metric skips -- availability is the `:nlq-retrieval` check's job). An
-  empty-but-compatible index is still measured (coverage reads 0%), so this gates on compatibility, not
-  population -- and passes `probe-populated? false` so it doesn't run the population query it would discard."
+  "pgvector datasource when NLQ library retrieval is licensed, configured (pgvector + embedder), and the
+  index is built for the current model; else nil (the metric skips -- availability is the `:nlq-retrieval`
+  check's job). An empty-but-compatible index is still measured (coverage reads 0%), so this gates on
+  compatibility, not population -- and passes `probe-populated? false` so it doesn't run the population
+  query it would discard."
   []
-  (let [{:keys [pgvector? licensed? index-compatible?]} (entity-retrieval/retrieval-status false)]
-    (when (and pgvector? licensed? index-compatible?)
+  (let [{:keys [pgvector? licensed? embedder-configured? index-compatible?]}
+        (entity-retrieval/retrieval-status false)]
+    (when (and pgvector? licensed? embedder-configured? index-compatible?)
       (try (semantic.datasource/ensure-initialized-data-source!)
            (catch Throwable _ nil)))))
 

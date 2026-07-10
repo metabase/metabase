@@ -154,28 +154,29 @@
             (is (false? (entity-retrieval.core/available?)))))))))
 
 (deftest retrieval-status-missing-table-reads-as-absence-test
-  (mt/with-premium-features #{:semantic-search}
+  (mt/with-premium-features #{:library :library-retrieval}
     ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
     (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
       (mt/with-dynamic-fn-redefs
         [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
-         semantic.embedding/get-configured-model                (constantly ::model)]
-        (let [status-when-probe-throws
+         semantic.embedding/get-configured-model                (constantly semantic.tu/mock-embedding-model)]
+        (let [enabled {:pgvector? true :licensed? true :embedder-configured? true}
+              status-when-probe-throws
               (fn [e]
                 (mt/with-dynamic-fn-redefs [index-table/index-compatible? (fn [& _] (throw e))]
                   (entity-retrieval.core/retrieval-status)))]
           (testing "42P01 (first build pending / manual drop) is index absence, with no :probe-error"
-            (is (= {:pgvector? true :licensed? true :index-compatible? false :populated? false :probe-error nil}
+            (is (= (assoc enabled :index-compatible? false :populated? false :probe-error nil)
                    (status-when-probe-throws
                     (java.sql.SQLException. "relation \"library_entity_index_meta\" does not exist" "42P01")))))
           (testing "a wrapped 42P01 is found through the cause chain"
-            (is (= {:pgvector? true :licensed? true :index-compatible? false :populated? false :probe-error nil}
+            (is (= (assoc enabled :index-compatible? false :populated? false :probe-error nil)
                    (status-when-probe-throws
                     (ex-info "probe failed" {}
                              (java.sql.SQLException. "relation does not exist" "42P01"))))))
           (testing "any other probe failure (a real connectivity fault) still surfaces as :probe-error"
-            (is (= {:pgvector? true :licensed? true :index-compatible? false :populated? false
-                    :probe-error "connection refused"}
+            (is (= (assoc enabled :index-compatible? false :populated? false
+                          :probe-error "connection refused")
                    (status-when-probe-throws
                     (java.sql.SQLException. "connection refused" "08001"))))))))))
 

@@ -41,24 +41,30 @@
   []
   (semantic.db.datasource/dedicated-url-configured?))
 
+(defn- licensed?
+  "Both features retrieval needs: `:library-retrieval` entitles the tool; `:library` gives the index
+  something to hold (a token granting `:library-retrieval` alone degrades to \"unavailable\" explicitly,
+  not silently via an empty index)."
+  []
+  (and (premium-features/has-feature? :library)
+       (premium-features/has-feature? :library-retrieval)))
+
+(defn- embedder-configured?
+  "Whether an embedding backend is configured (see [[embedding/embedding-supported?]]): without one, both
+  reconcile and query embedding would throw, so callers gate rather than fail mid-run."
+  []
+  (embedding/embedding-supported? (embedding/get-configured-model)))
+
 (defn available?
-  "Whether the entity-retrieval mirror can run right now. All four must hold:
-    - a pgvector store is configured (somewhere to hold the index),
-    - the license includes `:library-retrieval` (the tool is entitled),
-    - the license includes `:library`: retrieval operates over library entities, so the tool is meaningless
-      without it (the index would have nothing to hold) — enforced here so a token granting
-      `:library-retrieval` alone degrades to \"unavailable\" explicitly, not silently via an empty index,
-    - an embedding backend is configured (see [[embedding/embedding-supported?]]): without one, both
-      reconcile and query embedding would throw, so we gate rather than fail mid-run.
+  "Whether the entity-retrieval mirror can run right now: a pgvector store is configured (somewhere to hold
+  the index), the license includes `:library` and `:library-retrieval` ([[licensed?]]), and an embedding
+  backend is configured ([[embedder-configured?]]).
   The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
   re-evaluate per use."
   []
-  ;; entitlement first: short-circuit on the license flags for instances that can't use the answer, before
-  ;; the config check (here a cheap dedicated-URL string check, not the app-db pgvector probe)
-  (and (premium-features/has-feature? :library)
-       (premium-features/has-feature? :library-retrieval)
-       (pgvector-configured?)
-       (embedding/embedding-supported? (embedding/get-configured-model))))
+  (and (pgvector-configured?)
+       (licensed?)
+       (embedder-configured?)))
 
 (defn- missing-table-error?
   "Whether `e` (or one of its causes) is Postgres undefined_table (42P01), i.e. the index tables don't exist
@@ -72,10 +78,10 @@
 (defn retrieval-status
   "Decomposed availability of the library entity index -- the single source of truth behind
   [[entity-retrieval-available?]] and the health check.
-  Returns `{:pgvector? :licensed? :index-compatible? :populated? :probe-error}`:
-  `:pgvector?` / `:licensed?` are the enablement conditions ([[available?]] is their conjunction);
-  `:index-compatible?` (meta row matches the configured model + schema version) and `:populated?`
-  (>= 1 document) are the readiness conditions, probed against pgvector only when enabled.
+  Returns `{:pgvector? :licensed? :embedder-configured? :index-compatible? :populated? :probe-error}`:
+  `:pgvector?` / `:licensed?` / `:embedder-configured?` are the enablement conditions ([[available?]] is
+  their conjunction); `:index-compatible?` (meta row matches the configured model + schema version) and
+  `:populated?` (>= 1 document) are the readiness conditions, probed against pgvector only when enabled.
   `:probe-error` is the message of a pgvector failure during that probe (else nil) -- it distinguishes a
   store that is unreachable (probe threw) from an index that is genuinely absent/incompatible (probe
   succeeded, answer negative), so a health check can name connectivity vs a pending rebuild. A missing
@@ -85,9 +91,11 @@
   ([] (retrieval-status true))
   ([probe-populated?]
    (let [pgvector? (pgvector-configured?)
-         licensed? (premium-features/has-feature? :semantic-search)]
-     (if-not (and pgvector? licensed?)
-       {:pgvector? pgvector? :licensed? licensed? :index-compatible? false :populated? false :probe-error nil}
+         licensed? (licensed?)
+         embedder? (embedder-configured?)]
+     (if-not (and pgvector? licensed? embedder?)
+       {:pgvector? pgvector? :licensed? licensed? :embedder-configured? embedder?
+        :index-compatible? false :populated? false :probe-error nil}
        ;; An incompatible meta row is a model/dimension/format change whose rebuild hasn't run; the vectors
        ;; table would answer with nothing (or error), so such an index must not be offered. A thrown probe is
        ;; kept distinct (:probe-error) from a negative-but-successful one so pgvector-down isn't mislabelled.
@@ -105,8 +113,8 @@
                  (if (missing-table-error? e)
                    {:compatible? false :populated? false :probe-error nil}
                    {:compatible? false :populated? false :probe-error (ex-message e)})))]
-         {:pgvector? true :licensed? true :index-compatible? compatible? :populated? populated?
-          :probe-error probe-error})))))
+         {:pgvector? true :licensed? true :embedder-configured? true
+          :index-compatible? compatible? :populated? populated? :probe-error probe-error})))))
 
 ;; OSS-callable surface used to decide whether to OFFER the retrieve_library_entities tool: it must
 ;; be able to actually answer, so beyond config + license the index has to be built for the current model and
@@ -114,14 +122,14 @@
 ;; index can still be rebuilt.) Runs unconditionally rather than gating on :feature — the OSS fallback
 ;; `false` already covers the unlicensed case.
 (defenterprise entity-retrieval-available?
-  "EE impl: pgvector configured + semantic-search licensed AND the index is ready (built for the current
-  model and populated) AND the embedder circuit isn't open, so the curated tool is offered only when it can
-  serve a query -- otherwise the agent gets the general-search fallback rather than fast-failing on every
-  `retrieve_library_entities` call while the embedder is down."
+  "EE impl: pgvector configured + library-retrieval licensed + embedder configured AND the index is ready
+  (built for the current model and populated) AND the embedder circuit isn't open, so the tool is offered
+  only when it can serve a query -- otherwise the agent gets the general-search fallback rather than
+  fast-failing on every `retrieve_library_entities` call while the embedder is down."
   :feature :none
   []
-  (let [{:keys [pgvector? licensed? index-compatible? populated?]} (retrieval-status)]
-    (and pgvector? licensed? index-compatible? populated?
+  (let [{:keys [pgvector? licensed? embedder-configured? index-compatible? populated?]} (retrieval-status)]
+    (and pgvector? licensed? embedder-configured? index-compatible? populated?
          (not (embedding/embedder-circuit-open?)))))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
