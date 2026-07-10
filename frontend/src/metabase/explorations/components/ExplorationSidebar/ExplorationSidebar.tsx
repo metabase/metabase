@@ -306,8 +306,8 @@ function SidebarTabLabel({
   if (tab === "stars") {
     return (
       <Tooltip label={label}>
-        <Center component="span" aria-label={label}>
-          <Icon name="star_filled" />
+        <Center component="span" role="img" aria-label={label}>
+          <Icon name="star_filled" aria-hidden />
         </Center>
       </Tooltip>
     );
@@ -315,8 +315,8 @@ function SidebarTabLabel({
   if (tab === "discussions") {
     return (
       <Tooltip label={label}>
-        <Center component="span" aria-label={label}>
-          <Icon name="comment" />
+        <Center component="span" role="img" aria-label={label}>
+          <Icon name="comment" aria-hidden />
         </Center>
       </Tooltip>
     );
