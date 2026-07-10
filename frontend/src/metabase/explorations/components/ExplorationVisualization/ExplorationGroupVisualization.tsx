@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef, Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
+import { noop } from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { explorationApi } from "metabase/api/exploration";
@@ -25,8 +26,6 @@ import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   ClickActionsMode,
-  ClickObject,
-  CustomClickAction,
   HighlightedObject,
 } from "metabase/visualizations/types";
 import type {
@@ -42,17 +41,14 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
-import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
-import { ChartClickPopover } from "./ChartClickPopover";
+import { useExplorationClickActionsMode } from "../../hooks/useExplorationClickActionsMode";
+import type { CommentDrafts } from "../../types";
+
+import { ActionToolbar } from "./ActionToolbar";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import {
-  type LegendItem,
-  buildSeriesGroup,
-  getCommentLabel,
-  getExploreFurtherFilters,
-} from "./utils";
+import { type LegendItem, buildSeriesGroup, getCommentLabel } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
@@ -162,16 +158,17 @@ function ExplorationGroupVisualizationChart({
   wasCommentsSidebarOpen,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
+
+  const clickActionsMode = useExplorationClickActionsMode({
+    explorationId,
+    pageId: page.id,
+    blockType,
+    queryType: queries[0].query_type,
+    commentDrafts,
+    setCommentDrafts,
+  });
+
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
-
-  const [clicked, setClicked] = useState<ClickObject | null>(null);
-
-  const handleVisualizationClick = useCallback(
-    (clicked: ClickObject | null) => {
-      setClicked(clicked);
-    },
-    [],
-  );
 
   useEffect(() => {
     const subscriptions = queryIds.map((id) =>
@@ -338,8 +335,7 @@ function ExplorationGroupVisualizationChart({
             <ExplorationCartesianChart
               key={series[0].card.id}
               series={series}
-              stackCount={stackCount}
-              onVisualizationClick={handleVisualizationClick}
+              mode={clickActionsMode}
               highlighted={highlighted}
             />
           ) : series[0].card.display === "table" ? (
@@ -347,7 +343,7 @@ function ExplorationGroupVisualizationChart({
               key={series[0].card.id}
               series={series}
               stackCount={stackCount}
-              onVisualizationClick={handleVisualizationClick}
+              mode={clickActionsMode}
               highlighted={highlighted}
             />
           ) : (
@@ -355,21 +351,11 @@ function ExplorationGroupVisualizationChart({
               key={series[0].card.id}
               series={series}
               legendItems={legendItems}
-              onVisualizationClick={handleVisualizationClick}
+              mode={clickActionsMode}
               highlighted={highlighted}
             />
           )}
         </Box>
-        {clicked && (
-          <ChartClickPopover
-            explorationId={explorationId}
-            page={page}
-            clicked={clicked}
-            blockType={blockType}
-            queryType={queries[0].query_type}
-            onClose={() => setClicked(null)}
-          />
-        )}
         <ActionToolbar
           explorationId={explorationId}
           page={page}
@@ -408,21 +394,20 @@ function ExplorationGroupVisualizationChart({
 
 interface ExplorationCartesianChartProps {
   series: SingleSeries[];
-  stackCount?: number;
-  onVisualizationClick?: (clicked: ClickObject | null) => void;
+  mode: ClickActionsMode;
   highlighted?: HighlightedObject | null;
 }
 
 function ExplorationCartesianChart({
   series,
-  onVisualizationClick,
+  mode,
   highlighted,
 }: ExplorationCartesianChartProps) {
   return (
     <ExplorationVisualization
       rawSeries={series}
       className={S.chart}
-      onVisualizationClick={onVisualizationClick}
+      mode={mode}
       highlighted={highlighted}
     />
   );
@@ -431,14 +416,14 @@ function ExplorationCartesianChart({
 interface ExplorationHeatMapProps {
   series: SingleSeries[];
   stackCount?: number;
-  onVisualizationClick?: (clicked: ClickObject | null) => void;
+  mode: ClickActionsMode;
   highlighted?: HighlightedObject | null;
 }
 
 function ExplorationHeatMap({
   series,
   stackCount,
-  onVisualizationClick,
+  mode,
   highlighted,
 }: ExplorationHeatMapProps) {
   const tableHeight = HEADER_HEIGHT + (stackCount ?? 1) * ROW_HEIGHT;
@@ -447,7 +432,7 @@ function ExplorationHeatMap({
       <ExplorationVisualization
         rawSeries={series}
         className={S.chart}
-        onVisualizationClick={onVisualizationClick}
+        mode={mode}
         highlighted={highlighted}
       />
     </Box>
@@ -457,14 +442,14 @@ function ExplorationHeatMap({
 interface ExplorationMapProps {
   series: SingleSeries[];
   legendItems: LegendItem[];
-  onVisualizationClick?: (clicked: ClickObject | null) => void;
+  mode: ClickActionsMode;
   highlighted?: HighlightedObject | null;
 }
 
 function ExplorationMap({
   series,
   legendItems,
-  onVisualizationClick,
+  mode,
   highlighted,
 }: ExplorationMapProps) {
   return (
@@ -508,7 +493,7 @@ function ExplorationMap({
           <ExplorationVisualization
             rawSeries={[s]}
             className={S.chart}
-            onVisualizationClick={onVisualizationClick}
+            mode={mode}
             highlighted={highlighted}
           />
         </Box>
@@ -517,35 +502,17 @@ function ExplorationMap({
   );
 }
 
-// A drillable point on an exploration chart carries a value we can scope a follow-up
-// investigation to. This dummy action never renders — the `handleVisualizationClick` override
-// on `Visualization` intercepts the click and opens our own popover — but its presence is what
-// makes the cartesian layer treat value-bearing points as clickable and emit the click at all.
-const EXPLORE_FURTHER_ACTION: CustomClickAction = {
-  name: "explore-further",
-  section: "custom",
-  type: "custom",
-  buttonType: "horizontal",
-};
-
-const EXPLORE_CLICK_MODE: ClickActionsMode = {
-  actionsForClick: (clicked) =>
-    getExploreFurtherFilters(clicked).length > 0
-      ? [EXPLORE_FURTHER_ACTION]
-      : [],
-};
-
 interface ExplorationVisualizationProps {
   rawSeries: SingleSeries[];
   className?: string;
-  onVisualizationClick?: (clicked: ClickObject | null) => void;
+  mode?: ClickActionsMode;
   highlighted?: HighlightedObject | null;
 }
 
 export function ExplorationVisualization({
   rawSeries,
   className,
-  onVisualizationClick,
+  mode,
   highlighted,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -558,8 +525,8 @@ export function ExplorationVisualization({
         rawSeries={rawSeries}
         className={className}
         onUpdateWarnings={setWarnings}
-        mode={onVisualizationClick ? EXPLORE_CLICK_MODE : undefined}
-        handleVisualizationClick={onVisualizationClick}
+        mode={mode}
+        onChangeCardAndRun={noop} // needed to show ConnectedClickActionsPopover
         highlighted={highlighted}
       />
     </Box>

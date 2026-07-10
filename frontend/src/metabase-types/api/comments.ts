@@ -15,7 +15,7 @@ export interface Comment {
 
   target_type: CommentEntityType;
   target_id: EntityId;
-  child_target_id: EntityId | null;
+  child_target_id: string | null;
 
   creator: BaseUser;
   content: DocumentContent;
@@ -58,7 +58,7 @@ export interface ListCommentsRequest {
 export interface CreateCommentRequest {
   target_id: EntityId;
   target_type: CommentEntityType;
-  child_target_id: EntityId | null;
+  child_target_id: string | null;
   parent_comment_id: CommentId | null;
   content: DocumentContent;
   context?: CommentContext | null;

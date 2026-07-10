@@ -10,7 +10,6 @@ import { t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
 import { useSetPageStarredMutation } from "metabase/api/exploration";
-import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
@@ -24,14 +23,14 @@ import type {
   DocumentContent,
   ExplorationId,
   ExplorationPageNode,
-  ExplorationPageNodeId,
   Timeline,
   TimelineId,
 } from "metabase-types/api";
 
-import S from "./ActionToolbar.module.css";
+import type { CommentDrafts } from "../../types";
 
-export type CommentDrafts = Record<ExplorationPageNodeId, DocumentContent>;
+import S from "./ActionToolbar.module.css";
+import { ExplorationCommentEditor } from "./ExplorationCommentEditor";
 
 interface ActionToolbarProps {
   explorationId: ExplorationId;
@@ -138,10 +137,6 @@ export function ActionToolbar({
 
   const pageId = String(page.id);
 
-  const handleChangeCommentDraft = (content: DocumentContent) => {
-    setCommentDrafts((prev) => ({ ...prev, [pageId]: content }));
-  };
-
   const handleAddComment = async (content: DocumentContent) => {
     const { error } = await createComment({
       target_id: explorationId,
@@ -237,7 +232,6 @@ export function ActionToolbar({
       />
       <Popover
         position="top"
-        width="20rem"
         offset={16}
         opened={isCommentEditorOpen}
         onChange={setCommentEditorOpen}
@@ -251,20 +245,12 @@ export function ActionToolbar({
           />
         </Popover.Target>
         <Popover.Dropdown className={S.commentDropdown}>
-          <div
-            // prevent clicks in mention menu from closing the popover
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            <CommentEditor
-              className={S.commentEditor}
-              placeholder={t`Add a comment…`}
-              initialContent={commentDrafts[pageId]}
-              onChange={handleChangeCommentDraft}
-              onSubmit={handleAddComment}
-              autoFocus={"end"}
-            />
-          </div>
+          <ExplorationCommentEditor
+            commentDrafts={commentDrafts}
+            setCommentDrafts={setCommentDrafts}
+            pageId={pageId}
+            handleAddComment={handleAddComment}
+          />
         </Popover.Dropdown>
       </Popover>
     </Group>

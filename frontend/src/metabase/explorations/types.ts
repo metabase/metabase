@@ -1,4 +1,8 @@
-import type { CollectionId } from "metabase-types/api";
+import type {
+  CollectionId,
+  DocumentContent,
+  ExplorationPageNodeId,
+} from "metabase-types/api";
 
 export interface ExplorationCollection {
   id?: CollectionId;
@@ -22,3 +26,5 @@ export function isExplorationSidebarTab(
     tab && EXPLORATION_SIDEBAR_TABS.includes(tab as ExplorationSidebarTab),
   );
 }
+
+export type CommentDrafts = Record<ExplorationPageNodeId, DocumentContent>;

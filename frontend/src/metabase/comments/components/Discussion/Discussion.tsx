@@ -27,7 +27,7 @@ import S from "./Discussion.module.css";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
-  childTargetId: EntityId | null;
+  childTargetId: string | null;
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;

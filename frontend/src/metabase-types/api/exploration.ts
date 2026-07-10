@@ -99,6 +99,7 @@ export type RemoveFromResearchPlanResponse = {
 
 export type ExplorationId = number;
 export type ExplorationThreadId = number;
+export type ExplorationPageId = number;
 export type ExplorationQueryId = number;
 
 export interface ExplorationMetricSelection {
@@ -134,7 +135,7 @@ export type ExplorationExploreFilter = {
 export interface ExploreFurtherRequest {
   id: ExplorationId;
   // The clicked chart's page: its block (metric + dimensions) is copied into the new thread.
-  page_id: number;
+  page_id: ExplorationPageId;
   explore_filters: ExplorationExploreFilter[];
 }
 
@@ -274,7 +275,7 @@ export interface ExplorationDocument {
 export type ExplorationPageNodeId = string;
 
 export interface ExplorationPageNode {
-  id: number;
+  id: ExplorationPageId;
   name: string | null;
   long_name: string | null;
   position: number;

@@ -49,13 +49,16 @@ import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
-import type { CommentDrafts } from "../components/ExplorationVisualization/ActionToolbar";
 import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
-import { type ExplorationSidebarTab, isExplorationSidebarTab } from "../types";
+import {
+  type CommentDrafts,
+  type ExplorationSidebarTab,
+  isExplorationSidebarTab,
+} from "../types";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 const NO_TIMELINE_PARAM = "none";
