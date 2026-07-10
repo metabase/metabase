@@ -32,7 +32,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
     }),
     verifyMfa: builder.mutation<
       { id: string },
-      { mfa_token: string; code: string }
+      { mfa_token: string; code: string; remember?: boolean }
     >({
       query: (body) => ({
         method: "POST",

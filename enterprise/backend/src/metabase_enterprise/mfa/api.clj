@@ -48,9 +48,13 @@
   their single-use recovery codes; on success sets the session cookie."
   [_route-params
    _query-params
+   ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
+   ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
+   ;; `POST /api/session` — for MFA users THIS request is the one that creates the session.
    {mfa-token :mfa_token, code :code} :- [:map
                                           [:mfa_token ms/NonBlankString]
-                                          [:code      ms/NonBlankString]]
+                                          [:code      ms/NonBlankString]
+                                          [:remember  {:optional true} :boolean]]
    request]
   (let [request-time (t/zoned-date-time (t/zone-id "GMT"))
         claims       (or (challenge/verify-challenge-token mfa-token)

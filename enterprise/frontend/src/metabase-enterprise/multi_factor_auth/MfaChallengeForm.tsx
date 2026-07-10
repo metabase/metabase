@@ -18,6 +18,7 @@ import { RECOVERY_CODE_LENGTH, TOTP_CODE_LENGTH } from "./constants";
 export const MfaChallengeForm = ({
   mfaToken,
   methods,
+  remember,
   onCancel,
 }: MfaChallengeFormProps) => {
   const dispatch = useDispatch();
@@ -38,7 +39,11 @@ export const MfaChallengeForm = ({
     setIsSubmitting(true);
     setError(null);
     try {
-      await verifyMfa({ mfa_token: mfaToken, code: code.trim() }).unwrap();
+      await verifyMfa({
+        mfa_token: mfaToken,
+        code: code.trim(),
+        remember,
+      }).unwrap();
       // The session cookie is now set; refresh and let the route guard redirect.
       await dispatch(refreshSession()).unwrap();
       if (!isSmallScreen()) {

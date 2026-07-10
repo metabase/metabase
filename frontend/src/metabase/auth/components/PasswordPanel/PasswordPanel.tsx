@@ -30,6 +30,8 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeResponse | null>(
     null,
   );
+  // carried from step 1 to the verify request, which is what creates the session
+  const [remember, setRemember] = useState(false);
 
   const handleSubmit = useCallback(
     async (data: LoginData) => {
@@ -37,6 +39,7 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
         login({ data, redirectUrl }),
       ).unwrap();
       if (challenge) {
+        setRemember(Boolean(data.remember));
         setMfaChallenge(challenge);
       }
     },
@@ -48,6 +51,7 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
       <PLUGIN_MULTI_FACTOR_AUTH.ChallengeForm
         mfaToken={mfaChallenge.mfa_token}
         methods={mfaChallenge.methods}
+        remember={remember}
         onCancel={() => setMfaChallenge(null)}
       />
     );
