@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import type { MfaChallengeFormProps } from "metabase/plugins";
+import type { AuthChallengeFormProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSession } from "metabase/redux/auth";
@@ -158,12 +158,12 @@ function EmailOtpForm({ challengeToken }: EmailOtpFormProps) {
   );
 }
 
-export function ChallengeForm({
+export function AuthChallengeForm({
   challengeToken,
   methods,
   remember,
   onCancel,
-}: MfaChallengeFormProps) {
+}: AuthChallengeFormProps) {
   return (
     <Stack mt="2.5rem" gap="md">
       <ChallengeCodeForm challengeToken={challengeToken} remember={remember} />

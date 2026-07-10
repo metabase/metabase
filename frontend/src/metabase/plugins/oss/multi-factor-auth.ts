@@ -4,7 +4,7 @@ import {
 } from "metabase/plugins/components/PluginPlaceholder";
 import type { MfaMethod } from "metabase-types/api";
 
-export type MfaChallengeFormProps = {
+export type AuthChallengeFormProps = {
   challengeToken: string;
   methods: MfaMethod[];
   // the step-1 "remember me" choice; the verify request creates the session,
@@ -14,8 +14,7 @@ export type MfaChallengeFormProps = {
 };
 
 const getDefaultPluginMultiFactorAuth = () => ({
-  isEnabled: () => false,
-  ChallengeForm: PluginPlaceholder<MfaChallengeFormProps>,
+  AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
   // Routed at /account/security, so direct navigation in OSS should 404
   // rather than render a blank page.
   AccountSecurityPanel: NotFoundPlaceholder,

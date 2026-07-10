@@ -583,6 +583,7 @@ interface PublicSettings {
   "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
+  "mfa-enabled"?: boolean;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-password-login": boolean;
@@ -769,7 +770,6 @@ export interface EnterpriseSettings extends Settings {
   "llm-openrouter-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
-  "mfa-enabled"?: boolean;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

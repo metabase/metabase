@@ -1,1 +1,1 @@
-export * from "./ChallengeForm";
+export * from "./AuthChallengeForm";

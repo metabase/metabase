@@ -8,7 +8,7 @@ import { Alert, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
 import type { MfaAdminOverview } from "metabase-types/api";
 
-export const AdminAuthCard = () => {
+export function AdminAuthCard() {
   const hasFeature = useHasTokenFeature("multi-factor-auth");
   const { value: enabled } = useAdminSetting("mfa-enabled");
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
@@ -38,7 +38,7 @@ export const AdminAuthCard = () => {
       {enabled && overview && <EnrollmentCounts overview={overview} />}
     </SettingsSection>
   );
-};
+}
 
 type EnrollmentCountsProps = {
   overview: MfaAdminOverview;

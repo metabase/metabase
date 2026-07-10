@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -31,7 +31,7 @@ describe("AccountHeader", () => {
   it("should show all tabs for a regular user", () => {
     const user = getUser();
 
-    render(<AccountHeader user={user} />);
+    renderWithProviders(<AccountHeader user={user} />);
 
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.getByText("Password")).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe("AccountHeader", () => {
     const user = getUser();
     PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source === "google");
 
-    render(<AccountHeader user={user} />);
+    renderWithProviders(<AccountHeader user={user} />);
 
     expect(screen.getByText("Password")).toBeInTheDocument();
   });
@@ -52,7 +52,7 @@ describe("AccountHeader", () => {
     const user = getUser();
     PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");
 
-    render(<AccountHeader user={user} />);
+    renderWithProviders(<AccountHeader user={user} />);
 
     expect(screen.queryByText("Password")).not.toBeInTheDocument();
   });
@@ -61,7 +61,9 @@ describe("AccountHeader", () => {
     const user = getUser();
     const onChangeLocation = jest.fn();
 
-    render(<AccountHeader user={user} onChangeLocation={onChangeLocation} />);
+    renderWithProviders(
+      <AccountHeader user={user} onChangeLocation={onChangeLocation} />,
+    );
 
     fireEvent.click(screen.getByText("Profile"));
     expect(onChangeLocation).toHaveBeenCalledWith("/account/profile");
