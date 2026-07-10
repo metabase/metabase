@@ -22,6 +22,19 @@
         (mt/user-http-request :crowberto :post 204 "ee/mfa/admin/remove" {:user_id user-id})
         (is (nil? (enrollment/enrolled-method user-id)))))))
 
+(deftest admin-remove-is-audited-test
+  ;; audit rows require the :audit-app feature at event time (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/AuthIdentity _ {:user_id     user-id
+                                          :provider    "totp"
+                                          :credentials {:secret       (totp/generate-secret)
+                                                        :confirmed_at (t/instant)}}]
+      (mt/user-http-request :crowberto :post 204 "ee/mfa/admin/remove" {:user_id user-id})
+      (testing "the removal is audited against the affected user"
+        (is (=? {:topic :mfa-disabled}
+                (mt/latest-audit-log-entry :mfa-disabled user-id)))))))
+
 (deftest admin-overview-test
   (mt/with-temp [:model/User {enrolled-id :id} {}
                  :model/AuthIdentity _ {:user_id     enrolled-id
