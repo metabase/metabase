@@ -18,6 +18,7 @@ export const dateInputOverrides = {
       monthsList: Styles.monthsList,
       monthsListRow: Styles.row,
       monthsListCell: Styles.cell,
+      monthsListControl: Styles.monthsListControl,
       yearsList: Styles.yearsList,
       yearsListRow: Styles.row,
       yearsListCell: Styles.cell,
