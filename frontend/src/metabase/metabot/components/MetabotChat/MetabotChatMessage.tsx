@@ -27,6 +27,7 @@ import {
   Flex,
   type FlexProps,
   Icon,
+  Loader,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -68,6 +69,7 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
     .with({ type: "tool_call" }, () => false)
     .with({ type: "turn_aborted" }, () => true)
     .with({ type: "turn_errored" }, () => true)
+    .with({ type: "turn_in_progress" }, () => true)
     .exhaustive();
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
@@ -175,6 +177,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
+  extraActions?: ReactNode;
 }
 
 export const AgentMessage = ({
@@ -188,6 +191,7 @@ export const AgentMessage = ({
   submittedFeedback,
   onInternalLinkClick,
   hideActions,
+  extraActions,
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
@@ -217,9 +221,19 @@ export const AgentMessage = ({
         .with({ type: "turn_errored" }, (m) => (
           <AgentErroredTurnAlert message={m} debug={debug} />
         ))
+        .with({ type: "turn_in_progress" }, () => (
+          <Flex align="center" gap="sm" className={Styles.message}>
+            <Loader
+              type="dots"
+              size="sm"
+              data-testid="metabot-response-in-progress"
+            />
+            <Text c="text-secondary">{t`Response in progress…`}</Text>
+          </Flex>
+        ))
         .exhaustive()}
       {!hideActions && (
-        <Flex className={Styles.messageActions}>
+        <Flex className={Styles.messageActions} align="center">
           <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
             <ActionIcon
               h="sm"
@@ -266,6 +280,7 @@ export const AgentMessage = ({
               </ActionIcon>
             </Tooltip>
           )}
+          {extraActions}
         </Flex>
       )}
     </MessageContainer>
@@ -411,6 +426,7 @@ export const Messages = ({
   debug,
   readonly = false,
   onInternalLinkClick,
+  getExtraAgentActions,
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
@@ -418,6 +434,7 @@ export const Messages = ({
   debug: boolean;
   readonly?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
+  getExtraAgentActions?: (message: MetabotChatMessage) => ReactNode;
 }) => {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
@@ -485,8 +502,11 @@ export const Messages = ({
             readonly={readonly}
             onRetry={isLastUserMessage ? onRetryMessage : undefined}
             getCopyText={() => getAgentReplyCopyText(message.id)}
-            setFeedbackMessage={(data) =>
-              setFeedbackState((prev) => ({ ...prev, modal: data }))
+            setFeedbackMessage={
+              readonly
+                ? undefined
+                : (data) =>
+                    setFeedbackState((prev) => ({ ...prev, modal: data }))
             }
             submittedFeedback={
               "externalId" in message && message.externalId
@@ -494,6 +514,7 @@ export const Messages = ({
                 : undefined
             }
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
+            extraActions={getExtraAgentActions?.(message)}
             onInternalLinkClick={onInternalLinkClick}
           />
         ) : (

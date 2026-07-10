@@ -129,6 +129,21 @@
     (is (= "hello!" (:message (nth result 1))))
     (is (= {:output "ok"} (json/decode+kw (:result (nth result 2)))))))
 
+(deftest ^:parallel rows->turns-groups-attempts-test
+  (testing "each user row starts a turn; assistant rows (soft-deleted attempts + the live one) append to it"
+    (let [now   (t/offset-date-time)
+          rows  [{:role :user      :external_id "u1"}
+                 {:role :assistant :external_id "a1" :deleted_at now}
+                 {:role :assistant :external_id "a2" :deleted_at now}
+                 {:role :assistant :external_id "a3"}
+                 {:role :user      :external_id "u2"}
+                 {:role :assistant :external_id "b1"}]
+          turns (metabot-persistence/rows->turns rows)]
+      (is (= 2 (count turns)))
+      (is (= ["u1" "a1" "a2" "a3"] (map :external_id (first turns)))
+          "a regenerated prompt keeps all of its attempts in one turn")
+      (is (= ["u2" "b1"] (map :external_id (second turns)))))))
+
 (deftest start-turn-persists-slack-conversation-metadata-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [conversation-id (str (random-uuid))

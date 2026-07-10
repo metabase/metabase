@@ -475,7 +475,12 @@
                     (tool-part->llm-messages part))))
         data))
 
-(defn- rows->turns
+(defn rows->turns
+  "Group a conversation's messages (ordered by created_at, id) into turns: each
+  `:user` row starts a new turn, and subsequent assistant rows are appended to
+  it. Accepts live and soft-deleted rows alike — when passed the full row set,
+  a retried prompt's turn holds all of its assistant attempts (soft-deleted
+  earlier attempts plus the one live reply) in order."
   [rows]
   (reduce (fn [turns row]
             (if (or (user-row? row) (empty? turns))
@@ -666,7 +671,7 @@
                                                 (some-> v class .getName))
                                      nil)))
 
-(defn- placeholder-still-active?
+(defn placeholder-still-active?
   "True if `row` is an in-flight placeholder created by [[start-turn!]] for a
   stream that hasn't yet completed: assistant role, `:finished` IS NULL (the
   schema-level placeholder marker), and `:created_at` within the grace window.
@@ -689,6 +694,50 @@
    (let [active (remove placeholder-still-active? messages)]
      (->> (if include-errored? active (drop-errored-pairs active))
           (into [] (mapcat message->chat-messages))))))
+
+(defn row->flat-messages
+  "Expand one message row into its flat chat messages, each stamped with a
+  `:parent_message_id`, and return `[messages last-id]` where `last-id` is the id
+  the next row hangs off of."
+  [row parent-id]
+  (let [blocks (if (placeholder-still-active? row)
+                 ;; A still-streaming placeholder has no content yet; emit an
+                 ;; in-progress marker so its response (and pager) still renders.
+                 [(cond-> {:id (or (:external_id row) (str (:id row)))
+                           :role "agent" :type "turn_in_progress"}
+                    (:external_id row) (assoc :externalId (:external_id row)))]
+                 (message->chat-messages row))]
+    ;; A row can render as several blocks; chain each onto the previous one.
+    (reduce (fn [[out prev] block]
+              (let [block (assoc block :parent_message_id prev)]
+                [(conj out block) (:id block)]))
+            [[] parent-id]
+            blocks)))
+
+(defn messages->flat-messages
+  "Flatten a conversation's messages (live + soft-deleted) into a single list of
+  chat messages, each stamped with its `:parent_message_id` so a client can
+  rebuild the branch tree. A turn whose prompt row was soft-deleted (an abandoned
+  resubmit) is dropped."
+  [all-messages]
+  (loop [turns (rows->turns all-messages), prev-last nil, acc []]
+    (if-let [turn (first turns)]
+      (let [prompt-row (u/seek #(= :user (:role %)) turn)]
+        (if (and prompt-row (nil? (:deleted_at prompt-row)))
+          (let [[p-msgs p-last] (row->flat-messages prompt-row prev-last)
+                assistants (filter #(= :assistant (:role %)) turn)
+                results    (map #(row->flat-messages % p-last) assistants)
+                kept-last  (some (fn [[row [_ last-id]]]
+                                   (when (nil? (:deleted_at row)) last-id))
+                                 (map vector assistants results))]
+            (recur (rest turns)
+                   ;; Next turn hangs off the kept reply; if every attempt was
+                   ;; soft-deleted, fall back to the prompt so we don't re-parent
+                   ;; onto the previous turn.
+                   (or kept-last p-last)
+                   (into (into acc p-msgs) (mapcat first) results)))
+          (recur (rest turns) prev-last acc)))
+      acc)))
 
 (defn conversation-detail
   "Conversation-with-chat-messages snapshot. Nil if not found."
