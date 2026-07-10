@@ -1,9 +1,11 @@
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
+import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
 export const trackNewQuestionSaved = (
-  draftQuestion,
-  createdQuestion,
-  isBasedOnExistingQuestion,
+  draftQuestion: Question,
+  createdQuestion: Question,
+  isBasedOnExistingQuestion: boolean,
 ) => {
   trackSchemaEvent("question", {
     event: "new_question_saved",
@@ -11,18 +13,21 @@ export const trackNewQuestionSaved = (
     database_id: createdQuestion.databaseId(),
     visualization_type: createdQuestion.display(),
     type: draftQuestion.creationType(),
-    source: isBasedOnExistingQuestion ? "existing_question" : "from_scratch",
+    method: isBasedOnExistingQuestion ? "existing_question" : "from_scratch",
   });
 };
 
-export const trackTurnIntoModelClicked = (question) => {
+export const trackTurnIntoModelClicked = (question: Question) => {
   trackSchemaEvent("question", {
     event: "turn_into_model_clicked",
     question_id: question.id(),
   });
 };
 
-export const trackNotebookNativePreviewShown = (question, isShown) => {
+export const trackNotebookNativePreviewShown = (
+  question: Question,
+  isShown: boolean,
+) => {
   trackSchemaEvent("question", {
     event: isShown
       ? "notebook_native_preview_shown"
@@ -32,14 +37,14 @@ export const trackNotebookNativePreviewShown = (question, isShown) => {
   });
 };
 
-export const trackFirstNonTableChartGenerated = (card) => {
+export const trackFirstNonTableChartGenerated = (card: Card) => {
   trackSimpleEvent({
     event: "chart_generated",
     event_detail: card.display,
   });
 };
 
-export const trackCardBookmarkAdded = (card) => {
+export const trackCardBookmarkAdded = (card: Card) => {
   trackSimpleEvent({
     event: "bookmark_added",
     event_detail: card.type,
