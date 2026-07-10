@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { CopyTextInput } from "metabase/common/components/CopyTextInput";
+import { CopyTextArea } from "metabase/common/components/CopyTextArea";
 import { useSetting } from "metabase/common/hooks";
 import { Stack, Text, Title } from "metabase/ui";
 import {
@@ -35,7 +35,12 @@ export const DataAppSkillsSection = () => {
 
   const skillCommandBase = `npx skills add ${REPOSITORY_NAME}${PUBLIC_SKILLS_PATH}#${skillBranch}`;
   const skillSelectors = DATA_APP_SKILLS.map((skill) => `--skill ${skill}`);
-  const installSkillCommand = [skillCommandBase, ...skillSelectors].join(" ");
+  // Joined with shell line-continuations (` \` + newline) so each `--skill` is on
+  // its own line for readability, while the copied text is still one runnable
+  // command when pasted.
+  const installSkillCommand = [skillCommandBase, ...skillSelectors].join(
+    " \\\n",
+  );
 
   return (
     <Stack gap="sm">
@@ -44,9 +49,11 @@ export const DataAppSkillsSection = () => {
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Admin UI string */}
       <Text>{t`Install Metabase Data App skills in your project, then ask your AI agent to create a data app.`}</Text>
 
-      <CopyTextInput
+      <CopyTextArea
         value={installSkillCommand}
         aria-label={t`Install command`}
+        autosize
+        ff="monospace"
       />
     </Stack>
   );
