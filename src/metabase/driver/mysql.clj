@@ -1,6 +1,6 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:refer-clojure :exclude [get-in some not-empty])
+  (:refer-clojure :exclude [get-in mapv some not-empty])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.io :as jio]
@@ -1377,10 +1377,10 @@
   [username schemas]
   (let [quoted-user      (quote-field username)
         source-databases (set schemas)]
-    (perf/mapv (fn [db]
-                 (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                         (quote-schema db) quoted-user))
-               source-databases)))
+    (mapv (fn [db]
+            (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                    (quote-schema db) quoted-user))
+          source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace schemas]

@@ -1,7 +1,7 @@
 (ns metabase.lib.metric
   "A Metric is a special type of Card that you can do special metric stuff with. (Not sure exactly what said special
   stuff is TBH.)"
-  (:refer-clojure :exclude [select-keys not-empty])
+  (:refer-clojure :exclude [select-keys some not-empty])
   (:require
    [clojure.string :as str]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -19,7 +19,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys not-empty]]))
+   [metabase.util.performance :refer [select-keys some not-empty]]))
 
 (defn- resolve-metric [query card-id]
   (when (pos-int? card-id)
