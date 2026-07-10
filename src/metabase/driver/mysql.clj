@@ -1,6 +1,6 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:refer-clojure :exclude [get-in some not-empty])
+  (:refer-clojure :exclude [get-in some not-empty mapv])
   (:require
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
@@ -35,7 +35,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [get-in not-empty some]]
+   [metabase.util.performance :as perf :refer [get-in not-empty some mapv]]
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
@@ -1374,10 +1374,10 @@
   [username schemas]
   (let [quoted-user      (quote-field username)
         source-databases (set schemas)]
-    (perf/mapv (fn [db]
-                 (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                         (quote-schema db) quoted-user))
-               source-databases)))
+    (mapv (fn [db]
+            (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                    (quote-schema db) quoted-user))
+          source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace schemas]

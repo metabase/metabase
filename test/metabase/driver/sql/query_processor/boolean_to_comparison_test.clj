@@ -23,7 +23,7 @@
 (deftest ^:parallel boolean->comparison-test
   (are [clause] (binding [sql.qp/*inner-query* (:query (basic-filter-query clause))]
                   (= [:= clause true]
-                     (sql.qp.boolean-to-comparison/boolean->comparison clause)))
+                     (sql.qp.boolean-to-comparison/boolean->comparison :sql clause)))
     false
     true
     true-value
