@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.ai-tracing.core :as ait]
    [metabase.ai-tracing.log :as ait.log]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -69,7 +70,7 @@
   (testing "an exception in a span body is recorded as an event, attaches the node, and re-throws"
     (let [sink (atom [])]
       (is (thrown? Exception
-                   (binding [ait/*capture* sink ait/*parent* nil]
+                   (binding [ait/*capture* sink ait/*parent* nil ait/*retain-tree* true]
                      (ait/with-llm-call {:ai/model "m"}
                        (throw (ex-info "boom" {}))))))
       (let [llm (first @sink)]
@@ -109,6 +110,16 @@
         (is (= 1 (count trace)))
         (is (= "agent.turn" (:name (first trace))))))))
 
+;; Not ^:parallel: redefs the destructive `emit!` to a spy.
+(deftest capturing-writes-no-file-test
+  (testing "capturing does NOT mint a session id, so emit! gets nil and writes no <id>.jsonl"
+    (let [sessions (atom [])]
+      (mt/with-dynamic-fn-redefs [ait.log/emit! (fn [_node session-id] (swap! sessions conj session-id) nil)]
+        (let [{:keys [trace]} (ait/capturing (ait/with-llm-call {:ai/model "m"} :ok))]
+          (is (= 1 (count trace)) "the span still comes back in :trace")
+          (is (= [nil] @sessions)
+              "emit! received a nil session-id (no file routing); the trace is the return value only"))))))
+
 (deftest ^:parallel checked-session-id-test
   (testing "supplied ids that name a safe file pass through verbatim"
     (is (= "abc-123.def_4" (ait/checked-session-id "abc-123.def_4"))))
@@ -123,9 +134,9 @@
 
 (deftest ^:parallel with-eval-session-rejects-unsafe-id-test
   (testing "with-eval-session validates a caller-supplied id when capture is enabled"
-    (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly true)]
+    (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)]
       (is (thrown? clojure.lang.ExceptionInfo
                    (ait/with-eval-session "../../pwned" :body)))))
   (testing "with the gate off it stays inert — the body runs, no validation"
-    (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly false)]
+    (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
       (is (= :body (ait/with-eval-session "../../pwned" :body))))))

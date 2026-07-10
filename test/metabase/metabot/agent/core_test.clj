@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
    [metabase.ai-tracing.log :as ait.log]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
@@ -27,7 +28,7 @@
 ;; every `=?` on `run-agent-loop` output. The capture-ON path is covered by `eval-tracing-nesting-test`,
 ;; which forces capture via `capture-reducible` (independent of this gate) and is unaffected here.
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly false)]
+                      (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
                         (thunk))))
 
 (defn- run-agent-loop!
@@ -419,15 +420,19 @@
                                                                 :display_name "Orders"
                                                                 :description  "Confirmed orders."
                                                                 :database_id  (mt/id)}])]
-            (let [{:keys [trace]} (mt/with-log-level [metabase.metabot.agent.core :warn]
-                                    (ait/capture-reducible
-                                     (agent/run-agent-loop
-                                      {:messages   [{:role :user :content "Show me orders"}]
-                                       :state      {}
-                                       :profile-id :internal
-                                       :context    {}})))]
+            (let [{:keys [trace result]} (mt/with-log-level [metabase.metabot.agent.core :warn]
+                                           (ait/capture-reducible
+                                            (agent/run-agent-loop
+                                             {:messages   [{:role :user :content "Show me orders"}]
+                                              :state      {}
+                                              :profile-id :internal
+                                              :context    {}})))]
               (is (= 2 @llm-call-count) "search iteration + final text iteration")
               (is (= 1 (count trace)) "single root span")
+              (testing "the in-process (file-less) path emits no eval_session pointer into the stream"
+                ;; capture-reducible leaves *session-id* nil (trace comes back as :trace, no file), so
+                ;; a pointer here would name a <nil>.jsonl that never exists.
+                (is (empty? (filter #(= "eval_session" (:data-type %)) result))))
               (let [turn       (first trace)
                     llms       (:children turn)
                     tool-spans (mapcat :children llms)

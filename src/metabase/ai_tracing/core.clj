@@ -44,12 +44,6 @@
 
 ;;;; ----------------------------------------- Gate (separate axis) -----------------------------------------
 
-(defn eval-capture-enabled?
-  "True when eval-time capture is enabled for this instance via the `MB_AI_EVAL_CAPTURE` env var.
-  Entrypoints consult it to decide whether to establish a capture. Off by default."
-  []
-  (ai-tracing.settings/ai-eval-capture))
-
 (def ^:dynamic *capture*
   "Per-run capture sink: an atom holding the vector of root span maps, or nil.
   Bound ONLY by an entrypoint. nil ⇒ ai-tracing is inert (the production safety gate)."
@@ -66,6 +60,14 @@
   by the caller (e.g. MCP's `Mcp-Session-Id`). Conveyed across virtual threads via `bound-fn*`;
   drives the per-session log file routing."
   nil)
+
+(def ^:dynamic *retain-tree*
+  "When true, each finished span is also retained in the in-memory tree ([[*capture*]] / its parent's
+  `:children`) so an in-process caller can read the whole trace back as a return value (see
+  [[capturing]]). Left false on the file-routed path ([[with-eval-session]]): there every span is
+  already streamed to its JSONL file on finish and the in-memory tree is never read, so retaining it
+  would only pin heap proportional to the whole run. Off by default."
+  false)
 
 (def safe-session-id-re
   "A session id becomes BOTH a log-file name (the RoutingAppender's `${ctx:mb-eval-session-id}.jsonl`)
@@ -137,10 +139,13 @@
         (dissoc :start-ns))))
 
 (defn- attach! [parent finished]
+  ;; Only build the in-memory tree when a caller will read it back ([[capturing]]). On the file-routed
+  ;; path emit! has already streamed this span, so retaining it here would pin heap for the whole run.
   ;; swap! is atomic, so concurrent tool spans appending to the same parent are safe.
-  (if parent
-    (swap! parent update :children conj finished)
-    (swap! *capture* conj finished)))
+  (when *retain-tree*
+    (if parent
+      (swap! parent update :children conj finished)
+      (swap! *capture* conj finished))))
 
 (defn eval-span*
   "Functional core behind the span macros. Runs `thunk` inside a captured span of `span-type`
@@ -195,7 +200,7 @@
   one small closure."
   {:style/indent 3}
   [span-type span-name attrs & body]
-  `(let [thunk# (^{:once true} fn* [] ~@body)]
+  `(let [thunk# (^:once fn* [] ~@body)]
      (if (capture-active?)
        (eval-span* ~span-type ~span-name ~attrs thunk#)
        (thunk#))))
@@ -226,7 +231,7 @@
   ;; only when a capture is active AND only once (not twice — for the name and for the span). So we
   ;; inline the gate and bind `attrs#` inside the active branch. Tool calls run on the organic agent
   ;; path, so keeping this build behind `capture-active?` is the point.
-  `(let [thunk# (^{:once true} fn* [] ~@body)]
+  `(let [thunk# (^:once fn* [] ~@body)]
      (if (capture-active?)
        (let [attrs# ~attrs]
          (eval-span* :tool (str "tool." (:ai/tool-name attrs#)) attrs# thunk#))
@@ -247,29 +252,31 @@
     (with-eval-session mcp-session  (eval-span \"mcp.tools/call\" {…} …))   ; MCP — supplied"
   {:style/indent 1}
   [supplied-id & body]
-  `(let [supplied# ~supplied-id]
-     (cond
-       (capture-active?)       (do ~@body)            ; inherit / nest
-       (eval-capture-enabled?) (binding [*capture*    (atom [])
-                                         *session-id* (checked-session-id supplied#)
-                                         *parent*     nil]
-                                 ~@body)
-       :else                   (do ~@body))))         ; inert
+  `(cond
+     (capture-active?)                     (do ~@body)   ; inherit / nest
+     (ai-tracing.settings/ai-eval-capture) (binding [*capture*    (atom [])
+                                                     *session-id* (checked-session-id ~supplied-id)
+                                                     *parent*     nil]
+                                             ~@body)
+     :else                                 (do ~@body))) ; inert
 
 (defmacro capturing
-  "In-process capture, UNCONDITIONAL (ignores the gate). Establishes a fresh capture, mints a
-  session id if none is bound, and returns `{:result <body value> :trace <root spans>}`. Used by
+  "In-process capture, UNCONDITIONAL (ignores the gate). Establishes a fresh capture that RETAINS the
+  span tree ([[*retain-tree*]]) and returns `{:result <body value> :trace <root spans>}`. Used by
   [[capture-reducible]] and tests. The harness must fully realize any lazy result inside `body`.
 
-  This path is RETURN-VALUE-based, not file-routed: the trace comes back as `:trace`, and a session
-  id supplied to an inner [[with-eval-session]] (e.g. `:eval-session-id` threaded through
-  `run-agent-loop`) is IGNORED — capture is already active, so the inner form inherits this binding
-  rather than re-minting. Don't expect a `<supplied-id>.jsonl` on disk from here; read `:trace`."
+  This path is RETURN-VALUE-based, not file-routed: the trace comes back as `:trace`. It deliberately
+  does NOT mint a session id — [[*session-id*]] is left as-is (nil at top level), so
+  [[metabase.ai-tracing.log/emit!]] no-ops and NO `<id>.jsonl` is written; read `:trace` instead. A
+  session id supplied to an inner [[with-eval-session]] (e.g. `:eval-session-id` threaded through
+  `run-agent-loop`) is IGNORED — capture is already active, so the inner form inherits these bindings
+  rather than re-minting. (A capture nested inside a live file-routed session inherits that session
+  and still streams to its file.)"
   [& body]
   `(let [sink# (atom [])]
-     (binding [*capture*    sink#
-               *parent*     nil
-               *session-id* (or *session-id* (str (random-uuid)))]
+     (binding [*capture*     sink#
+               *parent*      nil
+               *retain-tree* true]
        ;; bind result# in a let so the body (which populates sink#) is forced BEFORE @sink#
        (let [result# (do ~@body)]
          {:result result# :trace @sink#}))))

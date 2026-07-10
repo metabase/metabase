@@ -707,12 +707,15 @@
                             ;; Append trailing parts only on a normal finish: the debug log, and the
                             ;; eval-session pointer that lets the harness locate the per-session
                             ;; `<session-id>.jsonl` (it reads that file, not the stream, so a skipped
-                            ;; pointer on disconnect costs nothing).
+                            ;; pointer on disconnect costs nothing). Gate the pointer on a non-nil
+                            ;; `*session-id*` too: the in-process `capture-reducible`/`capturing` path is
+                            ;; capture-active but deliberately file-less (session id nil, read `:trace`),
+                            ;; so emitting a pointer there would name a `<nil>.jsonl` that never exists.
                             (if (= :reduced finish-reason)
                               result
                               (cond-> result
-                                (and debug? (seq @*debug-log*)) (rf (debug-log-part @*debug-log*))
-                                (ait/capture-active?)           (rf (eval-session-part ait/*session-id*))))))]
+                                (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*))))))]
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)

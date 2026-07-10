@@ -51,12 +51,14 @@
      :body    ^File f}))
 
 (defn- enforce-eval-capture-enabled
-  "Ring middleware: 404 (endpoint invisible) when eval capture is disabled."
+  "Ring middleware: 404 when eval capture is disabled. Uses a generic not-found message (rather than
+  naming the feature) so the endpoint is indistinguishable from an unmounted route to a caller who
+  isn't allowed to know it exists."
   [handler]
   (fn [request respond raise]
     (if (ai-tracing.settings/ai-eval-capture)
       (handler request respond raise)
-      (raise (ex-info (tru "Eval capture is not enabled.") {:status-code 404})))))
+      (raise (ex-info (tru "Not found.") {:status-code 404})))))
 
 (def ^{:arglists '([handler])} +eval-capture-enabled
   "Wrap routes so they may only be accessed when eval capture is enabled."

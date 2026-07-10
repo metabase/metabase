@@ -124,6 +124,25 @@
   (when-let [id (get-in request [:headers "x-eval-session-id"])]
     (try (ait/checked-session-id id) (catch Exception _ nil))))
 
+(defn- dispatch-method
+  "Route a single JSON-RPC `method` to its handler, returning a response map or nil (notifications).
+  A handler that throws is turned into a JSON-RPC internal error rather than propagating."
+  [id method params session-id token-scopes request-context]
+  (try
+    (case method
+      "notifications/initialized" nil
+      "tools/list"                (handle-tools-list id params session-id token-scopes)
+      "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
+      "resources/list"            (handle-resources-list id params token-scopes)
+      "resources/read"            (handle-resources-read id params session-id token-scopes)
+      "ping"                      (handle-ping id params)
+      (if id
+        (jsonrpc-error id -32601 (str "Method not found: " method))
+        nil))
+    (catch Throwable e
+      (log/error e "Error dispatching JSON-RPC method" method)
+      (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))
+
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
   [{:keys [id method params] :as _msg} session-id token-scopes request-context eval-session-id]
@@ -146,20 +165,7 @@
                                         :mcp/params     params
                                         :mcp/user-id    api/*current-user-id*
                                         :mcp/scopes     token-scopes}
-                   (let [response (try
-                                    (case method
-                                      "notifications/initialized" nil
-                                      "tools/list"                (handle-tools-list id params session-id token-scopes)
-                                      "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
-                                      "resources/list"            (handle-resources-list id params token-scopes)
-                                      "resources/read"            (handle-resources-read id params session-id token-scopes)
-                                      "ping"                      (handle-ping id params)
-                                      (if id
-                                        (jsonrpc-error id -32601 (str "Method not found: " method))
-                                        nil))
-                                    (catch Throwable e
-                                      (log/error e "Error dispatching JSON-RPC method" method)
-                                      (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))]
+                   (let [response (dispatch-method id method params session-id token-scopes request-context)]
                      ;; record the materialized JSON-RPC result/error (the request's output)
                      (ait/record! {:mcp/response response})
                      response))))
@@ -308,7 +314,9 @@
                 ;; (gated PII) alongside client identity — the view no longer joins the session.
                 request-context {:user-agent (get-in request [:headers "user-agent"])
                                  :ip-address (request/ip-address request)}
-                dispatch-msg    (fn [msg] (dispatch-request msg session-id (:token-scopes request) request-context eval-session-id))
+                dispatch-msg    (fn [msg]
+                                  (dispatch-request msg session-id (:token-scopes request)
+                                                    request-context eval-session-id))
                 responses       (into [] (keep dispatch-msg) messages)]
             (cond
               (empty? responses)

@@ -45,23 +45,35 @@
    :attributes     attributes
    :events         events})
 
+(def ^:private json-safe-max-depth
+  "Recursion cap for [[json-safe]]. Attribute values are arbitrary request context / agent state, so a
+  pathologically deep — or cyclic — value would otherwise overflow the stack. A `StackOverflowError` is
+  an `Error`, not an `Exception`, so it would escape [[emit!]]'s `catch Exception` net and break the
+  traced run. Past this depth we stringify instead of recursing."
+  200)
+
 (defn- json-safe
   "Best-effort coercion of a value into something the JSON encoder can handle: recurse through plain
   collections, keep scalars, and stringify anything else. Used ONLY as a fallback after a direct
-  encode throws, so it never touches values (UUIDs, dates, …) that already encode fine."
-  [v]
-  (cond
-    ;; Coerce KEYS too, not just values: the JSON encoder rejects a non-scalar map key (a vector/map
-    ;; key), so leaving it intact would let the fallback re-encode throw — orphaning the very root
-    ;; span this fallback exists to save.
-    (map? v)        (into {} (map (fn [[k val]]
-                                    [(if (or (string? k) (keyword? k) (number? k)) k (str k))
-                                     (json-safe val)]))
-                          v)
-    (set? v)        (mapv json-safe v)
-    (sequential? v) (mapv json-safe v)
-    (or (nil? v) (string? v) (number? v) (boolean? v) (keyword? v) (symbol? v)) v
-    :else           (str v)))
+  encode throws, so it never touches values (UUIDs, dates, …) that already encode fine. Bounded by
+  [[json-safe-max-depth]] so a deep/cyclic value degrades to a string rather than overflowing the stack."
+  ([v] (json-safe v 0))
+  ([v depth]
+   (if (>= depth json-safe-max-depth)
+     (str v)
+     (let [d (inc depth)]
+       (cond
+         ;; Coerce KEYS too, not just values: the JSON encoder rejects a non-scalar map key (a
+         ;; vector/map key), so leaving it intact would let the fallback re-encode throw — orphaning
+         ;; the very root span this fallback exists to save.
+         (map? v)        (into {} (map (fn [[k val]]
+                                         [(if (or (string? k) (keyword? k) (number? k)) k (str k))
+                                          (json-safe val d)]))
+                               v)
+         (set? v)        (mapv #(json-safe % d) v)
+         (sequential? v) (mapv #(json-safe % d) v)
+         (or (nil? v) (string? v) (number? v) (boolean? v) (keyword? v) (symbol? v)) v
+         :else           (str v))))))
 
 (defn emit!
   "Stream one finished span `node` as a single JSONL line, routed to `session-id`'s file. No-op when

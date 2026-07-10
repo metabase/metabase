@@ -8,6 +8,7 @@
    [clojure.tools.logging.impl]
    [metabase.ai-tracing.core :as ait]
    [metabase.ai-tracing.log :as ait.log]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture])
@@ -70,34 +71,38 @@
 
 (deftest one-entry-per-span-test
   (testing "each finished span streams exactly one JSONL line, carrying the session id in the payload"
-    (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
-      (ait/capturing
-       (ait/with-agent-turn {:ai/profile-id "p"}
-         (ait/with-llm-call {:ai/model "m"}
-           (ait/with-tool-call {:ai/tool-name "search"} :ok))))
-      (let [es (entries messages)]
-        (is (= 3 (count es)) "one line per span (turn, llm, tool)")
-        (is (= #{"agent.turn" "llm.call" "tool.search"} (set (map #(get % "name") es))))
-        (is (= 1 (count (distinct (map #(get % "session") es)))) "all share one session")
-        (is (every? #(get % "session") es))))))
+    ;; Drive the file-routed path (with-eval-session), which is what emits to the sink. `capturing`
+    ;; deliberately leaves *session-id* nil so emit! no-ops (its trace comes back as :trace instead).
+    (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)]
+      (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
+        (ait/with-eval-session "one-per-span-sid"
+          (ait/with-agent-turn {:ai/profile-id "p"}
+            (ait/with-llm-call {:ai/model "m"}
+              (ait/with-tool-call {:ai/tool-name "search"} :ok))))
+        (let [es (entries messages)]
+          (is (= 3 (count es)) "one line per span (turn, llm, tool)")
+          (is (= #{"agent.turn" "llm.call" "tool.search"} (set (map #(get % "name") es))))
+          (is (= ["one-per-span-sid"] (distinct (map #(get % "session") es))) "all share one session")
+          (is (every? #(get % "session") es)))))))
 
 (deftest nesting-parent-chain-test
   (testing "parent ids chain turn -> llm -> tool; root has no parent"
-    (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
-      (ait/capturing
-       (ait/with-agent-turn {}
-         (ait/with-llm-call {}
-           (ait/with-tool-call {:ai/tool-name "t"} :ok))))
-      (let [by-name (into {} (map (juxt #(get % "name") identity)) (entries messages))
-            turn    (by-name "agent.turn")
-            llm     (by-name "llm.call")
-            tool    (by-name "tool.t")]
-        (is (nil? (get turn "parent")))
-        (is (= (get turn "id") (get llm "parent")))
-        (is (= (get llm "id") (get tool "parent")))))))
+    (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)]
+      (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
+        (ait/with-eval-session "nesting-sid"
+          (ait/with-agent-turn {}
+            (ait/with-llm-call {}
+              (ait/with-tool-call {:ai/tool-name "t"} :ok))))
+        (let [by-name (into {} (map (juxt #(get % "name") identity)) (entries messages))
+              turn    (by-name "agent.turn")
+              llm     (by-name "llm.call")
+              tool    (by-name "tool.t")]
+          (is (nil? (get turn "parent")))
+          (is (= (get turn "id") (get llm "parent")))
+          (is (= (get llm "id") (get tool "parent"))))))))
 
 (deftest session-mint-vs-supplied-test
-  (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly true)]
+  (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)]
     (testing "with-eval-session supplies the session id verbatim"
       (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
         (ait/with-eval-session "supplied-sid"
@@ -113,7 +118,7 @@
 
 (deftest session-inheritance-test
   (testing "a nested with-eval-session inherits the outer session (no re-mint)"
-    (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly true)]
+    (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)]
       (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
         (ait/with-eval-session "outer"
           (ait/with-agent-turn {}
@@ -123,7 +128,7 @@
 
 (deftest inert-when-disabled-test
   (testing "with-eval-session emits nothing when capture is disabled"
-    (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly false)]
+    (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
       (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
         (is (= :ok (ait/with-eval-session nil (ait/with-llm-call {} :ok))))
         (is (= [] (entries messages)))))))

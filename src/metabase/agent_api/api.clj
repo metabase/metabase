@@ -1830,9 +1830,8 @@
                                    ;; Relies on `respond` firing synchronously on this thread (see
                                    ;; above): if an endpoint ever responds async, `*parent*` is
                                    ;; unbound there and this `record!` no-ops, so the span captures
-                                   ;; no status/response. A streaming `:body` likewise won't JSON-
-                                   ;; encode (the log sink drops that span). Both fail soft; the
-                                   ;; trace is just incomplete for async/streaming agent-api responses.
+                                   ;; no status/response. Both fail soft; the trace is just incomplete
+                                   ;; for async agent-api responses.
                                    (fn eval-traced-respond [response]
                                      (when (ait/capture-active?)
                                        ;; `+auth` binds `*current-user-id*` inside `base-routes`, so it
@@ -1840,7 +1839,12 @@
                                        ;; respond fires — record the user id here so direct HTTP callers
                                        ;; (not just the MCP path, which carries `:metabase-user-id`) get it.
                                        (ait/record! {:http/status   (:status response)
-                                                     :http/response (:body response)
+                                                     ;; Only record a plain data body. A streaming/opaque
+                                                     ;; body (not a coll) would otherwise be stringified
+                                                     ;; by the log sink into a useless `#object[…]`, so
+                                                     ;; skip it — the trace just omits the response there.
+                                                     :http/response (when (coll? (:body response))
+                                                                      (:body response))
                                                      :http/user-id  (or (:metabase-user-id request)
                                                                         api/*current-user-id*)}))
                                      (respond response))
