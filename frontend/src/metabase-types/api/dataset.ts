@@ -100,7 +100,7 @@ export interface ResultsMetadata {
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
-  referenced_cards?: ReferencedCardsResults;
+  referenced_cards?: ReferencedCardsResults | null;
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
