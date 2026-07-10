@@ -93,8 +93,10 @@
           (throw (ex-info (format "table id present, but no table found: %s" table-id)
                           {:table-id table-id})))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
-                      {:table-id table-id
-                       :database-names (sort (t2/select-fn-vec :name :model/Table))})))))
+                      {:table-id       table-id
+                       :db-name        db-name
+                       :database-names (sort (t2/select-fn-vec :name :model/Database))
+                       :error          ::database-not-found})))))
 
 (defn import-field-fk
   "Given [db-name schema table-name field-name ...], return numeric field_id."
