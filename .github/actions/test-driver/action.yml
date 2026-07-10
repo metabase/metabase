@@ -18,7 +18,6 @@ inputs:
     description: Edition to test (oss or ee)
   quarantine-engine:
     required: false
-    default: "trunk"
   driver-status:
     required: false
     default: ""
