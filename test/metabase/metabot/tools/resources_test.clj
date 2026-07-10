@@ -102,7 +102,8 @@
    ["metabase://collections?tree=true"                     :collections-list           [{:tree "true"}]]
    ["metabase://collections?tree=true&foo=bar"             :collections-list           [{:tree "true" :foo "bar"}]]
    ["metabase://collections?page=2"                        :collections-list           [{:page "2"}]]
-   ["metabase://user/recent-items"                         :user-recents               []]
+   ["metabase://user/recent-items"                         :user-recents               [nil]]
+   ["metabase://user/recent-items?page=2"                  :user-recents               [{:page "2"}]]
    ;; ----- Database drill-down -----
    ["metabase://database/1"                                :database                   ["1"]]
    ["metabase://database/1/tables"                         :database-tables            ["1" nil]]
@@ -523,19 +524,42 @@
               (is (= 2 (:page p2)))
               (is (false? (:truncated p2))))))))))
 
-(deftest resolve-database-prefers-name-test
-  (testing "resolve-database resolves the canonical name form first, so an all-numeric database name
-           stays reachable (the numeric-first order used to shadow it with an id lookup)"
-    (mt/with-temp [:model/Database {named-42-id :id} {:name "42"}
-                   :model/Database {real-id :id}     {:name "Sales"}]
-      (testing "a database literally named \"42\" resolves by name, not as id 42"
-        (is (= named-42-id (:id (mbr/resolve-database "42")))))
-      (testing "a non-numeric name still resolves by name"
+(deftest resolve-database-disambiguation-test
+  (testing "resolve-database: numeric segment = id (always), non-numeric = name, ambiguous name throws"
+    (mt/with-temp [:model/Database _             {:name "42"}
+                   :model/Database {real-id :id} {:name "Sales"}
+                   :model/Database {dup-a :id}   {:name "Dupe DB"}
+                   :model/Database {dup-b :id}   {:name "Dupe DB"}]
+      (testing "a numeric segment is ALWAYS an id — a database literally named \"42\" does not shadow id 42"
+        (is (= real-id (:id (mbr/resolve-database (str real-id))))
+            "numeric segment resolves the database with that id")
+        (is (not= "42" (:name (mbr/resolve-database "42")))
+            "the all-numeric NAME is not addressable via the shorthand (id wins deterministically)"))
+      (testing "a non-numeric name resolves by name"
         (is (= real-id (:id (mbr/resolve-database "Sales")))))
-      (testing "a numeric segment with no name match falls back to id lookup (legacy backcompat)"
-        (is (= real-id (:id (mbr/resolve-database (str real-id))))))
+      (testing "an ambiguous name throws a per-URI error naming the candidate ids"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Ambiguous database name"
+                              (mbr/resolve-database "Dupe DB")))
+        (let [data (try (mbr/resolve-database "Dupe DB")
+                        (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+          (is (= (sort [dup-a dup-b]) (:matching-ids data)))))
       (testing "an unknown segment resolves to nil"
         (is (nil? (mbr/resolve-database "no-such-db-name")))))))
+
+(deftest resolve-database-excludes-router-children-test
+  (testing "a router-child (destination) database never resolves — it would read-check then extract to null"
+    (mt/with-temp [:model/Database {parent-id :id} {:name "Router Parent"}
+                   :model/Database {child-id :id}  {:name "Router Child" :router_database_id parent-id}]
+      (is (nil? (mbr/resolve-database (str child-id))) "not by id")
+      (is (nil? (mbr/resolve-database "Router Child")) "not by name")
+      (is (= parent-id (:id (mbr/resolve-database "Router Parent"))) "the parent still resolves")
+      (testing "and the /databases list neither counts nor shows it (no :total/:items mismatch)"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [so (get-in (read-resource/read-resource {:uris ["metabase://databases"]})
+                           [:resources 0 :content :structured-output])]
+            (is (= (:total so) (count (:items so))))
+            (is (not-any? #(= "Router Child" (:name %)) (:items so)))
+            (is (some #(= "Router Parent" (:name %)) (:items so)))))))))
 
 (deftest tables-with-duplicate-names-across-schemas-test
   (testing "two tables sharing a name in different schemas both appear (no serdes-path collision)"
@@ -943,7 +967,12 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "metabase://user/recent-items returns an MBR list shape (possibly empty)"
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://user/recent-items"]})]
-        (is (str/includes? output "\"list-type\":\"recent-items\""))))))
+        (is (str/includes? output "\"list-type\":\"recent-items\""))))
+    (testing "?page=N is honored — an out-of-range page errors instead of being silently ignored"
+      ;; Regression: dispatch used to drop query-params for this route, so page 2+ was unreachable.
+      (let [result (read-resource/read-resource {:uris ["metabase://user/recent-items?page=99"]})]
+        (is (some-> (get-in result [:resources 0 :error]) (str/includes? "Invalid page 99"))
+            "the page param must reach paginate-items")))))
 
 (deftest read-user-recents-surfaces-all-model-types-test
   (testing "recent items include every MBR model type, including collections and documents.

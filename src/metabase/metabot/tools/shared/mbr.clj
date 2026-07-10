@@ -19,6 +19,7 @@
   Each segment is URL-encoded. JSON-unfolded / nested fields are out of scope
   for v1."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -53,19 +54,33 @@
         (t2/select-one toucan-model n)))))
 
 (defn resolve-database
-  "Look up a Database for a `metabase://database/{seg}` URI segment.
+  "Look up a Database for a `metabase://database/{seg}` URI segment, with one clear
+   disambiguation rule (review: crisptrutski):
 
-   Name is the canonical, unambiguous form (all emitted URIs use it), so we resolve
-   **by name first** and fall back to numeric id only when no database has that name. This keeps
-   an all-numeric database name (e.g. `\"42\"`) reachable — the previous numeric-first order
-   silently shadowed it with the id lookup. Numeric id remains a best-effort legacy fallback; in
-   the (astronomically rare) case where both a database *named* `\"42\"` and a database with *id*
-   42 exist, the name wins, matching the canonical scheme."
+   - Numeric segment -> database *id*. Always. The reliable escape hatch.
+   - Non-numeric segment -> database *name*; if more than one database shares the
+     name, throw a per-URI ambiguity error naming the candidate ids rather than
+     silently picking one. (Database names are not unique.)
+
+   Consequence: an all-numeric database *name* is not addressable by this
+   shorthand — address it by id. Silent wrong-database reads are worse than that
+   edge case; a typed URI form (`database/name/{n}`) can come later if needed.
+
+   Router-child (destination) databases never resolve: they are routing
+   internals the Database serdes extract excludes, so resolving one would
+   read-check successfully then extract to a null entity."
   [id-str]
   (when id-str
-    (or (t2/select-one :model/Database :name id-str)
-        (when-let [n (parse-long id-str)]
-          (t2/select-one :model/Database n)))))
+    (if-let [n (parse-long id-str)]
+      (t2/select-one :model/Database :id n :router_database_id nil)
+      (let [matches (t2/select :model/Database :name id-str :router_database_id nil)]
+        (if (next matches)
+          (throw (ex-info (str "Ambiguous database name \"" id-str "\" — " (count matches)
+                               " databases share it (ids " (str/join ", " (sort (map :id matches)))
+                               "). Address it by numeric id instead, e.g. metabase://database/"
+                               (first (sort (map :id matches))))
+                          {:name id-str :matching-ids (sort (map :id matches))}))
+          (first matches))))))
 
 (defn resolve-table
   "Look up a Table by `[db-name schema table-name]` (MBR path-form). Schemaless
@@ -73,8 +88,9 @@
    We treat empty string as nil for the SQL filter.
 
    The db segment goes through [[resolve-database]], so the same segment resolves
-   identically in every route — a legacy numeric db id that works in
-   `database/{id}/tables` also works in the path-form table/field URIs."
+   identically in every route (numeric = id, non-numeric = name, ambiguous name
+   throws) — a numeric db id that works in `database/{id}/tables` also works in
+   the path-form table/field URIs."
   [db-name schema table-name]
   (when (and db-name table-name)
     (let [db-id  (:id (resolve-database db-name))

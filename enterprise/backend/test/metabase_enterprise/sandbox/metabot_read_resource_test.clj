@@ -342,6 +342,16 @@
                 entity (get-in result [:resources 0 :content :structured-output :entity])]
             (is (some? entity) "entitled table must be readable")
             (is (= checkins-name (:name entity)))))
+        (testing "a Field MBR on the entitled table is returned (the sandboxed-but-allowed field lane)"
+          ;; Counterpart to read-resource-field-blocked-for-sandboxed-user-test: there a Field on the
+          ;; SANDBOXED table is blocked; here a Field on a table the user is entitled to comes back.
+          (let [field-name (t2/select-one-fn :name :model/Field (mt/id :checkins :venue_id))
+                uri        (str "metabase://database/" (mt/id) "/schema/" (or schema "")
+                                "/table/" checkins-name "/field/" field-name)
+                result     (read-resource/read-resource {:uris [uri]})
+                entity     (get-in result [:resources 0 :content :structured-output :entity])]
+            (is (some? entity) "entitled field must be readable")
+            (is (= field-name (:name entity)))))
         (testing "a card over the entitled table keeps :dataset_query / :result_metadata"
           (mt/with-temp [:model/Card {card-eid :entity_id}
                          {:type            :model

@@ -61,9 +61,10 @@ Two identifier conventions:
   - `metabase://database/{db_name}`
   - `metabase://database/{db_name}/schema/{schema}/table/{table_name}`
   - `metabase://database/{db_name}/schema/{schema}/table/{table_name}/field/{field_name}`
-  - **Use the name, not the id.** The database segment resolves by name first, so always address a database by
-    its name — that is the canonical, unambiguous form. A database whose name happens to be all digits (e.g. `42`)
-    is still reachable this way; addressing databases by numeric id is a deprecated legacy fallback.
+  - **Database segment rule:** a numeric segment is ALWAYS a database id; a non-numeric segment is a name.
+    If more than one database shares the name, the read errors and lists the candidate ids — retry with the
+    numeric id, the reliable unambiguous form. (A database whose name is all digits, e.g. `42`, is not
+    addressable by name through this shorthand — use its id.)
   - **URL-encode each segment.** A name with a space, slash, or other reserved character must be percent-encoded:
     a space becomes `%20`, a `/` becomes `%2F`, etc. e.g. a schema named `weird/name` →
     `.../schema/weird%2Fname/...`, a database named `Q1 Sales` → `metabase://database/Q1%20Sales`.

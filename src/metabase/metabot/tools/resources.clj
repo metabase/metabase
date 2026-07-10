@@ -133,8 +133,11 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list [query-params]
+  ;; Exclude router-child (destination) databases: they'd pass can-read? and count
+  ;; into :total, but the Database serdes extract drops them — a silent omission.
   (let [dbs (t2/select :model/Database
                        :is_audit false
+                       :router_database_id nil
                        {:order-by [[:%lower.name :asc]]})]
     (mbr/list-result :databases (mbr/extract-readable "Database" dbs {:page (:page query-params)}))))
 
@@ -180,7 +183,7 @@
   [model]
   (some->> (recent-model->mbr-model model) (keyword "model")))
 
-(defn- fetch-user-recents []
+(defn- fetch-user-recents [query-params]
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
                         :recents)
                     [])
@@ -196,7 +199,7 @@
                                  (when-some [mbr (mbr/->mbr (recent-model->mbr-model model) inst)]
                                    (assoc mbr :_recently_viewed_at timestamp))))))
                          recents)]
-    (mbr/list-result :recent-items (paginate-items items nil))))
+    (mbr/list-result :recent-items (paginate-items items (:page query-params)))))
 
 ;; ----- Database drill-down -----
 
@@ -630,7 +633,7 @@
       ;; Navigation
       ["databases"]                                    (fetch-databases-list query-params)
       ["collections"]                                  (fetch-collections-list query-params)
-      ["user" "recent-items"]                          (fetch-user-recents)
+      ["user" "recent-items"]                          (fetch-user-recents query-params)
 
       ;; Database drill-down. `:id` accepts either a numeric DB id (legacy) or a
       ;; database name (MBR-style). `resolve-database` discriminates.
