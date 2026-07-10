@@ -99,8 +99,8 @@
                             :code            (totp/generate-code secret)})))))))
 
 (deftest recovery-code-regeneration-survives-license-lapse-test
-  ;; Playbook §10b: rotating an EXISTING enrollment is management, not setup, so it is deliberately
-  ;; not feature-gated (decision pending final sign-off with Dan — if that flips, this test flips).
+  ;; Rotating recovery codes for an EXISTING enrollment is management, not setup, so it is
+  ;; deliberately not feature-gated — a lapsed license must never strand an enrolled user.
   (with-enrolled-rasta! [secret]
     (let [[c1 & _]          (enrollment/reset-recovery-codes! (mt/user->id :rasta))
           login             (mt/client :post 200 "session" (mt/user->credentials :rasta))
