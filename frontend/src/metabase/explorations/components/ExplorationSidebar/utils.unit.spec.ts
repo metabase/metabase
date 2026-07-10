@@ -7,6 +7,7 @@ import {
   createExplorationDocument,
   createPage,
   createQuery,
+  createThread,
 } from "metabase/explorations/test-utils";
 import type { ExplorationQueryStatus } from "metabase-types/api";
 import { createMockComment } from "metabase-types/api/mocks/comment";
@@ -117,6 +118,54 @@ describe("getExplorationSidebarTree sorting", () => {
       ],
     });
 
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
+  });
+
+  it("orders pages alphabetically by name when sortOrder is alphabetical", () => {
+    const banana = createQuery({
+      id: 1,
+      name: "Banana",
+      status: "done",
+      interestingness_score: 0.9,
+    });
+    const apple = createQuery({
+      id: 2,
+      name: "Apple",
+      status: "done",
+      interestingness_score: 0.2,
+    });
+
+    const tree = getExplorationSidebarTree(
+      createExploration({
+        queries: [banana, apple],
+        blocks: [
+          createBlock({
+            id: METRIC_A_BLOCK_ID,
+            name: "Metric A",
+            position: 0,
+            pages: [
+              createPage({
+                id: 1,
+                name: "Banana",
+                position: 0,
+                query_ids: [banana.id],
+              }),
+              createPage({
+                id: 2,
+                name: "Apple",
+                position: 1,
+                query_ids: [apple.id],
+              }),
+            ],
+          }),
+        ],
+      }),
+      allTreeFilter,
+      {},
+      "alphabetical",
+    );
+
+    // "Apple" (id 2) sorts before "Banana" (id 1) despite lower interestingness.
     expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
   });
 
@@ -364,6 +413,83 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
     expect((heading?.children ?? []).map((child) => child.name)).toEqual([
       "Signups",
       "Revenue",
+    ]);
+  });
+});
+
+describe("getExplorationSidebarTree names follow-up branches with their metric", () => {
+  it("prefixes a follow-up thread heading with the metric it drilled into", () => {
+    const initialQuery = createQuery({
+      id: 1,
+      name: "Revenue",
+      status: "done",
+    });
+    const followUpQuery = createQuery({
+      id: 2,
+      name: "Revenue",
+      status: "done",
+    });
+
+    const initialThread = createThread({
+      id: 1,
+      position: 0,
+      queries: [initialQuery],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: 100,
+              name: "State",
+              position: 0,
+              query_ids: [initialQuery.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    // A follow-up drill copies a single metric ("Revenue"); its thread name is
+    // just the drill path ("State = TX").
+    const followUpThread = createThread({
+      id: 2,
+      name: "State = TX",
+      position: 1,
+      queries: [followUpQuery],
+      blocks: [
+        createBlock({
+          id: 20,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: 200,
+              name: "User",
+              position: 0,
+              query_ids: [followUpQuery.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const exploration = {
+      ...createExploration(),
+      threads: [initialThread, followUpThread],
+    };
+
+    const tree = getExplorationSidebarTree(exploration, allTreeFilter, {
+      "2": "1",
+    });
+
+    const followUpNode = tree.find((node) => node.id === 2);
+    expect(followUpNode?.name).toBe("Revenue → State = TX");
+    // The redundant "Revenue" metric-group row is folded away; its page is
+    // surfaced directly under the branch.
+    expect((followUpNode?.children ?? []).map((child) => child.name)).toEqual([
+      "User",
     ]);
   });
 });

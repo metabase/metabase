@@ -56,7 +56,6 @@ import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
-import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "../constants";
 import { setCurrentExploration } from "../explorations.slice";
 import {
   getHiddenExplorationPageIds,
@@ -64,12 +63,15 @@ import {
 } from "../hidden-pages";
 import {
   type ExplorationShowFilters,
+  type ExplorationSortOrder,
   getArchivedExplorationGroupIds,
   getExplorationShowFilters,
+  getExplorationSortOrder,
   getReadExplorationPageIds,
   setExplorationGroupArchived,
   setExplorationPageRead,
   setExplorationShowFilters,
+  setExplorationSortOrder,
 } from "../sidebar-preferences";
 import {
   getSubExplorationParents,
@@ -266,6 +268,9 @@ export function ExplorationPage({
   const [showFilters, setShowFilters] = useState<ExplorationShowFilters>(() =>
     getExplorationShowFilters(explorationIdNum),
   );
+  const [sortOrder, setSortOrder] = useState<ExplorationSortOrder>(() =>
+    getExplorationSortOrder(explorationIdNum),
+  );
   const [hiddenPageIds, setHiddenPageIds] = useState<ReadonlySet<string>>(() =>
     getHiddenExplorationPageIds(explorationIdNum),
   );
@@ -318,6 +323,14 @@ export function ExplorationPage({
     [explorationIdNum],
   );
 
+  const handleChangeSortOrder = useCallback(
+    (order: ExplorationSortOrder) => {
+      setSortOrder(order);
+      setExplorationSortOrder(explorationIdNum, order);
+    },
+    [explorationIdNum],
+  );
+
   const tree = useMemo(() => {
     if (!exploration) {
       return [];
@@ -333,16 +346,6 @@ export function ExplorationPage({
         if (isHidden && !showFilters.hidden) {
           return false;
         }
-        if (showFilters.unread && readPageIds.has(node.data.page_id)) {
-          return false;
-        }
-        if (
-          showFilters.interesting &&
-          (node.data.interestingness_score ?? 0) <
-            QUERY_INTERESTINGNESS_SCORE_THRESHOLD
-        ) {
-          return false;
-        }
       }
       return true;
     };
@@ -350,15 +353,19 @@ export function ExplorationPage({
       exploration,
       treeItemFilter,
       subExplorationParents,
+      sortOrder,
     );
-    return filterArchivedGroups(built, archivedGroupIds);
+    // "Show hidden items" reveals archived groups alongside hidden pages.
+    return showFilters.hidden
+      ? built
+      : filterArchivedGroups(built, archivedGroupIds);
   }, [
     exploration,
     selectedSidebarTab,
     explorationSidebarTabsInfo,
     hiddenPageIds,
-    readPageIds,
     showFilters,
+    sortOrder,
     archivedGroupIds,
     subExplorationParents,
   ]);
@@ -726,6 +733,8 @@ export function ExplorationPage({
             readPageIds={readPageIds}
             showFilters={showFilters}
             onToggleShowFilter={handleToggleShowFilter}
+            sortOrder={sortOrder}
+            onChangeSortOrder={handleChangeSortOrder}
             onArchiveGroup={handleArchiveGroup}
           />
           {selectedPage && (

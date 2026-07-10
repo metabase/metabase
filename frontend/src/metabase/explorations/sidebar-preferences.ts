@@ -6,19 +6,23 @@ import type { ExplorationId } from "metabase-types/api";
 
 const ARCHIVED_GROUPS_KEY = "metabase-explorations-archived-groups";
 const SHOW_FILTERS_KEY = "metabase-explorations-show-filters";
+const SORT_ORDER_KEY = "metabase-explorations-sort-order";
 const READ_PAGES_KEY = "metabase-explorations-read-pages";
 
 export interface ExplorationShowFilters {
-  unread: boolean;
+  // When on, reveals hidden pages and archived exploration groups.
   hidden: boolean;
-  interesting: boolean;
 }
 
 export const DEFAULT_SHOW_FILTERS: ExplorationShowFilters = {
-  unread: false,
   hidden: false,
-  interesting: false,
 };
+
+// How the sidebar tree is ordered. "interestingness" ranks pages by their
+// interestingness score (the default); "alphabetical" sorts by name.
+export type ExplorationSortOrder = "interestingness" | "alphabetical";
+
+export const DEFAULT_SORT_ORDER: ExplorationSortOrder = "interestingness";
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -104,4 +108,20 @@ export function setExplorationShowFilters(
   );
   all[String(explorationId)] = filters;
   write(SHOW_FILTERS_KEY, all);
+}
+
+export function getExplorationSortOrder(
+  explorationId: ExplorationId,
+): ExplorationSortOrder {
+  const all = read<Record<string, ExplorationSortOrder>>(SORT_ORDER_KEY, {});
+  return all[String(explorationId)] ?? DEFAULT_SORT_ORDER;
+}
+
+export function setExplorationSortOrder(
+  explorationId: ExplorationId,
+  sortOrder: ExplorationSortOrder,
+): void {
+  const all = read<Record<string, ExplorationSortOrder>>(SORT_ORDER_KEY, {});
+  all[String(explorationId)] = sortOrder;
+  write(SORT_ORDER_KEY, all);
 }

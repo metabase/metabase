@@ -1,7 +1,11 @@
 import dayjs from "dayjs";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import {
+  DEFAULT_SORT_ORDER,
+  type ExplorationSortOrder,
+} from "metabase/explorations/sidebar-preferences";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import type {
   Comment,
@@ -76,6 +80,7 @@ export function getExplorationSidebarTree(
   treeItemFilter: TreeItemFilter,
   // childThreadId → parentThreadId, for nesting "explore further" sub-threads.
   subExplorationParents: Record<string, string> = {},
+  sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const threads = exploration.threads ?? [];
   // The first thread is the initial investigation. Drills off it stay
@@ -86,15 +91,18 @@ export function getExplorationSidebarTree(
   const nodeByThreadId = new Map<string, ITreeNodeItem<ExplorationTreeNode>>();
   threads.forEach((thread, index) => {
     const isFollowUp = subExplorationParents[String(thread.id)] != null;
-    let children = getExplorationQueryTree(thread, treeItemFilter);
+    let children = getExplorationQueryTree(thread, treeItemFilter, sortOrder);
     // A follow-up drill copies a single metric, so its lone metric-group
-    // heading ("Number of orders") is redundant — surface its pages directly
-    // under the thread.
+    // heading ("Revenue") is redundant as a row — surface its pages directly
+    // under the thread, but fold the metric's name into the thread heading
+    // ("Revenue → State = TX") so the branch shows what it's exploring.
+    let metricName: string | undefined;
     if (
       isFollowUp &&
       children.length === 1 &&
       children[0].data?.type === "heading"
     ) {
+      metricName = children[0].name || undefined;
       children = [...(children[0].children ?? [])];
     }
     const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
@@ -106,7 +114,7 @@ export function getExplorationSidebarTree(
     }
     nodeByThreadId.set(String(thread.id), {
       id: thread.id,
-      name: getExplorationThreadName(thread, index),
+      name: getExplorationThreadName(thread, index, metricName),
       icon: "empty" as const,
       data: {
         type: "heading" as const,
@@ -222,6 +230,7 @@ function stripByPrefix(name: string): string {
 function getExplorationQueryTree(
   thread: ExplorationThread,
   treeItemFilter: TreeItemFilter,
+  sortOrder: ExplorationSortOrder,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
@@ -285,14 +294,17 @@ function getExplorationQueryTree(
     .filter((heading) => (heading.children ?? []).length > 0)
     .map((heading) => ({
       ...heading,
-      children: heading.children?.toSorted(compareExplorationTreePages),
+      children: heading.children?.toSorted((a, b) =>
+        compareExplorationTreePages(a, b, sortOrder),
+      ),
     }))
-    .toSorted(compareExplorationTreeHeadings);
+    .toSorted((a, b) => compareExplorationTreeHeadings(a, b, sortOrder));
 }
 
 function compareExplorationTreePages(
   a: ITreeNodeItem<ExplorationTreeNode>,
   b: ITreeNodeItem<ExplorationTreeNode>,
+  sortOrder: ExplorationSortOrder,
 ) {
   if (
     !a.data ||
@@ -301,6 +313,9 @@ function compareExplorationTreePages(
     !isExplorationTreePage(b)
   ) {
     return 0;
+  }
+  if (sortOrder === "alphabetical") {
+    return compareByName(a, b);
   }
   const getScore = (page: ExplorationTreePage) => {
     if (page.status === "error") {
@@ -322,7 +337,11 @@ function compareExplorationTreePages(
 function compareExplorationTreeHeadings(
   a: ITreeNodeItem<ExplorationTreeNode>,
   b: ITreeNodeItem<ExplorationTreeNode>,
+  sortOrder: ExplorationSortOrder,
 ) {
+  if (sortOrder === "alphabetical") {
+    return compareByName(a, b);
+  }
   const getScore = (heading: ITreeNodeItem<ExplorationTreeNode>) => {
     let max = 0;
     for (const child of heading.children ?? []) {
@@ -333,6 +352,18 @@ function compareExplorationTreeHeadings(
     return max;
   };
   const diff = getScore(b) - getScore(a);
+  if (diff === 0) {
+    // sort by id as a fallback to keep sort stable
+    return String(a.id).localeCompare(String(b.id));
+  }
+  return diff;
+}
+
+function compareByName(
+  a: ITreeNodeItem<ExplorationTreeNode>,
+  b: ITreeNodeItem<ExplorationTreeNode>,
+) {
+  const diff = a.name.localeCompare(b.name);
   if (diff === 0) {
     // sort by id as a fallback to keep sort stable
     return String(a.id).localeCompare(String(b.id));
@@ -379,14 +410,20 @@ function getExplorationDocumentStatus(
   return "running";
 }
 
-function getExplorationThreadName(thread: ExplorationThread, index: number) {
-  if (thread.name) {
-    return thread.name;
+function getExplorationThreadName(
+  thread: ExplorationThread,
+  index: number,
+  metricName?: string,
+) {
+  const base =
+    thread.name || (index === 0 ? t`Initial investigation` : t`New research`);
+  // For a follow-up branch, prefix the metric it drilled into so the row reads
+  // "Revenue → State = TX" rather than just the bare drill path.
+  if (metricName) {
+    return c("{0} is a metric name, {1} is the follow-up's drill path")
+      .t`${metricName} → ${base}`;
   }
-  if (index === 0) {
-    return t`Initial investigation`;
-  }
-  return t`New research`;
+  return base;
 }
 
 export function flattenTree(

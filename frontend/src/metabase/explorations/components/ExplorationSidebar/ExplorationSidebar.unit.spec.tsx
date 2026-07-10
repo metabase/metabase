@@ -10,7 +10,10 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { DEFAULT_SHOW_FILTERS } from "metabase/explorations/sidebar-preferences";
+import {
+  DEFAULT_SHOW_FILTERS,
+  DEFAULT_SORT_ORDER,
+} from "metabase/explorations/sidebar-preferences";
 import {
   createBlock,
   createExploration,
@@ -150,6 +153,8 @@ function setup({
       readPageIds={new Set()}
       showFilters={DEFAULT_SHOW_FILTERS}
       onToggleShowFilter={jest.fn()}
+      sortOrder={DEFAULT_SORT_ORDER}
+      onChangeSortOrder={jest.fn()}
       onArchiveGroup={jest.fn()}
     />
   );
@@ -281,6 +286,8 @@ describe("ExplorationSidebar", () => {
         readPageIds={new Set()}
         showFilters={DEFAULT_SHOW_FILTERS}
         onToggleShowFilter={jest.fn()}
+        sortOrder={DEFAULT_SORT_ORDER}
+        onChangeSortOrder={jest.fn()}
         onArchiveGroup={jest.fn()}
       />
     );
@@ -372,6 +379,8 @@ describe("ExplorationSidebar", () => {
           readPageIds={new Set()}
           showFilters={DEFAULT_SHOW_FILTERS}
           onToggleShowFilter={jest.fn()}
+          sortOrder={DEFAULT_SORT_ORDER}
+          onChangeSortOrder={jest.fn()}
           onArchiveGroup={jest.fn()}
         />
       );

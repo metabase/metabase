@@ -23,7 +23,10 @@ import {
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
 import { ExplorationErrorMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
-import type { ExplorationShowFilters } from "metabase/explorations/sidebar-preferences";
+import type {
+  ExplorationShowFilters,
+  ExplorationSortOrder,
+} from "metabase/explorations/sidebar-preferences";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import { useDispatch } from "metabase/redux";
 import {
@@ -89,6 +92,8 @@ interface ExplorationSidebarProps {
   readPageIds: ReadonlySet<string>;
   showFilters: ExplorationShowFilters;
   onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
+  sortOrder: ExplorationSortOrder;
+  onChangeSortOrder: (order: ExplorationSortOrder) => void;
   onArchiveGroup: (groupId: string | number) => void;
 }
 
@@ -106,6 +111,8 @@ export function ExplorationSidebar({
   readPageIds,
   showFilters,
   onToggleShowFilter,
+  sortOrder,
+  onChangeSortOrder,
   onArchiveGroup,
 }: ExplorationSidebarProps) {
   const dispatch = useDispatch();
@@ -279,6 +286,8 @@ export function ExplorationSidebar({
         <SidebarShowFilterMenu
           showFilters={showFilters}
           onToggleShowFilter={onToggleShowFilter}
+          sortOrder={sortOrder}
+          onChangeSortOrder={onChangeSortOrder}
         />
       </Group>
       {tree.length > 0 ? (
@@ -551,12 +560,16 @@ function ExplorationGroupMenu({
 function SidebarShowFilterMenu({
   showFilters,
   onToggleShowFilter,
+  sortOrder,
+  onChangeSortOrder,
 }: {
   showFilters: ExplorationShowFilters;
   onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
+  sortOrder: ExplorationSortOrder;
+  onChangeSortOrder: (order: ExplorationSortOrder) => void;
 }) {
   const hasActiveFilter =
-    showFilters.unread || showFilters.hidden || showFilters.interesting;
+    showFilters.hidden || sortOrder !== "interestingness";
 
   return (
     <Menu position="bottom-end">
@@ -576,20 +589,22 @@ function SidebarShowFilterMenu({
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
+        <Menu.Label>{t`Sort order`}</Menu.Label>
         <ShowFilterItem
-          label={t`Unread`}
-          checked={showFilters.unread}
-          onToggle={() => onToggleShowFilter("unread")}
+          label={t`Interestingness`}
+          checked={sortOrder === "interestingness"}
+          onToggle={() => onChangeSortOrder("interestingness")}
         />
         <ShowFilterItem
-          label={t`Hidden`}
+          label={t`Alphabetical`}
+          checked={sortOrder === "alphabetical"}
+          onToggle={() => onChangeSortOrder("alphabetical")}
+        />
+        <Menu.Divider />
+        <ShowFilterItem
+          label={t`Show hidden items`}
           checked={showFilters.hidden}
           onToggle={() => onToggleShowFilter("hidden")}
-        />
-        <ShowFilterItem
-          label={t`Potentially interesting`}
-          checked={showFilters.interesting}
-          onToggle={() => onToggleShowFilter("interesting")}
         />
       </Menu.Dropdown>
     </Menu>
