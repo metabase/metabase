@@ -92,7 +92,7 @@ export function SearchSettingsWidget({
           </Box>
 
           {response.error && (
-            <Text c="error">
+            <Text c="feedback-negative">
               {getErrorMessage(
                 response,
                 t`Unable to fetch health status of search index.`,

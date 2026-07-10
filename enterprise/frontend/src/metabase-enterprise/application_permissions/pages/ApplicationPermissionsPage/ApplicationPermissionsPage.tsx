@@ -1,10 +1,10 @@
 import { useCallback, useEffect } from "react";
-import type { Route } from "react-router";
 
 import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { connect } from "metabase/redux";
+import type { Route } from "metabase/router";
 import {
   initializeApplicationPermissions,
   saveApplicationPermissions,

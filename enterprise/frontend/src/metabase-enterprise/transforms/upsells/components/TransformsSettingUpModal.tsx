@@ -65,13 +65,13 @@ export const TransformsSettingUpModal = ({
               pos="absolute"
               right={0}
               wrap="nowrap"
-              bg="white"
+              bg="core-white"
               fz={0}
               p="sm"
               ta="center"
               style={{
                 borderRadius: "100%",
-                boxShadow: `0 1px 6px 0 var(--mb-color-shadow)`,
+                boxShadow: `0 1px 6px 0 var(--mb-color-shadow-default)`,
               }}
             >
               <Loader size="xs" ml={1} mt={1} />

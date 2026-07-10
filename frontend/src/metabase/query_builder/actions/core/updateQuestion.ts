@@ -14,7 +14,6 @@ import type {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Series } from "metabase-types/api";
 
 import {
   getIsShowingTemplateTagsEditor,
@@ -101,7 +100,7 @@ export const updateQuestion = (
       run = false;
     }
 
-    const rawSeries = getRawSeries(getState()) as Series;
+    const rawSeries = getRawSeries(getState());
 
     const computedPivotQuestion = computeQuestionPivotTable({
       question: newQuestion,

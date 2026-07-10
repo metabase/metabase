@@ -268,7 +268,7 @@ describe("useGetPathFromValue", () => {
           createMockCollectionItem({
             id: card.id,
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -337,13 +337,13 @@ describe("useGetPathFromValue", () => {
             id: 123,
             name: "Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
           createMockCollectionItem({
             id: 1234,
             name: "Grandchild collection",
             location: "/16/26/",
             model: "collection",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -427,7 +427,7 @@ describe("useGetPathFromValue", () => {
             id: 123,
             name: "Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
           createMockCollectionItem({
             id: grandchildCollection.id,
             name: grandchildCollection.name,
@@ -445,7 +445,7 @@ describe("useGetPathFromValue", () => {
             id: 12333,
             name: "great Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -857,13 +857,13 @@ describe("useGetPathFromValue", () => {
             id: 123,
             name: "Grandchild card",
             model: "card",
-          } as CollectionItem),
+          }),
           createMockCollectionItem({
             id: 1234,
             name: "Grandchild collection",
             location: "/16/26/",
             model: "collection",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -997,7 +997,7 @@ describe("useGetPathFromValue", () => {
             id: 12345,
             name: "Cool Transform",
             model: "transform",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -1106,7 +1106,7 @@ describe("useGetPathFromValue", () => {
             id: 12345,
             name: "Cool Card",
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 
@@ -1179,7 +1179,7 @@ describe("useGetPathFromValue", () => {
             id: 12345,
             name: "Cool Card",
             model: "card",
-          } as CollectionItem),
+          }),
         ],
       });
 

@@ -3,10 +3,14 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { getTimelineIcons } from "metabase/common/utils/timelines";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { TimelineData } from "metabase-types/api";
@@ -46,13 +50,20 @@ const TimelineForm = ({
     >
       {({ dirty }) => (
         <Form disabled={!dirty}>
-          <FormInput
+          <FormTextInput
             name="name"
-            title={t`Name`}
+            label={t`Name`}
             placeholder={t`Product releases`}
             autoFocus
+            mb="md"
           />
-          <FormTextArea name="description" title={t`Description`} nullable />
+          <FormTextarea
+            name="description"
+            label={t`Description`}
+            minRows={5}
+            mb="md"
+            nullable
+          />
           <IconField name="icon" title={t`Default icon`} options={icons} />
           <TimelineFormFooter>
             <FormErrorMessage inline />

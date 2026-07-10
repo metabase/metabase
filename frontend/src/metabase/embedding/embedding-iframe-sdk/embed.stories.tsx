@@ -103,7 +103,7 @@ const ControlledParametersEmbedJsPlayground = () => {
           <SegmentedControl
             size="xs"
             value={mode}
-            onChange={(value) => setMode(value as Mode)}
+            onChange={(value) => setMode(value)}
             data={[
               { value: "controlled", label: "controlled" },
               { value: "uncontrolled", label: "uncontrolled" },

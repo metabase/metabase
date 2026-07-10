@@ -65,10 +65,10 @@ export const Schedule = ({
   const [internalCronString, setInternalCronString] = useState(() =>
     formatCronExpressionForUI(initialCronString),
   );
-  const schedule = useMemo(() => {
+  const schedule = useMemo<ScheduleSettings>(() => {
     return (
       cronToScheduleSettings(initialCronString, isCustomSchedule) ?? {
-        schedule_type: "hourly" as ScheduleType,
+        schedule_type: "hourly",
         schedule_minute: 0,
       }
     );

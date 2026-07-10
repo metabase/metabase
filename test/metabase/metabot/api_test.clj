@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.response]
-   [medley.core :as m]
    [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -58,32 +57,35 @@
                                                       :conversation_id conversation-id
                                                       :history         [historical-message]
                                                       :state           {}})
-                      lines    (str/split-lines response)
+                      lines    (->> (str/split-lines response)
+                                    (filter #(str/starts-with? % "data: ")))
+                      events   (->> lines
+                                    (remove #(= "data: [DONE]" %))
+                                    (mapv #(json/decode+kw (subs % 6))))
                       conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-                  ;; Native agent emits AI SDK v4 line protocol directly
-                  (testing "response contains expected line types"
-                    ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                    (is (=? [#"f:.*"
-                             #"0:.*"
-                             #"2:.*"
-                             #"d:.*"]
-                            (m/distinct-by #(subs % 0 2) lines)))
-                    ;; Text chunks reassemble to full message
-                    (let [text-lines (filter #(str/starts-with? % "0:") lines)]
+                  (testing "response is an SSE stream of typed events ending with [DONE]"
+                    (is (= "data: [DONE]" (last lines)))
+                    (is (= ["start" "start-step"] (mapv :type (take 2 events))))
+                    (is (= ["finish-step" "finish"] (mapv :type (take-last 2 events))))
+                    (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
-                             (apply str (map #(json/decode (subs % 2)) text-lines)))))
-                    ;; Finish line includes usage
-                    (is (str/includes? (last lines) "promptTokens")))
+                             (apply str (map :delta text-deltas)))))
+                    (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
+                            (last events))
+                        "finish event carries accumulated usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
-                  ;; Native agent stores parts in raw format
+                  ;; Native agent stores parts in the v2 at-rest format
                   (is (=? [{:total_tokens 0
                             :role         :user
-                            :data         [{:role "user" :content (:content question)}]}
+                            :data         [{:type "text" :text (:content question)}]
+                            :data_version 2}
                            {:total_tokens pos-int?
                             :role         :assistant
-                            :data         [{:type "text" :text "Hello from native agent!"}]}]
+                            :data         [{:type "step-start"}
+                                           {:type "text" :text "Hello from native agent!" :state "done"}]
+                            :data_version 2}]
                           messages)))))))))))
 
 (defn ^:private sse-event
@@ -98,7 +100,7 @@
     ;; streams text-delta events. The Metabase server connects to it via the
     ;; full native-agent pipeline:
     ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
-    ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
+    ;;   → lite-aisdk-xf → agent loop → parts->aisdk-sse-xf → streaming-writer-rf → client
     ;; The test client reads one byte and closes. The streaming-writer-rf's poll
     ;; of `canceled-chan` flips the `canceled?` volatile and returns `reduced`,
     ;; the agent loop unwinds, and `finalize-assistant-turn!` is called from the
@@ -253,9 +255,14 @@
                          :data    {:status 503 :provider :test}}
                         (:error @stored-kwargs))
                     "the throwable becomes a structured error payload")
-                (testing "the failure is streamed to the client as an AI SDK error part (3:...) rather than a silent close"
-                  (is (some #(str/starts-with? % "3:") (str/split-lines response)))
-                  (is (re-find #"(?i)agent setup exploded" response)))))))))))
+                (testing "the failure is streamed to the client as a well-formed AI SDK error tail rather than a silent close"
+                  (is (some #(str/includes? % "\"type\":\"error\"")
+                            (str/split-lines response)))
+                  (is (re-find #"(?i)agent setup exploded" response))
+                  (is (str/includes? response "\"finishReason\":\"error\"")
+                      "the errored stream is closed with a finish event")
+                  (is (str/includes? response "data: [DONE]")
+                      "the stream terminates with [DONE]"))))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
@@ -327,6 +334,43 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
 
+(deftest settings-get-groups-openrouter-models-without-vendor-prefix-test
+  (testing "models whose display_name has no `Vendor: ` prefix are grouped by the vendor from the model id"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-valid"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             {:models [{:id "anthropic/claude-fable-5"
+                                                                        :display_name "Claude Fable 5"}
+                                                                       {:id "openai/gpt-5.5"
+                                                                        :display_name "GPT-5.5"}]})]
+        (is (= {:value  (metabot.settings/llm-metabot-provider)
+                :models [{:id "anthropic/claude-fable-5"
+                          :display_name "Claude Fable 5"
+                          :group "Anthropic"}
+                         {:id "openai/gpt-5.5"
+                          :display_name "GPT-5.5"
+                          :group "OpenAI"}]}
+               (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                     :provider "openrouter")))))))
+
+(deftest settings-get-groups-openai-models-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "openai/gpt-5-mini"
+                                     llm.settings/llm-openai-api-key       "sk-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "sk-valid"} credentials))
+                                                           {:models [{:id "gpt-5.5"      :display_name "gpt-5.5"}
+                                                                     {:id "gpt-5.5-pro"  :display_name "gpt-5.5-pro"}
+                                                                     {:id "gpt-5.4"      :display_name "gpt-5.4"}
+                                                                     {:id "gpt-5.4-mini" :display_name "gpt-5.4-mini"}
+                                                                     {:id "gpt-4.1-mini" :display_name "gpt-4.1-mini"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "gpt-4.1-mini" :display_name "gpt-4.1-mini" :group "GPT-4.1"}
+                       {:id "gpt-5.4"      :display_name "gpt-5.4"      :group "GPT-5.4"}
+                       {:id "gpt-5.4-mini" :display_name "gpt-5.4-mini" :group "GPT-5.4"}
+                       {:id "gpt-5.5"      :display_name "gpt-5.5"      :group "GPT-5.5"}
+                       {:id "gpt-5.5-pro"  :display_name "gpt-5.5-pro"  :group "GPT-5.5"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "openai"))))))
+
 (deftest settings-get-returns-metabase-models-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
@@ -347,7 +391,7 @@
 
 (deftest settings-put-updates-provider-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
-                                     llm.settings/llm-openai-api-key      "sk-valid"]
+                                     llm.settings/llm-openai-api-key       "sk-valid"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
                                                            ([provider]
                                                             (is (= "openai" provider))
@@ -360,12 +404,65 @@
                                                                        :display_name "GPT-4.1 mini"}]}))]
       (is (= {:value  "openai/gpt-4.1-mini"
               :models [{:id "gpt-4.1-mini"
-                        :display_name "GPT-4.1 mini"}]}
+                        :display_name "GPT-4.1 mini"
+                        :group "GPT-4.1"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "openai"
                                     :model    "gpt-4.1-mini"})))
       (is (= "openai/gpt-4.1-mini"
              (metabot.settings/llm-metabot-provider))))))
+
+(deftest settings-put-connect-openai-defaults-model-test
+  (testing "connecting openai with only an api-key switches to the default openai model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-openai-api-key       nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "openai" provider))
+                                                              {:models [{:id "gpt-5.4"
+                                                                         :display_name "gpt-5.4"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "openai" provider))
+                                                              (is (= {:api-key "sk-fresh"} credentials))
+                                                              {:models [{:id "gpt-5.4"
+                                                                         :display_name "gpt-5.4"}]}))]
+        (is (= {:value  "openai/gpt-5.4"
+                :models [{:id "gpt-5.4"
+                          :display_name "gpt-5.4"
+                          :group "GPT-5.4"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "openai"
+                                      :api-key  "sk-fresh"})))
+        (is (= "openai/gpt-5.4"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "sk-fresh"
+               (llm.settings/llm-openai-api-key)))))))
+
+(deftest settings-put-connect-openrouter-defaults-model-test
+  (testing "connecting openrouter with only an api-key switches to the default openrouter model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-openrouter-api-key   nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "openrouter" provider))
+                                                              {:models [{:id "anthropic/claude-sonnet-4.6"
+                                                                         :display_name "Anthropic: Claude Sonnet 4.6"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "openrouter" provider))
+                                                              (is (= {:api-key "sk-or-v1-fresh"} credentials))
+                                                              {:models [{:id "anthropic/claude-sonnet-4.6"
+                                                                         :display_name "Anthropic: Claude Sonnet 4.6"}]}))]
+        (is (= {:value  "openrouter/anthropic/claude-sonnet-4.6"
+                :models [{:id "anthropic/claude-sonnet-4.6"
+                          :display_name "Anthropic: Claude Sonnet 4.6"
+                          :group "Anthropic"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "openrouter"
+                                      :api-key  "sk-or-v1-fresh"})))
+        (is (= "openrouter/anthropic/claude-sonnet-4.6"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "sk-or-v1-fresh"
+               (llm.settings/llm-openrouter-api-key)))))))
 
 (deftest settings-put-updates-metabase-provider-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
@@ -691,7 +788,8 @@
                                   :profile_id      "gpt-x"
                                   :external_id     external-id
                                   :total_tokens    5
-                                  :data            [{:type "text" :text "hi"}]}))]
+                                  :data            [{:type "text" :text "hi"}]
+                                  :data_version    2}))]
           (is (nil? (mt/user-http-request :rasta :post 204 "metabot/source-feedback"
                                           {:metabot_id  1
                                            :message_id  external-id
@@ -877,8 +975,10 @@
                 {:type :finish}])
               (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
                     conv       (t2/select-one :model/MetabotConversation :id conv-id)
-                    data-types (into #{} (keep :data-type) (:data msg))
-                    part-types (into #{} (map :type) (:data msg))]
+                    part-types (into #{} (map :type) (:data msg))
+                    data-types (into #{}
+                                     (keep #(when (str/starts-with? % "data-") (subs % 5)))
+                                     part-types)]
                 (is (= #{"navigate_to" "todo_list" "code_edit" "transform_suggestion" "adhoc_viz" "static_viz"}
                        data-types)
                     "all persistable data parts (not state) should be in :data")
@@ -892,57 +992,76 @@
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
             (t2/delete! :model/MetabotConversation :id conv-id)))))))
 
-(deftest strip-tool-output-bloat-test
-  (testing "drops transient keys and structured-output fields outside the persisted subset"
-    (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
-           (metabot.persistence/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-1"
-             :result {:output            "<result>XML</result>"
-                      :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
-                      :structured-output {:result-type :search :data [{:id 1}]}
-                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
-  (testing "keeps the query-related subset of :structured-output for analytics extraction"
+(deftest parts->storable-content-tool-output-trimming-test
+  (testing "drops transient result keys and structured-output fields outside the persisted subset"
+    (is (= [{:type         "tool-search"
+             :toolCallId   "call-1"
+             :state        "output-available"
+             :input        {:q "x"}
+             :output       {:output "<result>XML</result>"}}]
+           (metabot.persistence/parts->storable-content
+            [{:type :tool-input :id "call-1" :function "search" :arguments {:q "x"}}
+             {:type   :tool-output
+              :id     "call-1"
+              :result {:output            "<result>XML</result>"
+                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
+                       :structured-output {:result-type :search :data [{:id 1}]}
+                       :data-parts        [{:type :data :data-type "navigate_to"}]}}])))))
+
+(deftest parts->storable-content-structured-output-subset-test
+  (testing "keeps the query-related subset of structured output, canonicalized to :structured_output"
     (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
-      (is (= {:type   :tool-output
-              :id     "call-sql"
+      (is (= [{:type         "tool-create_sql_query"
+               :toolCallId   "call-sql"
+               :state        "output-available"
+               :input        {}
+               :output       {:output            "<result>...</result>"
+                              :structured_output {:query-id      "qid-1"
+                                                  :query-content "SELECT 1"
+                                                  :query         query-map
+                                                  :database      1}}}]
+             (metabot.persistence/parts->storable-content
+              [{:type :tool-input :id "call-sql" :function "create_sql_query" :arguments {}}
+               {:type   :tool-output
+                :id     "call-sql"
+                :result {:output            "<result>...</result>"
+                         :structured-output {:query-id      "qid-1"
+                                             :query-content "SELECT 1"
+                                             :query         query-map
+                                             :database      1
+                                             :resources     [{:field_values [1 2 3]}]
+                                             :reactions     [:noop]}
+                         :data-parts        [{:type :data}]}}]))))))
+
+(deftest parts->storable-content-snake-alias-test
+  (testing "reads the snake-case :structured_output alias when present"
+    (is (= [{:type         "tool-search"
+             :toolCallId   "call-snake"
+             :state        "output-available"
+             :input        {}
+             :output       {:output            "<result>...</result>"
+                            :structured_output {:query-id "qid-2" :query-content "SELECT 2"}}}]
+           (metabot.persistence/parts->storable-content
+            [{:type :tool-input :id "call-snake" :function "search" :arguments {}}
+             {:type   :tool-output
+              :id     "call-snake"
               :result {:output            "<result>...</result>"
-                       :structured-output {:query-id      "qid-1"
-                                           :query-content "SELECT 1"
-                                           :query         query-map
-                                           :database      1}}}
-             (metabot.persistence/strip-tool-output-bloat
-              {:type   :tool-output
-               :id     "call-sql"
-               :result {:output            "<result>...</result>"
-                        :structured-output {:query-id      "qid-1"
-                                            :query-content "SELECT 1"
-                                            :query         query-map
-                                            :database      1
-                                            :resources     [{:field_values [1 2 3]}]
-                                            :reactions     [:noop]}
-                        :data-parts        [{:type :data}]}})))))
-  (testing "preserves the snake-case :structured_output alias when present"
-    (is (= {:type   :tool-output
-            :id     "call-snake"
-            :result {:output            "<result>...</result>"
-                     :structured_output {:query-id "qid-2" :query-content "SELECT 2"}}}
-           (metabot.persistence/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-snake"
-             :result {:output            "<result>...</result>"
-                      :structured_output {:query-id      "qid-2"
-                                          :query-content "SELECT 2"
-                                          :extra-bloat   [1 2 3]}}}))))
-  (testing "leaves non-tool-output parts untouched"
-    (let [text-part {:type :text :text "hello"}]
-      (is (= text-part (metabot.persistence/strip-tool-output-bloat text-part)))))
-  (testing "handles result with no :output key and no query-related structured-output"
-    (is (= {:type :tool-output :id "call-2" :result {}}
-           (metabot.persistence/strip-tool-output-bloat
-            {:type   :tool-output
-             :id     "call-2"
-             :result {:structured-output {:some "data"}}})))))
+                       :structured_output {:query-id      "qid-2"
+                                           :query-content "SELECT 2"
+                                           :extra-bloat   [1 2 3]}}}])))))
+
+(deftest parts->storable-content-empty-result-test
+  (testing "result with no :output key and no query-related structured output stores an empty map"
+    (is (= [{:type         "tool-search"
+             :toolCallId   "call-2"
+             :state        "output-available"
+             :input        {}
+             :output       {}}]
+           (metabot.persistence/parts->storable-content
+            [{:type :tool-input :id "call-2" :function "search" :arguments {}}
+             {:type   :tool-output
+              :id     "call-2"
+              :result {:structured-output {:some "data"}}}])))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."

@@ -31,9 +31,23 @@
 ;; The logical (entity_type, entity_local_id) pair is the primary key — no surrogate id.
 (methodical/defmethod t2/primary-keys :model/OsiAiContext [_model] [:entity_type :entity_local_id])
 
+(defn ->ai-context
+  "Coerce the OSI `ai_context` oneOf into the object form we store.
+
+    \"count new signups\"  =>  {:instructions \"count new signups\"}   ; string shorthand
+    {:synonyms [...]}     =>  {:synonyms [...]}                    ; already an object
+    nil                   =>  nil
+
+  Runs ahead of [[mi/json-in]], which would otherwise store the string verbatim as pre-serialized JSON."
+  [ai-context]
+  (if (string? ai-context) {:instructions ai-context} ai-context))
+
 (t2/deftransforms :model/OsiAiContext
-  ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly.
-  {:ai_context mi/transform-json})
+  ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write
+  ;; the string shorthand is migrated to {:instructions s}, so storage is always the object form and every
+  ;; write path (CRUD API, serdes import, direct appdb write) is normalized at this one boundary.
+  {:ai_context {:in  (comp mi/json-in ->ai-context)
+                :out mi/json-out-with-keywordization}})
 
 ;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
 ;;; ai_context row survives a type relabel and keys on a stable `(card, entity_local_id)`. The CRUD and tool
@@ -145,7 +159,7 @@
                                  :import-with-context
                                  (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})
 
-(defmethod serdes/dependencies "OsiAiContext"
+(defmethod serdes/deserialization-dependencies "OsiAiContext"
   [entity]
   ;; Depend on the entity this row describes (its parent path), so it imports after that entity exists.
   [(vec (pop (serdes/path entity)))])

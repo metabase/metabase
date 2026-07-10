@@ -43,7 +43,7 @@ jest.mock(
 function setup({ isGuestEmbed }: { isGuestEmbed: boolean }) {
   setupNotificationChannelsEndpoints({
     email: { configured: true },
-  } as any);
+  });
 
   const state = createMockState({
     currentUser: createMockUser({

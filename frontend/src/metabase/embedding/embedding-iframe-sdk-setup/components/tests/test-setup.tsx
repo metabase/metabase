@@ -88,7 +88,7 @@ export const setup = (options?: {
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
   setupNotificationChannelsEndpoints(
-    options?.hasEmailSetup ? { email: { configured: true } as any } : {},
+    options?.hasEmailSetup ? { email: { configured: true } } : {},
   );
   fetchMock.get("path:/api/embed-theme", []);
 

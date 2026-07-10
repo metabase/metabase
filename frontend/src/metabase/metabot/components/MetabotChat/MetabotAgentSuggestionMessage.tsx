@@ -45,7 +45,7 @@ import type {
 import S from "./MetabotAgentSuggestionMessage.module.css";
 
 export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
-  part: Extract<MetabotDataPart, { type: "transform_suggestion" }>;
+  part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
 };
 
 const PreviewContent = ({
@@ -126,7 +126,7 @@ export const AgentSuggestionMessage = ({
   const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
   const suggestedTransform: MetabotSuggestedTransform = {
-    ...message.part.value,
+    ...message.part.data,
     active: true,
     suggestionId: message.metadata?.suggestionId ?? message.id,
   };
@@ -236,7 +236,10 @@ export const AgentSuggestionMessage = ({
               align="center"
               gap="sm"
             >
-              <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
+              <Text
+                mb="1px"
+                c="feedback-negative"
+              >{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
@@ -278,7 +281,9 @@ export const AgentSuggestionMessage = ({
                 variant="subtle"
                 fw="normal"
                 fz="sm"
-                c={canApply && !readonly ? "success" : "text-disabled"}
+                c={
+                  canApply && !readonly ? "feedback-positive" : "text-disabled"
+                }
                 disabled={!canApply || readonly}
                 onClick={handleApply}
               >

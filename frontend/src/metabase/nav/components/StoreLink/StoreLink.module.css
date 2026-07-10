@@ -13,7 +13,7 @@
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-admin-navbar-inverse);
+    background-color: var(--mb-color-navbar-admin-inverse);
   }
 
   @media (prefers-reduced-motion) {

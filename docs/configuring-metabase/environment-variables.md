@@ -361,7 +361,7 @@ Whether to (asynchronously) sync newly created Databases during config-from-file
 - [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
 - [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
 
-Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.
 
 ### `MB_CSP_IMG_ENABLED`
 
@@ -909,6 +909,38 @@ Whether or not we should install the Metabase analytics database on startup. Def
 
 Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
 
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  jdbc-data-warehouse-max-connection-pool-size before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a "service unavailable" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.
+
+### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_MAX_PENDING_CHECKOUTS`
+
+- Type: integer
+- Default: `0`
+
+Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit jdbc-data-warehouse-max-connection-pool-size. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements jdbc-data-warehouse-connection-pool-checkout-timeout-ms, which bounds how long each query
+  waits; this bounds how many can wait at the same time.
+
+When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  "service unavailable" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.
+
 ### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
 - Type: integer
@@ -1269,7 +1301,7 @@ The Anthropic API Key.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4-5`.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -2295,10 +2327,14 @@ Controls the timeout for transform runs, including the queries they execute. Thi
 ### `MB_TRANSFORMS_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `transforms-enabled`.
 - [Configuration file name](./config-file.md): `transforms-enabled`
 
-Enable transforms for instances that have not explicitly purchased the transform add-on.
+Whether transforms are enabled.
+
+When enabled, data analysts and admins can write, schedule and run transforms.
+  Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 

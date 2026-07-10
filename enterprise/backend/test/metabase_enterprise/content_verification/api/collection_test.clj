@@ -109,3 +109,19 @@
                                                  {:moderated_item_id   model-id
                                                   :moderated_item_type :card
                                                   :status              :verified}))))))))
+
+(deftest remove-official-badge-test
+  (testing "PUT /api/collection/:id can remove the official badge when :official-collections is enabled"
+    (mt/with-premium-features #{:official-collections}
+      (mt/with-temp [:model/Collection {id :id} {:authority_level "official"}]
+        (is (nil? (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id)
+                                                          {:authority_level nil}))))
+        (is (nil? (t2/select-one-fn :authority_level :model/Collection id)))))))
+
+(deftest non-admin-cannot-set-authority-level-test
+  (testing "PUT /api/collection/:id with :authority_level is rejected (403) for a non-admin"
+    (mt/with-premium-features #{:official-collections}
+      (mt/with-temp [:model/Collection {id :id} {:authority_level nil}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (format "collection/%d" id)
+                                     {:authority_level "official"})))))))

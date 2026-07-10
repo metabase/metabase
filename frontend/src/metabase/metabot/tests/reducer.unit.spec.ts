@@ -296,4 +296,116 @@ describe("metabot reducer", () => {
       expect(getRequestConversation(state, action)).toBe(convo);
     });
   });
+
+  describe("tool calls", () => {
+    const agentId = "omnibot" as const;
+
+    it("toolCallStart is idempotent for the same toolCallId", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.toolCallStart({
+          agentId,
+          toolCallId: "x",
+          toolName: "analyze_data",
+        }),
+      );
+      store.dispatch(
+        metabotActions.toolCallStart({
+          agentId,
+          toolCallId: "x",
+          toolName: "analyze_data",
+        }),
+      );
+
+      const convo = store.getState().metabot.conversations.omnibot;
+      expect(convo?.messages).toHaveLength(1);
+      expect(convo?.activeToolCalls).toHaveLength(1);
+    });
+
+    it("toolCallArgs updates the existing tool-call message when toolCallStart preceded it", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.toolCallStart({
+          agentId,
+          toolCallId: "x",
+          toolName: "analyze_data",
+        }),
+      );
+      store.dispatch(
+        metabotActions.toolCallArgs({
+          agentId,
+          toolCallId: "x",
+          toolName: "analyze_data",
+          args: '{"foo":1}',
+        }),
+      );
+
+      const convo = store.getState().metabot.conversations.omnibot;
+      expect(convo?.messages).toEqual([
+        expect.objectContaining({
+          id: "x",
+          type: "tool_call",
+          args: '{"foo":1}',
+          status: "started",
+        }),
+      ]);
+      expect(convo?.activeToolCalls).toHaveLength(1);
+    });
+
+    it("toolCallArgs creates a tool-call message when no tool-input-start preceded it", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.toolCallArgs({
+          agentId,
+          toolCallId: "x",
+          toolName: "analyze_data",
+          args: '{"foo":1}',
+        }),
+      );
+
+      const convo = store.getState().metabot.conversations.omnibot;
+      expect(convo?.messages).toEqual([
+        expect.objectContaining({
+          id: "x",
+          type: "tool_call",
+          args: '{"foo":1}',
+          status: "started",
+        }),
+      ]);
+      expect(convo?.activeToolCalls).toHaveLength(1);
+    });
+
+    it("toolCallEnd marks the tool-call message as errored", () => {
+      const store = createTestStore();
+      store.dispatch(
+        metabotActions.toolCallStart({
+          agentId,
+          toolCallId: "x",
+          toolName: "analyze_data",
+        }),
+      );
+      store.dispatch(
+        metabotActions.toolCallEnd({
+          agentId,
+          toolCallId: "x",
+          result: "boom",
+          isError: true,
+        }),
+      );
+
+      const convo = store.getState().metabot.conversations.omnibot;
+      expect(convo?.messages).toEqual([
+        expect.objectContaining({
+          id: "x",
+          type: "tool_call",
+          status: "ended",
+          result: "boom",
+          is_error: true,
+        }),
+      ]);
+      expect(convo?.activeToolCalls).toEqual([
+        expect.objectContaining({ id: "x", status: "ended" }),
+      ]);
+    });
+  });
 });

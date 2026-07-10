@@ -56,10 +56,10 @@
   :export?    false)
 
 (defn process-files-channel-name
-  "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
+  "Converts empty strings to `nil`, and removes a leading `#` (channel) or `@` (user) from the name if present."
   [channel-name]
   (when-not (str/blank? channel-name)
-    (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
+    (if (contains? #{\# \@} (first channel-name)) (subs channel-name 1) channel-name)))
 
 (defn find-cached-slack-channel-or-username
   "Look up a Slack channel or username by name or ID in [[slack-cached-channels-and-usernames]].
@@ -337,3 +337,17 @@
   :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)
+
+(defsetting static-viz-mode
+  "How static visualizations (subscription/alert charts and pulse table cell colors) are rendered:
+  `graalvm` runs the JavaScript in-process on a pooled GraalVM context (default), or `node` runs it in a
+  pool of external Node.js child processes (requires a `node` binary on the host's PATH)."
+  :type       :keyword
+  :visibility :internal
+  :default    :graalvm
+  :export?    false
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:graalvm :node} (keyword new-value))
+                          (tru "Invalid static-viz-mode! Only values of graalvm and node are allowed.")))
+                (setting/set-value-of-type! :keyword :static-viz-mode new-value)))

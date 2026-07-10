@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -25,6 +24,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { IndexRedirect, IndexRoute, Route } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";

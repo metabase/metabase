@@ -81,6 +81,9 @@
     "Stage removal of `path` from the commit. Returns nil.")
   (replace-all! [commit]
     "Clear the snapshot's managed dirs, so the staged files replace them wholesale. Returns nil.")
+  (empty-commit? [commit]
+    "True if the staged tree is identical to the parent's, i.e. finishing would introduce no changes. Always
+    false for a root commit (no parent).")
   (finish-commit! [commit message]
     "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.")
   (abort-commit! [commit]

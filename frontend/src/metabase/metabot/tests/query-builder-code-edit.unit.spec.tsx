@@ -79,12 +79,11 @@ describe("query builder code edits from omnibot", () => {
     mockedAiStreamingQuery.mockImplementation(async (request, callbacks) => {
       requestBody = request.body;
 
-      callbacks?.onStartMessagePart?.({ messageId: "msg_test_code_edit" });
+      callbacks?.onStart?.({ type: "start", messageId: "msg_test_code_edit" });
       callbacks?.onTextPart?.("Reviewing the query.");
       callbacks?.onDataPart?.({
-        type: "code_edit",
-        version: 1,
-        value: {
+        type: "data-code_edit",
+        data: {
           buffer_id: "qb",
           mode: "rewrite",
           value: SUGGESTED_SQL,
@@ -95,8 +94,6 @@ describe("query builder code edits from omnibot", () => {
         aborted: false,
         toolCalls: [],
         data: [],
-        text: null,
-        parts: [],
         history: [],
       };
     });
@@ -121,7 +118,7 @@ describe("query builder code edits from omnibot", () => {
         <QuerySuggestionProbe question={question} />
       </MetabotProvider>,
       {
-        storeInitialState: storeInitialState as any,
+        storeInitialState: storeInitialState,
       },
     );
     const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
@@ -185,7 +182,7 @@ describe("query builder code edits from omnibot", () => {
         expect.objectContaining({
           type: "data_part",
           externalId: "msg_test_code_edit",
-          part: expect.objectContaining({ type: "code_edit" }),
+          part: expect.objectContaining({ type: "data-code_edit" }),
         }),
       ]),
     );
