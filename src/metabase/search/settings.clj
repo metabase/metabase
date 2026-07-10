@@ -3,7 +3,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]))
 
 (defsetting search-typeahead-enabled
   (i18n/deferred-tru "Enable typeahead search in the {0} navbar?"
@@ -58,7 +59,11 @@
                 (let [before (set ((requiring-resolve 'metabase.search.engine/active-engines)))
                       result (setting/set-value-of-type! :csv :additional-search-engines new-value)]
                   (mdb/do-after-commit
-                   #(future (trigger-init-for-newly-active-engines! before)))
+                   #(future
+                      (try
+                        (trigger-init-for-newly-active-engines! before)
+                        (catch Throwable t
+                          (log/error t "Failed to trigger search index init for newly active engines")))))
                   result))
   :doc        false)
 

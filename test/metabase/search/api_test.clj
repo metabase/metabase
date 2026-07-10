@@ -392,9 +392,10 @@
 (deftest engine-cookie-round-trip-test
   ;; The in-process client is required here: it runs the handler on the test thread, inside the fixture's
   ;; engine and index bindings.
-  (let [engine-cookie (fn [response]
-                        (some #(second (re-find (re-pattern (str engine-cookie-name "=([^;]*)")) %))
-                              (u/one-or-many (get-in response [:headers "Set-Cookie"]))))]
+  (let [cookie-pattern (re-pattern (str (java.util.regex.Pattern/quote engine-cookie-name) "=([^;]*)"))
+        engine-cookie  (fn [response]
+                         (some #(second (re-find cookie-pattern %))
+                               (u/one-or-many (get-in response [:headers "Set-Cookie"]))))]
     (testing "an explicit engine pins: the response sets the engine cookie"
       (let [response (mt/user-http-request-full-response :crowberto :get 200 "search" :q "x" :search_engine "in-place")]
         (is (= "in-place" (engine-cookie response)))
