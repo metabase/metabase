@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { AuthButton } from "metabase/auth/components/AuthButton";
+import { AuthTextButton } from "metabase/auth/components/AuthButton";
 import {
   Form,
   FormErrorMessage,
@@ -41,10 +41,12 @@ type ChallengeCodeValues = {
   useRecoveryCode: boolean;
 };
 
-function ChallengeCodeForm({
-  mfaToken,
-  remember,
-}: Pick<MfaChallengeFormProps, "mfaToken" | "remember">) {
+type ChallengeCodeFormProps = {
+  mfaToken: string;
+  remember?: boolean;
+};
+
+function ChallengeCodeForm({ mfaToken, remember }: ChallengeCodeFormProps) {
   const dispatch = useDispatch();
   const [verifyMfa] = useVerifyMfaMutation();
 
@@ -67,7 +69,12 @@ function ChallengeCodeForm({
       validationSchema={CHALLENGE_SCHEMA}
       onSubmit={handleSubmit}
     >
-      {({ values: { useRecoveryCode }, setFieldValue, setFieldTouched }) => (
+      {({
+        values: { useRecoveryCode },
+        isSubmitting,
+        setFieldValue,
+        setFieldTouched,
+      }) => (
         <Form>
           <Stack gap="md">
             <Text c="text-secondary" ta="center">
@@ -90,7 +97,8 @@ function ChallengeCodeForm({
             <FormSubmitButton label={t`Verify`} variant="filled" w="100%" />
             <FormErrorMessage ta="center" />
             <Box ta="center">
-              <AuthButton
+              <AuthTextButton
+                disabled={isSubmitting}
                 onClick={() => {
                   setFieldValue("useRecoveryCode", !useRecoveryCode);
                   setFieldValue("code", "");
@@ -100,7 +108,7 @@ function ChallengeCodeForm({
                 {useRecoveryCode
                   ? t`Use an authenticator code instead`
                   : t`Use a recovery code instead`}
-              </AuthButton>
+              </AuthTextButton>
             </Box>
           </Stack>
         </Form>
@@ -109,7 +117,11 @@ function ChallengeCodeForm({
   );
 }
 
-function EmailOtpForm({ mfaToken }: Pick<MfaChallengeFormProps, "mfaToken">) {
+type EmailOtpFormProps = {
+  mfaToken: string;
+};
+
+function EmailOtpForm({ mfaToken }: EmailOtpFormProps) {
   const [sendEmailOtp, { isSuccess: emailSent }] = useSendEmailOtpMutation();
 
   const handleSubmit = async () => {
@@ -129,9 +141,12 @@ function EmailOtpForm({ mfaToken }: Pick<MfaChallengeFormProps, "mfaToken">) {
       {({ isSubmitting, submitForm }) => (
         <Form>
           <Stack gap="md" ta="center">
-            <AuthButton onClick={() => !isSubmitting && submitForm()}>
+            <AuthTextButton
+              disabled={isSubmitting}
+              onClick={() => submitForm()}
+            >
               {t`Email me a code`}
-            </AuthButton>
+            </AuthTextButton>
             <FormErrorMessage ta="center" />
           </Stack>
         </Form>
@@ -151,7 +166,7 @@ export function MfaChallengeForm({
       <ChallengeCodeForm mfaToken={mfaToken} remember={remember} />
       {methods?.includes("email") && <EmailOtpForm mfaToken={mfaToken} />}
       <Box ta="center">
-        <AuthButton onClick={onCancel}>{t`Back to log in`}</AuthButton>
+        <AuthTextButton onClick={onCancel}>{t`Back to log in`}</AuthTextButton>
       </Box>
     </Stack>
   );

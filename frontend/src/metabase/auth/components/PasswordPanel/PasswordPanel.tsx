@@ -12,7 +12,7 @@ import {
   getHasSessionCookies,
   getIsLdapEnabled,
 } from "../../selectors";
-import { AuthButton } from "../AuthButton";
+import { AuthTextLink } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
 
 import { ActionList, ActionListItem } from "./PasswordPanel.styled";
@@ -66,9 +66,9 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
       />
       <ActionList>
         <ActionListItem>
-          <AuthButton link="/auth/forgot_password">
+          <AuthTextLink to="/auth/forgot_password">
             {t`I seem to have forgotten my password`}
-          </AuthButton>
+          </AuthTextLink>
         </ActionListItem>
         {providers.map((provider) => (
           <ActionListItem key={provider.name}>
