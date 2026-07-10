@@ -137,6 +137,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -148,6 +149,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -202,6 +204,7 @@ jobs:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -213,6 +216,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -285,6 +289,7 @@ jobs:
         junit-name: 'be-tests-clickhouse-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -296,6 +301,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -339,6 +345,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -350,6 +357,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
@@ -387,6 +395,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -398,6 +407,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -458,6 +468,7 @@ jobs:
       with:
         junit-name: 'be-tests-databricks-ee'
         test-args: ${{ matrix.job.test-args }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -469,6 +480,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
@@ -530,6 +542,7 @@ jobs:
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
         test-args: ${{ matrix.job.test-args }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -541,6 +554,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -560,6 +574,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -571,6 +586,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -591,6 +607,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -602,6 +619,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -721,6 +739,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -732,6 +751,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -801,6 +821,7 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -812,6 +833,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -883,6 +905,7 @@ jobs:
           test-args: >-
             :exclude-tags '[:mongo-sharded-cluster-tests :mb/transforms-python-test]'
             :only-tags [:mb/driver-tests]
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -894,6 +917,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -928,6 +952,7 @@ jobs:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -939,6 +964,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -1013,6 +1039,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1024,6 +1051,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -1117,6 +1145,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -1128,6 +1157,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -1204,6 +1234,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1215,6 +1246,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -1288,6 +1320,7 @@ jobs:
         test-args: >-
           ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: ${{ !matrix.job.skip && !cancelled() }}
@@ -1299,6 +1332,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1368,6 +1402,7 @@ jobs:
         junit-name: 'be-tests-snowflake-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1379,6 +1414,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1420,6 +1456,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1431,6 +1468,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1461,6 +1499,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1472,6 +1511,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1537,6 +1577,7 @@ jobs:
         junit-name: ${{ matrix.version.junit-name }}
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.version.name }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1548,6 +1589,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1662,6 +1704,7 @@ jobs:
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1673,6 +1716,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   drivers-tests-result:
     needs:
