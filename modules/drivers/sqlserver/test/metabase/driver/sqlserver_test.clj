@@ -591,11 +591,12 @@
 (deftest ^:parallel top-level-boolean-expressions-test
   (mt/test-driver :sqlserver
     (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
-      (let [true-value  (fn [] (sql.qp/mbql-clause-with-opts :sqlserver :value {:base-type :type/Boolean :effective-type :type/Boolean} true))
-            false-value (fn [] (sql.qp/mbql-clause-with-opts :sqlserver :value {:base-type :type/Boolean :effective-type :type/Boolean} false))]
+      (let [bool-val  (fn [b] (sql.qp/mbql-clause-with-opts :sqlserver :value {:base-type :type/Boolean :effective-type :type/Boolean} b))]
         (letfn [(expression-ref [expression-name]
                   (sql.qp/mbql-clause :sqlserver :expression expression-name))
-                (orders-query [{:keys [expressions fields filters]}]
+                (orders-query [{:keys [expressions fields filters]
+                                :or {expressions [["MyTrue" (bool-val true)] ["MyFalse" (bool-val false)]]
+                                     fields ["MyTrue"]}}]
                   (let [returned-expression? (fn [[expr-name _]] ((set fields) expr-name))
                         returned-exprs (filter returned-expression? expressions)
                         hidden-exprs (remove returned-expression? expressions)
@@ -609,15 +610,12 @@
                         query (reduce (fn [query [expr-name expr]]
                                         (lib.expression/expression query -1 expr-name expr {:add-to-fields? false}))
                                       query
-                                      hidden-exprs)
-                        query (lib/limit query 1)]
-                    (reduce lib/filter query filters)))]
+                                      hidden-exprs)]
+                    (-> (reduce lib/filter query filters) (lib/limit 1))))]
           (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
                   [{:desc "true filter"
                     :query
-                    (orders-query {:filters [(true-value)]
-                                   :expressions [["MyTrue" (true-value)]]
-                                   :fields      ["MyTrue"]})
+                    (orders-query {:filters [(bool-val true)]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -629,9 +627,7 @@
                     :expected-rows  [[true]]}
                    {:desc "false filter"
                     :query
-                    (orders-query {:filters [(false-value)]
-                                   :expressions [["MyTrue" (true-value)]]
-                                   :fields      ["MyTrue"]})
+                    (orders-query {:filters [(bool-val false)]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -643,9 +639,7 @@
                     :expected-rows  []}
                    {:desc "not filter"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver :not (false-value))]
-                                   :expressions [["MyTrue" (true-value)]]
-                                   :fields      ["MyTrue"]})
+                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver :not (bool-val false))]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -659,14 +653,11 @@
                     :query
                     (orders-query {:filters [(sql.qp/mbql-clause
                                               :sqlserver :and
-                                              (sql.qp/mbql-clause :sqlserver :not (false-value))
+                                              (sql.qp/mbql-clause :sqlserver :not (bool-val false))
                                               (sql.qp/mbql-clause
                                                :sqlserver :or
                                                (expression-ref "MyFalse")
-                                               (expression-ref "MyTrue")))]
-                                   :expressions [["MyFalse" (false-value)]
-                                                 ["MyTrue" (true-value)]]
-                                   :fields      ["MyTrue"]})
+                                               (expression-ref "MyTrue")))]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -682,12 +673,12 @@
                     :expected-rows  [[true]]}
                    {:desc "case expression"
                     :query (orders-query
-                            {:expressions [["MyTrue" (true-value)]
-                                           ["MyFalse" (false-value)]
+                            {:expressions [["MyTrue" (bool-val true)]
+                                           ["MyFalse" (bool-val false)]
                                            ["MyCase" (sql.qp/mbql-clause
                                                       :sqlserver :case
-                                                      [[(expression-ref "MyFalse") (false-value)]
-                                                       [(expression-ref "MyTrue") (true-value)]])]]
+                                                      [[(expression-ref "MyFalse") (bool-val false)]
+                                                       [(expression-ref "MyTrue") (bool-val true)]])]]
                              :fields      ["MyCase" "MyTrue" "MyFalse"]})
                     :expected-sql
                     ["SELECT"
@@ -705,9 +696,7 @@
                    ;; to (1 = 1) = (1 = 1)
                    {:desc "non-top-level booleans"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver := (true-value) (true-value))]
-                                   :expressions [["MyTrue" (true-value)]]
-                                   :fields      ["MyTrue"]})
+                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver := (bool-val true) (bool-val true))]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"

@@ -556,7 +556,7 @@
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :filters]
   [driver _ honeysql-form query]
-  (->> (update query :filters (partial boolean->comparison driver))
+  (->> (update query :filters #(mapv (partial boolean->comparison driver) %))
        ((get-method sql.qp/apply-top-level-clause [:sql-mbql5 :filters]) driver :filters honeysql-form)))
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
