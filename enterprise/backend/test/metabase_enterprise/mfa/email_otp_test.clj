@@ -1,11 +1,13 @@
 (ns metabase-enterprise.mfa.email-otp-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.channel.email :as channel.email]
    [metabase.channel.settings :as channel.settings]
+   [metabase.channel.template.core :as channel.template]
    [metabase.session.api :as api.session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -128,3 +130,31 @@
               (mt/client :post 400 "session/mfa/send-email-otp" {:challenge_token (:challenge_token challenge)})))
           (finally
             (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp")))))))
+
+(deftest mfa-email-templates-render-test
+  (testing "all four MFA email templates render without error and contain their key sentences"
+    (testing "mfa_enabled template"
+      (let [html (channel.template/render "mfa_enabled" {:applicationName "Metabase"
+                                                         :siteUrl         "http://localhost:3000"
+                                                         :logoHeader      false})]
+        (is (string? html))
+        (is (str/includes? html "Two-factor authentication is now required"))))
+    (testing "mfa_disabled template"
+      (let [html (channel.template/render "mfa_disabled" {:applicationName "Metabase"
+                                                          :siteUrl         "http://localhost:3000"
+                                                          :logoHeader      false})]
+        (is (string? html))
+        (is (str/includes? html "using a verification code"))))
+    (testing "mfa_removed_by_admin template"
+      (let [html (channel.template/render "mfa_removed_by_admin" {:applicationName "Metabase"
+                                                                  :siteUrl         "http://localhost:3000"
+                                                                  :logoHeader      false})]
+        (is (string? html))
+        (is (str/includes? html "administrator removed two-factor authentication"))))
+    (testing "mfa_login_code template"
+      (let [html (channel.template/render "mfa_login_code" {:applicationName "Metabase"
+                                                            :siteUrl         "http://localhost:3000"
+                                                            :logoHeader      false
+                                                            :code            "123456"})]
+        (is (string? html))
+        (is (re-find #"code is: (\d{6})" html))))))

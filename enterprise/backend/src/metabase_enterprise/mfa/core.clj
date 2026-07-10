@@ -7,7 +7,7 @@
    [metabase-enterprise.mfa.gate :as gate]
    [metabase-enterprise.mfa.settings]
    [metabase-enterprise.mfa.verification :as verification]
-   [metabase.channel.email :as email]
+   [metabase.channel.email.messages :as messages]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -61,13 +61,7 @@
                                        {:status-code 401})))
         user-email (t2/select-one-fn :email :model/User :id user-id)]
     (try
-      (email/send-message-or-throw!
-       {:subject      (tru "Your Metabase sign-in code")
-        :recipients   [user-email]
-        :message-type :text
-        :message      (str (tru "Your one-time sign-in code is: {0}" code)
-                           "\n\n"
-                           (tru "It expires in 10 minutes. If you didn''t try to sign in, contact your administrator."))})
+      (messages/send-mfa-login-code-email! user-email code)
       (catch Throwable e
         (log/warn e "Failed to send MFA email OTP")
         ;; don't tell an unauthenticated caller "the code exists but the email failed"
