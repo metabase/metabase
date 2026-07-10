@@ -1,5 +1,4 @@
-// v60 predates the polyfill module; mock-environment plays the same role here
-import "metabase/static-viz/mock-environment";
+import "metabase/static-viz/polyfill";
 
 import { getCellBackgroundColors, renderChart } from "metabase/static-viz";
 
