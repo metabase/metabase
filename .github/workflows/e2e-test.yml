@@ -164,7 +164,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
             --expose grepTags="-@mongo+-@python+-@OSS+-@skip" \
             --spec "$SPEC_PATH"
-        # Keep this step continue-on-error because the quarantine gate controls whether it ultimately fails.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
@@ -179,7 +179,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js e2e \
           --expose grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@mongo+-@python+-@OSS+-@skip'}}" \
           --spec "$SPEC_PATH"
-        # Keep this step continue-on-error because the quarantine gate controls whether it ultimately fails.
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
       - name: Rewrite JUnit hook failures
