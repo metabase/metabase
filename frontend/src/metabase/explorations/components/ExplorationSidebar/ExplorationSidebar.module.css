@@ -10,7 +10,10 @@
   but that seems to work poorly for our use case, so disable it
   */
   overflow-anchor: none;
-  padding: 0 1rem 1rem 0;
+  /* Always reserve the scrollbar gutter so the tree doesn't shift sideways when
+   * expanding a node introduces (or removes) the scrollbar. */
+  scrollbar-gutter: stable;
+  padding: 0 0 1rem;
 }
 
 .tree :global(ul) {

@@ -257,7 +257,7 @@ export function ExplorationSidebar({
     explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
 
   return (
-    <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
+    <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="1rem">
       <Group pl="0.5rem" pr="1rem" gap="xs" wrap="nowrap" align="center">
         <Box flex={1} miw={0}>
           <SegmentedControl
