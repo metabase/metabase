@@ -88,20 +88,28 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
     },
   );
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  // Creating a public link or publishing for embedding are writes, so hide those
+  // when the question is not writable (e.g. a remote-synced entity on a read-only
+  // instance). An existing public link stays visible either way — viewing,
+  // copying, and revoking it are reads that work regardless of write access.
+  const canWrite = question.canWrite();
+  const hasPublicLink = Boolean(question.publicUUID?.());
 
   return (
     <Flex>
       <SharingMenu>
         <CopyQuestionLinkMenuItem question={question} />
-        {isPublicSharingEnabled && (
+        {isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
-            hasPublicLink={Boolean(question.publicUUID?.())}
+            hasPublicLink={hasPublicLink}
             onClick={() => setModalType("question-public-link")}
           />
         )}
-        <EmbedMenuItem
-          onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
-        />
+        {canWrite && (
+          <EmbedMenuItem
+            onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
+          />
+        )}
       </SharingMenu>
       {modalType === "question-public-link" && (
         <QuestionPublicLinkPopover

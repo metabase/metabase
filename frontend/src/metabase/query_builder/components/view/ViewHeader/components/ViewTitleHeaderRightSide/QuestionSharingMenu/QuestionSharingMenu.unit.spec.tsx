@@ -94,6 +94,35 @@ describe("QuestionSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
+      // Creating a public link is a write; on a read-only remote-synced question
+      // (can_write=false) the "Create" action is hidden (MB #72752)...
+      it("should hide 'Create a public link' when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: false,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(
+          screen.queryByText("Create a public link"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Public link")).not.toBeInTheDocument();
+      });
+
+      // ...but an existing public link stays visible so it can still be
+      // viewed/copied/revoked, which are reads.
+      it("should keep an existing 'Public link' visible when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
+      });
+
       it("should hide the public link option if public sharing is disabled", async () => {
         await setupQuestionSharingMenu({
           isAdmin: true,
@@ -208,6 +237,30 @@ describe("QuestionSharingMenu", () => {
           hasPublicLink: true,
           isPublicSharingEnabled: true,
         });
+        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("admins", () => {
+      it("should expose the 'Embed' option for a writable question", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          question: { can_write: true },
+        });
+        await openMenu();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
+      });
+
+      // Publishing for embedding is a write; a read-only remote-synced question
+      // has can_write=false, so the option must not be offered (MB #72752).
+      it("should hide the 'Embed' option when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          question: { can_write: false },
+        });
+        await openMenu();
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
     });

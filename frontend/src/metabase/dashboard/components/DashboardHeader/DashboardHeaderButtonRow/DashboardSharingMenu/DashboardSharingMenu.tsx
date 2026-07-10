@@ -67,18 +67,24 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const isAnalytics =
     dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
   const canShare = !isAnalytics;
+  // Creating a public link or publishing for embedding are writes, so hide those
+  // when the dashboard is not writable (e.g. a remote-synced entity on a read-only
+  // instance). An existing public link stays visible either way — viewing,
+  // copying, and revoking it are reads that work regardless of write access.
+  const canWrite = canShare && dashboard.can_write;
+  const hasPublicLink = Boolean(dashboard.public_uuid);
 
   return (
     <Flex>
       <SharingMenu>
         <CopyDashboardLinkMenuItem dashboard={dashboard} />
-        {canShare && isPublicSharingEnabled && (
+        {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
-            hasPublicLink={Boolean(dashboard.public_uuid)}
+            hasPublicLink={hasPublicLink}
             onClick={() => setModalType("dashboard-public-link")}
           />
         )}
-        {canShare && (
+        {canWrite && (
           <EmbedMenuItem
             onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
           />

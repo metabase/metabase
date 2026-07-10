@@ -19,6 +19,10 @@ export type PublicLinkPopoverProps = {
   selectedExtension?: ExportFormat | null;
   setSelectedExtension?: (extension: ExportFormat | null) => void;
   onCopyLink?: () => void;
+  // Removing a public link is a write. Defaults to true; callers pass the
+  // resource's write access so the remove action is hidden when it can't be
+  // performed (e.g. a remote-synced entity on a read-only instance).
+  canRemoveLink?: boolean;
 };
 
 export const PublicLinkPopover = ({
@@ -32,6 +36,7 @@ export const PublicLinkPopover = ({
   selectedExtension,
   setSelectedExtension,
   onCopyLink,
+  canRemoveLink = true,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -73,7 +78,7 @@ export const PublicLinkPopover = ({
           <PublicLinkCopyPanel
             loading={loading}
             url={url}
-            onRemoveLink={isAdmin ? onRemoveLink : undefined}
+            onRemoveLink={isAdmin && canRemoveLink ? onRemoveLink : undefined}
             extensions={extensions}
             selectedExtension={selectedExtension}
             onChangeExtension={setSelectedExtension}
