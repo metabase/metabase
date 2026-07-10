@@ -37,6 +37,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
   getIsGuestEmbed,
+  getPlugins,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
@@ -325,8 +326,15 @@ const SdkDashboardInner = ({
     dashboardId,
   });
 
+  // `dashboardCardMenu` can be supplied either directly on the dashboard via
+  // `plugins`, or globally through `MetabaseProvider` (stored in the SDK Redux
+  // state). The local prop takes precedence, then the global plugin, and
+  // finally the component's built-in default menu.
+  const globalPlugins = useSdkSelector(getPlugins);
   const finalDashcardMenu =
-    plugins?.dashboard?.dashboardCardMenu ?? dashcardMenu;
+    plugins?.dashboard?.dashboardCardMenu ??
+    globalPlugins?.dashboard?.dashboardCardMenu ??
+    dashcardMenu;
 
   const [renderModeState, setRenderMode] = useState<
     "dashboard" | "queryBuilder"
