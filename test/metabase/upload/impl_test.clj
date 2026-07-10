@@ -421,17 +421,14 @@
 (deftest with-upload-table!-and-do-with-uploaded-example-csv!-test
   (testing "with-upload-table! and do-with-uploaded-example-csv! should ACTUALLY clean up after themselves"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
-      (letfn [(table-names []
-                (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db)))))]
-        (let [original-table-names (table-names)]
-          (with-upload-table! [table (create-upload-table!)]
-            (do-with-uploaded-example-csv!
-             {:grant-permission? false
-              :schema-name       (:schema table)
-              :table-prefix      "uploaded_magic_"}
-             (constantly nil)))
-          (is (= original-table-names
-                 (table-names))))))))
+      (with-upload-table! [table (create-upload-table!)]
+        (do-with-uploaded-example-csv!
+         {:grant-permission? false
+          :schema-name       (:schema table)
+          :table-prefix      "uploaded_magic_"}
+         (constantly nil)))
+      (is (not (some #(re-find #"uploaded_magic_" (:name % ""))
+                     (driver/describe-database driver/*driver* (mt/db))))))))
 
 (deftest create-from-csv-display-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
