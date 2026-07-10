@@ -572,6 +572,7 @@ function CommentBadge({ label, iconName, buttonProps }: CommentBadgeProps) {
       bdrs="lg"
       py="xs"
       px="sm"
+      c="text-primary"
       className={S.commentBadge}
       {...buttonProps}
     >
