@@ -72,9 +72,11 @@ jobs:
     steps:
       - name: Resolve target branch
         id: resolve
+        env:
+          BRANCH: ${{ inputs.branch }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "branch=${{ inputs.branch }}" >> "$GITHUB_OUTPUT"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           else
             echo "branch=${{ github.event.pull_request.base.ref }}" >> "$GITHUB_OUTPUT"
           fi
@@ -165,11 +167,20 @@ jobs:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
-      - name: Retrieve build scripts
-        uses: actions/download-artifact@v8
+      # Built fresh here (rather than downloading the `build-scripts` artifact
+      # like the start/successful jobs do) because this job also has to fire
+      # when read-sdk-release-metadata itself fails - e.g. a release branch
+      # that predates the sdkRelease metadata block - in which case
+      # send-slack-notification-start (the job that uploads that artifact)
+      # never ran, so the artifact would never exist to download.
+      - uses: actions/checkout@v6
         with:
-          name: build-scripts
-          path: release/dist/
+          sparse-checkout: |
+            release
+            .github
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Send build failure message
         uses: actions/github-script@v9

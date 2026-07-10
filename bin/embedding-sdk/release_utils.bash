@@ -5,7 +5,7 @@ function update_readme() {
 }
 
 # Version bumps now go through .github/workflows/sdk-version-bump-pr.yml
-# (via `npm version`), not this sed-based helper - removed as dead code
-# (EMB-1518).
+# (via the `semver` package), not this sed-based helper - removed as dead
+# code (EMB-1518).
 
 $1 $2

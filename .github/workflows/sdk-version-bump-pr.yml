@@ -20,12 +20,13 @@ on:
         required: true
         default: "master"
       release_type:
-        description: "Release type, passed to `npm version` (alpha/beta bump the prerelease identifier; patch/minor graduate or bump a stable version)"
+        description: "Release type, passed to `semver -i` (alpha/beta bump the prerelease identifier; preminor bumps master to the next major's alpha; patch/minor graduate or bump a stable version)"
         type: choice
         required: true
         options:
           - alpha
           - beta
+          - preminor
           - patch
           - minor
 
@@ -63,54 +64,77 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Validate branch / release_type combination
+        env:
+          BRANCH: ${{ inputs.branch }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
         run: |
           # `getNextSdkVersion` (the old version-computing logic this replaces)
           # used to hard-error on these combinations. Arbitrary other branches
           # (e.g. one-off feature branches) are intentionally left unrestricted -
-          # the design supports on-demand releases from any branch.
-          BRANCH="${{ inputs.branch }}"
-          RELEASE_TYPE="${{ inputs.release_type }}"
-
-          if [ "$BRANCH" = "master" ] && [ "$RELEASE_TYPE" != "alpha" ]; then
-            echo "::error::Only 'alpha' releases can be bumped from the 'master' branch (got release_type=$RELEASE_TYPE)."
+          # the design supports on-demand releases from any branch. `preminor`
+          # (master -> next major's alpha) is grouped with `alpha` here since
+          # it only makes sense on master, same as a regular alpha bump.
+          if [ "$BRANCH" = "master" ] && [ "$RELEASE_TYPE" != "alpha" ] && [ "$RELEASE_TYPE" != "preminor" ]; then
+            echo "::error::Only 'alpha' or 'preminor' releases can be bumped from the 'master' branch (got release_type=$RELEASE_TYPE)."
             exit 1
           fi
 
-          if [[ "$BRANCH" == release-x.* ]] && [ "$RELEASE_TYPE" = "alpha" ]; then
-            echo "::error::'alpha' releases cannot be bumped from a release branch (got branch=$BRANCH)."
+          if [[ "$BRANCH" == release-x.* ]] && { [ "$RELEASE_TYPE" = "alpha" ] || [ "$RELEASE_TYPE" = "preminor" ]; }; then
+            echo "::error::'alpha'/'preminor' releases cannot be bumped from a release branch (got branch=$BRANCH)."
             exit 1
           fi
 
-      - name: Bump version with npm version
+      - name: Ensure no other open version-bump PR targets this branch
+        env:
+          BRANCH: ${{ inputs.branch }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          # The per-branch concurrency group above only serializes *runs* of
+          # this workflow, not open PRs - two bump PRs can sit open against
+          # the same branch simultaneously and race each other at release
+          # time (whichever release run reads package.template.json last on
+          # merge wins, and the other PR's release fails loudly on a
+          # duplicate git tag). Catch it here, before doing any work.
+          EXISTING_PR=$(gh pr list --base "$BRANCH" --label sdk-release-trigger --state open --json url --jq '.[0].url // empty')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "::error::An open sdk-release-trigger PR already targets '$BRANCH': $EXISTING_PR. Merge or close it before opening another version bump."
+            exit 1
+          fi
+
+      - name: Bump version with semver
         id: bump
         run: |
-          # `npm version` only operates on a file literally named package.json in
-          # the current directory, so we temporarily rename the template, bump it,
-          # then rename it back. `--no-git-tag-version` stops npm from creating its
-          # own commit/tag - we commit ourselves below, alongside the sdkRelease block.
-          cp "$package_template" "$package_template.bak"
-          mv "$package_template" "$(dirname "$package_template")/package.json"
-          pushd "$(dirname "$package_template")" > /dev/null
-
+          # `npm version` only operates on a file literally named package.json
+          # in the current directory, and its bump logic is just a thin
+          # wrapper around the `semver` package (already a dependency - see
+          # package.json) - so we call `semver` directly and write the result
+          # into the template with jq, no rename dance needed. `--yes` avoids
+          # an interactive install prompt: this job never installs node
+          # modules, so npx always fetches `semver` fresh from the registry.
+          CURRENT_VERSION=$(jq -r .version "$package_template")
           RELEASE_TYPE="${{ inputs.release_type }}"
+
           case "$RELEASE_TYPE" in
             alpha|beta)
-              NEW_VERSION=$(npm version prerelease --preid="$RELEASE_TYPE" --no-git-tag-version)
+              NEW_VERSION=$(npx --yes semver -i prerelease --preid="$RELEASE_TYPE" "$CURRENT_VERSION")
+              ;;
+            preminor)
+              # master -> next major's alpha (e.g. 0.63.0-alpha.5 -> 0.64.0-alpha.0);
+              # `alpha|beta` above can only ever increment the existing
+              # prerelease counter, never bump the minor version.
+              NEW_VERSION=$(npx --yes semver -i preminor --preid=alpha "$CURRENT_VERSION")
               ;;
             patch|minor)
-              NEW_VERSION=$(npm version "$RELEASE_TYPE" --no-git-tag-version)
+              NEW_VERSION=$(npx --yes semver -i "$RELEASE_TYPE" "$CURRENT_VERSION")
               ;;
             *)
               echo "::error::Unsupported release_type: $RELEASE_TYPE"
               exit 1
               ;;
           esac
-          # npm prints the new version prefixed with "v" (e.g. v0.64.0-alpha.0)
-          NEW_VERSION="${NEW_VERSION#v}"
 
-          popd > /dev/null
-          mv "$(dirname "$package_template")/package.json" "$package_template"
-          rm -f "$package_template.bak"
+          jq --arg v "$NEW_VERSION" '.version = $v' "$package_template" > "$package_template.tmp"
+          mv "$package_template.tmp" "$package_template"
 
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "major_version=$(echo "$NEW_VERSION" | cut -d. -f2)" >> "$GITHUB_OUTPUT"
@@ -131,12 +155,13 @@ jobs:
           # - 51-stable through 62-stable, and 57-beta through 62-beta, are all
           # in active use today); plain "alpha" is also real and in use.
           # Patch/minor bumps default to "<major>-stable", beta to
-          # "<major>-beta", alpha to the plain "alpha" channel name.
+          # "<major>-beta", alpha/preminor to the plain "alpha" channel name
+          # (preminor is still an alpha release, just of the next major).
           RELEASE_TYPE="${{ inputs.release_type }}"
           MAJOR_VERSION="${{ steps.bump.outputs.major_version }}"
 
           case "$RELEASE_TYPE" in
-            alpha)
+            alpha|preminor)
               DIST_TAG="alpha"
               ;;
             beta)
@@ -164,11 +189,13 @@ jobs:
           echo "tag_as_latest=$TAG_AS_LATEST" >> "$GITHUB_OUTPUT"
 
       - name: Append workflow summary
+        env:
+          BRANCH: ${{ inputs.branch }}
         run: |
           tee -a "$GITHUB_STEP_SUMMARY" << EOF
           **SDK version bump:**
 
-          - \`branch\`: ${{ inputs.branch }}
+          - \`branch\`: $BRANCH
           - \`release_type\`: ${{ inputs.release_type }}
           - \`previous_version\`: ${{ steps.current.outputs.version }}
           - \`new_version\`: ${{ steps.bump.outputs.new_version }}
@@ -199,8 +226,11 @@ jobs:
 
       - name: Open version-bump PR (using GitHub Metabase Automation account)
         id: open-pr
+        env:
+          BRANCH: ${{ inputs.branch }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
-          gh pr create --base "${{ inputs.branch }}" \
+          gh pr create --base "$BRANCH" \
                        --assignee "${GITHUB_ACTOR}" \
                        --label sdk-release-trigger \
                        --title "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }}" \
@@ -210,14 +240,13 @@ jobs:
           **Review before merging:**
           - `sdkRelease.distTag` currently defaults to `${{ steps.sdk-release.outputs.dist_tag }}` - override it here if this release should publish under a different npm dist-tag.
           - `sdkRelease.tagAsLatest` currently defaults to `${{ steps.write-metadata.outputs.tag_as_latest }}` - flip it to `true` only if this release should become the `latest` tag on npm.
+          ${{ inputs.release_type == 'preminor' && format('- This is a `preminor` bump (master -> next major''s alpha). Merging this PR (with the `sdk-release-trigger` label) publishes `{0}` to npm and tags the release exactly like any other bump - remove the label first if you want to bump the version without triggering a release.', steps.bump.outputs.new_version) || '' }}
 
           Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
 
           _Opened by the [SDK Version Bump PR workflow](../actions/workflows/sdk-version-bump-pr.yml), triggered by @${{ github.event.sender.login }}._
           BODY
           )"
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Add no-backport label (using GitHub Actions account)
         # metabase/embedding team is added automatically as code owner of package.template.json,
