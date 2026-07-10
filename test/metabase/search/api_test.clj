@@ -347,13 +347,14 @@
     (testing "a malformed engine value is rejected, not treated as absent"
       (is (= "Unknown search engine: search.engine/"
              (mt/user-http-request :crowberto :get 400 "search" :q "x" :search_engine "search.engine/"))))
-    (testing "supported engine that is neither the default nor an additional engine"
-      ;; Checked below the HTTP layer: this namespace's :each fixture pins the default engine to appdb,
-      ;; so no engine can be made inactive in a real request here.
-      (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
-        (is (thrown-with-msg? Exception
-                              #"not enabled"
-                              (#'search.api/check-engine-serves! :search.engine/appdb))))))
+    (when (search.engine/supported-engine? :search.engine/appdb)
+      (testing "supported engine that is neither the default nor an additional engine"
+        ;; Checked below the HTTP layer: this namespace's :each fixture pins the default engine to appdb,
+        ;; so no engine can be made inactive in a real request here.
+        (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+          (is (thrown-with-msg? Exception
+                                #"not enabled"
+                                (#'search.api/check-engine-serves! :search.engine/appdb)))))))
   (testing "a servable explicit engine is accepted"
     (is (=? {:engine "search.engine/in-place"}
             (mt/user-http-request :crowberto :get 200 "search" :q "x" :search_engine "in-place"))))
@@ -370,15 +371,15 @@
 (def ^:private engine-cookie-name @#'search.api/engine-cookie-name)
 
 (deftest engine-cookie-staleness-test
-  (let [request-with-cookie {:cookies {engine-cookie-name {:value "appdb"}}}]
-    (testing "a cookie engine that can still serve is honored"
-      (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])]
-        (is (= "appdb" (#'search.api/cookie-engine request-with-cookie)))))
-    (testing "a cookie engine whose index is no longer maintained degrades to the default"
-      (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
-        (is (nil? (#'search.api/cookie-engine request-with-cookie)))))
-    (testing "an unknown cookie engine degrades to the default"
-      (is (nil? (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "wut"}}}))))))
+  (testing "a cookie engine that can still serve is honored"
+    ;; in-place serves on every app db
+    (is (= "in-place" (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "in-place"}}}))))
+  (testing "a cookie engine that cannot serve degrades to the default"
+    ;; appdb is either unsupported on this app db, or supported with no maintained index
+    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+      (is (nil? (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "appdb"}}})))))
+  (testing "an unknown cookie engine degrades to the default"
+    (is (nil? (#'search.api/cookie-engine {:cookies {engine-cookie-name {:value "wut"}}})))))
 
 (deftest engine-cookie-request-test
   (let [pinned {:request-options {:cookies {engine-cookie-name {:value "in-place"}}}}]

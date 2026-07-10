@@ -191,8 +191,8 @@
         default    (first (supported-engines))]
     (when (and configured (not= configured default))
       (warn-once! [:unsupported configured]
-                 (format "Configured search engine %s is not supported on this instance, using %s instead"
-                         configured default)))
+                  (format "Configured search engine %s is not supported on this instance, using %s instead"
+                          configured default)))
     default))
 
 (defn log-resolution!
