@@ -7,6 +7,7 @@ import {
   createExplorationDocument,
   createPage,
   createQuery,
+  createThread,
 } from "metabase/explorations/test-utils";
 import type { ExplorationQueryStatus } from "metabase-types/api";
 import { createMockComment } from "metabase-types/api/mocks/comment";
@@ -16,6 +17,7 @@ import {
   getCompactRelativeTime,
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
+  isHiddenTreeItem,
   pickInitialSidebarEntity,
 } from "./utils";
 
@@ -727,5 +729,223 @@ describe("getExplorationSidebarTabsInfo", () => {
         getFilteredSidebarTree(mixedPagesExploration, "discussions"),
       ).toEqual([]);
     });
+  });
+});
+
+describe("hidden pages", () => {
+  const HIDDEN_PAGE_ID = 9001;
+  const VISIBLE_PAGE_ID = 9002;
+
+  const hiddenQuery = createQuery({
+    id: 9101,
+    name: "Hidden query",
+    status: "done",
+  });
+  const visibleQuery = createQuery({
+    id: 9102,
+    name: "Visible query",
+    status: "done",
+  });
+
+  const explorationWithHiddenPage = createExploration({
+    queries: [hiddenQuery, visibleQuery],
+    blocks: [
+      createBlock({
+        id: 1,
+        name: "Revenue",
+        pages: [
+          createPage({
+            id: HIDDEN_PAGE_ID,
+            name: "Hidden page",
+            query_ids: [hiddenQuery.id],
+            hidden: true,
+          }),
+          createPage({
+            id: VISIBLE_PAGE_ID,
+            name: "Visible page",
+            query_ids: [visibleQuery.id],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const dropHidden = (node: ITreeNodeItem<ExplorationTreeNode>) =>
+    allTreeFilter(node) && !isHiddenTreeItem(node);
+
+  it("threads the hidden flag onto page tree data", () => {
+    const heading = getMetricHeadings(
+      getExplorationSidebarTree(explorationWithHiddenPage, allTreeFilter),
+    )[0];
+    expect(getPageData(heading, String(HIDDEN_PAGE_ID))?.hidden).toBe(true);
+    expect(getPageData(heading, String(VISIBLE_PAGE_ID))?.hidden).toBe(false);
+  });
+
+  it("isHiddenTreeItem is true only for hidden pages, never headings", () => {
+    const heading = getMetricHeadings(
+      getExplorationSidebarTree(explorationWithHiddenPage, allTreeFilter),
+    )[0];
+    const hiddenNode = heading?.children?.find(
+      (child) => child.id === String(HIDDEN_PAGE_ID),
+    );
+    const visibleNode = heading?.children?.find(
+      (child) => child.id === String(VISIBLE_PAGE_ID),
+    );
+    expect(hiddenNode != null && isHiddenTreeItem(hiddenNode)).toBe(true);
+    expect(visibleNode != null && isHiddenTreeItem(visibleNode)).toBe(false);
+    expect(heading != null && isHiddenTreeItem(heading)).toBe(false);
+  });
+
+  it("excludes hidden pages when the filter drops them, keeps them otherwise", () => {
+    expect(
+      getAllPageIds(
+        getExplorationSidebarTree(explorationWithHiddenPage, dropHidden),
+      ),
+    ).toEqual([String(VISIBLE_PAGE_ID)]);
+
+    expect(
+      getAllPageIds(
+        getExplorationSidebarTree(explorationWithHiddenPage, allTreeFilter),
+      ).sort(),
+    ).toEqual([String(HIDDEN_PAGE_ID), String(VISIBLE_PAGE_ID)].sort());
+  });
+
+  it("prunes a heading whose only pages are hidden", () => {
+    const onlyHidden = createExploration({
+      queries: [hiddenQuery],
+      blocks: [
+        createBlock({
+          id: 1,
+          name: "Revenue",
+          pages: [
+            createPage({
+              id: HIDDEN_PAGE_ID,
+              name: "Hidden page",
+              query_ids: [hiddenQuery.id],
+              hidden: true,
+            }),
+          ],
+        }),
+      ],
+    });
+    expect(getExplorationSidebarTree(onlyHidden, dropHidden)).toEqual([]);
+  });
+});
+
+describe("group hideability + pageIds", () => {
+  it("marks the first thread not hideable and other groups hideable, with page ids", () => {
+    const q1 = createQuery({ id: 1, name: "Q1", status: "done" });
+    const q2 = createQuery({ id: 2, name: "Q2", status: "done" });
+
+    const thread1 = createThread({
+      id: 1,
+      queries: [q1],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "Block A",
+          pages: [createPage({ id: 101, name: "P1", query_ids: [q1.id] })],
+        }),
+      ],
+    });
+    const thread2 = createThread({
+      id: 2,
+      queries: [q2],
+      blocks: [
+        createBlock({
+          id: 20,
+          name: "Block B",
+          pages: [createPage({ id: 202, name: "P2", query_ids: [q2.id] })],
+        }),
+      ],
+    });
+
+    const exploration = {
+      ...createExploration(),
+      threads: [thread1, thread2],
+    };
+    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+
+    // first thread ("Initial investigation") cannot be hidden
+    expect(tree[0]?.data?.type).toBe("heading");
+    expect((tree[0]?.data as { hideable?: boolean }).hideable).toBe(false);
+    expect((tree[0]?.data as { pageIds?: number[] }).pageIds).toEqual([101]);
+
+    // subsequent threads can be hidden and expose all their page ids
+    expect((tree[1]?.data as { hideable?: boolean }).hideable).toBe(true);
+    expect((tree[1]?.data as { pageIds?: number[] }).pageIds).toEqual([202]);
+
+    // metric sub-groups (blocks) are always hideable
+    const blockHeading = tree[1]?.children?.[0];
+    expect((blockHeading?.data as { hideable?: boolean }).hideable).toBe(true);
+    expect((blockHeading?.data as { pageIds?: number[] }).pageIds).toEqual([
+      202,
+    ]);
+  });
+
+  it("collects every descendant page id onto the thread heading", () => {
+    const q1 = createQuery({ id: 1, name: "Q1", status: "done" });
+    const q2 = createQuery({ id: 2, name: "Q2", status: "done" });
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [q1, q2],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "Block A",
+          pages: [createPage({ id: 101, name: "P1", query_ids: [q1.id] })],
+        }),
+        createBlock({
+          id: 20,
+          name: "Block B",
+          pages: [createPage({ id: 202, name: "P2", query_ids: [q2.id] })],
+        }),
+      ],
+    });
+
+    expect(
+      ((tree[0]?.data as { pageIds?: number[] }).pageIds ?? []).toSorted(
+        (a, b) => a - b,
+      ),
+    ).toEqual([101, 202]);
+  });
+
+  it("flags a heading allHidden only when every page beneath it is hidden", () => {
+    const q1 = createQuery({ id: 1, name: "Q1", status: "done" });
+    const q2 = createQuery({ id: 2, name: "Q2", status: "done" });
+    const tree = getAllTabExplorationSidebarTree({
+      queries: [q1, q2],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "All hidden",
+          pages: [
+            createPage({
+              id: 101,
+              name: "P1",
+              query_ids: [q1.id],
+              hidden: true,
+            }),
+          ],
+        }),
+        createBlock({
+          id: 20,
+          name: "Mixed",
+          pages: [createPage({ id: 202, name: "P2", query_ids: [q2.id] })],
+        }),
+      ],
+    });
+
+    const headings = getMetricHeadings(tree);
+    const allHiddenOf = (name: string) =>
+      (
+        headings.find((h) => h.name === name)?.data as {
+          allHidden?: boolean;
+        }
+      ).allHidden;
+
+    expect(allHiddenOf("All hidden")).toBe(true);
+    expect(allHiddenOf("Mixed")).toBe(false);
+    // the thread heading mixes a hidden and a visible page → not all hidden
+    expect((tree[0]?.data as { allHidden?: boolean }).allHidden).toBe(false);
   });
 });

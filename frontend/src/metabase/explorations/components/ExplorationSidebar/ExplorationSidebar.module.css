@@ -2,6 +2,7 @@
   overflow-wrap: break-word;
 }
 
+/* select the tab class twice as a specificity hack */
 .tab.tab {
   padding: 0.6875rem 1rem;
 }
@@ -35,6 +36,16 @@
 
 .treeRow:hover {
   background: var(--mb-color-background-hover);
+}
+
+.hideGroupButton {
+  flex: none;
+  opacity: 0;
+}
+
+.treeRow:hover .hideGroupButton,
+.hideGroupButton:focus-visible {
+  opacity: 1;
 }
 
 .treeRowSelected {

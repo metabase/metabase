@@ -281,6 +281,7 @@ export interface ExplorationPageNode {
   position: number;
   query_ids: ExplorationQueryId[];
   starred: boolean;
+  hidden?: boolean;
 }
 
 export type ExplorationBlockNodeType = "metric" | "dimension";
@@ -388,4 +389,12 @@ export interface Exploration {
   creator?: ExplorationCreator;
   threads?: ExplorationThread[];
   can_write: boolean;
+}
+
+export function getExplorationPages(
+  exploration: Exploration,
+): ExplorationPageNode[] {
+  return (exploration.threads ?? []).flatMap((thread) =>
+    (thread.blocks ?? []).flatMap((block) => block.pages ?? []),
+  );
 }

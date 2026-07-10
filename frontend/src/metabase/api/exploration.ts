@@ -18,6 +18,7 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import { getExplorationPages } from "metabase-types/api/exploration";
 
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, provideMetricListTags } from "./tags";
@@ -178,8 +179,66 @@ export const explorationApi = Api.injectEndpoints({
         url: `/api/exploration/page/${pageId}/starred`,
         body: { starred },
       }),
-      invalidatesTags: (_, error, { explorationId }) =>
-        invalidateTags(error, [idTag("exploration", explorationId)]),
+      async onQueryStarted(
+        { pageId, explorationId, starred },
+        { dispatch, queryFulfilled },
+      ) {
+        const patchResult = dispatch(
+          explorationApi.util.updateQueryData(
+            "getExploration",
+            explorationId,
+            (draft) => {
+              // casting as Exploration prevents excessively deep type error
+              const page = getExplorationPages(draft as Exploration).find(
+                (page) => page.id === pageId,
+              );
+              if (page) {
+                page.starred = starred;
+              }
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
+    }),
+    setPagesHidden: builder.mutation<
+      void,
+      { pageIds: number[]; explorationId: ExplorationId; hidden: boolean }
+    >({
+      query: ({ pageIds, hidden }) => ({
+        method: "PUT",
+        url: `/api/exploration/pages/hidden`,
+        body: { page_ids: pageIds, hidden },
+      }),
+      async onQueryStarted(
+        { pageIds, explorationId, hidden },
+        { dispatch, queryFulfilled },
+      ) {
+        const hiddenPageIds = new Set(pageIds);
+        const patchResult = dispatch(
+          explorationApi.util.updateQueryData(
+            "getExploration",
+            explorationId,
+            (draft) => {
+              // casting as Exploration prevents excessively deep type error
+              for (const page of getExplorationPages(draft as Exploration)) {
+                if (hiddenPageIds.has(page.id)) {
+                  page.hidden = hidden;
+                }
+              }
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });
@@ -198,4 +257,5 @@ export const {
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,
   useSetPageStarredMutation,
+  useSetPagesHiddenMutation,
 } = explorationApi;

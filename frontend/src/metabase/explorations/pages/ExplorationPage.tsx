@@ -14,6 +14,7 @@ import { Api } from "metabase/api/api";
 import { idTag } from "metabase/api/tags";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { Box, Group, Stack } from "metabase/ui";
@@ -41,8 +42,10 @@ import {
   ExplorationTitle,
 } from "../components/ExplorationSidebar";
 import {
+  type ExplorationTreeNode,
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
+  isHiddenTreeItem,
   pickInitialSidebarEntity,
 } from "../components/ExplorationSidebar/utils";
 import {
@@ -171,6 +174,7 @@ export function ExplorationPage({
   // A new turn (e.g. "Explore further") started while a filtered tab is active lands in "All" but
   // is hidden by the current filter — flag it so the "All" tab shows a dot until the user visits it.
   const [hasUnviewedTurnInAll, setHasUnviewedTurnInAll] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
 
   const {
     data: exploration,
@@ -220,10 +224,15 @@ export function ExplorationPage({
     if (!exploration) {
       return [];
     }
-    const treeItemFilter =
+    const tabFilter =
       explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
+
+    const treeItemFilter = showHidden
+      ? tabFilter
+      : (node: ITreeNodeItem<ExplorationTreeNode>) =>
+          tabFilter(node) && !isHiddenTreeItem(node);
     return getExplorationSidebarTree(exploration, treeItemFilter);
-  }, [exploration, selectedSidebarTab, explorationSidebarTabsInfo]);
+  }, [exploration, selectedSidebarTab, explorationSidebarTabsInfo, showHidden]);
 
   // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
@@ -550,6 +559,8 @@ export function ExplorationPage({
             setSelectedEntityId={setSelectedEntityId}
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
             isOpen={isSidebarOpen}
+            showHidden={showHidden}
+            onToggleShowHidden={() => setShowHidden((prev) => !prev)}
           />
           {selectedPage && (
             <ExplorationGroupVisualization

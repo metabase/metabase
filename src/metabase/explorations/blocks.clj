@@ -182,6 +182,7 @@
      :long_name   long-title
      :query_ids   (mapv :id queries)
      :starred     (:starred page)
+     :hidden      (:hidden page)
      ::max-score  (max-score queries)}))
 
 (defn blocks-tree
@@ -197,7 +198,8 @@
                      :long_name <full self-describing page name>
                      :position  <0-indexed slot among the block's pages, score-sorted>
                      :query_ids [<id> <id> ...]
-                     :starred   <true | false>}]}]
+                     :starred   <true | false>
+                     :hidden    <true | false>}]}]
 
    Pages are sorted by interestingness desc within their block. Pages whose block isn't in
    `blocks` are dropped; queries are matched to their page via `page_id`."

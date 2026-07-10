@@ -1482,6 +1482,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: hidden
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True if the page is hidden from the sidebar
+                  constraints:
+                    nullable: false
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
