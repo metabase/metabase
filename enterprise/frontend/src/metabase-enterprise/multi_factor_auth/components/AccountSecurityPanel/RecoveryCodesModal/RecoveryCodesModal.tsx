@@ -9,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useRegenerateRecoveryCodesMutation } from "metabase-enterprise/api";
 
@@ -32,16 +32,20 @@ export function RecoveryCodesModal({
       opened={opened}
       onClose={onCancel}
     >
-      <RecoveryCodesModalBody onSuccess={onSuccess} />
+      <RecoveryCodesModalBody onSuccess={onSuccess} onCancel={onCancel} />
     </Modal>
   );
 }
 
 type RecoveryCodesModalBodyProps = {
   onSuccess: () => void;
+  onCancel: () => void;
 };
 
-function RecoveryCodesModalBody({ onSuccess }: RecoveryCodesModalBodyProps) {
+function RecoveryCodesModalBody({
+  onSuccess,
+  onCancel,
+}: RecoveryCodesModalBodyProps) {
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 
   if (recoveryCodes != null) {
@@ -54,7 +58,7 @@ function RecoveryCodesModalBody({ onSuccess }: RecoveryCodesModalBodyProps) {
     );
   }
 
-  return <ConfirmCodeForm onGenerate={setRecoveryCodes} />;
+  return <ConfirmCodeForm onGenerate={setRecoveryCodes} onCancel={onCancel} />;
 }
 
 const CONFIRM_CODE_SCHEMA = Yup.object({
@@ -71,9 +75,10 @@ const INITIAL_CODE_VALUES: ConfirmCodeValues = {
 
 type ConfirmCodeFormProps = {
   onGenerate: (recoveryCodes: string[]) => void;
+  onCancel: () => void;
 };
 
-function ConfirmCodeForm({ onGenerate }: ConfirmCodeFormProps) {
+function ConfirmCodeForm({ onGenerate, onCancel }: ConfirmCodeFormProps) {
   const [regenerateRecoveryCodes] = useRegenerateRecoveryCodesMutation();
 
   const handleSubmit = async ({ code }: ConfirmCodeValues) => {
@@ -102,6 +107,7 @@ function ConfirmCodeForm({ onGenerate }: ConfirmCodeFormProps) {
           />
           <FormErrorMessage />
           <Group justify="flex-end">
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton label={t`Generate new codes`} variant="filled" />
           </Group>
         </Stack>

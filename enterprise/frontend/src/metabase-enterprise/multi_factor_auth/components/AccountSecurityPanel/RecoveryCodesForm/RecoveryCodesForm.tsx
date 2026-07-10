@@ -29,7 +29,7 @@ export function RecoveryCodesForm({
       </Input.Wrapper>
       <Group justify="flex-end">
         <Button variant="filled" onClick={onDone}>
-          {t`I've saved these`}
+          {t`Done`}
         </Button>
       </Group>
     </Stack>

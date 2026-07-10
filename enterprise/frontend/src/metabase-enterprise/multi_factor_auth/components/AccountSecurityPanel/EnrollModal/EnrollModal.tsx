@@ -12,6 +12,7 @@ import {
 } from "metabase/forms";
 import {
   Box,
+  Button,
   Center,
   Code,
   Group,
@@ -43,16 +44,17 @@ export function EnrollModal({ opened, onSuccess, onCancel }: EnrollModalProps) {
       opened={opened}
       onClose={onCancel}
     >
-      <EnrollModalBody onSuccess={onSuccess} />
+      <EnrollModalBody onSuccess={onSuccess} onCancel={onCancel} />
     </Modal>
   );
 }
 
 type EnrollModalBodyProps = {
   onSuccess: (recoveryCodes: string[]) => void;
+  onCancel: () => void;
 };
 
-function EnrollModalBody({ onSuccess }: EnrollModalBodyProps) {
+function EnrollModalBody({ onSuccess, onCancel }: EnrollModalBodyProps) {
   const [enrollment, setEnrollment] = useState<MfaEnrollResponse | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 
@@ -67,10 +69,16 @@ function EnrollModalBody({ onSuccess }: EnrollModalBodyProps) {
   }
 
   if (enrollment == null) {
-    return <ConfirmPasswordForm onEnroll={setEnrollment} />;
+    return <ConfirmPasswordForm onEnroll={setEnrollment} onCancel={onCancel} />;
   }
 
-  return <EnrollForm enrollment={enrollment} onSuccess={setRecoveryCodes} />;
+  return (
+    <EnrollForm
+      enrollment={enrollment}
+      onSuccess={setRecoveryCodes}
+      onCancel={onCancel}
+    />
+  );
 }
 
 const PASSWORD_SCHEMA = Yup.object({
@@ -87,9 +95,10 @@ const INITIAL_PASSWORD_VALUES: ConfirmPasswordValues = {
 
 type ConfirmPasswordFormProps = {
   onEnroll: (enrollment: MfaEnrollResponse) => void;
+  onCancel: () => void;
 };
 
-function ConfirmPasswordForm({ onEnroll }: ConfirmPasswordFormProps) {
+function ConfirmPasswordForm({ onEnroll, onCancel }: ConfirmPasswordFormProps) {
   const [enrollMfa] = useEnrollMfaMutation();
 
   const handleSubmit = async ({ password }: ConfirmPasswordValues) => {
@@ -115,6 +124,7 @@ function ConfirmPasswordForm({ onEnroll }: ConfirmPasswordFormProps) {
           />
           <FormErrorMessage />
           <Group justify="flex-end">
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton label={t`Continue`} variant="filled" />
           </Group>
         </Stack>
@@ -141,9 +151,10 @@ const INITIAL_CODE_VALUES: EnrollFormValues = {
 type EnrollFormProps = {
   enrollment: MfaEnrollResponse;
   onSuccess: (recoveryCodes: string[]) => void;
+  onCancel: () => void;
 };
 
-function EnrollForm({ enrollment, onSuccess }: EnrollFormProps) {
+function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
   const [confirmEnrollment] = useConfirmMfaEnrollmentMutation();
 
   const handleSubmit = async ({ code }: EnrollFormValues) => {
@@ -186,6 +197,7 @@ function EnrollForm({ enrollment, onSuccess }: EnrollFormProps) {
           />
           <FormErrorMessage />
           <Group justify="flex-end">
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={t`Set up authentication`}
               variant="filled"

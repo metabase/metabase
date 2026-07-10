@@ -8,7 +8,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useDisableMfaMutation } from "metabase-enterprise/api";
 
@@ -29,7 +29,7 @@ export function DisableModal({
       opened={opened}
       onClose={onCancel}
     >
-      <DisableForm onSuccess={onSuccess} />
+      <DisableForm onSuccess={onSuccess} onCancel={onCancel} />
     </Modal>
   );
 }
@@ -48,9 +48,10 @@ const INITIAL_DISABLE_VALUES: DisableFormValues = {
 
 type DisableFormProps = {
   onSuccess: () => void;
+  onCancel: () => void;
 };
 
-function DisableForm({ onSuccess }: DisableFormProps) {
+function DisableForm({ onSuccess, onCancel }: DisableFormProps) {
   const [disableMfa] = useDisableMfaMutation();
 
   const handleSubmit = async ({ code }: DisableFormValues) => {
@@ -77,6 +78,7 @@ function DisableForm({ onSuccess }: DisableFormProps) {
           />
           <FormErrorMessage />
           <Group justify="flex-end">
+            <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={t`Turn off`}
               variant="filled"
