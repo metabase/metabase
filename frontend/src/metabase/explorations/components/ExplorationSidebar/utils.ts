@@ -90,19 +90,27 @@ export function getExplorationSidebarTree(
 
   const nodeByThreadId = new Map<string, ITreeNodeItem<ExplorationTreeNode>>();
   threads.forEach((thread, index) => {
-    const isFollowUp = subExplorationParents[String(thread.id)] != null;
+    const parentThreadId = subExplorationParents[String(thread.id)];
+    const isFollowUp = parentThreadId != null;
+    // Only the first sub-exploration off the initial investigation surfaces the
+    // metric it drilled into; follow-ups nested inside another sub-exploration
+    // don't repeat it ("Revenue → State = TX" once, not on every descendant).
+    const isTopLevelFollowUp =
+      isFollowUp && parentThreadId === String(initialThreadId);
     let children = getExplorationQueryTree(thread, treeItemFilter, sortOrder);
     // A follow-up drill copies a single metric, so its lone metric-group
     // heading ("Revenue") is redundant as a row — surface its pages directly
-    // under the thread, but fold the metric's name into the thread heading
-    // ("Revenue → State = TX") so the branch shows what it's exploring.
+    // under the thread, and for the first sub-exploration fold the metric's
+    // name into the thread heading ("Revenue → State = TX").
     let metricName: string | undefined;
     if (
       isFollowUp &&
       children.length === 1 &&
       children[0].data?.type === "heading"
     ) {
-      metricName = children[0].name || undefined;
+      if (isTopLevelFollowUp) {
+        metricName = children[0].name || undefined;
+      }
       children = [...(children[0].children ?? [])];
     }
     const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);

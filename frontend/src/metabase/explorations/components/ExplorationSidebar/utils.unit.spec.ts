@@ -492,6 +492,105 @@ describe("getExplorationSidebarTree names follow-up branches with their metric",
       "User",
     ]);
   });
+
+  it("does not repeat the metric on a sub-exploration nested inside another sub-exploration", () => {
+    const initialQuery = createQuery({ id: 1, name: "Revenue", status: "done" });
+    const followUpQuery = createQuery({
+      id: 2,
+      name: "Revenue",
+      status: "done",
+    });
+    const nestedQuery = createQuery({ id: 3, name: "Revenue", status: "done" });
+
+    const initialThread = createThread({
+      id: 1,
+      position: 0,
+      queries: [initialQuery],
+      blocks: [
+        createBlock({
+          id: 10,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: 100,
+              name: "State",
+              position: 0,
+              query_ids: [initialQuery.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    // First sub-exploration (drilled off the initial investigation).
+    const followUpThread = createThread({
+      id: 2,
+      name: "State = TX",
+      position: 1,
+      queries: [followUpQuery],
+      blocks: [
+        createBlock({
+          id: 20,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: 200,
+              name: "User",
+              position: 0,
+              query_ids: [followUpQuery.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    // Sub-exploration nested inside the first one — it should not repeat the
+    // "Revenue" metric in its heading.
+    const nestedThread = createThread({
+      id: 3,
+      name: "City = Austin",
+      position: 2,
+      queries: [nestedQuery],
+      blocks: [
+        createBlock({
+          id: 30,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: 300,
+              name: "Plan",
+              position: 0,
+              query_ids: [nestedQuery.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const exploration = {
+      ...createExploration(),
+      threads: [initialThread, followUpThread, nestedThread],
+    };
+
+    const tree = getExplorationSidebarTree(exploration, allTreeFilter, {
+      "2": "1",
+      "3": "2",
+    });
+
+    const followUpNode = tree.find((node) => node.id === 2);
+    expect(followUpNode?.name).toBe("Revenue → State = TX");
+
+    const nestedNode = followUpNode?.children?.find((node) => node.id === 3);
+    // Bare drill path, no repeated "Revenue →" prefix.
+    expect(nestedNode?.name).toBe("City = Austin");
+    // The redundant metric-group row is still folded away.
+    expect((nestedNode?.children ?? []).map((child) => child.name)).toEqual([
+      "Plan",
+    ]);
+  });
 });
 
 describe("pickInitialSidebarEntity", () => {
