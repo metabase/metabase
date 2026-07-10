@@ -54,6 +54,7 @@ import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
 import {
+  type ExplorationHeadingKind,
   type ExplorationSidebarTabsInfo,
   type ExplorationTreeHeading,
   type ExplorationTreeItem,
@@ -61,6 +62,18 @@ import {
   flattenTree,
   pickInitialSidebarEntity,
 } from "./utils";
+
+// Each kind of heading carries a distinct icon so the tree reads as a legible
+// investigation history: the initial spark, its follow-up branches, and the
+// metric groups within each.
+const HEADING_ICON: Record<
+  ExplorationHeadingKind,
+  { name: IconProps["name"]; color: IconProps["c"] }
+> = {
+  root: { name: "insight", color: "brand" },
+  "sub-exploration": { name: "git_branch", color: "brand" },
+  "metric-group": { name: "metric", color: "text-secondary" },
+};
 
 interface ExplorationSidebarProps {
   exploration: Exploration;
@@ -392,16 +405,26 @@ function ExplorationTreeHeading({
       aria-label={item.name}
       aria-expanded={isExpanded}
       aria-busy={isLoading}
-      className={S.treeRow}
+      className={cx(S.treeRow, S.treeRowHeading, {
+        [S.treeRowNested]: depth > 0,
+        // Set off each follow-up branch from the investigation above it.
+        [S.treeRowThreadSeparated]:
+          depth === 0 && item.data?.headingKind === "sub-exploration",
+      })}
       onClick={onToggleExpand}
-      style={{ marginLeft: `${depth}rem` }}
+      style={{ "--tree-depth": depth } as React.CSSProperties}
     >
-      <Icon
-        name={isExpanded ? "chevrondown" : "chevronright"}
-        c="brand"
-        aria-hidden
+      <Box className={S.treeChevron} aria-hidden>
+        <Icon
+          name={isExpanded ? "chevrondown" : "chevronright"}
+          size={12}
+          c="text-tertiary"
+        />
+      </Box>
+      <ExplorationHeadingIcon
+        headingKind={item.data?.headingKind}
+        status={item.data?.status}
       />
-      <ExplorationHeadingStatusIcon status={item.data?.status} />
       <Ellipsified
         flex={1}
         size="md"
@@ -664,10 +687,11 @@ function ExplorationTreeItem({
       aria-busy={isLoading}
       className={cx(S.treeRow, {
         [S.treeRowSelected]: isSelected,
+        [S.treeRowNested]: depth > 0,
       })}
       onMouseEnter={() => handlePrefetch(item)}
       onClick={handleClick}
-      style={{ marginLeft: depth * 16 }}
+      style={{ "--tree-depth": depth } as React.CSSProperties}
     >
       <ExplorationTreeItemIcon
         status={item.data?.status}
@@ -691,9 +715,11 @@ function ExplorationTreeItem({
   );
 }
 
-function ExplorationHeadingStatusIcon({
+function ExplorationHeadingIcon({
+  headingKind,
   status,
 }: {
+  headingKind: ExplorationHeadingKind | undefined;
   status: ExplorationQueryStatus | undefined;
 }) {
   if (status === "canceled") {
@@ -701,7 +727,11 @@ function ExplorationHeadingStatusIcon({
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
     );
   }
-  return null;
+  if (headingKind == null) {
+    return null;
+  }
+  const { name, color } = HEADING_ICON[headingKind];
+  return <Icon name={name} c={color} aria-hidden />;
 }
 
 function ExplorationTreeItemIcon({

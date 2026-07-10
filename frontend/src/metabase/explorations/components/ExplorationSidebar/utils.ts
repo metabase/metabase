@@ -13,6 +13,7 @@ import type {
   ExplorationQueryId,
   ExplorationQueryStatus,
   ExplorationThread,
+  ExplorationThreadId,
 } from "metabase-types/api";
 import {
   getExplorationQueryGroupInterestingness,
@@ -21,8 +22,19 @@ import {
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 
+// Distinguishes the three kinds of heading rows in the sidebar so each can
+// carry its own icon and reinforce where the user is in the investigation:
+//   - "root": the initial investigation thread (the origin of everything)
+//   - "sub-exploration": a follow-up thread spawned via "Explore further"
+//   - "metric-group": a block of pages for one metric within a thread
+export type ExplorationHeadingKind =
+  | "root"
+  | "sub-exploration"
+  | "metric-group";
+
 export interface ExplorationTreeHeading {
   type: "heading";
+  headingKind: ExplorationHeadingKind;
   explorationId?: ExplorationId;
   thread?: ExplorationThread;
   status?: ExplorationQueryStatus;
@@ -62,35 +74,100 @@ type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
 export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
+  // childThreadId → parentThreadId, for nesting "explore further" sub-threads.
+  subExplorationParents: Record<string, string> = {},
 ): ITreeNodeItem<ExplorationTreeNode>[] {
-  const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
-    .map((thread, index) => {
-      const children = getExplorationQueryTree(thread, treeItemFilter);
-      const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
-      if (
-        aiSummaryDocumentNode != null &&
-        treeItemFilter(aiSummaryDocumentNode)
-      ) {
-        children.push(aiSummaryDocumentNode);
-      }
-      return {
-        id: thread.id,
-        name: getExplorationThreadName(thread, index),
-        icon: "empty" as const,
-        data: {
-          type: "heading" as const,
-          explorationId: exploration.id,
-          thread,
-          status: getExplorationQueryGroupStatus(thread.queries ?? []),
-          lastActivityAt: latestTimestamp(
-            (thread.queries ?? []).map((query) => query.finished_at),
-          ),
-        },
-        children,
-      };
-    })
-    .filter((heading) => (heading.children ?? []).length > 0);
-  return tree;
+  const threads = exploration.threads ?? [];
+  // The first thread is the initial investigation. Drills off it stay
+  // top-level (there's only ever one, so nesting under it adds no signal);
+  // only drills-of-drills nest under the thread they came from.
+  const initialThreadId = threads[0]?.id;
+
+  const nodeByThreadId = new Map<string, ITreeNodeItem<ExplorationTreeNode>>();
+  threads.forEach((thread, index) => {
+    const isFollowUp = subExplorationParents[String(thread.id)] != null;
+    let children = getExplorationQueryTree(thread, treeItemFilter);
+    // A follow-up drill copies a single metric, so its lone metric-group
+    // heading ("Number of orders") is redundant — surface its pages directly
+    // under the thread.
+    if (
+      isFollowUp &&
+      children.length === 1 &&
+      children[0].data?.type === "heading"
+    ) {
+      children = [...(children[0].children ?? [])];
+    }
+    const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
+    if (
+      aiSummaryDocumentNode != null &&
+      treeItemFilter(aiSummaryDocumentNode)
+    ) {
+      children.push(aiSummaryDocumentNode);
+    }
+    nodeByThreadId.set(String(thread.id), {
+      id: thread.id,
+      name: getExplorationThreadName(thread, index),
+      icon: "empty" as const,
+      data: {
+        type: "heading" as const,
+        // The first thread is the initial investigation; every later thread is
+        // a follow-up "Explore further" branch.
+        headingKind: index === 0 ? "root" : "sub-exploration",
+        explorationId: exploration.id,
+        thread,
+        status: getExplorationQueryGroupStatus(thread.queries ?? []),
+        lastActivityAt: latestTimestamp(
+          (thread.queries ?? []).map((query) => query.finished_at),
+        ),
+      },
+      children,
+    });
+  });
+
+  const getNestingParentId = (threadId: ExplorationThreadId): string | null => {
+    const parentId = subExplorationParents[String(threadId)];
+    if (parentId == null) {
+      return null;
+    }
+    if (initialThreadId != null && parentId === String(initialThreadId)) {
+      return null;
+    }
+    return parentId;
+  };
+
+  const topLevel: ITreeNodeItem<ExplorationTreeNode>[] = [];
+  threads.forEach((thread) => {
+    const node = nodeByThreadId.get(String(thread.id));
+    if (node == null) {
+      return;
+    }
+    const parentId = getNestingParentId(thread.id);
+    const parentNode = parentId != null ? nodeByThreadId.get(parentId) : null;
+    if (parentNode != null) {
+      // Sub-explorations appear after the parent thread's own charts.
+      parentNode.children = [...(parentNode.children ?? []), node];
+    } else {
+      topLevel.push(node);
+    }
+  });
+
+  return pruneEmptyHeadings(topLevel);
+}
+
+/** Drop heading nodes (threads, metric groups) that have no surviving items. */
+function pruneEmptyHeadings(
+  nodes: ITreeNodeItem<ExplorationTreeNode>[],
+): ITreeNodeItem<ExplorationTreeNode>[] {
+  return nodes
+    .map((node) =>
+      node.children?.length
+        ? { ...node, children: pruneEmptyHeadings(node.children) }
+        : node,
+    )
+    .filter(
+      (node) =>
+        node.data?.type !== "heading" || (node.children?.length ?? 0) > 0,
+    );
 }
 
 function latestTimestamp(
@@ -135,6 +212,13 @@ export function getCompactRelativeTime(timestamp: string): string {
   return `${now.diff(then, "year")}y`;
 }
 
+// Sidebar heading and page names come back as "By Country", "By Product",
+// etc. Strip the leading "By " so the list is easier to scan. Temporary
+// display-only hack.
+function stripByPrefix(name: string): string {
+  return name.replace(/^By\s+/, "");
+}
+
 function getExplorationQueryTree(
   thread: ExplorationThread,
   treeItemFilter: TreeItemFilter,
@@ -159,7 +243,7 @@ function getExplorationQueryTree(
         const status = getExplorationQueryGroupStatus(queries);
         return {
           id: String(page.id),
-          name: page.name ?? "",
+          name: stripByPrefix(page.name ?? ""),
           icon: "lineandbar",
           data: {
             type: "page",
@@ -182,10 +266,11 @@ function getExplorationQueryTree(
 
     return {
       id: String(block.id),
-      name: block.name ?? "",
+      name: stripByPrefix(block.name ?? ""),
       icon: "empty",
       data: {
         type: "heading",
+        headingKind: "metric-group",
         status: getExplorationQueryGroupStatus(
           children.flatMap((child) =>
             isExplorationTreePage(child) ? (child.data?.queries ?? []) : [],

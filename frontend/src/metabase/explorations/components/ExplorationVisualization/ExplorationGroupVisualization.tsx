@@ -28,6 +28,7 @@ import { is403Error } from "metabase/utils/errors";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type {
   ClickActionsMode,
   ClickObject,
@@ -39,6 +40,7 @@ import type {
   ExplorationId,
   ExplorationPageNode,
   ExplorationQuery,
+  ExplorationThreadId,
   RowValue,
   SingleSeries,
   Timeline,
@@ -77,6 +79,10 @@ interface ExplorationGroupVisualizationProps {
   onPreviousPage?: () => void;
   onNextPage?: () => void;
   onHidePage?: (pageId: number) => void;
+  onExploredFurther?: (
+    childThreadId: ExplorationThreadId,
+    parentThreadId: ExplorationThreadId,
+  ) => void;
 }
 
 interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGroupVisualizationProps {
@@ -86,7 +92,8 @@ interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGro
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
-  const groupName = props.page.name ?? "";
+  // The page's own title stays fully qualified; the sidebar uses the short name.
+  const groupName = props.page.long_name ?? props.page.name ?? "";
 
   return (
     <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
@@ -172,6 +179,7 @@ function ExplorationGroupVisualizationChart({
   onPreviousPage,
   onNextPage,
   onHidePage,
+  onExploredFurther,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
@@ -187,9 +195,14 @@ function ExplorationGroupVisualizationChart({
       if (segment == null || segment.value == null) {
         return;
       }
+      // Format via the column so coded dimensions (e.g. day-of-week 3) show
+      // their display value ("Tuesday"), not the raw/positional value.
+      const label = String(
+        formatValue(segment.value, { column: segment.column }),
+      );
       setClickTarget({
         value: segment.value,
-        label: String(segment.value),
+        label,
         columnName: segment.column?.display_name,
         x: clicked.event.clientX,
         y: clicked.event.clientY,
@@ -465,6 +478,7 @@ function ExplorationGroupVisualizationChart({
             page={page}
             target={clickTarget}
             onClose={() => setClickTarget(null)}
+            onExploredFurther={onExploredFurther}
           />
         )}
         <ActionToolbar

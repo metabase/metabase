@@ -169,18 +169,16 @@
 
 (defn- page-node
   [block page queries card-name-by-id filter-value]
-  ;; For a filtered ("Explore further") block, the metric name matters — every chart shares one
-  ;; segment, so the self-describing `<value> <metric> by <dimension>` title reads better than the
-  ;; heading-relative `By <dimension>` short name. Unfiltered blocks keep the concise short name.
-  (let [long-title (page-long-title page queries card-name-by-id filter-value)]
-    {:id          (:id page)
-     :name        (if (str/blank? filter-value)
-                    (page-short-name block page queries card-name-by-id)
-                    long-title)
-     :long_name   long-title
-     :query_ids   (mapv :id queries)
-     :starred     (:starred page)
-     ::max-score  (max-score queries)}))
+  ;; `:name` is always the concise, heading-relative short name (e.g. `By Subtotal`) — the sidebar
+  ;; nests filtered ("Explore further") threads under the drill they came from, so the surrounding
+  ;; group already carries the metric + segment. `:long_name` keeps the fully self-describing
+  ;; `<value> <metric> by <dimension>` title for the page's own header.
+  {:id          (:id page)
+   :name        (page-short-name block page queries card-name-by-id)
+   :long_name   (page-long-title page queries card-name-by-id filter-value)
+   :query_ids   (mapv :id queries)
+   :starred     (:starred page)
+   ::max-score  (max-score queries)})
 
 (defn blocks-tree
   "Given a thread's persisted `ExplorationBlock` rows (authoring order), its `ExplorationPage`

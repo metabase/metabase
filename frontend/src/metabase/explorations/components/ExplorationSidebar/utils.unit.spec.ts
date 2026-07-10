@@ -360,7 +360,7 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
     });
 
     const heading = getMetricHeadings(tree)[0];
-    expect(heading?.name).toBe("By Country");
+    expect(heading?.name).toBe("Country");
     expect((heading?.children ?? []).map((child) => child.name)).toEqual([
       "Signups",
       "Revenue",

@@ -26,6 +26,7 @@ import type {
   ExplorationPageNodeId,
   ExplorationQuery,
   ExplorationThread,
+  ExplorationThreadId,
   Timeline,
   TimelineId,
 } from "metabase-types/api";
@@ -70,6 +71,10 @@ import {
   setExplorationPageRead,
   setExplorationShowFilters,
 } from "../sidebar-preferences";
+import {
+  getSubExplorationParents,
+  setSubExplorationParent,
+} from "../sub-explorations";
 import { type ExplorationSidebarTab, isExplorationSidebarTab } from "../types";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -267,6 +272,23 @@ export function ExplorationPage({
   const [readPageIds, setReadPageIds] = useState<ReadonlySet<string>>(() =>
     getReadExplorationPageIds(explorationIdNum),
   );
+  const [subExplorationParents, setSubExplorationParentsState] = useState<
+    Record<string, string>
+  >(() => getSubExplorationParents(explorationIdNum));
+
+  const handleExploredFurther = useCallback(
+    (
+      childThreadId: ExplorationThreadId,
+      parentThreadId: ExplorationThreadId,
+    ) => {
+      setSubExplorationParent(explorationIdNum, childThreadId, parentThreadId);
+      setSubExplorationParentsState((prev) => ({
+        ...prev,
+        [String(childThreadId)]: String(parentThreadId),
+      }));
+    },
+    [explorationIdNum],
+  );
 
   const handleHidePage = useCallback(
     (pageId: string | number) => {
@@ -324,7 +346,11 @@ export function ExplorationPage({
       }
       return true;
     };
-    const built = getExplorationSidebarTree(exploration, treeItemFilter);
+    const built = getExplorationSidebarTree(
+      exploration,
+      treeItemFilter,
+      subExplorationParents,
+    );
     return filterArchivedGroups(built, archivedGroupIds);
   }, [
     exploration,
@@ -334,6 +360,7 @@ export function ExplorationPage({
     readPageIds,
     showFilters,
     archivedGroupIds,
+    subExplorationParents,
   ]);
 
   // Selection comes from the URL. When the URL has no entity yet
@@ -724,6 +751,7 @@ export function ExplorationPage({
               }
               onNextPage={nextPageId != null ? goToNextPage : undefined}
               onHidePage={handleHidePage}
+              onExploredFurther={handleExploredFurther}
             />
           )}
           {selectedDocument && (

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
 import { useExploreFurtherMutation } from "metabase/api/exploration";
 import { CommentEditor } from "metabase/comments/components";
 import { useToast } from "metabase/common/hooks";
+import { deriveSubExplorationLink } from "metabase/explorations/sub-explorations";
 import {
   Box,
   Group,
@@ -18,6 +19,7 @@ import type {
   DocumentContent,
   ExplorationId,
   ExplorationPageNode,
+  ExplorationThreadId,
   IconName,
   RowValue,
 } from "metabase-types/api";
@@ -39,6 +41,10 @@ interface ChartClickPopoverProps {
   page: ExplorationPageNode;
   target: ChartClickTarget;
   onClose: () => void;
+  onExploredFurther?: (
+    childThreadId: ExplorationThreadId,
+    parentThreadId: ExplorationThreadId,
+  ) => void;
 }
 
 /** Only scalars survive the round-trip to the backend filter; coerce anything else to a string. */
@@ -59,6 +65,7 @@ export function ChartClickPopover({
   page,
   target,
   onClose,
+  onExploredFurther,
 }: ChartClickPopoverProps) {
   const [mode, setMode] = useState<"menu" | "comment">("menu");
   const [exploreFurther, { isLoading }] = useExploreFurtherMutation();
@@ -68,10 +75,17 @@ export function ChartClickPopover({
   const pageId = String(page.id);
 
   const handleExploreFurther = async () => {
-    const { error } = await exploreFurther({
+    // Name the follow-up after the filter that scopes it, e.g.
+    // "Birthdate day of week is Tuesday" (the auto name is otherwise unhelpful).
+    const drillName = target.columnName
+      ? c("{0} is a column name, {1} is the value it is filtered to")
+          .t`${target.columnName} is ${target.label}`
+      : undefined;
+    const { data, error } = await exploreFurther({
       explorationId,
       page_id: page.id,
       value: toScalar(target.value),
+      name: drillName,
     });
     if (error) {
       sendToast({
@@ -80,6 +94,12 @@ export function ChartClickPopover({
         message: t`Couldn't start a new investigation`,
       });
     } else {
+      // Record which thread this drill was spawned from so the sidebar can
+      // nest it under its parent (the backend doesn't persist the link).
+      const link = data && deriveSubExplorationLink(data, page.id);
+      if (link) {
+        onExploredFurther?.(link.childThreadId, link.parentThreadId);
+      }
       sendToast({ icon: "bolt", message: t`Exploring ${target.label}…` });
     }
     onClose();
