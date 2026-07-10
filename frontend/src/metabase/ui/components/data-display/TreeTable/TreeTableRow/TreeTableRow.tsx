@@ -11,7 +11,11 @@ import { Flex, Loader } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";
 import { SelectionCheckbox } from "../SelectionCheckbox";
-import { DEFAULT_ROW_HEIGHT, TREE_CELL_BASE_PADDING } from "../constants";
+import {
+  CHECKBOX_COLUMN_WIDTH,
+  DEFAULT_ROW_HEIGHT,
+  TREE_CELL_BASE_PADDING,
+} from "../constants";
 import type {
   SelectionState,
   TreeNodeData,
@@ -129,6 +133,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
         <Flex
           align="center"
           pl="0.75rem"
+          w={CHECKBOX_COLUMN_WIDTH}
           className={S.checkboxWrapper}
           onClick={handleCheckboxToggle}
         >
