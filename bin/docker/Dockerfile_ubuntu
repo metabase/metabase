@@ -11,7 +11,7 @@ COPY DigiCertGlobalRootG2.crt.pem /usr/local/share/ca-certificates/DigiCertGloba
 # Dependencies
 RUN apt-get update && \
   apt-get upgrade -y && \
-  apt-get install -y ca-certificates ca-certificates-java fonts-noto && \
+  apt-get install -y ca-certificates ca-certificates-java fonts-noto nodejs && \
   apt-get clean && \
   curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /usr/local/share/ca-certificates/rds-combined-ca-bundle.pem && \
   update-ca-certificates && \
