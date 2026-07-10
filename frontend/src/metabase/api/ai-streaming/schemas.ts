@@ -8,22 +8,41 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-export const dataPartSchema = Yup.object({
-  type: Yup.string().required(),
-  version: Yup.number().required(),
-  value: Yup.mixed(),
+export const toolInputAvailableSchema = Yup.object({
+  toolCallId: Yup.string().required(),
+  toolName: Yup.string().required(),
+  input: Yup.mixed().defined(),
+});
+
+export const toolOutputAvailableSchema = Yup.object({
+  toolCallId: Yup.string().required(),
+  output: Yup.mixed().defined(),
+});
+
+export const toolOutputErrorSchema = Yup.object({
+  toolCallId: Yup.string().required(),
+  errorText: Yup.string().required(),
+});
+
+export const dataEventSchema = Yup.object({
+  type: Yup.string()
+    .required()
+    .test("data-prefix", 'type must start with "data-"', (val) =>
+      val ? val.startsWith("data-") : false,
+    ),
+  data: Yup.mixed().required(),
 });
 
 export const knownDataPartTypes = [
-  "navigate_to",
-  "state",
-  "todo_list",
-  "code_edit",
-  "transform_suggestion",
-  "generated_entity",
-  "adhoc_viz",
-  "static_viz",
-];
+  "data-navigate_to",
+  "data-state",
+  "data-todo_list",
+  "data-code_edit",
+  "data-transform_suggestion",
+  "data-generated_entity",
+  "data-adhoc_viz",
+  "data-static_viz",
+] as const satisfies readonly KnownDataPart["type"][];
 
 export type AdhocVizValue = {
   query: unknown;
@@ -52,40 +71,17 @@ export type GeneratedCard = {
 export type GeneratedEntity = GeneratedCard;
 
 export type KnownDataPart =
-  | { type: "navigate_to"; version: 1; value: string }
-  | { type: "state"; version: 1; value: Record<string, any> }
-  | { type: "todo_list"; version: 1; value: MetabotTodoItem[] }
-  | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }
-  | { type: "code_edit"; version: 1; value: MetabotCodeEdit }
-  | { type: "generated_entity"; version: 1; value: GeneratedEntity }
-  | { type: "adhoc_viz"; version: 1; value: AdhocVizValue }
-  | { type: "static_viz"; version: 1; value: StaticVizValue };
+  | { type: "data-navigate_to"; data: string }
+  | { type: "data-state"; data: Record<string, unknown> }
+  | { type: "data-todo_list"; data: MetabotTodoItem[] }
+  | { type: "data-transform_suggestion"; data: SuggestedTransform }
+  | { type: "data-code_edit"; data: MetabotCodeEdit }
+  | { type: "data-generated_entity"; data: GeneratedEntity }
+  | { type: "data-adhoc_viz"; data: AdhocVizValue }
+  | { type: "data-static_viz"; data: StaticVizValue };
 
-export const toolCallPartSchema = Yup.object({
-  toolCallId: Yup.string().required(),
-  toolName: Yup.string().required(),
-  args: Yup.string(),
-});
-
-export const toolResultPartSchema = Yup.object({
-  toolCallId: Yup.string().required(),
-  result: Yup.mixed(),
-});
-
-export const finishPartSchema = Yup.object({
-  finishReason: Yup.string()
-    .oneOf([
-      "stop",
-      "length",
-      "content_filter",
-      "tool_calls",
-      "error",
-      "other",
-      "unknown",
-    ])
-    .required(),
-});
-
-export const startPartSchema = Yup.object({
-  messageId: Yup.string().required(),
-});
+export const isKnownDataPart = (part: {
+  type: string;
+  data: unknown;
+}): part is KnownDataPart =>
+  (knownDataPartTypes as readonly string[]).includes(part.type);

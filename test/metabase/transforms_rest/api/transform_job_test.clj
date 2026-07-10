@@ -66,7 +66,7 @@
 (deftest get-job-transforms-test
   (testing "GET /api/transform-job/:id/transforms"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms-basic}
+      (mt/with-premium-features #{:transforms-basic :hosting}
         (let [lucky-id (mt/user->id :lucky)]
           (mt/with-temp [:model/Transform {transform1-id :id} {:name "tr1" :creator_id lucky-id}
                          :model/Transform {transform2-id :id} {:name "tr2" :creator_id lucky-id}

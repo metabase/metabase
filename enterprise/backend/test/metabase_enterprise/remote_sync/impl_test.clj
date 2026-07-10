@@ -291,22 +291,31 @@
               (is (= coll-id (:collection_id card))))))))))
 
 (deftest collection-cleanup-during-import-test
-  (testing "collection cleanup during import (tests clean-synced! private function)"
-    (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
-      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
-                     :model/Collection {coll2-id :id} {:name "Collection 2" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
-                     :model/Card {card1-id :id} {:name "Card 1" :collection_id coll1-id :entity_id "test-card-1xxxxxxxxxx"}
-                     :model/Card {card2-id :id} {:name "Card 2" :collection_id coll2-id :entity_id "test-card-2xxxxxxxxxx"}]
-        (let [test-files {"test-branch" {"collections/main/test_collection_1/test_collection_1.yaml"
-                                         (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
-                                         "collections/main/test_collection_1/test_card_1.yaml"
-                                         (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
-              mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
-              result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
-          (is (= :success (:status result)))
-          (is (t2/exists? :model/Card :id card1-id))
-          (is (not (t2/exists? :model/Collection :id coll2-id)))
-          (is (not (t2/exists? :model/Card :id card2-id))))))))
+  (testing "collection cleanup during import (remove-unsynced!)"
+    (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                   :model/Collection {coll2-id :id} {:name "Collection 2" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
+                   :model/Card {card1-id :id} {:name "Card 1" :collection_id coll1-id :entity_id "test-card-1xxxxxxxxxx"}
+                   :model/Card {card2-id :id} {:name "Card 2" :collection_id coll2-id :entity_id "test-card-2xxxxxxxxxx"}]
+      (let [test-files {"test-branch" {"collections/main/test_collection_1/test_collection_1.yaml"
+                                       (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
+                                       "collections/main/test_collection_1/test_card_1.yaml"
+                                       (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
+            mock-main  (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
+            new-task!  #(t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (testing "GHY-4019: by default the import blocks with a conflict rather than deleting unsynced local content (Card 2)"
+          (let [task   (new-task!)
+                result (impl/import! (source.p/snapshot mock-main) (:id task))]
+            (is (= :conflict (:status result)))
+            (is (t2/exists? :model/Card :id card2-id) "the unsynced local card is preserved")
+            (is (t2/exists? :model/Collection :id coll2-id))
+            ;; free the running-task guard so the next import can start
+            (remote-sync.task/complete-sync-task! (:id task))))
+        (testing "with force-deletion? the cleanup proceeds and removes content not present in the import"
+          (let [result (impl/import! (source.p/snapshot mock-main) (:id (new-task!)) :force-deletion? true)]
+            (is (= :success (:status result)))
+            (is (t2/exists? :model/Card :id card1-id))
+            (is (not (t2/exists? :model/Collection :id coll2-id)))
+            (is (not (t2/exists? :model/Card :id card2-id)))))))))
 
 (deftest import!-records-file-path-test
   (testing "import! records each entity's actual repo file_path on its RemoteSyncObject row, so later

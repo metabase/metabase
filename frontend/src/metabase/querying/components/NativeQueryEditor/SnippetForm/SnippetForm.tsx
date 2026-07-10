@@ -6,9 +6,13 @@ import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextarea,
+} from "metabase/forms";
 import { Button, Flex, Icon } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
@@ -78,12 +82,15 @@ function SnippetFormInner({
     >
       {({ dirty }) => (
         <Form disabled={!dirty && !isInitiallyDirty} className={S.SnippetForm}>
-          <FormTextArea
-            inputClassName={S.FormSnippetTextArea}
+          <FormTextarea
+            classNames={{ input: S.FormSnippetTextArea }}
             name="content"
-            title={t`Enter some SQL here so you can reuse it later`}
+            label={t`Enter some SQL here so you can reuse it later`}
             placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
-            rows={4}
+            autosize={false}
+            resize="vertical"
+            rows={5}
+            mb="md"
           />
           <FormInput
             name="name"

@@ -276,7 +276,7 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:synchronized workspace-full-e2e-test
   (mt/test-drivers workspaces-supported-drivers
-    (mt/with-premium-features #{:workspaces :config-text-file}
+    (mt/with-premium-features #{:workspaces :config-text-file :transforms-basic :hosting}
       ;; The default test-time `db-connection-timeout-ms` is 5s. BigQuery's
       ;; first call through a freshly-built impersonated client (cold gRPC
       ;; handshake + impersonation token mint + `listDatasets`) regularly
