@@ -183,7 +183,8 @@
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool
                     #'tools/create-chart-tool
-                    #'tools/edit-chart-tool]})
+                    #'tools/edit-chart-tool
+                    #'tools/save-entity-tool]})
 
 (register-profile!
  {:name            :nlq-fallback

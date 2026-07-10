@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -21,6 +20,7 @@ import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { markChartSaved } from "metabase/metabot/state";
+import { Route } from "metabase/router";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
