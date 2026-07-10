@@ -1,18 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
-import {
-  Form,
-  FormErrorMessage,
-  FormProvider,
-  FormSubmitButton,
-  FormTextInput,
-} from "metabase/forms";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import * as Errors from "metabase/utils/errors";
+import { Modal } from "metabase/ui";
 import { useRegenerateRecoveryCodesMutation } from "metabase-enterprise/api";
 
+import { ConfirmCodeForm } from "../ConfirmCodeForm";
 import { RecoveryCodesForm } from "../RecoveryCodesForm";
 
 type RecoveryCodesModalProps = {
@@ -46,7 +38,15 @@ function RecoveryCodesModalBody({
   onSuccess,
   onCancel,
 }: RecoveryCodesModalBodyProps) {
+  const [regenerateRecoveryCodes] = useRegenerateRecoveryCodesMutation();
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+
+  const handleGenerate = async (code: string) => {
+    const { recovery_codes } = await regenerateRecoveryCodes({
+      code,
+    }).unwrap();
+    setRecoveryCodes(recovery_codes);
+  };
 
   if (recoveryCodes != null) {
     return (
@@ -58,60 +58,12 @@ function RecoveryCodesModalBody({
     );
   }
 
-  return <ConfirmCodeForm onGenerate={setRecoveryCodes} onCancel={onCancel} />;
-}
-
-const CONFIRM_CODE_SCHEMA = Yup.object({
-  code: Yup.string().required(Errors.required),
-});
-
-type ConfirmCodeValues = {
-  code: string;
-};
-
-const INITIAL_CODE_VALUES: ConfirmCodeValues = {
-  code: "",
-};
-
-type ConfirmCodeFormProps = {
-  onGenerate: (recoveryCodes: string[]) => void;
-  onCancel: () => void;
-};
-
-function ConfirmCodeForm({ onGenerate, onCancel }: ConfirmCodeFormProps) {
-  const [regenerateRecoveryCodes] = useRegenerateRecoveryCodesMutation();
-
-  const handleSubmit = async ({ code }: ConfirmCodeValues) => {
-    const { recovery_codes } = await regenerateRecoveryCodes({
-      code: code.trim(),
-    }).unwrap();
-    onGenerate(recovery_codes);
-  };
-
   return (
-    <FormProvider
-      initialValues={INITIAL_CODE_VALUES}
-      validationSchema={CONFIRM_CODE_SCHEMA}
-      onSubmit={handleSubmit}
-    >
-      <Form>
-        <Stack gap="md">
-          <Text c="text-secondary">
-            {t`This will generate a new set of recovery codes and invalidate all of your old ones.`}
-          </Text>
-          <FormTextInput
-            name="code"
-            label={t`Confirm with an authenticator code or a recovery code`}
-            placeholder="123456"
-            data-autofocus
-          />
-          <FormErrorMessage />
-          <Group justify="flex-end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Generate new codes`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
-    </FormProvider>
+    <ConfirmCodeForm
+      message={t`This will generate a new set of recovery codes and invalidate all of your old ones.`}
+      submitLabel={t`Generate new codes`}
+      onSubmit={handleGenerate}
+      onCancel={onCancel}
+    />
   );
 }

@@ -92,7 +92,12 @@ function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
             </Button>
           </Group>
         ) : (
-          <Button disabled={!hasFeature} onClick={() => onOpenModal("setup")}>
+          <Button
+            // enrolling needs both the token feature and the instance setting
+            // turned on — the backend rejects it otherwise
+            disabled={!hasFeature || !status.mfa_enabled}
+            onClick={() => onOpenModal("setup")}
+          >
             {t`Set up two-factor authentication`}
           </Button>
         )}

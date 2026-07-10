@@ -11,28 +11,22 @@ import {
 } from "metabase/forms";
 import type { AuthChallengeFormProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { openNavbar } from "metabase/redux/app";
-import { refreshSession } from "metabase/redux/auth";
+import { completeLogin } from "metabase/redux/auth";
 import { Box, Stack, Text } from "metabase/ui";
-import { isSmallScreen } from "metabase/utils/dom";
 import * as Errors from "metabase/utils/errors";
 import {
   useSendEmailOtpMutation,
   useVerifyMfaMutation,
 } from "metabase-enterprise/api";
 
-import { RECOVERY_CODE_LENGTH, TOTP_CODE_LENGTH } from "../../constants";
+import { TOTP_CODE_LENGTH } from "../../constants";
+import { withTotpCodeRules } from "../../schemas";
 
 const CHALLENGE_SCHEMA = Yup.object({
-  code: Yup.string()
-    .required(Errors.required)
-    .when("useRecoveryCode", {
-      is: false,
-      then: (schema) =>
-        schema
-          .matches(/^\d*$/, () => t`must contain only digits`)
-          .length(TOTP_CODE_LENGTH, Errors.exactLength),
-    }),
+  code: Yup.string().required(Errors.required).when("useRecoveryCode", {
+    is: false,
+    then: withTotpCodeRules,
+  }),
   useRecoveryCode: Yup.boolean(),
 });
 
@@ -56,14 +50,13 @@ function ChallengeCodeForm({
   const handleSubmit = async ({ code }: ChallengeCodeValues) => {
     await verifyMfa({
       challenge_token: challengeToken,
-      code: code.trim(),
+      // recovery codes are lowercase-only server-side; undo mobile keyboards'
+      // auto-capitalization (harmless for numeric TOTP codes)
+      code: code.trim().toLowerCase(),
       remember,
     }).unwrap();
     // The session cookie is now set; refresh and let the route guard redirect.
-    await dispatch(refreshSession()).unwrap();
-    if (!isSmallScreen()) {
-      dispatch(openNavbar());
-    }
+    await dispatch(completeLogin()).unwrap();
   };
 
   return (
@@ -91,10 +84,14 @@ function ChallengeCodeForm({
                 useRecoveryCode ? t`Recovery code` : t`Authenticator code`
               }
               placeholder={useRecoveryCode ? "xxxxx-xxxxx" : "123456"}
-              maxLength={
-                useRecoveryCode ? RECOVERY_CODE_LENGTH : TOTP_CODE_LENGTH
-              }
+              // no maxLength in recovery mode: it would truncate pastes that
+              // carry leading whitespace, and there is no client-side length
+              // validation to surface the mangled code
+              maxLength={useRecoveryCode ? undefined : TOTP_CODE_LENGTH}
               inputMode={useRecoveryCode ? "text" : "numeric"}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               autoFocus
             />
             <FormSubmitButton label={t`Verify`} variant="filled" w="100%" />
@@ -131,24 +128,21 @@ function EmailOtpForm({ challengeToken }: EmailOtpFormProps) {
     await sendEmailOtp({ challenge_token: challengeToken }).unwrap();
   };
 
-  if (emailSent) {
-    return (
-      <Text c="text-secondary" ta="center">
-        {t`Code sent — check your email`}
-      </Text>
-    );
-  }
-
   return (
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       {({ isSubmitting, submitForm }) => (
         <Form>
           <Stack gap="md" ta="center">
+            {emailSent && (
+              <Text c="text-secondary">{t`Code sent — check your email`}</Text>
+            )}
+            {/* keep a resend path: the email can be lost, and the code
+                expires after 10 minutes (sends are throttled server-side) */}
             <AuthTextButton
               disabled={isSubmitting}
               onClick={() => submitForm()}
             >
-              {t`Email me a code`}
+              {emailSent ? t`Resend code` : t`Email me a code`}
             </AuthTextButton>
             <FormErrorMessage ta="center" />
           </Stack>

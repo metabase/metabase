@@ -10,6 +10,7 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
 import { Button } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import type { ResetPasswordData } from "../../types";
 import { AuthLayout } from "../AuthLayout";
@@ -42,8 +43,14 @@ export const ResetPassword = ({
 
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
-      await dispatch(resetPassword({ token, password })).unwrap();
-      dispatch(replace(redirectUrl || "/"));
+      const { sessionCreated } = await dispatch(
+        resetPassword({ token, password }),
+      ).unwrap();
+      // MFA-enrolled users don't get a session from a password reset; send
+      // them to the login page to sign in with the new password.
+      dispatch(
+        replace(sessionCreated ? redirectUrl || "/" : Urls.login(redirectUrl)),
+      );
       sendToast({ message: t`You've updated your password.` });
     },
     [token, dispatch, redirectUrl, sendToast],

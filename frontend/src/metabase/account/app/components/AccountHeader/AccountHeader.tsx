@@ -28,6 +28,10 @@ export const AccountHeader = ({
   );
   // explicit comparison: the setting is undefined on OSS instances
   const isMfaEnabled = useSetting("mfa-enforcement") === "optional";
+  // MFA only challenges password and LDAP logins, and enrolling requires
+  // confirming a password (or LDAP bind) — SSO users would hit a dead end
+  const hasSecurityTab =
+    isMfaEnabled && (hasPasswordChange || user.sso_source === "ldap");
 
   const tabs = useMemo(
     () => [
@@ -35,13 +39,13 @@ export const AccountHeader = ({
       ...(hasPasswordChange
         ? [{ name: t`Password`, value: "/account/password" }]
         : []),
-      ...(isMfaEnabled
+      ...(hasSecurityTab
         ? [{ name: t`Security`, value: "/account/security" }]
         : []),
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },
     ],
-    [hasPasswordChange, isMfaEnabled],
+    [hasPasswordChange, hasSecurityTab],
   );
 
   const userFullName = getFullName(user);

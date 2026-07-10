@@ -59,6 +59,22 @@ export const refreshSession = createAsyncThunk(
   },
 );
 
+export const COMPLETE_LOGIN = "metabase/auth/COMPLETE_LOGIN";
+/**
+ * Post-login bootstrap shared by every path that mints a session (password,
+ * Google, MFA verify). While it runs, `loginPending` keeps the route guard
+ * from redirecting before settings and locale are refreshed.
+ */
+export const completeLogin = createAsyncThunk(
+  COMPLETE_LOGIN,
+  async (_, { dispatch }) => {
+    await dispatch(refreshSession()).unwrap();
+    if (!isSmallScreen()) {
+      dispatch(openNavbar());
+    }
+  },
+);
+
 interface LoginPayload {
   data: LoginData;
   redirectUrl?: string;
@@ -84,10 +100,7 @@ export const login = createAsyncThunk(
         return challenge;
       }
 
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
-      }
+      await dispatch(completeLogin()).unwrap();
       const success: LoginResult = {};
       return success;
     } catch (error) {
@@ -116,10 +129,7 @@ export const loginGoogle = createAsyncThunk(
           remember,
         }),
       ).unwrap();
-      await dispatch(refreshSession()).unwrap();
-      if (!isSmallScreen()) {
-        dispatch(openNavbar());
-      }
+      await dispatch(completeLogin()).unwrap();
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -187,13 +197,17 @@ export const resetPassword = createAsyncThunk(
   RESET_PASSWORD,
   async (
     { token, password }: ResetPasswordPayload,
-    { dispatch, rejectWithValue },
+    { dispatch, getState, rejectWithValue },
   ) => {
     try {
       await dispatch(
         sessionApi.endpoints.resetPassword.initiate({ token, password }),
       ).unwrap();
       await dispatch(refreshSession()).unwrap();
+      // MFA-enrolled users get no session from a password reset — they must
+      // sign in normally and pass the challenge — so the refresh above leaves
+      // no current user. Let the UI route them to the login page.
+      return { sessionCreated: getUser(getState()) != null };
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -237,6 +251,18 @@ export const reducer = createReducer(initialState, (builder) => {
     state.loginPending = true;
   });
   builder.addCase(loginGoogle.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+
+  // completeLogin also runs standalone from the MFA challenge form, where no
+  // login thunk is pending to hold the route guard back
+  builder.addCase(completeLogin.pending, (state) => {
+    state.loginPending = true;
+  });
+  builder.addCase(completeLogin.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+  builder.addCase(completeLogin.rejected, (state) => {
     state.loginPending = false;
   });
   builder.addCase(pauseRedirect.toString(), (state) => {

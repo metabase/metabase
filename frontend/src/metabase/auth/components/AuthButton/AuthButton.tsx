@@ -8,17 +8,13 @@ import { Anchor, Card, UnstyledButton } from "metabase/ui";
 
 import S from "./AuthButton.module.css";
 
-type AuthTextButtonProps = UnstyledButtonProps &
-  ComponentPropsWithoutRef<"button">;
+type AuthButtonProps = UnstyledButtonProps & ComponentPropsWithoutRef<"button">;
 
-export function AuthTextButton({ className, ...props }: AuthTextButtonProps) {
+export function AuthTextButton({ className, ...props }: AuthButtonProps) {
   return <UnstyledButton className={cx(S.link, className)} {...props} />;
 }
 
-type AuthCardButtonProps = UnstyledButtonProps &
-  ComponentPropsWithoutRef<"button">;
-
-export function AuthCardButton({ className, ...props }: AuthCardButtonProps) {
+export function AuthCardButton({ className, ...props }: AuthButtonProps) {
   return (
     <UnstyledButton className={cx(S.link, S.card, className)} {...props} />
   );

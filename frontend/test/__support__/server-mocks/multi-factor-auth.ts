@@ -22,16 +22,6 @@ export function setupMfaEnrollEndpointError() {
   fetchMock.post("path:/api/ee/mfa/enroll", 500);
 }
 
-export function setupMfaConfirmEnrollmentEndpoint(recoveryCodes: string[]) {
-  fetchMock.post("path:/api/ee/mfa/enroll/confirm", {
-    recovery_codes: recoveryCodes,
-  });
-}
-
-export function setupMfaConfirmEnrollmentEndpointError() {
-  fetchMock.post("path:/api/ee/mfa/enroll/confirm", 500);
-}
-
 export function setupMfaDisableEndpoint() {
   fetchMock.post("path:/api/ee/mfa/disable", 204);
 }
@@ -54,10 +44,6 @@ export function setupMfaAdminOverviewEndpoint(overview: MfaAdminOverview) {
   fetchMock.get("path:/api/ee/mfa/admin/overview", overview);
 }
 
-export function setupMfaAdminOverviewEndpointError() {
-  fetchMock.get("path:/api/ee/mfa/admin/overview", 500);
-}
-
 export function setupMfaVerifyEndpoint() {
   fetchMock.post("path:/api/session/mfa/verify", { id: "session-id" });
 }
@@ -68,8 +54,4 @@ export function setupMfaVerifyEndpointError() {
 
 export function setupMfaSendEmailOtpEndpoint() {
   fetchMock.post("path:/api/session/mfa/send-email-otp", { success: true });
-}
-
-export function setupMfaSendEmailOtpEndpointError() {
-  fetchMock.post("path:/api/session/mfa/send-email-otp", 500);
 }

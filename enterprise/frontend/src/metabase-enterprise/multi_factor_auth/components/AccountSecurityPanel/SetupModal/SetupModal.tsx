@@ -29,11 +29,14 @@ import {
 import type { MfaEnrollResponse } from "metabase-types/api";
 
 import { TOTP_CODE_LENGTH } from "../../../constants";
+import { withTotpCodeRules } from "../../../schemas";
 import { RecoveryCodesForm } from "../RecoveryCodesForm";
+
+const QR_CODE_SIZE = 180;
 
 type SetupModalProps = {
   opened: boolean;
-  onSuccess: (recoveryCodes: string[]) => void;
+  onSuccess: () => void;
   onCancel: () => void;
 };
 
@@ -50,7 +53,7 @@ export function SetupModal({ opened, onSuccess, onCancel }: SetupModalProps) {
 }
 
 type SetupModalBodyProps = {
-  onSuccess: (recoveryCodes: string[]) => void;
+  onSuccess: () => void;
   onCancel: () => void;
 };
 
@@ -63,7 +66,7 @@ function SetupModalBody({ onSuccess, onCancel }: SetupModalBodyProps) {
       <RecoveryCodesForm
         recoveryCodes={recoveryCodes}
         message={t`Each code signs you in once if you lose your authenticator. Save them somewhere safe — this is the only time they will be shown.`}
-        onDone={() => onSuccess(recoveryCodes)}
+        onDone={onSuccess}
       />
     );
   }
@@ -134,10 +137,7 @@ function ConfirmPasswordForm({ onEnroll, onCancel }: ConfirmPasswordFormProps) {
 }
 
 const CODE_SCHEMA = Yup.object({
-  code: Yup.string()
-    .required(Errors.required)
-    .matches(/^\d*$/, () => t`must contain only digits`)
-    .length(TOTP_CODE_LENGTH, Errors.exactLength),
+  code: withTotpCodeRules(Yup.string().required(Errors.required)),
 });
 
 type EnrollFormValues = {
@@ -178,7 +178,7 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
                   renders modules edge-to-edge, and the modal bg is dark in
                   dark mode */}
               <Box bg="white" p="md">
-                <QRCode value={enrollment.otpauth_uri} size={180} />
+                <QRCode value={enrollment.otpauth_uri} size={QR_CODE_SIZE} />
               </Box>
             </Center>
           </Input.Wrapper>

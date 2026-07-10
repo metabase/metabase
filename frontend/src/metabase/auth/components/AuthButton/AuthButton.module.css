@@ -14,6 +14,9 @@
 }
 
 .card {
+  /* the SSO cards render as <button>, which shrink-wraps its content unlike
+     the block-level <a> — stretch both to the auth panel width */
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
