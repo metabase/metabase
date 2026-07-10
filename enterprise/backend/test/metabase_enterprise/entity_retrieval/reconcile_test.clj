@@ -105,7 +105,7 @@
   (filter #(and (= entity-type (:entity_type %)) (= entity-local-id (:entity_local_id %)))
           (index-rows ds)))
 
-(defn- reconciled-at [ds]
+(defn- reconciled-at! [ds]
   (:reconciled_at (jdbc/execute-one! ds
                                      [(format "SELECT reconciled_at FROM \"%s\" WHERE id = 1" index-table/*meta-table*)]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
@@ -199,12 +199,12 @@
           (testing "populate the index under the original model"
             (reconcile/reconcile! ds (constantly model))
             (is (seq (docs-for ds "table" table-id)))
-            (is (some? (reconciled-at ds)) "a converged reconcile stamps reconciled_at"))
+            (is (some? (reconciled-at! ds)) "a converged reconcile stamps reconciled_at"))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"
             (let [new-model (assoc model :model-name "model-v2")]
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
               (is (= [] (index-rows ds)))
-              (is (nil? (reconciled-at ds))
+              (is (nil? (reconciled-at! ds))
                   "the rebuild clears reconciled_at, so NLQ staleness can't read the empty index as fresh")
               (reconcile/reconcile! ds (constantly new-model))
               (is (seq (docs-for ds "table" table-id)))
