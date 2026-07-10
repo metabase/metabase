@@ -1068,6 +1068,8 @@
   "Update a saved metric. Patch semantics - only fields that you pass are changed.
 
   Set `collection_id` to move the metric to a different collection. Set `archived: true` to archive.
+  Archiving is a soft delete - there is no delete endpoint. It can be reversed by setting
+  `archived: false`.
   Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying
   query; the replacement must still be a valid metric (exactly one aggregation, at most one
   date/datetime grouping). The target card must be a metric — use `update_question` for questions."
@@ -1075,7 +1077,9 @@
    :tool  {:name "update_metric"
            :description (str "Update a saved metric. Patch semantics - only fields you pass are changed. "
                              "To move a metric to a different collection, set collection_id. "
-                             "To archive, set archived true. To replace the underlying query, pass query "
+                             "Archiving (archived true) is a soft delete - use it when asked to "
+                             "delete or remove a metric; set archived false to restore. "
+                             "To replace the underlying query, pass query "
                              "(a query_handle from construct_query) - it must still have exactly one "
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}

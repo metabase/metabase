@@ -1,0 +1,10 @@
+.link {
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}

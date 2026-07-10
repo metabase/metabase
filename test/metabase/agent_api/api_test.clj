@@ -920,7 +920,13 @@
                                        {:archived true})]
         (is (true? (:archived resp))))
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
 
 (deftest update-metric-replace-query-test
   (testing "Replacing the underlying query via :query keeps a valid metric"
