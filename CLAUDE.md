@@ -58,6 +58,25 @@ For module-scoped runs — useful when validating a branch's blast radius — pa
 
 Once again, do not use `clj -X:dev:test` directly — its progress-bar output is hard to parse.
 
+## Module Boundaries
+
+The linter config at `.clj-kondo/config/modules/config.edn` records each module's `:api`, `:uses`,
+`:model-exports`, and `:model-imports`. `metabase.core.modules-test` fails when it drifts from the source.
+
+After **any** backend change that could shift module boundaries, regenerate it:
+
+```bash
+./bin/mage fix-modules-config
+```
+
+Changes that shift boundaries include: adding/removing/renaming a `src` namespace, adding or dropping a
+cross-module `require` or `:model/X` reference, or creating a new module. When unsure, just run it — it is
+a no-op (exits `unchanged`) when nothing drifted.
+
+It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is running (~15s). It only edits
+the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
+modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
+
 ## Tool Preferences
 
 If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.
