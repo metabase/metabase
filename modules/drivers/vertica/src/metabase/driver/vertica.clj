@@ -344,12 +344,6 @@
   [driver [_ _opts expr]]
   (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
 
-(defmethod sql.qp/->honeysql [:vertica :value]
-  [driver [_ {:keys [base-type effective-type]} value]]
-  ((get-method sql.qp/->honeysql [::sql.qp.empty-string-is-null/empty-string-is-null :value])
-   driver
-   [:value value {:base_type base-type :effective_type effective-type}]))
-
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42V01"))
