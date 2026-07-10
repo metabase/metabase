@@ -1,7 +1,4 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
 const { H } = cy;
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const GENERATED_CARD_NAME = "Feature requests mentioned twice";
 const MOCK_LLM_PORT = 6124;
@@ -17,14 +14,20 @@ describe("documents > metabot (#73690)", () => {
           toolCall: {
             name: "construct_notebook_query",
             input: {
-              source_entity: { type: "table", id: ORDERS_ID },
-              program: {
-                source: { type: "table", id: ORDERS_ID },
-                operations: [["limit", 10]],
+              query: {
+                "lib/type": "mbql/query",
+                stages: [
+                  {
+                    "lib/type": "mbql.stage/mbql",
+                    "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+                    limit: 10,
+                  },
+                ],
               },
+              title: GENERATED_CARD_NAME,
               visualization: { chart_type: "table" },
-              name: GENERATED_CARD_NAME,
-              description: "Feature requests mentioned at least twice.",
+              chart_name: GENERATED_CARD_NAME,
+              chart_description: "Feature requests mentioned at least twice.",
             },
           },
         },
