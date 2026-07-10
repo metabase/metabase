@@ -29,8 +29,6 @@
                 (some-> ((requiring-resolve 'metabase.search.engine/default-engine)) name keyword))
   :type       :keyword)
 
-;; An engine added at runtime backfills its index over time (for semantic, via the hourly repair task);
-;; POST /api/search/re-init forces an immediate rebuild.
 (defsetting additional-search-engines
   (i18n/deferred-tru "Engines to keep active (indexed and queryable per-request) in addition to the default engine.")
   :visibility :internal
@@ -38,6 +36,17 @@
   :encryption :no
   :default    nil
   :type       :csv
+  ;; A newly activated engine needs its index initialized before it can serve, so setting this triggers the
+  ;; search init task. The task is only registered when the scheduler runs (i.e. not in tests); engines
+  ;; configured via env var are covered by the startup init.
+  :setter     (fn [new-value]
+                (let [result       (setting/set-value-of-type! :csv :additional-search-engines new-value)
+                      job-exists?  (requiring-resolve 'metabase.task.core/job-exists?)
+                      trigger-now! (requiring-resolve 'metabase.task.core/trigger-now!)
+                      init-job-key @(requiring-resolve 'metabase.search.task.search-index/init-job-key)]
+                  (when (job-exists? init-job-key)
+                    (trigger-now! init-job-key))
+                  result))
   :doc        false)
 
 (defsetting experimental-search-weight-overrides

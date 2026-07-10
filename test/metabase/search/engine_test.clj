@@ -4,7 +4,10 @@
    [metabase.search.engine :as search.engine]
    ;; Loaded for side effects: registers the engine implementations.
    [metabase.search.init]
-   [metabase.search.settings :as search.settings]))
+   [metabase.search.settings :as search.settings]
+   [metabase.search.task.search-index :as task.search-index]
+   [metabase.task.core :as task]
+   [metabase.test :as mt]))
 
 (def ^:private all-engines
   #{:search.engine/semantic :search.engine/appdb :search.engine/in-place})
@@ -90,3 +93,11 @@
   (testing "additional engines tolerate csv whitespace, blanks, and qualified names"
     (with-engines {:supported all-engines :configured :appdb :additional [" semantic" "  " "search.engine/appdb"]}
       (is (= [:search.engine/appdb :search.engine/semantic] (search.engine/active-engines))))))
+
+(deftest additional-search-engines-setter-test
+  (testing "setting additional engines triggers the search index init task when it is scheduled"
+    (let [triggered (atom [])]
+      (mt/with-dynamic-fn-redefs [task/job-exists?  (constantly true)
+                                  task/trigger-now! (fn [k] (swap! triggered conj k))]
+        (mt/with-temporary-setting-values [additional-search-engines ["semantic"]]
+          (is (some #{task.search-index/init-job-key} @triggered)))))))

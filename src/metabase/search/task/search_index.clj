@@ -45,6 +45,11 @@
   (cluster-lock/with-cluster-lock cluster-lock-name
     (search/reindex! {:async? false})))
 
+(task/defjob ^{DisallowConcurrentExecution true
+               :doc                        "Ensure indexes exist for the active engines"}
+  SearchIndexInit [_ctx]
+  (init!))
+
 ;; Atom holding a promise that is delivered when the background init thread finishes.
 ;; nil when no init has been started — [[wait-for-init!]] returns immediately in that case.
 (defonce ^:private init-promise (atom nil))
@@ -64,6 +69,14 @@
                                  (finally
                                    (deliver p true)))))
       .start)))
+
+;; A durable job with no schedule: triggered on demand when an engine is activated at runtime,
+;; e.g. by the additional-search-engines setter.
+(defmethod task/init! ::SearchIndexInit [_]
+  (task/add-job! (jobs/build
+                  (jobs/of-type SearchIndexInit)
+                  (jobs/store-durably)
+                  (jobs/with-identity init-job-key))))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
