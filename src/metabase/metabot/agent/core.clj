@@ -476,7 +476,7 @@
   than the raw model name returned by the API.
 
   The `metabase/` routing prefix is stripped so usage keys reflect the actual
-  provider/model (e.g. `openrouter/anthropic/claude-haiku-4-5`) regardless of
+  provider/model (e.g. `openrouter/anthropic/claude-haiku-4.5`) regardless of
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]

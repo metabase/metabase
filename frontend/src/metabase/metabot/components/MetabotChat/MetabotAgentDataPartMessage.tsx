@@ -212,8 +212,8 @@ const CodeEditDataPart = ({
           <Icon name="document" c="text-secondary" />
           <Text fw="bold">{formatPartType(type)}</Text>
           <Text c="text-secondary">{t`Buffer ID: ${value.buffer_id}`}</Text>
-          <Badge variant="light" size="sm">
-            {value.mode}
+          <Badge color="brand" size="sm" variant="light">
+            {getModeLabel(value.mode)}
           </Badge>
         </Flex>
         <ActionIcon
@@ -237,3 +237,9 @@ const CodeEditDataPart = ({
     </Box>
   );
 };
+
+function getModeLabel(mode: MetabotCodeEdit["mode"]): string {
+  return match(mode)
+    .with("rewrite", () => t`Rewrite`)
+    .exhaustive();
+}

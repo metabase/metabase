@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import type { BadgeColor } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   Task,
@@ -55,18 +56,18 @@ export const getEntityUrl = (
     .with("dashboard", () => Urls.dashboard({ id: entityId }))
     .exhaustive();
 
-export const getTaskRunStatusColor = (status: TaskRunStatus) =>
+export const getTaskRunStatusColor = (status: TaskRunStatus): BadgeColor =>
   match(status)
-    .with("success", () => "success" as const)
-    .with("failed", () => "error" as const)
+    .with("success", () => "positive" as const)
+    .with("failed", () => "negative" as const)
     .with("abandoned", () => "warning" as const)
-    .otherwise(() => "text-primary" as const);
+    .otherwise(() => "neutral" as const);
 
-export const getTaskStatusColor = (status: TaskStatus) =>
+export const getTaskStatusColor = (status: TaskStatus): BadgeColor =>
   match(status)
-    .with("success", () => "success" as const)
-    .with("failed", () => "error" as const)
-    .otherwise(() => "text-primary" as const);
+    .with("success", () => "positive" as const)
+    .with("failed", () => "negative" as const)
+    .otherwise(() => "neutral" as const);
 
 export const getFilename = (task: Task | undefined) =>
   task ? `task-${task.id}.json` : "task.json";

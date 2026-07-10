@@ -837,6 +837,10 @@
     (is (= {:type  :roles
             :roles #{"`example_role`@`%`" "`example_role_2`@`%`"}}
            (#'mysql/parse-grant "GRANT `example_role`@`%`,`example_role_2`@`%` TO 'metabase'@'localhost'")))
+    (testing "role names keep their case (GHY-3835): MySQL 8 backticked role identifiers are case-sensitive, so lowercasing them makes the follow-up `SHOW GRANTS ... USING` fail with error 3530"
+      (is (= {:type  :roles
+              :roles #{"`AWS_FOO_ROLE`@`%`"}}
+             (#'mysql/parse-grant "GRANT `AWS_FOO_ROLE`@`%` TO `mb_case_test`@`%`"))))
     (is (nil? (#'mysql/parse-grant "GRANT PROXY ON 'metabase'@'localhost' TO 'metabase'@'localhost' WITH GRANT OPTION")))
     (testing "REVOKE grants (emitted under partial_revokes) are ignored rather than throwing"
       (is (nil? (#'mysql/parse-grant "REVOKE INSERT ON `test-data`.`foo` FROM 'metabase'@'localhost'")))

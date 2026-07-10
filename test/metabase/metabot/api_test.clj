@@ -334,6 +334,24 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
 
+(deftest settings-get-groups-openrouter-models-without-vendor-prefix-test
+  (testing "models whose display_name has no `Vendor: ` prefix are grouped by the vendor from the model id"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-valid"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             {:models [{:id "anthropic/claude-fable-5"
+                                                                        :display_name "Claude Fable 5"}
+                                                                       {:id "openai/gpt-5.5"
+                                                                        :display_name "GPT-5.5"}]})]
+        (is (= {:value  (metabot.settings/llm-metabot-provider)
+                :models [{:id "anthropic/claude-fable-5"
+                          :display_name "Claude Fable 5"
+                          :group "Anthropic"}
+                         {:id "openai/gpt-5.5"
+                          :display_name "GPT-5.5"
+                          :group "OpenAI"}]}
+               (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                     :provider "openrouter")))))))
+
 (deftest settings-get-groups-openai-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "openai/gpt-5-mini"
                                      llm.settings/llm-openai-api-key       "sk-valid"]
@@ -419,6 +437,32 @@
                (metabot.settings/llm-metabot-provider)))
         (is (= "sk-fresh"
                (llm.settings/llm-openai-api-key)))))))
+
+(deftest settings-put-connect-openrouter-defaults-model-test
+  (testing "connecting openrouter with only an api-key switches to the default openrouter model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-openrouter-api-key   nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "openrouter" provider))
+                                                              {:models [{:id "anthropic/claude-sonnet-4.6"
+                                                                         :display_name "Anthropic: Claude Sonnet 4.6"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "openrouter" provider))
+                                                              (is (= {:api-key "sk-or-v1-fresh"} credentials))
+                                                              {:models [{:id "anthropic/claude-sonnet-4.6"
+                                                                         :display_name "Anthropic: Claude Sonnet 4.6"}]}))]
+        (is (= {:value  "openrouter/anthropic/claude-sonnet-4.6"
+                :models [{:id "anthropic/claude-sonnet-4.6"
+                          :display_name "Anthropic: Claude Sonnet 4.6"
+                          :group "Anthropic"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "openrouter"
+                                      :api-key  "sk-or-v1-fresh"})))
+        (is (= "openrouter/anthropic/claude-sonnet-4.6"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "sk-or-v1-fresh"
+               (llm.settings/llm-openrouter-api-key)))))))
 
 (deftest settings-put-updates-metabase-provider-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
