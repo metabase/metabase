@@ -65,3 +65,9 @@ path: ./dist/index.js"))))
     (is false "should have thrown")
     (catch clojure.lang.ExceptionInfo e
       (is (= 400 (:status-code (ex-data e)))))))
+
+(deftest parse-allowed-hosts-with-port-test
+  (testing "an origin with an explicit port is a valid allowed_hosts entry"
+    (is (= ["https://api.example.com:8443"]
+           (:allowed_hosts
+            (parse "name: X\nslug: x\npath: dist/index.js\nallowed_hosts:\n  - https://api.example.com:8443\n"))))))

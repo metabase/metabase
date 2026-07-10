@@ -67,3 +67,24 @@
       (is (mi/can-read? :model/DataApp 1))
       (is (not (mi/can-write? :model/DataApp 1)))
       (is (not (mi/can-create? :model/DataApp {}))))))
+
+(deftest permissions-instance-arity-test
+  (testing "the single-instance arity of can-read?/can-write? matches the model arity"
+    (let [app (t2/instance :model/DataApp {:id 1})]
+      (binding [api/*is-superuser?* true]
+        (is (mi/can-read? app))
+        (is (mi/can-write? app)))
+      (binding [api/*is-superuser?* false]
+        (is (mi/can-read? app))
+        (is (not (mi/can-write? app)))))))
+
+(deftest blob->bytes-coerces-a-jdbc-blob-test
+  (testing "a java.sql.Blob (as some JDBC drivers return) is coerced to bytes on read"
+    (let [content (.getBytes "HELLO" "UTF-8")
+          blob    (reify java.sql.Blob
+                    (length [_] (long (alength content)))
+                    (getBytes [_ pos len]
+                      (java.util.Arrays/copyOfRange
+                       content (int (dec pos)) (int (+ (dec pos) len)))))]
+      (is (= "HELLO"
+             (String. ^bytes (#'data-app/blob->bytes blob) "UTF-8"))))))

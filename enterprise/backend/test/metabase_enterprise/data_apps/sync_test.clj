@@ -94,3 +94,77 @@
         (is (= "GOOD" (String. ^bytes (:bundle app) "UTF-8"))
             "the previously cached bundle is retained")
         (is (str/includes? (:sync_error app) "MiB"))))))
+
+(defn- config-only
+  "A snapshot file map with the app's data_app.yml but NO bundle file, so the
+   bundle read fails and the app syncs with a sync_error."
+  [dir {:keys [name slug path]}]
+  {(format "data_apps/%s/data_app.yml" dir)
+   (format "name: %s\nslug: %s\npath: %s\n" name slug path)})
+
+(defn- app-files+hosts
+  "Like `app-files`, but its data_app.yml also declares `allowed_hosts`."
+  [dir {:keys [name slug path bundle allowed-hosts]}]
+  {(format "data_apps/%s/data_app.yml" dir)
+   (apply str (format "name: %s\nslug: %s\npath: %s\nallowed_hosts:\n" name slug path)
+          (map #(format "  - %s\n" %) allowed-hosts))
+   (format "data_apps/%s/%s" dir path) bundle})
+
+(deftest changed-count-tracks-failure-transitions-test
+  (testing "the :changed count reflects failure/recovery transitions, not just content"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [failing (snapshot (config-only "a" {:name "A" :slug "a" :path "index.js"}))
+            working (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "V1"}))]
+        (testing "an app whose bundle is missing fails and counts as a change"
+          (is (=? {:synced 1 :changed 1} (data-app.sync/import-from-snapshot! failing)))
+          (is (some? (:sync_error (t2/select-one :model/DataApp :name "a")))))
+        (testing "re-failing with the identical error is NOT a change"
+          (is (=? {:synced 1 :changed 0} (data-app.sync/import-from-snapshot! failing))))
+        (testing "recovering to a working bundle counts as a change and clears the error"
+          (is (=? {:synced 1 :changed 1} (data-app.sync/import-from-snapshot! working)))
+          (is (nil? (:sync_error (t2/select-one :model/DataApp :name "a")))))
+        (testing "re-syncing the recovered app with identical content is not a change"
+          (is (=? {:changed 0} (data-app.sync/import-from-snapshot! working))))))))
+
+(deftest changed-count-tracks-allowed-hosts-test
+  (testing "an allowed_hosts-only change (same bundle/metadata) still counts as changed"
+    (mt/with-model-cleanup [:model/DataApp]
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "V1"})))
+      (is (=? {:changed 1}
+              (data-app.sync/import-from-snapshot!
+               (snapshot (app-files+hosts "a" {:name "A" :slug "a" :path "index.js" :bundle "V1"
+                                               :allowed-hosts ["https://api.example.com"]}))))
+          "adding a host is a content change even though the bundle is identical")
+      (is (= ["https://api.example.com"]
+             (:allowed_hosts (t2/select-one :model/DataApp :name "a")))))))
+
+(deftest sync-from-snapshot!-swallows-a-thrown-import-test
+  (testing "a duplicate-slug snapshot makes import throw; sync-from-snapshot! swallows it and returns nil"
+    (mt/with-model-cleanup [:model/DataApp]
+      (is (nil? (data-app.sync/sync-from-snapshot!
+                 (snapshot (merge (app-files "one" {:name "One" :slug "dup" :path "a.js" :bundle "A"})
+                                  (app-files "two" {:name "Two" :slug "dup" :path "b.js" :bundle "B"}))))))
+      (is (empty? (t2/select-fn-set :name :model/DataApp))
+          "the throwing sync materialized nothing"))))
+
+(deftest unreadable-config-becomes-a-config-error-test
+  (testing "a listed config path that can't be read is isolated as a config-error, not a crash"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [result (data-app.sync/import-from-snapshot!
+                    {:sha        fake-sha
+                     :list-files (fn [] ["data_apps/ghost/data_app.yml"])
+                     :read-file  (fn [_] nil)})]
+        (is (= 1 (count (:config-errors result))))
+        (is (str/includes? (first (:config-errors result)) "data_apps/ghost/data_app.yml"))
+        (is (empty? (t2/select-fn-set :name :model/DataApp)))))))
+
+(deftest nested-config-paths-are-not-discovered-test
+  (testing "only data_apps/<dir>/data_app.yml is discovered; a deeper nested path is ignored"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [result (data-app.sync/import-from-snapshot!
+                    {:sha        fake-sha
+                     :list-files (fn [] ["data_apps/a/b/data_app.yml"])
+                     :read-file  (fn [_] "name: A\nslug: a\npath: index.js\n")})]
+        (is (=? {:synced 0 :changed 0 :config-errors []} result))
+        (is (empty? (t2/select-fn-set :name :model/DataApp)))))))

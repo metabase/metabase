@@ -87,3 +87,14 @@
                                          (merge coll-file (app-tree "ops" "BUNDLE-V2")))]
               (is (= "pulled" (:kind outcome)))
               (is (= 2 (:count outcome)) "the collection (1) plus the changed data app (1)"))))))))
+
+(deftest fold-data-app-changes-merged-and-unknown-test
+  (testing "a merged pull accumulates data-app changes into :pulled"
+    (is (= {:kind "merged" :pulled 3}
+           (#'impl/fold-data-app-changes {:kind "merged" :pulled 0} 3)))
+    (is (= {:kind "merged" :pulled 5}
+           (#'impl/fold-data-app-changes {:kind "merged"} 5))
+        "a missing :pulled is treated as zero"))
+  (testing "an unrecognized outcome kind is returned unchanged"
+    (is (= {:kind "conflict"}
+           (#'impl/fold-data-app-changes {:kind "conflict"} 2)))))

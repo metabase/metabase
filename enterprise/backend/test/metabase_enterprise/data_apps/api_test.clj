@@ -292,3 +292,25 @@
           (is (=? {:enabled true}
                   (mt/user-http-request :crowberto :put 200 "apps/demo" {:enabled true})))
           (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "apps/demo"))))))))
+
+(deftest missing-slug-and-unsynced-bundle-404s-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (testing "metadata GET 404s for a nonexistent slug"
+          (is (= "Not found." (mt/user-http-request :crowberto :get 404 "apps/ghost"))))
+        (testing "enable/disable PUT 404s for a nonexistent slug"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :put 404 "apps/ghost" {:enabled false}))))
+        (testing "the bundle endpoint 404s for an app whose bundle isn't synced yet"
+          ;; a row can exist (metadata) with no cached bundle, e.g. after a failed sync
+          (t2/insert! :model/DataApp
+                      :name         "nobundle"
+                      :display_name "No Bundle"
+                      :bundle_path  "data_apps/nobundle/index.js"
+                      :bundle       nil
+                      :bundle_hash  nil
+                      :enabled      true)
+          (is (str/includes?
+               (str (mt/user-real-request :crowberto :get 404 "apps/nobundle/bundle"))
+               "Bundle not synced yet")))))))

@@ -217,6 +217,122 @@ describe("scenarios > data apps > admin management", () => {
       cy.findByText(/--skill metabase-data-app-setup/).should("be.visible");
     });
   });
+
+  it("reenables a disabled app from the actions menu", () => {
+    cy.intercept("GET", "/api/apps/repo-status", { configured: true });
+    cy.intercept("GET", "/api/apps", [fakeApp({ enabled: false })]);
+    cy.intercept("PUT", `/api/apps/${APP_NAME}`, {
+      statusCode: 200,
+      body: fakeApp(),
+    }).as("setEnabled");
+
+    cy.visit("/admin/settings/apps");
+
+    cy.findByRole("button", {
+      name: `Actions for ${APP_DISPLAY_NAME}`,
+    }).click();
+    cy.findByRole("menuitem", { name: "Reenable" }).click();
+
+    cy.wait("@setEnabled")
+      .its("request.body")
+      .should("deep.equal", { enabled: true });
+  });
+
+  it("lists multiple apps, each with its own actions menu", () => {
+    cy.intercept("GET", "/api/apps/repo-status", { configured: true });
+    cy.intercept("GET", "/api/apps", [
+      fakeApp({ id: 1, name: "alpha", display_name: "Alpha App" }),
+      fakeApp({ id: 2, name: "beta", display_name: "Beta App" }),
+    ]);
+
+    cy.visit("/admin/settings/apps");
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.findByRole("link", { name: "Alpha App" }).should("exist");
+      cy.findByRole("link", { name: "Beta App" }).should("exist");
+    });
+    cy.findByRole("button", { name: "Actions for Alpha App" }).should("exist");
+    cy.findByRole("button", { name: "Actions for Beta App" }).should("exist");
+  });
+
+  it("renders each sync status: synced sha, sync failure (with reason), and never-synced", () => {
+    cy.intercept("GET", "/api/apps/repo-status", { configured: true });
+    cy.intercept("GET", "/api/apps", [
+      fakeApp({
+        id: 1,
+        name: "ok",
+        display_name: "Synced App",
+        last_synced_sha: "abcdef0",
+      }),
+      fakeApp({
+        id: 2,
+        name: "bad",
+        display_name: "Failed App",
+        sync_error: "boom: bad manifest",
+      }),
+      fakeApp({
+        id: 3,
+        name: "new",
+        display_name: "New App",
+        last_synced_sha: null,
+        sync_error: null,
+      }),
+    ]);
+
+    cy.visit("/admin/settings/apps");
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.findByText("Synced abcdef0").should("exist");
+      cy.findByText("Sync failed").should(
+        "have.attr",
+        "title",
+        "boom: bad manifest",
+      );
+      cy.findByText("Not synced yet").should("exist");
+    });
+  });
+
+  it("shows the allowed-hosts count for an app that declares hosts", () => {
+    cy.intercept("GET", "/api/apps/repo-status", { configured: true });
+    cy.intercept("GET", "/api/apps", [
+      fakeApp({
+        allowed_hosts: ["https://api.example.com", "https://*.acme.com"],
+      }),
+    ]);
+
+    cy.visit("/admin/settings/apps");
+
+    cy.findByTestId("admin-layout-content")
+      .findByText("2 allowed hosts")
+      .should("exist");
+  });
+
+  it("dismisses the promo banner and keeps it hidden across a reload", () => {
+    cy.intercept("GET", "/api/apps/repo-status", { configured: true });
+    cy.intercept("GET", "/api/apps", []);
+    cy.intercept(
+      "PUT",
+      "/api/user-key-value/namespace/user_acknowledgement/key/data-apps-admin-settings-banner",
+    ).as("ackBanner");
+
+    cy.visit("/admin/settings/apps");
+
+    H.main()
+      .findByText(/AI-generated React apps/)
+      .should("be.visible");
+    cy.findByRole("button", { name: "Dismiss" }).click();
+    cy.wait("@ackBanner");
+    H.main()
+      .findByText(/AI-generated React apps/)
+      .should("not.exist");
+
+    // The dismissal persists (a real user-key-value write), so a reload keeps it hidden.
+    cy.reload();
+    cy.findByRole("heading", { name: "Data apps" }).should("be.visible");
+    H.main()
+      .findByText(/AI-generated React apps/)
+      .should("not.exist");
+  });
 });
 
 describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
