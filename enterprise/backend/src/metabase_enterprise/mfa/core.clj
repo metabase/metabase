@@ -22,8 +22,8 @@
 
 (defenterprise apply-mfa-gate
   "Decide whether a successful first-factor login must complete a second factor before a session is
-  created. Sets `:mfa-pending?` (which suppresses session creation in the `login!` pipeline) and,
-  for challenged providers, attaches `:first-factor` and `:mfa-methods` so the OSS session API can
+  created. Sets `:mfa/pending?` (which suppresses session creation in the `login!` pipeline) and,
+  for challenged providers, attaches `:mfa/first-factor` and `:mfa/methods` so the OSS session API can
   sign the relay token.
 
   Uses `:feature :none` deliberately: enforcement must not depend on the current token, so a lapsed
