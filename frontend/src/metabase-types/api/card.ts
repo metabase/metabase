@@ -1,6 +1,6 @@
 import type { CurrencyStyle } from "metabase/utils/formatting";
 import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
-import type { DatasetColumn, IconName, RowValues } from "metabase-types/api";
+import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -33,6 +33,7 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type {
   PieRow,
+  ScalarSegment,
   SmartScalarComparison,
   TreemapRow,
 } from "./visualization-settings";
@@ -569,46 +570,4 @@ export type ListViewColumns = {
   left: string[];
   right: string[];
   image?: string;
-};
-
-export type GoalSource = {
-  card_id: CardId;
-  column: string;
-};
-
-export type GoalStaticValue = number;
-
-// name of another column in the same question, already used by Progress chart
-export type GoalSelfColumnReference = string;
-
-export type GoalValue = GoalStaticValue | GoalSelfColumnReference | GoalSource;
-
-export type ReferencedCard = {
-  card_id: CardId;
-  columns?: string[];
-};
-
-export type ReferencedCardsResults = Record<CardId, ReferencedCardResult>;
-
-export interface ReferencedCardResult {
-  status: string;
-  error?: string;
-  data?: {
-    cols: DatasetColumn[];
-    rows: RowValues[];
-  };
-}
-
-export type ScalarSegment = {
-  min: GoalStaticValue | null;
-  max: GoalStaticValue | null;
-  color: string;
-  label?: string;
-};
-
-export type GoalSegment = {
-  min: GoalValue | null;
-  max: GoalValue | null;
-  color: string;
-  label?: string;
 };

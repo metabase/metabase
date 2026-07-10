@@ -1,3 +1,5 @@
+import type { CardId } from "./card";
+
 // SmartScalar (Trend Chart)
 export type SmartScalarComparisonType =
   | "anotherColumn"
@@ -63,3 +65,29 @@ export interface TreemapRow {
   enabled: boolean;
   hidden: boolean;
 }
+
+export type GoalSource = {
+  card_id: CardId;
+  column: string;
+};
+
+export type GoalStaticValue = number;
+
+// name of another column in the same question
+export type GoalSelfColumnReference = string;
+
+export type GoalValue = GoalStaticValue | GoalSelfColumnReference | GoalSource;
+
+export type GoalSegment = {
+  min: GoalValue | null;
+  max: GoalValue | null;
+  color: string;
+  label?: string;
+};
+
+export type ScalarSegment = {
+  min: GoalStaticValue | null;
+  max: GoalStaticValue | null;
+  color: string;
+  label?: string;
+};

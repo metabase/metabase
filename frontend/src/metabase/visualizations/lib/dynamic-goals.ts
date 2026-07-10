@@ -1,12 +1,10 @@
 import type {
   CardId,
-  DatasetColumn,
   DatasetData,
   GoalSource,
   GoalValue,
   ReferencedCard,
   RowValue,
-  RowValues,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
@@ -25,12 +23,6 @@ export type GoalRefError = {
   card_id?: CardId;
   column: string;
   reason: GoalRefErrorReason;
-};
-
-export type ResolveGoalValueContext = {
-  cols: DatasetColumn[];
-  rows: RowValues[];
-  referencedCards?: ReferencedCard;
 };
 
 export type ResolvedGoalValue = {
