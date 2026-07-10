@@ -195,10 +195,12 @@
 
 (def expand-data-parts-xf
   "Stateless transducer that expands :data-parts from tool-output results.
-  Passes through all parts unchanged, then appends any data parts after tool-output parts."
+  Passes through all parts unchanged, then appends any non-nil data parts after
+  tool-output parts. Data-part constructors return nil when a profile suppresses
+  that part type, so those values must not enter the output stream."
   (mapcat (fn [part]
             (if (= (:type part) :tool-output)
-              (cons part (get-in part [:result :data-parts]))
+              (cons part (keep identity (get-in part [:result :data-parts])))
               [part]))))
 
 (defn post-process-xf

@@ -280,7 +280,17 @@
           result (into [] streaming/expand-data-parts-xf parts)]
       (is (= 3 (count result)))
       (is (= "a" (:data-type (second result))))
-      (is (= "b" (:data-type (nth result 2)))))))
+      (is (= "b" (:data-type (nth result 2))))))
+  (testing "omits data parts suppressed by the current profile"
+    (let [memory-atom     (atom {:context {:disabled_data_parts ["navigate_to"]}})
+          suppressed-part (binding [shared/*memory-atom* memory-atom]
+                            (streaming/navigate-to-part "/question#abc"))
+          tool-output     {:type   :tool-output
+                           :id     "t1"
+                           :result {:data-parts [suppressed-part]}}
+          result          (into [] streaming/expand-data-parts-xf [tool-output])]
+      (is (nil? suppressed-part))
+      (is (= [tool-output] result)))))
 
 (deftest resolve-links-xf-test
   (testing "resolves metabase:// links in text parts"
