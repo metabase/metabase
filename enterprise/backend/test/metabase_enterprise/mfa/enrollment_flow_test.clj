@@ -38,7 +38,7 @@
         (let [{:keys [secret otpauth_uri]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
           (is (re-find #"^otpauth://totp/" otpauth_uri))
           (testing "a wrong code does not confirm"
-            (mt/client session-key :post 401 "ee/mfa/enroll/confirm" {:code (wrong-code secret)}))
+            (mt/client session-key :post 400 "ee/mfa/enroll/confirm" {:code (wrong-code secret)}))
           (let [{:keys [recovery_codes]} (mt/client session-key :post 200 "ee/mfa/enroll/confirm"
                                                     {:code (totp/generate-code secret)})]
             (is (= 10 (count recovery_codes)))
@@ -99,7 +99,7 @@
                 {secret2 :secret} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
             (is (not= secret secret2) "a fresh secret is issued on each re-enroll")
             (testing "a code from the FIRST (discarded) secret is rejected at confirm"
-              (mt/client session-key :post 401 "ee/mfa/enroll/confirm" {:code (totp/generate-code secret)}))
+              (mt/client session-key :post 400 "ee/mfa/enroll/confirm" {:code (totp/generate-code secret)}))
             (testing "confirming with the SECOND secret succeeds"
               (is (= 10 (count (:recovery_codes (mt/client session-key :post 200 "ee/mfa/enroll/confirm"
                                                            {:code (totp/generate-code secret2)}))))))))))))
@@ -115,7 +115,7 @@
             (mt/client session-key :post 200 "ee/mfa/enroll/confirm" {:code code})
             (testing "the same code is rejected at disable — the time step was already consumed"
               (is (= "Invalid authentication code."
-                     (mt/client session-key :post 401 "ee/mfa/disable" {:code code}))))))))))
+                     (mt/client session-key :post 400 "ee/mfa/disable" {:code code}))))))))))
 
 (deftest disable-throttled-test
   (testing "repeated wrong codes on /disable are throttled — 6-digit codes need brute-force limits"
@@ -125,6 +125,6 @@
           (let [{:keys [secret]} (mt/client session-key :post 200 "ee/mfa/enroll" {:password password})]
             (mt/client session-key :post 200 "ee/mfa/enroll/confirm" {:code (totp/generate-code secret)})
             (dotimes [_ 5]
-              (mt/client session-key :post 401 "ee/mfa/disable" {:code (wrong-code secret)}))
+              (mt/client session-key :post 400 "ee/mfa/disable" {:code (wrong-code secret)}))
             (let [resp (mt/client session-key :post 400 "ee/mfa/disable" {:code (wrong-code secret)})]
               (is (re-find #"Too many attempts!" (str resp))))))))))

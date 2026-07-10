@@ -15,6 +15,7 @@
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -75,7 +76,7 @@
   (events/publish-event! event-topic {:object (t2/select-one :model/User user-id)}))
 
 (defn- invalid-code-ex []
-  (ex-info (tru "Invalid authentication code.") {:status-code 401}))
+  (ex-info (tru "Invalid authentication code.") {:status-code 400}))
 
 ;;; -------------------------------------------------- Enrollment --------------------------------------------------
 
@@ -133,7 +134,7 @@
              (fn []
                ;; one transaction so a consumed recovery code and the enrollment removal land together
                (t2/with-transaction [_conn]
-                 (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
+                 (when-not (verification/verify-attempt! api/*current-user-id* code nil)
                    (throw (invalid-code-ex)))
                  (enrollment/disable! api/*current-user-id*))))
   (notify! api/*current-user-id*
@@ -198,7 +199,7 @@
 
 ;;; -------------------------------------------------- Recovery codes --------------------------------------------------
 
-(api.macros/defendpoint :post "/recovery-codes" :- [:map [:codes [:sequential ms/NonBlankString]]]
+(api.macros/defendpoint :post "/recovery-codes" :- [:map [:recovery_codes [:sequential ms/NonBlankString]]]
   "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a
   fresh second factor — a TOTP code or an unused recovery code — so a stolen password alone can
   never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored."
@@ -208,6 +209,6 @@
   (throttled :regenerate
              (fn []
                (t2/with-transaction [_conn]
-                 (when-not (enrollment/verify-attempt! api/*current-user-id* code nil)
+                 (when-not (verification/verify-attempt! api/*current-user-id* code nil)
                    (throw (invalid-code-ex)))
-                 {:codes (enrollment/reset-recovery-codes! api/*current-user-id*)}))))
+                 {:recovery_codes (enrollment/reset-recovery-codes! api/*current-user-id*)}))))

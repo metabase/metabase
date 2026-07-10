@@ -7,6 +7,7 @@
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.management :as mfa.management]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase-enterprise.mfa.verification :as verification]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.session.api :as api.session]
    [metabase.test :as mt]
@@ -46,7 +47,7 @@
     (testing "step 1: password login returns an MFA challenge, not a session"
       (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
         (is (true? (:mfa_required resp)))
-        (is (= "totp" (:method resp)))
+        (is (some #{"totp"} (:methods resp)))
         (is (string? (:mfa_token resp)))
         (is (nil? (:id resp)) "no session id is issued yet")
         (testing "step 2: verifying a valid code yields a real session"
@@ -129,11 +130,11 @@
       (testing "requires a session"
         (mt/client :post 401 "ee/mfa/recovery-codes" {:code c1}))
       (testing "requires a fresh second factor, not just the session"
-        (mt/client session-key :post 401 "ee/mfa/recovery-codes" {:code "000000"}))
+        (mt/client session-key :post 400 "ee/mfa/recovery-codes" {:code "000000"}))
       (testing "an unused recovery code re-auths; the whole old set is then invalid"
         (let [resp (mt/client session-key :post 200 "ee/mfa/recovery-codes" {:code c1})]
-          (is (= 10 (count (:codes resp))))
-          (is (false? (enrollment/verify-attempt! user-id c1 nil))
+          (is (= 10 (count (:recovery_codes resp))))
+          (is (false? (verification/verify-attempt! user-id c1 nil))
               "the re-auth code was consumed with the rest of the old set"))))))
 
 (deftest password-reset-issues-no-session-test

@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.mfa.api :as mfa.api]
-   [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.totp :as totp]
+   [metabase-enterprise.mfa.verification :as verification]
    [metabase.channel.email :as channel.email]
    [metabase.channel.settings :as channel.settings]
    [metabase.session.api :as api.session]
@@ -30,11 +30,11 @@
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
                                           :credentials {:secret secret :confirmed_at (t/instant)}}]
-      (let [code (enrollment/set-email-otp! user-id)]
+      (let [code (verification/set-email-otp! user-id)]
         (is (re-matches #"\d{6}" code))
-        (is (true? (enrollment/verify-attempt! user-id code (fresh-jti))))
+        (is (true? (verification/verify-attempt! user-id code (fresh-jti))))
         (testing "single-use"
-          (is (false? (enrollment/verify-attempt! user-id code (fresh-jti)))))))))
+          (is (false? (verification/verify-attempt! user-id code (fresh-jti)))))))))
 
 (deftest successful-verify-clears-pending-email-otp-test
   (let [secret (totp/generate-secret)]
@@ -42,17 +42,17 @@
                    :model/AuthIdentity _ {:user_id     user-id
                                           :provider    "totp"
                                           :credentials {:secret secret :confirmed_at (t/instant)}}]
-      (let [email-code (enrollment/set-email-otp! user-id)]
-        (is (true? (enrollment/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
+      (let [email-code (verification/set-email-otp! user-id)]
+        (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
         (testing "a successful TOTP verification kills the pending emailed code for its whole TTL"
-          (is (false? (enrollment/verify-attempt! user-id email-code (fresh-jti)))))))))
+          (is (false? (verification/verify-attempt! user-id email-code (fresh-jti)))))))))
 
 (deftest email-otp-requires-confirmed-enrollment-test
   (mt/with-temp [:model/User {user-id :id} {}
                  :model/AuthIdentity _ {:user_id     user-id
                                         :provider    "totp"
                                         :credentials {:secret (totp/generate-secret)}}]
-    (is (nil? (enrollment/set-email-otp! user-id)))))
+    (is (nil? (verification/set-email-otp! user-id)))))
 
 (deftest expired-email-otp-rejected-test
   (let [secret (totp/generate-secret)]
@@ -60,13 +60,13 @@
                    :model/AuthIdentity {ai-id :id} {:user_id     user-id
                                                     :provider    "totp"
                                                     :credentials {:secret secret :confirmed_at (t/instant)}}]
-      (let [code (enrollment/set-email-otp! user-id)]
+      (let [code (verification/set-email-otp! user-id)]
         ;; back-date the expiry
         (let [ai (t2/select-one :model/AuthIdentity :id ai-id)]
           (t2/update! :model/AuthIdentity ai-id
                       {:credentials (assoc-in (:credentials ai) [:email_otp :exp]
                                               (- (quot (System/currentTimeMillis) 1000) 1))}))
-        (is (false? (enrollment/verify-attempt! user-id code (fresh-jti))))))))
+        (is (false? (verification/verify-attempt! user-id code (fresh-jti))))))))
 
 (deftest send-email-otp-e2e-test
   (mt/with-premium-features #{:multi-factor-auth}

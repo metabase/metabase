@@ -235,8 +235,10 @@ const EnrolledCard = ({
   const handleRegenerate = (event: FormEvent) => {
     event.preventDefault();
     withCode(async () => {
-      const { codes } = await regenerate({ code: code.trim() }).unwrap();
-      onRecoveryCodes(codes);
+      const { recovery_codes } = await regenerate({
+        code: code.trim(),
+      }).unwrap();
+      onRecoveryCodes(recovery_codes);
     });
   };
 

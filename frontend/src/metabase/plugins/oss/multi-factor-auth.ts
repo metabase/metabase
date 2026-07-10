@@ -6,8 +6,7 @@ import type { MfaMethod } from "metabase-types/api";
 
 export type MfaChallengeFormProps = {
   mfaToken: string;
-  method: MfaMethod;
-  methods?: MfaMethod[];
+  methods: MfaMethod[];
   onCancel: () => void;
 };
 
