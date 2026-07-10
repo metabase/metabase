@@ -1,4 +1,4 @@
-name: Build static-viz QuickJS library
+name: Build static-viz Escargot library
 
 on:
   workflow_dispatch:
@@ -6,12 +6,12 @@ on:
     branches:
       - master
     paths:
-      - "native/static-viz-quickjs/**"
-      - ".github/workflows/build-static-viz-quickjs.yml"
+      - "native/static-viz-escargot/**"
+      - ".github/workflows/build-static-viz-escargot.yml"
   pull_request:
     paths:
-      - "native/static-viz-quickjs/**"
-      - ".github/workflows/build-static-viz-quickjs.yml"
+      - "native/static-viz-escargot/**"
+      - ".github/workflows/build-static-viz-escargot.yml"
 
 jobs:
   build:
@@ -34,11 +34,18 @@ jobs:
             lib: libstaticviz.dylib
     steps:
       - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y ninja-build
+          else
+            brew install ninja icu4c pkgconf
+          fi
       - name: Build and smoke-test library
-        run: ./native/static-viz-quickjs/build.sh
+        run: ./native/static-viz-escargot/build.sh
       - name: Upload library
         uses: actions/upload-artifact@v4
         with:
-          name: static-viz-quickjs-${{ matrix.platform }}
-          path: resources/static-viz-quickjs/${{ matrix.platform }}/${{ matrix.lib }}
+          name: static-viz-escargot-${{ matrix.platform }}
+          path: resources/static-viz-escargot/${{ matrix.platform }}/${{ matrix.lib }}
           if-no-files-found: error
