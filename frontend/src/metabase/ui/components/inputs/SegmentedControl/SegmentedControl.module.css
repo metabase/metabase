@@ -1,5 +1,10 @@
 .SegmentedControl {
   background-color: var(--sc-background-color);
+
+  /* Mantine only puts cursor: pointer on the labels; without this the root's
+   * padding ring and the indicator show the default arrow. Inherited by all
+   * descendants that don't declare their own cursor. */
+  cursor: pointer;
 }
 
 .SegmentedControlLabel {
