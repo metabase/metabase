@@ -44,8 +44,31 @@ result tells us whether the e2e catches the same bug the unit test already catch
 3. **A passing mutant is AMBIGUOUS when the e2e is the only oracle.** Here we knew the bug was real
    (unit test catches it), so "e2e passes" cleanly means "e2e less sensitive". But for the true
    e2e-only population there is no unit oracle, so a passing e2e could mean *either* a vacuous/zombie
-   repro *or* a reconstruction that did not actually reintroduce the bug. Scaling therefore needs an
-   independent "the mutation really changed behavior" check before trusting a pass as "vacuous e2e".
+   repro *or* a reconstruction that did not actually reintroduce the bug. This is handled by the
+   **mutation-witness guard** (see below).
 
-Run workflow: `e2e-stress-test-flake-fix.yml`. Mutant branches `corpus-mutant/*` were deleted after
-recording these run URLs (throwaway; no PRs opened).
+## Mutation-changed guard (built + validated)
+
+To disambiguate a passing mutant, every mutant is paired with an independent **witness** — a check
+*separate from the e2e's assertions* that is green on clean HEAD and red on the mutant, proving the
+mutation actually changed behavior. Design + decision table: `scripts/mutation-witness.md`.
+
+Validated on this pilot's 3 "misses" by running each one's unit oracle against the mutant:
+
+| Issue | e2e on mutant | unit **witness** on mutant | verdict |
+|---|---|---|---|
+| 25614 | passes | **fails** — `dataset.unit.spec.ts` ✕ "should return an array of normalized datasets" | e2e **VACUOUS** → cull |
+| 31662 | passes | **fails** — `parsing.unit.spec.ts` 34 failed / 134 passed | e2e **VACUOUS** → cull |
+| 39993 | passes | **fails** — `sync-viz-settings.unit.spec.tsx` 9 failed / 11 passed | e2e **VACUOUS** → cull |
+
+So all 3 passes are confirmed **genuine vacuousness** (bug live, e2e blind to it), not failed
+reconstructions. For the e2e-only population the witness is authored by the reconstruction agent
+(same discipline as the FE hole-closers); if no witness can be made to fail, the mutant is discarded
+rather than scored.
+
+## CI evidence (durable)
+
+Full run **and** job IDs, job URLs, mutant SHAs, and witness results are recorded in
+`evidence/e2e-oracle-pilot.jsonl` (one row per mutant), so every verdict is traceable to a specific
+CI job. Run workflow: `e2e-stress-test-flake-fix.yml`. Mutant branches `corpus-mutant/*` were deleted
+after recording the run/job IDs (throwaway; no PRs opened) — the runs themselves persist.
