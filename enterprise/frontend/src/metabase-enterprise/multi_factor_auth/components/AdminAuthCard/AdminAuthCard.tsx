@@ -13,7 +13,7 @@ export function AdminAuthCard() {
   const { value: enforcement, updateSetting } =
     useAdminSetting("mfa-enforcement");
 
-  const enabled = enforcement === "optional";
+  const enabled = enforcement != null && enforcement !== "off";
 
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
     skip: !enabled,
