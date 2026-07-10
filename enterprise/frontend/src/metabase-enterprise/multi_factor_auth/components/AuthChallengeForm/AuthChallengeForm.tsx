@@ -50,12 +50,9 @@ function ChallengeCodeForm({
   const handleSubmit = async ({ code }: ChallengeCodeValues) => {
     await verifyMfa({
       challenge_token: challengeToken,
-      // recovery codes are lowercase-only server-side; undo mobile keyboards'
-      // auto-capitalization (harmless for numeric TOTP codes)
       code: code.trim().toLowerCase(),
       remember,
     }).unwrap();
-    // The session cookie is now set; refresh and let the route guard redirect.
     await dispatch(completeLogin()).unwrap();
   };
 
@@ -84,9 +81,6 @@ function ChallengeCodeForm({
                 useRecoveryCode ? t`Recovery code` : t`Authenticator code`
               }
               placeholder={useRecoveryCode ? "xxxxx-xxxxx" : "123456"}
-              // no maxLength in recovery mode: it would truncate pastes that
-              // carry leading whitespace, and there is no client-side length
-              // validation to surface the mangled code
               maxLength={useRecoveryCode ? undefined : TOTP_CODE_LENGTH}
               inputMode={useRecoveryCode ? "text" : "numeric"}
               autoCapitalize="none"
@@ -136,8 +130,6 @@ function EmailOtpForm({ challengeToken }: EmailOtpFormProps) {
             {emailSent && (
               <Text c="text-secondary">{t`Code sent — check your email`}</Text>
             )}
-            {/* keep a resend path: the email can be lost, and the code
-                expires after 10 minutes (sends are throttled server-side) */}
             <AuthTextButton
               disabled={isSubmitting}
               onClick={() => submitForm()}

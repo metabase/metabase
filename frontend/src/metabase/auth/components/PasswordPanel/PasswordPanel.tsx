@@ -30,7 +30,6 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeResponse | null>(
     null,
   );
-  // carried from step 1 to the verify request, which is what creates the session
   const [remember, setRemember] = useState(false);
 
   const handleSubmit = useCallback(

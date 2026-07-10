@@ -26,10 +26,7 @@ export const AccountHeader = ({
     () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
     [user],
   );
-  // explicit comparison: the setting is undefined on OSS instances
   const isMfaEnabled = useSetting("mfa-enforcement") === "optional";
-  // MFA only challenges password and LDAP logins, and enrolling requires
-  // confirming a password (or LDAP bind) — SSO users would hit a dead end
   const hasSecurityTab =
     isMfaEnabled && (hasPasswordChange || user.sso_source === "ldap");
 

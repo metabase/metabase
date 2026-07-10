@@ -39,8 +39,6 @@ export function ConfirmCodeForm({
   onCancel,
 }: ConfirmCodeFormProps) {
   const handleSubmit = ({ code }: ConfirmCodeValues) =>
-    // recovery codes are lowercase-only server-side; undo mobile keyboards'
-    // auto-capitalization (harmless for numeric TOTP codes)
     onSubmit(code.trim().toLowerCase());
 
   return (

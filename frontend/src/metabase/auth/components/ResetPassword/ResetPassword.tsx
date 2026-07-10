@@ -46,8 +46,6 @@ export const ResetPassword = ({
       const { sessionCreated } = await dispatch(
         resetPassword({ token, password }),
       ).unwrap();
-      // MFA-enrolled users don't get a session from a password reset; send
-      // them to the login page to sign in with the new password.
       dispatch(
         replace(sessionCreated ? redirectUrl || "/" : Urls.login(redirectUrl)),
       );

@@ -174,9 +174,6 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
         <Stack gap="md">
           <Input.Wrapper label={t`Scan this with an authenticator app`}>
             <Center mt="xs">
-              {/* the padded white box is the QR quiet zone — react-qr-code
-                  renders modules edge-to-edge, and the modal bg is dark in
-                  dark mode */}
               <Box bg="white" p="md">
                 <QRCode value={enrollment.otpauth_uri} size={QR_CODE_SIZE} />
               </Box>

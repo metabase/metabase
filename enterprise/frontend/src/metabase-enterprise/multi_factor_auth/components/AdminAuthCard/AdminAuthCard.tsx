@@ -13,14 +13,12 @@ export function AdminAuthCard() {
   const { value: enforcement, updateSetting } =
     useAdminSetting("mfa-enforcement");
 
-  // enabled = setting is present and not "off"; safe against undefined (OSS where setting is absent)
   const enabled = enforcement === "optional";
 
   const { data: overview } = useGetMfaAdminOverviewQuery(undefined, {
     skip: !enabled,
   });
 
-  // Feature gone AND setting off: nothing to manage, nothing to sell here.
   if (!hasFeature && !enabled) {
     return null;
   }
@@ -44,7 +42,6 @@ export function AdminAuthCard() {
         checked={enabled}
         onChange={(e) => handleChange(e.target.checked)}
         label={enabled ? t`Enabled` : t`Disabled`}
-        // turning ON requires the feature; turning OFF always works (license-lapse escape hatch)
         disabled={!enabled && !hasFeature}
         w="auto"
         size="sm"
