@@ -322,7 +322,7 @@ config:
     thread-interrupt-escalation-timeout-ms: 0
     transform-run-job-sql-concurrency: 3
     transform-timeout: 240
-    transforms-enabled: false
+    transforms-enabled: null
     unaggregated-query-row-limit: null
     uploads-settings: null
     usage-metadata-enabled: false
