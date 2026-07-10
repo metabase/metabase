@@ -4,7 +4,10 @@ import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useSetting } from "metabase/common/hooks";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import {
+  PLUGIN_IS_PASSWORD_USER,
+  PLUGIN_MULTI_FACTOR_AUTH,
+} from "metabase/plugins";
 import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
@@ -27,6 +30,8 @@ export const AccountHeader = ({
     [user],
   );
   const isMfaEnabled = useSetting("mfa-enabled");
+  const { data: mfaStatus } = PLUGIN_MULTI_FACTOR_AUTH.useGetMfaStatus();
+  const hasSecurityTab = isMfaEnabled || mfaStatus?.mfa_enabled;
 
   const tabs = useMemo(
     () => [
@@ -34,13 +39,13 @@ export const AccountHeader = ({
       ...(hasPasswordChange
         ? [{ name: t`Password`, value: "/account/password" }]
         : []),
-      ...(isMfaEnabled
+      ...(hasSecurityTab
         ? [{ name: t`Security`, value: "/account/security" }]
         : []),
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },
     ],
-    [hasPasswordChange, isMfaEnabled],
+    [hasPasswordChange, hasSecurityTab],
   );
 
   const userFullName = getFullName(user);

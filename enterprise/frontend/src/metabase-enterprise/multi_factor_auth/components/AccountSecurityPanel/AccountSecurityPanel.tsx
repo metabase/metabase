@@ -1,8 +1,14 @@
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
 import { Box, Button, Group, Input } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useGetMfaStatusQuery } from "metabase-enterprise/api";
+import type { MfaStatus } from "metabase-types/api";
 
 import { DisableModal } from "./DisableModal";
 import { EnrollModal } from "./EnrollModal";
@@ -11,41 +17,31 @@ import { RecoveryCodesModal } from "./RecoveryCodesModal";
 type SecurityModal = "enroll" | "disable" | "recovery-codes";
 
 export function AccountSecurityPanel() {
-  const { data: status } = useGetMfaStatusQuery();
+  const { data: status, isLoading, error } = useGetMfaStatusQuery();
   const [openedModal, setOpenedModal] = useState<SecurityModal | null>(null);
+  const hasFeature = useHasTokenFeature("multi-factor-auth");
+  const dispatch = useDispatch();
 
   const handleCloseModal = () => setOpenedModal(null);
 
+  const handleDisableSuccess = () => {
+    setOpenedModal(null);
+    if (!hasFeature) {
+      dispatch(push(Urls.accountSettings()));
+    }
+  };
+
+  if (isLoading || error != null || status == null) {
+    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
   return (
     <>
-      <Input.Wrapper
-        label={t`Two-factor authentication`}
-        description={
-          status?.enrolled
-            ? t`Your account is protected with a code from an authenticator app.`
-            : t`Protect your account with a code from an authenticator app.`
-        }
-      >
-        <Box mt="sm">
-          {status?.enrolled ? (
-            <Group gap="sm">
-              <Button onClick={() => setOpenedModal("recovery-codes")}>
-                {t`Generate new recovery codes`}
-              </Button>
-              <Button
-                color="feedback-negative"
-                onClick={() => setOpenedModal("disable")}
-              >
-                {t`Turn off two-factor authentication`}
-              </Button>
-            </Group>
-          ) : (
-            <Button onClick={() => setOpenedModal("enroll")}>
-              {t`Set up two-factor authentication`}
-            </Button>
-          )}
-        </Box>
-      </Input.Wrapper>
+      <MfaSection
+        status={status}
+        hasFeature={hasFeature}
+        onOpenModal={setOpenedModal}
+      />
       <EnrollModal
         opened={openedModal === "enroll"}
         onSuccess={handleCloseModal}
@@ -53,7 +49,7 @@ export function AccountSecurityPanel() {
       />
       <DisableModal
         opened={openedModal === "disable"}
-        onSuccess={handleCloseModal}
+        onSuccess={handleDisableSuccess}
         onCancel={handleCloseModal}
       />
       <RecoveryCodesModal
@@ -62,5 +58,44 @@ export function AccountSecurityPanel() {
         onCancel={handleCloseModal}
       />
     </>
+  );
+}
+
+type MfaSectionProps = {
+  status: MfaStatus;
+  hasFeature: boolean;
+  onOpenModal: (modal: SecurityModal) => void;
+};
+
+function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
+  return (
+    <Input.Wrapper
+      label={t`Two-factor authentication`}
+      description={
+        status.enrolled
+          ? t`Your account is protected with a code from an authenticator app.`
+          : t`Protect your account with a code from an authenticator app.`
+      }
+    >
+      <Box mt="sm">
+        {status.enrolled ? (
+          <Group gap="sm">
+            <Button onClick={() => onOpenModal("recovery-codes")}>
+              {t`Generate new recovery codes`}
+            </Button>
+            <Button
+              color="feedback-negative"
+              onClick={() => onOpenModal("disable")}
+            >
+              {t`Turn off two-factor authentication`}
+            </Button>
+          </Group>
+        ) : (
+          <Button disabled={!hasFeature} onClick={() => onOpenModal("enroll")}>
+            {t`Set up two-factor authentication`}
+          </Button>
+        )}
+      </Box>
+    </Input.Wrapper>
   );
 }

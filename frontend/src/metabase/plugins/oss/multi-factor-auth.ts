@@ -2,7 +2,7 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { MfaMethod } from "metabase-types/api";
+import type { MfaMethod, MfaStatus } from "metabase-types/api";
 
 export type AuthChallengeFormProps = {
   challengeToken: string;
@@ -13,10 +13,13 @@ export type AuthChallengeFormProps = {
   onCancel: () => void;
 };
 
+export type UseGetMfaStatusResult = {
+  data?: MfaStatus;
+};
+
 const getDefaultPluginMultiFactorAuth = () => ({
+  useGetMfaStatus: (): UseGetMfaStatusResult => ({ data: undefined }),
   AuthChallengeForm: PluginPlaceholder<AuthChallengeFormProps>,
-  // Routed at /account/security, so direct navigation in OSS should 404
-  // rather than render a blank page.
   AccountSecurityPanel: NotFoundPlaceholder,
   AdminAuthCard: PluginPlaceholder,
 });
