@@ -24,7 +24,7 @@ import {
 } from "metabase/selectors/user";
 import { Button, Flex, Icon } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
@@ -44,11 +44,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const baseCollectionsById = useMemo(
     () =>
-      // Unjustified type cast. FIXME
-      getExpandedCollectionsById(
-        allCollectionsList,
-        userPersonalCollectionId,
-      ) as Record<CollectionId, Collection>,
+      getExpandedCollectionsById(allCollectionsList, userPersonalCollectionId),
     [allCollectionsList, userPersonalCollectionId],
   );
   const getIcon = useGetIcon();

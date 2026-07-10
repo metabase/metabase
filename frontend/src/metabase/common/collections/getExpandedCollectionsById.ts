@@ -1,21 +1,34 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { ExpandedCollection } from "metabase/redux/store";
+import type { Collection, CollectionId } from "metabase-types/api";
+
 import {
   PERSONAL_COLLECTION,
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
 } from "./constants";
 
+// the fake root/personal constants carry only display fields; these fill in
+// the rest of the Collection contract
+const FAKE_COLLECTION_DEFAULTS = {
+  description: null,
+  can_write: false,
+  can_restore: false,
+  can_delete: false,
+  namespace: null,
+} as const satisfies Partial<Collection>;
+
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
 function getExpandedCollectionsById(
-  collections,
-  userPersonalCollectionId,
-  collectionFilter = () => true,
-) {
-  const collectionsById = {};
+  collections: Collection[],
+  userPersonalCollectionId: CollectionId | null | undefined,
+  collectionFilter: (collection: Collection) => boolean = () => true,
+): Record<CollectionId, ExpandedCollection> {
+  const collectionsById: Record<CollectionId, ExpandedCollection> = {};
   const filteredCollections = collections.filter(collectionFilter);
   for (const c of filteredCollections) {
     collectionsById[c.id] = {
@@ -32,15 +45,17 @@ function getExpandedCollectionsById(
   }
 
   // "Our Analytics"
-  collectionsById[ROOT_COLLECTION.id] = {
-    ...ROOT_COLLECTION,
-    name: collectionsById[ROOT_COLLECTION.id]
-      ? ROOT_COLLECTION.name
-      : t`Collections`,
-    parent: null,
-    children: [],
-    ...(collectionsById[ROOT_COLLECTION.id] || {}),
-  };
+  const existingRoot = collectionsById[ROOT_COLLECTION.id];
+  const root: ExpandedCollection = existingRoot
+    ? { ...FAKE_COLLECTION_DEFAULTS, ...ROOT_COLLECTION, ...existingRoot }
+    : {
+        ...FAKE_COLLECTION_DEFAULTS,
+        ...ROOT_COLLECTION,
+        name: t`Collections`,
+        parent: null,
+        children: [],
+      };
+  collectionsById[ROOT_COLLECTION.id] = root;
 
   // "My personal collection"
   if (
@@ -48,23 +63,23 @@ function getExpandedCollectionsById(
     !!collectionsById[userPersonalCollectionId]
   ) {
     const personalCollection = collectionsById[userPersonalCollectionId];
-    collectionsById[ROOT_COLLECTION.id].children.push({
+    root.children.push({
+      ...FAKE_COLLECTION_DEFAULTS,
       ...PERSONAL_COLLECTION,
       id: userPersonalCollectionId,
-      parent: collectionsById[ROOT_COLLECTION.id],
+      parent: root,
       children: personalCollection?.children || [],
     });
   }
 
   // "Personal Collections"
   collectionsById[PERSONAL_COLLECTIONS.id] = {
+    ...FAKE_COLLECTION_DEFAULTS,
     ...PERSONAL_COLLECTIONS,
-    parent: collectionsById[ROOT_COLLECTION.id],
+    parent: root,
     children: [],
   };
-  collectionsById[ROOT_COLLECTION.id].children.push(
-    collectionsById[PERSONAL_COLLECTIONS.id],
-  );
+  root.children.push(collectionsById[PERSONAL_COLLECTIONS.id]);
 
   // iterate over original collections so we don't include ROOT_COLLECTION as
   // a child of itself
@@ -72,15 +87,14 @@ function getExpandedCollectionsById(
     const c = collectionsById[id];
     // don't add root as parent of itself
     if (c.path && c.id !== ROOT_COLLECTION.id) {
-      let parentId;
+      let parentId: CollectionId | undefined;
       // move personal collections into PERSONAL_COLLECTIONS fake collection
       if (c.personal_owner_id != null) {
         parentId = PERSONAL_COLLECTIONS.id;
       } else {
         // Find the closest parent that the user has permissions for
-        const parentIdIndex = _.findLastIndex(
-          c.path,
-          (p) => collectionsById[p],
+        const parentIdIndex = c.path.findLastIndex(
+          (p) => collectionsById[p] != null,
         );
         parentId = parentIdIndex >= 0 ? c.path[parentIdIndex] : undefined;
       }
@@ -101,10 +115,10 @@ function getExpandedCollectionsById(
 
   // remove PERSONAL_COLLECTIONS collection if there are none or just one (the user's own)
   if (collectionsById[PERSONAL_COLLECTIONS.id].children.length <= 1) {
-    delete collectionsById[PERSONAL_COLLECTIONS.id];
-    collectionsById[ROOT_COLLECTION.id].children = collectionsById[
-      ROOT_COLLECTION.id
-    ].children.filter((c) => c.id !== PERSONAL_COLLECTIONS.id);
+    root.children = root.children.filter(
+      (c) => c.id !== PERSONAL_COLLECTIONS.id,
+    );
+    return _.omit(collectionsById, String(PERSONAL_COLLECTIONS.id));
   }
 
   return collectionsById;
