@@ -71,8 +71,8 @@
 (defn- boolean-value-clause? [clause]
   (and (driver-api/is-clause? :value clause)
        (or (boolean? (driver-api/match-one clause
-                       [_ (opts :guard :lib/uuid) val] val ;; mbql5
-                       [_ val] val))
+                       [_ (opts :guard :lib/uuid) val & _] val ;; mbql5
+                       [_ val & _] val))
            (boolean-typed-clause? clause))))
 
 (defn boolean-expression-clause?
