@@ -161,14 +161,12 @@ jobs:
 
       - name: Compute sensible sdkRelease defaults
         id: sdk-release
+        env:
+          LATEST_VERSION: ${{ vars.LATEST_VERSION }}
         run: |
-          # TODO (Kelvin 2026-07-09) these are sensible starting defaults, not
-          # a policy decision - the whole point of this PR is that a human
-          # reviews/edits distTag and tagAsLatest before merging. In
-          # particular `tagAsLatest` always defaults to false here because
-          # this workflow has no reliable way to know whether the branch
-          # being released is the current "latest" major - that determination
-          # is left to the reviewer.
+          # These are sensible starting defaults, not a policy decision - the
+          # whole point of this PR is that a human reviews/edits distTag and
+          # tagAsLatest before merging.
           #
           # "<major>-stable" and "<major>-beta" ARE real, already-live npm
           # dist-tags (confirmed via `npm dist-tag ls @metabase/embedding-sdk-react`
@@ -192,16 +190,43 @@ jobs:
               ;;
           esac
 
+          # tagAsLatest: for patch/minor (the stable-channel case), it's true
+          # only when this bump's major version matches `vars.LATEST_VERSION`
+          # (the major version of the most recent gold/stable release) - that
+          # repo variable is the one reliable signal this workflow has for
+          # "is this branch the current latest major". alpha/beta/preminor
+          # are never the npm `latest` tag, so they always stay false.
+          # `vars.LATEST_VERSION` can be unset (forks, local testing) - an
+          # empty value is treated as "no match", not an error.
+          case "$RELEASE_TYPE" in
+            patch|minor)
+              if [ -n "$LATEST_VERSION" ] && [ "$MAJOR_VERSION" = "$LATEST_VERSION" ]; then
+                TAG_AS_LATEST=true
+              else
+                TAG_AS_LATEST=false
+              fi
+              ;;
+            *)
+              TAG_AS_LATEST=false
+              ;;
+          esac
+
           echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "tag_as_latest=$TAG_AS_LATEST" >> "$GITHUB_OUTPUT"
 
       - name: Write sdkRelease metadata block
         id: write-metadata
         run: |
-          # tagAsLatest always resets to false here, even if a previous
-          # sdkRelease block already had it set to true - the reviewer opts
-          # in per release on the PR, it's never carried forward silently.
+          # Writes whatever tagAsLatest the "Compute sensible sdkRelease
+          # defaults" step above computed (true or false) - it's never
+          # forced back to false here. That step already ignores any
+          # previous sdkRelease.tagAsLatest value (it derives the default
+          # fresh from vars.LATEST_VERSION every run), so a stale `true`
+          # from an earlier release can't leak forward either way; the
+          # reviewer can still override the written value on the PR.
           jq --arg distTag "${{ steps.sdk-release.outputs.dist_tag }}" \
-             '.sdkRelease.distTag = $distTag | .sdkRelease.tagAsLatest = false' \
+             --argjson tagAsLatest ${{ steps.sdk-release.outputs.tag_as_latest }} \
+             '.sdkRelease.distTag = $distTag | .sdkRelease.tagAsLatest = $tagAsLatest' \
              "$package_template" > "$package_template.tmp"
           mv "$package_template.tmp" "$package_template"
 
@@ -220,7 +245,7 @@ jobs:
           - \`previous_version\`: ${{ steps.current.outputs.version }}
           - \`new_version\`: ${{ steps.bump.outputs.new_version }}
           - \`distTag\` (default, review before merging): ${{ steps.sdk-release.outputs.dist_tag }}
-          - \`tagAsLatest\` (default, review before merging): ${{ steps.write-metadata.outputs.tag_as_latest }}
+          - \`tagAsLatest\` (auto-computed from \`vars.LATEST_VERSION\`, review before merging): ${{ steps.write-metadata.outputs.tag_as_latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
@@ -259,7 +284,7 @@ jobs:
 
           **Review before merging:**
           - `sdkRelease.distTag` currently defaults to `${{ steps.sdk-release.outputs.dist_tag }}` - override it here if this release should publish under a different npm dist-tag.
-          - `sdkRelease.tagAsLatest` currently defaults to `${{ steps.write-metadata.outputs.tag_as_latest }}` - flip it to `true` only if this release should become the `latest` tag on npm.
+          - `sdkRelease.tagAsLatest` is auto-computed as `${{ steps.write-metadata.outputs.tag_as_latest }}` (`true` when this bump's major version matches `vars.LATEST_VERSION`, the current npm `latest` major - `false` otherwise) - still worth a second look here before merging, override it if this release should (or shouldn't) become the `latest` tag on npm.
           ${{ inputs.release_type == 'preminor' && format('- This is a `preminor` bump (master -> next major''s alpha). Merging this PR (with the `sdk-release-trigger` label) publishes `{0}` to npm and tags the release exactly like any other bump - remove the label first if you want to bump the version without triggering a release.', steps.bump.outputs.new_version) || '' }}
 
           Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
