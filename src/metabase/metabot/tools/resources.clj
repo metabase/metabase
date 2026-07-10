@@ -603,7 +603,8 @@
                                  :visualization_settings]
                                 :dashboard_id dashboard-id
                                 {:order-by [[:row :asc] [:col :asc]]})
-        card-ids     (into #{} (keep :card_id) dashcards)
+        ;; action buttons render via action_id, so their card_id is never looked up
+        card-ids     (into #{} (comp (remove :action_id) (keep :card_id)) dashcards)
         readable     (when (seq card-ids)
                        (->> (t2/select [:model/Card :id :name :type :description :card_schema
                                         :collection_id :database_id :table_id]
