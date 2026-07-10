@@ -382,9 +382,11 @@
   (mt/test-driver :sqlserver
     (testing "Should use efficient functions like year() for date bucketing (#9934)"
       (letfn [(query-with-bucketing [unit]
-                (mt/mbql-query checkins
-                  {:aggregation [[:count]]
-                   :breakout    [[:field $date {:temporal-unit unit}]]}))]
+                (let [mp    (mt/metadata-provider)
+                      date  (lib.metadata/field mp (mt/id :checkins :date))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket date (keyword unit))))))]
         (doseq [[unit {:keys [expected-sql expected-rows]}]
                 {"year"
                  {:expected-sql
@@ -476,10 +478,18 @@
 (deftest ^:parallel truncated-datetime-still-datetime-test
   (mt/test-driver :sqlserver
     (testing "When truncating a `:type/DateTime` to a date-sized unit, return datetime"
-      (letfn [(query-with-bucketing [unit]
-                (mt/mbql-query orders
-                  {:aggregation [[:count]]
-                   :breakout    [[:field $created_at {:temporal-unit unit}]]}))]
+      (letfn [(orders-query-with-bucketing [unit]
+                (let [mp         (mt/metadata-provider)
+                      created-at (lib.metadata/field mp (mt/id :orders :created_at))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket created-at (keyword unit))))))
+              (checkins-query-with-bucketing [unit]
+                (let [mp   (mt/metadata-provider)
+                      date (lib.metadata/field mp (mt/id :checkins :date))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket date (keyword unit))))))]
         (doseq [[unit {:keys [expected-sql expected-rows]}]
                 {"year"
                  {:expected-sql
@@ -556,23 +566,21 @@
                    ["2013-01-22T00:00:00Z" 1]
                    ["2013-01-23T00:00:00Z" 1]]}}]
           (testing (format "\nUnit = %s\n" unit)
-            (testing "Should generate the correct SQL query"
-              (is (= expected-sql
-                     (pretty-sql (:query (qp.compile/compile (query-with-bucketing unit)))))))
-            (testing "Should still return correct results"
-              (is (= expected-rows
-                     (take 5 (mt/rows
-                              (mt/run-mbql-query checkins
-                                {:aggregation [[:count]]
-                                 :breakout    [[:field $date {:temporal-unit unit}]]})))))
-              (is (= [:type/DateTime :type/Integer]
-                     (->> {:aggregation [[:count]]
-                           :breakout    [[:field $created_at {:temporal-unit unit}]]}
-                          (mt/run-mbql-query orders)
-                          :data
-                          :results_metadata
-                          :columns
-                          (map :base_type)))))))))))
+            (let [orders-query   (orders-query-with-bucketing unit)
+                  checkins-query (checkins-query-with-bucketing unit)]
+              (testing "Should generate the correct SQL query"
+                (is (= expected-sql
+                       (pretty-sql (:query (qp.compile/compile orders-query))))))
+              (testing "Should still return correct results"
+                (is (= expected-rows
+                       (take 5 (mt/rows (qp/process-query checkins-query)))))
+                (is (= [:type/DateTime :type/Integer]
+                       (->> orders-query
+                            qp/process-query
+                            :data
+                            :results_metadata
+                            :columns
+                            (map :base_type))))))))))))
 
 (deftest ^:parallel top-level-boolean-expressions-test
   (mt/test-driver :sqlserver
@@ -813,9 +821,10 @@
                                           :from   [:attempts]
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
-                                                   [:=
-                                                    [:field (mt/id :attempts :datetime) nil]
-                                                    (sql.qp/compiled [:raw "?"])])})))]
+                                                   (sql.qp/mbql-clause
+                                                    :sqlserver :=
+                                                    (sql.qp/mbql-clause :sqlserver :field (mt/id :attempts :datetime))
+                                                    (sql.qp/compiled [:raw "?"])))})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]
             (testing (pr-str query)
