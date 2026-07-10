@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
-import { resolveQuestionId } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion/SdkAdHocQuestion";
+import { resolveQuestionId } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion/utils";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
   BackButton,

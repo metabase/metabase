@@ -397,8 +397,13 @@ describe("native query prop (Metabot SQL editor)", () => {
   it("opens the SQL editor when the query is a native card", async () => {
     await setup();
 
-    expect(
-      await screen.findByTestId("mock-native-query-editor"),
-    ).toBeInTheDocument();
+    const editor = await screen.findByTestId("mock-native-query-editor");
+    expect(editor).toBeInTheDocument();
+
+    // Assert the SQL builder chrome actually rendered inside the editor, not
+    // just an empty container: the data source selector shows the database.
+    expect(within(editor).getByTestId("selected-database")).toHaveTextContent(
+      TEST_DB.name,
+    );
   });
 });

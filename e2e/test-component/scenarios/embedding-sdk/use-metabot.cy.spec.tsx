@@ -153,7 +153,13 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     cy.wait("@metabotAgent", { timeout: 20_000 });
 
     getSdkRoot().within(() => {
-      cy.findByTestId("native-query-editor-container").should("be.visible");
+      cy.findByTestId("native-query-editor-container")
+        .should("be.visible")
+        .within(() => {
+          // The run button lives inside the editor chrome, confirming the SQL
+          // builder actually rendered — not just an empty container.
+          cy.icon("play").should("be.visible");
+        });
     });
   });
 
