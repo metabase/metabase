@@ -34,7 +34,13 @@
 (defmacro with-new-search-if-available*
   "Create a temporary index table for the duration of the body."
   [& body]
-  `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)]
+  `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)
+                               ;; active-engines derives from the default engine, so pinning the default
+                               ;; would deactivate semantic; keep it active (and indexed) when supported.
+                               search.engine/active-engines (fn []
+                                                              (cond-> [:search.engine/appdb]
+                                                                (search.engine/supported-engine? :search.engine/semantic)
+                                                                (conj :search.engine/semantic)))]
      (with-temp-index-table
        (search/reindex! {:async? false :in-place? true})
        ~@body)))
@@ -59,7 +65,12 @@
    Semantic queries go to :search.engine/semantic and keyword queries fall back to :search.engine/in-place."
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/in-place)
-                               search.engine/supported-engines (constantly [:search.engine/semantic :search.engine/in-place])]
+                               search.engine/supported-engines (constantly [:search.engine/semantic :search.engine/in-place])
+                               ;; active-engines derives from the default engine; semantic must stay active
+                               ;; when supported for semantic queries to reach it.
+                               search.engine/active-engines (fn []
+                                                              (when (search.engine/supported-engine? :search.engine/semantic)
+                                                                [:search.engine/semantic]))]
      ~@body))
 
 (defmacro with-new-search-and-legacy-search
