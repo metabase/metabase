@@ -1,0 +1,30 @@
+diff --git a/frontend/src/metabase/AppThemeProvider.unit.spec.tsx b/frontend/src/metabase/AppThemeProvider.unit.spec.tsx
+new file mode 100644
+index 00000000000..9a0f8088ddb
+--- /dev/null
++++ b/frontend/src/metabase/AppThemeProvider.unit.spec.tsx
+@@ -0,0 +1,24 @@
++import { getColorSchemeFromDisplayTheme } from "./AppThemeProvider";
++
++// Witness for metabase#61741: pivot tables (and all content) in static embedding's
++// dark mode had white cell backgrounds because the "night" display theme was not
++// applied. In the current architecture the embed theme ("night") is resolved to a
++// color scheme ("dark") by getColorSchemeFromDisplayTheme; for static/public
++// embedding this comes from the iframe hash (#theme=night). If "night" fails to
++// resolve to "dark", the visualization theme's other.colorScheme is not "dark", and
++// PivotTable's getCellBackgroundColor returns the light (white) branch instead of the
++// transparent/dark one.
++describe("getColorSchemeFromDisplayTheme (metabase#61741)", () => {
++  it("resolves the embed 'night' theme to the dark color scheme", () => {
++    // This is the assertion that discriminates the bug: night embed theme must map
++    // to the dark color scheme so dashboards/pivot tables render dark, not white.
++    expect(getColorSchemeFromDisplayTheme("night")).toBe("dark");
++  });
++
++  it("resolves other display themes as expected", () => {
++    expect(getColorSchemeFromDisplayTheme("dark")).toBe("dark");
++    expect(getColorSchemeFromDisplayTheme("light")).toBe("light");
++    expect(getColorSchemeFromDisplayTheme("transparent")).toBe("light");
++    expect(getColorSchemeFromDisplayTheme(undefined)).toBe("light");
++  });
++});

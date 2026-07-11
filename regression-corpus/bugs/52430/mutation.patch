@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/redux/downloads.ts b/frontend/src/metabase/redux/downloads.ts
+index 0e907a252b6..537920acdd8 100644
+--- a/frontend/src/metabase/redux/downloads.ts
++++ b/frontend/src/metabase/redux/downloads.ts
+@@ -385,7 +385,7 @@ const getEmbedQuestionParams = (
+   // from window.location.search.
+   const downloadParameters = isEmbeddingSdk()
+     ? params
+-    : convertSearchParamsToObject(new URLSearchParams(window.location.search));
++    : Object.fromEntries(new URLSearchParams(window.location.search));
+ 
+   return {
+     method: "GET",

@@ -1,0 +1,30 @@
+diff --git a/frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/AddEditEmailSidebar.tsx b/frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/AddEditEmailSidebar.tsx
+index 7e25e269ba0..ff0f83aaf12 100644
+--- a/frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/AddEditEmailSidebar.tsx
++++ b/frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/AddEditEmailSidebar.tsx
+@@ -120,9 +120,7 @@ export const AddEditEmailSidebar = ({
+                 onChannelPropertyChange("recipients", recipients)
+               }
+               invalidRecipientText={(domains) =>
+-                userCanAccessSettings
+-                  ? t`You're only allowed to email subscriptions to addresses ending in ${domains}`
+-                  : t`You're only allowed to email subscriptions to allowed domains`
++                t`You're only allowed to email subscriptions to addresses ending in ${domains}`
+               }
+             />
+           </div>
+diff --git a/frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx b/frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
+index ea81bbdca7a..a69bfbee471 100644
+--- a/frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
++++ b/frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
+@@ -380,9 +380,7 @@ export const CreateOrEditQuestionAlertModal = ({
+               }}
+               emailRecipientText={t`Email alerts to:`}
+               getInvalidRecipientText={(domains) =>
+-                userCanAccessSettings
+-                  ? t`You're only allowed to email alerts to addresses ending in ${domains}`
+-                  : t`You're only allowed to email alerts to allowed domains`
++                t`You're only allowed to email alerts to addresses ending in ${domains}`
+               }
+             />
+           </AlertModalSettingsBlock>

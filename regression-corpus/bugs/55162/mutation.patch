@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/query_builder/actions/navigation.ts b/frontend/src/metabase/query_builder/actions/navigation.ts
+index 9bc76494197..467b4851e7c 100644
+--- a/frontend/src/metabase/query_builder/actions/navigation.ts
++++ b/frontend/src/metabase/query_builder/actions/navigation.ts
+@@ -47,6 +47,7 @@ export const popState = createThunkAction(
+     const card = getCard(getState());
+     if (location.state && location.state.card) {
+       if (!_.isEqual(card, location.state.card)) {
++        const shouldUpdateUrl = location.state.card.type === "model";
+         const isEmptyQuery = !location.state.card.dataset_query.database;
+ 
+         if (isEmptyQuery) {
+@@ -56,7 +57,7 @@ export const popState = createThunkAction(
+           await dispatch(initializeQB(location, {}));
+         } else {
+           await dispatch(
+-            setCardAndRun(location.state.card, { shouldUpdateUrl: false }),
++            setCardAndRun(location.state.card, { shouldUpdateUrl }),
+           );
+           await dispatch(setCurrentState(location.state));
+           await dispatch(resetUIControls());

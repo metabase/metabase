@@ -1,0 +1,51 @@
+diff --git a/frontend/src/metabase/visualizations/components/LeafletMap.unit.spec.tsx b/frontend/src/metabase/visualizations/components/LeafletMap.unit.spec.tsx
+index 2760a380992..75e2108dcc7 100644
+--- a/frontend/src/metabase/visualizations/components/LeafletMap.unit.spec.tsx
++++ b/frontend/src/metabase/visualizations/components/LeafletMap.unit.spec.tsx
+@@ -84,6 +84,46 @@ describe("LeafletMap", () => {
+       expect(setViewSpy).not.toHaveBeenCalled();
+     });
+ 
++    it("should preserve the user's current zoom on a pure resize (metabase#11211)", () => {
++      // Saved view settings say zoom 4, but the user has zoomed in to 10.
++      const savedSettings = {
++        "map.latitude_column": "lat",
++        "map.longitude_column": "lng",
++        "map.center_latitude": 40,
++        "map.center_longitude": -100,
++        "map.zoom": 4,
++      };
++      const USER_ZOOM = 10;
++
++      const initialProps = createProps({
++        settings: savedSettings,
++        zoom: USER_ZOOM,
++        width: 800,
++        height: 600,
++      });
++      const ref = createRef<LeafletMap>();
++      const { rerender } = render(<LeafletMap ref={ref} {...initialProps} />);
++      const mapInstance = ref.current?.map;
++
++      expect(mapInstance).toBeDefined();
++      const setViewSpy = jest.spyOn(mapInstance!, "setView");
++
++      // Pure resize: dimensions change, but points are unchanged (same reference).
++      const resizedProps = createProps({
++        settings: savedSettings,
++        zoom: USER_ZOOM,
++        points: initialProps.points,
++        width: 801,
++        height: 600,
++      });
++      rerender(<LeafletMap ref={ref} {...resizedProps} />);
++
++      // A resize must keep the user's current zoom (10), not snap back to the
++      // saved zoom (4). The buggy code resets to settings["map.zoom"] === 4.
++      expect(setViewSpy).toHaveBeenCalledWith(expect.anything(), USER_ZOOM);
++      expect(setViewSpy).not.toHaveBeenCalledWith(expect.anything(), 4);
++    });
++
+     it("should recalculate zoom when points do change", () => {
+       const initialProps = createProps();
+       const ref = createRef<LeafletMap>();

@@ -1,0 +1,7 @@
+issue: 55322
+fix_commit: c5d7b545eef623967c9d7bef39af8c00d77d350c
+e2e_repro: e2e/test/scenarios/admin/datamodel/segments.cy.spec.ts
+population: e2e_only
+wave: 4
+witness_outcome: witness_authored
+layer: frontend

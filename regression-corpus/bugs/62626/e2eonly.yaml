@@ -1,0 +1,7 @@
+issue: 62626
+fix_commit: 894290024a0c3abc1a82bf0a171db73ee683940d
+e2e_repro: e2e/test/scenarios/data-model/data-model-shared-2.cy.spec.ts
+population: e2e_only
+wave: 4
+witness_outcome: witness_authored
+layer: frontend

@@ -1,0 +1,33 @@
+diff --git a/frontend/src/metabase/visualizations/components/LeafletMap.tsx b/frontend/src/metabase/visualizations/components/LeafletMap.tsx
+index 8b7c69c3a03..e1a1157b3e5 100644
+--- a/frontend/src/metabase/visualizations/components/LeafletMap.tsx
++++ b/frontend/src/metabase/visualizations/components/LeafletMap.tsx
+@@ -155,7 +155,7 @@ export class LeafletMap<
+       return;
+     }
+ 
+-    const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
++    const { bounds, settings, zoomControl } = this.props;
+ 
+     if (prevProps?.zoomControl !== zoomControl) {
+       if (zoomControl === false) {
+@@ -183,19 +183,6 @@ export class LeafletMap<
+       settings["map.center_longitude"],
+     ];
+ 
+-    // Pure resize (no data change): preserve user's current view
+-    if (!isInitialUpdate && !pointsChanged && dimensionsChanged) {
+-      if (zoom != null) {
+-        const currentCenter = this.map.getCenter();
+-        this.map.setView(
+-          [lat ?? currentCenter.lat, lng ?? currentCenter.lng],
+-          zoom,
+-        );
+-      }
+-      // Don't reset to saved settings or recalculate on pure resize
+-      return;
+-    }
+-
+     // Initial update or data changed: apply saved settings if available
+     if (
+       !isNullOrUndefined(centerLatitude) &&

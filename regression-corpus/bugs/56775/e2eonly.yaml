@@ -1,0 +1,7 @@
+issue: 56775
+fix_commit: c4cb9263f6478e82d0efae63ca80bb67b4b2e478
+e2e_repro: e2e/test/scenarios/models/reproductions-2.cy.spec.ts
+population: e2e_only
+wave: 4
+witness_outcome: witness_authored
+layer: frontend

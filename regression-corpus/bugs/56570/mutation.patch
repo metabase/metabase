@@ -1,0 +1,14 @@
+diff --git a/frontend/src/metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css b/frontend/src/metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css
+index 25676d0ea4e..d7ca5f324a2 100644
+--- a/frontend/src/metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css
++++ b/frontend/src/metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css
+@@ -6,9 +6,6 @@
+   --remove-light: color-mix(in srgb, var(--remove) 11%, transparent);
+ 
+   width: 100%;
+-  min-width: 0;
+-  max-width: 100%;
+-  flex-shrink: 1;
+   height: 100%;
+   color: var(--mb-color-text-primary);
+   background-color: var(--mb-color-background_page-secondary);

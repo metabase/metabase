@@ -1,0 +1,7 @@
+issue: 24629
+fix_commit: 2c106817a414b3f6025523847c4cffe2f30a8342
+e2e_repro: e2e/test/scenarios/sharing/subscriptions.cy.spec.js
+population: e2e_only
+wave: 4
+witness_outcome: witness_authored
+layer: frontend

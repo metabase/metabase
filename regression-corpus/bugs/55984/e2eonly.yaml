@@ -1,0 +1,7 @@
+issue: 55984
+fix_commit: f6cecc09605325337e121654281d500d25ad9603
+e2e_repro: e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js
+population: e2e_only
+wave: 4
+witness_outcome: no_witness_layout
+layer: frontend

@@ -1,0 +1,7 @@
+issue: 55690
+fix_commit: cf806ce408df6de41c8b96d3542a9ed6ab5d139e
+e2e_repro: e2e/test/scenarios/organization/entity-picker.cy.spec.ts
+population: e2e_only
+wave: 4
+witness_outcome: witness_authored
+layer: frontend
