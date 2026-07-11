@@ -28,7 +28,7 @@
 ;; namespace can be the first thing a fresh test JVM runs
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(deftest get-index-metadata-mode-test
+(deftest ^:parallel get-index-metadata-mode-test
   (testing "get-index-metadata returns the schema-qualified config exactly in app-db mode"
     (mt/with-dynamic-fn-redefs [semantic.db.datasource/pgvector-mode (constantly :app-db)]
       (is (= semantic.index-metadata/app-db-index-metadata (semantic.env/get-index-metadata))))

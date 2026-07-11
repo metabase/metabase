@@ -191,7 +191,11 @@
   [pgvector index-metadata index-id dlq-entries]
   (if (empty? dlq-entries)
     0
-    (let [dml {:insert-into   (dlq-table-name-kw index-metadata index-id)
+    (let [dlq-table (dlq-table-name-kw index-metadata index-id)
+          ;; a schema-qualified insert target is still referenced by its bare relation name in
+          ;; ON CONFLICT expressions
+          dlq-col   (keyword (str (semantic.util/table-name-part (name dlq-table)) ".error_gated_at"))
+          dml {:insert-into   dlq-table
                :values        (sort-by :gate_id dlq-entries)
                :on-conflict   [:gate_id]
                :do-update-set {:fields {:attempt_at        :excluded.attempt_at
@@ -200,8 +204,7 @@
                                         :last_attempted_at :excluded.last_attempted_at}
                                ;; condition: if exiting dlq entry reflects a more recent gate failure
                                ;; prefer the new attempt_at / retry_count from the gate to the prior DLQ entry.
-                               :where  [:<= [:. (dlq-table-name-kw index-metadata index-id) :error_gated_at]
-                                        :excluded.error_gated_at]}}
+                               :where  [:<= dlq-col :excluded.error_gated_at]}}
           sql (sql/format dml :quoted true)
           {upsert-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
       (log/debugf "Added/updated %d DLQ entries for index %s" upsert-count index-id)
