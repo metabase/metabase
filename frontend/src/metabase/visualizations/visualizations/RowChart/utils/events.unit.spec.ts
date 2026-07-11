@@ -547,6 +547,97 @@ describe("getClickData", () => {
       { column: breakoutColumn, value: null },
     ]);
   });
+
+  it("passes the clicked series' value for unused columns to click behavior (metabase#46318)", () => {
+    // Row chart with dimensions [MAIN_GROUP, SUB_GROUP] and metric [VALUE_SUM].
+    // GROUP_NAME is an unused column whose value differs per (main_group, sub_group)
+    // row. Clicking the group_1 / sub_group_2 bar must surface that bar's own
+    // GROUP_NAME ("group_1__sub_group_2"), not another series' value or null.
+    const mainGroupColumn = createMockColumn({
+      name: "MAIN_GROUP",
+      display_name: "Main Group",
+    });
+    const subGroupColumn = createMockColumn({
+      name: "SUB_GROUP",
+      display_name: "Sub Group",
+    });
+    const valueSumColumn = createMockNumericColumn({
+      name: "VALUE_SUM",
+      display_name: "Value Sum",
+    });
+    const groupNameColumn = createMockColumn({
+      name: "GROUP_NAME",
+      display_name: "Group Name",
+    });
+    const datasetColumns = [
+      mainGroupColumn,
+      subGroupColumn,
+      valueSumColumn,
+      groupNameColumn,
+    ];
+
+    const chartColumns: BreakoutChartColumns = {
+      dimension: { index: 0, column: mainGroupColumn },
+      breakout: { index: 1, column: subGroupColumn },
+      metric: { index: 2, column: valueSumColumn },
+    };
+
+    const subGroup1Row = [
+      "group_1",
+      "sub_group_1",
+      111,
+      "group_1__sub_group_1",
+    ];
+    const subGroup2Row = ["group_1", "sub_group_2", 68, "group_1__sub_group_2"];
+
+    // datum groups both sub_groups of group_1 together; each breakout scopes to
+    // its own single row.
+    const datum: GroupedDatum = {
+      dimensionValue: "group_1",
+      metrics: { VALUE_SUM: 179 },
+      isClickable: true,
+      rawRows: [subGroup1Row, subGroup2Row],
+      breakout: {
+        sub_group_1: {
+          metrics: { VALUE_SUM: 111 },
+          rawRows: [subGroup1Row],
+        },
+        sub_group_2: {
+          metrics: { VALUE_SUM: 68 },
+          rawRows: [subGroup2Row],
+        },
+      },
+    };
+
+    const series: Series<GroupedDatum, SeriesInfo> = {
+      seriesKey: "sub_group_2",
+      seriesName: "sub_group_2",
+      seriesInfo: {
+        metricColumn: valueSumColumn,
+        dimensionColumn: mainGroupColumn,
+        breakoutValue: "sub_group_2",
+      },
+      xAccessor: (datum: GroupedDatum) => datum.metrics["VALUE_SUM"],
+      yAccessor: SERIES_Y_ACCESSOR,
+    };
+
+    const bar: BarData<GroupedDatum, SeriesInfo> = {
+      isNegative: false,
+      xStartValue: 0,
+      xEndValue: 68,
+      yValue: "group_1",
+      datum,
+      datumIndex: 0,
+      series,
+      seriesIndex: 1,
+    };
+
+    const clickData = getClickData(bar, {}, chartColumns, datasetColumns);
+
+    expect(
+      clickData.data?.find(({ col }) => col?.name === "GROUP_NAME")?.value,
+    ).toBe("group_1__sub_group_2");
+  });
 });
 
 describe("getLegendClickData", () => {

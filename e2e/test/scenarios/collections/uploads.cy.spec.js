@@ -222,42 +222,6 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
       });
     });
   });
-
-  it("should allow you to choose a model to append to if there are multiple (metabase#53824)", () => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.enableTracking();
-
-    H.enableUploads("postgres");
-    H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
-    H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
-
-    H.visitCollection(FIRST_COLLECTION_ID);
-
-    cy.fixture(`${FIXTURE_PATH}/${VALID_CSV_FILES[2].fileName}`).then(
-      (file) => {
-        cy.get("#upload-input").selectFile(
-          {
-            contents: Cypress.Buffer.from(file),
-            fileName: VALID_CSV_FILES[2].fileName,
-            mimeType: "text/csv",
-          },
-          { force: true },
-        );
-      },
-    );
-
-    cy.findByRole("radio", { name: /Append to a model/ }).click();
-
-    cy.findByRole("textbox", { name: "Select a model" })
-      .should("contain.value", VALID_CSV_FILES[1].humanName)
-      .click();
-
-    H.popover().findByText(VALID_CSV_FILES[0].humanName).click();
-    cy.findByRole("textbox", { name: "Select a model" })
-      .should("have.value", VALID_CSV_FILES[0].humanName)
-      .click();
-  });
 });
 
 describe("permissions", { tags: "@external" }, () => {

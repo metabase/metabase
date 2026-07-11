@@ -699,6 +699,19 @@ describe("Question", () => {
       ]);
     });
 
+    it("should return a referentially stable array across repeated calls (metabase#52806)", () => {
+      const question = base_question.setParameters([
+        {
+          type: "category",
+          name: "foo",
+          id: "foo_id",
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+        },
+      ]);
+
+      expect(question.parameters()).toBe(question.parameters());
+    });
+
     it("should return a question's parameters + metadata and the parameter's value if present", () => {
       const question = base_question
         .setParameters([

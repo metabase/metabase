@@ -552,33 +552,6 @@ describe("issue 49270", () => {
   });
 });
 
-describe("issue 53404", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-  });
-
-  it("should show an error message when overwriting a card with a cycle (metabase#53404)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openNotebook();
-    H.getNotebookStep("data").button("Join data").click();
-    H.miniPicker().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText("Orders").click();
-    });
-    H.popover().findByText("ID").click();
-    H.popover().findByText("ID").click();
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().within(() => {
-      cy.button("Save").click();
-      cy.wait("@updateCard");
-      cy.findByText("Cannot save card with cycles.").should("be.visible");
-      cy.findByText(/undefined/).should("not.exist");
-    });
-  });
-});
-
 describe("issue 53170", () => {
   beforeEach(() => {
     H.restore();

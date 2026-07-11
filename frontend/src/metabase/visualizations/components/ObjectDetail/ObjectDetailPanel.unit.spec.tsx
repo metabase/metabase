@@ -418,6 +418,21 @@ describe("ObjectDetailPanel", () => {
     expect(actionsMenu).toBeUndefined();
   });
 
+  it("should not request the actions list for non-model (ad-hoc) questions (metabase#50266)", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockQuestion });
+
+    // Wait for the panel to render so the actions hook has a chance to fire.
+    expect(await screen.findByText(/Product/i)).toBeInTheDocument();
+
+    // Ad-hoc questions don't support implicit actions, so the implicit-actions
+    // list request must be skipped entirely.
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/action")).toHaveLength(0);
+    });
+  });
+
   it(`should not render actions menu when "showControls" is "false"`, async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);

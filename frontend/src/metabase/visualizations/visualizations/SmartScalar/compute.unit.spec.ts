@@ -2333,6 +2333,41 @@ describe("SmartScalar > compute", () => {
       expect(dateStrForGranularity("quarter")).toBe("Q2 2024");
       expect(dateStrForGranularity("month")).toBe("June 2024");
     });
+
+    describe("clicked object (issue #46168)", () => {
+      const settings = createMockVisualizationSettings({
+        "scalar.field": "Count",
+        "scalar.comparisons": [
+          { id: "1", type: COMPARISON_TYPES.PREVIOUS_VALUE },
+        ],
+      });
+
+      const dateColumn = createMockDateTimeColumn({ name: "Month" });
+      const metricColumn = createMockNumberColumn({ name: "Count" });
+      const cols = [dateColumn, metricColumn];
+
+      const rows = [
+        ["2019-10-01", 100],
+        ["2019-11-01", 300],
+      ];
+
+      // The clicked object drives drill-through (e.g. the quick-filter drill).
+      // Its `value` comes from the aggregation cell, so its `column` must be the
+      // metric column too - not the date dimension column. Returning the date
+      // column here breaks the quick filter drill for trend charts.
+      it("should return the metric column corresponding to the clicked value", () => {
+        const insights = createMockInsights({ unit: "month", col: "Count" });
+        const { trend } = computeTrend(
+          series({ rows, cols }),
+          insights,
+          settings,
+        );
+
+        expect(trend?.clicked.value).toBe(300);
+        expect(trend?.clicked.column).toEqual(metricColumn);
+        expect(trend?.clicked.column?.name).toBe("Count");
+      });
+    });
   });
 });
 

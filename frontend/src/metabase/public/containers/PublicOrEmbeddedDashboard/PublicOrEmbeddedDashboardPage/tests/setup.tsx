@@ -1,3 +1,4 @@
+import type { Reducer } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
@@ -12,6 +13,7 @@ import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type {
   DashboardCard,
   DashboardTab,
+  Parameter,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -20,6 +22,7 @@ import {
   createMockDashboardCard,
   createMockDashboardTab,
   createMockDatabase,
+  createMockParameterMapping,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
@@ -37,6 +40,8 @@ export type SetupOpts = {
   tokenFeatures?: TokenFeatures;
   dashboardTitle: string;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  parameters?: Parameter[];
+  customReducers?: Record<string, Reducer>;
 };
 
 export async function setup(
@@ -47,6 +52,8 @@ export async function setup(
     tokenFeatures = createMockTokenFeatures(),
     dashboardTitle,
     enterprisePlugins,
+    parameters = [],
+    customReducers,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
   mockSettings({
@@ -76,6 +83,12 @@ export async function setup(
           can_write: false,
         }),
         dashboard_tab_id: tabId,
+        parameter_mappings: parameters.map((parameter) =>
+          createMockParameterMapping({
+            card_id: i + 1,
+            parameter_id: parameter.id,
+          }),
+        ),
       }),
     );
   });
@@ -83,7 +96,7 @@ export async function setup(
   const dashboard = createMockDashboard({
     id: 1,
     name: dashboardTitle,
-    parameters: [],
+    parameters,
     dashcards,
     tabs,
   });
@@ -119,6 +132,7 @@ export async function setup(
       storeInitialState: createMockState(),
       withRouter: true,
       initialRoute: href,
+      customReducers,
     },
   );
 

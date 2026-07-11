@@ -403,24 +403,6 @@ describe("issues 52811, 52812", () => {
   }
 });
 
-describe("issue 52806", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
-    cy.visit("/");
-    H.newButton("SQL query").click();
-    H.NativeEditor.focus().type("select {{x}}");
-    cy.location().should((location) => expect(location.search).to.eq("?x="));
-    cy.findByTestId("main-logo-link").click();
-    H.modal().button("Discard changes").click();
-    cy.findByTestId("home-page");
-    cy.location().should((location) => expect(location.search).to.eq(""));
-  });
-});
-
 describe("issue 55951", () => {
   beforeEach(() => {
     H.restore("postgres-12");

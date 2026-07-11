@@ -25,6 +25,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   ConcreteFieldReference,
+  Database,
   NativeQuery,
   StructuredQuery,
 } from "metabase-types/api";
@@ -52,13 +53,15 @@ registerVisualizations();
 
 function getBaseState({
   uiControls = {},
+  database = createSampleDatabase(),
   ...state
 }: Partial<Omit<QueryBuilderState, "uiControls">> & {
   uiControls?: Partial<QueryBuilderUIControls>;
+  database?: Database;
 } = {}) {
   return createMockState({
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: [database],
       tables: [createMockTable({ id: "card__1" })],
     }),
     qb: createMockQueryBuilderState({
@@ -138,6 +141,38 @@ describe("getQuestion", () => {
     );
 
     expect(question?.card()).toEqual(assoc(card, "displayIsLocked", true));
+  });
+
+  it("should return an editable ad-hoc query for a read-only native model (metabase#56698)", () => {
+    const card = createMockCard({
+      id: 1,
+      type: "model",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: { query: "select 1 union all select 2" },
+      },
+    });
+
+    // A user without native permissions cannot edit the model's native query,
+    // but must still get an editable ad-hoc query composed on top of the model.
+    const question = getQuestion(
+      getBaseState({
+        card,
+        database: createSampleDatabase({ native_permissions: "none" }),
+      }),
+    );
+
+    expect(question).toBeInstanceOf(Question);
+    expect(question && Lib.sourceTableOrCardId(question.query())).toBe(
+      "card__1",
+    );
+    expect(question && Lib.queryDisplayInfo(question.query()).isEditable).toBe(
+      true,
+    );
+    expect(question && Lib.queryDisplayInfo(question.query()).isNative).toBe(
+      false,
+    );
   });
 });
 

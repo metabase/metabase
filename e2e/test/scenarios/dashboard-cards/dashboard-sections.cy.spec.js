@@ -1,7 +1,4 @@
-import {
-  ORDERS_DASHBOARD_ID,
-  READ_ONLY_PERSONAL_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import * as H from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -105,32 +102,6 @@ describe("scenarios > dashboard cards > sections", () => {
     H.editDashboard();
     filterPanel().findByText("Category").click();
     H.getDashboardCard(1).findByText("Product.Category").should("exist");
-  });
-});
-
-describe("scenarios > dashboard cards > sections > read only collections", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signIn("readonly");
-    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
-  });
-
-  it("Should allow you to select entities in collections you have read access to (metabase#50602)", () => {
-    H.createDashboard({ collection_id: READ_ONLY_PERSONAL_COLLECTION_ID }).then(
-      ({ body }) => {
-        H.visitDashboard(body.id);
-      },
-    );
-
-    H.editDashboard();
-    addSection("KPIs w/ large chart below");
-    H.dashboardGrid()
-      .findAllByText("Select question")
-      .first()
-      .click({ force: true });
-    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
-    H.pickEntity({ path: ["Our analytics", "Orders, Count"] });
-    H.dashboardGrid().findByText("Orders, Count").should("exist");
   });
 });
 

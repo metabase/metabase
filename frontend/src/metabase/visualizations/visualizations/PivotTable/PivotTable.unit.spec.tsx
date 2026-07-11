@@ -27,12 +27,89 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { PivotTableView } from "./PivotTableInner";
 import {
   PIVOT_TABLE_MOCK_DATA,
   PivotTableTestWrapper,
 } from "./pivot-table-test-mocks";
 
 registerVisualizations();
+
+// Data for a pivot table that has only pivot (top header) columns and no row
+// breakouts — this reproduces metabase#44500, where such tables rendered blank.
+const COLUMNS_ONLY_COLS = [
+  {
+    name: "D1",
+    display_name: "Dimension 1",
+    source: "breakout",
+    field_ref: ["field", 1, null],
+    base_type: "type/Text",
+  },
+  {
+    name: "D2",
+    display_name: "Dimension 2",
+    source: "breakout",
+    field_ref: ["field", 2, null],
+    base_type: "type/Text",
+  },
+  {
+    name: "count",
+    display_name: "Count",
+    source: "aggregation",
+    field_ref: ["aggregation", 0],
+    base_type: "type/Integer",
+  },
+  {
+    name: "pivot-grouping",
+    display_name: "pivot-grouping",
+    source: "breakout",
+    field_ref: ["expression", "pivot-grouping"],
+    base_type: "type/Integer",
+  },
+];
+
+const COLUMNS_ONLY_ROWS = [
+  ["a", "x", 11, 0],
+  ["a", "y", 22, 0],
+  ["b", "x", 44, 0],
+  ["b", "y", 55, 0],
+];
+
+const columnsOnlyPivotSettings = {
+  "pivot.show_column_totals": true,
+  "pivot.show_row_totals": true,
+  "pivot.condense_duplicate_totals": true,
+  "pivot_table.collapsed_rows": { rows: [], value: [] },
+  "pivot_table.column_split": {
+    rows: [],
+    columns: ["D1", "D2"],
+    values: ["count"],
+  },
+  "table.column_formatting": [],
+  column_settings: {},
+};
+
+const columnsOnlySettings = {
+  ...columnsOnlyPivotSettings,
+  column: (c: any) => ({
+    ...columnsOnlyPivotSettings,
+    column: c,
+    column_title: c.display_name,
+  }),
+} as unknown as VisualizationSettings;
+
+function ColumnsOnlyPivotTableWrapper(props?: any) {
+  return (
+    <PivotTableView
+      settings={columnsOnlySettings}
+      data={{ rows: COLUMNS_ONLY_ROWS, cols: COLUMNS_ONLY_COLS } as any}
+      onVisualizationClick={() => {}}
+      onUpdateVisualizationSettings={() => {}}
+      isDashboard={false}
+      {...props}
+    />
+  );
+}
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -292,6 +369,23 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       expect(widthWithoutScrollbar - widthWithScrollbar).toBe(scrollBarSize);
 
       jest.restoreAllMocks();
+    });
+  });
+
+  describe("only pivot columns (metabase#44500)", () => {
+    it("should render a pivot table that has only pivot columns and no rows", async () => {
+      renderWithProviders(<ColumnsOnlyPivotTableWrapper />);
+
+      // The table must actually render rather than returning a blank element.
+      const table = await screen.findByTestId("pivot-table");
+
+      // Top header shows the pivot column values...
+      expect(within(table).getByText("a")).toBeInTheDocument();
+      expect(within(table).getByText("b")).toBeInTheDocument();
+
+      // ...and the aggregated body values are present.
+      expect(table).toHaveTextContent("11");
+      expect(table).toHaveTextContent("55");
     });
   });
 });
