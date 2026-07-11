@@ -1,0 +1,75 @@
+import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/v1/Question";
+import { createMockNativeCard } from "metabase-types/api/mocks";
+import { createMockNativeQuerySnippet } from "metabase-types/api/mocks";
+import { createMockTemplateTag } from "metabase-types/api/mocks";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+import { PreviewQueryButton } from "./PreviewQueryButton";
+
+const SNIPPET_ID = 1;
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  snippets: [
+    createMockNativeQuerySnippet({
+      id: SNIPPET_ID,
+      name: "Foo",
+      content: "'foo'",
+    }),
+  ],
+});
+
+function makeNativeQuestion(query: string, templateTags: Record<string, any>) {
+  const card = createMockNativeCard({
+    dataset_query: {
+      type: "native",
+      database: SAMPLE_DB_ID,
+      native: {
+        query,
+        "template-tags": templateTags,
+      },
+    },
+  });
+  return new Question(card, metadata);
+}
+
+const snippetTag = {
+  "snippet-foo": createMockTemplateTag({
+    id: "snippet-foo",
+    name: "snippet: Foo",
+    "display-name": "Foo",
+    type: "snippet",
+    "snippet-name": "Foo",
+    "snippet-id": SNIPPET_ID,
+  }),
+};
+
+const variableTag = {
+  bar: createMockTemplateTag({
+    id: "bar",
+    name: "bar",
+    "display-name": "Bar",
+    type: "text",
+  }),
+};
+
+describe("PreviewQueryButton.shouldRender (metabase#60534)", () => {
+  it("renders for a native query that only has a snippet", () => {
+    const question = makeNativeQuestion("select {{snippet: Foo}}", snippetTag);
+    expect(PreviewQueryButton.shouldRender({ question })).toBe(true);
+  });
+
+  it("renders for a native query that has a variable template tag", () => {
+    const question = makeNativeQuestion("select {{bar}}", variableTag);
+    expect(PreviewQueryButton.shouldRender({ question })).toBe(true);
+  });
+
+  it("does not render for a native query with no tags or snippets", () => {
+    const question = makeNativeQuestion("select 1", {});
+    expect(PreviewQueryButton.shouldRender({ question })).toBe(false);
+  });
+});

@@ -460,6 +460,36 @@ describe("setOrUnsetParameterValues", () => {
     const state = store.getState();
     expect(state.dashboard.parameterValues["123"]).toBe(null);
   });
+
+  it("should unset a non-primitive value that structurally equals the current value (metabase#56716)", async () => {
+    const store = setup(
+      createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            "1": createMockStoreDashboard({
+              id: 1,
+              parameters: [
+                createMockParameter({
+                  id: "123",
+                }),
+              ],
+            }),
+          },
+          parameterValues: {
+            "123": [4.6],
+          },
+        }),
+      }),
+    );
+
+    // Same value by structure but a different array reference, as produced by
+    // clicking the same column value a second time with a crossfilter click behavior.
+    await store.dispatch(setOrUnsetParameterValues([["123", [4.6]]]));
+
+    const state = store.getState();
+    expect(state.dashboard.parameterValues["123"]).toBe(null);
+  });
 });
 
 describe("setParameterValue", () => {

@@ -56,6 +56,35 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(goalSelect).toHaveValue("When this question has results");
   });
 
+  // Witness for metabase#57138: a non-admin without settings access must not
+  // see the configured allowed email domains leaked in the invalid-recipient error.
+  it("should hide the allowed email domains from non-admins without settings access (metabase#57138)", async () => {
+    setup({
+      isAdmin: false,
+      userCanAccessSettings: false,
+      isEmailSetup: true,
+      subscriptionAllowedDomains: "metabase.test",
+      withChannelTypes: true,
+    });
+
+    expect(await screen.findByText("New alert")).toBeInTheDocument();
+
+    const tokenField = screen.getByTestId("token-field");
+    await userEvent.type(
+      within(tokenField).getByRole("textbox"),
+      "mailer@metabase.example{enter}",
+    );
+
+    expect(
+      await screen.findByText(
+        "You're only allowed to email alerts to allowed domains",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/addresses ending in metabase\.test/),
+    ).not.toBeInTheDocument();
+  });
+
   it("should show 'When this metric has results' for metric cards", async () => {
     setup({ isAdmin: true, cardType: "metric" });
 
@@ -546,6 +575,8 @@ function setup({
   onAlertUpdatedMock = jest.fn(),
   cardType = "question",
   users = [],
+  subscriptionAllowedDomains,
+  withChannelTypes = false,
 }: {
   userCanAccessSettings?: boolean;
   isAdmin?: boolean;
@@ -558,11 +589,16 @@ function setup({
   onAlertUpdatedMock?: jest.Mock;
   cardType?: "question" | "model" | "metric";
   users?: UserListResult[];
+  subscriptionAllowedDomains?: string;
+  withChannelTypes?: boolean;
 }) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       advanced_permissions: true,
     }),
+    ...(subscriptionAllowedDomains != null
+      ? { "subscription-allowed-domains": subscriptionAllowedDomains }
+      : {}),
   });
 
   setupEnterpriseOnlyPlugin("advanced_permissions");
@@ -577,11 +613,19 @@ function setup({
     }),
   });
 
-  setupNotificationChannelsEndpoints({
-    slack: { configured: isSlackSetup },
-    email: { configured: isEmailSetup },
-    http: { configured: isHttpSetup },
-  });
+  setupNotificationChannelsEndpoints(
+    withChannelTypes
+      ? {
+          slack: { type: "slack", configured: isSlackSetup },
+          email: { type: "email", configured: isEmailSetup },
+          http: { type: "http", configured: isHttpSetup },
+        }
+      : {
+          slack: { configured: isSlackSetup },
+          email: { configured: isEmailSetup },
+          http: { configured: isHttpSetup },
+        },
+  );
 
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });

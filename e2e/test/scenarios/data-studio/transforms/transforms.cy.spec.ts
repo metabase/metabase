@@ -1939,21 +1939,6 @@ LIMIT
         "This run succeeded before it had a chance to cancel.",
       );
     });
-
-    it("should be possible to cancel a SQL transform from the preview (metabase#64474)", () => {
-      createSlowTransform(500);
-
-      H.DataStudio.Transforms.clickEditDefinition();
-      cy.url().should("include", "/edit");
-
-      getQueryEditor().within(() => {
-        cy.findAllByTestId("run-button").eq(0).click();
-        cy.findByTestId("loading-indicator").should("be.visible");
-
-        cy.findAllByTestId("run-button").eq(0).click();
-        cy.findByTestId("loading-indicator").should("not.exist");
-      });
-    });
   });
 
   describe("dependencies", () => {

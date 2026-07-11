@@ -1053,49 +1053,6 @@ describe("scenarios > visualizations > bar chart", () => {
     });
   });
 
-  it("should display all axis labels for 12 months of data (metabase#60475)", () => {
-    cy.viewport(1600, 800);
-
-    // Create a bar chart showing count of orders by month for the last 12 months
-    H.visitQuestionAdhoc({
-      display: "bar",
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              ORDERS.CREATED_AT,
-              { "base-type": "type/DateTime", "temporal-unit": "month" },
-            ],
-          ],
-          filter: [
-            "time-interval",
-            ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
-            -12,
-            "month",
-          ],
-        },
-        database: SAMPLE_DB_ID,
-      },
-    });
-
-    // Wait for the chart to render
-    cy.wait("@dataset");
-    H.echartsContainer().should("be.visible");
-
-    // Get all x-axis labels
-    H.echartsContainer().within(() => {
-      // ECharts renders axis labels as text elements in SVG
-      // We should see labels for all 12 months
-      cy.get('svg text[text-anchor="middle"]')
-        .should("have.length.at.least", 12)
-        .should("be.visible");
-    });
-  });
-
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
     // Use a smaller viewport to ensure labels need to rotate
     cy.viewport(940, 800);

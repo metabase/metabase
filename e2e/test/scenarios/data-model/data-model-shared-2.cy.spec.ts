@@ -201,24 +201,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         cy.realPress("Escape");
         H.modal().should("not.exist");
       });
-
-      it("should not automatically re-fetch field values when they are discarded unless 'Custom mapping' is used (metabase#62626)", () => {
-        visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-          fieldId: PRODUCTS.CATEGORY,
-        });
-
-        FieldSection.getFieldValuesButton().click();
-        H.modal().within(() => {
-          cy.button("Discard cached field values").click();
-          cy.button("Discard triggered!").should("be.visible");
-          cy.button("Discard triggered!").should("not.exist");
-        });
-
-        cy.get("@fieldValues.all").should("have.length", 0);
-      });
     });
 
     describe("Data", () => {

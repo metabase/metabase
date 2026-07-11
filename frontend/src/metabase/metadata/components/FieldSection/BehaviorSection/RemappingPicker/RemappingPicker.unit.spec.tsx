@@ -1,0 +1,84 @@
+import fetchMock from "fetch-mock";
+
+import { setupFieldValuesEndpoint } from "__support__/server-mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  createMockField,
+  createMockFieldValues,
+} from "metabase-types/api/mocks/field";
+
+import { RemappingPicker } from "./RemappingPicker";
+
+const FIELD_ID = 1;
+
+const setup = ({
+  hasInternalDimension = false,
+}: { hasInternalDimension?: boolean } = {}) => {
+  const database = createMockDatabase({ id: 1 });
+  const field = createMockField({
+    id: FIELD_ID,
+    table_id: 1,
+    dimensions: hasInternalDimension
+      ? [
+          {
+            id: 10,
+            type: "internal",
+            name: "Custom",
+            human_readable_field_id: null,
+            field_id: FIELD_ID,
+          },
+        ]
+      : [],
+  });
+
+  setupFieldValuesEndpoint(createMockFieldValues({ field_id: FIELD_ID }));
+
+  renderWithProviders(
+    <RemappingPicker
+      database={database}
+      field={field}
+      onTrackMetadataChange={jest.fn()}
+    />,
+  );
+
+  return { database, field };
+};
+
+const fieldValuesCalls = () =>
+  fetchMock.callHistory.calls(`path:/api/field/${FIELD_ID}/values`);
+
+describe("RemappingPicker (metabase#62626)", () => {
+  it("does not fetch field values when display value is not 'custom' and the dropdown is closed", async () => {
+    setup({ hasInternalDimension: false });
+
+    // Wait for the picker to mount and flush effects (RTK Query subscribes in an effect).
+    expect(
+      await screen.findByPlaceholderText("Select display values"),
+    ).toBeInTheDocument();
+
+    expect(fieldValuesCalls()).toHaveLength(0);
+  });
+
+  it("fetches field values when display value is 'custom' (positive control)", async () => {
+    setup({ hasInternalDimension: true });
+
+    expect(
+      await screen.findByPlaceholderText("Select display values"),
+    ).toBeInTheDocument();
+
+    await waitForFieldValuesRequest();
+    expect(fieldValuesCalls().length).toBeGreaterThan(0);
+  });
+});
+
+// Small helper to poll until the request fires (or give up), so the positive
+// control is not racy.
+async function waitForFieldValuesRequest() {
+  for (let i = 0; i < 50; i++) {
+    if (fieldValuesCalls().length > 0) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
