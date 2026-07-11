@@ -35,9 +35,11 @@
   (bare `library_entity_index*` names, dropped and recreated on rebuild), so it stays dedicated-only
   until they are.
   The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
-  even when the library-retrieval feature is turned on after startup (a common onboarding flow)."
+  even when the library-retrieval feature is turned on after startup (a common onboarding flow).
+  A plain URL check, not [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]]: mode
+  resolution can probe the app db, which a dedicated-only scheduling gate has no business doing."
   []
-  (= :dedicated (semantic.db.datasource/pgvector-mode)))
+  (not (str/blank? semantic.db.datasource/db-url)))
 
 (defn available?
   "Whether the entity-retrieval mirror can run right now. All four must hold:
