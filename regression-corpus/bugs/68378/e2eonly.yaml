@@ -1,0 +1,9 @@
+issue: 68378
+fix_commit: 0b8c5cd5a39c9e367fc8c13a1ba47c433bb01a0c
+e2e_repro: e2e/test/scenarios/data-studio/transforms/reproductions.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal.unit.spec.tsx

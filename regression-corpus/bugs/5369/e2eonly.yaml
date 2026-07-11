@@ -1,0 +1,9 @@
+issue: 5369
+fix_commit: ac7c00caf4eff64600372d155f9aa05885ff4de0
+e2e_repro: e2e/test/scenarios/visualizations-charts/maps.cy.spec.js
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/visualizations/components/LeafletMarkerPinMap.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.unit.spec.ts

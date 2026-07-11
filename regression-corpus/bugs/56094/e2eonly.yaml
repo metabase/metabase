@@ -1,0 +1,9 @@
+issue: 56094
+fix_commit: 3ca4c5a2ee024772007e646607a29f8372ea31ee
+e2e_repro: e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/query_builder/selectors.ts"]
+layer: frontend
+witness_test: frontend/src/metabase/query_builder/selectors.unit.spec.ts

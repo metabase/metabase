@@ -1,0 +1,9 @@
+issue: 44911
+fix_commit: 7491d37214faadefc7736344e55263f124c5914c
+e2e_repro: e2e/test/scenarios/collections/trash.cy.spec.js
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx", "frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.unit.spec.tsx

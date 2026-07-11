@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx b/frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx
+index ac146a56ef0..547f9123ee5 100644
+--- a/frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx
++++ b/frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx
+@@ -168,7 +168,7 @@ export const CollectionBulkActions = memo(
+         {selectedItems && hasSelectedItems && selectedAction === "move" && (
+           <BulkMoveModal
+             selectedItems={selectedItems}
+-            onClose={handleCancelModal}
++            onClose={handleCloseModal}
+             onMove={handleBulkMove}
+             initialCollectionId={
+               isTrashedCollection(collection) ? "root" : collection.id

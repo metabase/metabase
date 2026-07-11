@@ -1,0 +1,9 @@
+issue: 60475
+fix_commit: cf9868d50980b049749b598e10164b687e20d971
+e2e_repro: e2e/test/scenarios/visualizations-charts/bar_chart.cy.spec.js
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/visualizations/echarts/cartesian/option/ticks.ts"]
+layer: frontend
+witness_test: frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts

@@ -1,0 +1,9 @@
+issue: 66253
+fix_commit: 68fb668302857fb710ba6fb94e1c5bbdb101965c
+e2e_repro: e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/AppThemeProvider.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/AppThemeProvider.unit.spec.tsx

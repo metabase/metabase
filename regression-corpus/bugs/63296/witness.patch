@@ -1,0 +1,68 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.content-translation.unit.spec.tsx b/frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.content-translation.unit.spec.tsx
+new file mode 100644
+index 00000000000..988ecaf2ee3
+--- /dev/null
++++ b/frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.content-translation.unit.spec.tsx
+@@ -0,0 +1,62 @@
++import { screen } from "@testing-library/react";
++
++import { renderWithProviders } from "__support__/ui";
++import registerVisualizations from "metabase/visualizations/register";
++
++import { PivotTableTestWrapper } from "./pivot-table-test-mocks";
++
++// Witness for metabase#63296: custom pivot column titles must pass through the
++// content-translation function. Mock the hook so `tc` maps the row-header
++// column title "field-123" to a translated string; the clean code wraps the
++// title in `tc(...)` so the translated text renders, the buggy code does not.
++jest.mock("metabase/content-translation/hooks", () => ({
++  useTranslateContent:
++    () =>
++    (msgid: string): string =>
++      msgid === "field-123" ? "le-champ-traduit" : msgid,
++}));
++
++registerVisualizations();
++
++describe("Visualizations > PivotTable > content translation (metabase#63296)", () => {
++  // react-virtualized needs non-zero element sizes to render cells
++  const originalOffsetHeight = Object.getOwnPropertyDescriptor(
++    HTMLElement.prototype,
++    "offsetHeight",
++  ) as number;
++  const originalOffsetWidth = Object.getOwnPropertyDescriptor(
++    HTMLElement.prototype,
++    "offsetWidth",
++  ) as number;
++
++  beforeAll(() => {
++    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
++      configurable: true,
++      value: 500,
++    });
++    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
++      configurable: true,
++      value: 500,
++    });
++  });
++
++  afterAll(() => {
++    Object.defineProperty(
++      HTMLElement.prototype,
++      "offsetHeight",
++      originalOffsetHeight,
++    );
++    Object.defineProperty(
++      HTMLElement.prototype,
++      "offsetWidth",
++      originalOffsetWidth,
++    );
++  });
++
++  it("translates the custom column title in the pivot row header", () => {
++    renderWithProviders(<PivotTableTestWrapper isDashboard={false} />);
++
++    expect(screen.getByText("le-champ-traduit")).toBeInTheDocument();
++    expect(screen.queryByText("field-123")).not.toBeInTheDocument();
++  });
++});

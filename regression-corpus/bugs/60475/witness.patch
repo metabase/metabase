@@ -1,0 +1,70 @@
+diff --git a/frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts b/frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts
+new file mode 100644
+index 00000000000..ffe85f339d2
+--- /dev/null
++++ b/frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts
+@@ -0,0 +1,64 @@
++import dayjs from "dayjs";
++
++import type { ChartLayout } from "../layout/types";
++import type { TimeSeriesXAxisModel } from "../model/types";
++import { getTimeSeriesIntervalDuration } from "../utils/timeseries";
++
++import { getTicksOptions } from "./ticks";
++
++const createMonthlyXAxisModel = (): TimeSeriesXAxisModel => {
++  // 12 months of data: Jan 2025 .. Dec 2025 bucketed by month.
++  const range: [dayjs.Dayjs, dayjs.Dayjs] = [
++    dayjs("2025-01-01T00:00:00.000Z"),
++    dayjs("2025-12-01T00:00:00.000Z"),
++  ];
++
++  return {
++    axisType: "time",
++    interval: { count: 1, unit: "month" },
++    intervalsCount: 11,
++    range,
++    // identity transform: axis value is the ISO string itself
++    toEChartsAxisValue: (value) => (value == null ? null : String(value)),
++    fromEChartsAxisValue: (value) => dayjs(value),
++    formatter: () => "Jan",
++  };
++};
++
++// A wide chart with tiny tick widths so the tick-interval computation keeps the
++// monthly interval (i.e. every month can fit) rather than collapsing to quarters.
++const createChartLayout = (): ChartLayout =>
++  ({
++    outerWidth: 1600,
++    padding: { top: 0, right: 0, bottom: 0, left: 0 },
++    ticksDimensions: {
++      getXTickWidth: () => 10,
++    },
++  }) as unknown as ChartLayout;
++
++describe("getTicksOptions - monthly ticks (metabase#60475)", () => {
++  it("forces daily tick generation filtered to month starts so no month is skipped", () => {
++    const { minInterval, maxInterval, canRender } = getTicksOptions(
++      createMonthlyXAxisModel(),
++      createChartLayout(),
++    );
++
++    const dayDuration = getTimeSeriesIntervalDuration({
++      count: 1,
++      unit: "day",
++    });
++
++    // The fix drives ECharts with a daily maxInterval (not a fixed monthly
++    // minInterval, which is what caused short months like February to be
++    // skipped). Reverting the fix leaves maxInterval undefined and sets
++    // minInterval to the month duration instead.
++    expect(maxInterval).toBe(dayDuration);
++    expect(minInterval).toBeUndefined();
++
++    // Month starts render; mid-month daily ticks are filtered out. With the fix
++    // reverted, canRender degrades to a plain in-range check and would return
++    // true for a mid-month date.
++    expect(canRender(dayjs("2025-06-01T00:00:00.000Z"))).toBe(true);
++    expect(canRender(dayjs("2025-06-15T00:00:00.000Z"))).toBe(false);
++  });
++});

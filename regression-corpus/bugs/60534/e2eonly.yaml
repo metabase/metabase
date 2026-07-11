@@ -1,0 +1,9 @@
+issue: 60534
+fix_commit: a97d2d1c0d83aaf11617bd317e8afa4d35fda80b
+e2e_repro: e2e/test/scenarios/native/snippets.cy.spec.js
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.unit.spec.tsx

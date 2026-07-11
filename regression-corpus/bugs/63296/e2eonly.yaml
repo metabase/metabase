@@ -1,0 +1,9 @@
+issue: 63296
+fix_commit: df7ba1246833a2685c8b0fb97e0bd4cfbaee7ce8
+e2e_repro: e2e/test/scenarios/admin/i18n/content-translation/dashboards.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/visualizations/visualizations/PivotTable/PivotTableInner.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.content-translation.unit.spec.tsx

@@ -1,0 +1,58 @@
+diff --git a/frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.unit.spec.ts b/frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.unit.spec.ts
+new file mode 100644
+index 00000000000..3ec1d152240
+--- /dev/null
++++ b/frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.unit.spec.ts
+@@ -0,0 +1,52 @@
++import L from "leaflet";
++
++import { LeafletMarkerPinMap } from "./LeafletMarkerPinMap";
++
++type IndexedPoint = [number, number, number];
++
++// Builds an instance with a fake leaflet map whose bounds we control, plus a
++// real (empty) marker layer group so we can count the markers that end up in it.
++function setup(west: number, east: number) {
++  // props are unused by _createMarkers itself, so an empty object is fine
++  const instance = new LeafletMarkerPinMap({} as never);
++
++  instance.map = {
++    getBounds: () => ({
++      getWest: () => west,
++      getEast: () => east,
++    }),
++  } as never;
++  instance.pinMarkerLayer = L.layerGroup([]);
++  instance.pinMarkerIcon = null;
++
++  return instance;
++}
++
++describe("LeafletMarkerPinMap dateline wrapping (metabase#5369)", () => {
++  it("duplicates points across the international date line when the viewport crosses it", () => {
++    // viewport centered near -175 lng crosses the left dateline: west < -180, east > -180
++    const instance = setup(-200, -150);
++
++    const points: IndexedPoint[] = [
++      [68, -159, 0],
++      [68, 159, 1],
++    ];
++    instance._createMarkers(points);
++
++    // each of the 2 data points must get a wrapped copy => 4 markers
++    expect(instance.pinMarkerLayer!.getLayers()).toHaveLength(4);
++  });
++
++  it("does not duplicate points when the viewport does not cross the date line", () => {
++    // ordinary viewport, well within [-180, 180]
++    const instance = setup(-100, -50);
++
++    const points: IndexedPoint[] = [
++      [10, -80, 0],
++      [10, -60, 1],
++    ];
++    instance._createMarkers(points);
++
++    expect(instance.pinMarkerLayer!.getLayers()).toHaveLength(2);
++  });
++});

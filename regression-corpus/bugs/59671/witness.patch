@@ -1,0 +1,122 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.witness.unit.spec.tsx b/frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.witness.unit.spec.tsx
+new file mode 100644
+index 00000000000..c90df8d5364
+--- /dev/null
++++ b/frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.witness.unit.spec.tsx
+@@ -0,0 +1,116 @@
++import { createRef } from "react";
++
++import { renderHookWithProviders } from "__support__/ui";
++import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
++import registerVisualizations from "metabase/visualizations/register";
++import type { RawSeries } from "metabase-types/api";
++import {
++  createMockCard,
++  createMockColumn,
++  createMockDatasetData,
++} from "metabase-types/api/mocks";
++
++import { useModelsAndOption } from "./use-models-and-option";
++
++registerVisualizations();
++
++// Regression witness for metabase#59671.
++//
++// When a chart's dimension column is removed from the query (e.g. deleting the
++// breakout of an aggregation), the computed chart model can end up with
++// `dimensionModel.column === undefined`. The hook must not blindly read
++// `.display_name` off of it.
++//
++// We mock `getCartesianChartModel` so it returns a fully-valid model built from
++// a real series, but with the dimension column stripped out — exactly the shape
++// the model had at runtime before the fix. This isolates the hook's guard from
++// upstream drift in how a column-less model is produced.
++jest.mock(
++  "metabase/visualizations/echarts/cartesian/model",
++  () => {
++    const actual = jest.requireActual(
++      "metabase/visualizations/echarts/cartesian/model",
++    );
++    return {
++      ...actual,
++      getCartesianChartModel: (...args: unknown[]) => {
++        const model = actual.getCartesianChartModel(
++          // @ts-expect-error - passthrough
++          ...args,
++        );
++        // Reintroduce the degenerate runtime state: dimension column removed.
++        model.dimensionModel.column = undefined;
++        return model;
++      },
++    };
++  },
++);
++
++const dimension = createMockColumn({
++  name: "CATEGORY",
++  display_name: "Category",
++  base_type: "type/Text",
++  source: "breakout",
++});
++const metric = createMockColumn({
++  name: "count",
++  display_name: "Count",
++  base_type: "type/BigInteger",
++  source: "aggregation",
++});
++
++const rawSeries: RawSeries = [
++  {
++    card: createMockCard({
++      id: 1,
++      display: "line",
++      visualization_settings: {
++        "graph.dimensions": ["CATEGORY"],
++        "graph.metrics": ["count"],
++      },
++    }),
++    data: createMockDatasetData({
++      cols: [dimension, metric],
++      rows: [
++        ["Widget", 3],
++        ["Gadget", 5],
++      ],
++    }),
++  },
++];
++
++const settings = getComputedSettingsForSeries(rawSeries);
++
++const setup = () => {
++  const containerRef = createRef<HTMLDivElement>();
++  const props = {
++    rawSeries,
++    settings,
++    card: rawSeries[0].card,
++    fontFamily: "Lato",
++    width: 0,
++    height: 0,
++    onRender: jest.fn(),
++    onRenderError: jest.fn(),
++    hovered: undefined,
++    isFullscreen: false,
++  } as any;
++
++  return renderHookWithProviders(
++    () => useModelsAndOption(props, containerRef),
++    {},
++  );
++};
++
++describe("useModelsAndOption (metabase#59671)", () => {
++  it("does not crash when the dimension column is missing from the model", () => {
++    const { result } = setup();
++
++    // On clean HEAD the guard skips the display_name write and the hook returns
++    // a usable model. Without the guard the hook throws while rendering (Cannot
++    // read properties of undefined (reading 'display_name')), so `result.current`
++    // never gets assigned and this assertion fails.
++    expect(result.current.chartModel).toBeDefined();
++    expect(result.current.chartModel.dimensionModel.column).toBeUndefined();
++  });
++});
