@@ -4,9 +4,10 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
    [metabase-enterprise.semantic-search.util :as semantic.u]
-   [metabase.search.engine :as search.engine]
+   [metabase.search.core :as search]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import (java.time Duration Instant)
@@ -31,15 +32,22 @@
  SemanticSearchIndexer []
   org.quartz.Job
   (execute [_ _]
-    (when (semantic.u/semantic-search-available?)
+    (when (semantic.u/semantic-search-active?)
       (log/with-context {:quartz-job-type 'SemanticSearchIndexer}
-        (when (search.engine/supported-engine? :search.engine/semantic)
-          (try
-            (vreset! execution-thread-ref (Thread/currentThread))
-            (semantic-search.indexer/quartz-job-run! (semantic.env/get-pgvector-datasource!) (semantic.env/get-index-metadata))
-            (finally
-              (locking execution-thread-ref
-                (vreset! execution-thread-ref nil))))))))
+        (try
+          (vreset! execution-thread-ref (Thread/currentThread))
+          (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                index-metadata (semantic.env/get-index-metadata)]
+            (if (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+              (semantic-search.indexer/quartz-job-run! pgvector index-metadata)
+              ;; Engines can activate at runtime (license applied, kill switch re-enabled,
+              ;; additional-search-engines set on another node); initializing from the next tick heals
+              ;; every such path within seconds. Initialize all active engines, not just semantic:
+              ;; activation may also have activated dependencies with no index.
+              (search/init-index!)))
+          (finally
+            (locking execution-thread-ref
+              (vreset! execution-thread-ref nil)))))))
   org.quartz.InterruptableJob
   (interrupt [_]
     ;; locking required here to avoid racing with the unset in the finally
@@ -52,7 +60,7 @@
 (def ^:private ^Duration run-frequency (Duration/parse "PT20S"))
 
 (defmethod task/init! ::SemanticSearchIndexer [_]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job         (jobs/build
                        (jobs/of-type SemanticSearchIndexer)
                        (jobs/store-durably)
