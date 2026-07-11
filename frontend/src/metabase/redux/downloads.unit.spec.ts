@@ -125,6 +125,24 @@ describe("getDatasetParams - embed question (token-based)", () => {
     });
   });
 
+  it("encodes a single-occurrence filter value as a scalar, not an array (metabase#58957)", async () => {
+    await mockIsEmbeddingSdk(false);
+    setLocationSearch("?created_at=2025-02-11");
+
+    const downloadParams = getDatasetParams({
+      type: "csv",
+      question,
+      result,
+      token: TOKEN,
+      params: {},
+    });
+
+    const url = new URLSearchParams(downloadParams.params);
+    expect(JSON.parse(url.get("parameters") ?? "")).toEqual({
+      created_at: "2025-02-11",
+    });
+  });
+
   it("sends an empty parameters object for guest embeds when no filter is set", async () => {
     await mockIsEmbeddingSdk(true);
 
