@@ -79,7 +79,10 @@
 
 (defmethod analytics/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
-  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
+  ;; Can the engine serve queries: in-place always can, indexed engines only while their index is maintained.
+  (if (= :ok (search.engine/engine-status (keyword "search.engine" engine)))
+    1
+    0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
@@ -89,7 +92,8 @@
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
-  (when (supports-index?)
+  (search.engine/log-resolution!)
+  (when-let [engines (seq (search.engine/active-engines))]
     (log/info "Initializing search indexes")
     (lib-be/with-metadata-provider-cache
       ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
@@ -97,7 +101,7 @@
         (let [timer    (u/start-timer)
               report   (reduce (partial merge-with max)
                                nil
-                               (for [e (search.engine/active-engines)]
+                               (for [e engines]
                                  (search.engine/init! e opts)))
               duration (u/since-ms timer)]
           (if (seq report)
@@ -114,14 +118,14 @@
           (throw e))))))
 
 (defn- reindex-logic! [opts]
-  (when (supports-index?)
+  (when-let [engines (seq (search.engine/active-engines))]
     (lib-be/with-metadata-provider-cache
       (try
         (log/info "Reindexing searchable entities")
         (let [timer    (u/start-timer)
               report   (reduce (partial merge-with max)
                                nil
-                               (for [e (search.engine/active-engines)]
+                               (for [e engines]
                                  (search.engine/reindex! e opts)))
               duration (u/since-ms timer)]
           (analytics/inc! :metabase-search/index-reindex-ms duration)
