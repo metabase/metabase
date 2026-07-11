@@ -444,7 +444,7 @@
   (let [index-name (str (semantic.util/table-name-part (:table-name index)) suffix)]
     (hash-identifier-if-exceeds-pg-limit index-name)))
 
-(defn- schema-qualified-index-name
+(defn schema-qualified-index-name
   "The index name qualified with its table's schema (when the table has one), for catalog lookups —
   an index lives in the same schema as its table."
   [index index-name]

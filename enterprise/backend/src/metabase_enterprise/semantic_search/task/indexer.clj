@@ -52,7 +52,10 @@
                 ;; strategy configured before (re)activation arrives here with no HNSW index. CONCURRENTLY
                 ;; registers the index in pg_indexes as soon as the build starts, so this fires only once.
                 (when (and (hnsw-strategy?)
-                           (not (semantic.u/index-exists? pgvector (semantic.index/hnsw-index-name index))))
+                           (not (semantic.u/index-exists?
+                                 pgvector
+                                 (semantic.index/schema-qualified-index-name
+                                  index (semantic.index/hnsw-index-name index)))))
                   (semantic.core/build-hnsw-index-async!))
                 (semantic-search.indexer/quartz-job-run! pgvector index-metadata))
               ;; Engines can activate at runtime (license applied, kill switch re-enabled,
