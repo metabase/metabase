@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.resources :as mcp.resources]
-   [metabase.mcp.settings :as mcp.settings]))
+   [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.toolsets :as mcp.toolsets]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,10 +35,11 @@
       false)))
 
 (defn all-scopes
-  "All supported OAuth scopes: those declared on agent-api endpoints via
-   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
+  "All supported OAuth scopes: the v2 toolset group scopes, those declared on
+   agent-api endpoints via defendpoint metadata, and scopes from MCP UI resources
+   (e.g. visualize_query)."
   []
-  (into (mcp.resources/resource-scopes)
+  (into (into (mcp.resources/resource-scopes) (mcp.toolsets/group-scopes))
         (comp (keep #(get-in % [:form :metadata :scope]))
               (filter string?))
         (vals (api.macros/ns-routes 'metabase.agent-api.api))))

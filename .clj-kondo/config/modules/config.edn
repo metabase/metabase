@@ -1253,6 +1253,7 @@
                     :model/McpToolCallLog}
    :uses #{agent-api
            api
+           api-scope
            app-db
            config
            llm
