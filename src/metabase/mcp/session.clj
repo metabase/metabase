@@ -17,10 +17,12 @@
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -259,80 +261,111 @@
     (or (nil? owner) (= owner user-id))))
 
 ;;; -------------------------------------------- Query Handle Store -----------------------------------------------
-;; DB-backed store for base64-encoded MBQL query payloads referenced by MCP tool
-;; calls. Each row carries a fresh UUID handle that the iframe (drill-through) or
-;; agent (construct_query) passes through downstream so the LLM never carries the
-;; encoded query.
+;; DB-backed, user-scoped, TTL'd store for MBQL query payloads referenced by MCP tool calls and the
+;; embedding iframe. The model carries only the opaque handle UUID; the query itself lives here so the
+;; LLM never has to hold it. The store is content-addressed: the handle UUID is a deterministic hash of
+;; (user, query), so an iteration loop that re-stores the same query reuses one row rather than piling
+;; up a row per attempt.
+;;
+;; Rows hold plain JSON. Payloads arriving as base64 (the shape the agent-api construct endpoints still
+;; emit) are decoded on write; reads hand the query back in the base64 shape those callers expect and
+;; decode any pre-migration base64 row on the fly. Both conversions fall away once the agent-api
+;; boundary speaks JSON directly.
+
+(defn- json-payload?
+  "True if `payload` is JSON rather than base64. A serialized MBQL query is a JSON object, so it starts
+   with `{`; base64 never does."
+  [payload]
+  (str/starts-with? (str/triml payload) "{"))
+
+(defn- ->stored-json
+  "Normalize a query payload to the JSON text stored in a handle row."
+  [payload]
+  (if (json-payload? payload)
+    payload
+    (u/decode-base64 payload)))
+
+(defn- stored->base64
+  "Return a stored query payload as base64, the shape handle callers hand to the agent-api and iframe.
+   Pre-migration rows already hold base64 and pass through unchanged."
+  [payload]
+  (if (json-payload? payload)
+    (u/encode-base64 payload)
+    payload))
+
+(defn- content-addressed-handle-id
+  "Deterministic handle UUID for a (`user-id`, `query-json`) pair."
+  ^String [user-id query-json]
+  (str (UUID/nameUUIDFromBytes
+        (.getBytes (str user-id " " query-json) StandardCharsets/UTF_8))))
+
+(defn- handle-expires-at
+  []
+  (t/plus (t/offset-date-time) (t/days (mcp.settings/mcp-query-handle-ttl-days))))
 
 (defn store-handle!
-  "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
+  "Store `encoded-query` for `user-id` and return the handle UUID.
 
-   `mcp-session-id` is recorded so DELETE /api/metabase-mcp can sweep the session's handles, and so reads can log
-   when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
-   user-scoped, since handle UUIDs are globally unique.
+   Content-addressed: storing the same query twice for the same user yields the same handle and a single
+   row. The handle expires after [[metabase.mcp.settings/mcp-query-handle-ttl-days]].
 
-   `prompt` is optional, but should be supplied for construct_query handles so visualize_query can later
-   return both the query and original user prompt to the MCP iframe for feedback submission."
+   `mcp-session-id` is recorded so `DELETE /api/metabase-mcp` can sweep a session's handles; it does not
+   scope the lookup (reads are purely user-scoped). `prompt` is optional but should be supplied for
+   construct_query handles so visualize_query can return the original prompt to the MCP iframe."
   ([mcp-session-id user-id encoded-query]
    (store-handle! mcp-session-id user-id encoded-query nil))
   ([mcp-session-id user-id encoded-query prompt]
-   ;; Materializing a core_session here serves two purposes: its FK is what makes handles
-   ;; cascade-delete when the session row is reaped, and its user_id is what find-handle-row
-   ;; filters on for cross-session ownership.
-   (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
-         handle-id       (str (UUID/randomUUID))]
-     (t2/insert! :model/McpQueryHandle
-                 (cond-> {:id              handle-id
-                          :mcp_session_id  mcp-session-id
-                          :core_session_id core-session-id
-                          :encoded_query   encoded-query}
-                   prompt (assoc :prompt prompt)))
+   (let [query-json (->stored-json encoded-query)
+         handle-id  (content-addressed-handle-id user-id query-json)]
+     ;; Re-storing the same query refreshes the TTL and, when a prompt is supplied, the prompt —
+     ;; so an iteration loop keeps a single live row rather than resurrecting an expired one.
+     (app-db/update-or-insert!
+      :model/McpQueryHandle
+      {:id handle-id}
+      (fn [existing]
+        (cond-> {:user_id        user-id
+                 :mcp_session_id (or (:mcp_session_id existing) mcp-session-id)
+                 :encoded_query  query-json
+                 :expires_at     (handle-expires-at)}
+          prompt                        (assoc :prompt prompt)
+          (and (nil? prompt) existing)  (assoc :prompt (:prompt existing)))))
      handle-id)))
 
 (defn- find-handle-row
-  "Look up the handle row by `handle-id`, scoped to `user-id`.
-   Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
-   row by definition — no ordering or session-preference logic is needed. `mcp-session-id` is recorded
-   on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
-   cross-session resolutions for telemetry."
+  "Look up a live (unexpired) handle row by `handle-id`, scoped to `user-id`. Handle ids are globally
+   unique, so this returns at most one row. `mcp-session-id` only tags cross-session resolutions in the
+   telemetry log; it never affects the lookup."
   [mcp-session-id user-id handle-id]
   (when (and user-id handle-id)
-    ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
-    ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
     (let [row (t2/select-one :model/McpQueryHandle
-                             {:select [:mqh.*]
-                              :from   [[:mcp_query_handle :mqh]]
-                              :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
-                              :where  [:and
-                                       [:= :mqh.id handle-id]
-                                       [:= :cs.user_id user-id]]})]
+                             {:where [:and
+                                      [:= :id handle-id]
+                                      [:= :user_id user-id]
+                                      [:> :expires_at :%now]]})]
       (when (and row (not= mcp-session-id (:mcp_session_id row)))
         (log/debugf "MCP handle %s resolved across sessions for user %s"
                     handle-id user-id))
       row)))
 
 (defn read-handle
-  "Return the encoded query for `handle-id` owned by `user-id`, or nil if no row exists.
-   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  "Return the stored query for `handle-id` owned by `user-id` (base64, for the agent-api and iframe
+   callers), or nil if no live handle exists. Lookup is user-scoped — see [[find-handle-row]]."
   [mcp-session-id user-id handle-id]
-  (:encoded_query (find-handle-row mcp-session-id user-id handle-id)))
+  (some-> (find-handle-row mcp-session-id user-id handle-id)
+          :encoded_query
+          stored->base64))
 
 (defn resolve-query-handle
-  "Return {:encoded_query ... :prompt ...} for `handle-id` owned by `user-id`, or nil.
-   Lookup is user-scoped — see [[find-handle-row]] for how `mcp-session-id` is used."
+  "Return {:encoded_query <base64> :prompt ...} for `handle-id` owned by `user-id`, or nil if no live
+   handle exists. Lookup is user-scoped — see [[find-handle-row]]."
   [mcp-session-id user-id handle-id]
   (when-let [row (find-handle-row mcp-session-id user-id handle-id)]
-    (select-keys row [:encoded_query :prompt])))
+    {:encoded_query (stored->base64 (:encoded_query row))
+     :prompt        (:prompt row)}))
 
 (defn delete!
-  "Delete the `core_session` backing this MCP session (if one was ever created)
-   and any associated query handles. Scoped to `user-id` so that one user cannot
-   delete another user's session.
-
-   Handles tied to a `core_session` are also reaped by the FK cascade when the
-   session row goes; the explicit handle-delete here covers handles whose
-   `core_session_id` was never set — e.g. handles for regular query payloads that
-   aren't backed by an MCP iframe and so never materialize a `core_session`."
+  "Delete the `core_session` backing this MCP session (if one was ever materialized) and the session's
+   query handles. Scoped to `user-id` so one user cannot delete another user's session or handles."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (t2/query {:delete-from :core_session

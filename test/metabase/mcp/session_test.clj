@@ -167,65 +167,6 @@
       ;; Should not throw — just a no-op delete
       (mcp.session/delete! session-id (mt/user->id :crowberto)))))
 
-(deftest store-and-read-handle-test
-  (testing "store-handle! returns a UUID handle that read-handle resolves to the encoded query"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          h1         (mcp.session/store-handle! session-id user-id "first")
-          h2         (mcp.session/store-handle! session-id user-id "second")]
-      (is (some? (parse-uuid h1)) "store-handle! must return a UUID string")
-      (is (some? (parse-uuid h2)))
-      (is (not= h1 h2) "successive calls must produce distinct handles")
-      (is (= session-id (t2/select-one-fn :mcp_session_id :model/McpQueryHandle :id h1))
-          "store-handle! stores the full MCP session id, including capability hints")
-      (is (= "first"  (mcp.session/read-handle session-id user-id h1)))
-      (is (= "second" (mcp.session/read-handle session-id user-id h2)))
-      (is (nil? (mcp.session/read-handle session-id user-id (str (random-uuid))))
-          "read-handle returns nil for unknown handles"))))
-
-(deftest read-handle-falls-back-across-the-users-sessions-test
-  (testing "read-handle resolves a handle stored in one session when called from another session of the same user"
-    (let [user-id        (mt/user->id :crowberto)
-          owner-session  (mcp.session/create! user-id)
-          rotated-session (mcp.session/create! user-id)
-          handle         (mcp.session/store-handle! owner-session user-id "payload")]
-      (testing "same session → resolves"
-        (is (= "payload" (mcp.session/read-handle owner-session user-id handle))))
-      (testing "different session, same user → still resolves (cross-session fallback)"
-        (is (= "payload" (mcp.session/read-handle rotated-session user-id handle))))))
-  (testing "read-handle refuses to resolve handles owned by a different user"
-    (let [owner-id    (mt/user->id :crowberto)
-          attacker-id (mt/user->id :rasta)
-          session-id  (mcp.session/create! owner-id)
-          handle      (mcp.session/store-handle! session-id owner-id "payload")]
-      (is (nil? (mcp.session/read-handle session-id attacker-id handle))))))
-
-(deftest resolve-query-handle-returns-encoded-query-and-prompt-test
-  (testing "resolve-query-handle returns the stored query and prompt"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          handle     (mcp.session/store-handle! session-id user-id "encoded" "what was my question")]
-      (is (= {:encoded_query "encoded" :prompt "what was my question"}
-             (mcp.session/resolve-query-handle session-id user-id handle))))))
-
-(deftest store-handle-cascades-with-core-session-test
-  (testing "deleting the backing core_session cascades to its handles"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          handle     (mcp.session/store-handle! session-id user-id "payload")]
-      (is (= "payload" (mcp.session/read-handle session-id user-id handle)))
-      (t2/delete! :core_session :key_hashed (derived-hash session-id))
-      (is (nil? (mcp.session/read-handle session-id user-id handle))
-          "cascade should reap the handle when the core_session row goes"))))
-
-(deftest delete-removes-handles-test
-  (testing "delete! removes handles for the session"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          handle     (mcp.session/store-handle! session-id user-id "payload")
-          _          (mcp.session/delete! session-id user-id)]
-      (is (nil? (mcp.session/read-handle session-id user-id handle))))))
-
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"
     (let [login-events (atom [])

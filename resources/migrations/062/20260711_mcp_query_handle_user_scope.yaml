@@ -1,0 +1,135 @@
+## User-scope and TTL for mcp_query_handle: reads resolve by (user_id, id) directly and
+## handles expire on their own instead of relying on core_session reaping. mcp_session_id
+## becomes nullable because the stateless MCP core carries no transport session id.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-07-11T00:00:00
+      author: aleksandr
+      comment: Add user_id to mcp_query_handle so reads resolve without a core_session join
+      changes:
+        - addColumn:
+            tableName: mcp_query_handle
+            columns:
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: Owner of the handle; reads are scoped to this user
+      rollback:
+        - dropColumn:
+            tableName: mcp_query_handle
+            columnName: user_id
+
+  - changeSet:
+      id: v62.2026-07-11T00:00:01
+      author: aleksandr
+      comment: Backfill mcp_query_handle.user_id from the core_session that currently backs each row
+      changes:
+        - sql:
+            sql: >-
+              UPDATE mcp_query_handle
+              SET user_id = (SELECT cs.user_id FROM core_session cs WHERE cs.id = mcp_query_handle.core_session_id)
+              WHERE user_id IS NULL;
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-07-11T00:00:02
+      author: aleksandr
+      comment: Index mcp_query_handle.user_id for user-scoped reads
+      changes:
+        - createIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_user_id
+
+  - changeSet:
+      id: v62.2026-07-11T00:00:03
+      author: aleksandr
+      comment: FK from mcp_query_handle.user_id to core_user, cascade on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: mcp_query_handle
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_mcp_query_handle_ref_core_user
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: mcp_query_handle
+            constraintName: fk_mcp_query_handle_ref_core_user
+
+  - changeSet:
+      id: v62.2026-07-11T00:00:04
+      author: aleksandr
+      comment: Add expires_at to mcp_query_handle so handles have an explicit TTL
+      changes:
+        - addColumn:
+            tableName: mcp_query_handle
+            columns:
+              - column:
+                  name: expires_at
+                  type: ${timestamp_type}
+                  remarks: When this handle stops resolving; reads filter it out once past
+      rollback:
+        - dropColumn:
+            tableName: mcp_query_handle
+            columnName: expires_at
+
+  # Backfill expires_at to created_at + 14 days (the default TTL) for pre-existing rows. Date
+  # arithmetic differs per dialect, so each is gated by dbms.
+  - changeSet:
+      id: v62.2026-07-11T00:00:05
+      author: aleksandr
+      comment: Backfill mcp_query_handle.expires_at from created_at + default TTL
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE mcp_query_handle SET expires_at = created_at + interval '14' day WHERE expires_at IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE mcp_query_handle SET expires_at = created_at + interval 14 day WHERE expires_at IS NULL;
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-07-11T00:00:06
+      author: aleksandr
+      comment: Index mcp_query_handle.expires_at for TTL sweeps
+      changes:
+        - createIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_expires_at
+            columns:
+              - column:
+                  name: expires_at
+      rollback:
+        - dropIndex:
+            tableName: mcp_query_handle
+            indexName: idx_mcp_query_handle_expires_at
+
+  - changeSet:
+      id: v62.2026-07-11T00:00:07
+      author: aleksandr
+      comment: Make mcp_query_handle.mcp_session_id nullable; the stateless MCP core has no session id
+      changes:
+        - dropNotNullConstraint:
+            tableName: mcp_query_handle
+            columnName: mcp_session_id
+            columnDataType: varchar(254)
+      rollback:
+        - addNotNullConstraint:
+            tableName: mcp_query_handle
+            columnName: mcp_session_id
+            columnDataType: varchar(254)

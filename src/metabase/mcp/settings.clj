@@ -65,6 +65,15 @@
   :encryption :no
   :audit      :getter)
 
+(defsetting mcp-query-handle-ttl-days
+  (deferred-tru "Number of days a stored MCP query handle stays resolvable before it expires.")
+  :type       :integer
+  :default    14
+  :visibility :internal
+  :export?    false
+  :audit      :no-value
+  :doc        false)
+
 (defn- strip-scheme
   [s]
   (if-let [idx (str/index-of s "://")]

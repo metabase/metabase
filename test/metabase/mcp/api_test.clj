@@ -20,6 +20,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
@@ -34,6 +35,10 @@
     (mcp.resources/with-fallback-template (thunk))))
 
 ;;; --------------------------------------------------- Helpers ----------------------------------------------------
+
+(def ^:private encoded-query
+  "Base64 of a minimal MBQL query — the payload shape handle callers store and read back."
+  (u/encode-base64 (json/encode {:database 1 :type "query" :stages [{:source-table 1}]})))
 
 (defn- mcp-request
   "Make a POST request to /api/mcp with the given JSON-RPC body and optional extra headers.
@@ -983,11 +988,11 @@
     (let [user-id        (mt/user->id :crowberto)
           [session-id _] (initialize!)
           handle         (mt/with-current-user user-id
-                           (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA=="))]
+                           (mcp.session/store-handle! session-id user-id encoded-query))]
       ;; The error path returns no :structuredContent, so asserting it is present is
       ;; equivalent to asserting :isError is not set.
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+               :body   {:result {:structuredContent {:query encoded-query}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle handle}})
@@ -1005,10 +1010,10 @@
   (testing "visualize_query echoes the inline query"
     (let [[session-id _] (initialize!)]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+               :body   {:result {:structuredContent {:query encoded-query}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
-                                             :arguments {:query "ZW5jb2RlZA=="}})
+                                             :arguments {:query encoded-query}})
                            {"mcp-session-id" session-id}))))))
 
 (deftest tools-call-visualize-query-test-2
@@ -1016,9 +1021,9 @@
     (let [user-id        (mt/user->id :crowberto)
           [session-id _] (initialize!)
           handle         (mt/with-current-user user-id
-                           (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA=="))]
+                           (mcp.session/store-handle! session-id user-id encoded-query))]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+               :body   {:result {:structuredContent {:query encoded-query}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle handle}})
@@ -1118,9 +1123,9 @@
           [owner-session _]   (initialize!)
           [rotated-session _] (initialize!)
           handle              (mt/with-current-user user-id
-                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+                                (mcp.session/store-handle! owner-session user-id encoded-query))]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+               :body   {:result {:structuredContent {:query encoded-query}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "visualize_query"
                                              :arguments {:query_handle handle}})
@@ -1154,9 +1159,9 @@
           [owner-session _]   (initialize!)
           [rotated-session _] (initialize!)
           handle              (mt/with-current-user user-id
-                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+                                (mcp.session/store-handle! owner-session user-id encoded-query))]
       (is (=? {:status 200
-               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+               :body   {:result {:structuredContent {:query encoded-query}}}}
               (mcp-request (jsonrpc-request "tools/call"
                                             {:name      "render_drill_through"
                                              :arguments {:handle handle}})
@@ -1166,9 +1171,8 @@
   (testing "visualize_query refuses to resolve another user's handle"
     (let [owner-id              (mt/user->id :crowberto)
           [owner-session _]     (initialize!)                     ;; crowberto
-          ;; Fresh UUID-shaped sentinel for the stored payload so the leak
-          ;; assertion below can't accidentally match against any other test fixture.
-          encoded-payload       (str (random-uuid))
+          ;; Unique payload so the leak assertion below can't accidentally match another fixture.
+          encoded-payload       (u/encode-base64 (json/encode {:sentinel (str (random-uuid))}))
           handle                (mt/with-current-user owner-id
                                   (mcp.session/store-handle! owner-session owner-id encoded-payload))
           [attacker-session _]  (initialize-as! :rasta)
