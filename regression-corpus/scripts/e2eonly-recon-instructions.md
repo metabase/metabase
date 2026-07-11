@@ -9,7 +9,14 @@ This bug's fix shipped **only a Cypress e2e repro** — no unit test. Your job i
    your mutant, proving the mutation changed observable behavior *at the unit level*. The
    witness doubles as the candidate unit replacement for the e2e. Save it as a new/added spec.
 
-You work in an isolated git worktree. Never touch the main tree; never git reset/stash broadly.
+You work in an isolated git worktree. Never touch the main tree; never git reset/checkout broadly.
+**Do NOT use `git stash`** — all worktrees share one stash stack and concurrent agents collide.
+To test the clean tree, revert your edit in place (Edit) and re-apply it, don't stash.
+
+**If the fix is BACKEND (`.clj`/`.cljc`):** a jest witness is impossible, but that does NOT make it
+irreducible — a Clojure `deftest` is the cheaper oracle. Report outcome `no_witness_backend`
+(class: backend, Clojure-testable), not a jsdom/layout irreducible. Only report a true irreducible
+when the observable is real-browser layout/geometry, cross-page routing, or a browser API jsdom lacks.
 
 ## Harness (from worktree root)
 ```
