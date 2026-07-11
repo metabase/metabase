@@ -22,7 +22,33 @@ mutation so **product code ends unchanged**), and deletes the Cypress repro bloc
 | 5 | `2a1bf560` | 17 |
 | 6 | `c131cccd` | 12 |
 | 7 | `8cc4283b` | 12 |
-| **total** | | **94 e2e repros culled, 94 unit witnesses landed** |
+| 8 | `c561d8cb` | 11 |
+| **total** | | **105 e2e repros culled, 106 unit witnesses landed** |
+
+**Batch 8 (rlc-batch5, 16 agents — FINAL FE batch):** 12 landed (7884 28796 28971 29450
+29786 29959 30165 31626 32985 38083 44415 44668; 29786 lands a witness with no cull since
+its e2e was already removed by the BE-parity commit); 4 not culled — 3 obsoleted-by-rewrite
+(34330 31697 31643, all Ace/x-ray deletions) + 1 be_deftest (31769 join validation →
+metabase.lib.join .cljc). Landing 12/16 = 75% — *higher* than batches 6–7 despite being a
+2023 slice, because pure-fn/thunk/container-render seams survive rewrites that only replaced
+the editor/UI shell. Heavy collisions: core.unit.spec.ts now holds 4 issues' blocks
+(45926 44171 30165 28971).
+
+## FE FAN-OUT COMPLETE — pool exhausted
+
+After batch 8 the pf=1 distinct-spec candidate pool was down to 16 and is now effectively
+empty (each new batch dedupes specs already culled). Do NOT launch another blind FE batch —
+it will be mostly obsoleted/backend. Two next moves remain:
+
+1. **BE-deftest wave (13 issues):** 42829 40399 40608 32373 32032 31769 (b6–b8) + 48562
+   50373 (b4) + 68998 53604 63687 (study). All `.clj[c]`; most already have a shipped
+   `deftest` oracle named in the agent reports. A Clojure workflow confirms/relocates the
+   deftest and culls the e2e (use `./bin/test-agent`, never `clj -X:dev:test`).
+2. **Open the PR** — 105 e2e blocks culled + 106 witnesses is a self-contained first PR.
+
+Deferred FE retry: **34395** (hide-actions-on-embed) — agent hit an API error; the seam is a
+pure `isActionDashCard` predicate; retry with a predicate-level witness, not a full embedded-
+dashboard render.
 
 **Batch 7 (rlc-batch4, 20 agents):** 12 landed (26470 28599 32974 35545 36868 36984 38640
 40422 41464 44266 45481 51035); 8 not culled — 4 obsoleted-by-rewrite (36866 34794 41381
