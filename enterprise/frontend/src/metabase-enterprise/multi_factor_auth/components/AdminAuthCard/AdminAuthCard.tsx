@@ -49,7 +49,7 @@ export function AdminAuthCard() {
       />
       {enabled && overview && !overview.encryption_key_set && (
         <Alert color="warning">
-          {t`Set MB_ENCRYPTION_SECRET_KEY to avoid storing authenticator secrets unencrypted.`}
+          {t`Make sure to set the MB_ENCRYPTION_SECRET_KEY environment variable to encrypt authenticator secrets.`}
         </Alert>
       )}
       {enabled && overview && <EnrollmentCounts overview={overview} />}
