@@ -25,7 +25,7 @@
    (java.time Duration)
    (java.util Map Set)
    (java.util.concurrent ExecutionException TimeoutException)
-   (org.graalvm.polyglot Context Engine HostAccess Source Value)
+   (org.graalvm.polyglot Context Engine HostAccess PolyglotException Source Value)
    (org.graalvm.polyglot.io FileSystem IOAccess)))
 
 (set! *warn-on-reflection* true)
@@ -250,12 +250,17 @@
 ;;; ------------------------------------------------- backend ---------------------------------------------
 
 (defn- call-python
-  "Execute `sql_tools.<fn-name>` with `args` on a pooled context and return the result as a string."
+  "Execute `sql_tools.<fn-name>` with `args` on a pooled context and return the result as a string.
+  Python-side failures are rethrown as the transport-agnostic
+  [[metabase.sql-parsing.common/call-failed-ex]]."
   ^String [fn-name & args]
   (do-with-python-context
    (fn [^Context context]
-     (let [^Value fn-ref (.eval context "python" (str "sql_tools." fn-name))]
-       (.asString ^Value (.execute fn-ref (object-array args)))))))
+     (try
+       (let [^Value fn-ref (.eval context "python" (str "sql_tools." fn-name))]
+         (.asString ^Value (.execute fn-ref (object-array args))))
+       (catch PolyglotException e
+         (throw (common/call-failed-ex (.getMessage e) e)))))))
 
 (defn parser
   "The `:graalvm` [[metabase.sql-parsing.protocol/SqlParser]] — runs sqlglot on GraalPy on the pooled

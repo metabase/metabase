@@ -10,9 +10,10 @@
   deploy-time provisioning.
 
   The pool holds a single process, held exclusively per call (so calls serialize onto it); with a min of
-  0 it shrinks to 0 when idle, killing the process after 1 minute with no work. We cap it at one process
-  — spawning a fresh `python3` (interpreter init + sqlglot import) is costly, and a warm process parses
-  fast enough that queuing a second call behind it beats paying that startup cost for concurrency.
+  0 it shrinks to 0 when idle, killing the process after 10 minutes with no work. We cap it at one
+  process — spawning a fresh `python3` (interpreter init + sqlglot import) is costly, and a warm process
+  parses fast enough that queuing a second call behind it beats paying that startup cost for
+  concurrency.
 
   Requires a `python3` binary on the host's PATH."
   (:require
@@ -148,9 +149,9 @@
     (let [{:keys [ok result error]} (json/decode+kw line)]
       (if ok
         result
-        ;; :call-error — the process answered the protocol correctly, so it is healthy; only this call
-        ;; failed. [[call-python]] releases (rather than disposes) the process on these.
-        (throw (ex-info (str "sql-parsing python call failed: " error) {:call-error true}))))))
+        ;; The process answered the protocol correctly, so it is healthy; only this call failed.
+        ;; [[call-python]] releases (rather than disposes) the process on these.
+        (throw (common/call-failed-ex error))))))
 
 ;;; ------------------------------------------------ pool -------------------------------------------------
 
@@ -163,15 +164,16 @@
   it); when idle it shrinks to 0 and the generator's `destroy` kills the process. Capped at one because
   a warm process is fast and spawning another is costly. See
   [[metabase.sql-parsing.common/create-pool]]."
-  (common/create-pool start-process! stop-process! {:max-size 1, :idle-minutes 1}))
+  (common/create-pool start-process! stop-process! {:max-size 1, :idle-minutes 10}))
 
 (defn- call-python
   "Execute `sql_tools.<fn-name>` with `args` on a pooled CPython process and return the result as a
-  string. A `:call-error` (the process answered `ok: false` — it is healthy, only the call failed)
-  releases the process back for reuse, like the graal parser does with its context; any other failure
-  may have left the process in a bad state, so it is disposed (dropped from the pool). Retries once if
-  the acquired process turned out to be already dead (e.g. reaped or killed while parked in the pool),
-  since a fresh one should succeed."
+  string. A Python-side failure (the process answered `ok: false` — it is healthy, only the call
+  failed, thrown as the transport-agnostic [[metabase.sql-parsing.common/call-failed-ex]]) releases the
+  process back for reuse, like the graal parser does with its context; any other failure may have left
+  the process in a bad state, so it is disposed (dropped from the pool). Retries once if the acquired
+  process turned out to be already dead (e.g. reaped or killed while parked in the pool), since a fresh
+  one should succeed."
   ^String [fn-name & args]
   (loop [retries 1]
     (let [python-process (.acquire python-process-pool pool-key)
@@ -180,7 +182,7 @@
                              (.release python-process-pool pool-key python-process)
                              {:result result})
                            (catch Throwable t
-                             (if (:call-error (ex-data t))
+                             (if (:sql-parsing/error (ex-data t))
                                (.release python-process-pool pool-key python-process)
                                (.dispose python-process-pool pool-key python-process))
                              (if (and (:retryable (ex-data t)) (pos? retries))

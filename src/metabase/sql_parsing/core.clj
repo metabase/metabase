@@ -31,6 +31,14 @@
   []
   (parser/parser))
 
+(defn parse-error?
+  "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
+  backend threw it. Other Python-side failures (and non-sqlglot exceptions) are false."
+  [e]
+  (let [data (ex-data e)]
+    (boolean (and (:sql-parsing/error data)
+                  (= "ParseError" (:sql-parsing/python-error-type data))))))
+
 ;;; ----------------------------------------- VALUES clause stripping ------------------------------------------
 
 ;; Large VALUES clauses (thousands of tuples) cause GraalPy OOM due to ~114KB per AST node

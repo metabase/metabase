@@ -4,6 +4,7 @@
   `resources/python-sources` on first use, like the graal tests)."
   (:require
    [clojure.test :refer :all]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.python :as python]))
 
@@ -26,7 +27,19 @@
 
 (deftest call-error-keeps-process-healthy-test
   (testing "a failed call surfaces the Python error and the process still answers the next call"
-    (is (thrown-with-msg? Exception #"sql-parsing python call failed"
+    (is (thrown-with-msg? Exception #"sqlglot call failed"
                           (protocol/add-into-clause (python/parser) nil nil "t")))
     (is (= [[nil nil "users"]]
            (protocol/referenced-tables (python/parser) "postgres" "SELECT * FROM users")))))
+
+(deftest parse-error-test
+  (testing "unparseable SQL surfaces as the same transport-agnostic parse error the graal parser throws"
+    (let [e (try
+              (protocol/referenced-tables (python/parser) "postgres" "SELECT !!!")
+              (catch Exception e e))]
+      (is (sql-parsing/parse-error? e)))
+    (testing "but other Python-side failures are not parse errors"
+      (let [e (try
+                (protocol/add-into-clause (python/parser) nil nil "t")
+                (catch Exception e e))]
+        (is (not (sql-parsing/parse-error? e)))))))

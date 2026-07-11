@@ -112,6 +112,18 @@
 
 ;;; ------------------------------------------------- parser ----------------------------------------------
 
+(defn call-failed-ex
+  "The uniform exception for a Python-side sqlglot failure, thrown by every transport so callers can
+  handle parse errors without knowing which backend ran ([[metabase.sql-parsing.core/parse-error?]]).
+  `error` is the Python error rendered as `ErrorType: message`."
+  ([error]
+   (call-failed-ex error nil))
+  ([error cause]
+   (ex-info (str "sqlglot call failed: " error)
+            {:sql-parsing/error             true
+             :sql-parsing/python-error-type (some->> error (re-find #"^\w+"))}
+            cause)))
+
 (defn make-parser
   "Build a [[metabase.sql-parsing.protocol/SqlParser]] over `call`, a transport function
   `(call fn-name & args) → string` that executes `sql_tools.<fn-name>` with `args`. JSON results are

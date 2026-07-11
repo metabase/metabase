@@ -10,7 +10,7 @@
   deploy-time provisioning.
 
   The pool holds a single process, held exclusively per render (so renders serialize onto it); with a min
-  of 0 it shrinks to 0 when idle, killing the process after 1 minute with no work. We cap it at one
+  of 0 it shrinks to 0 when idle, killing the process after 10 minutes with no work. We cap it at one
   process — spawning a fresh `node` (runtime init + bundle load) is costly, and a warm process renders
   fast enough that queuing a second render behind it beats paying that startup cost for concurrency.
 
@@ -143,7 +143,7 @@
   it); when idle it shrinks to 0 and the generator's `destroy` kills the process. Capped at one because a
   warm process is fast and spawning another is costly. See
   [[metabase.channel.render.js.common/create-pool]]."
-  (common/create-pool start-process! stop-process! {:max-size 1, :idle-minutes 1}))
+  (common/create-pool start-process! stop-process! {:max-size 1, :idle-minutes 10}))
 
 (defn- call-node
   "Run static-viz bundle function `fn-name` with `arg` (a Clojure data structure) on a pooled Node process,
