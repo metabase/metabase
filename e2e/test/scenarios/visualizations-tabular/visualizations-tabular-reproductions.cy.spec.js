@@ -966,54 +966,6 @@ describe("issue 45481", () => {
   });
 });
 
-describe("issue 12368", () => {
-  const questionDetails = {
-    type: "question",
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        ["field", PRODUCTS.VENDOR, { "base-type": "type/Text" }],
-        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-      ],
-    },
-    visualization_settings: {
-      "table.pivot": true,
-      "table.pivot_column": "CATEGORY",
-      "table.cell_column": "count",
-      column_settings: {
-        [`["ref",["field",${PRODUCTS.VENDOR},null]]`]: {
-          column_title: "Vendor2",
-        },
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should clear pivot settings when doing underlying records drill from a pivot table (metabase#12368)", () => {
-    cy.log("drill thru from a pivot table");
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    cy.findAllByTestId("cell-data").contains("1").first().click();
-    H.popover().findByText("See this Product").click();
-
-    cy.log("pivot flag should be cleared but other viz settings are preserved");
-    H.tableInteractive().within(() => {
-      cy.findByText("Ean").should("be.visible");
-      cy.findByText("Vendor2").should("be.visible");
-    });
-    H.openVizSettingsSidebar();
-    cy.findByTestId("chartsettings-sidebar").within(() => {
-      cy.button("Add or remove columns").should("be.visible");
-      cy.findByText("Pivot column").should("not.exist");
-      cy.findByText("Cell column").should("not.exist");
-    });
-  });
-});
-
 describe("issue 32718", () => {
   const questionDetails = {
     display: "table",

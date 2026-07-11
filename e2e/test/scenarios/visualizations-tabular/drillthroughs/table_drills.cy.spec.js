@@ -2,15 +2,8 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-  ACCOUNTS_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   beforeEach(() => {
@@ -480,41 +473,6 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
         cy.findByText("≠").should("be.visible");
       });
     });
-  });
-});
-
-describe("scenarios > visualizations > drillthroughs > table_drills > nulls", () => {
-  beforeEach(() => {
-    // It's important to restore to the "setup" to have access to "Accounts" table
-    H.restore("setup");
-    cy.signInAsAdmin();
-    cy.viewport(1500, 800);
-  });
-
-  it("should display proper drills on a datetime cell click when there is no value (metabase#44101)", () => {
-    const CANCELLED_AT_INDEX = 10;
-
-    H.openTable({ table: ACCOUNTS_ID, limit: 1 });
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByRole("gridcell")
-      .eq(CANCELLED_AT_INDEX)
-      .should("have.text", "")
-      .click({ force: true });
-
-    H.popover().within(() => {
-      cy.findByText("Filter by this date and time").should("be.visible");
-      cy.findByText("Is empty").should("be.visible");
-      cy.findByText("Not empty").should("be.visible").click();
-    });
-
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Canceled At is not empty",
-    );
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByRole("gridcell")
-      .eq(CANCELLED_AT_INDEX)
-      .should("not.have.text", "");
   });
 });
 

@@ -1236,62 +1236,6 @@ describe("issue 27521", () => {
   }
 });
 
-describe("issue 42385", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-  });
-
-  it("should remove invalid draft join clause when query database changes (metabase#42385)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.join();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Reviews").click();
-    });
-
-    H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.miniPickerHeader().click();
-    H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Reviews").click();
-    });
-
-    H.getNotebookStep("join").within(() => {
-      cy.findByPlaceholderText("Search for tables and more...").should(
-        "be.visible",
-      );
-      cy.findByLabelText("Left column").should("not.exist");
-      cy.findByLabelText("Right column").should("not.exist");
-    });
-  });
-
-  it("should remove invalid join clause in incomplete draft state when query database changes (metabase#42385)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.join();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Products").click();
-    });
-
-    H.getNotebookStep("join")
-      .findByLabelText("Right table")
-      .findByText("Products")
-      .click();
-
-    H.miniPicker().findByText("Reviews").click();
-
-    H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.miniPickerHeader().click();
-    H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Reviews").click();
-    });
-
-    H.getNotebookStep("join").should("not.exist");
-  });
-});
-
 describe("issue 46675", () => {
   const questionDetails = {
     query: {

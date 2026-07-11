@@ -139,38 +139,6 @@ describe("scenarios > metrics > dashboard", () => {
     });
   });
 
-  it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(
-      ({ body: { id: metricId } }) => {
-        H.visitMetric(metricId);
-        H.MetricPage.aboutPage().should("be.visible");
-
-        cy.log("Add metric to a dashboard via context menu");
-        H.MetricPage.moreMenu().click();
-        H.popover().findByTextEnsureVisible("Add to a dashboard").click();
-        H.modal().within(() => {
-          cy.findByRole("heading", {
-            name: "Add this metric to a dashboard",
-          }).should("be.visible");
-          cy.findByText("Orders in a dashboard").click();
-          cy.button("Select").click();
-        });
-
-        cy.log("Assert it's been added before the save");
-        cy.location("pathname").should(
-          "eq",
-          `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
-        );
-        cy.findByTestId("scalar-value").should("have.text", "18,760");
-
-        cy.log("Assert we can save the dashboard with the metric");
-        H.saveDashboard();
-        H.getDashboardCards().should("have.length", 2);
-        cy.findByTestId("scalar-value").should("have.text", "18,760");
-      },
-    );
-  });
-
   it("should be possible to add metrics to a dashboard", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
     H.createQuestion(ORDERS_TIMESERIES_METRIC);

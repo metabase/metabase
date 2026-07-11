@@ -7,6 +7,7 @@ import {
   checkCanRefreshModelCache,
   getDatasetMetadataCompletenessPercentage,
   getModelCacheSchemaName,
+  getSortedModelFields,
   isAdHocModelOrMetricQuestion,
 } from "metabase-lib/v1/metadata/utils/models";
 import {
@@ -355,6 +356,48 @@ describe("data model utils", () => {
         },
       ]);
       expect(percent).toBe(0.33);
+    });
+  });
+
+  describe("getSortedModelFields", () => {
+    it("returns the metadata columns unchanged when there is no column order setting", () => {
+      const columns = [{ name: "ID" }, { name: "PRODUCT_ID" }];
+      expect(getSortedModelFields(columns, {})).toBe(columns);
+    });
+
+    // metabase#42355: editing metadata for a SQL model whose columns are
+    // manually sorted must keep the metadata-rich columns and reorder them to
+    // follow the "table.columns" setting, so a database-field override made on
+    // a column is not lost when the model has a non-default column order.
+    it("returns the metadata columns reordered to match manually sorted column settings (metabase#42355)", () => {
+      // resultsMetadata order (the query's column order), with an edit applied
+      // to ID mapping it to a database field.
+      const idColumn = {
+        name: "ID",
+        display_name: "ID",
+        id: 11,
+        semantic_type: "type/PK",
+      };
+      const productIdColumn = {
+        name: "PRODUCT_ID",
+        display_name: "Product ID",
+      };
+      const columns = [idColumn, productIdColumn];
+
+      // Viz settings order the columns manually: PRODUCT_ID before ID.
+      const visualizationSettings = {
+        "table.columns": [
+          { name: "PRODUCT_ID", enabled: true },
+          { name: "ID", enabled: true },
+        ],
+      };
+
+      // The result follows the manual order and keeps the edited column objects
+      // (so the ID -> database-field override survives).
+      expect(getSortedModelFields(columns, visualizationSettings)).toEqual([
+        productIdColumn,
+        idColumn,
+      ]);
     });
   });
 });

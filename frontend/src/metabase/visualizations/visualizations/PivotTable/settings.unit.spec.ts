@@ -8,8 +8,47 @@ import { _columnSettings, settings } from "./settings";
 
 const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
 const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
+const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 
 describe("PivotTable settings", () => {
+  describe(`${COLUMN_FORMATTING_SETTING} getProps`, () => {
+    it("does not throw when the series has no data (metabase#37380)", () => {
+      // A user without table access gets a pivot series whose `data` is
+      // undefined; previously `series[0].data.cols` threw and left the
+      // question in a non-working state.
+      const series = [{ card: createMockCard({ display: "pivot" }) }];
+
+      expect(() => {
+        settings[COLUMN_FORMATTING_SETTING].getProps(series);
+      }).not.toThrow();
+
+      expect(settings[COLUMN_FORMATTING_SETTING].getProps(series)).toEqual({
+        canHighlightRow: false,
+        cols: [],
+      });
+    });
+
+    it("passes through the formattable (aggregation) columns when data is present", () => {
+      const aggregationColumn = createMockColumn({
+        name: "count",
+        source: "aggregation",
+      });
+      const breakoutColumn = createMockColumn({
+        name: "CATEGORY",
+        source: "breakout",
+      });
+      const data = createMockDatasetData({
+        cols: [breakoutColumn, aggregationColumn],
+      });
+      const series = [{ card: createMockCard({ display: "pivot" }), data }];
+
+      expect(settings[COLUMN_FORMATTING_SETTING].getProps(series)).toEqual({
+        canHighlightRow: false,
+        cols: [aggregationColumn],
+      });
+    });
+  });
+
   describe(`${COLUMN_SPLIT_SETTING} getValue`, () => {
     it("should not throw when the query has no dimension columns (metabase#56235)", () => {
       // a Count-only query has zero dimensions, which previously left an

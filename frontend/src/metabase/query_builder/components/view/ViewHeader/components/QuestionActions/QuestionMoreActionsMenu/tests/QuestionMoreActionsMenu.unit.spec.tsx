@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import { createMockNotification } from "metabase-types/api/mocks";
 
 import { openMenu, setup } from "./setup";
@@ -58,6 +58,22 @@ describe("QuestionMoreActionsMenu >", () => {
       await openMenu();
       expect(screen.queryByText("Create an alert")).not.toBeInTheDocument();
       expect(screen.queryByText("Edit alerts")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("metrics (metabase#44220)", () => {
+    it("should offer 'Add to dashboard' for metrics", async () => {
+      setup({
+        alerts: [],
+        canManageSubscriptions: false,
+        isAdmin: true,
+        isEmailSetup: true,
+        isEnterprise: false,
+        cardType: "metric",
+      });
+      await openMenu();
+      const menu = within(screen.getByRole("menu"));
+      expect(menu.getByText("Add to dashboard")).toBeInTheDocument();
     });
   });
 

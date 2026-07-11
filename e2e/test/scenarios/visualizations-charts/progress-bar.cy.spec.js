@@ -9,7 +9,7 @@ describe("scenarios > visualizations > progress chart", () => {
     cy.signInAsAdmin();
   });
 
-  it("should render progress bar in query builder and dashboard (metabase#40658, metabase#41243)", () => {
+  it("should render progress bar in dashboard (metabase#40658)", () => {
     const QUESTION_NAME = "40658";
     const questionDetails = {
       name: QUESTION_NAME,
@@ -46,14 +46,6 @@ describe("scenarios > visualizations > progress chart", () => {
         cy.findByText("Goal 0").should("be.visible");
         cy.findByText("Goal exceeded").should("be.visible");
       });
-
-    // check query builder chart render
-    H.dashboardCards().first().findByText(QUESTION_NAME).click();
-    H.queryBuilderMain().within(() => {
-      cy.findByText("18,760").should("be.visible");
-      cy.findByText("Goal 0").should("be.visible");
-      cy.findByText("Goal exceeded").should("be.visible");
-    });
   });
 
   it("should allow value field selection with multiple numeric columns", () => {

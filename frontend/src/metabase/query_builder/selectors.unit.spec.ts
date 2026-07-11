@@ -1,7 +1,11 @@
+import dayjs from "dayjs";
 import { assoc } from "icepick";
+
+import "metabase/utils/dayjs";
 
 import { createMockEntitiesState } from "__support__/store";
 import {
+  getFilteredTimelines,
   getIsResultDirty,
   getIsVisualized,
   getNativeEditorCursorOffset,
@@ -20,6 +24,7 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import registerVisualizations from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -38,6 +43,8 @@ import {
   createMockTable,
   createMockTableColumnOrderSetting,
   createMockTemplateTag,
+  createMockTimeline,
+  createMockTimelineEvent,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import {
@@ -629,5 +636,65 @@ describe("getShouldShowUnsavedChangesWarning", () => {
       });
       expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
     });
+  });
+});
+
+describe("getFilteredTimelines", () => {
+  function getTimelineWithEvents(
+    events: Array<{ id: number; name: string; timestamp: string }>,
+  ) {
+    return createMockTimeline({
+      id: 1,
+      events: events.map((event) => createMockTimelineEvent(event)),
+    });
+  }
+
+  function getEventNames(timelines: ReturnType<typeof getFilteredTimelines>) {
+    return timelines.flatMap((timeline) =>
+      (timeline.events ?? []).map((event) => event.name),
+    );
+  }
+
+  // metabase#23336: when a timeseries is bucketed by an absolute unit (e.g. year),
+  // the last x value is the *start* of the last bucket (Jan 1, 2024 for "count of
+  // orders by year"). Filtering events to [xDomain[0], xDomain[1]] drops any event
+  // that lands later within that final bucket. getFilteredTimelines must extend the
+  // domain by one data interval so those last-period events remain visible.
+  it("keeps events that fall within the last period of an absolute-unit timeseries (metabase#23336)", () => {
+    const xDomain: [dayjs.Dayjs, dayjs.Dayjs] = [
+      dayjs.utc("2020-01-01T00:00:00Z"),
+      dayjs.utc("2024-01-01T00:00:00Z"),
+    ];
+    const dataInterval: TimeSeriesInterval = { count: 1, unit: "year" };
+
+    const timeline = getTimelineWithEvents([
+      { id: 1, name: "In range", timestamp: "2022-05-01T12:00:00Z" },
+      { id: 2, name: "In last period", timestamp: "2024-09-10T12:00:00Z" },
+      { id: 3, name: "Beyond range", timestamp: "2025-06-01T12:00:00Z" },
+    ]);
+
+    const filtered = getFilteredTimelines.resultFunc(
+      [timeline],
+      xDomain,
+      dataInterval,
+    );
+
+    expect(getEventNames(filtered)).toEqual(["In range", "In last period"]);
+  });
+
+  it("does not extend the domain when there is no data interval", () => {
+    const xDomain: [dayjs.Dayjs, dayjs.Dayjs] = [
+      dayjs.utc("2020-01-01T00:00:00Z"),
+      dayjs.utc("2024-01-01T00:00:00Z"),
+    ];
+
+    const timeline = getTimelineWithEvents([
+      { id: 1, name: "In range", timestamp: "2022-05-01T12:00:00Z" },
+      { id: 2, name: "In last period", timestamp: "2024-09-10T12:00:00Z" },
+    ]);
+
+    const filtered = getFilteredTimelines.resultFunc([timeline], xDomain, null);
+
+    expect(getEventNames(filtered)).toEqual(["In range"]);
   });
 });

@@ -1,6 +1,13 @@
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
-import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
+import {
+  QueryVisualization,
+  VisualizationRunningState,
+} from "metabase/querying/components/QueryVisualization";
+import type { QueryVisualizationResult } from "metabase/querying/components/QueryVisualization/types";
+import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 type SetupOpts = {
   customMessage?: (isSlow?: boolean) => string;
@@ -44,5 +51,60 @@ describe("VisualizationRunningState", () => {
     expect(
       await screen.findByText("Custom message (slow)..."),
     ).toBeInTheDocument();
+  });
+});
+
+// keyboard-shortcut hint text that only renders inside the run-button overlay
+// while it is shown (see `!hidden && <Text>` in QueryVisualization)
+const OVERLAY_SHORTCUT_HINT = /⌘ \+ return|Ctrl \+ enter/;
+
+type OverlaySetupOpts = {
+  result?: QueryVisualizationResult | null;
+};
+
+function setupOverlay({ result }: OverlaySetupOpts = {}) {
+  const question = Question.create({
+    DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+    DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+    metadata: SAMPLE_METADATA,
+  });
+
+  renderWithProviders(
+    <QueryVisualization
+      question={question}
+      result={result}
+      isRunnable
+      isResultDirty
+      isRunning={false}
+      isNativeEditorOpen={false}
+    />,
+  );
+}
+
+describe("QueryVisualization run-button overlay (metabase#12586)", () => {
+  it("shows the run-button overlay when the result is dirty and there is no error", () => {
+    setupOverlay({ result: null });
+
+    const overlay = screen.getByTestId("run-button-overlay");
+    expect(
+      within(overlay).getByText(OVERLAY_SHORTCUT_HINT),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the run-button overlay when the query run errored", () => {
+    setupOverlay({
+      result: { error: { status: 500 } } as QueryVisualizationResult,
+    });
+
+    // the error itself is still surfaced to the user
+    expect(
+      screen.getByText("We're experiencing server issues"),
+    ).toBeInTheDocument();
+
+    // ...but the dirty-state run-button overlay is hidden
+    const overlay = screen.getByTestId("run-button-overlay");
+    expect(
+      within(overlay).queryByText(OVERLAY_SHORTCUT_HINT),
+    ).not.toBeInTheDocument();
   });
 });

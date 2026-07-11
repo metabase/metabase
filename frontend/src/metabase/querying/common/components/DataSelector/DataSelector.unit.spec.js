@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  render,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { delay } from "__support__/utils";
 import { UnconnectedDataSelector as DataSelector } from "metabase/querying/common/components/DataSelector";
 import {
@@ -508,6 +514,42 @@ describe("DataSelector", () => {
         "To pick some data, you'll need to add some first",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("should reset its open state when dismissed by clicking outside (metabase#52811)", async () => {
+    // When the picker is driven by internal state (no controlled `isOpen`
+    // prop), dismissing it by clicking outside must reset `isPopoverOpen`.
+    // If it stays true, the picker is still logically open and overlaps
+    // whatever reopens next — the "type picker covered by field picker"
+    // regression. The dropdown unmounts visually either way, so the state
+    // transition is the faithful, discriminating observable.
+    const selectorRef = { current: null };
+    render(
+      <DataSelector
+        ref={(instance) => {
+          selectorRef.current = instance;
+        }}
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div>Trigger</div>}
+        databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
+        metadata={metadata}
+        isInitiallyOpen
+      />,
+    );
+
+    // open via internal state (no controlled `isOpen` prop)
+    expect(
+      await screen.findByText("Multi-schema Database"),
+    ).toBeInTheDocument();
+    expect(selectorRef.current.state.isPopoverOpen).toBe(true);
+
+    // clicking outside dismisses the popover and resets its open state
+    await userEvent.click(document.body);
+    await waitFor(() => {
+      expect(selectorRef.current.state.isPopoverOpen).toBe(false);
+    });
+    expect(screen.queryByText("Multi-schema Database")).not.toBeInTheDocument();
   });
 
   it("should show 'Saved Questions' option when there are saved questions", async () => {

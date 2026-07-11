@@ -779,26 +779,6 @@ describe("issue 36027", () => {
   });
 });
 
-describe("issue 12586", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show the run button overlay when an error occurs (metabase#12586)", () => {
-    H.openOrdersTable();
-    H.summarize();
-
-    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
-
-    H.rightSidebar().button("Done").click();
-    H.main()
-      .findByText("We're experiencing server issues")
-      .should("be.visible");
-    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
-  });
-});
-
 function expectNoScrollbarContainer(element) {
   const hasScrollbarContainer =
     element.scrollHeight <= element.clientHeight &&

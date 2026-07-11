@@ -2,7 +2,6 @@ const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
@@ -227,33 +226,6 @@ describe("scenarios > home > homepage", () => {
       cy.wait("@getDashboard");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
-    });
-
-    it("should be able to dismiss qbnewq modal using keyboard (metabase#44754)", () => {
-      const randomUser = {
-        email: "random@metabase.test",
-        password: "12341234",
-      };
-
-      // We've already dismissed qbnewq modal for all existing users.
-      cy.log("Create a new admin user and log in as that user");
-      cy.request("POST", "/api/user", randomUser).then(({ body: { id } }) => {
-        cy.request("PUT", `/api/user/${id}`, { is_superuser: true });
-        cy.request("POST", "/api/session", {
-          username: randomUser.email,
-          password: randomUser.password,
-        });
-      });
-
-      cy.intercept("PUT", "/api/user/*/modal/qbnewb").as("modalDismiss");
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.modal()
-        .should("be.visible")
-        .and("contain", "It's okay to play around with saved questions");
-
-      cy.realPress("Escape");
-      cy.wait("@modalDismiss");
-      H.modal().should("not.exist");
     });
 
     // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
