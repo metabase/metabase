@@ -21,7 +21,23 @@ mutation so **product code ends unchanged**), and deletes the Cypress repro bloc
 | 4 | `7e767526` | 17 |
 | 5 | `2a1bf560` | 17 |
 | 6 | `c131cccd` | 12 |
-| **total** | | **82 e2e repros culled, 82 unit witnesses landed** |
+| 7 | `8cc4283b` | 12 |
+| **total** | | **94 e2e repros culled, 94 unit witnesses landed** |
+
+**Batch 7 (rlc-batch4, 20 agents):** 12 landed (26470 28599 32974 35545 36868 36984 38640
+40422 41464 44266 45481 51035); 8 not culled — 4 obsoleted-by-rewrite (36866 34794 41381
+35344), 1 irreducible (29304 scalar font-size: offsetWidth + canvas measureText), 2
+be_deftest (32373 32032), 1 **agent-failed** (34395, API error mid-run — deferred; the
+seam is a pure `isActionDashCard` predicate, retry with a predicate-level witness, don't
+render the whole embedded dashboard). Landing 12/20 = 60% but the *first 8 completions were
+almost all non-landing* — on this older (2022–2023) slice the fast verdicts are
+obsoleted/backend and the landings come only from the slow witness-authoring agents.
+Dedup case: 28599's fix (turnQuestionIntoModel reruns query) is the same thunk behavior
+already guarded by 47940's witness → culled the e2e, omitted the duplicate witness.
+
+**BE-deftest backlog now (single Clojure wave):** 42829 40399 40608 32373 32032 (b6–b7) +
+48562 50373 (b4) + 68998 53604 63687 (study). All `.clj[c]`, most with a shipped deftest
+oracle already named in the reports.
 
 **Batch 6 (rlc-batch3, 20 agents):** 12 landed (12368 12586 23336 34574 37380 41243
 42355 42385 44101 44220 44754 52811); 8 not culled — 3 `be_deftest` (42829 40399 40608,
