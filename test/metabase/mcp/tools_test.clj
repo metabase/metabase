@@ -84,6 +84,22 @@
           (testing "json encoding is deterministic"
             (is (= (json/encode schema) (json/encode schema)))))))))
 
+(deftest ^:parallel two-channel-content-test
+  (testing "v2 result carries the data once — full payload in the text block, only next-step fields in structuredContent"
+    (let [rows   {:cols ["id" "total"] :rows [[1 9.99] [2 4.50]]}
+          next   {:query_handle "h1" :returned 2 :total 2 :truncated false}
+          result (mcp.tools/two-channel-content rows next)]
+      (testing "content text is the full data payload, serialized exactly once"
+        (is (= (json/encode rows) (-> result :content first :text))))
+      (testing "structuredContent is only the machine next-step fields, never a mirror of the body"
+        (is (= next (:structuredContent result)))
+        (is (not (contains? (:structuredContent result) :rows)))
+        (is (not (contains? (:structuredContent result) :cols))))))
+  (testing "a bare string text payload is passed through unencoded"
+    (is (= "hello" (-> (mcp.tools/two-channel-content "hello") :content first :text))))
+  (testing "single-arg form emits the text channel only — no structuredContent"
+    (is (not (contains? (mcp.tools/two-channel-content {:a 1}) :structuredContent)))))
+
 (deftest ^:parallel tools-hash-test
   (testing "tools-hash is deterministic across calls"
     (let [scopes #{::api.scope/unrestricted}]

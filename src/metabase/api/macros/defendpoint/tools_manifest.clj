@@ -374,17 +374,19 @@
                                          {:tool tool-name :method method :redundant (:redundant inferred)})))
         _              (assert-claude-connector-compliant! tool-name annotations)
         task-support   (:task-support tool-md)
+        input-examples (:input-examples tool-md)
         scope          (get-in form [:metadata :scope])]
     (cond-> {:name        tool-name
              :title       (or explicit-title inferred-title)
              :description description
              :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}}
-      input-schema      (assoc :inputSchema input-schema)
-      output-schema     (assoc :outputSchema output-schema)
-      (seq annotations) (assoc :annotations annotations)
-      task-support      (assoc :execution {:taskSupport (name task-support)})
-      (string? scope)   (assoc :scope scope))))
+      input-schema        (assoc :inputSchema input-schema)
+      output-schema       (assoc :outputSchema output-schema)
+      (seq annotations)   (assoc :annotations annotations)
+      (seq input-examples) (assoc :inputExamples (vec input-examples))
+      task-support        (assoc :execution {:taskSupport (name task-support)})
+      (string? scope)     (assoc :scope scope))))
 
 (defn check-tool-uniqueness
   "Throws if `tools` contains duplicate `:name` values. The exception message lists each

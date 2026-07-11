@@ -158,7 +158,14 @@ The implementation lives in these files:
   SSE response formats.
 
 - **[`tools.clj`](tools.clj)** - Tool dispatch and manifest generation. Builds the tool list from Agent API endpoint
-  metadata, checks scopes, and routes tool calls through synthetic Agent API requests.
+  metadata, checks scopes, and routes tool calls through synthetic Agent API requests. `two-channel-content` is the
+  v2 result shape: the data is serialized once into the text block and `structuredContent` carries only the machine
+  next-step fields.
+
+- **[`../agent_api/tools.clj`](../agent_api/tools.clj)** - The handler-facing conventions harness the v2 tool
+  endpoints build on: the `_write` method-enum recipe (`MethodField` + `validate-write!`), `response_format`
+  projections, the bounded list envelope with steering truncation, the complete-units-then-named-remainder budgeter,
+  teaching errors, and ref ergonomics.
 
 - **[`resources.clj`](resources.clj)** - MCP resource registry and handlers. Holds documentation resources (like
   the `construct_query` reference) keyed by URI, with scope-based access control on `resources/list` and

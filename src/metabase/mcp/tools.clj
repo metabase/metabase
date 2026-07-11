@@ -195,7 +195,8 @@
            (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
                  (remove #(missing-required-extensions % supported))
                  (map (fn [tool]
-                        (select-keys tool [:name :title :description :inputSchema :outputSchema :annotations :_meta]))))
+                        (select-keys tool [:name :title :description :inputSchema :outputSchema
+                                           :annotations :inputExamples :_meta]))))
            (concat tools (mcp.resources/list-ui-tools))))))
 
 (defn- pad-left
@@ -344,10 +345,30 @@
   "Wrap a value as an MCP tool-call result.
    Map/sequential values are surfaced as `structuredContent` — MCP spec requires this for any tool that
    declares an `outputSchema`.
-   The `content` array carries a text serialization for clients that don't consume structuredContent."
+   The `content` array carries a text serialization for clients that don't consume structuredContent.
+
+   This is the v1 shape: it mirrors the whole body into both channels. v2 tools use
+   [[two-channel-content]] instead, which carries the data once."
   [v]
   (cond-> {:content [{:type "text" :text (if (string? v) v (json/encode v))}]}
     (or (map? v) (sequential? v)) (assoc :structuredContent v)))
+
+(defn two-channel-content
+  "v2 MCP tool result with the data carried exactly once.
+
+   `text` is the full human/data payload shown in the `content` text block — a string as-is, or any
+   value JSON-encoded once (the dataset REST shape for query results, compact JSON for records).
+   `structured`, when given, carries *only* the machine next-step fields — a query handle, counts,
+   truncation flags — and is never a mirror of the full body. Declare an `outputSchema` for the
+   structured channel where its shape is stable.
+
+   The sibling `text-content` mirrors the whole body into both channels; v2 tools prefer this so the
+   data lives in one place and `structuredContent` stays reserved for what the next tool call or the
+   iframe actually consumes."
+  ([text] {:content [{:type "text" :text (if (string? text) text (json/encode text))}]})
+  ([text structured]
+   (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
+     (some? structured) (assoc :structuredContent structured))))
 
 ;; JSON-RPC error codes recorded as `mcp_tool_call_log.error_code` for failed tool calls.
 ;; Kept in sync with the `error_code` -> `error_type` CASE in the v_mcp_tool_calls view SQL. The

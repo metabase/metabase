@@ -398,6 +398,21 @@
    body :- [:map [:name :string]]]
   {:id id :name (:name body)})
 
+;; 7. POST `<entity>_write` carrying input_examples
+(api.macros/defendpoint :post "/v1/test-thing-write"
+  :- [:map [:id :int]]
+  "Create or update a thing."
+  {:tool {:name           "test_thing_write"
+          :input-examples [{:method "create" :name "A widget"}
+                           {:method "update" :id 3 :name "Renamed"}]}}
+  [_route-params
+   _query-params
+   #_{:clj-kondo/ignore [:unused-binding]}
+   body :- [:map
+            [:method [:enum "create" "update"]]
+            [:name {:optional true} [:maybe :string]]]]
+  {:id 1})
+
 (deftest ^:parallel check-tool-uniqueness-test
   (testing "No duplicates — no exception"
     (is (nil? (tools-manifest/check-tool-uniqueness
@@ -423,12 +438,20 @@
   (let [manifest (test-manifest)]
     (is (= "https://json-schema.org/draft/2020-12/schema" (:$schema manifest)))
     (is (= "1.0.0" (:version manifest)))
-    (is (= 6 (count (:tools manifest))))
+    (is (= 7 (count (:tools manifest))))
     (is (= (mapv :name (:tools manifest))
            (sort (mapv :name (:tools manifest))))
         "tools should be sorted by name")
     (is (not (contains? manifest :$defs))
         "manifest should not have top-level $defs")))
+
+(deftest ^:parallel generate-tools-manifest-input-examples-test
+  (testing "input_examples declared in :tool metadata flow through to :inputExamples on the tool"
+    (is (= [{:method "create" :name "A widget"}
+            {:method "update" :id 3 :name "Renamed"}]
+           (:inputExamples (test-tool "test_thing_write")))))
+  (testing "a tool without input_examples has no :inputExamples key"
+    (is (not (contains? (test-tool "test_get_thing") :inputExamples)))))
 
 (deftest ^:parallel refs-are-inlined-in-manifest-test
   (testing "malli->json-schema with :or of mixed types preserves anyOf but inlines refs"
