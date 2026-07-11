@@ -1639,6 +1639,23 @@
                        :limit 2}]}
             (lib.tu.mocks-31769/query)))))
 
+(deftest ^:parallel join-source-card-with-joins-does-not-drop-columns-test
+  (testing "Joining onto a saved-question source that itself contains joins should not drop columns (#31769)"
+    ;; Card 1 is a query against Orders that joins Products and People, breaks out on Products.CATEGORY and counts.
+    ;; The final query uses Card 1 as its `:source-card`, appends a stage, and joins Card 2 on CATEGORY. All of Card
+    ;; 1's returned columns must survive (they must NOT be dropped just because the source card contains joins), plus
+    ;; the joined column contributed by Card 2.
+    (let [query (lib.tu.mocks-31769/query)
+          cols  (lib/returned-columns query)]
+      (is (= ["Products__CATEGORY"
+              "count"
+              "Card 2 - Products → Category__CATEGORY"]
+             (map :lib/desired-column-alias cols)))
+      (is (=? [{:name "CATEGORY",   :lib/source :source/previous-stage}
+               {:name "count",      :lib/source :source/previous-stage}
+               {:name "CATEGORY_2", :lib/source :source/joins, :lib/original-name "CATEGORY"}]
+              cols)))))
+
 (deftest ^:parallel suggested-name-include-joins-test
   (testing "Include the names of joined tables in suggested query names (#24703)"
     (is (= "Venues + Categories"

@@ -448,6 +448,27 @@
                               {:filters      [vector?]
                                :aggregation  [[:count {}]]}]}))))
 
+(deftest ^:parallel preview-query-drops-later-clause-types-test
+  ;; Sharp guard for metabase#40399 ("results from other stages show in a step preview").
+  ;; The fix truncates a previewed stage to its clause-type, dropping ALL *later* clause-types.
+  ;; This asserts the *exact* key set (unlike `test-preview`, whose `=?` tolerates extra keys),
+  ;; so a regression that leaks e.g. :filters into a :joins-step preview is caught.
+  (testing "previewing the :joins step keeps only :source-table + :joins; later clauses are dropped"
+    (let [stage (-> (lib/preview-query query-for-preview 0 :joins nil) :stages first)]
+      (is (= #{:lib/type :source-table :joins}
+             (set (keys stage))))
+      (is (not (contains? stage :filters)) "later clause-type :filters must be dropped")
+      (is (not (contains? stage :expressions)))
+      (is (not (contains? stage :aggregation)))))
+  (testing "previewing the :filters step keeps up to :filters; :aggregation/:breakout/:order-by/:limit are dropped"
+    (let [stage (-> (lib/preview-query query-for-preview 0 :filters nil) :stages first)]
+      (is (= #{:lib/type :source-table :joins :expressions :filters}
+             (set (keys stage))))
+      (is (not (contains? stage :aggregation)))
+      (is (not (contains? stage :breakout)))
+      (is (not (contains? stage :order-by)))
+      (is (not (contains? stage :limit))))))
+
 (deftest ^:parallel normalize-test
   (testing "Normalize (including adding :lib/uuids) when creating a new query"
     (are [x] (=? {:lib/type :mbql/query

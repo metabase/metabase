@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.params :as params]
    [metabase.public-sharing-rest.api-test :as public-test]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -311,3 +312,33 @@
                        (t2/with-call-count [call-count]
                          (params/dashcards->param-field-ids dashcards)
                          (call-count)))))))))))
+
+(deftest ^:parallel param-target->field-id-for-aggregated-native-model-test
+  (testing (str "a name-based parameter target on a question that aggregates a native SQL *model* resolves to the "
+                "real backing Field id, via the filterable-columns fallback, even though the question's "
+                "result_metadata does not contain that column (#42829)")
+    (let [native-query    (mt/native-query {:query "SELECT state FROM PEOPLE;"})
+          ;; a native model whose STATE column has been mapped (in model metadata) back to the real people.state Field
+          result-metadata (-> (get-in (qp/process-query native-query) [:data :results_metadata :columns])
+                              (assoc-in [0 :id] (mt/id :people :state)))]
+      (mt/with-temp [:model/Card          model    {:dataset_query   native-query
+                                                    :result_metadata result-metadata
+                                                    :database_id     (mt/id)
+                                                    :type            :model}
+                     ;; a question that aggregates that model, referencing STATE by name
+                     :model/Card          question {:database_id   (mt/id)
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table (str "card__" (:id model))
+                                                                               :aggregation  [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}}
+                     :model/Dashboard     {dash-id :id} {}
+                     :model/DashboardCard dc       {:dashboard_id       dash-id
+                                                    :card_id            (:id question)
+                                                    :parameter_mappings [{:parameter_id "p1"
+                                                                          :card_id      (:id question)
+                                                                          :target       [:dimension [:field "STATE" {:base-type :type/Text}]]}]}]
+        (let [dashcards (-> (t2/select :model/DashboardCard :id (:id dc))
+                            (t2/hydrate :card :series))]
+          (is (contains? (lib-be/with-metadata-provider-cache
+                           (params/dashcards->param-field-ids dashcards))
+                         (mt/id :people :state))))))))
