@@ -1,0 +1,24 @@
+diff --git a/frontend/src/metabase/query_builder/selectors.ts b/frontend/src/metabase/query_builder/selectors.ts
+index 3ef2e70734f..2dd93df8d4a 100644
+--- a/frontend/src/metabase/query_builder/selectors.ts
++++ b/frontend/src/metabase/query_builder/selectors.ts
+@@ -792,7 +792,7 @@ export const getTimeseriesXValues = createSelector(
+       : null,
+ );
+ 
+-const getTimeseriesDataInterval = createSelector(
++export const getTimeseriesDataInterval = createSelector(
+   [
+     getTransformedSeries,
+     getVisualizationSettings,
+@@ -1013,9 +1013,7 @@ export const getIsVisualized = createSelector(
+     ((question.display() !== "table" &&
+       question.display() !== "pivot" &&
+       question.display() !== "list") ||
+-      (settings != null &&
+-        (settings["table.pivot"] ||
+-          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
++      (settings != null && settings["table.pivot"])),
+ );
+ 
+ export const getIsLiveResizable = createSelector(

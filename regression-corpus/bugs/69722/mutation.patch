@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorInner.tsx b/frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorInner.tsx
+index 02c787f3028..d8b44336210 100644
+--- a/frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorInner.tsx
++++ b/frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorInner.tsx
+@@ -727,7 +727,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
+                 {...props}
+                 isActive={isEditingQuery}
+                 height={editorHeight}
+-                availableHeight={height}
++                viewHeight={height}
+                 onResizeStop={handleResize}
+               />
+             )}

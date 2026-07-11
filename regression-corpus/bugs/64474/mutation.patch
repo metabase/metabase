@@ -1,0 +1,14 @@
+diff --git a/frontend/src/metabase/querying/editor/hooks/use-query-results/use-query-results.ts b/frontend/src/metabase/querying/editor/hooks/use-query-results/use-query-results.ts
+index f844686d8a4..3912bdf3f07 100644
+--- a/frontend/src/metabase/querying/editor/hooks/use-query-results/use-query-results.ts
++++ b/frontend/src/metabase/querying/editor/hooks/use-query-results/use-query-results.ts
+@@ -69,8 +69,7 @@ export function useQueryResults(
+   };
+ 
+   const cancelQuery = () => {
+-    abortRef.current?.();
+-    abortRef.current = undefined;
++    return null;
+   };
+ 
+   useEffect(() => {

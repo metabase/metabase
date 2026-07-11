@@ -1,0 +1,24 @@
+diff --git a/frontend/src/metabase/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal.tsx b/frontend/src/metabase/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal.tsx
+index 6a6bf83ce94..a07a1448e7f 100644
+--- a/frontend/src/metabase/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal.tsx
++++ b/frontend/src/metabase/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal.tsx
+@@ -7,7 +7,7 @@ import type * as Yup from "yup";
+ import {
+   skipToken,
+   useGetDatabaseQuery,
+-  useListSyncableDatabaseSchemasQuery,
++  useListDatabaseSchemasQuery,
+ } from "metabase/api";
+ import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
+ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+@@ -77,7 +77,9 @@ export function CreateTransformModal({
+     data: fetchedSchemas = [],
+     isLoading: isSchemasLoading,
+     error: schemasError,
+-  } = useListSyncableDatabaseSchemasQuery(databaseId ?? skipToken);
++  } = useListDatabaseSchemasQuery(
++    databaseId ? { id: databaseId, include_hidden: true } : skipToken,
++  );
+ 
+   const schemas = useMemo(() => {
+     return (fetchedSchemas ?? []).filter(schemasFilter || _.identity);

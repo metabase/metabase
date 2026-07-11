@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.tsx b/frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.tsx
+index a27b8cf3a74..cd9529480d6 100644
+--- a/frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.tsx
++++ b/frontend/src/metabase/visualizations/components/LeafletMarkerPinMap.tsx
+@@ -71,8 +71,8 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
+     const mapEast = mapBounds.getEast();
+ 
+     // if map crosses dateline, we need wrapping
+-    const crossesLeftDateline = mapWest < -180 && mapEast > -180;
+-    const crossesRightDateline = mapWest < 180 && mapEast > 180;
++    const crossesLeftDateline = false && mapWest < -180 && mapEast > -180;
++    const crossesRightDateline = false && mapWest < 180 && mapEast > 180;
+     const shouldGetWrappedPoints = crossesLeftDateline || crossesRightDateline;
+ 
+     const wrappedPoints: IndexedPoint[] = shouldGetWrappedPoints

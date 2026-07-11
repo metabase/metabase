@@ -1,3 +1,15 @@
+diff --git a/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx b/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx
+index ffbe705a751..19c9251838a 100644
+--- a/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx
++++ b/frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx
+@@ -51,6 +51,7 @@ export const ArchivedBulkActions = ({
+   const handleCloseModal = () => {
+     setSelectedItems(null);
+     setSelectedAction(null);
++    clearSelected();
+   };
+ 
+   const unselect = () => {
 diff --git a/frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx b/frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx
 index ac146a56ef0..547f9123ee5 100644
 --- a/frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx
