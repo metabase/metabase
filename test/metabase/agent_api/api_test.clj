@@ -1161,7 +1161,13 @@
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
       ;; Mirrors the REST archive flow -- without :archived_directly the card would only show up
       ;; as inherited-from-trash and stay invisible in the Trash UI.
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
 
 (deftest update-question-replace-query-test
   (testing "Replacing the underlying query via :query (base64)"
@@ -1319,7 +1325,13 @@
                                        {:archived true})]
         (is (true? (:archived resp))))
       (is (true? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
-      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it, cards included"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id))))))
   (testing "Returns 404 when dashboard does not exist"
     (mt/user-http-request :rasta :put 404 "agent/v1/dashboard/999999"
                           {:name "doesn't matter"}))
