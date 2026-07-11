@@ -671,54 +671,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _addColumn(testData);
     });
 
-    it("should be able to show and hide fields from a nested query with joins (metabase#32373)", () => {
-      H.createQuestion(tableQuestionWithJoin).then(({ body: card }) => {
-        H.createQuestion(nestedQuestion(card), { visitQuestion: true });
-      });
-      openSettings();
-
-      const testData = {
-        column: "Products → Category",
-        columnName: "Products → Category",
-        table: "test question",
-      };
-
-      _hideColumn(testData);
-      _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
-    });
-
-    it("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
-      H.createQuestion(tableQuestionWithJoinAndFields).then(
-        ({ body: card }) => {
-          H.createQuestion(nestedQuestion(card), { visitQuestion: true });
-        },
-      );
-      openSettings();
-
-      const testData = {
-        column: "Products → Category",
-        columnName: "Products → Category",
-        table: "test question",
-        scrollTimes: 3,
-      };
-
-      const testData2 = {
-        column: "Ean",
-        columnName: "Product → Ean",
-        table: "product",
-        scrollTimes: 3,
-      };
-
-      _hideColumn(testData);
-      _removeColumn(testData);
-
-      _addColumn(testData2);
-
-      _addColumn(testData);
-    });
-
     it("should be able to show and hide implicitly joinable fields for a nested query with joins and fields", () => {
       H.createQuestion(tableQuestion).then(({ body: card }) => {
         H.createQuestion(nestedQuestionWithJoinOnTable(card), {

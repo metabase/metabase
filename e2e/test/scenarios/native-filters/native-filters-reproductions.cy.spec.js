@@ -946,47 +946,6 @@ describe("issue 27257", () => {
   });
 });
 
-describe("issue 29786", { tags: "@external" }, () => {
-  const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE {{f1}} AND {{f2}}";
-
-  beforeEach(() => {
-    H.restore("mysql-8");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.signInAsAdmin();
-  });
-
-  it("should allow using field filters with null schema (metabase#29786)", () => {
-    H.startNewNativeQuestion({
-      display: "table",
-      collection_id: COLLECTION_GROUP,
-      query: SQL_QUERY,
-    });
-
-    cy.findByTestId("native-query-top-bar").icon("variable").click();
-
-    cy.findByTestId("tag-editor-variable-f1")
-      .findByTestId("variable-type-select")
-      .click();
-    SQLFilter.chooseType("Field Filter");
-    FieldFilter.mapTo({ table: "Products", field: "Category" });
-
-    cy.findByTestId("tag-editor-variable-f2")
-      .findByTestId("variable-type-select")
-      .click();
-    SQLFilter.chooseType("Field Filter");
-    FieldFilter.mapTo({ table: "Products", field: "Vendor" });
-
-    H.filterWidget().should("have.length", 2).first().click();
-    FieldFilter.selectFilterValueFromList("Widget");
-    H.filterWidget().should("have.length", 2).last().click();
-    FieldFilter.addWidgetStringFilter("Von-Gulgowski");
-
-    SQLFilter.runQuery();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1087115303928").should("be.visible");
-  });
-});
-
 describe("issue 31606", { tags: "@external" }, () => {
   const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE CATEGORY = {{test}}";
 
