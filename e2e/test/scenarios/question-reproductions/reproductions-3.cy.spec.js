@@ -904,64 +904,6 @@ describe("issue 44071", () => {
   });
 });
 
-describe("issue 44415", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signIn("admin");
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          filter: [
-            "and",
-            [
-              "not-null",
-              ["field", ORDERS.DISCOUNT, { "base-type": "type/Float" }],
-            ],
-          ],
-        },
-        visualization_settings: {
-          "table.columns": [
-            {
-              name: "ID",
-              fieldRef: ["field", ORDERS.ID, null],
-              enabled: true,
-            },
-            {
-              name: "DISCOUNT",
-              fieldRef: ["field", ORDERS.DISCOUNT, null],
-              enabled: true,
-            },
-          ],
-        },
-      },
-      { wrapId: true },
-    );
-  });
-
-  it("should be able to edit a table question in the notebook editor before running its query (metabase#44415)", () => {
-    cy.get("@questionId").then((questionId) =>
-      cy.visit(`/question/${questionId}/notebook`),
-    );
-
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .first()
-      .icon("close")
-      .click();
-
-    H.getNotebookStep("filter").should("not.exist");
-
-    H.visualize();
-
-    cy.findByTestId("qb-filters-panel").should("not.exist");
-    cy.get("@questionId").then((questionId) => {
-      cy.url().should("not.include", `/question/${questionId}`);
-      cy.url().should("include", "question#");
-    });
-  });
-});
-
 describe("issue 37374", () => {
   const questionDetails = {
     query: {

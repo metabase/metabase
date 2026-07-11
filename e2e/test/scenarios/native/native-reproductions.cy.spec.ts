@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
@@ -75,44 +75,6 @@ describe("issue 16584", () => {
     cy.findByTestId("query-visualization-root")
       .findByText("NL")
       .should("exist");
-  });
-});
-
-describe("issue 38083", () => {
-  const QUERY = {
-    database: SAMPLE_DB_ID,
-    query: "select * from people where state = {{ state }} limit 1",
-    templateTags: {
-      state: {
-        type: "text",
-        name: "state",
-        "display-name": "State",
-        "widget-type": "string/=",
-        default: "CA",
-        required: true,
-      },
-    },
-  } as const;
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
-    H.createTestNativeQuery(QUERY)
-      .then((dataset_query) =>
-        H.createCard({
-          name: "SQL query with a date parameter",
-          dataset_query,
-        }),
-      )
-      .then((card) => H.visitQuestion(card.id));
-
-    H.filterWidget()
-      .filter(`:contains("${QUERY.templateTags.state["display-name"]}")`)
-      .icon("revert")
-      .should("not.exist");
   });
 });
 

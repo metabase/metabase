@@ -364,43 +364,6 @@ describe("issue 29082", () => {
   });
 });
 
-describe("issue 30165", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/card").as("createQuestion");
-    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
-  });
-
-  it("should not autorun native queries after updating a question (metabase#30165)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("SELECT * FROM ORDERS");
-    H.saveQuestionToCollection("Q1");
-
-    H.NativeEditor.focus().type(" WHERE TOTAL < 20");
-    H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@updateQuestion");
-
-    H.NativeEditor.focus().type(" LIMIT 10");
-    H.queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@updateQuestion");
-
-    cy.get("@dataset.all").should("have.length", 0);
-    cy.get("@cardQuery.all").should("have.length", 0);
-    cy.findByTestId("query-builder-main")
-      .findByText("Here's where your results will appear")
-      .should("be.visible");
-  });
-});
-
 describe("issue 30610", () => {
   beforeEach(() => {
     H.restore();

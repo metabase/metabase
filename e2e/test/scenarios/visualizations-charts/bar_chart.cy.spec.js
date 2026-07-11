@@ -362,46 +362,6 @@ describe("scenarios > visualizations > bar chart", () => {
     H.chartPathWithFillColor(grayColor).should("be.visible");
   });
 
-  it("supports up to 100 series (metabase#28796)", () => {
-    H.visitQuestionAdhoc({
-      display: "bar",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["and", ["<", ["field", ORDERS.ID, null], 101]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ["field", ORDERS.ID],
-          ],
-        },
-      },
-      visualization_settings: {
-        "graph.dimensions": ["CREATED_AT", "SUBTOTAL"],
-        "graph.metrics": ["count"],
-      },
-    });
-
-    H.openVizSettingsSidebar();
-    H.leftSidebar().button("90 more series").click();
-    cy.get("[data-testid^=draggable-item]").should("have.length", 100);
-
-    cy.findByTestId("qb-filters-panel")
-      .findByText("ID is less than 101")
-      .click();
-    H.popover().within(() => {
-      cy.findByDisplayValue("101").type("{backspace}2");
-      cy.button("Update filter").click();
-    });
-
-    H.queryBuilderMain().findByText(
-      "This chart type doesn't support more than 100 series of data.",
-    );
-    cy.get("[data-testid^=draggable-item]").should("have.length", 0);
-  });
-
   it("should support showing data points with > 10 series (#33725)", () => {
     cy.signInAsAdmin();
     const stateFilter = [

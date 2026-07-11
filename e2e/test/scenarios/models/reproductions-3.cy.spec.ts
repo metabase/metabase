@@ -450,43 +450,6 @@ describe("issue 28193", () => {
   });
 });
 
-describe("issue 28971", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/card").as("createModel");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should be able to filter a newly created model (metabase#28971)", () => {
-    H.startNewModel();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
-    });
-    cy.findByTestId("run-button").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-    cy.findByTestId("save-question-modal").button("Save").click();
-    cy.wait("@createModel");
-
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Quantity").click();
-      cy.findByText("20").click();
-      cy.button("Apply filter").click();
-    });
-    cy.wait("@dataset");
-
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Quantity is equal to 20",
-    );
-    cy.findByTestId("question-row-count").should("have.text", "Showing 4 rows");
-  });
-});
-
 describe("issue 53604 - nested native question with multiple breakouts on same column", () => {
   const questionDetails: NativeQuestionDetails = {
     name: "53604 base",

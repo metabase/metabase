@@ -6,7 +6,15 @@ import { createMockParameter } from "metabase-types/api/mocks";
 
 import { ParameterValueWidget } from "./ParameterValueWidget";
 
-function setup({ parameter }: { parameter?: Partial<UiParameter> } = {}) {
+function setup({
+  parameter,
+  value = null,
+  enableRequiredBehavior,
+}: {
+  parameter?: Partial<UiParameter>;
+  value?: unknown;
+  enableRequiredBehavior?: boolean;
+} = {}) {
   const defaultParameter: UiParameter = {
     ...createMockParameter({
       id: "test-param",
@@ -24,8 +32,9 @@ function setup({ parameter }: { parameter?: Partial<UiParameter> } = {}) {
     <ParameterValueWidget
       parameter={defaultParameter}
       setValue={setValue}
-      value={null}
+      value={value}
       placeholder="Enter a value"
+      enableRequiredBehavior={enableRequiredBehavior}
     />,
   );
 
@@ -75,5 +84,20 @@ describe("ParameterValueWidget", () => {
 
     // After opening, aria-expanded should be true on the same button
     expect(triggerButton).toHaveAttribute("aria-expanded", "true");
+  });
+  // metabase#38083: a required parameter's current value can arrive as an array
+  // (e.g. `["CA"]` for a `string/=` widget) while its default is stored as a
+  // scalar (`"CA"`). The reset-to-default icon must only show when the value
+  // actually differs from the default, so the two must be compared as arrays.
+  it("should not show the reset-to-default icon when an array value equals the scalar default (metabase#38083)", () => {
+    setup({
+      parameter: { required: true, default: "CA" },
+      value: ["CA"],
+      enableRequiredBehavior: true,
+    });
+
+    expect(
+      screen.queryByLabelText("Reset filter to default state"),
+    ).not.toBeInTheDocument();
   });
 });

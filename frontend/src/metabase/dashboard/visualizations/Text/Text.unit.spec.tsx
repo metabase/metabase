@@ -2,7 +2,14 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
-import type { ParameterValuesMap } from "metabase-types/api";
+import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
+import type {
+  Dashboard,
+  DashboardParameterMapping,
+  Parameter,
+  ParameterValuesMap,
+  VirtualDashboardCard,
+} from "metabase-types/api";
 import {
   createMockDashboard,
   createMockVirtualDashCard,
@@ -27,6 +34,9 @@ const defaultProps = {
 interface SetupOpts {
   settings?: Settings;
   parameterValues?: ParameterValuesMap;
+  dashcard?: VirtualDashboardCard;
+  dashboard?: Dashboard;
+  isEditing?: boolean;
 }
 
 const setup = ({ parameterValues, ...options }: SetupOpts = {}) => {
@@ -126,6 +136,24 @@ describe("Text", () => {
       expect(img).toBeInTheDocument();
       expect(img).toHaveAttribute("src", "");
     });
+
+    it("should replace mapped variables with parameter values (metabase#31626)", () => {
+      const variableName = "foo";
+      const parameterValue = 1;
+      const { parameters, parameterValues, parameter_mappings } =
+        mapParameterToVariable({ variableName, parameterValue });
+
+      setup({
+        settings: getSettingsWithText(`Variable: {{${variableName}}}`),
+        dashcard: createMockVirtualDashCard({ parameter_mappings }),
+        dashboard: createMockDashboard({ parameters }),
+        parameterValues,
+      });
+
+      expect(
+        screen.getByText(`Variable: ${parameterValue}`),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("Editing", () => {
@@ -154,6 +182,25 @@ describe("Text", () => {
         expect(
           screen.getByTestId("editing-dashboard-text-preview"),
         ).toHaveTextContent("text text text");
+      });
+
+      it("should preview without replacing mapped variables with parameter values (metabase#31626)", () => {
+        const variableName = "foo";
+        const parameterValue = 1;
+        const { parameters, parameterValues, parameter_mappings } =
+          mapParameterToVariable({ variableName, parameterValue });
+
+        setup({
+          settings: getSettingsWithText(`Variable: {{${variableName}}}`),
+          dashcard: createMockVirtualDashCard({ parameter_mappings }),
+          dashboard: createMockDashboard({ parameters }),
+          parameterValues,
+          isEditing: true,
+        });
+
+        expect(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        ).toHaveTextContent(`Variable: {{${variableName}}}`);
       });
     });
 
@@ -203,6 +250,28 @@ describe("Text", () => {
         expect(screen.getByDisplayValue("text text text")).toBeInTheDocument();
       });
 
+      it("should show input without replacing mapped variables with parameter values (metabase#31626)", async () => {
+        const variableName = "foo";
+        const parameterValue = 1;
+        const { parameters, parameterValues, parameter_mappings } =
+          mapParameterToVariable({ variableName, parameterValue });
+
+        setup({
+          settings: getSettingsWithText(`Variable: {{${variableName}}}`),
+          dashcard: createMockVirtualDashCard({ parameter_mappings }),
+          dashboard: createMockDashboard({ parameters }),
+          parameterValues,
+          isEditing: true,
+        });
+
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
+        expect(
+          screen.getByDisplayValue(`Variable: {{${variableName}}}`),
+        ).toBeInTheDocument();
+      });
+
       it("should call onUpdateVisualizationSettings on blur", async () => {
         const mockOnUpdateVisualizationSettings = jest.fn();
         const options = {
@@ -231,4 +300,34 @@ function getSettingsWithText(text: string | null): Settings {
   return {
     text: text,
   };
+}
+
+function mapParameterToVariable({
+  variableName,
+  parameterValue,
+}: {
+  variableName: string;
+  parameterValue: string | number;
+}) {
+  const parameter: Parameter = {
+    id: "e7f8ca",
+    name: variableName,
+    slug: variableName,
+    type: "number/=",
+    value: parameterValue,
+  };
+
+  const parameter_mappings: DashboardParameterMapping[] = [
+    {
+      card_id: 1,
+      parameter_id: parameter.id,
+      target: buildTextTagTarget(variableName),
+    },
+  ];
+  const parameters: Parameter[] = [parameter];
+  const parameterValues: ParameterValuesMap = {
+    [parameter.id]: parameter.value ?? null,
+  };
+
+  return { parameters, parameterValues, parameter_mappings };
 }

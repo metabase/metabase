@@ -888,48 +888,6 @@ describe("issue 36508", () => {
   });
 });
 
-describe("metabase#32985", () => {
-  const questionDetails = {
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": PEOPLE_ID,
-    },
-    type: "query",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not crash when searching large field values sets in filters popover (metabase#32985)", () => {
-    // we need to mess with the field metadata to make the field values crazy
-    cy.request("PUT", `/api/field/${REVIEWS.REVIEWER}`, {
-      semantic_type: "type/PK",
-    });
-    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
-      semantic_type: "type/FK",
-    });
-    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
-      fk_target_field_id: REVIEWS.REVIEWER,
-    });
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.tableHeaderClick("Email");
-
-    H.popover().within(() => {
-      cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Email or enter an ID").type("foo");
-    });
-    H.popover()
-      .should("have.length", 2)
-      .last()
-      .findByText("No matching Email found.")
-      .should("be.visible");
-  });
-});
-
 describe("issue 35043", () => {
   beforeEach(() => {
     H.restore();

@@ -298,37 +298,6 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.getDashboardCard(1).findByText("foo").should("exist");
   });
 
-  it("should not transform text variables to plain text (metabase#31626)", () => {
-    H.editDashboard();
-
-    const textContent = "Variable: {{foo}}";
-    H.addTextBoxWhileEditing(textContent, { parseSpecialCharSequences: false });
-    H.addHeadingWhileEditing(textContent, { parseSpecialCharSequences: false });
-
-    H.setFilter("Number", "Equal to");
-
-    H.getDashboardCard(0).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.getDashboardCard(1).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.saveDashboard();
-
-    H.filterWidget().click();
-    cy.findByPlaceholderText("Enter a number").type("1{enter}");
-    cy.button("Add filter").click();
-
-    // view mode
-    H.getDashboardCard(0).findByText("Variable: 1").should("be.visible");
-    H.getDashboardCard(1).findByText("Variable: 1").should("be.visible");
-
-    H.editDashboard();
-
-    H.getDashboardCard(0).findByText(textContent).should("be.visible");
-    H.getDashboardCard(1).findByText(textContent).should("be.visible");
-  });
-
   it("should translate parameter values into the instance language", () => {
     // Set user locale to English explicitly so that we can change the site locale separately, without the user
     // locale following it (by default, user locale matches site locale)

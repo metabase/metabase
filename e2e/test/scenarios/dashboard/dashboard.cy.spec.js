@@ -279,22 +279,6 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
-        cy.findByTestId("dashboard-empty-state").within(() => {
-          cy.findByText("This dashboard is empty");
-          cy.findByText("Add a chart").click();
-        });
-
-        H.sidebar().findByText("Orders, Count").click();
-
-        H.saveDashboard();
-
-        H.getDashboardCards()
-          .should("have.length", 1)
-          .and("contain", "Orders, Count")
-          .and("contain", "18,760");
-      });
-
       it("should save changes to a dashboard after using the 'Add a chart' button from an empty tab (metabase#53132)", () => {
         cy.log("add an existing card");
         H.editDashboard();

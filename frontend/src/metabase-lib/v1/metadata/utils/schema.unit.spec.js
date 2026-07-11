@@ -1,4 +1,9 @@
-import { generateSchemaId, getSchemaName, parseSchemaId } from "./schema";
+import {
+  generateSchemaId,
+  getSchemaDisplayName,
+  getSchemaName,
+  parseSchemaId,
+} from "./schema";
 
 const SCHEMA_TEST_CASES = [
   { dbId: 1, schemaName: 2, schema: "1:2" },
@@ -60,6 +65,22 @@ describe("parseSchemaId", () => {
       databaseId: decodedDatabaseId,
       schemaName: decodedSchemaName,
     }).toEqual({ databaseId: 1, schemaName: "database:name" });
+  });
+});
+
+describe("getSchemaDisplayName", () => {
+  it("humanizes and titleizes a named schema", () => {
+    expect(getSchemaDisplayName("public")).toBe("Public");
+    expect(getSchemaDisplayName("my_schema")).toBe("My Schema");
+  });
+
+  // metabase#29786: databases without a schema (e.g. MySQL) surface a null
+  // schema name. Deriving a display name must not blow up on the field-filter
+  // mapping UI — it should return null rather than call titleize(humanize(null)).
+  it("returns null for a nameless schema without throwing", () => {
+    expect(getSchemaDisplayName(null)).toBeNull();
+    expect(getSchemaDisplayName(undefined)).toBeNull();
+    expect(getSchemaDisplayName("")).toBeNull();
   });
 });
 

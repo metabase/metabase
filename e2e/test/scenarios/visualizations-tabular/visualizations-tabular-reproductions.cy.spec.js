@@ -878,67 +878,6 @@ describe("issue 25415", { tags: "@skip" }, () => {
   });
 });
 
-describe("issue 7884", () => {
-  const oldSourceQuestionDetails = {
-    native: {
-      query: "SELECT 1 AS C1, 2 AS C2, 3 AS C3",
-    },
-  };
-
-  const newSourceQuestionDetails = {
-    native: {
-      query: "SELECT 1 AS C1, 3 AS C3",
-    },
-  };
-
-  const getNestedQuestionDetails = (sourceQuestionId) => ({
-    query: {
-      "source-table": `card__${sourceQuestionId}`,
-    },
-    display: "table",
-    visualization_settings: {
-      "table.columns": [
-        { name: "C3", enabled: true },
-        { name: "C1", enabled: true },
-        { name: "C2", enabled: true },
-      ],
-    },
-  });
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not reset the column order after one of the columns is removed from data source (metabase#7884)", () => {
-    H.createNativeQuestion(oldSourceQuestionDetails).then(
-      ({ body: sourceQuestion }) =>
-        H.createQuestion(getNestedQuestionDetails(sourceQuestion.id)).then(
-          ({ body: nestedQuestion }) => {
-            cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
-              ...sourceQuestion,
-              dataset_query: {
-                type: "native",
-                database: SAMPLE_DB_ID,
-                native: newSourceQuestionDetails.native,
-              },
-            });
-            H.visitQuestion(nestedQuestion.id);
-          },
-        ),
-    );
-
-    cy.log("verify column order in the table");
-    cy.findAllByTestId("header-cell").eq(0).should("contain.text", "C3");
-    cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
-
-    cy.log("verify column order in viz settings");
-    H.openVizSettingsSidebar();
-    H.getDraggableElements().eq(0).should("contain.text", "C3");
-    H.getDraggableElements().eq(1).should("contain.text", "C1");
-  });
-});
-
 describe("issue 32718", () => {
   const questionDetails = {
     display: "table",

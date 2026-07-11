@@ -182,5 +182,34 @@ describe("column settings", () => {
         { name: "QUANTITY_RENAMED", enabled: true },
       ]);
     });
+
+    it("should preserve the custom column order when a column is removed from the data source (metabase#7884)", () => {
+      const series: Series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: {
+              cols: [
+                createMockColumn({ name: "C1" }),
+                createMockColumn({ name: "C3" }),
+              ],
+            },
+          },
+        ),
+      ];
+
+      const computed = getComputedSettings(tableColumnSettings(), series, {
+        "table.columns": [
+          { name: "C3", enabled: true },
+          { name: "C1", enabled: true },
+          { name: "C2", enabled: true },
+        ],
+      });
+
+      expect(computed["table.columns"]).toEqual([
+        { name: "C3", enabled: true },
+        { name: "C1", enabled: true },
+      ]);
+    });
   });
 });

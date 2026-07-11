@@ -11,6 +11,7 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupRootCollectionItemsEndpoint,
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
@@ -79,6 +80,7 @@ async function setup({ dashboard }: Options = {}) {
     collection: TEST_COLLECTION,
     collectionItems: [],
   });
+  setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupSearchEndpoints([TEST_COLLECTION_ITEM]);
   setupCardsEndpoints([TEST_CARD]);
   setupTableEndpoints(TEST_TABLE);
@@ -97,7 +99,7 @@ async function setup({ dashboard }: Options = {}) {
     );
   };
 
-  const { history } = renderWithProviders(
+  const { history, store } = renderWithProviders(
     <>
       <Route path="/" component={TestHome} />
       <Route path="/dashboard/:slug" component={DashboardAppContainer} />
@@ -121,6 +123,7 @@ async function setup({ dashboard }: Options = {}) {
     dashboardId,
     history: checkNotNull(history),
     mockEventListener,
+    store,
   };
 }
 
@@ -244,6 +247,29 @@ describe("DashboardApp", () => {
       expect(
         screen.queryByRole("button", { name: "Add a chart" }),
       ).not.toBeInTheDocument();
+    });
+
+    // Regression: metabase#29450 — "Add a chart" from the empty state must enter
+    // editing mode with the dashboard *object* as the before-editing snapshot, not
+    // a truthy placeholder. Both are truthy so editing mode is entered either way
+    // (getIsEditing is Boolean(editingDashboard)); the snapshot is what the save
+    // flow diffs against (getDashboardBeforeEditing in updateDashboardAndCards), so
+    // a non-dashboard value would make a save of the newly added card a no-op.
+    it("enters editing mode with the dashboard snapshot when adding a chart from the empty state (metabase#29450)", async () => {
+      const { dashboardId, store } = await setup();
+
+      expect(store.getState().dashboard.editingDashboard).toBeNull();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add a chart" }),
+      );
+
+      expect(store.getState().dashboard.editingDashboard).toEqual(
+        expect.objectContaining({
+          id: dashboardId,
+          dashcards: expect.any(Array),
+        }),
+      );
     });
   });
 

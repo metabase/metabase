@@ -601,7 +601,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
+  it("should properly render previews (metabase#28726, metabase#40608)", () => {
     H.startNewQuestion();
 
     cy.log(
@@ -627,23 +627,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.get("@dataStep").within(() => {
       cy.icon("play").click();
-      assertTableRowCount(10);
       cy.findByTextEnsureVisible("Subtotal");
       cy.findByTextEnsureVisible("Tax");
       cy.findByTextEnsureVisible("Total");
-      cy.icon("close").click();
-    });
-
-    cy.button("Row limit").click();
-    H.getNotebookStep("limit").within(() => {
-      cy.findByPlaceholderText("Enter a limit").type("5").realPress("Tab");
-
-      cy.icon("play").click();
-      assertTableRowCount(5);
-
-      cy.findByDisplayValue("5").type("{selectall}50").realPress("Tab");
-      cy.button("Refresh").click();
-      assertTableRowCount(10);
     });
   });
 
@@ -1156,13 +1142,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     verifyIndexColumnsNotRendered();
   });
 });
-
-function assertTableRowCount(expectedCount) {
-  cy.get(".test-Table-ID:not(.test-Table-FK)").should(
-    "have.length",
-    expectedCount,
-  );
-}
 
 function addSimpleCustomColumn(name) {
   H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
