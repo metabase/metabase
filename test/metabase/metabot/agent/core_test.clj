@@ -302,9 +302,8 @@
                   {:type      :tool-input
                    :id        "call-search-1"
                    :function  "search"
-                   :arguments {:semantic_queries ["orders table"]
-                               :keyword_queries  ["orders"]
-                               :entity_types     ["table"]}}
+                   :arguments {:query        "orders"
+                               :entity_types ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
                  ;; Iteration 2: Construct a simple query via the representations YAML format
                  [{:type :start :id "msg-2"}
@@ -549,9 +548,8 @@
                                             {:type      :tool-input
                                              :id        "t1"
                                              :function  "search"
-                                             :arguments {:semantic_queries ["test"]
-                                                         :keyword_queries  ["test"]
-                                                         :entity_types     ["table"]}}
+                                             :arguments {:query        "test"
+                                                         :entity_types ["table"]}}
                                             {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                              :model "test-model" :id "msg-1"}])
                                           (mut/mock-llm-response

@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -103,7 +102,7 @@
           (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
-                                        {:term_queries ["AgentSearchTestTable"]}))))))))
+                                        {:query "AgentSearchTestTable"}))))))))
 
 (deftest search-content-types-test
   (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
@@ -113,29 +112,13 @@
                        :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
                        :model/Collection _ {:name "AgentSearchAcmeCollection"}]
           (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
-                                                   {:term_queries ["AgentSearchAcme"]})
+                                                   {:query "AgentSearchAcme"})
                              :data
                              (map (juxt :name :type))
                              set)]
             (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
             (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
             (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
-
-(deftest coerce-query-list-test
-  (let [coerce #'agent-api.api/coerce-query-list]
-    (testing "arrays pass through unchanged"
-      (is (= ["orders" "revenue"] (coerce ["orders" "revenue"]))))
-    (testing "nil stays nil"
-      (is (nil? (coerce nil))))
-    (testing "a bare string becomes a single-element list"
-      (is (= ["orders"] (coerce "orders"))))
-    (testing "a JSON-stringified array of strings is unwrapped"
-      (is (= ["orders" "revenue"] (coerce "[\"orders\", \"revenue\"]"))))
-    (testing "JSON arrays with non-string elements are not unwrapped — they fall back to a literal single query so that downstream :sequential NonBlankString validation is never bypassed"
-      (is (= ["[1, 2]"] (coerce "[1, 2]")))
-      (is (= ["[\"\"]"] (coerce "[\"\"]"))))
-    (testing "non-JSON strings become a single-element list"
-      (is (= ["not json ["] (coerce "not json ["))))))
 
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
@@ -565,7 +548,7 @@
           (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
-                                        {:term_queries ["AgentSearchTestMetric"]}))))))))
+                                        {:query "AgentSearchTestMetric"}))))))))
 
 (deftest search-finds-models-test
   (binding [search.ingestion/*force-sync* true]
@@ -578,7 +561,7 @@
           (is (=? {:data        [{:type "model" :name "AgentSearchTestModel"}]
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
-                                        {:term_queries ["AgentSearchTestModel"]}))))))))
+                                        {:query "AgentSearchTestModel"}))))))))
 
 ;;; ------------------------------------------------ Create Question Tests -------------------------------------------
 
