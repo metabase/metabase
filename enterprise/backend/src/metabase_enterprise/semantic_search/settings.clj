@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.settings
   (:require
    [metabase.llm.settings :as llm-settings]
-   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -74,9 +73,6 @@
   :export?    false
   :encryption :no
   :default    true
-  :getter     (fn []
-                (and (setting/get-value-of-type :boolean :semantic-search-enabled)
-                     (premium-features/enable-semantic-search?)))
   :type       :boolean
   :doc        false)
 
