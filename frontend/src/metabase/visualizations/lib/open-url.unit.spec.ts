@@ -2,6 +2,7 @@ import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
+import * as dom from "metabase/utils/dom";
 import {
   getUrlTarget,
   openUrl,
@@ -142,5 +143,62 @@ describe("openUrl()", () => {
     });
 
     expect(handleLink).not.toHaveBeenCalled();
+  });
+});
+
+// A custom click-behavior destination that points at a public link or embed
+// resource must use a full-page navigation, not client-side routing: the public
+// and embed apps are served from separate route bundles, so client-side
+// navigation lands on a blank/incorrect page. (metabase#38640)
+describe("openUrl() - public link / embed destinations (metabase#38640)", () => {
+  const origin = window.location.origin;
+
+  beforeEach(async () => {
+    await mockIsEmbeddingSdk(false);
+    mockSettings({ "site-url": origin });
+    jest.spyOn(dom, "clickLink").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it.each([
+    ["public link", `${origin}/public/dashboard/1a2b3c`],
+    ["embed", `${origin}/embed/dashboard/some.jwt.token`],
+  ])(
+    "uses full-page navigation (not client-side routing) for a %s URL",
+    async (_label, url) => {
+      const openInSameOrigin = jest.fn();
+      const openInSameWindow = jest.fn();
+      const openInBlankWindow = jest.fn();
+
+      await openUrl(url, {
+        openInSameOrigin,
+        openInSameWindow,
+        openInBlankWindow,
+      });
+
+      // client-side navigation must NOT be used for these routes
+      expect(openInSameOrigin).not.toHaveBeenCalled();
+      // instead a real anchor click (full-page navigation) is performed
+      expect(dom.clickLink).toHaveBeenCalledWith(url, false);
+    },
+  );
+
+  it("uses client-side navigation for an ordinary in-app URL", async () => {
+    const openInSameOrigin = jest.fn();
+    const openInSameWindow = jest.fn();
+    const openInBlankWindow = jest.fn();
+    const url = `${origin}/dashboard/1`;
+
+    await openUrl(url, {
+      openInSameOrigin,
+      openInSameWindow,
+      openInBlankWindow,
+    });
+
+    expect(openInSameOrigin).toHaveBeenCalledTimes(1);
+    expect(dom.clickLink).not.toHaveBeenCalled();
   });
 });

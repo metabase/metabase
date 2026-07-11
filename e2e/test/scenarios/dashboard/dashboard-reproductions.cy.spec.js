@@ -236,20 +236,6 @@ describe("issue 12926", () => {
 
       H.getDashboardCard().findByText(queryResult);
     });
-
-    it("should not break virtual cards (metabase#35545)", () => {
-      H.createDashboard().then(({ body: { id: dashboardId } }) => {
-        H.visitDashboard(dashboardId);
-      });
-
-      H.addTextBox("Text card content");
-
-      H.removeDashboardCard();
-
-      H.undo();
-
-      H.getDashboardCard().findByText("Text card content");
-    });
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {

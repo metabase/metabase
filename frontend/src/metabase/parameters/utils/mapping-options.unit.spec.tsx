@@ -927,5 +927,40 @@ describe("getMappingOptionByTarget", () => {
         undefined,
       );
     });
+
+    // A dashboard can mix native and MBQL cards. When mapping a filter, this
+    // function is called for the MBQL card with the native card's template
+    // variable target. Variable refs are not MBQL, so they must not reach
+    // `Lib.findColumnIndexesFromLegacyRefs`, which throws for them.
+    it("should ignore template-variable targets on structured questions without throwing (metabase#44266)", () => {
+      const mappingOption: ParameterMappingOption = {
+        sectionName: "User",
+        name: "Name",
+        icon: "string",
+        target: [
+          "dimension",
+          [
+            "field",
+            1,
+            {
+              "base-type": "type/Text",
+            },
+          ],
+        ],
+        isForeign: true,
+      };
+
+      const variableTarget: ParameterTarget = [
+        "variable",
+        ["template-tag", "price"],
+      ];
+
+      expect(() =>
+        getMappingOptionByTarget([mappingOption], variableTarget, question),
+      ).not.toThrow();
+      expect(
+        getMappingOptionByTarget([mappingOption], variableTarget, question),
+      ).toBeUndefined();
+    });
   });
 });

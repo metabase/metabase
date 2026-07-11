@@ -33,6 +33,7 @@ import {
   SAMPLE_DB_ID,
   createAdHocCard,
   createAdHocNativeCard,
+  createEmptyAdHocNativeCard,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
@@ -664,6 +665,37 @@ describe("View Header | Hidden tables", () => {
       }),
     });
     expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+});
+
+describe("View Header | Save button tooltip (metabase#51035)", () => {
+  it("does not show an empty tooltip when the disabled Save button has no message", async () => {
+    setup({ card: createEmptyAdHocNativeCard(), isDirty: true });
+
+    const saveButton = screen.getByTestId("qb-save-button");
+    expect(saveButton).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.hover(saveButton);
+
+    // An empty native query is not saveable, but the user has permission and
+    // there are no template-tag errors, so there is no message to show. The
+    // tooltip must stay closed rather than surfacing an empty bubble.
+    await expect(screen.findByRole("tooltip")).rejects.toThrow();
+  });
+
+  it("shows the tooltip when the disabled Save button has a message", async () => {
+    setup({
+      card: getNativeQuestionCard(),
+      database: createSampleDatabase({ native_permissions: "none" }),
+      isDirty: true,
+    });
+
+    const saveButton = screen.getByTestId("qb-save-button");
+    await userEvent.hover(saveButton);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "You don't have permission to save this question.",
+    );
   });
 });
 

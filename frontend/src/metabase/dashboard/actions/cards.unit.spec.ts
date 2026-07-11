@@ -9,6 +9,7 @@ import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import type { State, StoreDashcard } from "metabase/redux/store";
 import {
   createMockDashboardState,
@@ -49,6 +50,7 @@ import {
   addCardToDashboard,
   addSectionToDashboard,
   replaceCard,
+  undoRemoveCardFromDashboard,
 } from "./cards-typed";
 
 const DATE_PARAMETER = createMockParameter({
@@ -294,7 +296,50 @@ describe("dashboard/actions/cards", () => {
       expect(nextDashCard.parameter_mappings).toEqual([]);
     });
   });
+
+  describe("undoRemoveCardFromDashboard", () => {
+    it("should re-fetch the card data when undoing a regular dashcard removal", async () => {
+      const cardQueryCalls = await runUndoRemoveCardFromDashboard({
+        dashcardId: TABLE_DASHCARD.id,
+      });
+
+      expect(cardQueryCalls).toHaveLength(1);
+    });
+
+    it("should not fetch card data when undoing a virtual dashcard removal (metabase#35545)", async () => {
+      const cardQueryCalls = await runUndoRemoveCardFromDashboard({
+        dashcardId: TEXT_DASHCARD.id,
+      });
+
+      expect(cardQueryCalls).toHaveLength(0);
+    });
+  });
 });
+
+async function runUndoRemoveCardFromDashboard({
+  dashcardId,
+}: {
+  dashcardId: DashCardId;
+}) {
+  const { store } = setup();
+  setupDashcardQueryEndpoints(
+    DASHBOARD.id,
+    TABLE_DASHCARD,
+    createMockDataset(),
+  );
+
+  await undoRemoveCardFromDashboard({ dashcardId })(
+    store.dispatch,
+    store.getState,
+  );
+  // fetchCardData is dispatched without being awaited inside the thunk, so
+  // flush the microtask queue to let the (mocked) request settle.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  return fetchMock.callHistory.calls(
+    `path:/api/dashboard/${DASHBOARD.id}/dashcard/${TABLE_DASHCARD.id}/card/${TABLE_DASHCARD.card_id}/query`,
+  );
+}
 
 type RunAddSectionOpts = SetupOpts & {
   tabId?: DashboardTabId | null;

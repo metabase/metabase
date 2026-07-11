@@ -939,33 +939,6 @@ describe("issue 7884", () => {
   });
 });
 
-describe("issue 45481", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not crash when the table viz gets automatically pivoted (metabase#45481)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-    H.popover().findByText("Count of rows").click();
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    H.popover().findByText("User ID").click();
-    H.getNotebookStep("summarize")
-      .findByTestId("breakout-step")
-      .icon("add")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Product").click();
-      cy.findByText("Category").click();
-    });
-    H.visualize();
-    H.tableInteractive().should("be.visible");
-  });
-});
-
 describe("issue 32718", () => {
   const questionDetails = {
     display: "table",

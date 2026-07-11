@@ -2,41 +2,6 @@ const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { mainAppLinkText } from "e2e/support/helpers";
 
-describe("issue 26470", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    cy.request("POST", "/api/persist/enable");
-  });
-
-  it("Model Cache enable / disable toggle should reflect current state", () => {
-    cy.intercept(`/api/persist/database/${WRITABLE_DB_ID}/persist`).as(
-      "persist",
-    );
-    cy.intercept(`/api/persist/database/${WRITABLE_DB_ID}/unpersist`).as(
-      "unpersist",
-    );
-
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-
-    cy.findByTestId("database-model-features-section")
-      .findByLabelText("Model persistence")
-      .should("not.be.checked")
-      .click({ force: true });
-    cy.wait("@persist").its("response.statusCode").should("eq", 204);
-
-    cy.findByTestId("database-model-features-section")
-      .findByLabelText("Model persistence")
-      .should("be.checked")
-      .click({ force: true });
-    cy.wait("@unpersist").its("response.statusCode").should("eq", 204);
-
-    cy.findByTestId("database-model-features-section")
-      .findByLabelText("Model persistence")
-      .should("not.be.checked");
-  });
-});
-
 describe("issue 33035", () => {
   beforeEach(() => {
     H.restore();

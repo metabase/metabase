@@ -31,15 +31,6 @@ const PARAMETER = {
     type: "number/=",
     sectionId: "number",
   }),
-
-  // Used to reproduce:
-  // https://github.com/metabase/metabase/issues/36984
-  DATE_2: createMockParameter({
-    id: "2",
-    name: "Created At (2)",
-    type: "date/range",
-    sectionId: "date",
-  }),
 };
 
 const DASHBOARD_CREATE_INFO = {
@@ -65,11 +56,6 @@ function getDashboardCards(mappedQuestionId) {
     parameter_mappings: [
       {
         parameter_id: PARAMETER.DATE.id,
-        card_id: mappedQuestionId,
-        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
-      },
-      {
-        parameter_id: PARAMETER.DATE_2.id,
         card_id: mappedQuestionId,
         target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
       },
@@ -128,43 +114,6 @@ describe("scenarios > dashboard cards > replace question", () => {
 
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
-  });
-
-  it("should replace a dashboard card question (metabase#36984)", () => {
-    visitDashboardAndEdit();
-
-    findHeadingDashcard()
-      .realHover({ scrollBehavior: "bottom" })
-      .findByLabelText("Replace")
-      .should("not.exist");
-
-    // Ensure can replace with a question
-    replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Orders",
-    });
-    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" });
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Orders");
-      cy.findByText("Product ID").should("exist");
-    });
-
-    // Ensure can replace with a model
-    replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Orders Model",
-    });
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Orders Model");
-      cy.findByText("Product ID").should("exist");
-      cy.findByText("User ID").should("exist");
-    });
-
-    // Ensure changes are persisted
-    H.saveDashboard();
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Orders Model");
-      cy.findByText("Product ID").should("exist");
-      cy.findByText("User ID").should("exist");
-    });
   });
 
   it("should undo the question replace action", () => {
@@ -246,10 +195,6 @@ describe("scenarios > dashboard cards > replace question", () => {
 function visitDashboardAndEdit() {
   H.visitDashboard("@dashboardId");
   cy.findByLabelText("Edit dashboard").click();
-}
-
-function findHeadingDashcard() {
-  return cy.findAllByTestId("dashcard").eq(0);
 }
 
 function findTargetDashcard() {

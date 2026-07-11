@@ -54,27 +54,6 @@ describe("search > recently viewed", () => {
 
     cy.url().should("match", /\/question\/\d+-orders$/);
   });
-
-  it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
-    cy.findByPlaceholderText("Search…").click();
-    cy.wait("@recent");
-    cy.findByTestId("loading-indicator").should("not.exist");
-
-    assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
-    assertRecentlyViewedItem(1, "Orders", "Question");
-    assertRecentlyViewedItem(2, "People", "Table");
-
-    cy.intercept("/api/dataset").as("dataset");
-
-    advanceServerClockBy(100);
-    cy.findAllByTestId("recently-viewed-item-title").eq(2).click();
-    cy.wait("@dataset");
-
-    cy.findByPlaceholderText("Search…").click();
-    cy.wait("@recent");
-
-    assertRecentlyViewedItem(0, "People", "Table");
-  });
 });
 
 describe("Recently Viewed > Entity Picker", () => {

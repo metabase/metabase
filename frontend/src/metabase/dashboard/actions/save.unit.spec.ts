@@ -118,4 +118,20 @@ describe("updateDashboardAndCards", () => {
       fetchMock.callHistory.called("path:/api/dashboard/1", { method: "GET" }),
     ).toBe(false);
   });
+
+  // Regression: metabase#36984 — after replacing a dashcard's card and saving,
+  // the dashcard query would sometimes error because the dashboard was still in
+  // editing mode when its state was refreshed. The save thunk must exit editing
+  // mode (setEditingDashboard(null)) before refreshing, so the refresh does not
+  // race against a stale, parameterized editing state.
+  it("exits editing mode after saving", async () => {
+    const { store } = setup();
+
+    // Precondition: the dashboard starts in editing mode.
+    expect(store.getState().dashboard.editingDashboard).not.toBeNull();
+
+    await store.dispatch(updateDashboardAndCards());
+
+    expect(store.getState().dashboard.editingDashboard).toBeNull();
+  });
 });

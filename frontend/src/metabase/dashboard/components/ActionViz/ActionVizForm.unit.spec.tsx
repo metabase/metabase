@@ -116,4 +116,25 @@ describe("Actions > ActionVizForm", () => {
 
     expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
   });
+
+  it("should not prefetch values for a query action linked with dashboard filters (metabase#32974)", async () => {
+    const prefetchPath = `path:/api/dashboard/${dashboard.id}/dashcard/${dashcard.id}/execute`;
+
+    await setup({
+      action: mockAction,
+      dashcardParamValues: { id: 888 },
+    });
+
+    await userEvent.click(screen.getByText("Click me"));
+
+    // The parameter form is shown immediately and is submittable, rather than a
+    // prefetch-driven "Choose a record to update" empty state.
+    expect(await screen.findByLabelText("Parameter 1")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Choose a record to update/i),
+    ).not.toBeInTheDocument();
+
+    // A non-implicit action never prefetches dashcard values.
+    expect(fetchMock.callHistory.calls(prefetchPath)).toHaveLength(0);
+  });
 });

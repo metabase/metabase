@@ -1936,56 +1936,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 
-  describe("static embedding", () => {
-    it("should navigate to public link URL (metabase#38640)", () => {
-      H.createDashboard(TARGET_DASHBOARD)
-        .then(({ body: { id: dashboardId } }) => {
-          cy.log("create a public link for this dashboard");
-          cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
-            ({ body: { uuid } }) => {
-              cy.wrap(uuid);
-            },
-          );
-        })
-        .then((uuid) => {
-          H.createQuestionAndDashboard({
-            dashboardDetails: {
-              name: "Dashboard",
-              enable_embedding: true,
-            },
-            questionDetails: QUESTION_LINE_CHART,
-            cardDetails: {
-              // Set custom URL click behavior via API
-              visualization_settings: {
-                click_behavior: {
-                  type: "link",
-                  linkType: "url",
-                  linkTemplate: `http://localhost:4000/public/dashboard/${uuid}`,
-                },
-              },
-            },
-          });
-        })
-        .then(({ body: dashCard }) => {
-          H.visitDashboard(dashCard.dashboard_id);
-
-          H.openLegacyStaticEmbeddingModal({
-            resource: "dashboard",
-            resourceId: dashCard.dashboard_id,
-            activeTab: "parameters",
-            unpublishBeforeOpen: false,
-          });
-        });
-
-      H.visitIframe();
-      clickLineChartPoint();
-
-      cy.findByRole("heading", { name: TARGET_DASHBOARD.name }).should(
-        "be.visible",
-      );
-    });
-  });
-
   describe("multi-stage questions as target destination", () => {
     const questionDetails = {
       name: "Table",

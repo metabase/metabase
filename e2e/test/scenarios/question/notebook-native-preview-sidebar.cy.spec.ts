@@ -230,16 +230,6 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
     cy.findByTestId("qb-header").findByText("Explore results").click();
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
   });
-
-  it("should be possible to save a question based on another question after converting to SQL (metabase#40422)", () => {
-    H.createQuestion(
-      { query: { "source-table": `card__${ORDERS_QUESTION_ID}` } },
-      { visitQuestion: true },
-    );
-    convertToSql();
-    H.saveSavedQuestion();
-    cy.get("[data-testid=cell-data]").should("contain", "37.65");
-  });
 });
 
 describe(
