@@ -4,6 +4,16 @@ if [ -z "$MB_JETTY_HOST" ]; then
     export MB_JETTY_HOST=0.0.0.0
 fi
 
+# the image ships python3 and node, so default to the external-process backends (lighter and faster
+# than the in-process GraalVM ones) unless explicitly configured otherwise
+if [ -z "$MB_SQL_PARSING_MODE" ]; then
+    export MB_SQL_PARSING_MODE=python
+fi
+
+if [ -z "$MB_STATIC_VIZ_MODE" ]; then
+    export MB_STATIC_VIZ_MODE=node
+fi
+
 # Setup Java Options
 JAVA_OPTS="${JAVA_OPTS} -XX:+IgnoreUnrecognizedVMOptions"
 JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
