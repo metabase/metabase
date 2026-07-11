@@ -34,6 +34,34 @@ metabase.lib.join .cljc). Landing 12/16 = 75% — *higher* than batches 6–7 de
 the editor/UI shell. Heavy collisions: core.unit.spec.ts now holds 4 issues' blocks
 (45926 44171 30165 28971).
 
+## BE-DEFTEST WAVE COMPLETE (batches 9–11)
+
+All 11 backlogged `.clj[c]` issues are done — each culls its e2e repro guarded by a
+discriminating Clojure `deftest` (product `.clj[c]` unchanged; verified on-branch).
+| batch | commit | issues |
+|---|---|---|
+| 9 | `f473466e` | 31769 40399 40608 42829 |
+| 10 | `01abc894` | 32032 32373 48562 50373 (+29786 FE-witness e2e cleanup) |
+| 11 | `d3835864` | 53604 63687 68998 |
+
+**Findings:** the mutation-verify step caught **three vacuous shipped oracles**
+(40399 `=?`-tolerant; 63687 admin-session masks the `as-admin` fix; several others only
+checked adjacent structure), each replaced with a sharper deftest issuing the real
+production path (anonymous request, exact clause-type set, etc.). ~half the oracles
+pre-existed and just needed confirmation; the rest were written fresh.
+
+**Branch-divergence gotcha (important):** the agent worktrees fork from a base where
+`4701e5f8dc5` ("Remove querying e2e tests made redundant by backend test parity") IS an
+ancestor, but **dev-2347 does NOT contain it**. So any agent reporting "e2e already culled"
+is describing the worktree, not the branch — the block is still present on dev-2347 and must
+be hand-culled (hit 32032, 53604, and the batch-8 FE miss 29786). Always
+`grep` the block on the branch before trusting an "already gone" claim.
+
+## GRAND TOTAL: ~117 e2e repros culled (105 FE + 12 BE), 106 FE witnesses + 11 BE deftests
+Branch `dev-2347`, 37 commits ahead of master, tree clean. Ready for PR.
+Remaining deferred item: FE issue 34395 (agent API-errored; retry with a predicate-level
+`isActionDashCard` witness).
+
 ## FE FAN-OUT COMPLETE — pool exhausted
 
 After batch 8 the pf=1 distinct-spec candidate pool was down to 16 and is now effectively
