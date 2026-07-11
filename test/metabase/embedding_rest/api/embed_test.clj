@@ -1905,6 +1905,30 @@
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
+(deftest anonymous-tile-query-runs-as-admin-test
+  (testing "metabase#63687 static-embed tile endpoints run the tiles query as admin for a valid JWT token"
+    (testing "so an anonymous (session-less) request still succeeds without hitting permission errors"
+      (with-embedding-enabled-and-new-secret-key!
+        (testing "card tile endpoint"
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
+                                                    :enable_embedding true}]
+            (let [token (card-token card-id)]
+              (is (png? (client/client
+                         :get 200 (format "embed/tiles/card/%s/1/1/1" token)
+                         :latField (tiles.api-test/encoded-lat-field-ref)
+                         :lonField (tiles.api-test/encoded-lon-field-ref)))))))
+        (testing "dashcard tile endpoint"
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                         :model/Card          {card-id :id}      {:dataset_query (venues-query)}
+                         :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                                  :dashboard_id dashboard-id}]
+            (let [token (dash-token dashboard-id)]
+              (is (png? (client/client
+                         :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                          token dashcard-id card-id)
+                         :latField (tiles.api-test/encoded-lat-field-ref)
+                         :lonField (tiles.api-test/encoded-lon-field-ref)))))))))))
+
 (deftest embedded-string-parameter-case-sensitivity-regression-test
   "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
    Embedded dashboards should apply case-insensitive default options for string operators."

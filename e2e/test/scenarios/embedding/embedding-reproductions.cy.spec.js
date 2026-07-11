@@ -1,6 +1,5 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import { defer } from "metabase/utils/promise";
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, FEEDBACK, FEEDBACK_ID } =
   SAMPLE_DATABASE;
@@ -1536,37 +1535,6 @@ describe("issue 51934 (EMB-189)", () => {
       });
     });
   }
-});
-
-describe("issue 63687", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should properly display pin map tiles without auth errors for a valid JWT token", () => {
-    H.createNativeQuestion(questionAsPinMapWithTiles, {
-      visitQuestion: true,
-      wrapId: true,
-    });
-
-    cy.get("@questionId").then((questionId) => {
-      H.openLegacyStaticEmbeddingModal({
-        resource: "question",
-        resourceId: questionId,
-        activeTab: "parameters",
-        unpublishBeforeOpen: false,
-      });
-    });
-
-    cy.intercept("/api/embed/tiles/**").as("getTiles");
-
-    H.visitIframe();
-
-    cy.wait("@getTiles").then(({ response: tileResponse }) => {
-      expect(tileResponse?.statusCode).to.equal(200);
-    });
-  });
 });
 
 describe("issue 57028", () => {

@@ -342,3 +342,37 @@
           (is (contains? (lib-be/with-metadata-provider-cache
                            (params/dashcards->param-field-ids dashcards))
                          (mt/id :people :state))))))))
+
+(deftest ^:parallel dashcards->param-field-ids-resolves-series-card-test
+  (testing (str "a parameter mapping whose :card_id points at a series Card (not the dashcard's main Card) resolves its "
+                "field id against that series Card, so filter values come from the right dataset (#68998)")
+    (let [main-tag   {:name "field" :display-name "Field" :id "11111111"
+                      :type :dimension :widget-type :string/=
+                      :dimension [:field (mt/id :orders :quantity) nil]}
+          series-tag {:name "field" :display-name "Field" :id "22222222"
+                      :type :dimension :widget-type :string/=
+                      :dimension [:field (mt/id :products :category) nil]}]
+      (mt/with-temp
+        [:model/Card                main-card   {:database_id   (mt/id)
+                                                 :dataset_query (mt/native-query {:query         "SELECT 1"
+                                                                                  :template-tags {"field" main-tag}})}
+         :model/Card                series-card {:database_id   (mt/id)
+                                                 :dataset_query (mt/native-query {:query         "SELECT 1"
+                                                                                  :template-tags {"field" series-tag}})}
+         :model/Dashboard           {dash-id :id} {}
+         :model/DashboardCard       dc          {:dashboard_id       dash-id
+                                                 :card_id            (:id main-card)
+                                                 ;; the mapping points at the SERIES card, not the dashcard's main card
+                                                 :parameter_mappings [{:parameter_id "p1"
+                                                                       :card_id      (:id series-card)
+                                                                       :target       [:dimension [:template-tag "field"]]}]}
+         :model/DashboardCardSeries _           {:dashboardcard_id (:id dc)
+                                                 :card_id          (:id series-card)
+                                                 :position         0}]
+        (let [dashcards   (-> (t2/select :model/DashboardCard :id (:id dc))
+                              (t2/hydrate :card :series))
+              param->ids  (lib-be/with-metadata-provider-cache
+                            (params/dashcards->param-id->field-ids* dashcards))]
+          (testing "the mapped parameter resolves to the series Card's field, not the main Card's field"
+            (is (= #{(mt/id :products :category)}
+                   (get param->ids "p1")))))))))

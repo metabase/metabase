@@ -1066,3 +1066,50 @@
                                "2026-10-11"
                                "2026-10-11"]]}]
               (:stages (lib/drill-thru query drill)))))))
+
+(deftest ^:parallel native-card-multiple-breakouts-same-column-drill-test
+  ;; Regression #53604: a card-sourced question broken out twice on the SAME column (CREATED_AT by
+  ;; month AND by year). Because the source is a native card, the breakout columns are name-based
+  ;; (no :id), so resolving each dimension to a filterable column must use the dimension's own
+  ;; column-ref to disambiguate. Before the fix both dimensions collapsed onto a single breakout, so
+  ;; the drill emitted the wrong/duplicate temporal filter instead of one month filter and one year
+  ;; filter.
+  (testing "underlying-records drill over a native card with two breakouts on the same column emits a
+            distinct filter for each temporal unit (#53604)"
+    (let [mp         (lib.tu/metadata-provider-with-mock-cards)
+          card       (:orders/native (lib.tu/mock-cards))
+          created-at (fn [q] (m/find-first #(= (:name %) "CREATED_AT")
+                                           (lib/breakoutable-columns q)))
+          query      (as-> (lib/query mp card) q
+                       (lib/aggregate q (lib/count))
+                       (lib/breakout q (lib/with-temporal-bucket (created-at q) :month))
+                       (lib/breakout q (lib/with-temporal-bucket (created-at q) :year)))
+          cols       (lib/returned-columns query)
+          count-col  (m/find-first #(= (:name %) "count") cols)
+          _          (is (some? count-col))
+          month-col  (m/find-first #(= (:unit (lib/temporal-bucket %)) :month) cols)
+          year-col   (m/find-first #(= (:unit (lib/temporal-bucket %)) :year) cols)
+          _          (is (some? month-col))
+          _          (is (some? year-col))
+          context    {:column     count-col
+                      :column-ref (lib/ref count-col)
+                      :value      520
+                      :dimensions [{:column     month-col
+                                    :column-ref (lib/ref month-col)
+                                    :value      "2027-05-01T00:00:00Z"}
+                                   {:column     year-col
+                                    :column-ref (lib/ref year-col)
+                                    :value      "2027-01-01T00:00:00Z"}]}
+          drill      (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                   (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? [{:source-card (:id card)
+                :filters     [[:between {}
+                               [:field {:temporal-unit :month} "CREATED_AT"]
+                               "2027-05-01"
+                               "2027-05-31"]
+                              [:between {}
+                               [:field {:temporal-unit :year} "CREATED_AT"]
+                               "2027-01-01"
+                               "2027-12-31"]]}]
+              (:stages (lib/drill-thru query drill)))))))
