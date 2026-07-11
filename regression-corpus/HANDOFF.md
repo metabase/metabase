@@ -12,7 +12,7 @@ repros onto this one branch. Each full-loop agent (brief:
 writes the witness AS a real landed test (pass-on-HEAD / fail-on-mutant, then reverts the
 mutation so **product code ends unchanged**), and deletes the Cypress repro block.
 
-**Committed batches (git log `master..HEAD`, 26 commits ahead):**
+**Committed batches (git log `master..HEAD`, 28 commits ahead):**
 | batch | commit | e2e culled + witnesses landed |
 |---|---|---|
 | 1 | `66d84d21` | 12 |
@@ -20,7 +20,33 @@ mutation so **product code ends unchanged**), and deletes the Cypress repro bloc
 | 3 | `1d26e58e` | 8 |
 | 4 | `7e767526` | 17 |
 | 5 | `2a1bf560` | 17 |
-| **total** | | **70 e2e repros culled, 70 unit witnesses landed** |
+| 6 | `c131cccd` | 12 |
+| **total** | | **82 e2e repros culled, 82 unit witnesses landed** |
+
+**Batch 6 (rlc-batch3, 20 agents):** 12 landed (12368 12586 23336 34574 37380 41243
+42355 42385 44101 44220 44754 52811); 8 not culled — 3 `be_deftest` (42829 40399 40608,
+each with a shipped `deftest` oracle already), 1 `keep_e2e` (46223), 4 `obsoleted-by-rewrite`
+(45410 41133 32573 39487). **Landing rate 60%, down from batch-5's 85%** — the deeper
+candidate slice (older issues, 2023–early-2024) carries more drift, so more fixes have
+migrated to `.cljc` or had their seam dissolved by later rewrites. Expect this to keep
+falling; the cheap-FE-reducible slice is thinning.
+
+**Two refinements to the seam catalogue (from batch 6):**
+- **`obsoleted-by-rewrite` is now a first-class outcome** (5 across batches 5–6): the fix
+  was FE and *was* unit-catchable when shipped, but a later refactor deleted the seam
+  (component removed, value moved JS→static-CSS, or fix commit no longer an ancestor of
+  HEAD). A witness would fail on clean HEAD → not `landed`, not `be_deftest`, not classic
+  irreducible. Record and keep the e2e.
+- **Inline style prop vs CSS-module class is the sharp line for "CSS is reducible"** (46223
+  vs 52918): a Mantine style prop (`maw`, `mih`) emits an *inline* `style=""` attr jsdom
+  exposes → `toHaveStyle` works → `landed`. A `className={CS.foo}` CSS-module class is
+  mapped to `{}` by jest's styleMock, never reaches the DOM → irreducible. Update the
+  `e2e-to-unit` SKILL's CSS row to say this explicitly.
+
+**BE-deftest backlog (for a single Clojure wave):** 42829 40399 40608 (batch 6) + 48562
+50373 (batch 4) + 68998 53604 63687 (study). Each is a `.clj[c]` fix; most already have a
+shipped `deftest` oracle named in the agent reports — the wave confirms/relocates them and
+culls the e2e.
 
 **Batch 5 (rlc-batch2, 20 agents):** 17 landed (32252 34517 37893 42165 44171 44720
 45300 45877 46221 47847 48207 48829 48878 49270 50346 52918 54124); 3 kept — 47061
