@@ -154,7 +154,7 @@
                                                               :name query-name)
                        :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
                                                                :name python-name)]
-          (search.tu/with-new-search-and-legacy-search
+          (search.tu/with-appdb-search-and-legacy-search
             (testing "no hosting feature"
               (mt/with-premium-features #{}
                 (is (= #{query-id} (search-transform-ids search-term)))))
@@ -178,7 +178,7 @@
                                                               :name query-name)
                        :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
                                                                :name python-name)]
-          (search.tu/with-new-search-and-legacy-search
+          (search.tu/with-appdb-search-and-legacy-search
             (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
               (is (= #{query-id python-id} (search-transform-ids search-term))))
             (mt/with-premium-features #{:transforms-basic :hosting}
@@ -196,7 +196,7 @@
               query-name  (str search-term "-query")]
           (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
                                                                 :name query-name)]
-            (search.tu/with-new-search-and-legacy-search
+            (search.tu/with-appdb-search-and-legacy-search
               (let [ids (search-api-transform-ids :crowberto search-term)]
                 (is (empty? ids))
                 (is (not (contains? ids query-id)))))))))))
