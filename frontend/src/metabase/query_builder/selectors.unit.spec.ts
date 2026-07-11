@@ -482,6 +482,17 @@ describe("getIsVisualized", () => {
     });
     expect(getIsVisualized(state)).toBe(true);
   });
+
+  // metabase#56094: after switching an auto-pivot table to the raw "data" view,
+  // display is "table" and `table.pivot` is not set, but `table.pivot_column`
+  // remains. The question must still count as visualized so the display toggle
+  // stays available to switch back to the pivot visualization.
+  it("should be true when display is table and only `table.pivot_column` is set (metabase#56094)", () => {
+    const question = { display: () => "table" } as unknown as Question;
+    const settings = { "table.pivot_column": "CATEGORY" };
+
+    expect(getIsVisualized.resultFunc(question, settings)).toBeTruthy();
+  });
 });
 
 describe("getShouldShowUnsavedChangesWarning", () => {

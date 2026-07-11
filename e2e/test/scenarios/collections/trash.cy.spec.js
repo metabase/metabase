@@ -4,7 +4,6 @@ const { H } = cy;
 import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
-  ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -863,47 +862,6 @@ describe("scenarios > collections > trash", () => {
       .and("contain", "Restore")
       .and("contain", "Delete permanently");
   });
-
-  it("should not deselect items when aborting operations (metabase#44911)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
-    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
-      archived: true,
-    });
-    cy.request("PUT", `/api/card/${ORDERS_MODEL_ID}`, { archived: true });
-    cy.visit("/trash");
-
-    selectItem("Orders");
-    selectItem("Orders Model");
-
-    cy.findByTestId("toast-card")
-      .should("be.visible")
-      .findByText("Delete permanently")
-      .click();
-
-    H.modal().findByText("Cancel").click();
-
-    assertChecked("Orders");
-    assertChecked("Orders Model");
-
-    cy.findByTestId("toast-card")
-      .should("be.visible")
-      .findByText("Move")
-      .click();
-
-    H.entityPickerModal().findByText("Cancel").click();
-
-    assertChecked("Orders");
-    assertChecked("Orders Model");
-
-    cy.log("Going through with action should reset selection");
-    cy.findByTestId("toast-card")
-      .should("be.visible")
-      .findByText("Delete permanently")
-      .click();
-
-    H.modal().findByText("Delete permanently").click();
-    assertChecked("Orders, Count", false);
-  });
 });
 
 function toggleEllipsisMenuFor(item) {
@@ -982,13 +940,6 @@ function selectItem(name) {
     .findByRole("checkbox")
     .closest("button")
     .click();
-}
-
-function assertChecked(name, checked = true) {
-  cy.findByText(name)
-    .closest("tr")
-    .findByRole("checkbox")
-    .should(checked ? "be.checked" : "not.be.checked");
 }
 
 function assertTrashSelectedInNavigationSidebar() {

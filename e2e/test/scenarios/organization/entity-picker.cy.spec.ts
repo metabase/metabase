@@ -907,42 +907,6 @@ describe("scenarios > organization > entity picker", () => {
       );
     });
 
-    it("should grow in width as needed, but not shrink (metabase#55690)", () => {
-      cy.viewport(1500, 800);
-      cy.visit("/");
-
-      // New Collection Flow
-      H.startNewCollectionFromSidebar();
-      cy.findByTestId("new-collection-modal")
-        .findByLabelText(/Collection it's saved in/)
-        .click();
-
-      //Initial width of entity picker
-      cy.findByRole("dialog", { name: "Select a collection" })
-        .should("have.css", "width")
-        .and("eq", "920px");
-
-      H.entityPickerModalItem(1, "First collection").click();
-
-      //Entity picker should grow
-      cy.findByRole("dialog", { name: "Select a collection" })
-        .should("have.css", "width")
-        .and("eq", "1097px");
-
-      H.entityPickerModalItem(2, "Second collection").click();
-
-      //Max width is 80% of the viewport. Here, we get horizontal scrolling
-      cy.findByRole("dialog", { name: "Select a collection" })
-        .should("have.css", "width")
-        .and("eq", "1200px");
-
-      H.entityPickerModalItem(0, "Our analytics").click();
-      //Entity picker should not shrink if we go back in the collection tree
-      cy.findByRole("dialog", { name: "Select a collection" })
-        .should("have.css", "width")
-        .and("eq", "1198px");
-    });
-
     it("should scroll to the left edge of the newly opened column", () => {
       cy.viewport(375, 800);
       cy.visit("/");

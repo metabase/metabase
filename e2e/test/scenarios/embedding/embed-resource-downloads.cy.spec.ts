@@ -6,7 +6,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-const { PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 /** These tests are about the `downloads` flag for static embeds, both dashboards and questions.
@@ -296,109 +296,6 @@ describe("Static embed dashboards/questions downloads (results and export as pdf
         cy.signInAsAdmin();
 
         H.activateToken("pro-self-hosted");
-      });
-
-      it("should be able to download a static embedded question as CSV with correct parameters when field filters has multiple values (metabase#52430)", () => {
-        const FILTER_VALUES = ["NY", "CA"];
-        const QUESTION_NAME = "Native question with a Field parameter";
-
-        // Can't figure out the type if I extracted `questionDetails` to a variable.
-        H.createNativeQuestion(
-          {
-            name: QUESTION_NAME,
-            native: {
-              "template-tags": {
-                state: {
-                  id: "f7672b4d-1e84-1fa8-bf02-b5e584cd4535",
-                  name: "state",
-                  "display-name": "State",
-                  type: "dimension",
-                  options: {
-                    "case-sensitive": false,
-                  },
-                  dimension: ["field", PEOPLE.STATE, null],
-                  default: null,
-                  "widget-type": "string/contains",
-                },
-              },
-              query:
-                "select id, email, state from people where {{state}} limit 2",
-            },
-            parameters: [
-              {
-                id: "f7672b4d-1e84-1fa8-bf02-b5e584cd4535",
-                type: "string/contains",
-                options: {
-                  "case-sensitive": false,
-                },
-                target: ["dimension", ["template-tag", "state"]],
-                name: "State",
-                slug: "state",
-                default: null,
-              },
-            ],
-            enable_embedding: true,
-            embedding_params: {
-              state: "enabled",
-            },
-          },
-          {
-            idAlias: "questionId",
-            wrapId: true,
-          },
-        );
-        cy.signOut();
-
-        cy.get("@questionId").then((questionId) => {
-          H.visitEmbeddedPage(
-            {
-              resource: { question: Number(questionId) },
-              params: {
-                state: FILTER_VALUES,
-              },
-            },
-            {
-              pageStyle: {
-                downloads: true,
-              },
-              // should ignore `?locale=xx` search parameter when downloading results from questions without parameters (metabase#53037)
-              qs: {
-                locale: "en",
-              },
-            },
-          );
-        });
-
-        waitLoading();
-
-        const FIRST_ROW = [
-          5,
-          "leffler.dominique@hotmail.com",
-          FILTER_VALUES[0],
-        ];
-        const SECOND_ROW = [13, "mustafa.thiel@hotmail.com", FILTER_VALUES[1]];
-
-        H.assertTableData({
-          columns: ["ID", "EMAIL", "STATE"],
-          firstRows: [FIRST_ROW, SECOND_ROW],
-        });
-
-        cy.findByRole("heading", { name: QUESTION_NAME }).realHover();
-        H.downloadAndAssert({
-          isDashboard: false,
-          isEmbed: true,
-          enableFormatting: true,
-          fileType: "csv",
-          downloadUrl: "/api/embed/card/*/query/csv*",
-          downloadMethod: "GET",
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "download_results_clicked",
-          resource_type: "question",
-          accessed_via: "static-embed",
-          export_type: "csv",
-        });
       });
 
       it("should be able to download a static embedded question as CSV when a filter expects 1 parameter value e.g. date (metabase#58957, 59074)", () => {

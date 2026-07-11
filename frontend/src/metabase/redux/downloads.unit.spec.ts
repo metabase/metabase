@@ -107,6 +107,24 @@ describe("getDatasetParams - embed question (token-based)", () => {
     });
   });
 
+  it("preserves all values when a static embed field filter has multiple values (metabase#52430)", async () => {
+    await mockIsEmbeddingSdk(false);
+    setLocationSearch("?state=CA&state=NY&state=TX");
+
+    const downloadParams = getDatasetParams({
+      type: "csv",
+      question,
+      result,
+      token: TOKEN,
+      params: {},
+    });
+
+    const url = new URLSearchParams(downloadParams.params);
+    expect(JSON.parse(url.get("parameters") ?? "")).toEqual({
+      state: ["CA", "NY", "TX"],
+    });
+  });
+
   it("sends an empty parameters object for guest embeds when no filter is set", async () => {
     await mockIsEmbeddingSdk(true);
 

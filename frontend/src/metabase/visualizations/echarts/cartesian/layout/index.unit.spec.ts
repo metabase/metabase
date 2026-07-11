@@ -106,4 +106,59 @@ describe("getChartLayout", () => {
         CHART_STYLE.padding.x,
     );
   });
+
+  it("measures the actual low-percentage tick labels instead of rounded ones (metabase#55853)", () => {
+    const formatPercent = (value: unknown) =>
+      `${(Number(value) * 100).toFixed(2)}%`;
+
+    const percentAxisModel: YAxisModel = {
+      seriesKeys: ["value"],
+      extent: [0, 0.0002],
+      column: createMockColumn({ name: "value" }),
+      formatter: formatPercent,
+      formatGoal: formatPercent,
+      splitNumber: 5,
+    };
+
+    const percentInput: ChartLayoutInput = {
+      ...input,
+      leftAxisModel: percentAxisModel,
+    };
+
+    const percentSettings = createMockVisualizationSettings({
+      ...settings,
+      column: () => ({ number_style: "percent" }),
+    });
+
+    // The widest actual label the axis will show is "0.02%" (0.0002 as a
+    // percent). If the measurement rounds low percentages to the hundredth
+    // before formatting, this label is never measured and the reserved y-axis
+    // width is too small, letting the labels collide with the axis.
+    const WIDE = 64;
+    const measureText = jest.fn((text: string) =>
+      text === "0.02%" ? WIDE : 20,
+    );
+
+    const chartContext: RenderingContext = {
+      getColor: (name) => name,
+      measureText,
+      measureTextHeight: () => 0,
+      fontFamily: "",
+      theme: DEFAULT_VISUALIZATION_THEME,
+    };
+
+    const chartLayout = getChartLayout(
+      percentInput,
+      percentSettings,
+      false,
+      480,
+      274,
+      chartContext,
+    );
+
+    expect(measureText).toHaveBeenCalledWith("0.02%", expect.anything());
+    expect(chartLayout.ticksDimensions.yTicksWidthLeft).toBe(
+      WIDE + CHART_STYLE.axisTicksMarginY,
+    );
+  });
 });

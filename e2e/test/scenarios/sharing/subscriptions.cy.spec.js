@@ -129,22 +129,6 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly");
       });
 
-      it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
-        openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
-
-        H.sidebar().findByText("Email it").click();
-
-        cy.findByPlaceholderText("Enter user names or email addresses").click();
-        H.popover().should("be.visible").and("contain", `${admin.first_name}`);
-        cy.realPress("Escape");
-        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-        cy.findByPlaceholderText("Enter user names or email addresses").should(
-          "not.have.value",
-        );
-
-        cy.findByTestId("token-field-popover").should("not.exist");
-      });
-
       it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
         openDashboardSubscriptions();
 

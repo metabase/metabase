@@ -17,9 +17,11 @@ const trashCollection = createMockCollection({ id: 1, type: "trash" });
 function TestComponent({
   selected,
   collection,
+  clearSelected = jest.fn(),
 }: {
   selected: CollectionItem[];
   collection: Collection;
+  clearSelected?: () => void;
 }) {
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
     null,
@@ -33,7 +35,7 @@ function TestComponent({
         collection={collection}
         selectedItems={selectedItems}
         selectedAction={selectedAction}
-        clearSelected={jest.fn()}
+        clearSelected={clearSelected}
         setSelectedItems={setSelectedItems}
         setSelectedAction={setSelectedAction}
       />
@@ -43,9 +45,15 @@ function TestComponent({
 }
 
 const setup = (selected: CollectionItem[]) => {
+  const clearSelected = jest.fn();
   renderWithProviders(
-    <TestComponent selected={selected} collection={trashCollection} />,
+    <TestComponent
+      selected={selected}
+      collection={trashCollection}
+      clearSelected={clearSelected}
+    />,
   );
+  return { clearSelected };
 };
 
 const confirmBulkDelete = async () => {
@@ -74,6 +82,21 @@ const archivedCollectionItems = [
 ];
 
 describe("ArchivedBulkActions", () => {
+  it("does not clear selection when the delete confirmation is canceled (metabase#44911)", async () => {
+    const { clearSelected } = setup(archivedCollectionItems);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete permanently" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(clearSelected).not.toHaveBeenCalled();
+  });
+
   it("shows a single success message and closes the modal when all deletes succeed", async () => {
     fetchMock.delete("path:/api/collection/10", 204);
     fetchMock.delete("path:/api/collection/11", 204);

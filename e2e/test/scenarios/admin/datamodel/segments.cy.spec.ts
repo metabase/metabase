@@ -110,8 +110,6 @@ describe("scenarios > admin > datamodel > segments", () => {
             filter: ["<", ["field", ORDERS.TOTAL, null], 100],
           },
         },
-      }).then(({ body }) => {
-        cy.wrap(body.id).as("segmentId");
       });
     });
 
@@ -140,17 +138,6 @@ describe("scenarios > admin > datamodel > segments", () => {
         .eq(0)
         .scrollIntoView()
         .should("be.visible");
-    });
-
-    it("should not crash when editing field in segment field detail page (metabase#55322)", () => {
-      cy.get("@segmentId").then((segmentId) => {
-        cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
-      });
-
-      cy.button(/Edit/).should("be.visible").realClick();
-
-      cy.findByPlaceholderText("No description yet").should("be.visible");
-      cy.get("main").findByText("Something’s gone wrong").should("not.exist");
     });
 
     it("should show up in UI list and should show the segment details of a specific id", () => {

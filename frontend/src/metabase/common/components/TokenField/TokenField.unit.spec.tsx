@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { Component } from "react";
 
 import { act, fireEvent, render, screen, within } from "__support__/ui";
-import { KEYCODE_ENTER } from "metabase/utils/keyboard";
+import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/utils/keyboard";
 
 import type { LayoutRendererArgs, TokenFieldProps } from "./TokenField";
 import { TokenField } from "./TokenField";
@@ -209,6 +209,23 @@ describe("TokenField", () => {
     clickText("bar");
     assertWithinValues(["bar"]);
     assertWithinOptions(["baz"]);
+  });
+
+  it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
+    render(
+      <TokenFieldWithStateAndDefaults
+        multi
+        value={[]}
+        options={["foo", "bar"]}
+      />,
+    );
+    type("ba");
+    // typing auto-selects the first (only) matching option
+    assertWithinOptions(["bar"]);
+
+    // pressing Escape should dismiss the popover WITHOUT committing "bar"
+    inputKeydown(KEYCODE_ESCAPE);
+    expect(values()).not.toHaveTextContent("bar");
   });
 
   it("should add option when filtered and clicked", () => {
