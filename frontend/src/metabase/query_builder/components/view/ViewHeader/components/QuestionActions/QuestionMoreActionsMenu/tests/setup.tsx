@@ -13,6 +13,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  CardType,
   ModerationReview,
   Notification,
   User,
@@ -33,6 +34,7 @@ type SetupOpts = {
   isEmailSetup: boolean;
   isEnterprise: boolean;
   moderationReviews?: ModerationReview[];
+  cardType?: CardType;
 };
 
 export function setup({
@@ -42,10 +44,12 @@ export function setup({
   isEmailSetup = false,
   isEnterprise = false,
   moderationReviews,
+  cardType = "question",
 }: SetupOpts) {
-  const card = createMockCard(
-    isEnterprise ? { moderation_reviews: moderationReviews ?? [] } : {},
-  );
+  const card = createMockCard({
+    type: cardType,
+    ...(isEnterprise ? { moderation_reviews: moderationReviews ?? [] } : {}),
+  });
 
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,

@@ -20,6 +20,7 @@ import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   ActionDashboardCard,
+  Card,
   Database,
   ParameterTarget,
 } from "metabase-types/api";
@@ -125,9 +126,13 @@ async function setup({
   dashcard = createMockActionDashboardCard(),
   settings = {},
   parameterValues = {},
+  storeQuestions = [],
+  waitForButton = true,
   ...props
 }: SetupOpts & {
   database?: Database;
+  storeQuestions?: Card[];
+  waitForButton?: boolean;
 } = {}) {
   const card = checkNotNull(dashcard.card);
 
@@ -156,6 +161,7 @@ async function setup({
       storeInitialState: {
         entities: createMockEntitiesState({
           databases: [database],
+          questions: storeQuestions,
         }),
         dashboard: createMockDashboardState({
           parameterValues,
@@ -165,7 +171,9 @@ async function setup({
   );
 
   // Wait until UI is ready
-  await screen.findByRole("button");
+  if (waitForButton) {
+    await screen.findByRole("button");
+  }
 }
 
 describe("Actions > ActionViz > Action", () => {
@@ -506,6 +514,30 @@ describe("Actions > ActionViz > Action", () => {
         const call = fetchMock.callHistory.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
+    });
+  });
+
+  describe("incomplete model card in the store (metabase#48878)", () => {
+    // A model card served by GET /api/search lands in the metadata store without a
+    // `dataset_query`. The action viz must read the complete card from GET /api/card
+    // and must not build its model from that incomplete store entry, otherwise
+    // `Question#canWriteActions` throws while resolving the query and the viz crashes.
+    const INCOMPLETE_STORE_CARD = createMockCard({
+      id: ACTION_MODEL_ID,
+      database_id: DATABASE_ID,
+      display: "action",
+      can_write: true,
+      type: "model",
+      // search results omit the query, leaving the store entry incomplete
+      dataset_query: undefined as never,
+    });
+
+    it("does not crash the action button viz", async () => {
+      await setup({ storeQuestions: [INCOMPLETE_STORE_CARD] });
+
+      expect(
+        await screen.findByRole("button", { name: "Click me" }),
+      ).toBeInTheDocument();
     });
   });
 

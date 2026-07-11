@@ -1292,60 +1292,6 @@ describe("issue 42385", { tags: "@external" }, () => {
   });
 });
 
-describe("issue 45300", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("joins using the foreign key only should not break the filter picker (metabase#45300)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": REVIEWS_ID,
-          joins: [
-            {
-              fields: "all",
-              strategy: "left-join",
-              alias: "Orders - Product",
-              condition: [
-                "=",
-                ["field", REVIEWS.PRODUCT_ID, { "base-type": "type/Integer" }],
-                [
-                  "field",
-                  ORDERS.PRODUCT_ID,
-                  {
-                    "base-type": "type/Integer",
-                    "join-alias": "Orders - Product",
-                  },
-                ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-          ],
-        },
-        parameters: [],
-      },
-    });
-
-    H.filter();
-    H.popover().within(() => {
-      cy.findAllByText("Product").should("have.length", 2).first().click();
-      cy.findByText("Category").click();
-      cy.findByText("Doohickey").click();
-      cy.button("Apply filter").click();
-    });
-    cy.wait("@dataset");
-
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Product → Category is Doohickey",
-    );
-  });
-});
-
 describe("issue 46675", () => {
   const questionDetails = {
     query: {

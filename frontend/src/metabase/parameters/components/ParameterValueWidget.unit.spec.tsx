@@ -33,6 +33,32 @@ function setup({ parameter }: { parameter?: Partial<UiParameter> } = {}) {
 }
 
 describe("ParameterValueWidget", () => {
+  // metabase#52918: for date parameters the dropdown must drop its `maxWidth`
+  // constraint (set to `100vw !important`) so floating-ui can re-measure and
+  // re-position the popover when the datepicker changes its width. Otherwise the
+  // clamped max-width causes the popover contents to overflow.
+  it("should remove the max-width constraint on the dropdown for date parameters (metabase#52918)", async () => {
+    setup({
+      parameter: { type: "date/all-options", slug: "date", name: "Date" },
+    });
+
+    await userEvent.click(screen.getByTestId("parameter-value-widget-target"));
+
+    const dropdown = screen.getByTestId("parameter-value-dropdown");
+    expect(dropdown).toHaveStyle("max-width: 100vw !important");
+  });
+
+  it("should not remove the max-width constraint on the dropdown for non-date parameters (metabase#52918)", async () => {
+    setup({
+      parameter: { type: "string/=", slug: "text", name: "Text" },
+    });
+
+    await userEvent.click(screen.getByTestId("parameter-value-widget-target"));
+
+    const dropdown = screen.getByTestId("parameter-value-dropdown");
+    expect(dropdown).not.toHaveStyle("max-width: 100vw !important");
+  });
+
   it("should apply aria-expanded=true on the trigger button element (#70543)", async () => {
     setup();
 

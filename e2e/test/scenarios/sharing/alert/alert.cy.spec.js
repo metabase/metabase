@@ -2,7 +2,6 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
-  ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
@@ -107,18 +106,6 @@ describe("scenarios > alert", () => {
     });
   });
 
-  it("should not be offered for models (metabase#37893)", () => {
-    H.visitModel(ORDERS_MODEL_ID);
-    cy.findByTestId("view-footer").within(() => {
-      cy.findByTestId("question-row-count")
-        .should("have.text", "Showing first 2,000 rows")
-        .and("be.visible");
-      cy.icon("download").should("exist");
-    });
-
-    H.sharingMenuButton().should("not.exist");
-  });
-
   it("can set up an alert for a question saved in a dashboard", () => {
     H.setupSMTP();
 
@@ -207,7 +194,6 @@ describe("scenarios > alert", () => {
           cy.findByText(adminSubscriptionError);
         });
       });
-
     },
   );
 });

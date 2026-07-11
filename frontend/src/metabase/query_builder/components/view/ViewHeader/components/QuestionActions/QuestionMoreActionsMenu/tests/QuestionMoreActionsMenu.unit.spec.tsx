@@ -45,6 +45,22 @@ describe("QuestionMoreActionsMenu >", () => {
     });
   });
 
+  describe("models (metabase#37893)", () => {
+    it("should not offer alerts for models", async () => {
+      setup({
+        alerts: [],
+        canManageSubscriptions: true,
+        isAdmin: true,
+        isEmailSetup: true,
+        isEnterprise: false,
+        cardType: "model",
+      });
+      await openMenu();
+      expect(screen.queryByText("Create an alert")).not.toBeInTheDocument();
+      expect(screen.queryByText("Edit alerts")).not.toBeInTheDocument();
+    });
+  });
+
   describe("non-admins", () => {
     // NOTE: canManageSubscriptions doesn't do anything here as it is always "true" for non-EE
     it("should show the 'Create an alert' menu item if no alerts exist", async () => {

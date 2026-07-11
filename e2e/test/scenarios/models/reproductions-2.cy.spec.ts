@@ -2,14 +2,8 @@ const { H } = cy;
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  FIRST_COLLECTION_ID,
-  ORDERS_MODEL_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import type {
-  NativeQuestionDetails,
-  StructuredQuestionDetails,
-} from "e2e/support/helpers";
+import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import type { GroupPermissions, NativePermissions } from "metabase-types/api";
 
@@ -92,43 +86,6 @@ describe("issue 47988", () => {
     });
     H.visualize();
     H.tableInteractive().should("be.visible");
-  });
-});
-
-describe("issue 46221", () => {
-  const modelDetails: NativeQuestionDetails = {
-    name: "46221",
-    native: { query: "select 42" },
-    type: "model",
-    collection_id: FIRST_COLLECTION_ID,
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(modelDetails, { visitQuestion: true });
-  });
-
-  it("should retain the same collection name between ad-hoc question based on a model and a model itself (metabase#46221)", () => {
-    cy.location("pathname").should("match", /^\/model\/\d+/);
-    cy.findByTestId("head-crumbs-container")
-      .should("contain", "First collection")
-      .and("contain", modelDetails.name);
-
-    cy.log("Change the viz type");
-    H.openVizTypeSidebar();
-    cy.findByTestId("sidebar-left").within(() => {
-      cy.findByTestId("more-charts-toggle").click();
-      cy.findByTestId("Table-button").click();
-    });
-
-    cy.log("Make sure we're now in an ad-hoc question mode");
-    cy.location("pathname").should("eq", "/question");
-
-    cy.findByTestId("head-crumbs-container")
-      .should("contain", "First collection")
-      .and("contain", modelDetails.name);
   });
 });
 

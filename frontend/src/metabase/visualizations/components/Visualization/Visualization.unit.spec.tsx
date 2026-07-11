@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { mockSettings } from "__support__/settings";
@@ -77,6 +78,7 @@ describe("Visualization", () => {
     fillColor: string,
   ): NodeListOf<SVGPathElement> => {
     const container = screen.getByTestId("chart-container");
+    // eslint-disable-next-line testing-library/no-node-access -- querying raw SVG paths by fill color has no Testing Library equivalent
     return container.querySelectorAll<SVGPathElement>(
       `path[fill="${fillColor}"]`,
     );
@@ -277,6 +279,61 @@ describe("Visualization", () => {
         expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
         expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
       });
+    });
+  });
+
+  // Regression witness for metabase#42165.
+  //
+  // A single multi-breakout question renders as several chart series, and the
+  // transform renames the convenience `card` (series[0].card) to a series name.
+  // Clicking the dashcard title must navigate to the underlying QUESTION, so the
+  // document/QB title shows the question name — not a series name. CartesianChart
+  // must call onOpenQuestion with the card id (looked up in the original
+  // rawSeries) rather than passing the raw click handler through.
+  describe("issue 42165", () => {
+    it("navigates to the card name, not a series name, from a multi-series dashcard title", async () => {
+      const onChangeCardAndRun = jest.fn();
+
+      await renderViz(
+        [
+          {
+            card: createMockCard({
+              id: 42,
+              name: "fooBarQuestion",
+              display: "bar",
+              visualization_settings: createMockVisualizationSettings({
+                "graph.dimensions": ["Dimension1", "Dimension2"],
+                "graph.metrics": ["Count"],
+              }),
+            }),
+            data: createMockDatasetData({
+              cols: [
+                createMockCategoryColumn({ name: "Dimension1" }),
+                createMockCategoryColumn({ name: "Dimension2" }),
+                createMockNumericColumn({ name: "Count" }),
+              ],
+              rows: [
+                ["foo", "a", 1],
+                ["bar", "a", 2],
+                ["foo", "b", 1],
+                ["bar", "b", 2],
+              ],
+            }),
+          },
+        ],
+        {
+          showTitle: true,
+          isDashboard: true,
+          onChangeCardAndRun,
+        },
+      );
+
+      await userEvent.click(screen.getByTestId("legend-caption-title"));
+
+      expect(onChangeCardAndRun).toHaveBeenCalledTimes(1);
+      expect(onChangeCardAndRun.mock.calls[0][0].nextCard.name).toBe(
+        "fooBarQuestion",
+      );
     });
   });
 

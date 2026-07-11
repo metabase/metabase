@@ -4,9 +4,10 @@ import { Component } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardEndpoints,
+  setupGetCollectionEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -18,6 +19,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type { Card, Filter, Join, JoinCondition } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockDatabase,
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
@@ -627,6 +629,37 @@ describe("QuestionDataSource", () => {
   it("should show info icon on a subheader", async () => {
     setup({ card: SOURCE_CARD, subHead: true });
     expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
+  });
+
+  it("shows the source model's own collection for an ad-hoc question based on a model (metabase#46221)", async () => {
+    const MODEL_ID = 777;
+    const collection = createMockCollection({
+      id: 999,
+      name: "First collection",
+    });
+    setupGetCollectionEndpoint(collection);
+
+    const modelCard = createMockCard({
+      id: MODEL_ID,
+      name: "46221",
+      type: "model",
+      collection_id: collection.id,
+    });
+    const adHocCard: Partial<Card> = {
+      ...BASE_GUI_QUESTION,
+      dataset_query: createMockStructuredDatasetQuery({
+        database: SAMPLE_DB_ID,
+        query: { "source-table": `card__${MODEL_ID}` },
+      }),
+    };
+
+    setup({ card: adHocCard, originalCard: modelCard });
+
+    const container = await screen.findByTestId("head-crumbs-container");
+    expect(
+      await within(container).findByText("First collection"),
+    ).toBeInTheDocument();
+    expect(within(container).getByText("46221")).toBeInTheDocument();
   });
 
   it("should show the correct icon when the original question is a native query", () => {

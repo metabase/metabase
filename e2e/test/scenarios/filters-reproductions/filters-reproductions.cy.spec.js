@@ -16,7 +16,6 @@ const {
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
-  INVOICES,
 } = SAMPLE_DATABASE;
 
 describe("issue 9339", () => {
@@ -1093,58 +1092,6 @@ describe("issue 44435", () => {
 });
 
 // This reproduction can possibly be replaced with the unit test for the `ListField` component in the future
-describe("issue 45877", () => {
-  beforeEach(() => {
-    H.restore("setup");
-    cy.signInAsAdmin();
-  });
-
-  it("should not render selected boolean option twice in a filter dropdown (metabase#45877)", () => {
-    const questionDetails = {
-      name: "45877",
-      native: {
-        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
-        "template-tags": {
-          expected_invoice: {
-            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
-            dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
-            name: "expected_invoice",
-            "display-name": "Expected Invoice",
-            type: "dimension",
-            "widget-type": "string/=",
-          },
-        },
-      },
-    };
-
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    H.filterWidget().should("contain", "Expected Invoice").click();
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Search the list").should("exist");
-
-      cy.findAllByLabelText("true")
-        .should("have.length", 1)
-        .and("not.be.checked");
-      cy.findAllByLabelText("false")
-        .should("have.length", 1)
-        .and("not.be.checked")
-        .click();
-
-      cy.button("Add filter").click();
-    });
-
-    // We don't even have to run the query to reproduce this issue
-    // so let's not waste time and resources doing so.
-    cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    H.filterWidget().should("contain", "false").click();
-    H.popover().within(() => {
-      cy.findAllByLabelText("true").should("have.length", 1);
-      cy.findAllByLabelText("false")
-        .should("have.length", 1)
-        .should("be.checked");
-    });
-  });
-});
 
 describe("issue 47887", () => {
   beforeEach(() => {

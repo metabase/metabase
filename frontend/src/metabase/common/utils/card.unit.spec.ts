@@ -1,5 +1,20 @@
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
-import { utf8_to_b64url } from "metabase/utils/encoding";
+import {
+  deserializeCardFromQuery,
+  serializeCardForUrl,
+} from "metabase/common/utils/card";
+import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
+import { createMockCard } from "metabase-types/api/mocks";
+
+describe("serializeCardForUrl", () => {
+  it("should preserve the card type in the serialized payload (metabase#34517)", () => {
+    const card = createMockCard({ type: "model" });
+
+    const serialized = serializeCardForUrl(card);
+    const decoded = JSON.parse(b64url_to_utf8(serialized));
+
+    expect(decoded.type).toBe("model");
+  });
+});
 
 describe("deserializeCardFromQuery", () => {
   const MBQL_QUERY = {

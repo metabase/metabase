@@ -1022,26 +1022,6 @@ describe("issue 34574", () => {
   }
 });
 
-describe("issue 34517", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not change the url when reloading the page while editing a model (metabase#34517)", () => {
-    H.startNewModel();
-    cy.location("pathname").should("eq", "/model/query");
-
-    // wait for the model editor to be fully loaded
-    H.miniPicker().should("exist");
-    cy.reload();
-
-    // wait for the model editor to be fully loaded
-    H.miniPicker().should("exist");
-    cy.location("pathname").should("eq", "/model/query");
-  });
-});
-
 describe("issue 35840", () => {
   const modelName = "M1";
   const questionName = "Q1";

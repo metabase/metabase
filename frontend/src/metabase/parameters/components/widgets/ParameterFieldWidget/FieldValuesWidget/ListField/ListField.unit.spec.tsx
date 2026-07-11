@@ -150,6 +150,17 @@ describe("ListField", () => {
     );
   });
 
+  it("should not render a selected boolean option twice (metabase#45877)", () => {
+    setup({
+      value: [false],
+      options: [[true], [false]],
+      optionRenderer: ([value]) => <span>{String(value)}</span>,
+    });
+
+    expect(screen.getAllByTestId("false-filter-value")).toHaveLength(1);
+    expect(screen.getAllByTestId("true-filter-value")).toHaveLength(1);
+  });
+
   it("should not create duplicate options on pressing Enter for non-string values", async () => {
     setup({
       value: [],

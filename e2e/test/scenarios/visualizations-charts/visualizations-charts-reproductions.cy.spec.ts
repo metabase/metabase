@@ -189,46 +189,6 @@ describe("issue 49529", () => {
   });
 });
 
-describe("issue 47847", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should show chart tooltip on narrow ordinal line charts", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        },
-        database: SAMPLE_DB_ID,
-      },
-      display: "line",
-      visualization_settings: {
-        "graph.x_axis.scale": "ordinal",
-        "graph.show_values": true,
-      },
-    });
-
-    H.cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
-    H.assertEChartsTooltip({
-      header: "April 27 – May 3, 2025", // expect this to break when we shift years in the Sample Database
-      blurAfter: false,
-      footer: null,
-      rows: [
-        {
-          color: "#509EE3",
-          name: "Count",
-          value: "1",
-        },
-      ],
-    });
-  });
-});
-
 describe("issue 55880", () => {
   beforeEach(() => {
     H.restore();

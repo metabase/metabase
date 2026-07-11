@@ -4,9 +4,10 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { settings } from "./settings";
+import { _columnSettings, settings } from "./settings";
 
 const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 
 describe("PivotTable settings", () => {
   describe(`${COLUMN_SPLIT_SETTING} getValue`, () => {
@@ -31,6 +32,87 @@ describe("PivotTable settings", () => {
       expect(() => {
         settings[COLUMN_SPLIT_SETTING].getValue([{ data, card }], {});
       }).not.toThrow();
+    });
+  });
+
+  describe(`${COLUMN_SHOW_TOTALS} getDefault`, () => {
+    const getDefault = _columnSettings[COLUMN_SHOW_TOTALS].getDefault;
+
+    const categoryRef = [
+      "field",
+      7,
+      { "base-type": "type/Text", "source-field": 11 },
+    ];
+    const vendorRef = [
+      "field",
+      8,
+      { "base-type": "type/Text", "source-field": 11 },
+    ];
+    const sourceRef = [
+      "field",
+      9,
+      { "base-type": "type/Text", "source-field": 13 },
+    ];
+
+    const categoryColumn = createMockColumn({
+      name: "CATEGORY",
+      field_ref: categoryRef,
+    });
+    const sourceColumn = createMockColumn({
+      name: "SOURCE",
+      field_ref: sourceRef,
+    });
+
+    it("defaults totals on for a non-terminal row when settings use legacy field refs (metabase#50346)", () => {
+      // Legacy pivot settings store `rows` as field refs, not column names.
+      // A column that appears (by field ref) in any but the last row position
+      // must still default to showing totals, otherwise its section cannot be
+      // collapsed.
+      const legacySettings = {
+        [COLUMN_SPLIT_SETTING]: {
+          rows: [categoryRef, vendorRef, sourceRef],
+          columns: [],
+          values: [],
+        },
+      };
+
+      expect(
+        getDefault(categoryColumn, categoryColumn, {
+          settings: legacySettings,
+        }),
+      ).toBe(true);
+    });
+
+    it("does not default totals on for the terminal row with legacy field refs", () => {
+      const legacySettings = {
+        [COLUMN_SPLIT_SETTING]: {
+          rows: [categoryRef, vendorRef, sourceRef],
+          columns: [],
+          values: [],
+        },
+      };
+
+      expect(
+        getDefault(sourceColumn, sourceColumn, {
+          settings: legacySettings,
+        }),
+      ).toBe(false);
+    });
+
+    it("defaults totals on for a non-terminal row when settings use column names", () => {
+      const newSettings = {
+        [COLUMN_SPLIT_SETTING]: {
+          rows: ["CATEGORY", "VENDOR", "SOURCE"],
+          columns: [],
+          values: [],
+        },
+      };
+
+      expect(
+        getDefault(categoryColumn, categoryColumn, {
+          settings: newSettings,
+        }),
+      ).toBe(true);
     });
   });
 });

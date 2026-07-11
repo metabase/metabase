@@ -74,20 +74,25 @@ type SetupOpts = {
   question: Question;
   options?: UpdateUrlOptions;
   currentState?: { card: Card; cardId?: number; serializedCard: string } | null;
+  originalCard?: Card | null;
+  isModifiedFromNotebook?: boolean;
 };
 
 async function setup({
   question,
   options = {},
   currentState = null,
+  originalCard = null,
+  isModifiedFromNotebook = false,
 }: SetupOpts) {
   const dispatch = jest.fn();
   const qb = createMockQueryBuilderState({
     card: question.card(),
-    originalCard: null,
+    originalCard,
     currentState,
     uiControls: createMockQueryBuilderUIControlsState({
       queryBuilderMode: "view",
+      isModifiedFromNotebook,
     }),
   });
   const getState = () => ({
@@ -361,6 +366,41 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       expect(
         getDispatchedNavigation(dispatch)?.descriptor.pathname,
       ).not.toMatch(/^\/table\//);
+    });
+  });
+
+  // When dirty is not passed explicitly, updateUrl computes it. A saved question
+  // that was edited from the notebook editor must be treated as dirty even when
+  // its query happens to match the original again (e.g. add then remove a
+  // filter). A dirty saved question serializes its card into the URL hash; a
+  // clean one navigates to the plain URL with no hash. (metabase#48829)
+  describe("dirty computation (isModifiedFromNotebook)", () => {
+    it("treats a notebook-modified question as dirty even when it matches its original", async () => {
+      const card = createSavedStructuredCard();
+      const question = buildSavedQuestion(card);
+
+      const { dispatch } = await setup({
+        question,
+        // Identical original ⇒ isDirtyComparedTo is false, so only the
+        // isModifiedFromNotebook flag can drive dirtiness here.
+        originalCard: card,
+        isModifiedFromNotebook: true,
+      });
+
+      expect(getDispatchedNavigation(dispatch)?.descriptor.hash).toBeTruthy();
+    });
+
+    it("treats an unmodified question matching its original as clean", async () => {
+      const card = createSavedStructuredCard();
+      const question = buildSavedQuestion(card);
+
+      const { dispatch } = await setup({
+        question,
+        originalCard: card,
+        isModifiedFromNotebook: false,
+      });
+
+      expect(getDispatchedNavigation(dispatch)?.descriptor.hash).toBeFalsy();
     });
   });
 });

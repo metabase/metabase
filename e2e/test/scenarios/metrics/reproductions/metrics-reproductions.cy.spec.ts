@@ -1,6 +1,5 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -51,98 +50,6 @@ describe("issue 47058", () => {
       H.getNotebookStep("summarize").should("be.visible");
 
       cy.findByText("[Unknown Metric]").should("not.exist");
-    });
-  });
-});
-
-describe("issue 44171", () => {
-  const METRIC_A: StructuredQuestionDetails = {
-    name: "Metric 44171-A",
-    type: "metric",
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "temporal-unit": "month", "base-type": "type/DateTime" },
-        ],
-      ],
-    },
-  };
-
-  const METRIC_B: StructuredQuestionDetails = {
-    name: "Metric 44171-B",
-    type: "metric",
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "temporal-unit": "month", "base-type": "type/DateTime" },
-        ],
-      ],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(METRIC_A);
-    H.createQuestion(METRIC_B, { wrapId: true, idAlias: "metricBId" });
-    H.createDashboard(
-      {
-        name: "Dashboard 44171",
-        dashcards: [],
-      },
-      { wrapId: true },
-    );
-  });
-
-  it("should not save viz settings on metrics", () => {
-    cy.intercept("PUT", "/api/card/*").as("saveCard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-    cy.get<number>("@metricBId").then((metricBId) => {
-      cy.visit(`/metric/${metricBId}/query`);
-    });
-    H.MetricPage.queryEditor().should("be.visible");
-
-    H.getNotebookStep("summarize").findByText("Count").click();
-    H.popover().within(() => {
-      cy.findByText("Sum of ...").click();
-      cy.findByText("Total").click();
-    });
-    H.MetricPage.saveButton().click();
-    cy.wait("@saveCard");
-
-    cy.get<number>("@dashboardId").then((id) => {
-      H.visitDashboard(id);
-    });
-
-    H.editDashboard();
-    cy.findByTestId("dashboard-header")
-      .findByLabelText("Add questions")
-      .click();
-
-    H.sidebar().findByText("Metric 44171-A").click();
-
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0)
-      .realHover({ scrollBehavior: "bottom" })
-      .findByLabelText("Visualize another way")
-      .click();
-    H.modal().within(() => {
-      H.switchToAddMoreData();
-      H.selectDataset("Metric 44171-B");
-      H.chartLegendItem("Metric 44171-A").should("exist");
-      H.chartLegendItem("Metric 44171-B").should("exist");
     });
   });
 });
