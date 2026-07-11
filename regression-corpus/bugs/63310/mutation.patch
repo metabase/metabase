@@ -1,0 +1,38 @@
+diff --git a/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx b/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
+index 9e68b12d9ac..8bec4ac5c57 100644
+--- a/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
++++ b/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
+@@ -1,12 +1,8 @@
+ import { useCallback, useMemo } from "react";
+ import { t } from "ttag";
+ 
++import { useListDatabasesQuery } from "metabase/api";
+ import { useDashboardContext } from "metabase/dashboard/context";
+-import { useSelector } from "metabase/redux";
+-import {
+-  canUserCreateNativeQueries,
+-  canUserCreateQueries,
+-} from "metabase/selectors/user";
+ import { Loader } from "metabase/ui";
+ import type { DashboardCard } from "metabase-types/api";
+ 
+@@ -54,9 +50,16 @@ export const Grid = ({
+    * on `GET /api/database`. After the consolidation every dashboard uses the same component, so we probably
+    * missed this case.
+    */
+-  const hasDataAccess = useSelector(canUserCreateQueries);
+-  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
+-  const canCreateQuestions = hasDataAccess || hasNativeWrite;
++  const { data: databasesResponse, isError } = useListDatabasesQuery();
++  const databases = useMemo(
++    () => databasesResponse?.data ?? [],
++    [databasesResponse],
++  );
++  const hasDataAccess = databases.some((d) => !d.is_saved_questions);
++  const hasNativeWrite = databases.some(
++    (d) => d.native_permissions === "write",
++  );
++  const canCreateQuestions = !isError && (hasDataAccess || hasNativeWrite);
+ 
+   const handleSetEditing = useCallback(() => {
+     if (!isEditing) {

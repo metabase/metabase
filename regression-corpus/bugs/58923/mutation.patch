@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/querying/filters/components/FilterPicker/StringFilterPicker/StringFilterPicker.tsx b/frontend/src/metabase/querying/filters/components/FilterPicker/StringFilterPicker/StringFilterPicker.tsx
+index 175998e9b83..579c0bf7e14 100644
+--- a/frontend/src/metabase/querying/filters/components/FilterPicker/StringFilterPicker/StringFilterPicker.tsx
++++ b/frontend/src/metabase/querying/filters/components/FilterPicker/StringFilterPicker/StringFilterPicker.tsx
+@@ -149,7 +149,7 @@ function StringValueInput({
+ }: StringValueInputProps) {
+   if (type === "exact") {
+     return (
+-      <Box p="md" pb={0} mah="25vh" style={{ overflow: "auto" }}>
++      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
+         <StringFilterValuePicker
+           query={query}
+           stageIndex={stageIndex}
+@@ -159,7 +159,6 @@ function StringValueInput({
+           autoFocus={autoFocus}
+           onChange={onChange}
+         />
+-        <Box pt="md" />
+       </Box>
+     );
+   }

@@ -1,0 +1,20 @@
+diff --git a/frontend/src/metabase/redux/downloads.ts b/frontend/src/metabase/redux/downloads.ts
+index 0e907a252b6..05111bd4bc0 100644
+--- a/frontend/src/metabase/redux/downloads.ts
++++ b/frontend/src/metabase/redux/downloads.ts
+@@ -360,12 +360,12 @@ const getEmbedDashcardParams = (
+ });
+ 
+ const convertSearchParamsToObject = (params: URLSearchParams) => {
+-  const object: Record<string, string | string[]> = {};
++  const object: Record<string, string[]> = {};
+   for (const [key, value] of params.entries()) {
+     if (object[key]) {
+-      object[key] = ([] as string[]).concat(object[key], value);
++      object[key] = [...object[key], value];
+     } else {
+-      object[key] = value;
++      object[key] = [value];
+     }
+   }
+ 

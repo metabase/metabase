@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/common/hooks/is-route-in-sync.ts b/frontend/src/metabase/common/hooks/is-route-in-sync.ts
+index f87d21ea3e6..a9209b49354 100644
+--- a/frontend/src/metabase/common/hooks/is-route-in-sync.ts
++++ b/frontend/src/metabase/common/hooks/is-route-in-sync.ts
+@@ -16,7 +16,7 @@ export function isRouteInSync(pathname: string): boolean {
+     getPathnameWithoutSubPath(window.location.pathname) === pathname;
+ 
+   if (isWithinIframe()) {
+-    return isRouteInSync;
++    return true;
+   }
+ 
+   return true;

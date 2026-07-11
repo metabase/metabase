@@ -1,0 +1,7 @@
+issue: 67399
+fix_commit: 084e3ea6dfec204e13516bf27597d44694d28243
+e2e_repro: e2e/test/scenarios/embedding/sdk-iframe-embedding/custom-elements-api.cy.spec.ts
+population: e2e_only
+wave: 3
+witness_outcome: no_witness_layout
+layer: frontend

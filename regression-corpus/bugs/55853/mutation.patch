@@ -1,0 +1,20 @@
+diff --git a/frontend/src/metabase/visualizations/echarts/cartesian/layout/index.ts b/frontend/src/metabase/visualizations/echarts/cartesian/layout/index.ts
+index ac69137113d..2f99c870dd6 100644
+--- a/frontend/src/metabase/visualizations/echarts/cartesian/layout/index.ts
++++ b/frontend/src/metabase/visualizations/echarts/cartesian/layout/index.ts
+@@ -204,10 +204,14 @@ const getYAxisTicksWidth = (
+   const columnSettings = settings.column?.(axisModel.column);
+   const isPercent = columnSettings?.number_style === "percent";
+ 
++  const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
++
+   const measuredValues = valuesToMeasure.map((rawValue) => {
+     let value = rawValue;
+ 
+-    if (!isPercent && !areDecimalTicksExpected) {
++    if (isPercent) {
++      value = roundToHundredth(rawValue);
++    } else if (!areDecimalTicksExpected) {
+       value = Math.round(rawValue);
+     }
+ 

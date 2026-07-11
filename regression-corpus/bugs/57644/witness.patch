@@ -1,0 +1,83 @@
+diff --git a/frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.unit.spec.tsx b/frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.unit.spec.tsx
+new file mode 100644
+index 00000000000..9268116890f
+--- /dev/null
++++ b/frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.unit.spec.tsx
+@@ -0,0 +1,77 @@
++import {
++  setupDatabasesEndpoints,
++  setupSearchEndpoints,
++} from "__support__/server-mocks";
++import { createMockMetadata } from "__support__/metadata";
++import { renderWithProviders, screen } from "__support__/ui";
++import Question from "metabase-lib/v1/Question";
++import type Metadata from "metabase-lib/v1/metadata/Metadata";
++import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
++import { createMockDatabase } from "metabase-types/api/mocks";
++import {
++  SAMPLE_DB_ID,
++  createSampleDatabase,
++} from "metabase-types/api/mocks/presets";
++
++import { DataSourceSelectors } from "./DataSourceSelectors";
++
++const SECOND_DB_ID = SAMPLE_DB_ID + 1;
++
++const makeQuery = (metadata: Metadata) =>
++  new NativeQuery(
++    Question.create({ DEPRECATED_RAW_MBQL_type: "native", metadata }),
++    {
++      type: "native",
++      // no database selected yet, exactly as when the native editor is first
++      // opened via `startNewNativeQuestion({ database: null })`
++      database: null,
++      native: { query: "", "template-tags": {} },
++    },
++  );
++
++const setup = ({ multipleDatabases }: { multipleDatabases: boolean }) => {
++  const databases = multipleDatabases
++    ? [
++        createSampleDatabase(),
++        createMockDatabase({ id: SECOND_DB_ID, name: "QA Postgres12" }),
++      ]
++    : [createSampleDatabase()];
++
++  setupDatabasesEndpoints(databases);
++  setupSearchEndpoints([]);
++
++  const metadata = createMockMetadata({ databases });
++  const query = makeQuery(metadata);
++  const question = query.question();
++
++  renderWithProviders(
++    <DataSourceSelectors
++      isNativeEditorOpen
++      query={query}
++      question={question}
++      setDatabaseId={jest.fn()}
++      setTableId={jest.fn()}
++    />,
++  );
++};
++
++describe("DataSourceSelectors (metabase#57644)", () => {
++  it("does not auto-open the database picker when there is only one database", async () => {
++    setup({ multipleDatabases: false });
++
++    // the trigger is always rendered
++    expect(await screen.findByText("Select a database")).toBeInTheDocument();
++
++    // ...but the picker popover must NOT auto-open, so the database list
++    // (which would contain the database name) is not shown
++    expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
++  });
++
++  it("auto-opens the database picker when there are multiple databases", async () => {
++    setup({ multipleDatabases: true });
++
++    // the picker popover auto-opens and lists the available databases
++    expect(await screen.findByText("Sample Database")).toBeInTheDocument();
++    expect(screen.getByText("QA Postgres12")).toBeInTheDocument();
++  });
++});

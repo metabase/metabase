@@ -1,0 +1,7 @@
+issue: 63310
+fix_commit: 814dd5c80051af00c49e87b247fece020f0e3a76
+e2e_repro: e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

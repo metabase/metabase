@@ -1,0 +1,7 @@
+issue: 69904
+fix_commit: 96dbeb455a37edc3be1846a0517da372b39b09eb
+e2e_repro: e2e/test/scenarios/data-studio/transforms/reproductions.cy.spec.ts
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

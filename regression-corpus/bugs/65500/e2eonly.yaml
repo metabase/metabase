@@ -1,0 +1,7 @@
+issue: 65500
+fix_commit: a033c120897fceae4a69e6157c3371c77a1eff62
+e2e_repro: e2e/test/scenarios/embedding/interactive-embedding.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

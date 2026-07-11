@@ -1,0 +1,34 @@
+diff --git a/frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx b/frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+index 2dc40c925d0..41371536b21 100644
+--- a/frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
++++ b/frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+@@ -197,24 +197,18 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
+           className={S.gridLabelInput}
+         />
+ 
+-        {table.data_source === "metabase-transform" && (
+-          <TransformLink table={table} />
+-        )}
++        <TransformLink table={table} />
+       </div>
+     </TableSectionGroup>
+   );
+ }
+ function TransformLink({ table }: { table: Table }) {
+   const { transform } = table;
++  const shouldShowTransform =
++    transform !== undefined && table.data_source === "metabase-transform";
+ 
+-  if (!transform) {
+-    return (
+-      <Box
+-        c="feedback-negative"
+-        className={S.transformLink}
+-        fz="sm"
+-      >{t`Transform does not exist anymore`}</Box>
+-    );
++  if (!shouldShowTransform) {
++    return null;
+   }
+ 
+   return (
