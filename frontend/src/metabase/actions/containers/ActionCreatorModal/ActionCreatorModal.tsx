@@ -1,6 +1,5 @@
 import type { LocationDescriptor } from "history";
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -9,6 +8,7 @@ import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import type { Route } from "metabase/router";
+import { replace } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
-import { replace } from "react-router-redux";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
 

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -20,6 +19,7 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { Route } from "metabase/router";
+import { push } from "metabase/router";
 import {
   Group,
   Button as NewButton,

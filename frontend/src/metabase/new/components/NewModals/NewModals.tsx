@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
@@ -21,7 +20,7 @@ import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import type { WithRouterProps } from "metabase/router";
-import { withRouter } from "metabase/router";
+import { push, withRouter } from "metabase/router";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";

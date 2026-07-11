@@ -1,3 +1,5 @@
+import type { CardCreationType } from "metabase-types/api";
+
 type QuestionEventSchema = {
   event: string;
   question_id: number;
@@ -17,7 +19,7 @@ export type NewQuestionSavedEvent = ValidateEvent<{
   event: "new_question_saved";
   question_id: number;
   database_id: number | null;
-  type: "simple_question" | "custom_question" | "native_question";
+  type?: CardCreationType | null;
   method: "from_scratch" | "existing_question";
   visualization_type: string;
 }>;
