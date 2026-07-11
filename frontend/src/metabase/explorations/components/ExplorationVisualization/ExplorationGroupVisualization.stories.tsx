@@ -1,5 +1,6 @@
 import { HttpResponse, http } from "msw";
 import { useMemo } from "react";
+import type { WithRouterProps } from "react-router";
 
 import { getStore } from "__support__/entities-store";
 import { TestWrapper } from "__support__/ui";
@@ -7,6 +8,7 @@ import { Api } from "metabase/api";
 import { createPage, createQuery } from "metabase/explorations/test-utils";
 import { mainReducers } from "metabase/reducers-main"; // eslint-disable-line boundaries/element-types
 import { createMockState } from "metabase/redux/store/mocks";
+import { RouterContext } from "metabase/router";
 import { Stack, Text } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
@@ -23,6 +25,12 @@ import { ExplorationGroupVisualization } from "./ExplorationGroupVisualization";
 
 registerVisualizations();
 
+// The visualization header reads the location via useRouter; stub just enough
+// router context so stories don't need a real react-router instance.
+const STORY_ROUTER_CONTEXT = {
+  location: { pathname: "/", search: "", query: {} },
+} as WithRouterProps;
+
 function StoryWrapper({ children }: { children: React.ReactElement }) {
   const store = useMemo(
     () => getStore(mainReducers, createMockState(), [Api.middleware]),
@@ -36,7 +44,9 @@ function StoryWrapper({ children }: { children: React.ReactElement }) {
       withDND
       withCssVariables
     >
-      {children}
+      <RouterContext.Provider value={STORY_ROUTER_CONTEXT}>
+        {children}
+      </RouterContext.Provider>
     </TestWrapper>
   );
 }

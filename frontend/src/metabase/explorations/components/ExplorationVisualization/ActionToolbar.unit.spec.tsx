@@ -485,13 +485,15 @@ describe("ActionToolbar", () => {
       fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
 
       setup({
-        page: createPage({ id: PAGE_ID, hidden: false }),
+        page: createPage({ id: PAGE_ID, hidden: false, name: "Orders chart" }),
         withUndos: true,
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Hide" }));
 
-      expect(await screen.findByText("Chart hidden")).toBeInTheDocument();
+      expect(
+        await screen.findByText('Hidden "Orders chart"'),
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
     });
 
