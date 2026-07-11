@@ -16,31 +16,43 @@ verdict is traceable to a CI run+job ID in `evidence/e2e-only-batch-wave{1,2}.js
 
 Population selection (`revert-check.jsonl` × `repro-tests.jsonl`, minus shipped-unit-test issues):
 **851 usable e2e-only issues** (fix+repro same commit, single dedicated spec) + 156 `test_only`
-(repro added separately — deferred). Sample so far: **27** (12 wave 1 + 15 wave 2), weighted in
-wave 2 toward multi-file and seemingly-visual fixes to stress the irreducible rate.
+(repro added separately — deferred). Sample: **42** (12 wave 1 + 15 wave 2 + 15 wave 3). Waves 2–3
+were weighted toward multi-file and seemingly-visual fixes; **wave 3 was hand-picked toward
+layout/scroll/routing to stress-test the irreducible rate** (so its irreducible share is an upper
+bound, not representative).
 
-## Result: ~96% is catchable by a cheaper test
+## Result: ~90% is catchable by a cheaper test
 
 | Witness outcome | count | share |
 |---|---:|---:|
-| **FE-catchable** (jest witness authored) | 25 | 93% |
-| **BE-catchable** (Clojure `deftest`) | 1 | 4% |
-| **Genuinely irreducible** (real-browser geometry) | 1 | 4% |
+| **FE-catchable** (jest witness authored) | 36 | 86% |
+| **BE-catchable** (Clojure `deftest`) | 2 | 5% |
+| **Genuinely irreducible** (real-browser measurement) | 4 | 10% |
 
-The lone irreducible case (**63711**) is a CSS `grid-auto-rows` bug whose observable is a real
-`scrollHeight` overflow — jsdom does no layout and jest strips CSS. Everything else had a seam.
+Unbiased (waves 1–2, 27 bugs) the irreducible rate is **~4%** (1/27); the hand-picked wave 3 raised
+it to **20%** (3/15). Truth is between — irreducible is now precisely characterized: it needs a
+**browser measurement** (`getBoundingClientRect` / `ResizeObserver` / pixel overlap). The 4 cases:
+63711 (CSS `grid-auto-rows` overflow), 58923 (scroll-container padding), 67399 (SDK `ResizeObserver`
+sizing), 61164 (virtualized row overlap on sort). Routing (65500), chart "geometry" (55853, 63671),
+and transient render-timing (55631) all reduced to pure seams.
 
-### CI ground truth (24 of 27 run; 3 witness-only from patch drift)
+### CI ground truth (39 of 42 run; 3 witness-only from patch drift)
 
 | verdict | count | meaning |
 |---|---:|---|
-| **REDUNDANT** | 19 | e2e *and* the witness both catch the bug → replace the e2e with the unit test |
-| **VACUOUS** | 4 | e2e **passes on its own bug**; the witness catches it → the unit test is strictly better |
-| **inconclusive** | 1 | 63711 — its e2e also missed the mutation in headless CI |
+| **REDUNDANT** | 30 | e2e *and* the witness both catch the bug → replace the e2e with the unit test |
+| **VACUOUS** | 5 | e2e **passes on its own bug**; the witness catches it → the unit test is strictly better |
+| **irreducible, load-bearing confirmed** | 2 | 58923, 61164 — e2e catches; no unit test possible → the e2e earns its keep |
+| **irreducible, e2e ALSO missed** | 2 | 63711, 67399 — no unit possible *and* the e2e didn't catch it in headless CI |
 
-**Vacuous e2es are 4/24 (17%)** — a finding in its own right: 67767 runs at a viewport where the
-bug can't manifest; 62501 missed the reintroduced bug; and **69722 is a geometry e2e (run-button
-visibility) that its computed-height unit witness beat.**
+Two findings worth their own line:
+- **Vacuous e2es are ~13% (5/39)** — shipped repros that don't catch their own bug (67767 wrong
+  viewport; 62501, 55631, 69722, 63180 missed the reintroduced bug; 69722 is a geometry e2e beaten
+  by its computed-height unit witness).
+- **Even "irreducible" e2es are fragile: 2 of 4 didn't catch their own bug in headless CI**
+  (63711, 67399). So a layout bug being un-unit-testable does **not** mean its e2e reliably guards
+  it — geometry/scroll assertions are flaky in headless. Only 58923 and 61164 are confirmed
+  load-bearing.
 
 ## What the sample teaches
 
