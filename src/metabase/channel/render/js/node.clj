@@ -143,7 +143,7 @@
   it); when idle it shrinks to 0 and the generator's `destroy` kills the process. Capped at one because a
   warm process is fast and spawning another is costly. See
   [[metabase.channel.render.js.common/create-pool]]."
-  (common/create-pool start-process! stop-process! {:max-size 1}))
+  (common/create-pool start-process! stop-process! {:max-size 1, :idle-minutes 1}))
 
 (defn- call-node
   "Run static-viz bundle function `fn-name` with `arg` (a Clojure data structure) on a pooled Node process,

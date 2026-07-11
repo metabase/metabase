@@ -1,6 +1,6 @@
 (ns metabase.sql-parsing.graal
   "The GraalVM [[metabase.sql-parsing.protocol/SqlParser]]: runs sqlglot on GraalPy in-process on a pool
-  of sandboxed GraalVM contexts (up to two by default).
+  of sandboxed GraalVM contexts (up to three by default).
 
   The pooled contexts share one `Engine` and one parsed bootstrap `Source`: the engine (and its code
   cache, which holds the parsed sqlglot modules) is created with the first context and closed with the
@@ -284,11 +284,12 @@
   :sql-parsing)
 
 (def ^:private ^Pool python-context-pool
-  "A pool of up to two GraalPy contexts, each held exclusively from acquire to release, so at most two
-  sqlglot calls run at once — one per context, on the shared engine. When idle the pool shrinks to 0 and
-  the generator's `destroy` closes the context (and, on the last one, the shared engine); the first call
-  after an idle gap rebuilds them. See [[metabase.sql-parsing.common/create-pool]]."
-  (common/create-pool generate-context! destroy-context! {:max-size 2}))
+  "A pool of up to three GraalPy contexts, each held exclusively from acquire to release, so at most
+  three sqlglot calls run at once — one per context, on the shared engine. When idle for up to 10
+  minutes the pool shrinks to 0 and the generator's `destroy` closes the context (and, on the last one,
+  the shared engine); the first call after an idle gap rebuilds them. See
+  [[metabase.sql-parsing.common/create-pool]]."
+  (common/create-pool generate-context! destroy-context! {:max-size 3, :idle-minutes 10}))
 
 ;;; ---------------------------------------------- timeout handling ---------------------------------------
 

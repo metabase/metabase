@@ -42,7 +42,7 @@
          destroyed (atom [])
          pool      (common/create-pool (counting-generator created)
                                        (fn [worker] (swap! destroyed conj worker))
-                                       (merge {:max-size 2} config))]
+                                       (merge {:max-size 2, :idle-minutes 1} config))]
      [pool created destroyed])))
 
 (defn- with-worker
@@ -108,7 +108,7 @@
 (deftest pool-handles-generator-failures-test
   (testing "Pool gracefully handles when generator fails"
     (let [counter (atom 0)
-          pool (common/create-pool (failing-generator counter 1) (fn [_worker]) {:max-size 2})]
+          pool (common/create-pool (failing-generator counter 1) (fn [_worker]) {:max-size 2, :idle-minutes 1})]
       (is (some? (with-worker pool identity)) "First worker creation succeeds")
       ;; Dispose to force new creation
       (let [worker (.acquire ^Pool pool :test)]
