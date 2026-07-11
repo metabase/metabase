@@ -12,14 +12,34 @@ repros onto this one branch. Each full-loop agent (brief:
 writes the witness AS a real landed test (pass-on-HEAD / fail-on-mutant, then reverts the
 mutation so **product code ends unchanged**), and deletes the Cypress repro block.
 
-**Committed batches (git log `master..HEAD`, 24 commits ahead):**
+**Committed batches (git log `master..HEAD`, 26 commits ahead):**
 | batch | commit | e2e culled + witnesses landed |
 |---|---|---|
 | 1 | `66d84d21` | 12 |
 | 2 | `5a29fa68` | 16 |
 | 3 | `1d26e58e` | 8 |
 | 4 | `7e767526` | 17 |
-| **total** | | **53 e2e repros culled, 53 unit witnesses landed** |
+| 5 | `2a1bf560` | 17 |
+| **total** | | **70 e2e repros culled, 70 unit witnesses landed** |
+
+**Batch 5 (rlc-batch2, 20 agents):** 17 landed (32252 34517 37893 42165 44171 44720
+45300 45877 46221 47847 48207 48829 48878 49270 50346 52918 54124); 3 kept — 47061
+(irreducible cross-frame iframe-resizer), 49342 (irreducible CodeMirror focus-trap),
+**51301 (new class: `obsoleted-by-rewrite`** — buggy scroll-offset row-index calc deleted
+when TableInteractive → @tanstack/react-table; no reconstructable mutant). Landing rate
+17/20 = 85%; of the 3 non-landed, only 2 are true irreducible (~10%).
+**New signal:** three "looks like browser geometry" smells were all reducible once the seam
+was traced — 47847 (ECharts `showAllSymbol`), 48207 (`legendTitles` array shape), 52918
+(`maw="100vw"` via `toHaveStyle`). Only genuine cross-frame/focus-trap resisted.
+**Collision mechanics added this batch:** several e2e culls hit line-shifts vs batch-4's
+already-committed edits to the *same shared spec file* (49270↔53404, 46221↔56698,
+48878↔46318) — the witness hunk applies clean but the e2e-cull hunk must be re-done by
+brace-match delete on the current file. When you hand-cull a block, **also remove imports
+the block alone used** (the agent's patch did; a raw block-delete doesn't) or the
+pre-commit `no-unused-vars` eslint fails. 44171's witness had to be **merged** into
+45926's `core.unit.spec.ts` (both created the same new file). Touching a file also
+re-lints the *whole* file, surfacing pre-existing debt (e.g. `no-node-access`) → scope an
+eslint-disable.
 
 **Batch 4 (rlc-batch1, 20 agents):** 17 landed (17061 35444 44500 45926 46168 46318 47940
 48519 49556 50266 50602 51952 52339 52806 53404 53824 56698); 3 not culled and **recorded
