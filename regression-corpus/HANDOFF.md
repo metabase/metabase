@@ -4,6 +4,52 @@ Read `README.md` first (pipeline design + entry schema). Memory file
 `project_regression_corpus.md` (auto-memory) has the same key facts. This file is the
 exact resume point.
 
+## LAND-AND-CULL IMPLEMENTATION — current state (branch `dev-2347-...`)
+
+The study is done; we are now **landing** unit witnesses + **culling** the redundant e2e
+repros onto this one branch. Each full-loop agent (brief:
+`scripts/reconstruct-land-cull-instructions.md`, worktree-isolated) reconstructs a bug,
+writes the witness AS a real landed test (pass-on-HEAD / fail-on-mutant, then reverts the
+mutation so **product code ends unchanged**), and deletes the Cypress repro block.
+
+**Committed batches (git log `master..HEAD`, 24 commits ahead):**
+| batch | commit | e2e culled + witnesses landed |
+|---|---|---|
+| 1 | `66d84d21` | 12 |
+| 2 | `5a29fa68` | 16 |
+| 3 | `1d26e58e` | 8 |
+| 4 | `7e767526` | 17 |
+| **total** | | **53 e2e repros culled, 53 unit witnesses landed** |
+
+**Batch 4 (rlc-batch1, 20 agents):** 17 landed (17061 35444 44500 45926 46168 46318 47940
+48519 49556 50266 50602 51952 52339 52806 53404 53824 56698); 3 not culled and **recorded
+for follow-up waves** — 48851 (`keep_e2e`, irreducible filter-popover overflow, CSS 40vh),
+48562 + 50373 (`be_deftest`: CLJC fallback-metadata / `.clj cacheable?` regex → BE deftest
+wave, e2e left in place).
+
+**Mechanics that matter (learned this batch):**
+- Capture each landing from its worktree: `git -C <wt> add -N -A; git -C <wt> diff HEAD --
+  'frontend/**' 'e2e/**' > /tmp/rlc-landings/<issue>.patch`; verify product-clean by
+  name-filtering out `*.unit.spec.*` / `*.cy.spec.*` / `tests?/` helpers.
+- Worktrees fork from a base that may already have an e2e block culled by an ancestor
+  commit (e.g. 45926's repro was gone at the worktree base but **still present on dev-2347
+  at `models/reproductions-3.cy.spec.ts:937`**) → the captured patch is witness-only and
+  you must **manually cull** the block on dev-2347 (brace-match delete).
+- The session-start `git status` snapshot is **stale** (pre batch-1–3 commit); files it
+  showed as `M`/`UU` are clean at HEAD. Verify with `git diff HEAD --stat <file>`.
+- **Remove completed agent worktrees before running jest** — leftover `.claude/worktrees/`
+  copies get discovered as duplicate specs and pollute the run (`git worktree remove
+  --force`; keep any still-locked/running one).
+- Pre-existing **date-sensitive** failures in `SmartScalar/compute.unit.spec.ts`
+  (relative-date formatter keys off "today") are unrelated to landed witnesses.
+- Stage by explicit path (`git add --pathspec-from-file`), **never `git add -A`** — the
+  tree is shared with the user's work. lint-staged runs eslint --fix/oxfmt/token-scan on
+  commit and manages its own internal stash (don't touch the shared stash stack).
+
+**Next:** keep fanning out full-loop batches over the remaining fresh e2e-only issues
+(~790 left); accumulate `be_deftest` ones (48562 50373 68998 53604 63687 50373...) for a
+separate Clojure-deftest wave; record `keep_e2e`/irreducible ones without culling.
+
 ## FIRST: crash recovery check
 
 The coverage harness mutates the working tree and restores after each entry. If the
