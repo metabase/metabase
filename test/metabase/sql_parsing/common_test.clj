@@ -128,6 +128,14 @@
       (is (= num-threads (count results)) "All threads should complete successfully")
       (is (<= @created 2) (str "Created " @created " workers, expected <= 2")))))
 
+;;; ----------------------------------------- Version Parsing --------------------------------------------------------
+
+(deftest expected-sqlglot-version-test
+  (testing "Sqlglot version is properly parsed from pyproject.toml"
+    (let [version (common/expected-sqlglot-version)]
+      (is (string? version))
+      (is (re-matches #"\d+\.\d+\.\d+" version)))))
+
 ;;; -------------------------------------------- Pool Behavior Tests -------------------------------------------------
 
 (deftest pool-stores-and-returns-objects-test

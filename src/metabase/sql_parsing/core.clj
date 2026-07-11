@@ -10,13 +10,13 @@
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
     (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
-  The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (currently
-  the GraalVM implementation, [[metabase.sql-parsing.graal]]); this namespace owns the JVM-side pre- and
-  post-processing around it."
+  The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
+  GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
+  owns the JVM-side pre- and post-processing around it."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.sql-parsing.graal :as graal]
+   [metabase.sql-parsing.parser :as parser]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -27,9 +27,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- parser
-  "The [[metabase.sql-parsing.protocol/SqlParser]] implementation."
+  "The [[metabase.sql-parsing.protocol/SqlParser]] implementation for the configured mode."
   []
-  (graal/parser))
+  (parser/parser))
 
 ;;; ----------------------------------------- VALUES clause stripping ------------------------------------------
 
