@@ -37,9 +37,9 @@
     (let [e (try
               (protocol/referenced-tables (python/parser) "postgres" "SELECT !!!")
               (catch Exception e e))]
-      (is (sql-parsing/parse-error? e)))
-    (testing "but other Python-side failures are not parse errors"
-      (let [e (try
-                (protocol/add-into-clause (python/parser) nil nil "t")
-                (catch Exception e e))]
-        (is (not (sql-parsing/parse-error? e)))))))
+      (is (sql-parsing/parse-error? e))))
+  (testing "other Python-side failures are not parse errors"
+    (let [e (try
+              (protocol/add-into-clause (python/parser) nil nil "t")
+              (catch Exception e e))]
+      (is (not (sql-parsing/parse-error? e))))))
