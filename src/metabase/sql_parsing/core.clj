@@ -48,22 +48,33 @@
         ;; Note: This won't actually interrupt GraalVM, but prevents resource leaks
         (future-cancel fut)))))
 
+(defn- handle-timeout!
+  "Handle a fired Python execution timeout: interrupt the GraalVM context, poison it so the pool
+   disposes it, log a warning, bump the timeout metric, and finally throw a TimeoutException.
+
+   The metric bump is best-effort — a misconfigured registry must not mask the timeout error
+   (#77084)."
+  [ctx timeout-ms]
+  ;; Actually interrupt the GraalVM context (1s grace period for soft interrupt) - this is
+  ;; necessary because future-cancel doesn't stop GraalVM execution.
+  (python.pool/interrupt! ctx 1000)
+  (python.pool/poison! ctx)
+  (log/warn "Python execution timed out after" timeout-ms "ms - GraalVM interrupted")
+  (try (analytics/inc! :metabase-sql-parsing/context-timeouts)
+       (catch Throwable e
+         (log/warn e "Failed to increment :metabase-sql-parsing/context-timeouts")))
+  (throw (TimeoutException. (str "Python execution timed out after " timeout-ms "ms"))))
+
 (defmacro ^:private with-python-timeout
   "Execute body with a timeout. If timeout is reached:
    1. Interrupts the GraalVM context (actually stops execution)
    2. Poisons context so it gets disposed rather than returned to pool
    3. Logs warning and throws TimeoutException"
   [ctx timeout-ms & body]
-  `(let [result# (with-timeout* ~timeout-ms (^:once fn* [] ~@body))]
+  `(let [timeout-ms# ~timeout-ms
+         result#     (with-timeout* timeout-ms# (^:once fn* [] ~@body))]
      (if (= result# ::timeout)
-       (do
-         ;; Actually interrupt the GraalVM context (1s grace period for soft interrupt)
-         ;; This is necessary because future-cancel doesn't stop GraalVM execution
-         (python.pool/interrupt! ~ctx 1000)
-         (python.pool/poison! ~ctx)
-         (analytics/inc! :metabase-sql-parsing/context-timeouts)
-         (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM interrupted")
-         (throw (TimeoutException. (str "Python execution timed out after " ~timeout-ms "ms"))))
+       (handle-timeout! ~ctx timeout-ms#)
        result#)))
 
 ;;; ----------------------------------------- VALUES clause stripping ------------------------------------------
