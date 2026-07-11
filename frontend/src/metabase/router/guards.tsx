@@ -41,6 +41,9 @@ const resolveRedirectTarget = (url: string) => {
   const target = new URL(url, window.location.origin);
 
   return {
+    // Absolute, so a full-page redirect is not re-resolved against the current
+    // path (a bare `auth/sso/x` would otherwise land under `/auth/login`).
+    href: target.href,
     path: `${target.pathname}${target.search}${target.hash}`,
     isInAppOrigin: target.origin === window.location.origin,
   };
@@ -132,12 +135,12 @@ const UserIsNotAuthenticated = createGuard(
       state.auth.loginPending || !state.auth.redirect,
   },
   () => {
-    const url = getRedirectUrl();
-    const { path, isInAppOrigin } = resolveRedirectTarget(url);
+    const { href, path, isInAppOrigin } =
+      resolveRedirectTarget(getRedirectUrl());
     const needsFullPageLoad = !isInAppOrigin || isBackendOnlyPath(path);
 
     return needsFullPageLoad ? (
-      <FullPageRedirect to={url} />
+      <FullPageRedirect to={href} />
     ) : (
       <Navigate to={path} replace />
     );

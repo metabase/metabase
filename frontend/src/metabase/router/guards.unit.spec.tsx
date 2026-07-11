@@ -152,13 +152,28 @@ describe("route-guards", () => {
     afterEach(() => {
       replaceLocationMock.mockClear();
       window.history.replaceState({}, "", "/");
+      // reset the global MetabaseSettings singleton mutated by mockSettings
+      mockSettings();
     });
 
     it("does a full-page redirect for a relative backend-only path", async () => {
       const { history } = setup("/auth/sso/google");
 
       await waitFor(() => {
-        expect(replaceLocationMock).toHaveBeenCalledWith("/auth/sso/google");
+        expect(replaceLocationMock).toHaveBeenCalledWith(
+          `${ORIGIN}/auth/sso/google`,
+        );
+      });
+      expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+    });
+
+    it("normalizes a relative backend-only target without a leading slash", async () => {
+      const { history } = setup("auth/sso/google");
+
+      await waitFor(() => {
+        expect(replaceLocationMock).toHaveBeenCalledWith(
+          `${ORIGIN}/auth/sso/google`,
+        );
       });
       expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
     });
