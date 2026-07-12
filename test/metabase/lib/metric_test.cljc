@@ -378,3 +378,19 @@
                {:name         "count_2"
                 :display-name "Right Metric"}]
               (lib/returned-columns query))))))
+
+#?(:clj
+   (deftest ^:parallel check-card-overwrite-rejects-metric-cycle-test
+     (testing "saving a metric whose :metric refs would close a cycle is rejected up front (#74954)"
+       ;; the write-time counterpart to the read-time `check-metric-cycle!` guard: the card API rejects cyclic saves,
+       ;; so the read-time guard only has to backstop non-API paths (serdes, remote sync, direct writes).
+       (let [mp        (lib.tu/mock-metadata-provider
+                        meta/metadata-provider
+                        {:cards [(referencing-metric-card 1 "Metric A" [:metric 2])
+                                 (referencing-metric-card 2 "Metric B" [:metric 1])]})
+             new-query (lib/query mp {:database (meta/id)
+                                      :type     :query
+                                      :query    {:source-table (meta/id :venues)
+                                                 :aggregation  [[:metric 2]]}})]
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot save card with cycles"
+                               (lib/check-card-overwrite 1 new-query)))))))

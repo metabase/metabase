@@ -1179,6 +1179,9 @@
 
 (deftest ^:parallel query-description-skipped-for-metadata-provider-fetches-test
   (testing "metadata-provider fetches of metric cards do not compute a query description (#74954)"
+    ;; Pins `metadata-provider-fetch?`'s coupling to the `:metadata/*` model namespace: if those models stopped
+    ;; being recognized, the after-select would compute the description during a provider fetch (re-entering the
+    ;; metric recursion), and the skip assertions below would fail.
     (let [mp (mt/metadata-provider)]
       (mt/with-temp
         [:model/Card
@@ -1188,70 +1191,55 @@
           :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                              (lib/aggregate (lib/count))
                              lib.convert/->legacy-MBQL)}]
-        (is (not (contains? (t2/select-one :metadata/metric :id id) :query-description)))
-        (is (not (contains? (t2/select-one :metadata/card :id id) :query-description)))))))
+        (testing "provider fetches skip it"
+          (is (not (contains? (t2/select-one :metadata/metric :id id) :query-description)))
+          (is (not (contains? (t2/select-one :metadata/card :id id) :query-description))))
+        (testing "a real :model/Card fetch still computes it"
+          (is (= "Orders, Count"
+                 (:query_description (t2/select-one :model/Card :id id)))))))))
+
+(defn- do-with-metric-cycle
+  "Build two metric cards whose `:metric` refs form a cycle A → B → A and call `f` with their ids."
+  [f]
+  (letfn [(metric-query [metric-id]
+            {:database (mt/id)
+             :type     :query
+             :query    {:source-table (mt/id :orders)
+                        :aggregation  [["metric" metric-id]]}})]
+    (let [count-query (let [mp (mt/metadata-provider)]
+                        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (lib/aggregate (lib/count))
+                            lib.convert/->legacy-MBQL))]
+      ;; the cyclic cards must stay out of the shared search queue that concurrent tests drain
+      (binding [search.ingestion/*disable-updates* true]
+        (mt/with-temp
+          [:model/Card {a-id :id} {:name "Metric A", :type :metric, :dataset_query count-query}
+           :model/Card {b-id :id} {:name "Metric B", :type :metric, :dataset_query (metric-query a-id)}]
+          ;; close the cycle with a raw update -- the card API rejects cyclic saves, so this is the non-API path
+          ;; (serdes, remote sync, pre-check data) by which a cycle actually reaches the DB
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (f a-id b-id))))))
 
 (deftest query-description-metric-reference-cycle-test
   (testing "selecting a metric card whose :metric references form a cycle completes with a :query_description (#74954)"
-    (letfn [(metric-query [metric-id]
-              {:database (mt/id)
-               :type     :query
-               :query    {:source-table (mt/id :orders)
-                          :aggregation  [["metric" metric-id]]}})]
-      ;; Search ingestion of a cycle-involved card recurses unboundedly in `lib.metadata.calculation/metadata-method
-      ;; :metric` (a separate defect from the one under test), so keep these cards out of the ingestion queue where
-      ;; concurrently-running tests would index them.
-      (binding [search.ingestion/*disable-updates* true]
-        (mt/with-temp
-          [:model/Card
-           {a-id :id}
-           {:name "Metric A"
-            :type :metric
-            :dataset_query (let [mp (mt/metadata-provider)]
-                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 (lib/aggregate (lib/count))
-                                 lib.convert/->legacy-MBQL))}
-           :model/Card
-           {b-id :id}
-           {:name "Metric B"
-            :type :metric
-            :dataset_query (metric-query a-id)}]
-          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
-          (is (= "Orders, Metric B"
-                 (:query_description (t2/select-one :model/Card :id a-id))))
-          (is (= "Orders, Metric A"
-                 (:query_description (t2/select-one :model/Card :id b-id)))))))))
+    (do-with-metric-cycle
+     (fn [a-id b-id]
+       (is (= "Orders, Metric B"
+              (:query_description (t2/select-one :model/Card :id a-id))))
+       (is (= "Orders, Metric A"
+              (:query_description (t2/select-one :model/Card :id b-id))))))))
 
 (deftest extract-temporal-info-metric-reference-cycle-test
   (testing "extract-temporal-info on a query aggregating a cycle-involved metric throws a cycle error (#74954)"
-    (letfn [(metric-query [metric-id]
-              {:database (mt/id)
-               :type     :query
-               :query    {:source-table (mt/id :orders)
-                          :aggregation  [["metric" metric-id]]}})]
-      ;; keep the cyclic cards out of the shared ingestion queue, where concurrently-running tests would index them
-      (binding [search.ingestion/*disable-updates* true]
-        (mt/with-temp
-          [:model/Card
-           {a-id :id}
-           {:name "Metric A"
-            :type :metric
-            :dataset_query (let [mp (mt/metadata-provider)]
-                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 (lib/aggregate (lib/count))
-                                 lib.convert/->legacy-MBQL))}
-           :model/Card
-           {b-id :id}
-           {:name "Metric B"
-            :type :metric
-            :dataset_query (metric-query a-id)}]
-          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
-          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metric cycle detected"
-                                (#'card/extract-temporal-info
-                                 {:dataset_query (json/encode (metric-query a-id))
-                                  :query_type    "query"}))))))))
+    (do-with-metric-cycle
+     (fn [a-id _b-id]
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metric cycle detected"
+                             (#'card/extract-temporal-info
+                              {:dataset_query (json/encode {:database (mt/id)
+                                                            :type     :query
+                                                            :query    {:source-table (mt/id :orders)
+                                                                       :aggregation  [["metric" a-id]]}})
+                               :query_type    "query"})))))))
 
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"

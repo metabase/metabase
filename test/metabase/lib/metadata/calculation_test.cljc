@@ -1266,4 +1266,9 @@
        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
                              (lib.metadata.calculation/display-name (lib.tu/venues-query)
                                                                     {:lib/type ::throws
-                                                                     :throwable (ex-info "boom" {})}))))))
+                                                                     :throwable (ex-info "boom" {})}))))
+     (testing "an AssertionError thrown while computing a display name is contained (wrapped), not propagated"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                    {:lib/type ::throws
+                                                                     :throwable (AssertionError. "boom")}))))))
