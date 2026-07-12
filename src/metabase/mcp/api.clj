@@ -19,6 +19,8 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.core :as mcp]
+   [metabase.mcp.instructions :as mcp.instructions]
+   [metabase.mcp.prompts :as mcp.prompts]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.tools :as mcp.tools]
@@ -54,7 +56,7 @@
    :version "0.1.0"})
 
 (def ^:private server-capabilities
-  {:tools {:listChanged true} :resources {}})
+  {:tools {:listChanged true} :resources {} :prompts {:listChanged false}})
 
 (def ^:private protocol-version
   "The protocol this server implements: stateless core, `server/discover`, cacheable results."
@@ -115,16 +117,21 @@
 
 ;;; -------------------------------------------------- Methods -----------------------------------------------------
 
-(def ^:private discover-result
+(defn- discover-result
+  "What the server is, what it supports, and what it is for. The `instructions` are the guidance layer's
+   first tier: they ride in the client's prompt prefix, so they say what no tool description can — the
+   canonical workflow, the read/write split, and which skill to load before a multi-step job."
+  []
   {:protocolVersion protocol-version
    :capabilities    server-capabilities
-   :serverInfo      server-info})
+   :serverInfo      server-info
+   :instructions    (mcp.instructions/instructions)})
 
 (defn- handle-discover
   "`server/discover` — the stateless replacement for connect-time negotiation. Answers what the
    server is and what it supports, without establishing anything."
   [id _params]
-  (jsonrpc-response id discover-result))
+  (jsonrpc-response id (discover-result)))
 
 (defn- handle-initialize
   "Back-compat handshake for clients that predate the stateless core. Reports what `server/discover`
@@ -135,7 +142,7 @@
   (let [requested (:protocolVersion params)]
     (jsonrpc-response
      id
-     (assoc discover-result
+     (assoc (discover-result)
             :protocolVersion (if (contains? supported-protocol-versions requested)
                                requested
                                protocol-version)))))
@@ -177,6 +184,25 @@
           :ok                        (jsonrpc-response id (cacheable {:contents (:contents result)}
                                                                      (:cache result))))))))
 
+(defn- handle-prompts-list [id _params token-scopes]
+  (jsonrpc-response id (cacheable (mcp.prompts/list-prompts token-scopes) listing-cache)))
+
+(defn- handle-prompts-get [id params token-scopes]
+  (let [prompt-name (:name params)]
+    (if (or (not (string? prompt-name)) (str/blank? prompt-name))
+      (jsonrpc-error id -32602 "Missing required parameter: name")
+      (try
+        (let [result (mcp.prompts/get-prompt prompt-name (:arguments params) token-scopes)]
+          (case (:status result)
+            :not-found (jsonrpc-error id -32602 (str "Prompt not found: " prompt-name))
+            :ok        (jsonrpc-response id (dissoc result :status))))
+        (catch clojure.lang.ExceptionInfo e
+          ;; A missing required argument is the client's error to fix, and the message names the
+          ;; argument — so it goes back as invalid-params rather than an internal error.
+          (if (:argument (ex-data e))
+            (jsonrpc-error id -32602 (ex-message e))
+            (throw e)))))))
+
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
@@ -191,6 +217,8 @@
       "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params token-scopes)
+      "prompts/list"              (handle-prompts-list id params token-scopes)
+      "prompts/get"               (handle-prompts-get id params token-scopes)
       "ping"                      (handle-ping id params)
       (if id
         (jsonrpc-error id -32601 (str "Method not found: " method))

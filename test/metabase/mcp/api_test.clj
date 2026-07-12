@@ -10,9 +10,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.instructions :as mcp.instructions]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.skills :as mcp.skills]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -216,15 +218,72 @@
       (is (=? {:jsonrpc "2.0"
                :id      1
                :result  {:protocolVersion "2026-07-28"
-                         :capabilities    {:tools {:listChanged true} :resources {}}
-                         :serverInfo      {:name "metabase" :version "0.1.0"}}}
+                         :capabilities    {:tools     {:listChanged true}
+                                           :resources {}
+                                           :prompts   {:listChanged false}}
+                         :serverInfo      {:name "metabase" :version "0.1.0"}
+                         :instructions    (mcp.instructions/instructions)}}
               (:body response))))
     (testing "and it does not hand back a session"
       (is (nil? (get-in (mcp-request (jsonrpc-request "server/discover")) [:headers "Mcp-Session-Id"]))))))
 
+(deftest initialize-carries-the-instructions-test
+  (testing "a client that predates the stateless core gets the instructions from its handshake, which is
+            the only place it will look for them"
+    (let [response (mcp-request (jsonrpc-request "initialize" {:protocolVersion "2025-06-18"}))]
+      (is (= (mcp.instructions/instructions)
+             (get-in response [:body :result :instructions]))))))
+
+;;; --------------------------------------------------- Prompts -----------------------------------------------------
+
+(deftest prompts-list-test
+  (testing "the playbooks are advertised with their arguments, and are cacheable like the other listings"
+    (let [result (get-in (mcp-request (jsonrpc-request "prompts/list")) [:body :result])]
+      (is (=? {:ttlMs      pos-int?
+               :cacheScope "session"
+               :prompts    [{:name      "explore_database"
+                             :arguments [{:name "database" :required true}]}
+                            {:name "build_dashboard"}]}
+              result)))))
+
+(deftest prompts-get-test
+  (testing "prompts/get renders the playbook as a user message with the caller's arguments in it"
+    (let [result (get-in (mcp-request (jsonrpc-request "prompts/get"
+                                                       {:name      "explore_database"
+                                                        :arguments {:database "Sample Database"}}))
+                         [:body :result])]
+      (is (=? {:description string?
+               :messages    [{:role    "user"
+                              :content {:type "text"}}]}
+              result))
+      (is (str/includes? (-> result :messages first :content :text) "Sample Database"))))
+  (testing "a missing required argument comes back as invalid-params, naming the argument"
+    (is (=? {:code    -32602
+             :message #"Missing required argument: database"}
+            (get-in (mcp-request (jsonrpc-request "prompts/get" {:name "explore_database"}))
+                    [:body :error]))))
+  (testing "an unknown prompt is not found"
+    (is (=? {:code -32602}
+            (get-in (mcp-request (jsonrpc-request "prompts/get" {:name "nope"}))
+                    [:body :error])))))
+
+;;; ---------------------------------------------------- Skills ------------------------------------------------------
+
+(deftest skills-are-readable-over-the-wire-test
+  (testing "every shipped skill is fetchable at its `skill://` URI, with the cache metadata that lets a
+            client hold it across turns"
+    (doseq [{:keys [name uri]} (mcp.skills/skills)]
+      (testing name
+        (let [result (get-in (mcp-request (jsonrpc-request "resources/read" {:uri uri})) [:body :result])]
+          (is (=? {:ttlMs      pos-int?
+                   :cacheScope "global"
+                   :contents   [{:uri uri :mimeType "text/markdown"}]}
+                  result))
+          (is (str/includes? (-> result :contents first :text) (str "name: " name))))))))
+
 (deftest cold-request-test
   (testing "every method works on a request that arrives cold — no handshake, no session header"
-    (doseq [method ["ping" "server/discover" "tools/list" "resources/list"]]
+    (doseq [method ["ping" "server/discover" "tools/list" "resources/list" "prompts/list"]]
       (testing method
         (let [response (mcp-request (jsonrpc-request method))]
           (is (= 200 (:status response)))

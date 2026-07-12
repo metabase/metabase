@@ -94,6 +94,19 @@ These render inline visualizations in your AI client, and only work in clients t
 - **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived).
 - **Update question** (`update_question`): Update a saved question. Setting `collection_id` moves the question to another collection.
 
+## The server tells your client how to use Metabase
+
+Tools are only half of what the MCP server hands your client. The other half is guidance: how to go about a job in Metabase, not just which calls exist.
+
+- **Instructions.** On connecting, your client gets a short brief on what Metabase is and how to work with it: search before you build, check a table's columns before you query them, don't save anything nobody asked for. Most clients (Claude Code, Claude Desktop, VS Code) load these automatically.
+- **Skills.** Longer reference material your agent can pull in when a job needs it — how to write a query, wire up a dashboard filter, edit a document, or decide whether something should be a model. Your agent loads the one it needs and ignores the rest.
+- **Prompts.** Ready-made playbooks you can run yourself. In clients that support MCP prompts, they show up as slash commands:
+
+  - `/mcp__metabase__explore_database` — map a database and report what it holds, what's already built on it, and what it can answer.
+  - `/mcp__metabase__build_dashboard` — find or write the questions for a topic, assemble them into a dashboard, and wire up the filters.
+
+You'll only see the prompts your connection is allowed to run: a read-only connection is offered the exploration playbook and not the one that builds a dashboard.
+
 ## MCP server settings
 
 _Admin > AI > MCP_

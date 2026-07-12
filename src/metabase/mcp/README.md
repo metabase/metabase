@@ -127,12 +127,48 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 
 | Resource URI                         | Description                                                                                                       |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `skill://metabase/{name}`            | A skill (see below). Reference material sits beside it at `skill://metabase/{name}/references/{file}`.             |
 | `metabase://docs/construct-query.md` | Program syntax for `construct_query` and `query`: sources, operations, operator forms, worked examples, pitfalls. |
+| `ui://metabase/*`                    | The MCP Apps iframe the `ui` tools render into.                                                                    |
 
 The `read_resource` **tool** (above) uses a separate URI scheme to navigate Metabase entities (`metabase://question/{id}`,
 `metabase://database/{id}/tables`, etc.). The two URI namespaces are independent: `metabase://docs/...` is for static
 reference content fetched via MCP `resources/read`, while `metabase://table/...` and friends are entity URIs passed
 to the `read_resource` tool.
+
+## The guidance layer
+
+Most agent failures are cognitive — premature stopping, bad synthesis — rather than tool-selection ones, so what the
+server *says* is as load-bearing as what it exposes. It says it in three tiers, and each tier exists because the one
+below it cannot carry that content.
+
+**Tier 1 — server `instructions`** ([`instructions.clj`](instructions.clj), the text in
+[`resources/mcp/instructions.md`](../../../resources/mcp/instructions.md)). Returned from `server/discover` and from
+`initialize`, so it works in every client that injects instructions at all. The budget is 2KB, and the first ~500
+characters have to stand alone, because some clients inject only the opening. It carries what no tool description can:
+what the server is for, the canonical workflow (find → inspect → run → save → organize), the read/write split, and
+which skill to load before a multi-step job.
+
+**Tier 2 — skills** ([`skills.clj`](skills.clj), the markdown in
+[`resources/mcp/skills/`](../../../resources/mcp/skills/)). Seven of them — `core`, `mbql`, `native-sql`, `dashboard`,
+`visualization`, `document`, `curation` — in the [Agent Skills](https://agentskills.io) open-standard format, served as
+resources at `skill://metabase/<name>`: the URI shape SEP-2640 proposes, so a client that learns to fetch skills gets
+these without a server change. Instructions say how to use the tools; a skill says how to run a *process* with them.
+Unbounded, and paid for only by the job that loads one.
+
+**Tier 3 — prompts** ([`prompts.clj`](prompts.clj), the templates in
+[`resources/mcp/prompts/`](../../../resources/mcp/prompts/)). `explore_database` and `build_dashboard`, surfacing as
+slash commands (`/mcp__metabase__build_dashboard`) in clients that support prompts. User-invoked, so they complement
+the other two tiers rather than repeating them — and they are what makes the server useful in a client that ships no
+skill support at all. Scope-filtered like tools: a token that cannot write is not offered a playbook whose fourth step
+is a write.
+
+**No `load_skill` tool, for now.** A skill-loading *tool* would work in every tools-only client, at the cost of one
+catalog slot and one more decision for the model to get wrong. Whether that trade is worth making is a question about
+clients that will never fetch a `skill://` resource, and the eval harness is what answers it: `mcp-evals` runs the
+suite for a `tools-only` client class and the `guidance-lift` gate reports the gap. Ship the tool when that gap says
+those clients need it — not before, and never alongside SEP-2640 fetching, because two ways to load a skill is one too
+many.
 
 ## Protocol
 
@@ -146,6 +182,8 @@ every request stands on its own, and a client may open a connection and call a t
 | `tools/call`                | Call a tool with arguments.                                                  |
 | `resources/list`            | List available resources (filtered by the token's scopes).                   |
 | `resources/read`            | Read a resource by URI.                                                      |
+| `prompts/list`              | List the playbooks (filtered by the token's scopes).                         |
+| `prompts/get`               | Render a playbook with the caller's arguments.                               |
 | `ping`                      | Keepalive ping.                                                              |
 | `initialize`                | Accepted from clients that predate the stateless core (see below).           |
 | `notifications/initialized` | Accepted as a no-op.                                                         |
@@ -220,6 +258,10 @@ The implementation lives in these files:
 - **[`resources.clj`](resources.clj)** - MCP resource registry and handlers. Holds documentation resources (like
   the `construct_query` reference) keyed by URI, with scope-based access control on `resources/list` and
   `resources/read`.
+
+- **[`instructions.clj`](instructions.clj)**, **[`skills.clj`](skills.clj)**, **[`prompts.clj`](prompts.clj)** - the
+  three tiers of the guidance layer (above). `skills.clj` loads and validates the shipped skills and publishes them
+  through the resource registry; `prompts.clj` renders the playbooks `prompts/get` returns.
 
 - **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
   `::unrestricted` sentinel for session-based auth.
