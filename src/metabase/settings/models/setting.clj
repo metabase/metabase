@@ -1707,18 +1707,6 @@
       (log/warn (:parse-error invalid-setting)
                 (format "Unable to parse setting %s" (:name invalid-setting))))))
 
-(defn check-for-removed-env-vars!
-  "Fail startup when a removed setting's env var is still set, so a stale config fails loudly with a
-  migration hint instead of silently changing behavior on upgrade."
-  []
-  ;; MB_SEMANTIC_SEARCH_ENABLED was a kill switch for semantic search (removed 2026-07, BOT-1832).
-  ;; Disabling semantic search is now MB_SEARCH_ENGINE=appdb.
-  (when (env/env (setting-env-map-name :semantic-search-enabled))
-    (throw (ex-info (trs "{0} has been removed. Remove it; to turn semantic search off, set {1} instead."
-                         (env-var-name :semantic-search-enabled)
-                         "MB_SEARCH_ENGINE=appdb")
-                    {:env-var (env-var-name :semantic-search-enabled)}))))
-
 (defn migrate-encrypted-settings!
   "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.
   This function just goes through all of them, checks to see if a value exists in the database, and re-saves it if

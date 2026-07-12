@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
@@ -13,6 +14,7 @@
    [metabase.search.util :as search.util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin :as p]))
 
@@ -93,6 +95,18 @@
   "Does this instance support a search index, of any sort?"
   []
   (seq (search.engine/active-engines)))
+
+(defn check-for-removed-env-vars!
+  "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is still set, naming the exact
+  MB_SEARCH_ENGINE value the switch would have fallen back to when semantic is now serving search."
+  []
+  (when (env/env :mb-semantic-search-enabled)
+    (let [engines (search.engine/supported-engines)]
+      (throw (ex-info (if (= :search.engine/semantic (first engines))
+                        (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                             (name (first (remove #{:search.engine/semantic} engines))))
+                        (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed; remove it from your configuration."))
+                      {:env-var "MB_SEMANTIC_SEARCH_ENABLED"})))))
 
 (defn init-index!
   "Ensure there is an index ready to be populated."

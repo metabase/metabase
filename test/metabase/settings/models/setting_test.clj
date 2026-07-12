@@ -230,17 +230,6 @@
     (setting/validate-settings-formatting!)
     (is (= nil (#'setting/read-setting :test-setting-custom-init)))))
 
-(deftest check-for-removed-env-vars-test
-  (testing "startup fails with a migration hint when a removed setting's env var is still set"
-    (with-redefs [env/env {:mb-semantic-search-enabled "false"}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"MB_SEMANTIC_SEARCH_ENABLED has been removed.*MB_SEARCH_ENGINE=appdb"
-           (setting/check-for-removed-env-vars!)))))
-  (testing "startup proceeds when the env var is absent"
-    (with-redefs [env/env {}]
-      (is (nil? (setting/check-for-removed-env-vars!))))))
-
 (deftest init-requires-db-test
   (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
     (mt/discard-setting-changes [:test-setting-custom-init]
