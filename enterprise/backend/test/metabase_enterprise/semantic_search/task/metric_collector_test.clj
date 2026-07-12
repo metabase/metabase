@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -71,7 +72,9 @@
             index-metadata (semantic.tu/unique-index-metadata)
             model semantic.tu/mock-embedding-model]
         (mt/with-dynamic-fn-redefs [semantic.env/get-index-metadata (fn [] index-metadata)
-                                    semantic.env/get-configured-embedding-model (fn [] model)]
+                                    semantic.env/get-configured-embedding-model (fn [] model)
+                                    ;; supported? requires a configured embedder for engine selection
+                                    semantic.embedding/get-configured-model (fn [] model)]
           (testing "Missing tables are handled gracefully"
             (let [result (try
                            (@#'semantic.task.collector/collect-metrics!)
