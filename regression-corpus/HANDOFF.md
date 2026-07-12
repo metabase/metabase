@@ -119,14 +119,42 @@ clean pure-add (+11/-0, only its e2e diverged) so it's the easiest re-author.
 (dedicated-repro or feature specs, not aggregators), OR have agents emit the witness block +
 e2e block-title as text and apply against HEAD rather than trusting patch context.
 
-## GRAND TOTAL: ~140 e2e repros culled, ~130 FE witnesses + 11 BE deftests
-Branch `dev-2347`, 41 commits ahead of master, tree clean.
-Remaining deferred: **6 batch-12 witnesses** (30610 55486 33079 52975 42697 37726 — per-file
-merges on reused specs) + **4 batch-14 witnesses** (32037 53649 59356 63745 — worktree
-divergence, re-author against HEAD) + FE **34395** (agent API-errored; predicate-level
-`isActionDashCard` witness). BE-deftest backlog: 40176, 32625+31635, 29795 (batch 12) +
-61010, 54108 (batch 14). Patches for the batch-14 deferred are in /tmp/rlc-mine/*.patch
-(ephemeral — re-derive from the fix commits if gone).
+## Batches 15 + 16 (rlc-mine2, branch-untouched pf3-6 wave): 7 landed
+
+Selection refined: exclude specs our branch already touched (`git diff master..HEAD --name-only`)
+— those are the divergence-prone ones. Dispatched 12 agents (batch 15); a transient API-error
+cluster killed 6 mid-run, which I retried (batch 16).
+- **Batch 15** (`f4d77141941`): landed 46308 (getDefaultMetrics/Dimensions hasData guard),
+  66874 (AppColorSchemeProvider re-sync; +1 module-boundaries allowlist line for the new
+  root-level spec), 43538 (LineChart STACKABLE_SETTINGS). keep: 48347 52711 53364 (irreducible).
+- **Batch 16** (`8c728993e70`): retried the 6 API-failures → landed 35954 (isStructuredDimensionTarget),
+  57388 (StringInputWidget default-reset), 45638 (useSetEmbedFont #font hash), 19817
+  (isColumnReorderingDisabled drag gate). keep: 41419 (dnd-kit geometry + orphaned seam).
+  Deferred: **40051** (querying.unit.spec.ts divergent-base clobber — SAME file as 59356;
+  merge both into the existing file).
+
+**Two recurring worktree-divergence files** now have deferred witnesses colliding on them:
+`querying.unit.spec.ts` (59356 + 40051). When re-authoring, open the existing dev-2347 file
+and append both tests rather than applying either patch. Apply mitigation confirmed working:
+branch-untouched specs applied 6/7 clean (only cross-batch same-file appends —
+cartesian-chart 68819+46308, mapping-options 44266+35954 — needed a keep-both 3way resolve).
+
+**Frontier note:** the divergence-safe fresh-spec pf3-6 pool is now nearly dry. What remains is
+(a) ~300 pf>=4 candidates dominated by pf=50+ large refactors (low yield, mostly obsoleted),
+(b) branch-touched aggregator specs (divergence-prone — need the text-based apply protocol:
+have agents emit witness block + e2e block-title as TEXT, apply against HEAD, not a patch).
+
+## GRAND TOTAL: ~151 e2e repros culled, ~140 FE witnesses + 11 BE deftests
+Branch `dev-2347`, 47 commits ahead of master, tree clean.
+Remaining deferred witnesses (re-author against current HEAD):
+- batch-12 (6): 30610 55486 33079 52975 42697 37726 (per-file merges on reused specs)
+- batch-14 (4): 32037 53649 59356 63745 (worktree divergence)
+- batch-16 (1): 40051 (querying.unit.spec.ts — merge with 59356 into existing file)
+- FE 34395 (agent API-errored; predicate-level `isActionDashCard` witness)
+BE-deftest backlog: 40176, 32625+31635, 29795 (batch 12) + 61010, 54108 (batch 14).
+Patches for the deferred are in /tmp/rlc-mine/*.patch (ephemeral — re-derive from fix commits
+if gone). Agent→issue maps: /tmp/rlc-mine-agents.tsv, /tmp/rlc-mine2-agents.tsv,
+/tmp/rlc-retry-agents.tsv; outcome log /tmp/rlc-mine-outcomes.txt.
 
 ## FE FAN-OUT COMPLETE — pool exhausted
 
