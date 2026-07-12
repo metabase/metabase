@@ -144,17 +144,32 @@ cartesian-chart 68819+46308, mapping-options 44266+35954 — needed a keep-both 
 (b) branch-touched aggregator specs (divergence-prone — need the text-based apply protocol:
 have agents emit witness block + e2e block-title as TEXT, apply against HEAD, not a patch).
 
-## GRAND TOTAL: ~151 e2e repros culled, ~140 FE witnesses + 11 BE deftests
-Branch `dev-2347`, 47 commits ahead of master, tree clean.
-Remaining deferred witnesses (re-author against current HEAD):
-- batch-12 (6): 30610 55486 33079 52975 42697 37726 (per-file merges on reused specs)
-- batch-14 (4): 32037 53649 59356 63745 (worktree divergence)
-- batch-16 (1): 40051 (querying.unit.spec.ts — merge with 59356 into existing file)
-- FE 34395 (agent API-errored; predicate-level `isActionDashCard` witness)
-BE-deftest backlog: 40176, 32625+31635, 29795 (batch 12) + 61010, 54108 (batch 14).
-Patches for the deferred are in /tmp/rlc-mine/*.patch (ephemeral — re-derive from fix commits
-if gone). Agent→issue maps: /tmp/rlc-mine-agents.tsv, /tmp/rlc-mine2-agents.tsv,
-/tmp/rlc-retry-agents.tsv; outcome log /tmp/rlc-mine-outcomes.txt.
+## Batch 17 (deferred + BE backlog): 11 witnesses landed, 5 BE items cleared
+
+Committed `f19ae1317f4`. Cleared BOTH backlogs by re-authoring against current HEAD.
+- **Root cause nailed:** Agent-tool `isolation:worktree` bases off an OLD commit
+  (`6188ef843f9`), not dev-2347 HEAD — confirmed via `git worktree list` showing that base.
+  Since our branch changed ONLY test files, every deferred witness's *logic* is valid on
+  dev-2347; only patch application diverged. **Mitigation that worked:** dispatch agents with a
+  **text-output protocol** (emit the witness/deftest block + imports + e2e block-title as TEXT,
+  not a patch), then apply against HEAD by hand. 12 agents, all succeeded (after retrying a
+  transient API-error cluster earlier).
+- **11 FE witnesses landed** (30610 55486 33079 52975 42697 37726 32037 53649 59356 63745
+  40051): 548 tests pass. 59356+40051 merged into the existing querying.unit.spec.ts (which
+  already held #49270) with a shared `run-query` mock overridden per-describe.
+- **5 BE-deftest items cleared** (61010, 32625+31635, 29795 oracle-existed; 40176 + 54108
+  deftests authored). **54108's shipped oracle was VACUOUS** (structure-only assertion; the
+  `:between` bounds don't change with the fix) — authored `native-card-day-breakout-uses-source-type-test`
+  asserting the filter field-ref `:base-type` instead. Both new deftests verified via test-agent.
+- **jest + agent worktrees:** run witnesses with `--modulePathIgnorePatterns '/.claude/worktrees/'`
+  to avoid haste-map pollution while worktrees linger, or remove all worktrees first.
+
+## GRAND TOTAL: ~167 e2e repros culled, ~151 FE witnesses + 13 BE deftests
+Branch `dev-2347`, 49 commits ahead of master, tree clean.
+**All deferred witnesses and the BE-deftest backlog are now CLEARED (batch 17).**
+Only remaining item: FE **34395** (agent API-errored back in batch 7; never got a witness) —
+predicate-level `isActionDashCard` witness, don't render the whole embedded dashboard.
+Outcome log for the deferred/BE work: /tmp/rlc-deferred-outcomes.txt (ephemeral).
 
 ## FE FAN-OUT COMPLETE — pool exhausted
 
