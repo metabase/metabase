@@ -83,9 +83,13 @@
 ;;
 ;; ## Tips
 ;;
+;; Nested modules inherit `:team` from their closest ancestor. Declare `:team` on a child only to override that
+;; inherited owner; the validation task rejects redundant overrides. Run `./bin/mage modules-expanded-config` to
+;; inspect effective teams, namespace prefixes, APIs, uses, friends, and exports with defaults and wildcards expanded.
+;;
 ;; PRO TIP: Check out the [[dev.deps-graph]] namespace for helpful tools to see where a module is used externally, and
 ;; for tools for calculating this config -- you can use [[dev.deps-graph/print-kondo-config-diff]] to see what updates
-;; you need to make
+;; you need to make. Run `./bin/mage modules-validate` to execute every module-config validation.
 {:metabase/modules
  {actions
   {:team "Gadget"

@@ -63,7 +63,7 @@ Explicit `:ns-prefix` is an effective bridge between logical module structure an
 
 Empty APIs are meaningfully different from omitted APIs because omission supplies `.api`, `.core`, and `.init` defaults. That distinction is easy to miss during review. A schema or comment convention should make deliberate `:api #{}` entries obvious.
 
-Team ownership should follow the module tree. A child inherits the closest ancestor's `:team` unless the child declares a real override; repeating the inherited team is invalid. `dev.deps-graph/expanded-kondo-config` makes the effective ownership and other inferred values visible from the REPL. Run `clojure -X:dev dev.deps-graph/print-expanded-kondo-config` for stable, fully expanded EDN, including source-aware expansion of `:api :any` and name-visibility-aware expansion of `:uses :any`.
+Team ownership should follow the module tree. A child inherits the closest ancestor's `:team` unless the child declares a real override; repeating the inherited team is invalid. `dev.deps-graph/expanded-kondo-config` makes the effective ownership and other inferred values visible from the REPL. Run `./bin/mage modules-expanded-config` for stable, fully expanded EDN, including source-aware expansion of `:api :any` and name-visibility-aware expansion of `:uses :any`.
 
 Run `./bin/mage modules-validate` for the complete config validation locally. The Mage task delegates to the authoritative module test namespace, so local and CI validation can't drift into separate implementations.
 

@@ -360,6 +360,13 @@
         (shell/sh* "./bin/test-agent" ":only" "[metabase.core.modules-test]")]
     (u/exit exit)))
 
+(defn cli-print-expanded-config!
+  "Print the source-aware expanded module config and exit with the command's status."
+  [_cli-args]
+  (let [{:keys [exit], :or {exit -1}}
+        (shell/sh* "clojure" "-X:dev" "dev.deps-graph/print-expanded-kondo-config")]
+    (u/exit exit)))
+
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
   `deps.edn`."
