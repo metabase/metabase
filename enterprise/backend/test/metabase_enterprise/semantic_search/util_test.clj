@@ -11,6 +11,21 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
+(deftest quote-ident-test
+  (testing "wraps in double quotes and doubles any embedded double quote (the next.jdbc.quoted/postgres contract)"
+    (is (= "\"semantic_search\"" (semantic.util/quote-ident "semantic_search")))
+    (is (= "\"weird\"\"name\"" (semantic.util/quote-ident "weird\"name")))))
+
+(deftest column-keyword-test
+  (testing "a dotted-name keyword (renders as separate identifiers), never a namespaced one"
+    (is (= :index_table_1.model (semantic.util/column-keyword "index_table_1" "model")))
+    (is (= :semantic_search.index_table_1.model
+           (semantic.util/column-keyword "semantic_search.index_table_1" "model")))
+    (is (nil? (namespace (semantic.util/column-keyword "semantic_search.t" "c")))))
+  (testing "conflict-target-column drops the schema — ON CONFLICT names the target by its bare relation"
+    (is (= :index_table_1.model
+           (semantic.util/conflict-target-column "semantic_search.index_table_1" "model")))))
+
 (deftest catalog-lookups-schema-scoping-test
   (testing "qualified names scope table/index existence checks to their schema; a same-named object in
             another schema (e.g. the app db's public) must not satisfy them"

@@ -19,6 +19,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest schema-scoping-helpers-test
+  (testing "scope-where-to-schema adds the schema predicate only in shared app-db mode (non-nil schema)"
+    (is (= [:and [:like :t.table_name [:inline "x_%"]]]
+           (#'sut/scope-where-to-schema [:and [:like :t.table_name [:inline "x_%"]]] nil)))
+    (is (= [:and [:like :t.table_name [:inline "x_%"]] [:= :t.table_schema [:inline "semantic_search"]]]
+           (#'sut/scope-where-to-schema [:and [:like :t.table_name [:inline "x_%"]]] "semantic_search"))))
+  (testing "requalify-table-names prefixes the schema only in shared app-db mode"
+    (is (= ["a" "b"] (#'sut/requalify-table-names nil ["a" "b"])))
+    (is (= ["semantic_search.a" "semantic_search.b"]
+           (#'sut/requalify-table-names "semantic_search" ["a" "b"])))))
+
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 (defn- create-test-index

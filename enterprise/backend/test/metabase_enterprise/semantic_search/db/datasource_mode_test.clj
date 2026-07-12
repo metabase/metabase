@@ -35,6 +35,7 @@
                   mdb/db-type (constantly :h2)]
       (with-support-cache nil
         (is (false? (semantic.db.datasource/dedicated-url-configured?)))
+        (is (false? (semantic.util/semantic-search-configured?)))
         (is (= :unavailable (semantic.db.datasource/pgvector-mode)))))))
 
 (deftest non-postgres-app-db-test
