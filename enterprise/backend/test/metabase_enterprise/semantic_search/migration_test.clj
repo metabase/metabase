@@ -87,6 +87,32 @@
             (is (= #{"migration" "index_metadata" "index_control" "index_gate"}
                    (schema-tables)))))))))
 
+(deftest dedicated-reset-stays-in-default-schema-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (testing "the dedicated-mode reset wipes only the default schema — cohabitant schemas survive"
+        (let [pgvector (semantic.env/get-pgvector-datasource!)]
+          (jdbc/execute! pgvector ["CREATE SCHEMA cohabitant"])
+          (jdbc/execute! pgvector ["CREATE TABLE cohabitant.precious (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE doomed (id int)"])
+          (semantic.db.connection/with-migrate-tx [tx]
+            (semantic.db.migration/maybe-migrate! tx {:index-metadata semantic.index-metadata/default-index-metadata}))
+          (is (true? (semantic.util/table-exists? pgvector "cohabitant.precious")))
+          (is (false? (semantic.util/table-exists? pgvector "public.doomed"))))))))
+
+(deftest dedicated-reset-refuses-app-db-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-test-db-defaults!
+      (testing "the dedicated-mode reset refuses a database that looks like a Metabase app db"
+        (let [pgvector (semantic.env/get-pgvector-datasource!)]
+          (jdbc/execute! pgvector ["CREATE TABLE databasechangelog (id int)"])
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabase application"
+                                (semantic.db.connection/with-migrate-tx [tx]
+                                  (semantic.db.migration/maybe-migrate!
+                                   tx {:index-metadata semantic.index-metadata/default-index-metadata}))))
+          (testing "nothing was dropped"
+            (is (true? (semantic.util/table-exists? pgvector "public.databasechangelog")))))))))
+
 (defn- executions-overlap?
   "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
    Returns true if there's any overlap (which would indicate lock failure)."

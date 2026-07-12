@@ -16,11 +16,18 @@
   schema migration will be performed."
   2)
 
+(def ^:private app-db-sentinel-tables
+  "Tables that only exist in a Metabase application database.
+  Their presence in a to-be-wiped dedicated database means MB_PGVECTOR_DB_URL was pointed at an app db."
+  #{"databasechangelog" "core_user"})
+
 (defn- drop-all-but-migration-table
   "Destructive: clears out semantic-search storage ahead of recreating it from scratch.
   When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
-  dropped — the application's tables live in other schemas and must never be touched here. Without a
-  `:schema` the whole database is assumed dedicated to semantic search and is wiped wholesale."
+  dropped — the application's tables live in other schemas and must never be touched here.
+  Without a `:schema` the database is assumed dedicated to semantic search and its default schema is
+  wiped; refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at
+  the application database would otherwise destroy it here, on first init)."
   [index-metadata tx]
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx
@@ -31,11 +38,18 @@
                                           [:and
                                            [:= :schemaname [:inline schema]]
                                            [:<> :tablename [:inline "migration"]]]
+                                          ;; dedicated mode only ever creates tables in the default
+                                          ;; schema, so the reset has no business outside it
                                           [:and
-                                           [:<> :schemaname [:inline "information_schema"]]
-                                           [:<> :schemaname [:inline "pg_catalog"]]
+                                           [:= :schemaname [:raw "current_schema()"]]
                                            [:<> :tablename  [:inline "migration"]]])})
                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (when (and (nil? schema)
+               (some (comp app-db-sentinel-tables :tablename) tables))
+      (throw (ex-info (str "Refusing to reset the semantic search database: it contains Metabase application"
+                           " tables. Point MB_PGVECTOR_DB_URL at a dedicated pgvector database, or unset it to"
+                           " share the application database in the isolated semantic_search schema.")
+                      {:type ::refused-app-db-wipe})))
     (doseq [{:keys [schemaname tablename]} tables]
       (jdbc/execute! tx
                      (sql/format
