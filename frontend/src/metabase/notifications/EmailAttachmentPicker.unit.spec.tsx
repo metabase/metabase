@@ -295,6 +295,29 @@ describe("EmailAttachmentPicker", () => {
     });
   });
 
+  describe("Keep data pivoted (metabase#49525)", () => {
+    it("should write pivot_results to the pivot card when the toggle is turned on", () => {
+      const { setPulse } = setup({ pulse: createPulseWithPivotCard() });
+
+      const pivotToggle = screen.getByTestId("keep-data-pivoted");
+      expect(pivotToggle).not.toBeChecked();
+
+      fireEvent.click(pivotToggle);
+
+      expect(setPulse).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cards: expect.arrayContaining([
+            expect.objectContaining({
+              id: 8,
+              display: "pivot",
+              pivot_results: true,
+            }),
+          ]),
+        }),
+      );
+    });
+  });
+
   describe("PDF attachment", () => {
     it("should render an unchecked 'Attach a PDF' switch by default", () => {
       setup();
@@ -481,6 +504,30 @@ function createPulse(): DashboardSubscription {
     entity_id: "test-entity-id" as any,
     id: 1,
     updated_at: "2024-01-01T00:00:00Z",
+  };
+}
+
+function createPulseWithPivotCard(): DashboardSubscription {
+  const pulse = createPulse();
+  return {
+    ...pulse,
+    cards: [
+      {
+        id: 8,
+        collection_id: null,
+        description: null,
+        display: "pivot",
+        name: "pivot card",
+        // Already attached so the picker mounts enabled and shows the
+        // "Keep the data pivoted" option for this pivot-display card.
+        include_csv: true,
+        include_xls: false,
+        pivot_results: false,
+        dashboard_card_id: 5,
+        dashboard_id: 1,
+        parameter_mappings: [],
+      },
+    ],
   };
 }
 

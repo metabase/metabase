@@ -2,7 +2,11 @@ import { setupBasename } from "__support__/basename";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDataset,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 import {
   getChartFileName,
@@ -189,6 +193,44 @@ describe("getDatasetParams - public question (uuid-based)", () => {
 
     const url = new URLSearchParams(downloadParams.params);
     expect(url.get("csv_include_bom")).toBe("true");
+  });
+});
+
+describe("getDatasetParams - internal dashcard (metabase#20868)", () => {
+  const CARD_ID = 1;
+  const DASHBOARD_ID = 10;
+  const DASHCARD_ID = 20;
+  const question = new Question(createMockCard({ id: CARD_ID }), undefined);
+  const parameters = [
+    createMockParameter({
+      id: "92eb69ea",
+      name: "ID",
+      slug: "id",
+      type: "id",
+      value: 1,
+    }),
+  ];
+  const result = createMockDataset({
+    json_query: { database: 1, type: "query", parameters },
+  });
+
+  it("routes a card opened from a dashboard through the dashcard endpoint, not the card endpoint", () => {
+    const downloadParams = getDatasetParams({
+      type: "xlsx",
+      question,
+      result,
+      dashboardId: DASHBOARD_ID,
+      dashcardId: DASHCARD_ID,
+    });
+
+    // The card endpoint (/api/card/:id/query) requires self-service data
+    // permission; the dashcard endpoint does not. #20868 was a no-data user
+    // failing to export because the widget fell back to the card endpoint.
+    expect(downloadParams.method).toBe("POST");
+    expect(downloadParams.url).toBe(
+      `/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/card/${CARD_ID}/query/xlsx`,
+    );
+    expect(downloadParams.body?.parameters).toEqual(parameters);
   });
 });
 

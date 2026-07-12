@@ -3,7 +3,10 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  INDEX_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   Datum,
   DimensionModel,
@@ -22,6 +25,7 @@ import {
   canBrush,
   getEventDimensions,
   getTimelineEventsForEvent,
+  getTooltipModel,
 } from "./events";
 
 const CARD_ID = 107;
@@ -392,5 +396,93 @@ describe("getTimelineEventsForEvent", () => {
     expect(
       getTimelineEventsForEvent(timelineEventsModel, event),
     ).toBeUndefined();
+  });
+});
+
+describe("getTooltipModel", () => {
+  // Reproduces issue #50630: a scatter chart broken out by a category renders a
+  // separate series per category value (Widget, Gizmo, Gadget, Doohickey).
+  // Hovering one bubble must surface ONLY the hovered category's series in the
+  // tooltip, not every breakout series. Scatter uses the "default" tooltip type,
+  // which routes to getSingleSeriesTooltipModel; the `seriesToShow` filter there
+  // keeps just the hovered breakout series (plus any non-breakout series). Before
+  // the fix, scatter used the series-comparison tooltip and listed all breakouts. (#50630)
+  it("shows only the hovered breakout series, not the other categories (metabase#50630)", () => {
+    const countColumn = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      source: "aggregation",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+
+    const yearColumn = createMockColumn({
+      name: "CREATED_AT",
+      display_name: "Created At: Year",
+      source: "breakout",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+    });
+
+    const categories = ["Widget", "Gizmo", "Gadget", "Doohickey"];
+    const dataKeyFor = (category: string) => `${CARD_ID}:count:${category}`;
+
+    const seriesModels = categories.map((category) =>
+      createMockBreakoutSeriesModel({
+        dataKey: dataKeyFor(category),
+        name: category,
+        cardId: CARD_ID,
+        column: countColumn,
+        breakoutColumn: yearColumn,
+        breakoutValue: category,
+        color: "#509EE3",
+      }),
+    );
+
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "2028",
+      [INDEX_KEY]: 0,
+      [dataKeyFor("Widget")]: 173,
+      [dataKeyFor("Gizmo")]: 200,
+      [dataKeyFor("Gadget")]: 210,
+      [dataKeyFor("Doohickey")]: 220,
+    };
+
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: {
+        column: yearColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: yearColumn },
+      },
+      seriesModels,
+      dataset: [datum],
+      transformedDataset: [datum],
+      columnByDataKey: Object.fromEntries(
+        categories.map((category) => [dataKeyFor(category), countColumn]),
+      ),
+    });
+
+    const settings: ComputedVisualizationSettings = {
+      "graph.tooltip_type": "default",
+    };
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      settings,
+      0,
+      "scatter",
+      dataKeyFor("Widget"),
+    );
+
+    expect(tooltipModel).not.toBeNull();
+    expect(tooltipModel?.header).toBe("2028");
+    expect(tooltipModel?.rows).toHaveLength(1);
+    expect(tooltipModel?.rows[0].name).toBe("Widget");
+    expect(tooltipModel?.rows[0].values).toEqual(["173"]);
+
+    const rowNames = tooltipModel?.rows.map((row) => row.name);
+    expect(rowNames).not.toContain("Gizmo");
+    expect(rowNames).not.toContain("Gadget");
+    expect(rowNames).not.toContain("Doohickey");
   });
 });

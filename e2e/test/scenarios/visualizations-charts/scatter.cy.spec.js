@@ -20,20 +20,6 @@ const testQuery = {
   type: "query",
 };
 
-const testQueryBreakout = {
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-      ["field", PRODUCTS.RATING, null],
-    ],
-  },
-  type: "query",
-};
-
 describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
     H.restore();
@@ -98,31 +84,6 @@ describe("scenarios > visualizations > scatter", () => {
         },
       ],
     });
-  });
-
-  it("should not show non-hovered breakout series in the tooltip (metabase#50630)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQueryBreakout,
-      display: "scatter",
-      visualization_settings: {
-        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
-        "graph.metrics": ["count"],
-      },
-    });
-
-    // Use force=true because this chart has too many bubbles that overlap with each other
-    triggerPopoverForBubble(300, true);
-    H.assertEChartsTooltip({
-      header: "2028",
-      rows: [
-        {
-          name: "Widget",
-          value: "173",
-        },
-      ],
-    });
-
-    H.assertEChartsTooltipNotContain(["Gizmo", "Gadget", "Doohickey"]);
   });
 
   it("should not display data points even when enabled in settings (metabase#13247)", () => {

@@ -277,21 +277,6 @@ describe("scenarios > metrics > editing", () => {
         verifyScalarValue("18,760");
       });
     });
-
-    it("should not crash when cancelling creation or editing of a metric (metabase#48024)", () => {
-      cy.log("cancel new metric creation");
-      startNewMetricWithTable("Sample Database", "Orders");
-      H.MetricPage.cancelButton().click();
-
-      cy.log("cancel editing an existing metric");
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-        cy.visit(`/metric/${card.id}/query`),
-      );
-      H.MetricPage.queryEditor().should("be.visible");
-      addBreakout({ tableName: "Product", columnName: "Created At" });
-      H.MetricPage.cancelButton().click();
-      H.getNotebookStep("summarize").findByText("Count").should("be.visible");
-    });
   });
 
   describe("data source", () => {

@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USERS, WEBMAIL_CONFIG } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_USER_ID,
@@ -19,7 +19,6 @@ const {
   REVIEWS_ID,
   PEOPLE,
 } = SAMPLE_DATABASE;
-const { WEB_PORT } = WEBMAIL_CONFIG;
 
 describe("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -1020,52 +1019,6 @@ describe("issue 49525", { tags: "@external" }, () => {
       questionDetails: q1Details,
     }).then(({ body: { dashboard_id } }) => {
       H.visitDashboard(dashboard_id);
-    });
-  });
-
-  it("Subscriptions with 'Keep the data pivoted' checked should work (metabase#49525)", () => {
-    // Send a test email subscription
-    H.openDashboardMenu("Subscriptions");
-    H.sidebar().within(() => {
-      cy.findByText("Email it").click();
-      cy.findByPlaceholderText("Enter user names or email addresses").click();
-    });
-
-    H.popover().findByText(`${first_name} ${last_name}`).click();
-
-    H.sidebar().within(() => {
-      // Click this just to close the popover that is blocking the "Send email now" button
-      cy.findByText("To:").click();
-      cy.findByLabelText("Attach results")
-        .should("not.be.checked")
-        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
-      cy.findByText("Keep the data pivoted").click();
-      cy.findByText("Questions to attach").click();
-    });
-
-    H.sendEmailAndAssert((email) => {
-      // Get the CSV attachment data
-      const csvAttachment = email.attachments.find(
-        (attachment) => attachment.contentType === "text/csv",
-      );
-
-      expect(csvAttachment).to.exist;
-
-      // get the csv attachment file's contents
-      cy.request({
-        method: "GET",
-        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
-        encoding: "utf8",
-      }).then((response) => {
-        // CSV exports begin with a UTF-8 BOM; strip it, and tolerate either
-        // \n or \r\n line endings, before asserting on the header row.
-        const csvContent = response.body.replace(/^\uFEFF/, "");
-        const rows = csvContent.split(/\r?\n/);
-        const headers = rows[0];
-        expect(headers).to.equal(
-          "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals",
-        );
-      });
     });
   });
 

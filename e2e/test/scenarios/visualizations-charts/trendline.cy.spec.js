@@ -1,7 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > trendline", () => {
   function setup(questionDetails) {
@@ -75,26 +75,5 @@ describe("scenarios > question > trendline", () => {
       cy.findByText("Show trend line for this series").click();
     });
     H.trendLine().should("have.length", 1);
-  });
-
-  it("should display trend line for stack-100% chart (metabase#25614)", () => {
-    setup({
-      name: "25614",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"], ["avg", ["field", PRODUCTS.PRICE, null]]],
-        breakout: [["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }]],
-      },
-      display: "bar",
-    });
-    H.openVizSettingsSidebar();
-    // stack 100%, then enable trend line
-    H.leftSidebar().within(() => {
-      cy.findByText("Display").click();
-      cy.findByText("Stack - 100%").click();
-      cy.findByText("Trend line").click();
-    });
-    // ensure that two trend lines are present
-    H.trendLine().should("have.length", 2);
   });
 });

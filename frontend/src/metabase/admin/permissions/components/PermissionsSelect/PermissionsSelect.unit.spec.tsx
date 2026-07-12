@@ -101,6 +101,30 @@ describe("PermissionSelect", () => {
     );
   });
 
+  it("propagates the current permission to sub-collections when the toggle is switched on (metabase#20911)", async () => {
+    const onChangeMock = jest.fn();
+    render(
+      <PermissionsSelect
+        options={options}
+        value={DataPermissionValue.NONE}
+        onChange={onChangeMock}
+        isDisabled={false}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
+        hasChildren
+        toggleLabel="Also change sub-collections"
+      />,
+    );
+
+    await userEvent.click(screen.getByText("No access"));
+
+    const toggle = await screen.findByRole("switch");
+    await userEvent.click(toggle);
+
+    expect(onChangeMock).toHaveBeenCalledWith(DataPermissionValue.NONE, true);
+  });
+
   it("does not show options after click when disabled", async () => {
     render(
       <PermissionsSelect

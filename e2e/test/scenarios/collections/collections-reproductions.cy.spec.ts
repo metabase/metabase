@@ -1,77 +1,10 @@
 const { H } = cy;
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
-  FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { CollectionId } from "metabase-types/api";
-
-describe("issue 20911", () => {
-  const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
-  const FIRST_COLLECTION = "First collection";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("GET", "/api/collection/graph").as("getGraph");
-  });
-
-  it("should allow to change sub-collections permissions after access change (metabase#20911)", () => {
-    cy.visit("/collection/root/permissions");
-    cy.wait("@getGraph");
-    H.assertPermissionTable([
-      ["Administrators", "Curate"],
-      ["All Users", "No access"],
-      ["collection", "Curate"],
-      ["data", "No access"],
-      ["nosql", "No access"],
-      ["readonly", "View"],
-    ]);
-    H.modifyPermission(
-      "collection",
-      COLLECTION_ACCESS_PERMISSION_INDEX,
-      "No access",
-      // @ts-expect-error js function being used in ts file
-      false,
-    );
-    H.modifyPermission(
-      "collection",
-      COLLECTION_ACCESS_PERMISSION_INDEX,
-      "No access",
-      // @ts-expect-error js function being used in ts file
-      true,
-    );
-    H.modal().within(() => {
-      cy.button("Save").click();
-    });
-
-    H.navigationSidebar().within(() => {
-      cy.findByText(FIRST_COLLECTION).click();
-    });
-    H.getCollectionActions().within(() => {
-      cy.icon("ellipsis").click();
-    });
-    H.popover().within(() => {
-      cy.icon("lock").click();
-    });
-    H.assertPermissionTable([
-      ["Administrators", "Curate"],
-      ["All Users", "No access"],
-      ["collection", "No access"],
-      ["data", "No access"],
-      ["nosql", "No access"],
-      ["readonly", "View"],
-    ]);
-
-    cy.signInAsNormalUser();
-    cy.visit("/collection/root");
-    cy.get("main").findByText("You don't have permissions to do that.");
-
-    cy.visit(`/collection/${FIRST_COLLECTION_ID}`);
-    cy.get("main").findByText("Sorry, you don’t have permission to see that.");
-  });
-});
 
 describe("issue 24660", () => {
   const collectionName = "Parent";

@@ -93,4 +93,27 @@ describe("getWaterfallChartModel", () => {
       dataset.some((datum) => datum[IS_WATERFALL_TOTAL_DATA_KEY] === true),
     ).toBe(false);
   });
+
+  // Guards metabase#44176: the tooltip reads its value from the model's
+  // `dataset` (the original-values dataset extended with the Total row). Column
+  // display scaling ("Multiply by a number") must already be applied to those
+  // values, otherwise the tooltip shows the raw, unscaled number.
+  it("applies column value scaling to the tooltip dataset (metabase#44176)", () => {
+    const scale = 0.1;
+    const { dataset, seriesModels } = buildModel("linear", {
+      column_settings: {
+        [`["name","${metricColumn.name}"]`]: { scale },
+      },
+    });
+    const seriesDataKey = seriesModels[0].dataKey;
+
+    const scaledMetricValues = dataset
+      .filter((datum) => datum[IS_WATERFALL_TOTAL_DATA_KEY] !== true)
+      .map((datum) => datum[seriesDataKey]);
+    expect(scaledMetricValues).toEqual(rows.map(([, value]) => value * scale));
+
+    const totalDatum = dataset[dataset.length - 1];
+    expect(totalDatum[IS_WATERFALL_TOTAL_DATA_KEY]).toBe(true);
+    expect(totalDatum[seriesDataKey]).toBe(expectedRawTotal * scale);
+  });
 });
