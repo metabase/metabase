@@ -211,8 +211,11 @@
   (atom nil))
 
 (def ^:private probe-cooldown-ms
-  "How long an unsupported or failed app-db pgvector probe is trusted before re-probing."
-  (.toMillis (java.time.Duration/ofSeconds 30)))
+  "How long an unsupported or failed app-db pgvector probe is trusted before re-probing.
+  Long enough that a never-provisioned instance isn't running a rolled-back CREATE probe into its DDL audit
+  log every few seconds, short enough to pick up a runtime `CREATE EXTENSION` / privilege grant without a
+  restart."
+  (.toMillis (java.time.Duration/ofMinutes 5)))
 
 (defonce ^{:doc "Log-once latch for the \"no pgvector\" operator hint; the negative probe recurs each
   cooldown, so without it the hint would repeat. Tests reset it."}
