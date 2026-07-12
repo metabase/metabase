@@ -25,7 +25,6 @@
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
-   [metabase.search.core :as search]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
@@ -230,7 +229,6 @@
   (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (llm.startup/check-and-sync-settings-on-startup!)
-  (search/check-for-removed-env-vars!)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)

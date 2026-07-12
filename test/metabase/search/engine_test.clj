@@ -8,6 +8,7 @@
    [metabase.search.init]
    [metabase.search.settings :as search.settings]
    [metabase.search.task.search-index :as task.search-index]
+   [metabase.startup.core :as startup]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as tu]))
@@ -65,13 +66,24 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Set MB_SEARCH_ENGINE=in-place"
+                 (search/check-for-removed-env-vars!)))))
+        (testing "when semantic is the only supported engine there is nothing to fall back to"
+          (with-engines {:supported #{:search.engine/semantic}}
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"only supported engine and cannot be disabled"
                  (search/check-for-removed-env-vars!))))))
       (testing "with a plain remove-it message when another engine already serves search"
         (with-engines {:supported #{:search.engine/appdb :search.engine/in-place}}
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"remove it from your configuration"
-               (search/check-for-removed-env-vars!)))))))
+               (search/check-for-removed-env-vars!)))))
+      (testing "the failure is flagged fatal so run-startup-logic! aborts startup"
+        (with-engines {:supported all-engines}
+          (is (true? (::startup/fatal
+                      (ex-data (try (search/check-for-removed-env-vars!)
+                                    (catch clojure.lang.ExceptionInfo e e))))))))))
   (testing "startup proceeds when the kill switch is absent"
     (with-redefs [env/env {}]
       (is (nil? (search/check-for-removed-env-vars!))))))

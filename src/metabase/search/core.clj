@@ -12,6 +12,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.startup.core :as startup]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -101,12 +102,24 @@
   MB_SEARCH_ENGINE value the switch would have fallen back to when semantic is now serving search."
   []
   (when (env/env :mb-semantic-search-enabled)
-    (let [engines (search.engine/supported-engines)]
-      (throw (ex-info (if (= :search.engine/semantic (first engines))
-                        (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
-                             (name (first (remove #{:search.engine/semantic} engines))))
-                        (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed; remove it from your configuration."))
-                      {:env-var "MB_SEMANTIC_SEARCH_ENABLED"})))))
+    (let [engines           (search.engine/supported-engines)
+          semantic-serving? (= :search.engine/semantic (first engines))
+          fallback          (when semantic-serving? (second engines))]
+      (throw (startup/fatal-ex-info
+              (cond
+                fallback
+                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                     (name fallback))
+
+                semantic-serving?
+                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED.")
+
+                :else
+                (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed; remove it from your configuration."))
+              {:env-var "MB_SEMANTIC_SEARCH_ENABLED"})))))
+
+(defmethod startup/def-startup-logic! ::check-for-removed-env-vars [_]
+  (check-for-removed-env-vars!))
 
 (defn init-index!
   "Ensure there is an index ready to be populated."
