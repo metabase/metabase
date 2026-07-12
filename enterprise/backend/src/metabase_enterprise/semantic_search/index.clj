@@ -511,7 +511,15 @@
                     (format "whitespace in the table name (%s) is not currently supported" table-name))
           {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
-      (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+      (try
+        (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+        (catch Exception e
+          ;; Extension install commonly fails on privileges (may need superuser); give the operator the way out.
+          (throw (ex-info (str "Failed to install the pgvector extension. Have a privileged user run"
+                               " CREATE EXTENSION vector; on this database, or set MB_PGVECTOR_DB_URL to a"
+                               " database where it is installed.")
+                          {:type ::extension-install-failed}
+                          e))))
       (when force-reset? (drop-index-table! connectable index))
       (jdbc/execute!
        connectable
