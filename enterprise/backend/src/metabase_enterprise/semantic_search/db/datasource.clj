@@ -201,8 +201,8 @@
   Cached for the JVM lifetime — extensions don't come and go under a running instance. Tests reset it."
   (atom nil))
 
-(def probe-retry-after
-  "Epoch-millis floor for the next app-db pgvector probe after a failure, or nil when none is pending.
+(def probe-cooldown-timer
+  "A [[u/start-timer]] taken when the last app-db pgvector probe failed, or nil when none is pending.
   Throttles the catalog query and its WARN so a persistent failure doesn't re-probe on every search and
   20s indexer tick. Tests reset it."
   (atom nil))
@@ -214,8 +214,8 @@
 (defn- probe-due?
   "True when no app-db pgvector probe backoff is active."
   []
-  (let [after @probe-retry-after]
-    (or (nil? after) (>= (System/currentTimeMillis) after))))
+  (let [timer @probe-cooldown-timer]
+    (or (nil? timer) (>= (u/since-ms timer) probe-backoff-ms))))
 
 (defn check-app-db-pgvector-support
   "Can the application database act as the pgvector store?
@@ -240,7 +240,7 @@
 (defn- app-db-pgvector-supported?
   "Cached [[check-app-db-pgvector-support]]. Returns false (without caching) while the app DB is not yet
   set up, or when the check itself errors, so an early call or a transient connection failure cannot pin
-  a premature answer for the JVM lifetime. A failed probe backs off (see [[probe-retry-after]]) so a
+  a premature answer for the JVM lifetime. A failed probe backs off (see [[probe-cooldown-timer]]) so a
   persistent failure doesn't re-query and re-warn on every call."
   []
   (if-some [cached @app-db-pgvector-support]
@@ -258,10 +258,10 @@
                                     " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
                                     " dedicated pgvector database.")))
                    (reset! app-db-pgvector-support supported)
-                   (reset! probe-retry-after nil)
+                   (reset! probe-cooldown-timer nil)
                    supported)
                  (catch Exception e
-                   (reset! probe-retry-after (+ (System/currentTimeMillis) probe-backoff-ms))
+                   (reset! probe-cooldown-timer (u/start-timer))
                    (log/warn e (str "Semantic search: pgvector support check on the application database failed;"
                                     " will retry after backoff."))
                    false)))))))))

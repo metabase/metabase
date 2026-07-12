@@ -17,7 +17,7 @@
   "Run body with the app-db pgvector support cache (holding `init`) and the probe backoff rebound to fresh atoms."
   [init & body]
   `(with-redefs [semantic.db.datasource/app-db-pgvector-support (atom ~init)
-                 semantic.db.datasource/probe-retry-after (atom nil)]
+                 semantic.db.datasource/probe-cooldown-timer (atom nil)]
      ~@body))
 
 (deftest dedicated-mode-wins-test
@@ -80,7 +80,7 @@
                         (fn [] (throw (AssertionError. "must not re-probe during backoff")))]
             (is (= :unavailable (semantic.db.datasource/pgvector-mode)))))
         (testing "once the window clears, the next call re-probes"
-          (reset! semantic.db.datasource/probe-retry-after nil)
+          (reset! semantic.db.datasource/probe-cooldown-timer nil)
           (with-redefs [mdb/db-is-set-up? (constantly true)
                         semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))
