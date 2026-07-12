@@ -156,14 +156,6 @@
                     :model/QueryExecution
                     :model/Table}}
 
-  agent-lib
-  {:team "Metabot"
-   :api  #{metabase.agent-lib.core}
-   :uses #{lib
-           lib.metadata
-           lib.schema
-           util}}
-
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
@@ -1005,18 +997,17 @@
 
   lib
   {:team "Querying Platform"
-   :module-exports #{lib.be
+   :module-exports #{lib.agent-lib
+                     lib.be
                      lib.metadata
                      lib.schema
                      lib.source-swap}
    :api  #{metabase.lib.core
            metabase.lib.equality
-           metabase.lib.expression
            metabase.lib.filter.desugar.jvm
            metabase.lib.hierarchy
            metabase.lib.init
            metabase.lib.normalize
-           metabase.lib.ref
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.util.match
@@ -1042,6 +1033,15 @@
            types
            util}
    :model-imports #{:model/Card :model/Field :model/Table}}
+
+  lib.agent-lib
+  {:team "Metabot"
+   :ns-prefix "metabase.agent-lib"
+   :api  #{metabase.agent-lib.core}
+   :uses #{lib
+           lib.metadata
+           lib.schema
+           util}}
 
   lib.be
   {:team "Querying Platform"
@@ -1227,7 +1227,6 @@
    :module-exports #{metabot.agent-api
                      metabot.slackbot}
    :uses    #{activity-feed
-              agent-lib
               analytics
               api
               api-scope
@@ -1240,6 +1239,7 @@
               driver
               legacy-mbql
               lib
+              lib.agent-lib
               lib.be
               lib.metadata
               lib.schema
@@ -1284,10 +1284,10 @@
    :ns-prefix "metabase.agent-api"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{agent-lib
-              api
+   :uses    #{api
               auth-identity
               lib
+              lib.agent-lib
               lib.schema
               llm
               metabot
