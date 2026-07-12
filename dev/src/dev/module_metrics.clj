@@ -325,7 +325,8 @@
       :friend-exposed-namespaces friend-exposed
       ;; (outside module, private namespace) access pairs opened by friend grants — the encapsulation-leak headline.
       :privileged-internal-access-paths friend-access-paths
-      ;; Share of the codebase reachable ONLY through a declared public API (1 = fully encapsulated).
+      ;; Share of namespaces NOT reachable through a friend backdoor (1 = no friend leaks). Scoped to
+      ;; friends; undeclared cross-boundary access is tracked separately as :num-undeclared-api-leaks.
       :encapsulation-index (- 1.0 (safe-ratio friend-exposed total-namespaces))
       :total-declared-api-namespaces total-declared-api
       :api-surface-ratio (safe-ratio total-declared-api total-namespaces)
@@ -402,22 +403,6 @@
                                      row)))))]
      (csv/write-csv *out* rows))))
 
-(defn churn-weighted-blast-radius
-  "Churn-weighted selective-CI cost: replay the last `days` days of commits (default 90) and, per commit,
-  count the test files a module-granularity selection reruns. This is the honest CI-spend metric — the
-  unweighted percentiles in `repo-metrics` stay pegged on the giant SCC and overstate the payoff of a
-  cut. Git-dependent, so it lives outside the pure `repo-metrics`. Returns mean/median/p90 plus commit
-  counts (see `module-scc/expected-tests-per-commit`)."
-  ([] (churn-weighted-blast-radius (deps) (config) 90))
-  ([deps config days]
-   (let [modules      (into (sorted-set) (concat (keep :module deps) (keys config)))
-         graph        (merge (zipmap modules (repeat #{}))
-                             (deps-graph/module-dependencies deps))
-         module->tests (module-scc/module->test-files config modules)
-         file->module (into {} (map (juxt :filename :module)) deps)
-         commits      (module-scc/commit-file-lists days)]
-     (module-scc/expected-tests-per-commit graph module->tests file->module commits))))
-
 (defn config []
   (deps-graph/kondo-config))
 
@@ -426,6 +411,22 @@
    (deps (config)))
   ([config]
    (deps-graph/dependencies (deps-graph/build-prefix->module config))))
+
+(defn churn-weighted-blast-radius
+  "Churn-weighted selective-CI cost: replay the last `days` days of commits (default 90) and, per commit,
+  count the test files a module-granularity selection reruns. This is the honest CI-spend metric — the
+  unweighted percentiles in `repo-metrics` stay pegged on the giant SCC and overstate the payoff of a
+  cut. Git-dependent, so it lives outside the pure `repo-metrics`. Returns mean/median/p90 plus commit
+  counts (see `module-scc/expected-tests-per-commit`)."
+  ([] (churn-weighted-blast-radius (deps) (config) 90))
+  ([deps config days]
+   (let [modules      (modules deps config)
+         graph        (merge (zipmap modules (repeat #{}))
+                             (deps-graph/module-dependencies deps))
+         module->tests (module-scc/module->test-files config modules)
+         file->module (into {} (map (juxt :filename :module)) deps)
+         commits      (module-scc/commit-file-lists days)]
+     (module-scc/expected-tests-per-commit graph module->tests file->module commits))))
 
 (comment
   (metrics (deps) (config))
