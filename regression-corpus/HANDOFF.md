@@ -188,14 +188,22 @@ Also: two "new file" witnesses (44499 collection.unit.spec.ts, and the earlier q
 were divergent-base clobbers — the file already exists on dev-2347 — so merge by hand, don't apply.
 
 ## GRAND TOTAL: ~175 e2e repros culled, ~159 FE witnesses + 13 BE deftests
-Branch `dev-2347`, 51 commits ahead of master, tree clean.
-Remaining items:
-- FE **34395** (agent API-errored in batch 7; never got a witness) — predicate-level
-  `isActionDashCard` witness, don't render the whole embedded dashboard.
-- **47584** be_deftest — mutation-verify the long-alias oracle discriminates, then cull its
-  e2e in models/models.cy.spec.js (currently left in place).
-- The remaining unmined pool is now essentially pf>=4 (704) + test_only (156) + the ~157
-  branch-touched pf1-3 that need the text-output protocol + per-issue triage. No clean sweep left.
+Branch `dev-2347`, 53 commits ahead of master, tree clean.
+**Both prior loose ends are now closed:**
+- **34395** (`e5b4b280e72`) — the last issue that never had a witness. Seam: PublicOrEmbedded
+  DashboardPage passes `isDashcardVisible={(dc) => !isActionDashCard(dc)}` into the dashboard
+  context (context.tsx filters `dashcards.filter(isDashcardVisible)`). Witness renders the page
+  with a normal + an action dashcard, asserts only the normal renders; fails under
+  `isDashcardVisible={() => true}`. Extended tests/setup.tsx with `extraDashcards`.
+  Gotcha: `createMockActionDashboardCard` defaults `action: undefined`, which fetch-mock JSON
+  strips — pass a defined `action` or `isActionDashCard` returns false and the seam never fires.
+- **47584** (`d9564dfe7d4`) — mutation-verified the long-alias oracle: reverting the native-stage
+  branch in `metabase.lib.field.util/add-source-and-desired-aliases-xform` (line ~106) to the
+  truncating unique-name-generator makes the oracle error; e2e culled.
+
+Remaining unmined pool is the hard tail: pf>=4 (704) + test_only (156) + ~157 branch-touched
+pf1-3 needing the text-output protocol + per-issue triage. No clean sweep left; every corpus
+issue that had a tractable FE/BE seam is now either witnessed-and-culled or classified keep.
 
 ## FE FAN-OUT COMPLETE — pool exhausted
 
