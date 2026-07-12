@@ -111,19 +111,51 @@
                    (io/resource "metabase/config/modules.edn")
                    (io/file ".clj-kondo/config/modules/config.edn"))
                  slurp edn/read-string :metabase/modules)
-      first-segment (fn first-segment [ns-sym]
-                      (-> (str/split (name ns-sym) #"\.") second))
-      chop (fn chop [ns-sym]
-             (if (str/starts-with? (name ns-sym) "metabase-enterprise")
-               (symbol "enterprise" (first-segment ns-sym))
-               (symbol (first-segment ns-sym))))]
+      declared-modules (set (keys config))
+      module-prefix (fn module-prefix [module]
+                      (or (get-in config [module :ns-prefix])
+                          (if (= "enterprise" (namespace module))
+                            (str "metabase-enterprise." (name module))
+                            (str "metabase." (name module)))))
+      prefix->module (into {} (map (juxt module-prefix identity)) declared-modules)
+      module-for-ns (fn module-for-ns [ns-sym]
+                      (let [ns-str (str ns-sym)]
+                        (second
+                         (reduce-kv
+                          (fn [[best-prefix :as best] prefix module]
+                            (if (and (or (= ns-str prefix)
+                                         (str/starts-with? ns-str (str prefix ".")))
+                                     (or (nil? best-prefix)
+                                         (> (count prefix) (count best-prefix))))
+                              [prefix module]
+                              best))
+                          nil
+                          prefix->module))))
+      module-parent (fn module-parent [module]
+                      (let [parts (str/split (name module) #"\.")]
+                        (cond
+                          (> (count parts) 1)
+                          (let [parent-name (str/join "." (butlast parts))]
+                            (if-let [ns-part (namespace module)]
+                              (symbol ns-part parent-name)
+                              (symbol parent-name)))
+
+                          (= "enterprise" (namespace module))
+                          (let [oss-module (symbol (name module))]
+                            (when (contains? declared-modules oss-module)
+                              oss-module)))))
+      module-team (fn module-team [module]
+                    (loop [module module]
+                      (when module
+                        (if (contains? (get config module) :team)
+                          (get-in config [module :team])
+                          (recur (module-parent module))))))]
   (defn ns->team*
-    "Chops the namespace symbol to look up which team owns this namespace in the module config. Assumes that the first
-  segment of the namespace is a module. Should be memoized for speed."
+    "Resolve the namespace's owning module and its nearest explicitly configured team. Should be memoized for speed."
     [ns-sym]
     (if ('#{metabase.server.middleware.log} ns-sym)
       ::skip
-      (-> ns-sym chop config :team))))
+      (some-> ns-sym module-for-ns module-team))))
 
 (let [attribution (if (config/config-bool :mb-log-team-attribution)
                     (memoize ns->team*)

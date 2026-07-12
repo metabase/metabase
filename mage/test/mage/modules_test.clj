@@ -2,6 +2,7 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.modules]))
 
@@ -338,16 +339,44 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers []
+(defn- modules-affecting-drivers []
   (let [deps (mage.modules/dependencies)
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
 
+(defn- top-level-module
+  [declared-modules module]
+  (loop [module module]
+    (let [parts (str/split (name module) #"\.")]
+      (cond
+        (> (count parts) 1)
+        (recur (if-let [ns-part (namespace module)]
+                 (symbol ns-part (str/join "." (butlast parts)))
+                 (symbol (str/join "." (butlast parts)))))
+
+        (and (= "enterprise" (namespace module))
+             (contains? declared-modules (symbol (name module))))
+        (recur (symbol (name module)))
+
+        :else module))))
+
+(deftest top-level-module-test
+  (let [declared '#{lib lib.schema query-processor query-processor.driver-api workspaces enterprise/workspaces
+                    enterprise/sandbox}]
+    (is (= 'lib (top-level-module declared 'lib.schema)))
+    (is (= 'query-processor (top-level-module declared 'query-processor.driver-api)))
+    (is (= 'workspaces (top-level-module declared 'enterprise/workspaces)))
+    (is (= 'enterprise/sandbox (top-level-module declared 'enterprise/sandbox)))))
+
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
+  (testing "The number of top-level modules that trigger driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
-    (let [modules-triggering-drivers (modules-affecting-drivers)
+    (let [deps                       (mage.modules/dependencies)
+          modules-triggering-drivers (modules-affecting-drivers)
+          top-level-modules          (into #{}
+                                           (map (partial top-level-module (set (keys deps))))
+                                           modules-triggering-drivers)
           ;; This is a ratchet: it prevents accidental expansion of which modules
           ;; trigger driver tests. When a module transitively depends on driver code,
           ;; changes to that module cause ALL driver tests to run in CI, which is
@@ -364,14 +393,16 @@
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
           ;; 2026-06-04 Bumped to 42 due to run-tracking addition (Zombie transform reaper #75194)
           ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
-          max-allowed-count 44]
-      (is (<= (count modules-triggering-drivers) max-allowed-count)
-          (format "Too many modules trigger driver tests! Expected <= %d, got %d.
+          ;; 2026-07-13 Changed the ratchet to count distinct logical top-level ancestors. Baseline remains 44
+          ;;            before any nested-module config migrations.
+          max-allowed-top-level-count 44]
+      (is (<= (count top-level-modules) max-allowed-top-level-count)
+          (format "Too many top-level modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
-                   If this is intentional, update max-allowed-count.
+                   If this is intentional, update max-allowed-top-level-count.
                    Otherwise, add the new module(s) to driver-affecting-overrides."
-                  max-allowed-count
-                  (count modules-triggering-drivers)
+                  max-allowed-top-level-count
+                  (count top-level-modules)
                   (pr-str (sort modules-triggering-drivers)))))))
 
 (deftest test-files-mark-modules-changes
@@ -438,3 +469,12 @@
                                                #{})]
       (is (true? (:should-run result)))
       (is (= "master/release branch" (:reason result))))))
+
+(deftest dotted-module-exact-test-files-mark-correct-module-changes
+  (testing "module-level dotted test files resolve back to the dotted module when a dotted prefix exists"
+    (let [build-prefix->module @#'mage.modules/build-prefix->module
+          file->module         @#'mage.modules/file->module
+          prefix->module       (build-prefix->module {'lib.schema {}})]
+      (is (= 'lib.schema
+             (file->module prefix->module
+                           "test/metabase/lib/schema_test.cljc"))))))

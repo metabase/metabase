@@ -48,18 +48,99 @@
   (mapcat ns.find/find-sources-in-dir
           (list* (source-root) (enterprise-source-root) (drivers-source-roots))))
 
-(mu/defn- module :- [:maybe symbol?]
-  "E.g.
+(defn- module-split
+  "Split a module symbol into `[ns-part name-parts-vec]`. Mirror of
+  `hooks.common.modules/split-module`. Used by `module-parent` to walk the
+  nested-module hierarchy (which is separate from `:ns-prefix`)."
+  [m]
+  [(namespace m) (str/split (name m) #"\.")])
 
-    (module 'metabase.qp.middleware.wow) => 'qp
-    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
-  [ns-symb :- simple-symbol?]
-  (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+(defn- module-join
+  "Inverse of `module-split`."
+  [[ns-part name-parts]]
+  (if ns-part
+    (symbol ns-part (str/join "." name-parts))
+    (symbol (str/join "." name-parts))))
+
+(defn default-ns-prefix
+  "Default `:ns-prefix` for a module symbol, derived from its name. Mirror of
+  `hooks.common.modules/default-ns-prefix` — see that function for details."
+  [m]
+  (if (= (namespace m) "enterprise")
+    (str "metabase-enterprise." (name m))
+    (str "metabase." (name m))))
+
+(defn module-ns-prefix
+  "Effective `:ns-prefix` for a module: explicit from the module's config
+  entry, else the name-derived default. `modules-config` is the inner map
+  from `kondo-config` (keyed by module symbol)."
+  [modules-config m]
+  (or (get-in modules-config [m :ns-prefix])
+      (default-ns-prefix m)))
+
+(defn build-prefix->module
+  "Build the `{ns-prefix-string module-symbol}` map from all declared modules
+  in `modules-config`. Used as the lookup table for longest-prefix resolution."
+  [modules-config]
+  (into {}
+        (map (fn [m] [(module-ns-prefix modules-config m) m]))
+        (keys modules-config)))
+
+(defn- ns-starts-with-prefix? [ns-str prefix]
+  (or (= ns-str prefix)
+      (str/starts-with? ns-str (str prefix "."))))
+
+(defn- longest-matching-prefix
+  "Scan `prefix->module` and return the module whose ns-prefix is the longest
+  string prefix of `ns-str` at segment boundaries."
+  [prefix->module ns-str]
+  (second
+   (reduce-kv
+    (fn [[best-prefix :as best] prefix module]
+      (if (and (ns-starts-with-prefix? ns-str prefix)
+               (or (nil? best-prefix)
+                   (> (count prefix) (count best-prefix))))
+        [prefix module]
+        best))
+    nil
+    prefix->module)))
+
+(defn- normalize-test-namespace [ns-symb]
+  (if (str/ends-with? (name ns-symb) "-test")
+    (symbol (str/replace (name ns-symb) #"-test$" ""))
+    ns-symb))
+
+(mu/defn- module :- [:maybe symbol?]
+  "Resolve a namespace symbol to a module symbol via prefix-map lookup.
+
+  The 2-arity form takes a pre-computed `prefix->module` map (as produced
+  by `build-prefix->module`) and does longest-prefix-at-segment-boundaries
+  matching. The 1-arity form is a flat fallback using single-segment regex
+  extraction — retained for backwards compat and for callers that don't
+  have a prefix map handy.
+
+  MIRROR: deliberate duplicate of the canonical
+  `hooks.common.modules/module` function. They live in different classpath
+  contexts and cannot share source. See
+  `metabase.core.modules-consistency-test` for the tripwire that keeps
+  them in sync."
+  ([ns-symb :- simple-symbol?]
+   (module nil ns-symb))
+  ([prefix->module :- [:maybe [:map-of :string symbol?]]
+    ns-symb :- simple-symbol?]
+   (let [ns-symb (normalize-test-namespace ns-symb)]
+     (or
+      ;; Primary path: prefix-map longest match over declared modules.
+      (when (seq prefix->module)
+        (longest-matching-prefix prefix->module (str ns-symb)))
+      ;; Fallback: single-segment extraction. Regex literals preserved
+      ;; byte-for-byte to match the kondo hook for the consistency test.
+      (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
                second
                (symbol "enterprise"))
       (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
               second
-              symbol)))
+              symbol)))))
 
 (def ^:private require-symbols
   '#{require
@@ -234,45 +315,48 @@
                                               [:namespace simple-symbol?]
                                               [:module    symbol?]
                                               [:dynamic {:optional true} :keyword]]]]]
-  [file :- [:or
-            string?
-            [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
-  (try
-    (let [decl         (ns.file/read-file-ns-decl file)
-          ns-symb      (ns.parse/name-from-ns-decl decl)
-          static-deps  (ns.parse/deps-from-ns-decl decl)
-          dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
-                         (vary-meta symb assoc ::dynamic :require-and-friends))
-          ;;
-          ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
-          ;; rationale.
-          ;;
-          ;; defenterprise-deps (for [symb (find-defenterprises file)]
-          ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
-          ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
-          ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
-          deps         (into (sorted-set) cat
-                             [static-deps
-                              dynamic-deps
-                              #_defenterprise-deps
-                              #_defenterprise-schema-deps])]
-      {:namespace ns-symb
-       :filename  (file->path-relative-to-project-root file)
-       :module    (module ns-symb)
-       :deps      (sort-by pr-str
-                           (keep (fn [required-ns]
-                                   (when-let [module (module required-ns)]
-                                     (when-not (some-> ignored-dependencies ns-symb required-ns)
-                                       (merge
-                                        {:namespace required-ns
-                                         :module    module}
-                                        (when-let [dynamic-type (::dynamic (meta required-ns))]
-                                          {:dynamic dynamic-type})))))
-                                 deps))})
-    (catch Throwable e
-      (throw (ex-info (format "Error calculating dependencies for %s" file)
-                      {:file file}
-                      e)))))
+  ([file]
+   (file-dependencies nil file))
+  ([prefix->module :- [:maybe [:map-of :string symbol?]]
+    file :- [:or
+             string?
+             [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
+   (try
+     (let [decl         (ns.file/read-file-ns-decl file)
+           ns-symb      (ns.parse/name-from-ns-decl decl)
+           static-deps  (ns.parse/deps-from-ns-decl decl)
+           dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
+                          (vary-meta symb assoc ::dynamic :require-and-friends))
+           ;;
+           ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
+           ;; rationale.
+           ;;
+           ;; defenterprise-deps (for [symb (find-defenterprises file)]
+           ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
+           ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+           ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
+           deps         (into (sorted-set) cat
+                              [static-deps
+                               dynamic-deps
+                               #_defenterprise-deps
+                               #_defenterprise-schema-deps])]
+       {:namespace ns-symb
+        :filename  (file->path-relative-to-project-root file)
+        :module    (module prefix->module ns-symb)
+        :deps      (sort-by pr-str
+                            (keep (fn [required-ns]
+                                    (when-let [module (module prefix->module required-ns)]
+                                      (when-not (some-> ignored-dependencies ns-symb required-ns)
+                                        (merge
+                                         {:namespace required-ns
+                                          :module    module}
+                                         (when-let [dynamic-type (::dynamic (meta required-ns))]
+                                           {:dynamic dynamic-type})))))
+                                  deps))})
+     (catch Throwable e
+       (throw (ex-info (format "Error calculating dependencies for %s" file)
+                       {:file file}
+                       e))))))
 
 (comment
   (file-dependencies "src/metabase/app_db/setup.clj")
@@ -282,10 +366,18 @@
   (file-dependencies "src/metabase/query_processor/middleware/permissions.clj"))
 
 (defn dependencies
-  "Calculate information about all the modules dependencies for all *SOURCE* files in the Metabase project by parsing
-  the files."
-  []
-  (pmap file-dependencies (find-source-files)))
+  "Calculate information about all the modules dependencies for all *SOURCE*
+  files in the Metabase project by parsing the files.
+
+  With `prefix->module` (a pre-computed `{ns-prefix-string module-symbol}`
+  map), uses longest-prefix matching at segment boundaries for
+  namespace→module resolution. Without it, uses the flat single-segment
+  extraction — the pre-nested-modules behavior."
+  ([]
+   (dependencies nil))
+  ([prefix->module]
+   (let [fd (partial file-dependencies prefix->module)]
+     (pmap fd (find-source-files)))))
 
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
@@ -322,19 +414,41 @@
   [kondo-config module-symb]
   (get-in kondo-config [module-symb :friends]))
 
-(declare kondo-config)
+(declare kondo-config module-ancestor-chain)
 
 (defn externally-used-namespaces-ignoring-friends
-  "All namespaces from a module that are used outside that module, excluding usages by `:friends` of the module."
+  "All namespaces from a module that are used outside that module, excluding
+  usages by `:friends` of the module AND usages by descendants of the
+  module (subtree trust).
+
+  Subtree trust means a descendant reaching into its ancestor's internals is
+  allowed via `:uses` alone, without the namespace needing to appear in the
+  ancestor's `:api`. Existing API entries that are still used by descendants
+  are retained, however. This makes adopting nesting monotonic: it does not
+  force an unrelated config cleanup, while new descendant-only uses do not
+  enlarge the API. Ancestors, siblings, cousins, and unrelated consumers
+  still count because they must respect `module-symb`'s `:api`."
   ([module-symb]
    (externally-used-namespaces-ignoring-friends (dependencies) (kondo-config) module-symb))
 
   ([deps kondo-config module-symb]
-   (let [friends (module-friends kondo-config module-symb)]
+   (let [friends       (module-friends kondo-config module-symb)
+         declared      (set (keys kondo-config))
+         descendant-of-me? (fn [other]
+                             ;; `other` is a descendant of `module-symb` iff
+                             ;; `module-symb` appears in `other`'s ancestor chain.
+                             (some #(= module-symb %)
+                                   (module-ancestor-chain declared other)))
+         usages        (remove #(contains? friends (:module %))
+                               (external-usages deps module-symb))
+         configured-api (get-in kondo-config [module-symb :api])]
      (into (sorted-set)
-           (comp (remove #(contains? friends (:module %)))
+           (comp (filter (fn [{:keys [module depends-on-namespace]}]
+                           (or (not (descendant-of-me? module))
+                               (and (set? configured-api)
+                                    (contains? configured-api depends-on-namespace)))))
                  (map :depends-on-namespace))
-           (external-usages deps module-symb)))))
+           usages))))
 
 (defn module-dependencies
   "Build a graph of module => set of modules it directly depends on."
@@ -418,16 +532,62 @@
                  [k (expand-deps v)]))
           deps-graph)))
 
-(defn module-deps-count [deps]
+(defn module-deps-count
+  "Map each module to the number of modules in its transitive dependency closure."
+  [deps]
   (into (sorted-map)
         (map (fn [[k v]]
                [k (count v)]))
         (full-dependencies deps)))
 
+(defn module-parent
+  "Direct parent of a nested module symbol, or nil if top-level.
+  Mirror of `hooks.common.modules/parent-module`. Public so the
+  modules-test suite can use it for the subtree-membership lint check.
+
+  With an optional `declared-modules` set, activates the `enterprise/X`
+  shorthand: `enterprise/X` is treated as a nested child of the OSS
+  module `X` when `X` is declared. Without the set, `enterprise/X`
+  is treated as top-level (pure syntactic behavior)."
+  ([m] (module-parent nil m))
+  ([declared-modules m]
+   (let [[ns-part parts] (module-split m)]
+     (cond
+       (> (count parts) 1)
+       (module-join [ns-part (butlast parts)])
+
+       (and (= ns-part "enterprise") declared-modules)
+       (let [oss (symbol (first parts))]
+         (when (contains? declared-modules oss) oss))
+
+       :else nil))))
+
+(defn module-ancestor-chain
+  "Seq of ancestor module symbols of `m`, from direct parent up to top-level
+  ancestor. Empty if `m` is top-level. Public for use by the
+  subtree-membership lint check in the modules-test suite. Honors the
+  `enterprise/X` shorthand when `declared-modules` is provided."
+  ([m] (module-ancestor-chain nil m))
+  ([declared-modules m]
+   (take-while some?
+               (iterate #(module-parent declared-modules %)
+                        (module-parent declared-modules m)))))
+
 (defn generate-config
-  "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
+  "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`.
+
+  Under the strict module model, every dependency is explicit — there are
+  no implicit edges based on tree structure. `generate-config` produces a
+  literal one-to-one mapping from actual code dependencies (resolved via
+  the prefix map) to `:uses` entries, with no filtering.
+
+  Reads the current kondo config to discover declared modules (and their
+  `:ns-prefix`es), then uses longest-prefix matching to assign each
+  namespace to its owning module."
   ([]
-   (generate-config (dependencies) (kondo-config)))
+   (let [kc          (kondo-config)
+         prefix->mod (build-prefix->module kc)]
+     (generate-config (dependencies prefix->mod) kc)))
 
   ([deps kondo-config]
    (into (sorted-map)
@@ -445,6 +605,119 @@
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
       (dissoc 'connection-pool)))
 
+(defn module-team-source
+  "Closest module at or above `module` that explicitly declares `:team`, or `nil` when none does."
+  [config module]
+  (let [declared-modules (set (keys config))]
+    (loop [module module]
+      (cond
+        (contains? (get config module) :team) module
+        :else (when-let [parent (module-parent declared-modules module)]
+                (recur parent))))))
+
+(defn module-team
+  "Effective team for `module`, inherited from its closest configured ancestor when omitted locally."
+  [config module]
+  (some->> (module-team-source config module)
+           (get config)
+           :team))
+
+(defn- top-level-oss-module?
+  [module]
+  (and (nil? (namespace module))
+       (not (str/includes? (name module) "."))))
+
+(defn- expanded-module-exports
+  [config module]
+  (let [explicit     (set (get-in config [module :module-exports]))
+        ee-companion (when (top-level-oss-module? module)
+                       (let [candidate (symbol "enterprise" (name module))]
+                         (when (contains? config candidate)
+                           candidate)))]
+    (cond-> explicit
+      ee-companion (conj ee-companion))))
+
+(defn- default-api-namespaces
+  [config module]
+  (let [prefix (module-ns-prefix config module)]
+    #{(symbol (str prefix ".api"))
+      (symbol (str prefix ".core"))
+      (symbol (str prefix ".init"))}))
+
+(defn- module-top-level-ancestor
+  [declared-modules module]
+  (or (last (module-ancestor-chain declared-modules module)) module))
+
+(defn- externally-referenceable-module?
+  [config module]
+  (let [declared-modules (set (keys config))]
+    (loop [module module]
+      (if-let [parent (module-parent declared-modules module)]
+        (and (contains? (expanded-module-exports config parent) module)
+             (recur parent))
+        true))))
+
+(defn- module-namable-from?
+  [config caller target]
+  (let [declared-modules (set (keys config))]
+    (or (= (module-top-level-ancestor declared-modules caller)
+           (module-top-level-ancestor declared-modules target))
+        (externally-referenceable-module? config target))))
+
+(defn- expanded-module-uses
+  [config module]
+  (let [uses (get-in config [module :uses])]
+    (if (= uses :any)
+      (into (sorted-set)
+            (comp (remove #{module})
+                  (filter (partial module-namable-from? config module)))
+            (keys config))
+      (set uses))))
+
+(defn- module->owned-namespaces
+  [deps]
+  (reduce (fn [result {:keys [module namespace]}]
+            (cond-> result
+              module (update module (fnil conj (sorted-set)) namespace)))
+          (sorted-map)
+          deps))
+
+(defn expanded-kondo-config
+  "Return module config with config-only defaults and inherited properties materialized.
+
+  Expands effective `:team`, `:ns-prefix`, default API namespaces, empty boundary sets, automatic EE companion
+  exports, and `:uses :any`. The no-argument form also scans source dependencies to expand `:api :any` to every
+  namespace owned by that module."
+  ([]
+   (let [config (kondo-config)]
+     (expanded-kondo-config config (dependencies (build-prefix->module config)))))
+  ([config]
+   (expanded-kondo-config config nil))
+  ([config deps]
+   (let [module->namespaces (when deps (module->owned-namespaces deps))]
+     (into (sorted-map)
+           (map (fn [[module module-config]]
+                  [module (-> module-config
+                              (assoc :team (module-team config module)
+                                     :ns-prefix (module-ns-prefix config module)
+                                     :api (if (contains? module-config :api)
+                                            (if (and (= :any (:api module-config)) deps)
+                                              (get module->namespaces module (sorted-set))
+                                              (:api module-config))
+                                            (default-api-namespaces config module))
+                                     :uses (expanded-module-uses config module)
+                                     :friends (set (:friends module-config))
+                                     :module-exports (expanded-module-exports config module)))]))
+           config))))
+
+(defn print-expanded-kondo-config
+  "Print [[expanded-kondo-config]] as stable EDN. Accepts an ignored map for `clojure -X`."
+  ([]
+   (print-expanded-kondo-config nil))
+  ([_opts]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (prn (expanded-kondo-config))))
+
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
   [diff]
@@ -458,8 +731,11 @@
    diff))
 
 (defn kondo-config-diff
+  "Return the difference between declared module boundaries and dependencies found in source."
   ([]
-   (kondo-config-diff (dependencies)))
+   (let [kc          (kondo-config)
+         prefix->mod (build-prefix->module kc)]
+     (kondo-config-diff (dependencies prefix->mod))))
 
   ([deps]
    (let [kondo-config (kondo-config)]
@@ -633,14 +909,21 @@
     ;; =>
     metabase-enterprise.advanced-permissions.common"
   [file]
-  (-> file
-      file->path-relative-to-project-root
-      (str/replace #"^enterprise/backend/" "")
-      (str/replace #"^(?:(?:src)|(?:test))/" "")
-      (str/replace #"\.clj[cs]?$" "")
-      (str/replace #"/" ".")
-      (str/replace #"_" "-")
-      symbol))
+  (let [relative-file (file->path-relative-to-project-root file)
+        test-file?    (or (str/starts-with? relative-file "test/")
+                          (str/starts-with? relative-file "enterprise/backend/test/"))]
+    (-> relative-file
+        (str/replace #"^enterprise/backend/" "")
+        (str/replace #"^(?:(?:src)|(?:test))/" "")
+        (str/replace #"\.clj[cs]?$" "")
+        ;; Module-level tests live at e.g. test/metabase/lib/schema_test.cljc and
+        ;; should map back to metabase.lib.schema for reverse lookup.
+        (#(if test-file?
+            (str/replace % #"[_-]test$" "")
+            %))
+        (str/replace #"/" ".")
+        (str/replace #"_" "-")
+        symbol)))
 
 (defn- module->all-deps [deps module]
   (keys (all-module-deps-paths deps module)))
@@ -649,12 +932,14 @@
   "Given a collection of `test-filenames`, return the set of source filenames (relative to the project root directory)
   that when changed should trigger these tests."
   ([test-filenames]
-   (test-filenames->relevant-source-filenames (dependencies) test-filenames))
-  ([deps test-filenames]
+   (let [modules-config (kondo-config)
+         prefix->mod    (build-prefix->module modules-config)]
+     (test-filenames->relevant-source-filenames (dependencies prefix->mod) prefix->mod test-filenames)))
+  ([deps prefix->mod test-filenames]
    (into
     (sorted-set)
     (comp (map file->namespace)
-          (map module)
+          (map (partial module prefix->mod))
           (distinct)
           (mapcat (fn [module]
                     (into #{module} (module->all-deps deps module))))
@@ -708,36 +993,63 @@
 (comment
   (module->dependents (dependencies) 'settings-rest))
 
-(defn- module->test-directory [module]
-  (let [parent-dir (case (namespace module)
-                     nil          "test/metabase/"
-                     "enterprise" "enterprise/backend/test/metabase_enterprise/")
-        module-dir (str/replace (name module) #"-" "_")]
-    (str parent-dir module-dir)))
+(def ^:private test-source-file-extensions
+  [".clj" ".cljc" ".cljs" ".bb"])
+
+(defn- ns-prefix->test-path-fragment [ns-prefix]
+  (->> (str/split ns-prefix #"\.")
+       (map #(str/replace % #"-" "_"))
+       (str/join "/")))
+
+(defn- module->test-path-prefix [modules-config module]
+  (let [ns-prefix   (module-ns-prefix modules-config module)
+        [parent-dir ns-fragment]
+        (if (str/starts-with? ns-prefix "metabase-enterprise.")
+          ["enterprise/backend/test/metabase_enterprise/"
+           (subs ns-prefix (count "metabase-enterprise."))]
+          ["test/metabase/"
+           (subs ns-prefix (count "metabase."))])]
+    (str parent-dir
+         (ns-prefix->test-path-fragment ns-fragment))))
+
+(defn- existing-test-file-paths [path-prefix]
+  (into (sorted-set)
+        (keep (fn [extension]
+                (let [file (io/file (str path-prefix "_test" extension))]
+                  (when (.isFile file)
+                    (file->path-relative-to-project-root file)))))
+        test-source-file-extensions))
 
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
-  [module :- :symbol]
-  (let [test-dir       (module->test-directory module)
-        test-filenames (ns.find/find-sources-in-dir (io/file test-dir))]
-    (into
-     (sorted-set)
-     (map file->path-relative-to-project-root)
-     test-filenames)))
+  [modules-config :- [:map-of :any :any]
+   module :- :symbol]
+  (let [path-prefix    (module->test-path-prefix modules-config module)
+        test-dir       (io/file path-prefix)
+        nested-tests   (when (.isDirectory test-dir)
+                         (into
+                          (sorted-set)
+                          (map file->path-relative-to-project-root)
+                          (ns.find/find-sources-in-dir test-dir)))]
+    (into (existing-test-file-paths path-prefix)
+          nested-tests)))
 
 (defn source-filenames->relevant-test-filenames
   "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
   that we should re-run when any of `source-filenames` change."
   ([source-filenames]
-   (source-filenames->relevant-test-filenames (dependencies) source-filenames))
-  ([deps source-filenames]
+   (let [modules-config (kondo-config)
+         prefix->mod    (build-prefix->module modules-config)]
+     (source-filenames->relevant-test-filenames (dependencies prefix->mod) modules-config prefix->mod source-filenames)))
+  ([deps modules-config prefix->mod source-filenames]
    (into
     (sorted-set)
     (comp (map file->namespace)
-          (map module)
+          (map (partial module prefix->mod))
+          (remove nil?)
           (distinct)
           (mapcat #(module->dependents deps %))
-          (mapcat module->test-files))
+          (mapcat #(module->test-files modules-config %)))
     source-filenames)))
 
 (comment
@@ -808,17 +1120,20 @@
 
 (defn model-ownership
   "Scan all source files via [[find-model-definitions]], building a map of `:model/X` => module symbol.
-  The module is derived from the defining namespace via [[module]]."
+  The module is derived from the defining namespace via [[module]], using the
+  prefix map built from the current kondo config so that nested modules
+  (and modules with explicit `:ns-prefix`) resolve correctly."
   []
-  (into (sorted-map)
-        (for [file  (find-source-files)
-              :let  [ns-symb (-> (ns.file/read-file-ns-decl file)
-                                 ns.parse/name-from-ns-decl)
-                     mod     (module ns-symb)
-                     models  (find-model-definitions file)]
-              :when mod
-              model models]
-          [model mod])))
+  (let [prefix->mod (build-prefix->module (kondo-config))]
+    (into (sorted-map)
+          (for [file  (find-source-files)
+                :let  [ns-symb (-> (ns.file/read-file-ns-decl file)
+                                   ns.parse/name-from-ns-decl)
+                       mod     (module prefix->mod ns-symb)
+                       models  (find-model-definitions file)]
+                :when mod
+                model models]
+            [model mod]))))
 
 (def ^:private model-boundary-exempt-namespaces
   "Namespaces that are exempt from model boundary checking. These are 'glue' namespaces that intentionally reference
@@ -850,26 +1165,30 @@
 (defn model-references-by-module
   "Scan all source files and build a map of `{module => #{:model/X ...}}` — the set of model keywords
   referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded.
-  Includes all modules (including bypass modules) — callers filter as needed."
+  Includes all modules (including bypass modules) — callers filter as needed.
+
+  Uses the prefix map from the current kondo config so nested modules
+  resolve via [[module]] correctly."
   []
-  (reduce
-   (fn [acc file]
-     (try
-       (let [ns-symb (-> (ns.file/read-file-ns-decl file)
-                         ns.parse/name-from-ns-decl)
-             mod     (module ns-symb)]
-         (if (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
-           (let [models (find-model-keywords file)]
-             (if (seq models)
-               (update acc mod (fnil into (sorted-set)) models)
-               acc))
-           acc))
-       (catch Throwable e
-         (throw (ex-info (format "Error scanning model references in %s" (str file))
-                         {:file file}
-                         e)))))
-   (sorted-map)
-   (find-source-files)))
+  (let [prefix->mod (build-prefix->module (kondo-config))]
+    (reduce
+     (fn [acc file]
+       (try
+         (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                           ns.parse/name-from-ns-decl)
+               mod     (module prefix->mod ns-symb)]
+           (if (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
+             (let [models (find-model-keywords file)]
+               (if (seq models)
+                 (update acc mod (fnil into (sorted-set)) models)
+                 acc))
+             acc))
+         (catch Throwable e
+           (throw (ex-info (format "Error scanning model references in %s" (str file))
+                           {:file file}
+                           e)))))
+     (sorted-map)
+     (find-source-files))))
 
 (defn model-boundary-violations
   "Find all model boundary violations across the codebase.
@@ -885,36 +1204,36 @@
   ([]
    (model-boundary-violations (kondo-config)))
   ([kondo-config]
-   (let [ownership (model-ownership)]
+   (let [ownership   (model-ownership)
+         prefix->mod (build-prefix->module kondo-config)]
      (into []
-           (comp
-            (mapcat
-             (fn [file]
-               (try
-                 (let [ns-symb (-> (ns.file/read-file-ns-decl file)
-                                   ns.parse/name-from-ns-decl)
-                       mod     (module ns-symb)]
-                   (when (and mod
-                              (not (contains? model-boundary-exempt-namespaces ns-symb)))
-                     (let [model-imports (get-in kondo-config [mod :model-imports] #{})
-                           models       (find-model-keywords file)
-                           rel-path     (file->path-relative-to-project-root file)]
-                       (for [model          models
-                             :let           [defining-mod  (get ownership model)]
-                             :when          (not= defining-mod mod)
-                             :let           [model-exports (when defining-mod
-                                                             (get-in kondo-config [defining-mod :model-exports] #{}))]
-                             violation-type (model-reference-violations
-                                             model defining-mod model-exports model-imports)]
-                         {:file            rel-path
-                          :module          mod
-                          :model           model
-                          :defining-module defining-mod
-                          :violation-type  violation-type}))))
-                 (catch Throwable e
-                   (throw (ex-info (format "Error checking model boundaries in %s" (str file))
-                                   {:file file}
-                                   e)))))))
+           (mapcat
+            (fn [file]
+              (try
+                (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                                  ns.parse/name-from-ns-decl)
+                      mod     (module prefix->mod ns-symb)]
+                  (when (and mod
+                             (not (contains? model-boundary-exempt-namespaces ns-symb)))
+                    (let [model-imports (get-in kondo-config [mod :model-imports] #{})
+                          models       (find-model-keywords file)
+                          rel-path     (file->path-relative-to-project-root file)]
+                      (for [model          models
+                            :let           [defining-mod  (get ownership model)]
+                            :when          (not= defining-mod mod)
+                            :let           [model-exports (when defining-mod
+                                                            (get-in kondo-config [defining-mod :model-exports] #{}))]
+                            violation-type (model-reference-violations
+                                            model defining-mod model-exports model-imports)]
+                        {:file            rel-path
+                         :module          mod
+                         :model           model
+                         :defining-module defining-mod
+                         :violation-type  violation-type}))))
+                (catch Throwable e
+                  (throw (ex-info (format "Error checking model boundaries in %s" (str file))
+                                  {:file file}
+                                  e))))))
            (find-source-files)))))
 
 (comment

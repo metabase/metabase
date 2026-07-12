@@ -4,9 +4,9 @@
   The heavy lifting already lives in [[dev.deps-graph]] (which computes the correct `:api` and `:uses`
   for every module) and [[dev.model-boundary-config]] (which computes `:model-exports`/`:model-imports`).
   This namespace ties them together into a single writer that rewrites the four *generated* keys in place,
-  sorted, while preserving everything a human owns: `:team`, `:friends`, header/footer comments, inline
-  `;;` annotations on set elements, the `:ignored-namespace-patterns` key, and the sentinel values
-  `:any`/`:bypass`.
+  sorted, while preserving everything a human owns: `:team`, `:friends`, `:ns-prefix`, `:module-exports`,
+  header/footer comments, inline `;;` annotations on set elements, the `:ignored-namespace-patterns` key,
+  and the sentinel values `:any`/`:bypass`.
 
   Usage:
 
@@ -18,8 +18,9 @@
 
   Scope: this auto-fixes the *content and ordering* of `:api`, `:uses`, `:model-exports`, and
   `:model-imports` for modules that already exist in the config. Structural changes — adding a brand new
-  module (which needs a human-assigned `:team`), removing a stale one, or reordering modules — are only
-  *reported* as warnings, never performed, since they require judgement this tool doesn't have."
+  module (whose namespace prefix and ownership may need human input), removing a stale one, or reordering
+  modules — are only *reported* as warnings, never performed, since they require judgement this tool
+  doesn't have."
   (:require
    [clojure.string :as str]
    [dev.deps-graph :as deps-graph]
@@ -209,7 +210,8 @@
   seconds."
   ([]
    (let [config (deps-graph/kondo-config)
-         f-deps (future (deps-graph/dependencies))
+         prefix->module (deps-graph/build-prefix->module config)
+         f-deps (future (deps-graph/dependencies prefix->module))
          f-own  (future (deps-graph/model-ownership))
          f-refs (future (deps-graph/model-references-by-module))]
      (compute-desired config @f-deps @f-own @f-refs)))
@@ -242,7 +244,8 @@
         sorted?     (= file-modules (sort-module-names file-modules))]
     (cond-> []
       (seq to-add)
-      (conj (str "New module(s) not in config — add them by hand (they need a :team): "
+      (conj (str "New module(s) not in config — add them by hand (choose their namespace prefix and "
+                 "ownership; nested modules may inherit :team): "
                  (str/join ", " to-add)))
 
       (not sorted?)

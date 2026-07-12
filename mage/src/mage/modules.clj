@@ -3,10 +3,12 @@
    ^:clj-kondo/ignore
    [cheshire.core :as json]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [mage.be-dev :as be-dev]
    [mage.color :as c]
+   [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -24,41 +26,188 @@
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
-(defn- file->module [filename]
-  (or
-   (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
-     (symbol (str/replace module #"_" "-")))
-   (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
-     (symbol "enterprise" (str/replace module #"_" "-")))))
+;;;
+;;; MIRROR: this is the file-path-based equivalent of the namespace-symbol-based
+;;; module resolution in two other sites:
+;;;
+;;;   - .clj-kondo/src/hooks/common/modules.clj  (canonical)
+;;;   - dev/src/dev/deps_graph.clj               (deps graph mirror)
+;;;
+;;; Invariant: given a file at path P containing namespace ns-symb, this
+;;; function must return the same module symbol that the other two sites
+;;; return when given ns-symb. The test `metabase.core.modules-consistency-test`
+;;; verifies the three sites stay in sync.
+;;;
+;;; If you change the module resolution algorithm (e.g. adding longest-prefix
+;;; matching for nested modules), update ALL THREE sites.
 
-(defn- updated-files->updated-modules [updated-files]
-  (into (sorted-set)
-        (keep file->module)
-        updated-files))
+(defn- file->ns-symbol
+  "Derive a namespace symbol from a source file path by stripping the src/test
+  root and converting path segments to dotted namespace form (with underscores
+  replaced by hyphens). Returns `nil` if the file isn't a recognized Metabase
+  source file.
 
-(defn- updated-modules [git-ref]
+  Examples:
+
+    src/metabase/lib/schema/foo.clj         => metabase.lib.schema.foo
+    enterprise/backend/src/metabase_enterprise/transforms/python/foo.clj
+                                            => metabase-enterprise.transforms.python.foo
+    src/metabase/lib_be/core.clj            => metabase.lib-be.core"
+  [filename]
+  (letfn [(normalize-module-path [module-path]
+            (if (or (str/starts-with? filename "test/")
+                    (str/starts-with? filename "enterprise/backend/test/"))
+              (str/replace module-path #"[_-]test$" "")
+              module-path))]
+    (or
+     (when-let [[_match module-path] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
+       (symbol (str "metabase."
+                    (-> (normalize-module-path module-path)
+                        (str/replace #"/" ".")
+                        (str/replace #"_" "-")))))
+     (when-let [[_match module-path] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
+       (symbol (str "metabase-enterprise."
+                    (-> (normalize-module-path module-path)
+                        (str/replace #"/" ".")
+                        (str/replace #"_" "-"))))))))
+
+(defn- ns-starts-with-prefix?
+  "True if `ns-str` equals `prefix` or begins with `prefix + \".\"`
+  (segment boundary)."
+  [ns-str prefix]
+  (or (= ns-str prefix)
+      (str/starts-with? ns-str (str prefix "."))))
+
+(defn- default-ns-prefix-for [m]
+  (if (= (namespace m) "enterprise")
+    (str "metabase-enterprise." (name m))
+    (str "metabase." (name m))))
+
+(defn- build-prefix->module
+  "Build the `{ns-prefix-string module-symbol}` map from the `:metabase/modules`
+  map read from the kondo config. Mirror of the same function in the kondo
+  hook and dev.deps-graph."
+  [modules-config]
+  (into {}
+        (map (fn [[m cfg]]
+               [(or (:ns-prefix cfg) (default-ns-prefix-for m)) m]))
+        modules-config))
+
+(defn- longest-matching-prefix [prefix->module ns-str]
+  (second
+   (reduce-kv
+    (fn [[best-prefix :as best] prefix module]
+      (if (and (ns-starts-with-prefix? ns-str prefix)
+               (or (nil? best-prefix)
+                   (> (count prefix) (count best-prefix))))
+        [prefix module]
+        best))
+    nil
+    prefix->module)))
+
+(defn- file->module
+  "Resolve a file path to a module symbol.
+
+  With one arg (legacy / backwards-compat): extracts the single first-path
+  segment after `metabase/` or `metabase_enterprise/`, matching the flat
+  pre-nested-modules behavior.
+
+  With two args, the first being a `prefix->module` map (as produced by
+  `build-prefix->module`), derives the namespace symbol from the file path
+  and does longest-matching-prefix lookup at segment boundaries. Analogous
+  to the namespace-symbol-based resolution in `deps_graph` and the kondo
+  hook."
+  ([filename]
+   (file->module nil filename))
+  ([prefix->module filename]
+   (or
+    ;; Primary: derive ns symbol from file path, do longest-prefix lookup.
+    (when (seq prefix->module)
+      (when-let [ns-sym (file->ns-symbol filename)]
+        (longest-matching-prefix prefix->module (str ns-sym))))
+    ;; Fallback: single-segment extraction. Regex literals preserved
+    ;; byte-for-byte-equivalent to the pre-nesting behavior.
+    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
+      (symbol (str/replace module #"_" "-")))
+    (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
+      (symbol "enterprise" (str/replace module #"_" "-"))))))
+
+(defn- read-modules-config
+  []
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+        (edn/read r))
+      :metabase/modules))
+
+(defn- read-prefix->module
+  "Read the `:metabase/modules` map from kondo config and build the
+  `{ns-prefix-string module-symbol}` lookup map used for file→module
+  resolution."
+  []
+  (-> (read-modules-config)
+      build-prefix->module))
+
+(defn- updated-files->updated-modules
+  ([updated-files]
+   (updated-files->updated-modules (read-prefix->module) updated-files))
+  ([prefix->module updated-files]
+   (into (sorted-set)
+         (keep (partial file->module prefix->module))
+         updated-files)))
+
+(defn- updated-modules [prefix->module git-ref]
   (let [git-ref (or git-ref "master")
         updated-files (u/updated-files git-ref)]
-    (updated-files->updated-modules updated-files)))
+    (updated-files->updated-modules prefix->module updated-files)))
 
-(defn- module->test-directory
-  [module]
-  (case (namespace module)
-    "enterprise" (str "enterprise/backend/test/metabase_enterprise/" (str/replace (name module) #"-" "_"))
-    nil (str "test/metabase/" (str/replace (name module) #"-" "_"))))
+(defn- module-ns-prefix
+  [modules-config module]
+  (or (get-in modules-config [module :ns-prefix])
+      (default-ns-prefix-for module)))
+
+(def ^:private test-source-file-extensions
+  [".clj" ".cljc" ".cljs" ".bb"])
+
+(defn- ns-prefix->test-path-fragment [ns-prefix]
+  (->> (str/split ns-prefix #"\.")
+       (map #(str/replace % #"-" "_"))
+       (str/join "/")))
+
+(defn- module->test-path-prefix
+  [modules-config module]
+  (let [ns-prefix   (module-ns-prefix modules-config module)
+        [parent-dir ns-fragment]
+        (if (str/starts-with? ns-prefix "metabase-enterprise.")
+          ["enterprise/backend/test/metabase_enterprise/"
+           (subs ns-prefix (count "metabase-enterprise."))]
+          ["test/metabase/"
+           (subs ns-prefix (count "metabase."))])]
+    (str parent-dir
+         (ns-prefix->test-path-fragment ns-fragment))))
+
+(defn- module->test-paths
+  [modules-config module]
+  (let [path-prefix (module->test-path-prefix modules-config module)
+        test-dir    (io/file path-prefix)]
+    (into (sorted-set)
+          (concat
+           (for [extension test-source-file-extensions
+                 :let      [file (io/file (str path-prefix "_test" extension))]
+                 :when     (.isFile file)]
+             (str file))
+           (when (.isDirectory test-dir)
+             [(str test-dir)])))))
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
-  []
-  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-                     (edn/read r))
-                   :metabase/modules
-                   ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
-                   (dissoc 'connection-pool))]
-    (into (sorted-map)
-          (map (fn [[k config]]
-                 [k (:uses config)]))
-          config)))
+  ([] (dependencies (read-modules-config)))
+  ([modules-config]
+   (let [config (-> modules-config
+                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
+                    (dissoc 'connection-pool))]
+     (into (sorted-map)
+           (map (fn [[k config]]
+                  [k (:uses config)]))
+           config))))
 
 (defn- direct-dependents
   "Set of modules that directly depend on `module`."
@@ -198,9 +347,11 @@
 (defn cli-print-affected-modules
   "CLI entry point: print modules affected by changes since `git-ref`, plus driver-test guidance."
   [[git-ref, :as _command-line-args]]
-  (let [deps (dependencies)
-        updated (updated-modules git-ref)
-        affected (affected-modules deps updated)
+  (let [modules-config         (read-modules-config)
+        prefix->module        (build-prefix->module modules-config)
+        deps                   (dependencies modules-config)
+        updated                (updated-modules prefix->module git-ref)
+        affected               (affected-modules deps updated)
         driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
     (print-updated-and-unaffected-modules deps updated driver-deps-affected?)
     (println)
@@ -208,9 +359,24 @@
     (println "You can run tests for these modules and all downstream modules as follows:")
     (println)
     (println)
-    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n" (pr-str (mapv module->test-directory affected)))
+    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n"
+            (pr-str (into [] (mapcat #(module->test-paths modules-config %)) affected)))
     (flush)
     (u/exit 0)))
+
+(defn cli-validate-config!
+  "Run the authoritative module-config validation tests and exit with their status."
+  [_cli-args]
+  (let [{:keys [exit], :or {exit -1}}
+        (shell/sh* "./bin/test-agent" ":only" "[metabase.core.modules-test]")]
+    (u/exit exit)))
+
+(defn cli-print-expanded-config!
+  "Print the source-aware expanded module config and exit with the command's status."
+  [_cli-args]
+  (let [{:keys [exit], :or {exit -1}}
+        (shell/sh* "clojure" "-X:dev" "dev.deps-graph/print-expanded-kondo-config")]
+    (u/exit exit)))
 
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
