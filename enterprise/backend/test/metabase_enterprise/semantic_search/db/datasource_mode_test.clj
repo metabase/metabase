@@ -82,6 +82,13 @@
                           (is (= [true true] [create-extension? create-schema?]))
                           true)]
             (is (true? (check)))))
+        (testing "available but not installed, schema pre-created → probe the extension only"
+          (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema_exists true})
+                        semantic.db.datasource/app-db-can-provision-pgvector?
+                        (fn [_ create-extension? create-schema?]
+                          (is (= [true false] [create-extension? create-schema?]))
+                          true)]
+            (is (true? (check)))))
         (testing "a privilege gap while provisioning → unsupported"
           (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema_exists false})
                         semantic.db.datasource/app-db-can-provision-pgvector? (fn [& _] false)]

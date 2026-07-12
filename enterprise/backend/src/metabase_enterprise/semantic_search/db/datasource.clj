@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
+   [next.jdbc.quoted :as quoted]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
@@ -236,7 +237,7 @@
       (when create-extension?
         (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]))
       (when create-schema?
-        (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " app-db-schema)])))
+        (jdbc/execute! tx [(str "CREATE SCHEMA IF NOT EXISTS " (quoted/postgres app-db-schema))])))
     true
     (catch Exception e
       (log/debug e "Semantic search: the application database user cannot provision the pgvector store")

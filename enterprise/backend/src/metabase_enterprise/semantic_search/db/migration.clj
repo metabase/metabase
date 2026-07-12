@@ -25,8 +25,8 @@
 
 (defn- ensure-schema-exists!
   "Create the module's schema when index-metadata carries one.
-  This is where insufficient privileges surface in app-db mode: the availability probe is read-only, so
-  activation is the first write against the app db."
+  This is the first *persisted* write against the app db in app-db mode; insufficient privileges normally
+  surface earlier, at the capability probe's rolled-back CREATE SCHEMA."
   [index-metadata tx]
   (when-let [schema (:schema index-metadata)]
     (try
