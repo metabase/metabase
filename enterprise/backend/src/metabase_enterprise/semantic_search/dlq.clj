@@ -192,9 +192,7 @@
   (if (empty? dlq-entries)
     0
     (let [dlq-table (dlq-table-name-kw index-metadata index-id)
-          ;; a schema-qualified insert target is still referenced by its bare relation name in
-          ;; ON CONFLICT expressions
-          dlq-col   (keyword (str (semantic.util/table-name-part (name dlq-table)) ".error_gated_at"))
+          dlq-col   (semantic.util/conflict-target-column (name dlq-table) "error_gated_at")
           dml {:insert-into   dlq-table
                :values        (sort-by :gate_id dlq-entries)
                :on-conflict   [:gate_id]

@@ -123,9 +123,7 @@
                                                 (peek updates)))
                                          seq)]
       (let [{:keys [gate-table-name]} index-metadata
-            ;; a schema-qualified insert target is still referenced by its bare relation name in
-            ;; ON CONFLICT expressions
-            gate-col   (fn [column] (keyword (str (semantic.util/table-name-part gate-table-name) "." column)))
+            gate-col   (fn [column] (semantic.util/conflict-target-column gate-table-name column))
             upsert-q   {:insert-into   (keyword gate-table-name)
                         ;; sort to ensure locks are acquired predictably
                         :values        (sort-by :id gate-document-batch)

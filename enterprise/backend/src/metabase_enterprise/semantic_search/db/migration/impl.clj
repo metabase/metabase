@@ -149,15 +149,13 @@
     (alter-index-tables!
      tx index-metadata 4
      (fn [execute! table-name]
-       ;; column refs are dotted keywords, not namespaced ones: a schema-qualified table name in a keyword
-       ;; namespace renders as a single (broken) identifier
        (let [kw-tbl             (keyword table-name)
              kw-gate            (keyword gate-table)
-             tbl-model          (keyword (str table-name ".model"))
-             tbl-model-id       (keyword (str table-name ".model_id"))
-             tbl-root-coll-type (keyword (str table-name ".root_collection_type"))
-             gate-id            (keyword (str gate-table ".id"))
-             gate-doc-root      [:->> (keyword (str gate-table ".document")) [:inline "root_collection_type"]]
+             tbl-model          (semantic.util/column-keyword table-name "model")
+             tbl-model-id       (semantic.util/column-keyword table-name "model_id")
+             tbl-root-coll-type (semantic.util/column-keyword table-name "root_collection_type")
+             gate-id            (semantic.util/column-keyword gate-table "id")
+             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") [:inline "root_collection_type"]]
              composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.

@@ -11,6 +11,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str]
@@ -40,8 +41,7 @@
   but are not in the repair table. These represent lost deletes."
   [pgvector gate-table-name repair-table-name]
   (try
-    ;; dotted keywords, not namespaced ones: a schema-qualified table name must render as separate identifiers
-    (let [column        (fn [table-name column-name] (keyword (str table-name "." column-name)))
+    (let [column        semantic.util/column-keyword
           anti-join-sql (-> (sql.helpers/select :model :model_id)
                             (sql.helpers/from (keyword gate-table-name))
                             (sql.helpers/where [:not [:exists

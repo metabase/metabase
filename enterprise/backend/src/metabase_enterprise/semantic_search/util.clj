@@ -7,12 +7,12 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.search.engine :as search.engine]
    [next.jdbc :as jdbc]
+   [next.jdbc.quoted :as quoted]
    [next.jdbc.result-set :as jdbc.rs]))
 
-(defn quote-ident
-  "Quote a Postgres identifier, escaping embedded double quotes."
-  [s]
-  (str \" (str/replace s "\"" "\"\"") \"))
+(def quote-ident
+  "Quote a Postgres identifier for interpolation into raw SQL, doubling any embedded double quote."
+  quoted/postgres)
 
 (defn qualified-table-parts
   "Split a possibly schema-qualified table name into `[schema table]`; `schema` is nil when unqualified."
@@ -25,6 +25,21 @@
   Derived identifiers (index names, catalog lookups by `tablename`) must use this, never the full name."
   [table-name]
   (second (qualified-table-parts table-name)))
+
+(defn column-keyword
+  "A `table.column` reference as a dotted-name keyword, NOT a namespaced keyword.
+  HoneySQL renders a namespaced keyword's namespace as a single identifier, so a schema-qualified table in
+  the namespace position becomes one broken identifier; a dotted name renders as separate quoted parts.
+  Pass the table name as it should render -- qualified for an ordinary FROM/JOIN reference."
+  [table-name column]
+  (keyword (str table-name "." (name column))))
+
+(defn conflict-target-column
+  "A `column-keyword` for an ON CONFLICT clause on a possibly schema-qualified `table-name`.
+  Postgres names the conflict target by its bare relation even when the insert target is schema-qualified,
+  so the reference drops the schema."
+  [table-name column]
+  (column-keyword (table-name-part table-name) column))
 
 (defn table-exists?
   "Does the table-name exist in pgvector DB's information_schema.tables?
