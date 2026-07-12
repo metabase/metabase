@@ -69,10 +69,12 @@ const setup = async ({
   searchText,
   searchFilters = {},
   searchItems = TEST_SEARCH_RESULTS,
+  page,
 }: {
   searchText: string;
   searchFilters?: SearchFilters;
   searchItems?: SearchResult[];
+  page?: number;
 }) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
@@ -86,6 +88,7 @@ const setup = async ({
   const params = {
     ...searchFilters,
     q: searchText,
+    ...(page != null ? { page: String(page) } : {}),
   };
 
   const searchParams = new URLSearchParams(
@@ -195,6 +198,35 @@ describe("SearchApp", () => {
         expect(url.query.type).toEqual(model);
       },
     );
+
+    it("should reset back to the first page when filters change (metabase#65501)", async () => {
+      // start on the second page (page index 1)
+      const { history } = await setup({
+        searchText: "Test",
+        page: 1,
+      });
+
+      expect(history.getCurrentLocation().query.page).toEqual("1");
+
+      await userEvent.click(
+        within(screen.getByTestId("type-search-filter")).getByTestId(
+          "sidebar-filter-dropdown-button",
+        ),
+      );
+
+      await waitForLoaderToBeRemoved();
+
+      const popover = within(screen.getByTestId("popover"));
+      await userEvent.click(
+        popover.getByRole("checkbox", { name: TYPE_FILTER_LABELS.table }),
+      );
+      await userEvent.click(popover.getByRole("button", { name: "Apply" }));
+
+      const url = history.getCurrentLocation();
+      expect(url.query.type).toEqual("table");
+      // changing a filter must drop the page param so results reset to page 1
+      expect(url.query.page).toBeUndefined();
+    });
   });
 
   describe("hydrating search filters from URL", () => {

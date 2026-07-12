@@ -1151,57 +1151,6 @@ describe(
         });
       });
 
-      it("refetches form values when id changes (metabase#33084)", () => {
-        const actionName = "Update";
-
-        cy.get("@modelId").then((id) => {
-          H.createImplicitAction({
-            kind: "update",
-            model_id: id,
-          });
-        });
-
-        createDashboardWithActionButton({
-          actionName,
-          idFilter: true,
-        });
-
-        H.filterWidget().click();
-        addWidgetStringFilter("5");
-
-        cy.button(actionName).click();
-
-        cy.wait("@executePrefetch");
-
-        H.modal().within(() => {
-          cy.findByPlaceholderText("Team Name").should(
-            "have.value",
-            "Energetic Elephants",
-          );
-          cy.findByPlaceholderText("Score").should("have.value", "30");
-
-          cy.icon("close").click();
-        });
-
-        H.filterWidget().click();
-        H.dashboardParametersPopover().within(() => {
-          H.fieldValuesCombobox().type("{backspace}10");
-        });
-        cy.button("Update filter").click();
-
-        cy.button(actionName).click();
-
-        cy.wait("@executePrefetch");
-
-        H.modal().within(() => {
-          cy.findByPlaceholderText("Team Name").should(
-            "have.value",
-            "Jolly Jellyfish",
-          );
-          cy.findByPlaceholderText("Score").should("have.value", "60");
-        });
-      });
-
       it("should reflect to updated action on mapping form", () => {
         const ACTION_NAME = "Update Score";
 

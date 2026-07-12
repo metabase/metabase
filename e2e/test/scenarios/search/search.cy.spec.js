@@ -174,19 +174,6 @@ describe("scenarios > search", () => {
         });
     });
 
-    it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
-      visitEmbeddingWithSearch(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-
-      // Type as soon as possible, before the dashboard has finished loading
-      H.getSearchBar().type("ord");
-
-      // Once the dashboard is visible, the search results should not be dismissed
-      H.main()
-        .findByRole("heading", { name: "Loading..." })
-        .should("not.exist");
-      cy.findByTestId("search-results-floating-container").should("exist");
-    });
-
     it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
       H.updateSetting("custom-homepage", true);
       H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);

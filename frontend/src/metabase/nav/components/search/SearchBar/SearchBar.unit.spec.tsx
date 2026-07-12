@@ -7,6 +7,7 @@ import {
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -205,6 +206,50 @@ describe("SearchBar", () => {
 
       expect(location.pathname).toEqual("search");
       expect(location.search).toEqual("?q=bar");
+    });
+  });
+
+  describe("dismissing search on navigation", () => {
+    it("should dismiss the search results when navigating to a new page", async () => {
+      const { history } = setup();
+
+      await userEvent.click(getSearchBar());
+      expect(
+        screen.getByTestId("search-results-floating-container"),
+      ).toBeInTheDocument();
+
+      act(() => {
+        history.push("/collection/root");
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("search-results-floating-container"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("should not dismiss the search results when the location is replaced (metabase#35009)", async () => {
+      const { history } = setup();
+
+      await userEvent.click(getSearchBar());
+      expect(
+        screen.getByTestId("search-results-floating-container"),
+      ).toBeInTheDocument();
+
+      // A `replace` mimics the URL rewrite that happens when a dashboard
+      // finishes loading and syncs its default parameters into the location.
+      act(() => {
+        history.replace("/dashboard/1");
+      });
+
+      await waitFor(() => {
+        expect(history.getCurrentLocation().pathname).toEqual("/dashboard/1");
+      });
+
+      expect(
+        screen.getByTestId("search-results-floating-container"),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -65,18 +65,6 @@ describe("scenarios > search", () => {
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
     });
-
-    it("should reset the page when filters change (metabase#65501)", () => {
-      cy.visit("/search?q=");
-      cy.findByLabelText("Next page").click();
-      cy.findByTestId("type-search-filter").click();
-      H.popover().findByText("Table").click();
-      H.popover().findByText("Apply").click();
-      cy.findByTestId("search-app")
-        .findByText("Didn't find anything")
-        .should("not.exist");
-      cy.findAllByTestId("search-result-item").should("exist");
-    });
   });
 });
 
