@@ -179,6 +179,7 @@
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
   (setting/validate-settings-formatting!)
+  (setting/check-for-removed-env-vars!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
   ;; Cal 2024-04-03:

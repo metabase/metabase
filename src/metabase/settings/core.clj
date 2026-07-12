@@ -89,6 +89,7 @@
  [metabase.settings.models.setting
   admin-writable-site-wide-settings
   can-read-setting?
+  check-for-removed-env-vars!
   current-user-readable-visibilities
   custom-disabled-reasons!
   db-stored-value
