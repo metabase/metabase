@@ -16,3 +16,21 @@
       (reset! ran [])
       (is (nil? (#'startup/run-startup-logic!* [(rec ::v1)] [(rec ::l1) (boom ::l2) (rec ::l3)])))
       (is (= [::v1 ::l1 ::l3] @ran) "validation first, then logic; the throwing logic impl did not stop the rest"))))
+
+(deftest run-startup-logic-passes-phases-in-order-test
+  (testing "run-startup-logic! passes the validation methods to the abort slot and logic to the swallow slot"
+    (let [captured (atom nil)]
+      (try
+        ;; probe impls, distinct per phase so a swapped call is detectable; never invoked (the runner is stubbed)
+        (defmethod startup/def-startup-validation! ::probe-validation [_])
+        (defmethod startup/def-startup-logic! ::probe-logic [_])
+        (with-redefs [startup/run-startup-logic!* (fn [validation-impls setup-impls]
+                                                    (reset! captured [validation-impls setup-impls]))]
+          (startup/run-startup-logic!))
+        (let [[validation-impls setup-impls] @captured]
+          (is (contains? validation-impls ::probe-validation) "validation methods go to the first (abort) arg")
+          (is (contains? setup-impls ::probe-logic) "logic methods go to the second (swallow) arg")
+          (is (not (contains? validation-impls ::probe-logic)) "the two phases are not swapped"))
+        (finally
+          (remove-method startup/def-startup-validation! ::probe-validation)
+          (remove-method startup/def-startup-logic! ::probe-logic))))))
