@@ -85,7 +85,10 @@
                                          "puppy"              [0.13 -0.33 0.57 -0.77]}
         (with-redefs [semantic.db.datasource/db-url                 nil
                       semantic.db.datasource/data-source            (atom nil)
+                      ;; a cooldown left open by another test would make pgvector-mode read :unavailable here
                       semantic.db.datasource/app-db-pgvector-support (atom nil)
+                      semantic.db.datasource/probe-cooldown-timer    (atom nil)
+                      semantic.db.datasource/logged-pgvector-absent? (atom false)
                       semantic.embedding/get-configured-model  (fn [] semantic.tu/mock-embedding-model)]
           (let [app-db (mdb/data-source)]
             (try

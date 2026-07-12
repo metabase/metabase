@@ -7,7 +7,8 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.app-db.core :as mdb]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [next.jdbc :as jdbc])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -51,6 +52,27 @@
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
           (is (not (semantic.db.datasource/pgvector-configured?)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support)))))))
+
+(deftest support-requires-creatable-extension-test
+  (testing "the app db is supported only when the vector extension is installed or the user can create it"
+    (with-redefs [mdb/data-source (constantly ::app-pool)]
+      (testing "already installed → supported; creatability is not probed"
+        (with-redefs [jdbc/execute-one! (fn [& _] {:installed true :available false})
+                      semantic.db.datasource/app-db-can-create-vector-extension?
+                      (fn [_] (throw (AssertionError. "must not probe creatability when already installed")))]
+          (is (true? (semantic.db.datasource/check-app-db-pgvector-support)))))
+      (testing "not available → unsupported; creatability is not probed"
+        (with-redefs [jdbc/execute-one! (fn [& _] {:installed false :available false})
+                      semantic.db.datasource/app-db-can-create-vector-extension?
+                      (fn [_] (throw (AssertionError. "must not probe creatability when unavailable")))]
+          (is (false? (semantic.db.datasource/check-app-db-pgvector-support)))))
+      (testing "available but not installed → supported only if the user can actually create it"
+        (with-redefs [jdbc/execute-one! (fn [& _] {:installed false :available true})
+                      semantic.db.datasource/app-db-can-create-vector-extension? (constantly true)]
+          (is (true? (semantic.db.datasource/check-app-db-pgvector-support))))
+        (with-redefs [jdbc/execute-one! (fn [& _] {:installed false :available true})
+                      semantic.db.datasource/app-db-can-create-vector-extension? (constantly false)]
+          (is (false? (semantic.db.datasource/check-app-db-pgvector-support))))))))
 
 (deftest support-check-caching-test
   (with-redefs [semantic.db.datasource/db-url nil

@@ -224,21 +224,39 @@
   (let [timer @probe-cooldown-timer]
     (or (nil? timer) (>= (u/since-ms timer) probe-cooldown-ms))))
 
+(defn- app-db-can-create-vector-extension?
+  "Whether the app-db user can create the `vector` extension, checked without persisting it: the CREATE runs
+  in a transaction that always rolls back.
+  A privilege error reads as false."
+  [data-source]
+  (try
+    (jdbc/with-transaction [tx data-source {:rollback-only true}]
+      (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]))
+    true
+    (catch Exception e
+      (log/debug e "Semantic search: the application database user cannot create the pgvector extension")
+      false)))
+
 (defn check-app-db-pgvector-support
   "Can the application database act as the pgvector store?
-  True when the `vector` extension is installed, or available to install.
-  Deliberately read-only: availability predicates reach this from unlicensed and disabled instances, which
-  must never mutate the app db. The CREATE EXTENSION / CREATE SCHEMA happen on the activation path
-  ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]]), which only licensed,
-  enabled instances run."
+  True when the `vector` extension is installed, or the app-db user can create it.
+  Creatability is verified in a rolled-back transaction, not read from pg_available_extensions: managed
+  Postgres often lists the extension as available while denying CREATE EXTENSION.
+  The probe persists nothing, so the unlicensed and disabled instances whose availability predicates reach
+  here never mutate the app db; the persisted CREATE EXTENSION / CREATE SCHEMA run only on the activation
+  path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]])."
   []
-  (let [{:keys [installed available]}
-        (jdbc/execute-one! (mdb/data-source)
+  (let [data-source (mdb/data-source)
+        {:keys [installed available]}
+        (jdbc/execute-one! data-source
                            [(str "SELECT"
                                  " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
                                  " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available")]
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-    (boolean (or installed available))))
+    (cond
+      installed       true
+      (not available) false
+      :else           (app-db-can-create-vector-extension? data-source))))
 
 (defn- app-db-pgvector-supported?
   "Whether the application database can act as the pgvector store, via a cached probe.
@@ -268,9 +286,10 @@
                  true)
                (do
                  (when (compare-and-set! logged-pgvector-absent? false true)
-                   (log/info (str "Semantic search: the application database has no pgvector extension"
-                                  " installed or available. Install pgvector (or set MB_PGVECTOR_DB_URL);"
-                                  " it is picked up automatically, no restart needed.")))
+                   (log/info (str "Semantic search: the application database cannot host pgvector (the"
+                                  " vector extension is not installed, and the app-db user cannot create"
+                                  " it). Install pgvector and grant CREATE, or set MB_PGVECTOR_DB_URL; it is"
+                                  " picked up automatically, no restart needed.")))
                  (reset! probe-cooldown-timer (u/start-timer))
                  false))
              (catch Exception e

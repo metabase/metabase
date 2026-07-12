@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.api.common :as api]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
@@ -46,7 +45,6 @@
                        :verified true}]
         (with-redefs [perms/impersonated-user? (fn [] false)
                       perms/sandboxed-user? (fn [] false)
-                      api/*current-user-id* 1
                       search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])]
           (testing "search returns postprocessed results for term queries"
             (with-redefs [search-core/search (fn [_] {:data [order-table]})]
