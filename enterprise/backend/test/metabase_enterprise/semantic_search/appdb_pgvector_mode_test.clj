@@ -56,9 +56,9 @@
 
 (defn- schema-exists?
   [connectable schema]
-  (some? (jdbc/execute-one! connectable
-                            ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema]
-                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+  (boolean (seq (jdbc/execute! connectable
+                               ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema]
+                               {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
 (defn- opted-in?
   "True when MB_APPDB_PGVECTOR_MODE_TEST=true: the appdb-mode CI job (or a developer deliberately opting
