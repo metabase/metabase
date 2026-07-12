@@ -101,6 +101,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.metadata
            lib.schema
            model-persistence
            models
@@ -159,6 +160,7 @@
   {:team "Metabot"
    :api  #{metabase.agent-lib.core}
    :uses #{lib
+           lib.metadata
            lib.schema
            util}}
 
@@ -817,6 +819,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.metadata
            lib.schema
            premium-features
            query-processor
@@ -1003,6 +1006,7 @@
   lib
   {:team "Querying Platform"
    :module-exports #{lib.be
+                     lib.metadata
                      lib.schema
                      lib.source-swap}
    :api  #{metabase.lib.core
@@ -1011,9 +1015,6 @@
            metabase.lib.filter.desugar.jvm
            metabase.lib.hierarchy
            metabase.lib.init
-           metabase.lib.metadata
-           metabase.lib.metadata.protocols
-           metabase.lib.metadata.result-metadata
            metabase.lib.normalize
            metabase.lib.ref
            metabase.lib.types.isa
@@ -1023,6 +1024,7 @@
    :uses #{config
            graph
            legacy-mbql
+           lib.metadata
            lib.schema
            types
            util}
@@ -1034,6 +1036,7 @@
            metabase.lib-metric.schema}
    :uses #{lib
            lib.be
+           lib.metadata
            lib.schema
            settings
            types
@@ -1046,6 +1049,7 @@
    :api  #{metabase.lib-be.core
            metabase.lib-be.init}
    :uses #{lib
+           lib.metadata
            lib.schema
            models
            settings
@@ -1061,6 +1065,23 @@
                     :model/Segment
                     :model/Table
                     :model/Transform}}
+
+  lib.metadata
+  {:team "Querying Platform"
+   :ns-prefix "metabase.lib.metadata"
+   :api  #{metabase.lib.metadata
+           metabase.lib.metadata.cached-provider
+           metabase.lib.metadata.calculation
+           metabase.lib.metadata.column
+           metabase.lib.metadata.composed-provider
+           metabase.lib.metadata.invocation-tracker
+           metabase.lib.metadata.protocols
+           metabase.lib.metadata.result-metadata}
+   :uses #{config
+           legacy-mbql
+           lib
+           lib.schema
+           util}}
 
   lib.schema
   {:team "Querying Platform"
@@ -1108,6 +1129,7 @@
            metabase.source-swap.util}
    :uses #{driver
            lib
+           lib.metadata
            lib.schema
            sql-tools
            util}}
@@ -1123,6 +1145,7 @@
            driver
            lib
            lib.be
+           lib.metadata
            metabot
            models
            premium-features
@@ -1218,6 +1241,7 @@
               legacy-mbql
               lib
               lib.be
+              lib.metadata
               lib.schema
               llm
               metabot.slackbot
@@ -1311,6 +1335,7 @@
            lib
            lib-metric
            lib.be
+           lib.metadata
            models
            parameters
            permissions
@@ -1469,6 +1494,7 @@
            classloader
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            query-processor
@@ -1679,6 +1705,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            metrics
            models
@@ -1752,6 +1779,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            permissions
@@ -1809,6 +1837,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.metadata
            lib.schema
            model-persistence
            models
@@ -1858,6 +1887,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.metadata
            lib.schema
            logger
            models
@@ -2112,6 +2142,7 @@
    :uses #{analytics
            driver
            lib
+           lib.metadata
            lib.schema
            settings
            sql-parsing
@@ -2166,7 +2197,7 @@
            database-routing
            driver
            events
-           lib
+           lib.metadata
            lib.schema
            models
            premium-features
@@ -2346,6 +2377,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            query-processor
            sync
@@ -2529,6 +2561,7 @@
            driver
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            parameters
@@ -2562,6 +2595,7 @@
            driver
            events
            lib
+           lib.metadata
            lib.schema
            models
            parameters
@@ -2622,6 +2656,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            permissions
@@ -2662,6 +2697,7 @@
            legacy-mbql
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            queries
@@ -2693,6 +2729,7 @@
            driver
            events
            lib
+           lib.metadata
            models
            query-processor
            util
@@ -2779,7 +2816,7 @@
            classloader
            config
            driver
-           lib
+           lib.metadata
            models
            permissions
            plugins
@@ -2852,6 +2889,7 @@
    :api  #{}
    :uses #{classloader
            lib
+           lib.metadata
            lib.schema
            models
            plugins
@@ -2943,7 +2981,7 @@
            database-routing
            driver
            events
-           lib
+           lib.metadata
            models
            premium-features
            query-processor
@@ -2971,6 +3009,7 @@
            graph
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            native-query-snippets
@@ -3054,7 +3093,7 @@
    :uses #{api
            audit-app
            driver
-           lib
+           lib.metadata
            models
            premium-features
            query-processor
@@ -3159,6 +3198,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            lib.source-swap
            model-persistence
@@ -3191,6 +3231,7 @@
            events
            legacy-mbql
            lib
+           lib.metadata
            lib.schema
            models
            permissions
@@ -3397,6 +3438,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            query-processor
            server
@@ -3423,6 +3465,7 @@
            events
            lib
            lib.be
+           lib.metadata
            models
            permissions
            query-processor
@@ -3460,6 +3503,7 @@
            events
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
            premium-features
