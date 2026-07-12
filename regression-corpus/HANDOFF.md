@@ -94,12 +94,39 @@ merge (50630 into CartesianChart/events.unit.spec.ts) needed `git apply --3way` 
 brace-balance. Confirms: pick fresh specs, avoid the most-reused ones (PivotTable, selectors,
 core.unit.spec.ts) — those are the deferred-6's collision problem.
 
-## GRAND TOTAL: ~133 e2e repros culled, ~125 FE witnesses + 11 BE deftests
-Branch `dev-2347`, 39 commits ahead of master, tree clean.
-Remaining deferred: **6 verified-landable witnesses** (30610 55486 33079 52975 42697 37726 —
-per-file merges on reused specs) + FE **34395** (agent API-errored; retry with a
-predicate-level `isActionDashCard` witness). BE-deftest backlog from batch 12: 40176,
-32625+31635, 29795.
+## Batch 14 (rlc-mine, fresh pf2-3 wave): 6 landed, 4 deferred (worktree divergence)
+
+Committed `da261afed6f`. Dispatched 14 full-loop agents on the newest live distinct-spec
+conflict/pf2-3 candidates. **10 reported `landed`, but only 6 applied to dev-2347**:
+- Landed & committed (6 issues / 7 e2e blocks): 67399 66277 59984 54603 68819 62391 (62391
+  also culled its duplicate #62391 pair in public-dashboard.cy.spec.js). 54603 is an
+  e2e-only cull against a pre-existing ParameterSidebar witness.
+- **be_deftest (2):** 61010 (lib aggregable/expressionable-columns), 54108 (lib drill-thru
+  underlying-records). Oracles already shipped → add to BE backlog.
+- **keep_e2e (2):** 61164 (irreducible virtualizer row-height geometry), 59052 (reducible
+  seam exists but #59052 tags were retro-added to broad datamodel integration tests).
+
+**DIVERGENCE LEARNING (important):** the Agent-tool `isolation:worktree` base does NOT
+reliably match dev-2347 HEAD — it diverges on high-churn *aggregator* specs that many prior
+batches edited (`*-reproductions*.cy.spec`, `native-reproductions`, `models/reproductions-2`).
+For 4 issues (**32037 53649 59356 63745**) the agent's `git diff HEAD` patch was against a
+divergent base: e2e-cull hunks failed context match, and worse, 59356's "new" witness
+`querying.unit.spec.ts` showed 39 *deletions* (the file already exists on dev-2347) — a
+mechanical apply would clobber branch content. **Deferred all 4** (witnesses verified good
+in-worktree; re-author against current HEAD in a later pass). 32037's witness was actually a
+clean pure-add (+11/-0, only its e2e diverged) so it's the easiest re-author.
+**Mitigation for next batches:** pre-filter candidates to specs *no prior batch touched*
+(dedicated-repro or feature specs, not aggregators), OR have agents emit the witness block +
+e2e block-title as text and apply against HEAD rather than trusting patch context.
+
+## GRAND TOTAL: ~140 e2e repros culled, ~130 FE witnesses + 11 BE deftests
+Branch `dev-2347`, 41 commits ahead of master, tree clean.
+Remaining deferred: **6 batch-12 witnesses** (30610 55486 33079 52975 42697 37726 — per-file
+merges on reused specs) + **4 batch-14 witnesses** (32037 53649 59356 63745 — worktree
+divergence, re-author against HEAD) + FE **34395** (agent API-errored; predicate-level
+`isActionDashCard` witness). BE-deftest backlog: 40176, 32625+31635, 29795 (batch 12) +
+61010, 54108 (batch 14). Patches for the batch-14 deferred are in /tmp/rlc-mine/*.patch
+(ephemeral — re-derive from the fix commits if gone).
 
 ## FE FAN-OUT COMPLETE — pool exhausted
 
