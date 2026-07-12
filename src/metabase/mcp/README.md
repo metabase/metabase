@@ -295,6 +295,27 @@ sandboxed user — and asserts the two give the same answer. Adding a tool means
 - Does a workflow tool abort the whole call on a failed op, rather than half-applying?
 - Are there parity rows for its denial scenarios?
 
+## Evals
+
+Tool descriptions are the API, and a copyedit to one is a behavior change. Unit tests cannot see that;
+[`mcp-evals/`](../../../mcp-evals/) can. It runs 30+ realistic BI tasks against a seeded instance
+through the Claude Agent SDK and reports pass@k, the wrong-tool confusion matrix, argument
+hallucination, tokens, call counts against a reference trajectory, and p95 response size. Every
+release gate in the plan carries a number, and `mcp-evals/src/gates.ts` is where those numbers live —
+including the three owned by tests elsewhere (`read_resource` coverage, the dashboard op map, the
+permission-parity matrix), which are reported in rather than re-derived, so one report answers whether
+the server can ship.
+
+The suite is what *decides* the design's contested calls rather than arguing them: each merged
+`<entity>_write` tool is probed on create, on update, and on a deliberate wrong method, and a method
+whose pass rate lags the catalog median by more than ten points fires the pre-registered trigger to
+split that entity back into `create_X`/`update_X`. Re-run it on every description change.
+
+**Projections live in one place.** `metabase.agent-api.projections` holds the concise field set for
+every entity a read tool returns. A tool never invents its own — it looks the entity up and hands the
+spec to `project`, so the same entity reads the same way through every tool that returns it, and the
+reason a field set is what it is sits next to the field set.
+
 ## Further reading
 
 - [MCP user docs](../../../docs/ai/mcp.md)
