@@ -75,6 +75,23 @@
                 (is (= 2 (count results)))
                 (is (some #(= (:id %) 1) results))
                 (is (some #(= (:id %) 2) results)))))
+          (testing "with no semantic engine active, semantic queries fold into the default engine"
+            (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                          ;; Pass terms through uncombined: Postgres appdb would OR them into one string,
+                          ;; which breaks the per-query mock keying below. Keeps this deterministic on any app-db.
+                          search.engine/disjunction (fn [_ terms] terms)
+                          search-core/search (fn [context]
+                                               (if (= (:search-string context) "orders")
+                                                 {:data [order-table]}
+                                                 {:data [dashboard]}))]
+              (let [args {:term-queries ["orders"]
+                          :semantic-queries ["sales"]
+                          :entity-types ["table" "dashboard"]}
+                    results (search/search args)]
+                ;; The semantic query is not dropped — it is searched via the default engine and fused in.
+                (is (= 2 (count results)))
+                (is (some #(= (:id %) 1) results))
+                (is (some #(= (:id %) 2) results)))))
           (testing "search applies RRF to overlapping results"
             (with-redefs [search-core/search (fn [_]
                                                {:data [order-table dashboard]})]
