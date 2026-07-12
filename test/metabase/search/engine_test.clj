@@ -79,13 +79,14 @@
                clojure.lang.ExceptionInfo
                #"remove it from your configuration"
                (search/check-for-removed-env-vars!)))))
-      (testing "the failure is flagged fatal so run-startup-logic! aborts startup"
-        (with-engines {:supported all-engines}
-          (is (true? (::startup/fatal
-                      (ex-data (try (search/check-for-removed-env-vars!)
-                                    (catch clojure.lang.ExceptionInfo e e))))))))))
+      (testing "the check runs as a startup validation so a throw aborts the boot"
+        (is (contains? (methods startup/def-startup-validation!)
+                       :metabase.search.core/check-for-removed-env-vars)))))
   (testing "startup proceeds when the kill switch is absent"
     (with-redefs [env/env {}]
+      (is (nil? (search/check-for-removed-env-vars!)))))
+  (testing "an empty value counts as unset, not a leftover"
+    (with-redefs [env/env {:mb-semantic-search-enabled ""}]
       (is (nil? (search/check-for-removed-env-vars!))))))
 
 (deftest search-engine-setting-test

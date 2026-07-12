@@ -1,8 +1,23 @@
 (ns metabase.startup.core
-  "Defines the `def-startup-logic!` and `def-shutdown-logic!` multimethods for server lifecycle hooks."
+  "Defines the server lifecycle multimethods. `def-startup-validation!` and `def-startup-logic!` run at
+  startup: validations first (a throw aborts startup), then initialization logic. `def-shutdown-logic!`
+  runs at graceful shutdown."
   (:require
    [metabase.util :as u]
    [metabase.util.log :as log]))
+
+(defmulti def-startup-validation!
+  "Registers a startup precondition. All implementations run before any `def-startup-logic!`, in
+  unspecified order; a throw from any of them aborts startup. Use this (not `def-startup-logic!`) for
+  checks that must fail the boot before initialization logic (e.g. rejecting a removed setting), so
+  nothing expensive kicks off first.
+
+  The dispatch value can be any unique keyword and is used purely for logging.
+
+    (defmethod startup/def-startup-validation! ::ExampleCheck [_]
+      (when (misconfigured?) (throw (ex-info \"Bad config\" {}))))"
+  {:arglists '([validation-name])}
+  keyword)
 
 (defmulti def-startup-logic!
   "Runs initialization logic with a given name. All implementations of this method are called once and only
@@ -32,19 +47,20 @@
 (defmethod startup-priority :default [_] 500)
 
 (defn run-startup-logic!
-  "Call all implementations of `def-startup-logic!`. Called by metabase.core/init!
-  Methods run in ascending [[startup-priority]] order, with ties broken by dispatch-value name
-  for determinism.
-  Errors are logged and skipped, unless the ex-data carries `::fatal true`, which aborts startup."
+  "Run all `def-startup-validation!` implementations (a throw aborts startup), then all
+  `def-startup-logic!` implementations. Called by metabase.core/init!
+  Logic methods run in ascending [[startup-priority]] order, with ties broken by dispatch-value name
+  for determinism; their errors are logged and skipped."
   []
+  (doseq [[k f] (methods def-startup-validation!)]
+    (log/infof "Running startup validation %s" (u/format-color 'green (name k)))
+    (f k))
   (doseq [[k f] (sort-by (fn [[k _]] [(startup-priority k) (name k)])
                          (methods def-startup-logic!))]
     (try
-      (log/infof "Running setup logic %s %s" (u/format-color 'green (name k)) (u/emoji "☑\uFE0F"))
+      (log/infof "Running setup logic %s %s" (u/format-color 'green (name k)) (u/emoji "☑️"))
       (f k)
       (catch Throwable e
-        (when (::fatal (ex-data e))
-          (throw e))
         (log/errorf e "Error initializing startup logic %s" k)))))
 
 (defmulti def-shutdown-logic!
