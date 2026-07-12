@@ -85,13 +85,33 @@
           (with-redefs [mdb/db-is-set-up? (constantly true)
                         semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))
-    (testing "the cache is resettable (JVM-lifetime semantics, tests/REPL reset it)"
-      (with-support-cache false
-        (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
-        (reset! semantic.db.datasource/app-db-pgvector-support nil)
+    (testing "an unsupported probe is NOT latched — it re-probes after the cooldown, so a runtime install is picked up"
+      (with-support-cache nil
+        (with-redefs [mdb/db-is-set-up? (constantly true)
+                      semantic.db.datasource/check-app-db-pgvector-support (constantly false)]
+          (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
+          (is (nil? @semantic.db.datasource/app-db-pgvector-support))
+          (testing "within the cooldown the check must not run again"
+            (with-redefs [mdb/db-is-set-up? (constantly true)
+                          semantic.db.datasource/check-app-db-pgvector-support
+                          (fn [] (throw (AssertionError. "must not re-probe during cooldown")))]
+              (is (= :unavailable (semantic.db.datasource/pgvector-mode))))))
+        (testing "cooldown elapsed: pgvector installed at runtime is now picked up (no restart)"
+          (reset! semantic.db.datasource/probe-cooldown-timer nil)
+          (with-redefs [mdb/db-is-set-up? (constantly true)
+                        semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
+            (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))
+    (testing "a confirmed true latches for the JVM lifetime; tests/REPL reset it"
+      (with-support-cache nil
         (with-redefs [mdb/db-is-set-up? (constantly true)
                       semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
-          (is (= :app-db (semantic.db.datasource/pgvector-mode))))))))
+          (is (= :app-db (semantic.db.datasource/pgvector-mode)))
+          (is (true? @semantic.db.datasource/app-db-pgvector-support)))
+        (testing "latched: a now-failing check is never consulted"
+          (with-redefs [mdb/db-is-set-up? (constantly true)
+                        semantic.db.datasource/check-app-db-pgvector-support
+                        (fn [] (throw (AssertionError. "must not re-probe after a confirmed true")))]
+            (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))))
 
 (deftest unlicensed-availability-check-does-not-probe-test
   (testing "without the :semantic-search feature, the availability gate never probes the app db"

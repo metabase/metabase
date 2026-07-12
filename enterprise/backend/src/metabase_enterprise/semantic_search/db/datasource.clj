@@ -197,25 +197,31 @@
   (test-connection!))
 
 (def app-db-pgvector-support
-  "Cached result of [[check-app-db-pgvector-support]]: nil = not yet determined, boolean once checked.
-  Cached for the JVM lifetime — extensions don't come and go under a running instance. Tests reset it."
+  "Latches `true` once the app db is confirmed to support pgvector; nil until then.
+  A confirmed extension doesn't vanish under a running instance, so `true` is permanent. A negative result
+  is NOT latched — it opens a [[probe-cooldown-timer]] and is re-probed, so installing pgvector on a
+  running instance is picked up without a restart. Tests reset it."
   (atom nil))
 
 (def probe-cooldown-timer
-  "A [[u/start-timer]] taken when the last app-db pgvector probe failed, or nil when none is pending.
-  Throttles the catalog query and its WARN so a persistent failure doesn't re-probe on every search and
-  20s indexer tick. Tests reset it."
+  "A [[u/start-timer]] taken when the last app-db pgvector probe came back unsupported or errored, or nil
+  when a probe is due. Bounds re-probing to once per [[probe-cooldown-ms]] so an absent extension doesn't
+  re-query the catalog on every search and 20s indexer tick. Tests reset it."
   (atom nil))
 
-(def ^:private probe-backoff-ms
-  "Cooldown after a failed app-db pgvector probe before it may run again."
-  (.toMillis (java.time.Duration/ofMinutes 1)))
+(def ^:private probe-cooldown-ms
+  "How long an unsupported or failed app-db pgvector probe is trusted before re-probing."
+  (.toMillis (java.time.Duration/ofSeconds 30)))
+
+(defonce ^:private logged-pgvector-absent?
+  ;; log-once latch for the operator hint, since the negative probe now recurs every cooldown
+  (atom false))
 
 (defn- probe-due?
-  "True when no app-db pgvector probe backoff is active."
+  "True when no app-db pgvector probe cooldown is active."
   []
   (let [timer @probe-cooldown-timer]
-    (or (nil? timer) (>= (u/since-ms timer) probe-backoff-ms))))
+    (or (nil? timer) (>= (u/since-ms timer) probe-cooldown-ms))))
 
 (defn check-app-db-pgvector-support
   "Can the application database act as the pgvector store?
@@ -231,40 +237,46 @@
                                  " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
                                  " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available")]
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-    (when-not (or installed available)
-      (log/info (str "Semantic search: the application database has no pgvector extension available;"
-                     " install pgvector (or set MB_PGVECTOR_DB_URL), then restart Metabase, to enable"
-                     " semantic search.")))
     (boolean (or installed available))))
 
 (defn- app-db-pgvector-supported?
-  "Cached [[check-app-db-pgvector-support]]. Returns false (without caching) while the app DB is not yet
-  set up, or when the check itself errors, so an early call or a transient connection failure cannot pin
-  a premature answer for the JVM lifetime. A failed probe backs off (see [[probe-cooldown-timer]]) so a
-  persistent failure doesn't re-query and re-warn on every call."
+  "Whether the application database can act as the pgvector store, via a cached probe.
+  A confirmed `true` latches for the JVM lifetime (see [[app-db-pgvector-support]]); an unsupported or
+  errored probe is trusted only for [[probe-cooldown-ms]] before re-probing, so a runtime `CREATE
+  EXTENSION` / package install is picked up without a restart while a persistent negative doesn't re-query
+  and re-warn on every call. Returns false while the app db is not yet set up."
   []
-  (if-some [cached @app-db-pgvector-support]
-    cached
+  (if (true? @app-db-pgvector-support)
+    true
     (boolean
      (when (and (mdb/db-is-set-up?) (probe-due?))
        (locking app-db-pgvector-support
-         (or @app-db-pgvector-support
-             ;; re-check under the lock: a racing thread may have cached a result or just opened a backoff
-             (when (probe-due?)
-               (try
-                 (let [supported (check-app-db-pgvector-support)]
-                   (when supported
-                     (log/info (str "Semantic search: using the application database as the pgvector store"
-                                    " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
-                                    " dedicated pgvector database.")))
-                   (reset! app-db-pgvector-support supported)
-                   (reset! probe-cooldown-timer nil)
-                   supported)
-                 (catch Exception e
-                   (reset! probe-cooldown-timer (u/start-timer))
-                   (log/warn e (str "Semantic search: pgvector support check on the application database failed;"
-                                    " will retry after backoff."))
-                   false)))))))))
+         (cond
+           (true? @app-db-pgvector-support) true
+           ;; a racing thread probed first and opened the cooldown
+           (not (probe-due?))               false
+           :else
+           (try
+             (if (check-app-db-pgvector-support)
+               (do
+                 (log/info (str "Semantic search: using the application database as the pgvector store"
+                                " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
+                                " dedicated pgvector database."))
+                 (reset! app-db-pgvector-support true)
+                 (reset! probe-cooldown-timer nil)
+                 true)
+               (do
+                 (when (compare-and-set! logged-pgvector-absent? false true)
+                   (log/info (str "Semantic search: the application database has no pgvector extension"
+                                  " installed or available. Install pgvector (or set MB_PGVECTOR_DB_URL);"
+                                  " it is picked up automatically, no restart needed.")))
+                 (reset! probe-cooldown-timer (u/start-timer))
+                 false))
+             (catch Exception e
+               (reset! probe-cooldown-timer (u/start-timer))
+               (log/warn e (str "Semantic search: pgvector support check on the application database failed;"
+                                " will retry after the cooldown."))
+               false))))))))
 
 (defn pgvector-mode
   "How this instance reaches its pgvector database:
