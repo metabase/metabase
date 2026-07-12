@@ -243,6 +243,12 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
+  modules-validate
+  {:doc "Validate module config, ownership, visibility, API, and model boundaries"
+   :examples [["./bin/mage modules-validate" "Run every module-config validation"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-validate-config! parsed))}
+
   can-skip-driver-tests
   {:doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]

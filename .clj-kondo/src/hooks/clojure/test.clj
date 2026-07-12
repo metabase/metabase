@@ -108,6 +108,7 @@
           (str/starts-with? (name ns-symb) prefix))
         ["build-drivers."
          "build."
+         "dev." ; dev tooling
          "i18n." ; bin/i18n
          "lint-migrations-file-test"
          "mage." ; mage build tool

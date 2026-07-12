@@ -36,13 +36,68 @@
 (def ^:private teams-to-reassign #{"Admin Webapp" "DashViz"})
 
 (deftest ^:parallel all-modules-have-teams-test
-  (testing "All modules should have a valid :team owner"
-    (let [teams (teams)]
-      (doseq [[module config] (modules-config)]
+  (testing "All modules should have a valid effective :team owner"
+    (let [teams  (teams)
+          config (dev.deps-graph/expanded-kondo-config (modules-config))]
+      (doseq [[module config] config]
         (testing (format "\n'%s' module" module)
           (is (or (contains? teams (:team config))
                   (contains? teams-to-reassign (:team config)))
               "Should have a valid :team key"))))))
+
+(deftest ^:parallel expanded-kondo-config-test
+  (let [config {'parent               {:team "Parent"}
+                'parent.child         {:ns-prefix "metabase.legacy-child"}
+                'parent.child.leaf    {:team "Leaf"}
+                'enterprise/parent    {}
+                'enterprise/standalone {:team "Enterprise"}}
+        expanded (dev.deps-graph/expanded-kondo-config config)]
+    (testing "children inherit team ownership from the closest configured ancestor"
+      (is (= "Parent" (get-in expanded ['parent.child :team])))
+      (is (= 'parent (dev.deps-graph/module-team-source config 'parent.child))))
+    (testing "an explicit child team overrides its ancestors"
+      (is (= "Leaf" (get-in expanded ['parent.child.leaf :team])))
+      (is (= 'parent.child.leaf (dev.deps-graph/module-team-source config 'parent.child.leaf))))
+    (testing "declared enterprise companions inherit from their OSS parent"
+      (is (= "Parent" (get-in expanded ['enterprise/parent :team])))
+      (is (= 'parent (dev.deps-graph/module-team-source config 'enterprise/parent))))
+    (testing "standalone enterprise modules keep their own ownership"
+      (is (= "Enterprise" (get-in expanded ['enterprise/standalone :team])))
+      (is (= 'enterprise/standalone
+             (dev.deps-graph/module-team-source config 'enterprise/standalone))))
+    (testing "config-only defaults are materialized"
+      (is (= "metabase.legacy-child" (get-in expanded ['parent.child :ns-prefix])))
+      (is (= '#{metabase.legacy-child.api metabase.legacy-child.core metabase.legacy-child.init}
+             (get-in expanded ['parent.child :api])))
+      (is (= #{} (get-in expanded ['parent.child :uses])))
+      (is (= #{} (get-in expanded ['parent.child :friends])))
+      (is (= '#{enterprise/parent} (get-in expanded ['parent :module-exports])))))
+  (testing "wildcards expand to their effective config and source-aware values"
+    (let [config   {'caller        {:uses :any}
+                    'parent        {:module-exports #{'parent.open}}
+                    'parent.hidden {}
+                    'parent.open   {}
+                    'public        {:api :any}}
+          deps     [{:module 'public :namespace 'metabase.public.alpha}
+                    {:module 'public :namespace 'metabase.public.beta}]
+          expanded (dev.deps-graph/expanded-kondo-config config deps)]
+      (is (= '#{parent parent.open public}
+             (get-in expanded ['caller :uses])))
+      (is (= '#{metabase.public.alpha metabase.public.beta}
+             (get-in expanded ['public :api]))))))
+
+(deftest ^:parallel nested-module-teams-are-non-degenerate-overrides-test
+  (testing "Nested modules omit :team unless they override their inherited owner"
+    (let [config   (modules-config)
+          declared (set (keys config))]
+      (doseq [[module module-config] config
+              :let                  [parent (dev.deps-graph/module-parent declared module)]
+              :when                 (and parent (contains? module-config :team))]
+        (testing (format "\n%s" module)
+          (is (not= (:team module-config) (dev.deps-graph/module-team config parent))
+              (format "%s repeats the inherited team %s; remove its degenerate :team entry."
+                      module
+                      (pr-str (:team module-config)))))))))
 
 (defn- modules-config-zipper
   "Return a zipper pointing to the modules config map node (the value of the `:metabase/modules` key)."
@@ -297,6 +352,86 @@
               (format "Modules %s share :ns-prefix %s. Either give them distinct explicit :ns-prefix values, or rename one so its default prefix doesn't collide."
                       (pr-str (sort modules))
                       (pr-str prefix))))))))
+
+(deftest ^:parallel nested-modules-have-declared-parents-test
+  (testing "Every syntactically nested module has a declared direct parent"
+    (let [config   (dev.deps-graph/kondo-config)
+          declared (declared-modules-set config)]
+      (doseq [module declared
+              :let   [parent (dev.deps-graph/module-parent declared module)]
+              :when  parent]
+        (testing (format "\n%s is nested under %s" module parent)
+          (is (contains? declared parent)
+              (format "Declare parent module %s before declaring nested module %s."
+                      parent
+                      module)))))))
+
+(deftest ^:parallel module-exports-are-declared-direct-children-test
+  (testing "Every :module-exports entry names a declared direct child"
+    (let [config   (dev.deps-graph/kondo-config)
+          declared (declared-modules-set config)]
+      (doseq [[parent module-config] config
+              child                  (:module-exports module-config)]
+        (testing (format "\n[%s :module-exports %s]" parent child)
+          (is (contains? declared child)
+              (format "Exported child %s is not a declared module." child))
+          (is (= parent (dev.deps-graph/module-parent declared child))
+              (format "%s may only export direct children; %s has parent %s."
+                      parent
+                      child
+                      (dev.deps-graph/module-parent declared child))))))))
+
+(deftest ^:parallel module-boundary-config-values-have-valid-types-test
+  (testing "Module boundary keys use the values understood by the linter"
+    (doseq [[module config] (dev.deps-graph/kondo-config)]
+      (testing (format "\n%s" module)
+        (is (or (nil? (:api config))
+                (set? (:api config))
+                (= :any (:api config)))
+            ":api must be omitted, a set, or :any")
+        (is (or (nil? (:uses config))
+                (set? (:uses config))
+                (= :any (:uses config)))
+            ":uses must be omitted, a set, or :any")
+        (is (or (nil? (:friends config))
+                (set? (:friends config)))
+            ":friends must be a set when present")
+        (is (or (nil? (:module-exports config))
+                (set? (:module-exports config)))
+            ":module-exports must be a set when present")
+        (is (or (nil? (:ns-prefix config))
+                (string? (:ns-prefix config)))
+            ":ns-prefix must be a string when present")))))
+
+(deftest ^:parallel module-boundary-debt-may-not-increase-test
+  (testing "Module boundary escape hatches and public surface have ratcheted budgets"
+    (let [config      (dev.deps-graph/kondo-config)
+          values      (vals config)
+          api-sizes   (keep (fn [{:keys [api]}]
+                              (when (set? api)
+                                (count api)))
+                            values)
+          actual      {:api-any            (count (filter #(= :any (:api %)) values))
+                       :friend-edges       (transduce (map (comp count :friends)) + 0 values)
+                       :largest-api        (reduce max 0 api-sizes)
+                       :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
+                       :total-api          (reduce + 0 api-sizes)
+                       :uses-any           (count (filter #(= :any (:uses %)) values))}
+          ;; Ratchet baseline (2026-07-12). Lower a budget when the corresponding debt is reduced.
+          budgets     {:api-any        1
+                       :friend-edges   1
+                       :largest-api    31
+                       :module-exports 22
+                       :total-api      515
+                       :uses-any       4}]
+      (doseq [[metric budget] budgets]
+        (testing (format "\n%s" metric)
+          (is (<= (get actual metric) budget)
+              (format (str "%s increased from its budget of %d to %d. "
+                           "Reduce the new boundary debt or explicitly update the ratchet.")
+                      metric
+                      budget
+                      (get actual metric))))))))
 
 ;;;; Classpath / namespace convention
 ;;;;

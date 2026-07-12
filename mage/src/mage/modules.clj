@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [mage.color :as c]
+   [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -92,9 +93,16 @@
         modules-config))
 
 (defn- longest-matching-prefix [prefix->module ns-str]
-  (let [matches (filter #(ns-starts-with-prefix? ns-str %) (keys prefix->module))]
-    (when (seq matches)
-      (get prefix->module (apply max-key count matches)))))
+  (second
+   (reduce-kv
+    (fn [[best-prefix :as best] prefix module]
+      (if (and (ns-starts-with-prefix? ns-str prefix)
+               (or (nil? best-prefix)
+                   (> (count prefix) (count best-prefix))))
+        [prefix module]
+        best))
+    nil
+    prefix->module)))
 
 (defn- file->module
   "Resolve a file path to a module symbol.
@@ -137,16 +145,18 @@
   (-> (read-modules-config)
       build-prefix->module))
 
-(defn- updated-files->updated-modules [updated-files]
-  (let [prefix->mod (read-prefix->module)]
-    (into (sorted-set)
-          (keep (partial file->module prefix->mod))
-          updated-files)))
+(defn- updated-files->updated-modules
+  ([updated-files]
+   (updated-files->updated-modules (read-prefix->module) updated-files))
+  ([prefix->module updated-files]
+   (into (sorted-set)
+         (keep (partial file->module prefix->module))
+         updated-files)))
 
-(defn- updated-modules [git-ref]
+(defn- updated-modules [prefix->module git-ref]
   (let [git-ref (or git-ref "master")
         updated-files (u/updated-files git-ref)]
-    (updated-files->updated-modules updated-files)))
+    (updated-files->updated-modules prefix->module updated-files)))
 
 (defn- module-ns-prefix
   [modules-config module]
@@ -327,8 +337,9 @@
   "Print affected modules and driver decision summary for the given git ref."
   [[git-ref, :as _command-line-args]]
   (let [modules-config         (read-modules-config)
+        prefix->module        (build-prefix->module modules-config)
         deps                   (dependencies modules-config)
-        updated                (updated-modules git-ref)
+        updated                (updated-modules prefix->module git-ref)
         affected               (affected-modules deps updated)
         driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
     (print-updated-and-unaffected-modules deps updated driver-deps-affected?)
@@ -341,6 +352,13 @@
             (pr-str (into [] (mapcat #(module->test-paths modules-config %)) affected)))
     (flush)
     (u/exit 0)))
+
+(defn cli-validate-config!
+  "Run the authoritative module-config validation tests and exit with their status."
+  [_cli-args]
+  (let [{:keys [exit], :or {exit -1}}
+        (shell/sh* "./bin/test-agent" ":only" "[metabase.core.modules-test]")]
+    (u/exit exit)))
 
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like

@@ -2,15 +2,13 @@
   (:require
    [clojure.string :as str]))
 
-(defn ignored-namespace? [config ns-symb]
+(defn ignored-namespace?
+  "Whether `ns-symb` matches one of the configured module-linter exclusions."
+  [config ns-symb]
   (some
    (fn [pattern-str]
      (re-find (re-pattern pattern-str) (str ns-symb)))
    (:ignored-namespace-patterns config)))
-
-(defn config [{:keys [config], :as _hook-input}]
-  (merge (get-in config [:linters :metabase/modules])
-         (select-keys config [:metabase/modules])))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Module identity and hierarchy
@@ -195,12 +193,8 @@
   (let [declared (declared-modules config)]
     (loop [m m]
       (if-let [p (parent-module declared m)]
-        (if (and (opens-child? config p m)
-                 ;; Walk up to verify p itself is externally visible.
-                 ;; We recurse inline because we already computed declared.
-                 (or (nil? (parent-module declared p))
-                     (externally-visible? config p)))
-          true
+        (if (opens-child? config p m)
+          (recur p)
           false)
         true))))
 
@@ -280,6 +274,26 @@
         (map (fn [m] [(module-ns-prefix config m) m]))
         (keys (get config :metabase/modules))))
 
+(defonce ^:private prefix->module-cache
+  (atom nil))
+
+(defn- cached-prefix->module
+  [config]
+  (let [modules (:metabase/modules config)
+        cached  @prefix->module-cache]
+    (if (identical? modules (:modules cached))
+      (:prefix->module cached)
+      (let [prefix->module (build-prefix->module config)]
+        (reset! prefix->module-cache {:modules modules, :prefix->module prefix->module})
+        prefix->module))))
+
+(defn config
+  "Extract the module-linter config and precompute its namespace resolver."
+  [{:keys [config], :as _hook-input}]
+  (let [config (merge (get-in config [:linters :metabase/modules])
+                      (select-keys config [:metabase/modules]))]
+    (assoc config ::prefix->module (cached-prefix->module config))))
+
 (defn- ns-starts-with-prefix?
   "True if namespace string `ns-str` is either exactly equal to `prefix` or
   begins with `prefix` followed by a `.` (segment boundary). Prevents false
@@ -293,9 +307,16 @@
   longest string prefix of `ns-str` at segment boundaries. Returns `nil`
   if no declared module owns the namespace."
   [prefix->module ns-str]
-  (let [matches (filter #(ns-starts-with-prefix? ns-str %) (keys prefix->module))]
-    (when (seq matches)
-      (get prefix->module (apply max-key count matches)))))
+  (second
+   (reduce-kv
+    (fn [[best-prefix :as best] prefix module]
+      (if (and (ns-starts-with-prefix? ns-str prefix)
+               (or (nil? best-prefix)
+                   (> (count prefix) (count best-prefix))))
+        [prefix module]
+        best))
+    nil
+    prefix->module)))
 
 (defn- normalize-test-namespace
   "Normalize exact `-test` namespaces back to their module/source namespace
@@ -362,7 +383,9 @@
      (or
       ;; Primary path: prefix-map longest match over declared modules.
       (when (seq (get config :metabase/modules))
-        (longest-matching-prefix (build-prefix->module config) (str ns-symb)))
+        (longest-matching-prefix (or (::prefix->module config)
+                                     (build-prefix->module config))
+                                 (str ns-symb)))
       ;; Fallback: single-segment extraction via the original regexes.
       ;; Preserved byte-for-byte so the consistency test can compare
       ;; regex literals across the three mapping sites.
@@ -398,9 +421,9 @@
           (symbol (str ns-prefix ".init"))}))))
 
 (defn- module-friends
-  [config module]
   "Set of modules that are `:friends` of `module`, i.e. allowed to use *any* namespace from the module, not just the
   designated [[module-api-namespaces]]."
+  [config module]
   (set (get-in config [:metabase/modules module :friends])))
 
 (defn allowed-modules
@@ -424,7 +447,7 @@
   [config current-module required-module]
   (let [allowed-modules (allowed-modules config current-module)]
     (or (= allowed-modules :any)
-        (boolean (contains? (set allowed-modules) required-module)))))
+        (boolean (contains? allowed-modules required-module)))))
 
 (defn- descendant-of?
   "True if `viewer` is a descendant of `viewed` in the module tree (or they

@@ -2,6 +2,7 @@
   "Tests for driver decision logic.
    Run `mage -driver-decisions -h` to see the priority order."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [mage.modules]))
 
@@ -326,16 +327,25 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers []
+(defn- modules-affecting-drivers []
   (let [deps (mage.modules/dependencies)
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
 
+(defn- top-level-module?
+  [declared-modules module]
+  (and (not (str/includes? (name module) "."))
+       (not (and (= "enterprise" (namespace module))
+                 (contains? declared-modules (symbol (name module)))))))
+
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
+  (testing "The number of top-level modules that trigger driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
-    (let [modules-triggering-drivers (modules-affecting-drivers)
+    (let [deps                       (mage.modules/dependencies)
+          modules-triggering-drivers (modules-affecting-drivers)
+          top-level-modules          (filter (partial top-level-module? (set (keys deps)))
+                                             modules-triggering-drivers)
           ;; This is a ratchet: it prevents accidental expansion of which modules
           ;; trigger driver tests. When a module transitively depends on driver code,
           ;; changes to that module cause ALL driver tests to run in CI, which is
@@ -350,14 +360,16 @@
           ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
           ;;            Added premium-features to driver-affecting-overrides (#69561)
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
-          max-allowed-count 41]
-      (is (<= (count modules-triggering-drivers) max-allowed-count)
-          (format "Too many modules trigger driver tests! Expected <= %d, got %d.
+          ;; 2026-07-12 Changed the ratchet to count logical top-level modules so nested carving does not
+          ;;            look like increased connectivity. The new top-level baseline is 36.
+          max-allowed-top-level-count 36]
+      (is (<= (count top-level-modules) max-allowed-top-level-count)
+          (format "Too many top-level modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
-                   If this is intentional, update max-allowed-count.
+                   If this is intentional, update max-allowed-top-level-count.
                    Otherwise, add the new module(s) to driver-affecting-overrides."
-                  max-allowed-count
-                  (count modules-triggering-drivers)
+                  max-allowed-top-level-count
+                  (count top-level-modules)
                   (pr-str (sort modules-triggering-drivers)))))))
 
 (deftest test-files-mark-modules-changes

@@ -94,9 +94,16 @@
   "Scan `prefix->module` and return the module whose ns-prefix is the longest
   string prefix of `ns-str` at segment boundaries."
   [prefix->module ns-str]
-  (let [matches (filter #(ns-starts-with-prefix? ns-str %) (keys prefix->module))]
-    (when (seq matches)
-      (get prefix->module (apply max-key count matches)))))
+  (second
+   (reduce-kv
+    (fn [[best-prefix :as best] prefix module]
+      (if (and (ns-starts-with-prefix? ns-str prefix)
+               (or (nil? best-prefix)
+                   (> (count prefix) (count best-prefix))))
+        [prefix module]
+        best))
+    nil
+    prefix->module)))
 
 (defn- normalize-test-namespace [ns-symb]
   (if (str/ends-with? (name ns-symb) "-test")
@@ -520,7 +527,9 @@
                  [k (expand-deps v)]))
           deps-graph)))
 
-(defn module-deps-count [deps]
+(defn module-deps-count
+  "Map each module to the number of modules in its transitive dependency closure."
+  [deps]
   (into (sorted-map)
         (map (fn [[k v]]
                [k (count v)]))
@@ -591,6 +600,119 @@
       ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
       (dissoc 'connection-pool)))
 
+(defn module-team-source
+  "Closest module at or above `module` that explicitly declares `:team`, or `nil` when none does."
+  [config module]
+  (let [declared-modules (set (keys config))]
+    (loop [module module]
+      (cond
+        (contains? (get config module) :team) module
+        :else (when-let [parent (module-parent declared-modules module)]
+                (recur parent))))))
+
+(defn module-team
+  "Effective team for `module`, inherited from its closest configured ancestor when omitted locally."
+  [config module]
+  (some->> (module-team-source config module)
+           (get config)
+           :team))
+
+(defn- top-level-oss-module?
+  [module]
+  (and (nil? (namespace module))
+       (not (str/includes? (name module) "."))))
+
+(defn- expanded-module-exports
+  [config module]
+  (let [explicit     (set (get-in config [module :module-exports]))
+        ee-companion (when (top-level-oss-module? module)
+                       (let [candidate (symbol "enterprise" (name module))]
+                         (when (contains? config candidate)
+                           candidate)))]
+    (cond-> explicit
+      ee-companion (conj ee-companion))))
+
+(defn- default-api-namespaces
+  [config module]
+  (let [prefix (module-ns-prefix config module)]
+    #{(symbol (str prefix ".api"))
+      (symbol (str prefix ".core"))
+      (symbol (str prefix ".init"))}))
+
+(defn- module-top-level-ancestor
+  [declared-modules module]
+  (or (last (module-ancestor-chain declared-modules module)) module))
+
+(defn- externally-referenceable-module?
+  [config module]
+  (let [declared-modules (set (keys config))]
+    (loop [module module]
+      (if-let [parent (module-parent declared-modules module)]
+        (and (contains? (expanded-module-exports config parent) module)
+             (recur parent))
+        true))))
+
+(defn- module-namable-from?
+  [config caller target]
+  (let [declared-modules (set (keys config))]
+    (or (= (module-top-level-ancestor declared-modules caller)
+           (module-top-level-ancestor declared-modules target))
+        (externally-referenceable-module? config target))))
+
+(defn- expanded-module-uses
+  [config module]
+  (let [uses (get-in config [module :uses])]
+    (if (= uses :any)
+      (into (sorted-set)
+            (comp (remove #{module})
+                  (filter (partial module-namable-from? config module)))
+            (keys config))
+      (set uses))))
+
+(defn- module->owned-namespaces
+  [deps]
+  (reduce (fn [result {:keys [module namespace]}]
+            (cond-> result
+              module (update module (fnil conj (sorted-set)) namespace)))
+          (sorted-map)
+          deps))
+
+(defn expanded-kondo-config
+  "Return module config with config-only defaults and inherited properties materialized.
+
+  Expands effective `:team`, `:ns-prefix`, default API namespaces, empty boundary sets, automatic EE companion
+  exports, and `:uses :any`. The no-argument form also scans source dependencies to expand `:api :any` to every
+  namespace owned by that module."
+  ([]
+   (let [config (kondo-config)]
+     (expanded-kondo-config config (dependencies (build-prefix->module config)))))
+  ([config]
+   (expanded-kondo-config config nil))
+  ([config deps]
+   (let [module->namespaces (when deps (module->owned-namespaces deps))]
+     (into (sorted-map)
+           (map (fn [[module module-config]]
+                  [module (-> module-config
+                              (assoc :team (module-team config module)
+                                     :ns-prefix (module-ns-prefix config module)
+                                     :api (if (contains? module-config :api)
+                                            (if (and (= :any (:api module-config)) deps)
+                                              (get module->namespaces module (sorted-set))
+                                              (:api module-config))
+                                            (default-api-namespaces config module))
+                                     :uses (expanded-module-uses config module)
+                                     :friends (set (:friends module-config))
+                                     :module-exports (expanded-module-exports config module)))]))
+           config))))
+
+(defn print-expanded-kondo-config
+  "Print [[expanded-kondo-config]] as stable EDN. Accepts an ignored map for `clojure -X`."
+  ([]
+   (print-expanded-kondo-config nil))
+  ([_opts]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (prn (expanded-kondo-config))))
+
 (defn- kondo-config-diff-ignore-any
   "Ignore entries in the config that use `:any`."
   [diff]
@@ -604,6 +726,7 @@
    diff))
 
 (defn kondo-config-diff
+  "Return the difference between declared module boundaries and dependencies found in source."
   ([]
    (let [kc          (kondo-config)
          prefix->mod (build-prefix->module kc)]
@@ -1079,34 +1202,33 @@
    (let [ownership   (model-ownership)
          prefix->mod (build-prefix->module kondo-config)]
      (into []
-           (comp
-            (mapcat
-             (fn [file]
-               (try
-                 (let [ns-symb (-> (ns.file/read-file-ns-decl file)
-                                   ns.parse/name-from-ns-decl)
-                       mod     (module prefix->mod ns-symb)]
-                   (when (and mod
-                              (not (contains? model-boundary-exempt-namespaces ns-symb)))
-                     (let [model-imports (get-in kondo-config [mod :model-imports] #{})
-                           models       (find-model-keywords file)
-                           rel-path     (file->path-relative-to-project-root file)]
-                       (for [model          models
-                             :let           [defining-mod  (get ownership model)]
-                             :when          (not= defining-mod mod)
-                             :let           [model-exports (when defining-mod
-                                                             (get-in kondo-config [defining-mod :model-exports] #{}))]
-                             violation-type (model-reference-violations
-                                             model defining-mod model-exports model-imports)]
-                         {:file            rel-path
-                          :module          mod
-                          :model           model
-                          :defining-module defining-mod
-                          :violation-type  violation-type}))))
-                 (catch Throwable e
-                   (throw (ex-info (format "Error checking model boundaries in %s" (str file))
-                                   {:file file}
-                                   e)))))))
+           (mapcat
+            (fn [file]
+              (try
+                (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                                  ns.parse/name-from-ns-decl)
+                      mod     (module prefix->mod ns-symb)]
+                  (when (and mod
+                             (not (contains? model-boundary-exempt-namespaces ns-symb)))
+                    (let [model-imports (get-in kondo-config [mod :model-imports] #{})
+                          models       (find-model-keywords file)
+                          rel-path     (file->path-relative-to-project-root file)]
+                      (for [model          models
+                            :let           [defining-mod  (get ownership model)]
+                            :when          (not= defining-mod mod)
+                            :let           [model-exports (when defining-mod
+                                                            (get-in kondo-config [defining-mod :model-exports] #{}))]
+                            violation-type (model-reference-violations
+                                            model defining-mod model-exports model-imports)]
+                        {:file            rel-path
+                         :module          mod
+                         :model           model
+                         :defining-module defining-mod
+                         :violation-type  violation-type}))))
+                (catch Throwable e
+                  (throw (ex-info (format "Error checking model boundaries in %s" (str file))
+                                  {:file file}
+                                  e))))))
            (find-source-files)))))
 
 (comment

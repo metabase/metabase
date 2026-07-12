@@ -123,8 +123,7 @@
                     :model/User}}
 
   actions.rest
-  {:team "Gadget"
-   :ns-prefix "metabase.actions-rest"
+  {:ns-prefix "metabase.actions-rest"
    :api  #{metabase.actions-rest.api}
    :uses #{actions
            analytics
@@ -554,8 +553,7 @@
                     :model/Workspace}}
 
   collections.rest
-  {:team "UX West"
-   :ns-prefix "metabase.collections-rest"
+  {:ns-prefix "metabase.collections-rest"
    :api  #{metabase.collections-rest.api
            metabase.collections-rest.init}
    :uses #{api
@@ -679,8 +677,7 @@
                     :model/User}}
 
   dashboards.rest
-  {:team "UX West"
-   :ns-prefix "metabase.dashboards-rest"
+  {:ns-prefix "metabase.dashboards-rest"
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
            analytics
@@ -869,8 +866,7 @@
    :model-imports #{:model/Card :model/Dashboard}}
 
   embedding.rest
-  {:team "Embedding"
-   :ns-prefix "metabase.embedding-rest"
+  {:ns-prefix "metabase.embedding-rest"
    :api  #{metabase.embedding-rest.api}
    :uses #{api
            dashboards
@@ -1044,8 +1040,7 @@
            util}}
 
   lib.be
-  {:team "Querying Platform"
-   :ns-prefix "metabase.lib-be"
+  {:ns-prefix "metabase.lib-be"
    :api  #{metabase.lib-be.core
            metabase.lib-be.init}
    :uses #{lib
@@ -1067,8 +1062,7 @@
                     :model/Transform}}
 
   lib.metadata
-  {:team "Querying Platform"
-   :ns-prefix "metabase.lib.metadata"
+  {:ns-prefix "metabase.lib.metadata"
    :api  #{metabase.lib.metadata
            metabase.lib.metadata.cached-provider
            metabase.lib.metadata.calculation
@@ -1084,8 +1078,7 @@
            util}}
 
   lib.schema
-  {:team "Querying Platform"
-   :ns-prefix "metabase.lib.schema"
+  {:ns-prefix "metabase.lib.schema"
    :api  #{metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1280,46 +1273,44 @@
                     :model/User}}
 
   metabot.agent-api
-  {:team    "Metabot"
-   :ns-prefix "metabase.agent-api"
-   :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
-   :uses    #{api
-              auth-identity
-              lib
-              lib.agent-lib
-              lib.schema
-              llm
-              metabot
-              query-processor
-              request
-              server
-              settings
-              util}
+  {:ns-prefix "metabase.agent-api"
+   :api  #{metabase.agent-api.api
+           metabase.agent-api.init}
+   :uses #{api
+           auth-identity
+           lib
+           lib.agent-lib
+           lib.schema
+           llm
+           metabot
+           query-processor
+           request
+           server
+           settings
+           util}
    :model-imports #{:model/User}}
 
   metabot.slackbot
-  {:team    "Metabot"
-   :ns-prefix "metabase.slackbot"
-   :api     #{metabase.slackbot.api
-              metabase.slackbot.config
-              metabase.slackbot.init}
-   :uses    #{analytics
-              api
-              channel
-              config
-              formatter
-              lib
-              metabot
-              permissions
-              query-processor
-              request
-              server
-              settings
-              sso
-              system
-              upload
-              util}
+  {:ns-prefix "metabase.slackbot"
+   :api  #{metabase.slackbot.api
+           metabase.slackbot.config
+           metabase.slackbot.init}
+   :uses #{analytics
+           api
+           channel
+           config
+           formatter
+           lib
+           metabot
+           permissions
+           query-processor
+           request
+           server
+           settings
+           sso
+           system
+           upload
+           util}
    :model-imports #{:model/AuthIdentity
                     :model/Card
                     :model/Database
@@ -1539,8 +1530,7 @@
                     :model/User}}
 
   permissions.rest
-  {:team "UX West"
-   :ns-prefix "metabase.permissions-rest"
+  {:ns-prefix "metabase.permissions-rest"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
            audit-app
@@ -1621,8 +1611,7 @@
            util}}
 
   public-sharing.rest
-  {:team "UX West"
-   :ns-prefix "metabase.public-sharing-rest"
+  {:ns-prefix "metabase.public-sharing-rest"
    :api  #{metabase.public-sharing-rest.api}
    :uses #{actions
            analytics
@@ -1863,8 +1852,7 @@
                     :model/Table}}
 
   query-processor.cache-backend
-  {:team      "Querying Platform"
-   :ns-prefix "metabase.query-processor.middleware.cache-backend"
+  {:ns-prefix "metabase.query-processor.middleware.cache-backend"
    :api       #{metabase.query-processor.middleware.cache-backend.db
                 metabase.query-processor.middleware.cache-backend.interface}
    :uses      #{premium-features
@@ -1872,8 +1860,7 @@
    :model-imports #{:model/QueryCache}}
 
   query-processor.driver-api
-  {:team "Querying Platform"
-   :ns-prefix "metabase.driver-api"
+  {:ns-prefix "metabase.driver-api"
    :api  #{metabase.driver-api.core}
    :uses #{actions
            api
@@ -2094,8 +2081,7 @@
    :model-exports #{:model/Setting}}
 
   settings.rest
-  {:team "DevEx"
-   :ns-prefix "metabase.settings-rest"
+  {:ns-prefix "metabase.settings-rest"
    :api  #{metabase.settings-rest.api}
    :uses #{api
            permissions
@@ -2114,8 +2100,7 @@
    :model-imports #{:model/User}}
 
   setup.rest
-  {:team "UX West"
-   :ns-prefix "metabase.setup-rest"
+  {:ns-prefix "metabase.setup-rest"
    :api  #{metabase.setup-rest.api}
    :uses #{analytics
            api
@@ -2482,8 +2467,7 @@
                     :model/Tenant}}
 
   users.rest
-  {:team "UX West"
-   :ns-prefix "metabase.users-rest"
+  {:ns-prefix "metabase.users-rest"
    :api  #{metabase.users-rest.api}
    :uses #{api
            appearance
@@ -2585,8 +2569,7 @@
                     :model/User}}
 
   warehouse-schema.rest
-  {:team "UX West"
-   :ns-prefix "metabase.warehouse-schema-rest"
+  {:ns-prefix "metabase.warehouse-schema-rest"
    :api  #{metabase.warehouse-schema-rest.api}
    :uses #{analytics
            api
@@ -2642,8 +2625,7 @@
                     :model/User}}
 
   warehouses.rest
-  {:team "UX West"
-   :ns-prefix "metabase.warehouses-rest"
+  {:ns-prefix "metabase.warehouses-rest"
    :api  #{metabase.warehouses-rest.api}
    :uses #{analytics
            api
@@ -2784,8 +2766,7 @@
                     :model/Table}}
 
   enterprise/analytics
-  {:team "UX West"
-   :api  #{}
+  {:api  #{}
    :uses #{driver
            premium-features
            enterprise/advanced-config
@@ -2802,13 +2783,11 @@
            util}}
 
   enterprise/api-routes
-  {:team "UX West"
-   :api  #{metabase-enterprise.api-routes.routes}
+  {:api  #{metabase-enterprise.api-routes.routes}
    :uses :any}
 
   enterprise/audit-app
-  {:team "UX West"
-   :api  #{metabase-enterprise.audit-app.api.routes
+  {:api  #{metabase-enterprise.audit-app.api.routes
            metabase-enterprise.audit-app.init}
    :uses #{api
            app-db
@@ -2847,13 +2826,11 @@
                     :model/ViewLog}}
 
   enterprise/auth-identity
-  {:team "UX West"
-   :api  #{}
+  {:api  #{}
    :uses #{premium-features}}
 
   enterprise/auth-provider
-  {:team "UX West"
-   :api  #{}
+  {:api  #{}
    :uses #{premium-features
            util}}
 
@@ -2867,8 +2844,7 @@
    :model-imports #{:model/User}}
 
   enterprise/cache
-  {:team "UX West"
-   :api  #{metabase-enterprise.cache.init}
+  {:api  #{metabase-enterprise.cache.init}
    :uses #{cache
            premium-features
            query-processor
@@ -2918,8 +2894,7 @@
            enterprise/harbormaster}}
 
   enterprise/content-translation
-  {:team "UX West"
-   :api  #{metabase-enterprise.content-translation.routes}
+  {:api  #{metabase-enterprise.content-translation.routes}
    :uses #{api
            content-translation
            embedding
@@ -2929,8 +2904,7 @@
    :model-imports #{:model/ContentTranslation}}
 
   enterprise/content-verification
-  {:team "UX West"
-   :api  #{metabase-enterprise.content-verification.api.routes}
+  {:api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api
            content-verification
            util
@@ -2974,8 +2948,7 @@
    :model-imports #{:model/Database}}
 
   enterprise/database-routing
-  {:team "UX West"
-   :api  #{metabase-enterprise.database-routing.api}
+  {:api  #{metabase-enterprise.database-routing.api}
    :uses #{api
            config
            database-routing
@@ -3104,8 +3077,7 @@
    :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/internal-stats
-  {:team "UX West"
-   :api  #{}
+  {:api  #{}
    :uses #{premium-features
            settings}}
 
@@ -3118,8 +3090,7 @@
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/metabot
-  {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api
+  {:api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
    :uses    #{api
@@ -3151,14 +3122,12 @@
    :model-imports #{:model/Card :model/User}}
 
   enterprise/premium-features
-  {:team "UX West"
-   :api  #{}
+  {:api  #{}
    :uses #{premium-features
            util}}
 
   enterprise/remote-sync
-  {:team "UX West"
-   :api  #{metabase-enterprise.remote-sync.api
+  {:api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
    :uses #{analytics
@@ -3275,8 +3244,7 @@
                     :model/User}}
 
   enterprise/search
-  {:team "UX West"
-   :api  #{}
+  {:api  #{}
    :uses #{premium-features
            search}}
 
@@ -3360,8 +3328,7 @@
    :model-imports #{:model/NativeQuerySnippet}}
 
   enterprise/sso
-  {:team "UX West"
-   :api  #{metabase-enterprise.sso.api.routes
+  {:api  #{metabase-enterprise.sso.api.routes
            metabase-enterprise.sso.init
            metabase-enterprise.sso.settings}
    :uses #{api
@@ -3408,8 +3375,7 @@
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
   enterprise/tenants
-  {:team "Admin Webapp"
-   :api  #{metabase-enterprise.tenants.api}
+  {:api  #{metabase-enterprise.tenants.api}
    :uses #{api
            audit-app
            auth-identity
@@ -3425,14 +3391,12 @@
    :model-imports #{:model/Collection :model/User}}
 
   enterprise/transforms
-  {:team "Graphy"
-   :api  #{metabase-enterprise.transforms.api}
+  {:api  #{metabase-enterprise.transforms.api}
    :uses #{premium-features
            enterprise/transforms-inspector}}
 
   enterprise/transforms-inspector
-  {:team "Gadget"
-   :api  #{metabase-enterprise.transforms-inspector.api}
+  {:api  #{metabase-enterprise.transforms-inspector.api}
    :uses #{api
            driver
            events
@@ -3490,8 +3454,7 @@
    :model-imports #{:model/Database :model/Table}}
 
   enterprise/workspaces
-  {:team "Metabot"
-   :api  #{metabase-enterprise.workspaces.api
+  {:api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
    :uses #{api

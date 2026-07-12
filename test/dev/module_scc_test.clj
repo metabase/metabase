@@ -1,4 +1,5 @@
-(ns test.dev.module-scc-test
+(ns dev.module-scc-test
+  "Tests for module-graph SCC analysis."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
