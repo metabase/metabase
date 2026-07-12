@@ -82,10 +82,24 @@ Refinement to the CSS reducibility rule: **emotion styled-components ARE reducib
 applies their injected `<style>` to `getComputedStyle`, so `toHaveStyle` works (50731). The
 irreducible case is specifically `className={CS.foo}` CSS-*module* classes (jest mocks to {}).
 
-## GRAND TOTAL: ~121 e2e repros culled (112 FE + ... ), 113 FE witnesses + 11 BE deftests
-Branch `dev-2347`, 37 commits ahead of master, tree clean. Ready for PR.
-Remaining deferred item: FE issue 34395 (agent API-errored; retry with a predicate-level
-`isActionDashCard` witness).
+## Batch 13 (rlc-batch7, fresh pf>1 wave): 12 landed
+
+Committed `b6c3f328367`. Landed 12 (20868 20911 25614 37907 38307 42377 44176 45248 46450
+48024 49525 50630); 42377 & 45248 are e2e-only culls justified by a **pre-existing**
+discriminating witness (like the 42377 pattern — grep the target spec's colocated
+`.unit.spec` before assuming a new witness is needed). Kept 6: 29318 47000 obsoleted-by-
+rewrite; 70451 53586 28788 50734 irreducible real-browser geometry. Backend: 0.
+**Fresh distinct specs → 11/12 clean applies** (vs batch-6's 2/13 collision hell); the one
+merge (50630 into CartesianChart/events.unit.spec.ts) needed `git apply --3way` + hand
+brace-balance. Confirms: pick fresh specs, avoid the most-reused ones (PivotTable, selectors,
+core.unit.spec.ts) — those are the deferred-6's collision problem.
+
+## GRAND TOTAL: ~133 e2e repros culled, ~125 FE witnesses + 11 BE deftests
+Branch `dev-2347`, 39 commits ahead of master, tree clean.
+Remaining deferred: **6 verified-landable witnesses** (30610 55486 33079 52975 42697 37726 —
+per-file merges on reused specs) + FE **34395** (agent API-errored; retry with a
+predicate-level `isActionDashCard` witness). BE-deftest backlog from batch 12: 40176,
+32625+31635, 29795.
 
 ## FE FAN-OUT COMPLETE — pool exhausted
 
