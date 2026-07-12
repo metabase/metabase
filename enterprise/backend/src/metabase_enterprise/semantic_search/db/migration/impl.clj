@@ -17,9 +17,10 @@
   2)
 
 (def ^:private app-db-sentinel-tables
-  "Tables that only exist in a Metabase application database.
+  "Tables specific to a Metabase application database, chosen to avoid generic names (e.g. Liquibase's
+  `databasechangelog`) that a genuinely dedicated pgvector database might also carry.
   Their presence in a to-be-wiped dedicated database means MB_PGVECTOR_DB_URL was pointed at an app db."
-  #{"databasechangelog" "core_user"})
+  #{"core_user" "metabase_database"})
 
 (defn- drop-all-but-migration-table
   "Destructive: clears out semantic-search storage ahead of recreating it from scratch.

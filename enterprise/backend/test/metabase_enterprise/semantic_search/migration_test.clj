@@ -105,13 +105,15 @@
     (semantic.tu/with-test-db-defaults!
       (testing "the dedicated-mode reset refuses a database that looks like a Metabase app db"
         (let [pgvector (semantic.env/get-pgvector-datasource!)]
+          ;; a generic Liquibase databasechangelog must NOT trip the guard on its own
           (jdbc/execute! pgvector ["CREATE TABLE databasechangelog (id int)"])
+          (jdbc/execute! pgvector ["CREATE TABLE core_user (id int)"])
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabase application"
                                 (semantic.db.connection/with-migrate-tx [tx]
                                   (semantic.db.migration/maybe-migrate!
                                    tx {:index-metadata semantic.index-metadata/default-index-metadata}))))
           (testing "nothing was dropped"
-            (is (true? (semantic.util/table-exists? pgvector "public.databasechangelog")))))))))
+            (is (true? (semantic.util/table-exists? pgvector "public.core_user")))))))))
 
 (defn- executions-overlap?
   "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
