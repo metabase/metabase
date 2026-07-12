@@ -332,11 +332,29 @@
         all (keys deps)]
     (filter #(mage.modules/driver-deps-affected? [%]) all)))
 
-(defn- top-level-module?
+(defn- top-level-module
   [declared-modules module]
-  (and (not (str/includes? (name module) "."))
-       (not (and (= "enterprise" (namespace module))
-                 (contains? declared-modules (symbol (name module)))))))
+  (loop [module module]
+    (let [parts (str/split (name module) #"\.")]
+      (cond
+        (> (count parts) 1)
+        (recur (if-let [ns-part (namespace module)]
+                 (symbol ns-part (str/join "." (butlast parts)))
+                 (symbol (str/join "." (butlast parts)))))
+
+        (and (= "enterprise" (namespace module))
+             (contains? declared-modules (symbol (name module))))
+        (recur (symbol (name module)))
+
+        :else module))))
+
+(deftest top-level-module-test
+  (let [declared '#{lib lib.schema query-processor query-processor.driver-api workspaces enterprise/workspaces
+                    enterprise/sandbox}]
+    (is (= 'lib (top-level-module declared 'lib.schema)))
+    (is (= 'query-processor (top-level-module declared 'query-processor.driver-api)))
+    (is (= 'workspaces (top-level-module declared 'enterprise/workspaces)))
+    (is (= 'enterprise/sandbox (top-level-module declared 'enterprise/sandbox)))))
 
 (deftest module-graph-may-not-become-more-connected
   (testing "The number of top-level modules that trigger driver tests should not increase without explicit approval.
@@ -344,8 +362,9 @@
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [deps                       (mage.modules/dependencies)
           modules-triggering-drivers (modules-affecting-drivers)
-          top-level-modules          (filter (partial top-level-module? (set (keys deps)))
-                                             modules-triggering-drivers)
+          top-level-modules          (into #{}
+                                           (map (partial top-level-module (set (keys deps))))
+                                           modules-triggering-drivers)
           ;; This is a ratchet: it prevents accidental expansion of which modules
           ;; trigger driver tests. When a module transitively depends on driver code,
           ;; changes to that module cause ALL driver tests to run in CI, which is
@@ -360,9 +379,9 @@
           ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
           ;;            Added premium-features to driver-affecting-overrides (#69561)
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
-          ;; 2026-07-12 Changed the ratchet to count logical top-level modules so nested carving does not
-          ;;            look like increased connectivity. The new top-level baseline is 36.
-          max-allowed-top-level-count 36]
+          ;; 2026-07-12 Changed the ratchet to count distinct logical top-level ancestors so nested carving does not
+          ;;            look like increased connectivity while nested-only triggers remain visible. Baseline: 38.
+          max-allowed-top-level-count 38]
       (is (<= (count top-level-modules) max-allowed-top-level-count)
           (format "Too many top-level modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
