@@ -11,6 +11,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.task.metric-collector :as semantic.task.collector]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -74,7 +75,10 @@
         (mt/with-dynamic-fn-redefs [semantic.env/get-index-metadata (fn [] index-metadata)
                                     semantic.env/get-configured-embedding-model (fn [] model)
                                     ;; supported? requires a configured embedder for engine selection
-                                    semantic.embedding/get-configured-model (fn [] model)]
+                                    semantic.embedding/get-configured-model (fn [] model)
+                                    ;; collect-metrics! only runs when semantic is the active engine; pin it so a
+                                    ;; sibling test leaking the search-engine setting can't make this read 0
+                                    semantic.u/semantic-search-active? (fn [] true)]
           (testing "Missing tables are handled gracefully"
             (let [result (try
                            (@#'semantic.task.collector/collect-metrics!)
