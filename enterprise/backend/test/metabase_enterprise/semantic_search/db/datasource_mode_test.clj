@@ -129,6 +129,12 @@
           (with-redefs [mdb/db-is-set-up? (constantly true)
                         semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))
+    ;; This exercises the false->true transition with the probe mocked.
+    ;; The real thing (an app-db role reads unsupported, an admin runs CREATE EXTENSION out-of-band, the
+    ;; next probe reads installed and the mode flips with no restart) was verified by hand against a real
+    ;; Postgres.
+    ;; We deliberately don't automate it: it needs a real DB whose extension state changes mid-test, which
+    ;; would be flaky against the database shared with other tests between runs.
     (testing "an unsupported probe is NOT latched — it re-probes after the cooldown, so a runtime install is picked up"
       (with-support-cache nil
         (with-redefs [mdb/db-is-set-up? (constantly true)

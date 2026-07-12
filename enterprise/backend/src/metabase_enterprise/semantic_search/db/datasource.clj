@@ -257,6 +257,10 @@
   path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]])."
   []
   (let [data-source (mdb/data-source)
+        ;; schema_exists reads information_schema.schemata (privilege-filtered), not pg_namespace.
+        ;; It answers "a semantic_search schema this role can use exists", not mere catalog presence: a
+        ;; schema the app-db role lacks USAGE on reads as absent, so the store degrades to unavailable
+        ;; rather than passing here and crashing later when init creates tables it can't write.
         {:keys [installed available schema_exists]}
         (jdbc/execute-one! data-source
                            [(str "SELECT"
