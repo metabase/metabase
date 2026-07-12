@@ -113,6 +113,7 @@
          "lint-migrations-file-test"
          "mage." ; mage build tool
          "main-test" ; bin/release-list
+         "metabase.dev." ; dev tooling tests
          "metabase.deps-edn-test"
          "metabase.driver."
          "metabase.test."

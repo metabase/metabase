@@ -1,4 +1,4 @@
-(ns dev.module-metrics-test
+(ns metabase.dev.module-metrics-test
   (:require
    [clojure.test :refer :all]
    [dev.deps-graph]

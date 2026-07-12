@@ -1,4 +1,4 @@
-(ns dev.module-scc-test
+(ns metabase.dev.module-scc-test
   "Tests for module-graph SCC analysis."
   (:require
    [clojure.java.io :as io]
