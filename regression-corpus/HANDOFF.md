@@ -57,7 +57,32 @@ is describing the worktree, not the branch — the block is still present on dev
 be hand-culled (hit 32032, 53604, and the batch-8 FE miss 29786). Always
 `grep` the block on the branch before trusting an "already gone" claim.
 
-## GRAND TOTAL: ~117 e2e repros culled (105 FE + 12 BE), 106 FE witnesses + 11 BE deftests
+## Batch 12 (rlc-batch6): pf=1-remainder + first pf=2 sample
+
+Selected the 12 remaining `pf=1` (all on already-culled specs) + 8 `pf=2` (multi-file) to
+test whether the multi-file slice lands. **Result — the pf=1 remainder is mostly backend/
+obsoleted (the tractable FE ones were already harvested): 2 landed, 4 be_deftest, 3 keep. But
+pf=2 landed 8/8** — multi-file fixes almost always have ONE load-bearing seam + one plumbing/
+incidental file, so they reduce like pf=1. **This means the ~684 pf>1 issues (86% of the
+usable population) are worth pursuing** — expect a materially higher landing rate than the
+pf=1 remainder.
+
+Committed batch 12 = the 7 that applied cleanly (28874 46897 49529 50731 53036 53132 66745).
+**6 verified-landable witnesses were DEFERRED** because their witness files collided on the
+most-reused specs and the apply-time merge got fiddly (PivotTable.unit.spec.tsx wants both
+42697+37726 alongside 44500; selectors wants 30610 alongside 23336; navigation/underlying-
+records-drill/ChartSettingFieldPicker likewise): **30610 55486 33079 52975 42697 37726**.
+Each agent verified pass-on-HEAD/fail-on-mutant; the only work left is a careful per-file
+witness merge + e2e cull (33079 & 52975 are witness-only — their e2e is already absent via
+the 4701e5f8dc5 divergence, so leave their e2e in place until the witness lands).
+be_deftest from this batch (for the BE wave): 40176 (Postgres UUID SQL), 32625+31635 (->pMBQL
+dangling-ref, one fix), 29795 (join native source). keep_e2e obsoleted: 38176 35785 39795.
+
+Refinement to the CSS reducibility rule: **emotion styled-components ARE reducible** — jsdom
+applies their injected `<style>` to `getComputedStyle`, so `toHaveStyle` works (50731). The
+irreducible case is specifically `className={CS.foo}` CSS-*module* classes (jest mocks to {}).
+
+## GRAND TOTAL: ~121 e2e repros culled (112 FE + ... ), 113 FE witnesses + 11 BE deftests
 Branch `dev-2347`, 37 commits ahead of master, tree clean. Ready for PR.
 Remaining deferred item: FE issue 34395 (agent API-errored; retry with a predicate-level
 `isActionDashCard` witness).
