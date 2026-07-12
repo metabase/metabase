@@ -39,7 +39,7 @@
   A plain URL check, not [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]]: mode
   resolution can probe the app db, which a dedicated-only scheduling gate has no business doing."
   []
-  (not (str/blank? semantic.db.datasource/db-url)))
+  (semantic.db.datasource/dedicated-url-configured?))
 
 (defn available?
   "Whether the entity-retrieval mirror can run right now. All four must hold:

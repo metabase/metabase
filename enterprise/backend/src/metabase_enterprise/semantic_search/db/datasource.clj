@@ -27,6 +27,13 @@
   "The database URL used to connect to pgvector"
   (env :mb-pgvector-db-url))
 
+(defn dedicated-url-configured?
+  "True when MB_PGVECTOR_DB_URL is set to a non-blank value.
+  Canonical check for \"a dedicated pgvector store is configured\"; using it everywhere stops a
+  whitespace-only URL from reading as configured in one subsystem and unset in another."
+  []
+  (not (str/blank? db-url)))
+
 (def app-db-schema
   "The Postgres schema holding all semantic-search tables when sharing the application database.
   Isolating by schema makes destructive maintenance (see
@@ -245,7 +252,7 @@
     :unavailable no pgvector anywhere — semantic search cannot run."
   []
   (cond
-    (not (str/blank? db-url))            :dedicated
+    (dedicated-url-configured?)          :dedicated
     (and (= :postgres (mdb/db-type))
          (app-db-pgvector-supported?))   :app-db
     :else                                :unavailable))

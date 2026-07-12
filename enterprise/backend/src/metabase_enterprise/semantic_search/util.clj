@@ -62,7 +62,7 @@
   cheap and infallible -- it never queries the DB. The runtime gates (license, kill switch, engine
   activity) are checked per job execution instead, so flipping them never requires a restart."
   []
-  (or (string? (not-empty semantic.db.datasource/db-url))
+  (or (semantic.db.datasource/dedicated-url-configured?)
       (= :postgres (mdb/db-type))))
 
 (defn semantic-search-capable?

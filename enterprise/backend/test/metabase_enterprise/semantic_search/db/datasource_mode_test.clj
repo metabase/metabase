@@ -27,6 +27,15 @@
         (is (= :dedicated (semantic.db.datasource/pgvector-mode)))
         (is (semantic.db.datasource/pgvector-configured?))))))
 
+(deftest whitespace-url-counts-as-unset-test
+  (testing "a whitespace-only MB_PGVECTOR_DB_URL is unset for every predicate — no silent app-db fallback
+            while a task gate elsewhere believes a dedicated store is configured"
+    (with-redefs [semantic.db.datasource/db-url "   "
+                  mdb/db-type (constantly :h2)]
+      (with-support-cache nil
+        (is (false? (semantic.db.datasource/dedicated-url-configured?)))
+        (is (= :unavailable (semantic.db.datasource/pgvector-mode)))))))
+
 (deftest non-postgres-app-db-test
   (testing "no URL + non-Postgres app db → :unavailable without ever probing the app db"
     (doseq [db-type [:h2 :mysql]]
