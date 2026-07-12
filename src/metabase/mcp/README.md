@@ -187,6 +187,64 @@ MCP client
   -> JSON or SSE back to client
 ```
 
+## Permission enforcement
+
+The invariant: **a tool can never do what the caller couldn't do in the app, because tool code never
+gets the chance to skip a check.** Three rules hold it up, and a test matrix proves it.
+
+**1. Every tool call runs as the caller's real user, through the standard endpoint stack.** A
+`tools/call` becomes a synthetic in-process Ring request to an Agent API `defendpoint` handler under
+the caller's `*current-user-id*`, so endpoint checks, model-level `can-read?`/`can-write?`, and the
+query processor's permission middleware (sandboxing, impersonation, native-query permission) fire
+exactly as they do for a browser request.
+
+This is why tool code must not reach the app DB itself: a `t2/select` gets the row without asking
+whether the caller may see it. A kondo rule (`mcp-tool-namespaces` in
+[`.clj-kondo/config.edn`](../../../.clj-kondo/config.edn)) bans `toucan2.core` and the app-DB query
+helpers from `metabase.mcp.*` and `metabase.agent-api.*`, excluding the MCP server's own Toucan
+models under `metabase.mcp.models.*`.
+
+**2. Share the handler, not the pattern.** Where a tool is 1:1 with a public REST endpoint, it calls
+the *same domain function the public handler calls*. A parallel reimplementation is where a forgotten
+`write-check` slips in — and, because the check lives in the shared function, it cannot diverge:
+
+| Tool | Delegates to |
+| --- | --- |
+| `collection_write` | `collections_rest/api.clj` — `POST /`, `PUT /:id` |
+| `snippet_write` | `native_query_snippets/api.clj` — `POST /`, `PUT /:id` |
+| `segment_write` | `segments/api.clj` — `POST /`, `PUT /:id` |
+| `measure_write` | `measures/api.clj` — `POST /`, `PUT /:id` |
+| `duplicate_content` | `queries_rest/api/card.clj` `POST /:id/copy`, `dashboards_rest/api.clj` `POST /:from-dashboard-id/copy`, `documents/api/document.clj` `POST /:from-document-id/copy` |
+| `bookmark_content` | `bookmarks/api.clj` — `POST /:model/:id`, `DELETE /:model/:id` |
+| `revert_content` | `revisions/api.clj` — `POST /revert` |
+| `add_timeline_event` | `timeline/api/timeline_event.clj` — `POST /` |
+| `alert_write`, `subscription_write` | `notification/api/notification.clj` — `POST /` |
+
+Workflow tools (`dashboard_write`'s ops, `browse_data`) compose several such calls in-process, each
+carrying its own check. [[metabase.agent-api.tools/run-ops!]] applies them in order and aborts the
+whole call on the first failure, naming the op's index.
+
+**3. Same path, same side effects.** View logs, recent items, and usage analytics only stay correct
+if a tool read leaves the trail a browser read leaves. [[metabase.agent-api.tools/publish-read-event!]]
+publishes the `:event/*-read` event that the entity's REST read endpoint publishes, with the same
+payload. Cards have no entry: a card's REST read publishes nothing, and `:event/card-read` comes from
+the query processor when the card is *run*.
+
+**The permission-parity matrix** (`metabase.mcp.permission-parity-test`, plus the sandboxing rows in
+`metabase-enterprise.mcp.permission-parity-test`) is the backstop. Each row calls a tool and the
+public REST endpoint it stands in for, as the same user under one permission scenario — blocked
+database, no collection access, no native-query permission, read-only collection, archived target,
+sandboxed user — and asserts the two give the same answer. Adding a tool means adding its rows with
+`check-parity!`. The release gate is zero discrepancies.
+
+### Reviewing a tool
+
+- Does it delegate to the domain function the public handler calls, or reimplement it?
+- Does it touch Toucan or the app DB? (The linter says no. Silencing the linter is not the fix.)
+- Does a read publish the read event its REST endpoint publishes?
+- Does a workflow tool abort the whole call on a failed op, rather than half-applying?
+- Are there parity rows for its denial scenarios?
+
 ## Further reading
 
 - [MCP user docs](../../../docs/ai/mcp.md)

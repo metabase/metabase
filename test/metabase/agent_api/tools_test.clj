@@ -4,7 +4,10 @@
    [metabase.agent-api.tools :as tools]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
-   [metabase.util.malli.schema :as ms])
+   [metabase.events.core :as events]
+   [metabase.test :as mt]
+   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -185,3 +188,97 @@
       (is (false? (get-in tool [:annotations :destructiveHint]))))
     (testing "the toolset group scope rides along"
       (is (= "agent:author:write" (:scope tool))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Composed writes
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest run-ops!-test
+  (testing "ops apply in order and their results come back in order"
+    (is (= [1 2 3] (tools/run-ops! [1 2 3] identity))))
+  (testing "a failing op aborts the call naming its index and the underlying message"
+    (is (thrown-with-msg?
+         ExceptionInfo #"Op 1 failed: no such card"
+         (tools/run-ops! [:ok :bad :never]
+                         (fn [op]
+                           (when (= op :bad)
+                             (throw (ex-info "no such card" {:status-code 404})))
+                           op)))))
+  (testing "the failing op's status code and index survive on the ex-data"
+    (let [ex (try (tools/run-ops! [:bad] (fn [_] (throw (ex-info "denied" {:status-code 403}))))
+                  (catch ExceptionInfo e e))]
+      (is (= 403 (:status-code (ex-data ex))))
+      (is (= 0 (:op-index (ex-data ex))))))
+  (testing "ops after the failing one never run"
+    (let [applied (atom [])]
+      (try
+        (tools/run-ops! [:a :bad :c]
+                        (fn [op]
+                          (swap! applied conj op)
+                          (when (= op :bad) (throw (ex-info "boom" {})))
+                          op))
+        (catch ExceptionInfo _ nil))
+      (is (= [:a :bad] @applied)))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Read events
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- captured-events!
+  "The `[topic event]` pairs `thunk` publishes. Spies with an aux method rather than redefining
+   `publish-event!` — it is a methodical multimethod, and swapping its var out from under the
+   namespaces that `defmethod` on it breaks them."
+  [thunk]
+  (let [published (atom [])
+        spy-key   (gensym "captured-events!")]
+    (try
+      (methodical/add-aux-method-with-unique-key!
+       #'events/publish-event! :before :default
+       (fn [topic event] (swap! published conj [topic event]))
+       spy-key)
+      (thunk)
+      (finally
+        (methodical/remove-aux-method-with-unique-key!
+         #'events/publish-event! :before :default spy-key)))
+    @published))
+
+(defn- read-event-signature
+  "Topic, reader, and entity of a read event — the part that has to match across the two surfaces.
+   The payloads themselves carry either the id or the whole instance, and the instance the REST
+   handler loads is hydrated where ours is not."
+  [pairs topic]
+  (for [[t {:keys [object object-id user-id]}] pairs
+        :when (= t topic)]
+    [t user-id (or object-id (:id object))]))
+
+(deftest publish-read-event-matches-the-browser-get-test
+  (testing "a read tool publishes the read event the entity's REST read publishes, for the same user"
+    (mt/with-temp [:model/Dashboard  dash {}
+                   :model/Collection coll {}]
+      (testing "dashboard — the payload carries the id"
+        (is (= (read-event-signature
+                (captured-events! #(mt/user-http-request :rasta :get 200 (str "dashboard/" (:id dash))))
+                :event/dashboard-read)
+               (read-event-signature
+                (captured-events! #(mt/with-test-user :rasta
+                                     (tools/publish-read-event! :model/Dashboard dash)))
+                :event/dashboard-read))))
+      (testing "collection — the payload carries the instance, because the handler reads more than the id"
+        (is (= (read-event-signature
+                (captured-events! #(mt/user-http-request :rasta :get 200 (str "collection/" (:id coll) "/items")))
+                :event/collection-read)
+               (read-event-signature
+                (captured-events! #(mt/with-test-user :rasta
+                                     (tools/publish-read-event! :model/Collection coll)))
+                :event/collection-read)))))))
+
+(deftest publish-read-event-returns-the-object-test
+  (mt/with-temp [:model/Dashboard dash {}]
+    (is (= dash (mt/with-test-user :rasta (tools/publish-read-event! :model/Dashboard dash))))))
+
+(deftest publish-read-event-card-is-silent-test
+  (testing "a card metadata read publishes nothing, exactly as its REST read does — :event/card-read
+            comes from the query processor when the card is run"
+    (mt/with-temp [:model/Card card {}]
+      (is (empty? (captured-events! #(mt/with-test-user :rasta
+                                       (tools/publish-read-event! :model/Card card))))))))

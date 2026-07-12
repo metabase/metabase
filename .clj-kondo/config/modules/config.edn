@@ -181,6 +181,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
+                    :model/Document
                     :model/Table
                     :model/User}}
 

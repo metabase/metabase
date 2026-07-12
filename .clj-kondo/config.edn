@@ -820,7 +820,15 @@
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
    :name    general-qp-and-driver-test-namespaces}
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}]
+   :name    mage-namespaces}
+  ;;
+  ;; MCP + Agent API tool code, excluding the Toucan models under `metabase.mcp.models.*` (the MCP
+  ;; server's own store) and tests. A tool call is a synthetic in-process request under the caller's
+  ;; real user, and the permission checks it must pass live in the domain functions the public REST
+  ;; handlers call — so tool code delegates to those and never reaches the app DB itself.
+  ;;
+  {:pattern "^metabase\\.(?:mcp|agent-api)\\.(?!models\\.).*(?<!-test)$"
+   :name    mcp-tool-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -863,6 +871,25 @@
      metabase.legacy-mbql.schema.macros  {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
      metabase.legacy-mbql.util           {:message "Avoid legacy MBQL utils, use Lib instead"}
      metabase.query-processor.store      {:message "Please do not use the QP Store outside of legacy QP or driver code. Use MBQL 5/Lib or lib.metadata.jvm/applicaton-database-metadata-provider instead."}}}}
+
+  mcp-tool-namespaces
+  {:linters
+   {:discouraged-namespace
+    {toucan2.core {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}
+     toucan.db    {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}
+     toucan.models {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}}
+
+    :discouraged-var
+    {metabase.app-db.core/query           {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls."}
+     metabase.app-db.core/reducible-query {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls."}}}}
+
+  ;; The v1 tools assemble dashcards and read cards through Toucan directly, so they carry an
+  ;; exemption from the rule above. It is scoped to this one namespace and disappears with them; the
+  ;; v2 tool namespaces have no carve-out.
+  metabase.agent-api.api
+  {:linters
+   {:discouraged-namespace
+    {toucan2.core {:level :off}}}}
 
   printable-namespaces
   {:linters

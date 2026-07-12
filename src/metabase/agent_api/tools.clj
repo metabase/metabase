@@ -13,6 +13,9 @@
    [[metabase.api.macros.defendpoint.tools-manifest]]. Handlers produce projected, enveloped bodies;
    the MCP layer serializes them."
   (:require
+   [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]))
@@ -57,6 +60,69 @@
       (teaching-error (tru "Provide only one of {0}, not several together." names))
 
       :else params)))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Composed writes
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; A workflow tool (`dashboard_write`'s ops, say) is a sequence of domain calls, each carrying the
+;; same permission check the public endpoint carries. Ops apply in order and the first failure aborts
+;; the whole call — a half-applied layout is worse than none — naming the failing op's index, so the
+;; model fixes that one op instead of re-sending the batch blind.
+
+(defn run-ops!
+  "Apply `op-fn` to each op in `ops`, in order, returning the vector of results. The first op that
+   throws aborts with a teaching error naming its index and the underlying message, preserving the
+   original `:status-code`. Run this inside a transaction so an abort leaves nothing half-applied."
+  [ops op-fn]
+  (into []
+        (map-indexed
+         (fn [i op]
+           (try
+             (op-fn op)
+             (catch Exception e
+               (teaching-error (tru "Op {0} failed: {1}" i (ex-message e))
+                               (:status-code (ex-data e) 400)
+                               {:op-index i})))))
+        ops))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Read events
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; A tool read leaves the same trail a browser read leaves: view_log rows, view counts, and
+;; recent-items entries all hang off the `:event/*-read` topics, and `search`'s recent mode reads
+;; them back. A read tool therefore publishes the event its entity's REST read endpoint publishes,
+;; with the same payload — the handlers are shared, and a divergent payload fails the topic's closed
+;; schema.
+
+(def ^:private read-event-topics
+  "Model → the `:event/*-read` topic that model's REST read endpoint publishes.
+
+   Cards are absent by design: a card's REST read publishes nothing. `:event/card-read` comes from
+   the query processor when a card is *run*, so `run_saved_question` records the view on its own and
+   a card metadata read is as invisible to view_log here as it is in the app."
+  {:model/Collection :event/collection-read
+   :model/Dashboard  :event/dashboard-read
+   :model/Document   :event/document-read
+   :model/Table      :event/table-read})
+
+(def ^:private object-payload-topics
+  "Topics whose closed schema carries the whole instance rather than its id, because their handlers
+   read more than the id off it — the table handler needs `:db_id` for its access check."
+  #{:event/collection-read :event/table-read})
+
+(defn publish-read-event!
+  "Publish the read event for `object`, an instance of `model` that a read tool just fetched, and
+   return `object` so it threads. Models whose REST read endpoint publishes nothing have no entry in
+   [[read-event-topics]] and no event."
+  [model object]
+  (when-let [topic (read-event-topics model)]
+    (events/publish-event! topic
+                           (if (object-payload-topics topic)
+                             {:object    object          :user-id api/*current-user-id*}
+                             {:object-id (u/the-id object) :user-id api/*current-user-id*})))
+  object)
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Ref ergonomics
