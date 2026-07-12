@@ -174,6 +174,8 @@
             :num-friend-edges 1
             :num-modules-with-friends 1
             :friend-exposed-namespaces 1
+            :privileged-internal-access-paths 1
+            :encapsulation-index 0.8
             :total-declared-api-namespaces 3
             :api-surface-ratio 0.6
             :num-undeclared-api-leaks 0

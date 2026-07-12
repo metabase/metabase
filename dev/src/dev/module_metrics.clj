@@ -282,7 +282,15 @@
          ;; its namespaces in the cycle) — so it stays flat under re-bucketing and only drops when a
          ;; real carve pulls namespaces out of the blob. This is the honest coupling number.
          cyclic-modules              (into #{} (mapcat identity) (filter #(> (count %) 1) (:sccs ctx)))
-         namespaces-in-cyclic        (reduce + 0 (map #(count (get module->nses %)) cyclic-modules))]
+         namespaces-in-cyclic        (reduce + 0 (map #(count (get module->nses %)) cyclic-modules))
+         non-api-ns                  (fn [m] (- (count (get module->nses m)) (api-ns-count m)))
+         ;; Internal namespaces reachable past a module's public API through a friend grant.
+         friend-exposed              (reduce + 0 (map non-api-ns friend-holding-modules))
+         ;; Every distinct (outside module, private namespace) access a friend grant opens up: the
+         ;; grant count times the internal surface it exposes. This is the encapsulation-leak headline.
+         friend-access-paths         (reduce + 0 (map (fn [m] (* (count (get-in config [m :friends]))
+                                                                 (non-api-ns m)))
+                                                      friend-holding-modules))]
      (ordered-map/ordered-map
       ;; ---- graph structure ----
       :num-module-nodes num-modules
@@ -314,8 +322,11 @@
       :num-friend-edges (reduce + 0 (map (fn [m] (count (get-in config [m :friends]))) (:modules ctx)))
       :num-modules-with-friends (count friend-holding-modules)
       ;; Total internal surface still reachable through a friend backdoor (Σ non-api nss of friend holders).
-      :friend-exposed-namespaces (reduce + 0 (map (fn [m] (- (count (get module->nses m)) (api-ns-count m)))
-                                                  friend-holding-modules))
+      :friend-exposed-namespaces friend-exposed
+      ;; (outside module, private namespace) access pairs opened by friend grants — the encapsulation-leak headline.
+      :privileged-internal-access-paths friend-access-paths
+      ;; Share of the codebase reachable ONLY through a declared public API (1 = fully encapsulated).
+      :encapsulation-index (- 1.0 (safe-ratio friend-exposed total-namespaces))
       :total-declared-api-namespaces total-declared-api
       :api-surface-ratio (safe-ratio total-declared-api total-namespaces)
       ;; Namespaces used across a module boundary but not declared in any `:api` — hidden coupling debt.
