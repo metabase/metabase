@@ -192,6 +192,17 @@
       (is (= [] (dev.deps-graph/external-usages 'parent)))
       (is (= (dev.deps-graph/build-prefix->module config) @seen-prefixes)))))
 
+(deftest simulate-rename-preserves-nested-module-ownership-test
+  (let [prefix->module {"metabase.parent" 'parent
+                        "metabase.parent.child" 'parent.child}
+        deps [{:namespace 'metabase.consumer.core
+               :module 'consumer
+               :deps [{:namespace 'metabase.old.core
+                       :module 'old}]}]
+        renamed (#'dev.deps-graph/simulate-rename
+                 deps prefix->module {'metabase.old.core 'metabase.parent.child.core})]
+    (is (= 'parent.child (:module (first (:deps (first renamed))))))))
+
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility helpers (parent-module, ancestor-chain, etc.)
 ;;;; -------------------------------------------------------------------------

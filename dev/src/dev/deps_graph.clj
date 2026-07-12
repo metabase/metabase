@@ -871,23 +871,23 @@
 (defn- simulate-rename
   "Create a new version of `deps` as they would appear if you renamed namespace(s).
 
-    (simulate-rename (dependencies) '{metabase.users.api metabase.users-rest.api})"
-  ([deps old-namespace new-namespace]
+    (simulate-rename deps prefix->module '{metabase.users.api metabase.users-rest.api})"
+  ([deps prefix->module old-namespace new-namespace]
    (for [dep deps]
      (-> dep
          (cond-> (= (:namespace dep) old-namespace)
            (assoc :namespace new-namespace
-                  :module (module new-namespace)))
+                  :module (module prefix->module new-namespace)))
          (update :deps (fn [deps]
                          (for [dep deps]
                            (if (= (:namespace dep) old-namespace)
-                             {:namespace new-namespace, :module (module new-namespace)}
+                             {:namespace new-namespace, :module (module prefix->module new-namespace)}
                              dep)))))))
 
-  ([deps old-namespace->new-namespace]
+  ([deps prefix->module old-namespace->new-namespace]
    (reduce
     (fn [deps [old-namespace new-namespace]]
-      (simulate-rename deps old-namespace new-namespace))
+      (simulate-rename deps prefix->module old-namespace new-namespace))
     deps
     old-namespace->new-namespace)))
 
@@ -897,9 +897,11 @@
 
     (dependencies-eliminated-by-renaming-namespaces 'users '{metabase.users.api metabase.users-rest.api})"
   [module old-namespace->new-namespace]
-  (let [deps            (configured-dependencies)
+  (let [config          (kondo-config)
+        prefix->module  (build-prefix->module config)
+        deps            (dependencies prefix->module)
         old-module-deps (into (sorted-set) (keys (all-module-deps-paths deps module)))
-        new-deps        (simulate-rename deps old-namespace->new-namespace)
+        new-deps        (simulate-rename deps prefix->module old-namespace->new-namespace)
         new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
     (set/difference old-module-deps new-module-deps)))
 
