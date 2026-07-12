@@ -55,17 +55,24 @@
       (catch Throwable e
         (log/errorf e "Error initializing startup logic %s" k)))))
 
+(defn- run-startup-logic!*
+  "Run `validations` (each aborts the boot on a throw), then `logic` (throws logged and skipped).
+  Each is a seq of `[dispatch-value f]` pairs."
+  [validations logic]
+  (doseq [[k f] validations]
+    (log/infof "Running startup validation %s" (u/format-color 'green (name k)))
+    (run-impl! k f true))
+  (doseq [[k f] logic]
+    (log/infof "Running setup logic %s %s" (u/format-color 'green (name k)) (u/emoji "☑️"))
+    (run-impl! k f false)))
+
 (defn run-startup-logic!
   "Run all `def-startup-validation!` implementations (a throw aborts startup), then all `def-startup-logic!`
   implementations (errors logged and skipped). Called by metabase.core/init!
   Logic methods run in ascending [[startup-priority]] order, with ties broken by dispatch-value name."
   []
-  (doseq [[k f] (methods def-startup-validation!)]
-    (log/infof "Running startup validation %s" (u/format-color 'green (name k)))
-    (run-impl! k f true))
-  (doseq [[k f] (sort-by (fn [[k _]] [(startup-priority k) (name k)]) (methods def-startup-logic!))]
-    (log/infof "Running setup logic %s %s" (u/format-color 'green (name k)) (u/emoji "☑️"))
-    (run-impl! k f false)))
+  (run-startup-logic!* (methods def-startup-validation!)
+                       (sort-by (fn [[k _]] [(startup-priority k) (name k)]) (methods def-startup-logic!))))
 
 (defmulti def-shutdown-logic!
   "Runs shutdown logic with a given name. All implementations are called during graceful server

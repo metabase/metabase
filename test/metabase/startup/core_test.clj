@@ -3,21 +3,16 @@
    [clojure.test :refer :all]
    [metabase.startup.core :as startup]))
 
-(defn- impls
-  "Three startup impls that record their dispatch value into `ran`, with a throwing one in the middle.
-  Ordered so assertions are deterministic."
-  [ran]
-  [[::a    (fn [_] (swap! ran conj ::a))]
-   [::boom (fn [_] (throw (ex-info "boom" {})))]
-   [::c    (fn [_] (swap! ran conj ::c))]])
-
-(deftest run-impl-test
-  (testing "abort-on-error? — a throw propagates, stopping the loop (used for validations)"
-    (let [ran (atom [])]
+(deftest run-startup-logic-test
+  (let [ran   (atom [])
+        rec   (fn [k] [k (fn [_] (swap! ran conj k))])
+        boom  (fn [k] [k (fn [_] (throw (ex-info "boom" {})))])]
+    (testing "a throwing validation aborts before any logic runs"
+      (reset! ran [])
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                            (doseq [[k f] (impls ran)] (#'startup/run-impl! k f true))))
-      (is (= [::a] @ran) "nothing after the throwing impl runs")))
-  (testing "not abort-on-error? — a throw is logged and the loop continues (used for logic)"
-    (let [ran (atom [])]
-      (doseq [[k f] (impls ran)] (#'startup/run-impl! k f false))
-      (is (= [::a ::c] @ran) "the impl after the throwing one still runs"))))
+                            (#'startup/run-startup-logic!* [(rec ::v1) (boom ::v2)] [(rec ::l1)])))
+      (is (= [::v1] @ran) "the validation before the throw ran; no logic ran"))
+    (testing "validations run before logic, and a throwing logic impl is swallowed"
+      (reset! ran [])
+      (is (nil? (#'startup/run-startup-logic!* [(rec ::v1)] [(rec ::l1) (boom ::l2) (rec ::l3)])))
+      (is (= [::v1 ::l1 ::l3] @ran) "validation first, then logic; the throwing logic impl did not stop the rest"))))
