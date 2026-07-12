@@ -1,5 +1,4 @@
 const { H } = cy;
-import { chunk } from "underscore";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -574,73 +573,6 @@ describe("issue 30039", () => {
   });
 });
 
-describe("issue 37726", () => {
-  const PIVOT_QUESTION = {
-    name: "Pivot table with custom column width",
-    display: "pivot",
-    query: {
-      "source-table": ORDERS_ID,
-      breakout: [
-        [
-          "field",
-          ORDERS.TOTAL,
-          { "base-type": "type/Float", binnig: { strategy: "default" } },
-        ],
-      ],
-      aggregation: [
-        ["distinct", ["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
-      ],
-    },
-    visualization_settings: {
-      "pivot_table.column_split": {
-        rows: ["TOTAL"],
-        columns: [],
-        values: ["distinct"],
-      },
-      "pivot_table.column_widths": {
-        leftHeaderWidths: [80],
-        totalLeftHeaderWidths: 80,
-        valueHeaderWidths: { 0: 193 },
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not result in an error when you add a column after resizing an existing one (#37726)", () => {
-    cy.intercept("POST", "/api/dataset/pivot").as("pivot");
-
-    // The important data point in this question is that it has custom
-    // leftHeaderWidths as if a user had dragged them to change the defaults.
-    H.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
-
-    // Now, add in another column to the pivot table
-    cy.button(/Summarize/).click();
-
-    cy.findByRole("listitem", { name: "Category" })
-      .realHover()
-      .button("Add dimension")
-      .click();
-
-    // Wait for the pivot call to return
-    cy.wait("@pivot");
-
-    // Refresh the page -- this loads the question using the transient value
-    cy.reload();
-
-    // Look for the new column name in the resulting pivot table.
-    // Note that before this fix, the page would error out and this elements,
-    // along with the rest of the pivot table, would not appear.
-    // Instead, you got a nice ⚠️ icon and a "Something's gone wrong" tooltip.
-    H.main().within(() => {
-      cy.findByText("Product → Category", { timeout: 8000 });
-    });
-  });
-});
-
 describe("issue 42049", () => {
   beforeEach(() => {
     H.restore();
@@ -720,69 +652,6 @@ describe("issue 42049", () => {
     cy.get("@headerCells").eq(0).should("have.text", "ID");
     cy.get("@headerCells").eq(1).should("have.text", "Created At");
     cy.get("@headerCells").eq(2).should("have.text", "Quantity");
-  });
-});
-
-describe("issue 42697", () => {
-  const PIVOT_QUESTION = {
-    display: "pivot",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [
-        ["count"],
-        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
-      ],
-      breakout: [
-        [
-          "field",
-          PEOPLE.STATE,
-          { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-        ],
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "year" },
-        ],
-      ],
-    },
-    visualization_settings: {
-      "pivot_table.column_split": {
-        rows: ["CREATED_AT"],
-        columns: ["STATE"],
-        values: ["count", "sum"],
-      },
-      "pivot_table.column_widths": {
-        leftHeaderWidths: [156],
-        totalLeftHeaderWidths: 156,
-        valueHeaderWidths: {},
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-  });
-
-  it("should display a pivot table when a new breakout is added to the query (metabase#42697)", () => {
-    H.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
-    H.openNotebook();
-    H.getNotebookStep("summarize")
-      .findByTestId("breakout-step")
-      .icon("add")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Product").click();
-      cy.findByText("Category").click();
-    });
-    H.queryBuilderHeader().findByText("Save").click();
-    H.modal().button("Save").click();
-    cy.wait("@updateCard");
-    cy.button("Visualize").click();
-    cy.findByTestId("pivot-table")
-      .findByText("Product → Category")
-      .should("be.visible");
   });
 });
 
@@ -1128,47 +997,6 @@ describe("issue 55673", () => {
     );
     cy.realPress(["Escape"]);
     cy.findByTestId("click-actions-view").should("not.exist");
-  });
-});
-
-describe("issue 63745", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display correct data when toggling columns (metabase#63745)", () => {
-    H.visitQuestionAdhoc({
-      name: "63745",
-      display: "object",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          limit: 5,
-        },
-      },
-    });
-
-    H.openVizSettingsSidebar();
-    cy.findByTestId("chartsettings-sidebar")
-      .button("Add or remove columns")
-      .click();
-
-    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
-      const cellsFlat = $cells.toArray().map((el) => el.textContent);
-      const map = new Map(chunk(cellsFlat, 2));
-      expect(map.get("User ID")).to.eq("1");
-    });
-
-    cy.findByTestId("orders-table-columns").findByLabelText("ID").click();
-
-    cy.findAllByTestId("object-details-table-cell").should(($cells) => {
-      const cellsFlat = $cells.toArray().map((el) => el.textContent);
-      const map = new Map(chunk(cellsFlat, 2));
-      expect(map.get("User ID")).to.eq("1");
-    });
   });
 });
 

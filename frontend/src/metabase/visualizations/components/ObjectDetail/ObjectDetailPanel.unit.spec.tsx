@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { chunk } from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -18,6 +19,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockColumn,
   createMockDatabase,
   createMockDatasetData,
   createMockField,
@@ -295,6 +297,89 @@ describe("ObjectDetailPanel", () => {
     expect(
       screen.getByText(checkNotNull(testDataset.rows[0][4]).toString()),
     ).toBeInTheDocument();
+  });
+
+  it("keeps detail values aligned with their columns when the columns change (metabase#63745)", () => {
+    const idColumn = createMockColumn({
+      id: 1,
+      name: "ID",
+      display_name: "ID",
+      semantic_type: "type/PK",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+    });
+    const userIdColumn = createMockColumn({
+      id: 2,
+      name: "USER_ID",
+      display_name: "User ID",
+      semantic_type: "type/FK",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+
+    // With the "ID" column enabled, the row carries a value for every column.
+    const dataWithId = createMockDatasetData({
+      cols: [idColumn, userIdColumn],
+      rows: [[999, 1]],
+    });
+    // After toggling "ID" off, the fresh dataset drops that column and value.
+    const dataWithoutId = createMockDatasetData({
+      cols: [userIdColumn],
+      rows: [[1]],
+    });
+
+    const readDetailCells = () => {
+      const cells = screen
+        .getAllByTestId("object-details-table-cell")
+        .map((cell) => cell.textContent);
+      return new Map(chunk(cells, 2) as Array<[string, string]>);
+    };
+
+    const baseProps = {
+      tableForeignKeys: [],
+      tableForeignKeyReferences: [],
+      settings: { column: () => null },
+      showHeader: true,
+      canZoom: true,
+      canZoomPreviousRow: false,
+      canZoomNextRow: false,
+      fetchTableFks: jest.fn(),
+      followForeignKey: () => null,
+      onVisualizationClick: () => null,
+      visualizationIsClickable: () => false,
+      loadObjectDetailFKReferences: () => null,
+      viewPreviousObjectDetail: () => null,
+      viewNextObjectDetail: () => null,
+      closeObjectDetail: () => null,
+      isDashboard: false,
+    } as unknown as ObjectDetailProps;
+
+    const { rerender } = renderWithProviders(
+      <ObjectDetailPanel
+        {...baseProps}
+        question={mockQuestion}
+        data={dataWithId}
+        zoomedRow={dataWithId.rows[0]}
+        zoomedRowID={999}
+      />,
+    );
+
+    expect(readDetailCells().get("User ID")).toBe("1");
+
+    // Simulate the column toggle: the panel receives a new dataset via props
+    // while its internal `data` state still holds the previous columns.
+    rerender(
+      <ObjectDetailPanel
+        {...baseProps}
+        question={mockQuestion}
+        data={dataWithoutId}
+        zoomedRow={dataWithoutId.rows[0]}
+        zoomedRowID={999}
+      />,
+    );
+
+    // "User ID" must still show its own value, not a value from a stale column.
+    expect(readDetailCells().get("User ID")).toBe("1");
   });
 
   it("fetches a missing row", async () => {

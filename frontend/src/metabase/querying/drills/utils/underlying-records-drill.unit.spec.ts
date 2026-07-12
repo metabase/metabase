@@ -1,3 +1,5 @@
+import { addLocale, useLocale } from "ttag";
+
 import type * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -61,5 +63,60 @@ describe("underlyingRecordsDrill", () => {
   it("preserves unrelated column settings across the drill (metabase#12368)", () => {
     const settings = getDrilledQuestion(createPivotQuestion()).settings();
     expect(settings.column_settings).toEqual(PIVOT_SETTINGS.column_settings);
+  });
+});
+
+describe("underlyingRecordsDrill title translation (metabase#33079)", () => {
+  // A translation catalog in which a plain singular `t`See this ${x}`` (e.g. from
+  // a reference header) has already claimed the "See this ${ 0 }" message id with
+  // only a singular form. The drill builds its title with ngettext; if it shares
+  // that message id, the plural lookup dereferences a missing plural form and throws.
+  // The fix appends an empty interpolation so the drill's msgid ("See this ${ 0 }${ 1 }")
+  // can never collide with a singular-only translation.
+  const CATALOG_WITH_SINGULAR_COLLISION = {
+    headers: { "plural-forms": "nplurals=2; plural=(n != 1);" },
+    translations: {
+      "": {
+        "See this ${ 0 }": {
+          msgid: "See this ${ 0 }",
+          msgstr: ["Diese ${ 0 } ansehen"],
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    addLocale("test-33079", CATALOG_WITH_SINGULAR_COLLISION);
+    useLocale("test-33079");
+  });
+
+  afterEach(() => {
+    addLocale("test-33079-reset", {
+      headers: { "plural-forms": "nplurals=2; plural=(n != 1);" },
+      translations: { "": { "": { msgid: "", msgstr: [""] } } },
+    });
+    useLocale("test-33079-reset");
+  });
+
+  function getDrillTitle(rowCount: number) {
+    const question = new Question(createMockCard(), SAMPLE_METADATA);
+    const [action] = underlyingRecordsDrill({
+      question,
+      query: question.query(),
+      stageIndex: -1,
+      drill: {} as Lib.DrillThru,
+      drillInfo: {
+        type: "drill-thru/underlying-records",
+        rowCount,
+        tableName: "Orders",
+      },
+      clicked: {} as Lib.ClickObject,
+      applyDrill: () => question,
+    });
+    return action.title;
+  }
+
+  it("builds a plural drill title without colliding with a singular translation (metabase#33079)", () => {
+    expect(getDrillTitle(19)).toBe("See these Orders");
   });
 });

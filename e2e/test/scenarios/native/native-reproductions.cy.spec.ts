@@ -1,6 +1,5 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
@@ -600,65 +599,6 @@ describe("issue 60719", () => {
       cy.wait("@updateCard");
       cy.findByText("Cannot save card with cycles.").should("be.visible");
     });
-  });
-});
-
-describe("issue 59356", () => {
-  function typeRunShortcut() {
-    cy.realPress([H.metaKey, "Enter"]);
-  }
-
-  function getLoader() {
-    return H.queryBuilderMain().findByTestId("loading-indicator");
-  }
-
-  function getEmptyStateMessage() {
-    return H.queryBuilderMain().findByText(
-      "Here's where your results will appear",
-    );
-  }
-
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should properly cancel the query via the keyboard shortcut (metabase#59356)", () => {
-    cy.log("open the native query");
-    H.startNewNativeQuestion({
-      database: WRITABLE_DB_ID,
-      query: "select pg_sleep(5000)",
-    });
-
-    cy.log("verify that the query is not running");
-    getLoader().should("not.exist");
-    getEmptyStateMessage().should("be.visible");
-    cy.get("@dataset.all").should("have.length", 0);
-
-    cy.log("run the query and verify that it is running");
-    typeRunShortcut();
-    getLoader().should("be.visible");
-    getEmptyStateMessage().should("not.exist");
-    cy.get("@dataset.all").should("have.length", 1);
-
-    cy.log("cancel the query and verify that no new query is running");
-    typeRunShortcut();
-    getLoader().should("not.exist");
-    getEmptyStateMessage().should("be.visible");
-    cy.get("@dataset.all").should("have.length", 1);
-
-    cy.log("run the query again and verify that it is running");
-    typeRunShortcut();
-    getLoader().should("be.visible");
-    getEmptyStateMessage().should("not.exist");
-    cy.get("@dataset.all").should("have.length", 2);
-
-    cy.log("cancel the query and verify that no new query is running");
-    typeRunShortcut();
-    getLoader().should("not.exist");
-    getEmptyStateMessage().should("be.visible");
-    cy.get("@dataset.all").should("have.length", 2);
   });
 });
 

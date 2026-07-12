@@ -1067,6 +1067,53 @@
                                "2026-10-11"]]}]
               (:stages (lib/drill-thru query drill)))))))
 
+(deftest ^:parallel native-card-day-breakout-uses-source-type-test
+  ;; Regression #54108 ("Use source column type in drills"). A question built on a native card is broken
+  ;; out by CREATED_AT with an explicit day cast (`:base-type :type/Date`, exactly what the app sends).
+  ;; Drilling "See these records" must build the underlying-records filter from the *source* column type
+  ;; (the native card's DateTimeWithLocalTZ), NOT the day-bucketed `:type/Date` cast. Before the fix the
+  ;; breakout column was used verbatim, so the filter's field ref carried `:base-type :type/Date`, which
+  ;; generated SQL against the wrong column type and the drilled query returned the wrong rows.
+  ;;
+  ;; NOTE: the `:between` bounds are identical (single clicked day) with or without the fix, so a
+  ;; structure-only assertion does NOT discriminate this bug — the discriminator is the field ref's
+  ;; `:base-type`.
+  (testing "underlying-records drill over a native card, day-bucketed (type/Date) breakout builds the
+            filter from the source column type, not the day-bucket cast (#54108)"
+    (let [mp         (lib.tu/metadata-provider-with-mock-cards)
+          card       (:orders/native (lib.tu/mock-cards))
+          query      (lib/query
+                      mp
+                      {:database (meta/id)
+                       :type     :query
+                       :query    {:source-table (str "card__" (:id card))
+                                  :aggregation  [[:count]]
+                                  :breakout     [[:field "CREATED_AT"
+                                                  {:temporal-unit :day, :base-type :type/Date}]]}})
+          cols       (lib/returned-columns query)
+          count-col  (m/find-first #(= (:name %) "count") cols)
+          _          (is (some? count-col))
+          created-at (m/find-first #(= (:name %) "CREATED_AT") cols)
+          _          (is (some? created-at))
+          ;; The breakout column really is cast to a bare date at this point.
+          _          (is (= :type/Date (:base-type created-at)))
+          context    {:column     count-col
+                      :column-ref (lib/ref count-col)
+                      :value      6
+                      :dimensions [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2026-10-11T00:00:00Z"}]}
+          drill      (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                   (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      ;; The filter field ref must use the SOURCE type (:type/DateTimeWithLocalTZ), not :type/Date.
+      (is (=? [{:source-card (:id card)
+                :filters     [[:between {}
+                               [:field {:temporal-unit :day, :base-type :type/DateTimeWithLocalTZ} "CREATED_AT"]
+                               "2026-10-11"
+                               "2026-10-11"]]}]
+              (:stages (lib/drill-thru query drill)))))))
+
 (deftest ^:parallel native-card-multiple-breakouts-same-column-drill-test
   ;; Regression #53604: a card-sourced question broken out twice on the SAME column (CREATED_AT by
   ;; month AND by year). Because the source is a native card, the breakout columns are name-based

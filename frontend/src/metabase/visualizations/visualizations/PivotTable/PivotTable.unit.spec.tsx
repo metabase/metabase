@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { thaw } from "icepick";
 import type { ComponentProps } from "react";
@@ -386,6 +386,119 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       // ...and the aggregated body values are present.
       expect(table).toHaveTextContent("11");
       expect(table).toHaveTextContent("55");
+    });
+  });
+
+  describe("persisting recomputed column widths when columns change (metabase#37726)", () => {
+    it("should save updated pivot_table.column_widths when the persisted widths no longer match the row-breakout count", async () => {
+      // The pivot data has three row breakouts, but the persisted column widths
+      // carry a single leftHeaderWidths entry — as if the user had resized a
+      // one-breakout table and then added two more breakout columns. On reload
+      // the stale widths must be recomputed AND persisted via
+      // onUpdateVisualizationSettings; otherwise the table errors out instead of
+      // rendering (metabase#37726 / #37083).
+      const ROW_BREAKOUT_COUNT =
+        PIVOT_TABLE_MOCK_DATA.settings["pivot_table.column_split"].rows.length;
+
+      const onUpdateVisualizationSettings = jest.fn();
+
+      const settingsWithStaleWidths = {
+        ...PIVOT_TABLE_MOCK_DATA.settings,
+        "pivot_table.column_widths": {
+          leftHeaderWidths: [80],
+          totalLeftHeaderWidths: 80,
+          valueHeaderWidths: { 0: 193 },
+        },
+      } as unknown as VisualizationSettings;
+
+      setupPivotTable({
+        initialSettings: settingsWithStaleWidths,
+        onUpdateVisualizationSettings,
+      });
+
+      await screen.findByTestId("pivot-table");
+
+      await waitFor(() => {
+        expect(onUpdateVisualizationSettings).toHaveBeenCalledWith(
+          expect.objectContaining({
+            "pivot_table.column_widths": expect.objectContaining({
+              leftHeaderWidths: expect.any(Array),
+            }),
+          }),
+        );
+      });
+
+      const persistedWidths = onUpdateVisualizationSettings.mock.calls
+        .map(([update]) => update?.["pivot_table.column_widths"])
+        .find(Boolean);
+
+      // The persisted widths must have one entry per current row breakout, not
+      // the single stale entry — this is the value a reload reads back.
+      expect(persistedWidths.leftHeaderWidths).toHaveLength(ROW_BREAKOUT_COUNT);
+      expect(persistedWidths.leftHeaderWidths).not.toEqual([80]);
+    });
+  });
+
+  describe("out of date column widths (metabase#42697)", () => {
+    it("recomputes left header widths when the saved widths have fewer entries than the row breakouts", async () => {
+      // A saved pivot question can carry `pivot_table.column_widths` from a time
+      // when the query had fewer row breakouts. After a new breakout is added,
+      // the stored `leftHeaderWidths` array is shorter than the current row
+      // indexes; the widths must be recomputed, otherwise the table renders with
+      // out-of-date settings.
+      const { rows, cols } = PIVOT_TABLE_MOCK_DATA;
+
+      const outOfDatePivotSettings = {
+        "pivot.show_column_totals": true,
+        "pivot.show_row_totals": true,
+        "pivot.condense_duplicate_totals": true,
+        "pivot_table.collapsed_rows": { rows: [], value: [] },
+        "pivot_table.column_split": {
+          columns: [],
+          rows: [cols[0].name, cols[1].name, cols[2].name],
+          values: [cols[4].name, cols[5].name],
+        },
+        // Stale: only two entries although the query now has three row breakouts.
+        "pivot_table.column_widths": {
+          leftHeaderWidths: [80, 80],
+          totalLeftHeaderWidths: 160,
+          valueHeaderWidths: {},
+        },
+        "table.column_formatting": [],
+        column_settings: {},
+      };
+
+      const outOfDateSettings = {
+        ...outOfDatePivotSettings,
+        column: (c: any) => ({
+          ...outOfDatePivotSettings,
+          column: c,
+          column_title: c.display_name,
+        }),
+      } as unknown as VisualizationSettings;
+
+      const onUpdateVisualizationSettings = jest.fn();
+
+      renderWithProviders(
+        <PivotTableView
+          settings={outOfDateSettings}
+          data={{ rows, cols } as any}
+          onVisualizationClick={() => {}}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          isDashboard={false}
+        />,
+      );
+
+      // The table renders rather than returning a blank element.
+      expect(await screen.findByTestId("pivot-table")).toBeInTheDocument();
+
+      // The stale widths are corrected to one entry per row breakout (3, not 2).
+      await waitFor(() => {
+        const widthUpdates = onUpdateVisualizationSettings.mock.calls
+          .map(([update]) => update?.["pivot_table.column_widths"])
+          .filter(Boolean);
+        expect(widthUpdates.at(-1)?.leftHeaderWidths).toHaveLength(3);
+      });
     });
   });
 });

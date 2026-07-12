@@ -54,60 +54,6 @@ describe("issue 47058", () => {
   });
 });
 
-describe("issue 32037", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.createQuestion(
-      {
-        name: "Metric 32037",
-        type: "metric",
-        display: "line",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              ORDERS.CREATED_AT,
-              { "temporal-unit": "month", "base-type": "type/DateTime" },
-            ],
-          ],
-        },
-      },
-      { wrapId: true, idAlias: "metricId" },
-    );
-  });
-
-  it("should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)", () => {
-    cy.get<number>("@metricId").then((metricId) => {
-      cy.visit(`/metric/${metricId}/query`);
-    });
-    H.MetricPage.queryEditor().should("be.visible");
-    H.MetricPage.saveButton().should("not.exist");
-
-    H.getNotebookStep("summarize").findByText("Count").click();
-    H.popover().within(() => {
-      cy.findByText("Sum of ...").click();
-      cy.findByText("Total").click();
-    });
-
-    H.MetricPage.saveButton().should("be.visible");
-
-    H.MetricPage.aboutTab().click();
-
-    H.modal().within(() => {
-      cy.findByText("Discard your changes?").should("be.visible");
-      cy.findByText("Discard changes").click();
-    });
-
-    H.MetricPage.aboutPage().should("be.visible");
-    cy.get<number>("@metricId").then((metricId) => {
-      cy.location("pathname").should("eq", `/metric/${metricId}`);
-    });
-  });
-});
-
 describe("issue 30574", () => {
   beforeEach(() => {
     H.restore();

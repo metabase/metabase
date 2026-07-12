@@ -12,7 +12,9 @@ import {
   getNativeEditorSelectedText,
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
+  getResultsMetadata,
   getShouldShowUnsavedChangesWarning,
+  getSubmittableQuestion,
 } from "metabase/query_builder/selectors";
 import type {
   QueryBuilderState,
@@ -463,6 +465,66 @@ describe("getIsResultDirty", () => {
       });
       expect(getIsResultDirty(state)).toBe(false);
     });
+  });
+});
+
+describe("getSubmittableQuestion", () => {
+  // metabase#30610: when the query has been edited but not re-run, the last
+  // query result's results_metadata is stale and must not be saved onto the
+  // card. getSubmittableQuestion drops it (sends null) whenever the result is
+  // dirty, and keeps it when the result matches the current query.
+  const RESULTS_METADATA_COLUMNS = [
+    createMockColumn({ name: "ID", display_name: "ID" }),
+    createMockColumn({ name: "TOTAL", display_name: "Total" }),
+  ];
+
+  function getState({
+    cardQuery,
+    lastRunQuery,
+  }: {
+    cardQuery: StructuredQuery;
+    lastRunQuery: StructuredQuery;
+  }) {
+    const makeCard = (query: StructuredQuery) =>
+      createMockCard({
+        dataset_query: { type: "query", database: SAMPLE_DB_ID, query },
+      });
+
+    return getBaseState({
+      card: makeCard(cardQuery),
+      lastRunCard: makeCard(lastRunQuery),
+      queryResults: [
+        createMockDataset({
+          data: createMockDatasetData({ cols: RESULTS_METADATA_COLUMNS }),
+        }),
+      ],
+    });
+  }
+
+  it("drops stale results_metadata when the result is dirty (metabase#30610)", () => {
+    const state = getState({
+      cardQuery: { "source-table": PRODUCTS_ID },
+      lastRunQuery: { "source-table": ORDERS_ID },
+    });
+    const question = getQuestion(state) as Question;
+
+    expect(getIsResultDirty(state)).toBe(true);
+    expect(getSubmittableQuestion(state, question).card().result_metadata).toBe(
+      null,
+    );
+  });
+
+  it("keeps results_metadata when the result is not dirty", () => {
+    const state = getState({
+      cardQuery: { "source-table": ORDERS_ID },
+      lastRunQuery: { "source-table": ORDERS_ID },
+    });
+    const question = getQuestion(state) as Question;
+
+    expect(getIsResultDirty(state)).toBe(false);
+    expect(
+      getSubmittableQuestion(state, question).card().result_metadata,
+    ).toEqual(getResultsMetadata(state)?.columns);
   });
 });
 

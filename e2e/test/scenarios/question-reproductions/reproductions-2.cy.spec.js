@@ -1,7 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -330,31 +329,6 @@ describe("issue 29082", () => {
   });
 });
 
-describe("issue 30610", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should remove stale metadata when saving a new question (metabase#30610)", () => {
-    H.openOrdersTable();
-    H.openNotebook();
-    removeSourceColumns();
-    H.saveQuestionToCollection("New orders");
-    createAdHocQuestion("New orders");
-    visualizeAndAssertColumns();
-  });
-
-  it("should remove stale metadata when updating an existing question (metabase#30610)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openNotebook();
-    removeSourceColumns();
-    updateQuestion();
-    createAdHocQuestion("Orders");
-    visualizeAndAssertColumns();
-  });
-});
-
 describe("issue 35290", () => {
   beforeEach(() => {
     H.restore();
@@ -459,40 +433,6 @@ describe("issue 43216", () => {
     H.popover().findByText("D").should("be.visible");
   });
 });
-
-function updateQuestion() {
-  H.queryBuilderHeader().findByText("Save").click();
-  cy.findByTestId("save-question-modal").within((modal) => {
-    cy.findByText("Save").click();
-  });
-}
-
-function removeSourceColumns() {
-  cy.findByTestId("fields-picker").click();
-  H.popover().findByText("Select all").click();
-}
-
-function createAdHocQuestion(questionName) {
-  H.startNewQuestion();
-  H.miniPickerBrowseAll().click();
-  H.entityPickerModal().within(() => {
-    cy.findByText("Our analytics").click();
-    cy.findByText(questionName).click();
-  });
-  cy.findByTestId("fields-picker").click();
-  H.popover().within(() => {
-    cy.findByText("ID").should("be.visible");
-    cy.findByText("Total").should("not.exist");
-  });
-}
-
-function visualizeAndAssertColumns() {
-  H.visualize();
-  H.tableInteractive().within(() => {
-    cy.findByText("ID").should("exist");
-    cy.findByText("Total").should("not.exist");
-  });
-}
 
 const EXPRESSION_NAME = "TEST_EXPRESSION";
 

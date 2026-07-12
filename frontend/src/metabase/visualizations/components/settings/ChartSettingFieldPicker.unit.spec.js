@@ -1,6 +1,7 @@
 // these tests use QuestionChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -137,5 +138,47 @@ describe("ChartSettingFieldPicker", () => {
       within(fields[0]).getByRole("img", { name: /ellipsis/i }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("settings-CREATED_AT")).toBeInTheDocument();
+  });
+
+  // Guards against series names overflowing the trailing buttons (metabase#52975):
+  // the input reserves right-side space proportional to how many trailing buttons
+  // (chevron / ellipsis / remove) are actually shown, so long column names cannot
+  // slide underneath them.
+  describe("right section space reservation (metabase#52975)", () => {
+    const TWO_OPTIONS = [
+      { name: "column one", value: "ONE" },
+      { name: "column two", value: "TWO" },
+    ];
+
+    const renderFieldPicker = (props) =>
+      renderWithProviders(
+        <ChartSettingFieldPicker
+          options={TWO_OPTIONS}
+          value="ONE"
+          onChange={jest.fn()}
+          {...props}
+        />,
+      );
+
+    const getReservedInputPadding = () =>
+      screen
+        .getByTestId("chartsettings-field-picker")
+
+        .querySelector(".mb-mantine-Select-root")
+        .style.getPropertyValue("--chart-setting-select-input-padding-right");
+
+    it("reserves more space when the chevron, ellipsis, and remove buttons are all shown", () => {
+      renderFieldPicker({ fieldSettingWidget: "foo", onRemove: jest.fn() });
+
+      // 3 buttons: 3 * 22 (button) + 16 (section padding) + 8 (input padding) = 90
+      expect(getReservedInputPadding()).toBe("90px");
+    });
+
+    it("reserves less space when only the chevron button is shown", () => {
+      renderFieldPicker({});
+
+      // 1 button: 1 * 22 (button) + 16 (section padding) + 8 (input padding) = 46
+      expect(getReservedInputPadding()).toBe("46px");
+    });
   });
 });

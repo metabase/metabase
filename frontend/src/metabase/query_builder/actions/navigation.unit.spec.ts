@@ -234,3 +234,97 @@ describe("popState — shouldUpdateUrl", () => {
     });
   });
 });
+
+// Witness for metabase#55486 / metabase#56775: browser back/forward inside a
+// model's editor must restore the dataset editor tab (Query ↔ Columns), not just
+// the query-builder mode. popState reads datasetEditorTab from the location and,
+// when the current tab differs, dispatches setQueryBuilderMode carrying that tab
+// (with shouldUpdateUrl:false). The bug only compared queryBuilderMode, so a
+// back/forward step that changed only the tab — mode stayed "dataset" — never
+// re-dispatched, leaving the wrong editor tab showing.
+describe("popState — datasetEditorTab restoration", () => {
+  let dispatch: jest.Mock;
+  let setQueryBuilderModeSpy: jest.SpyInstance;
+
+  const runPopState = ({
+    currentTab,
+    locationMode,
+    locationTab,
+  }: {
+    currentTab: string;
+    locationMode: string;
+    locationTab: string;
+  }) => {
+    jest
+      .spyOn(selectorsModule, "getDatasetEditorTab")
+      .mockReturnValue(currentTab as any);
+    jest
+      .spyOn(typedUtilsModule, "getQueryBuilderModeFromLocation")
+      .mockReturnValue({
+        queryBuilderMode: locationMode,
+        datasetEditorTab: locationTab,
+      } as any);
+
+    // No location.state.card, so the setCardAndRun branch is skipped and the
+    // test isolates the queryBuilderMode/datasetEditorTab restoration branch.
+    const location = {
+      pathname: "/model/1/metadata",
+      search: "",
+      hash: "",
+      action: "POP",
+      state: null,
+    } as unknown as Location;
+
+    return popState(location)(dispatch, () => ({}) as any);
+  };
+
+  beforeEach(() => {
+    dispatch = jest.fn((action) => action);
+
+    setQueryBuilderModeSpy = jest
+      .spyOn(uiModule, "setQueryBuilderMode")
+      .mockReturnValue({ type: "MOCK_SET_QB_MODE" } as any);
+
+    // Neutralize everything else popState touches; mode-from-state is "dataset"
+    // so only the editor tab varies between state and location.
+    jest
+      .spyOn(queryingModule, "cancelQuery")
+      .mockReturnValue({ type: "MOCK_CANCEL" } as any);
+    jest.spyOn(selectorsModule, "getZoomedObjectId").mockReturnValue(null);
+    jest.spyOn(selectorsModule, "getCard").mockReturnValue({ id: -1 } as any);
+    jest
+      .spyOn(selectorsModule, "getQueryBuilderMode")
+      .mockReturnValue("dataset");
+    jest.spyOn(routingModule, "getLocation").mockReturnValue({} as any);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("restores the dataset editor tab from the location when only the tab changed", async () => {
+    await runPopState({
+      currentTab: "query",
+      locationMode: "dataset",
+      locationTab: "metadata",
+    });
+
+    expect(setQueryBuilderModeSpy).toHaveBeenCalledWith(
+      "dataset",
+      expect.objectContaining({
+        datasetEditorTab: "metadata",
+        shouldUpdateUrl: false,
+      }),
+    );
+  });
+
+  it("does not switch modes when both the mode and tab already match the location", async () => {
+    await runPopState({
+      currentTab: "metadata",
+      locationMode: "dataset",
+      locationTab: "metadata",
+    });
+
+    expect(setQueryBuilderModeSpy).not.toHaveBeenCalled();
+  });
+});

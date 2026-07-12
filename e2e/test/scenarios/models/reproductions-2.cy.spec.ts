@@ -287,21 +287,6 @@ describe("issue 51925", () => {
   });
 });
 
-describe("issue 53649", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
-    H.startNewNativeModel();
-
-    // If the app freezes, this won't work
-    H.NativeEditor.type("select 1");
-    H.NativeEditor.get().should("contain", "select 1");
-  });
-});
-
 describe("issue 57557", () => {
   beforeEach(() => {
     H.restore();
@@ -369,62 +354,6 @@ describe("issue 57359", () => {
 
     cy.log("make sure the query is run successfully");
     H.tableInteractive().should("be.visible");
-  });
-});
-
-describe("issue 55486", () => {
-  const MODEL_NAME = "Model 55486";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.createQuestion(
-      {
-        type: "model",
-        name: MODEL_NAME,
-        query: {
-          "source-table": PRODUCTS_ID,
-          limit: 5,
-        },
-      },
-      { visitQuestion: true },
-    );
-  });
-
-  function checkIsShowingMetadataEditorTab() {
-    cy.findByTestId("editor-tabs-columns").should("be.checked");
-    cy.findByTestId("visualization-root").should("be.visible");
-  }
-
-  function checkIsShowingQueryEditorTab() {
-    cy.findByTestId("editor-tabs-query").should("be.checked");
-    H.getNotebookStep("data").should("be.visible");
-  }
-
-  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
-    H.openQuestionActions("Edit query definition");
-
-    H.datasetEditBar().findByText("Columns").click();
-    checkIsShowingMetadataEditorTab();
-
-    H.datasetEditBar().findByText("Query").click();
-    checkIsShowingQueryEditorTab();
-
-    cy.log("Back button should show the metadata editor");
-    cy.go("back");
-    checkIsShowingMetadataEditorTab();
-
-    cy.log("Back button should show the query editor");
-    cy.go("back");
-    checkIsShowingQueryEditorTab();
-
-    cy.log("Forward button should show the query editor");
-    cy.go("forward");
-    checkIsShowingMetadataEditorTab();
-
-    cy.log("Forward button should show the query editor");
-    cy.go("forward");
-    checkIsShowingQueryEditorTab();
   });
 });
 

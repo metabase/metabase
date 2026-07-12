@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -117,5 +117,47 @@ describe("CodemirrorEditor", () => {
 
       expect(onCursorMoveOverCardTag).not.toHaveBeenCalled();
     });
+  });
+
+  // metabase#53649: comparing the before/after selection ranges by reference
+  // never matched, so onSelectionChange fired on every update and the native
+  // editor got stuck in an infinite loop. The ranges must be compared by value.
+  it("should not report a selection change when the selection is unchanged (metabase#53649)", () => {
+    const { onSelectionChange } = setup({ text: "SELECT 1;" });
+    const view = getEditorView();
+
+    // place a zero-width cursor at the start of the document
+    act(() => {
+      view.dispatch({ selection: { anchor: 0 } });
+    });
+    onSelectionChange.mockClear();
+
+    // an edit at the end of the document leaves the cursor at position 0, so
+    // the selection ranges are value-equal before and after this update
+    act(() => {
+      view.dispatch({
+        changes: { from: view.state.doc.length, insert: " " },
+      });
+    });
+
+    expect(onSelectionChange).not.toHaveBeenCalled();
+  });
+
+  it("should report a selection change when the selection actually moves (metabase#53649)", () => {
+    const { onSelectionChange } = setup({ text: "SELECT 1;" });
+    const view = getEditorView();
+
+    act(() => {
+      view.dispatch({ selection: { anchor: 0 } });
+    });
+    onSelectionChange.mockClear();
+
+    act(() => {
+      view.dispatch({ selection: { anchor: 0, head: 6 } });
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      { start: { row: 0, column: 0 }, end: { row: 0, column: 6 } },
+    ]);
   });
 });

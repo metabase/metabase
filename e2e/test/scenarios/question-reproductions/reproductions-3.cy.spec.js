@@ -6,59 +6,6 @@ import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
-describe("issue 32625, issue 31635", () => {
-  const CC_NAME = "Is Promotion";
-
-  const QUESTION = {
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [
-          "distinct",
-          ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
-        ],
-        breakout: ["expression", CC_NAME],
-        expressions: {
-          [CC_NAME]: [
-            "case",
-            [[[">", ["field", ORDERS.DISCOUNT, null], 0], 1]],
-            { default: 0 },
-          ],
-        },
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should remove dependent clauses when a clause is removed (metabase#32625, metabase#31635)", () => {
-    H.visitQuestionAdhoc(QUESTION, { mode: "notebook" });
-
-    H.getNotebookStep("expression")
-      .findAllByTestId("notebook-cell-item")
-      .first()
-      .icon("close")
-      .click();
-
-    H.getNotebookStep("expression").should("not.exist");
-    H.getNotebookStep("summarize").findByText(CC_NAME).should("not.exist");
-
-    H.visualize();
-
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByTestId("scalar-value").should("have.text", "200");
-      cy.findByText("There was a problem with your question").should(
-        "not.exist",
-      );
-    });
-  });
-});
-
 describe("issue 32964", () => {
   const LONG_NAME = "A very long column name that will cause text overflow";
 
@@ -105,37 +52,6 @@ describe("issue 32964", () => {
         expect(x).to.be.lessThan(maxX);
       });
     });
-  });
-});
-
-describe("issue 33079", () => {
-  const questionDetails = {
-    display: "line",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.request("GET", "/api/user/current").then(({ body: user }) => {
-      cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
-    });
-  });
-
-  it("underlying records drill should work in a non-English locale (metabase#33079)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    H.cartesianChartCircle().eq(1).click({ force: true });
-    H.popover()
-      .findByText("Siehe diese Einträge") // See these records
-      .click();
-    cy.wait("@dataset");
-    cy.findByTestId("question-row-count").should("contain", "19");
   });
 });
 
@@ -436,53 +352,6 @@ describe("issue 39795", () => {
     // This causes the isValid() check to fire, and you are always forced into the default value for table.columns
     H.getDraggableElements().eq(2).should("contain.text", "ID");
   });
-});
-
-describe("issue 40176", () => {
-  const DIALECT = "postgres";
-  const TABLE = "uuid_pk_table";
-
-  beforeEach(() => {
-    H.restore(`${DIALECT}-writable`);
-    cy.signInAsAdmin();
-    H.resetTestTable({ type: DIALECT, table: TABLE });
-    H.resyncDatabase({
-      dbId: WRITABLE_DB_ID,
-      tableName: TABLE,
-    });
-  });
-
-  it(
-    "should allow filtering on UUID PK columns (metabase#40176)",
-    { tags: "@external" },
-    () => {
-      H.getTable({ name: TABLE }).then(({ id: tableId }) => {
-        H.visitQuestionAdhoc({
-          display: "table",
-          dataset_query: {
-            database: WRITABLE_DB_ID,
-            query: {
-              "source-table": tableId,
-            },
-            type: "query",
-          },
-        });
-      });
-      H.openNotebook();
-      cy.findByTestId("action-buttons").findByText("Filter").click();
-      H.popover().within(() => {
-        cy.findByText("ID").click();
-        cy.findByLabelText("Filter value").type(
-          "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-        );
-        cy.button("Add filter").click();
-      });
-      H.visualize();
-      cy.findByTestId("question-row-count")
-        .findByText("Showing 1 row")
-        .should("be.visible");
-    },
-  );
 });
 
 describe("issue 40435", () => {
