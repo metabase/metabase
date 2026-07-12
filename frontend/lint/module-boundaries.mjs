@@ -195,6 +195,7 @@ const elements = [
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppThemeProvider.unit.spec.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
+    "frontend/src/metabase/AppColorSchemeProvider.unit.spec.tsx",
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
     "frontend/src/metabase/static-viz/index.tsx",

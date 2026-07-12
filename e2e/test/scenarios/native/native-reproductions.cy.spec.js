@@ -2,10 +2,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-import {
-  getRunQueryButton,
-  runQuery,
-} from "../native-filters/helpers/e2e-sql-filter-helpers";
+import { runQuery } from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -842,52 +839,5 @@ describe("issue 22991", () => {
       "not.contain",
       "Sorry, you don’t have permission to see that",
     );
-  });
-});
-
-describe("issue 46308", () => {
-  const nativeQuery =
-    "select category, count(*) from products where category != {{exclude}} group by category";
-
-  const questionDetails = {
-    native: {
-      query: nativeQuery,
-      "template-tags": {
-        exclude: {
-          id: "ddf7c404-38db-8b65-f90d-c6f4bd8127ec",
-          name: "exclude",
-          "display-name": "Exclude",
-          type: "text",
-        },
-      },
-    },
-    display: "line",
-    visualization_settings: {
-      "graph.metrics": ["category"],
-      "graph.dimensions": ["count"],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("should persist viz settings when saving a question without a required filter selected (metabase#46308)", () => {
-    cy.findByTestId("native-query-editor-container")
-      .findByTestId("visibility-toggler")
-      .click();
-
-    cy.icon("variable").click();
-    cy.get("input[value=Exclude]").eq(0).type(" Category").blur();
-
-    cy.findByTestId("qb-save-button").click();
-    cy.findByTestId("save-question-modal").findByText("Save").click();
-
-    cy.findByPlaceholderText("Exclude Category").type("Doohickey");
-    getRunQueryButton().click();
-
-    H.cartesianChartCircle().should("have.length", 3);
   });
 });

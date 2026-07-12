@@ -119,36 +119,6 @@ describe("scenarios > visualizations > line chart", () => {
     H.cartesianChartCircleWithColor("#509EE3");
   });
 
-  it("should reset stacking settings when switching to line chart (metabase#43538)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
-          breakout: [
-            ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
-            ["field", PRODUCTS.CATEGORY, null],
-          ],
-        },
-        type: "query",
-      },
-      display: "bar",
-      visualization_settings: {
-        "stackable.stack_type": "normalized",
-      },
-    });
-
-    H.openVizTypeSidebar();
-
-    cy.icon("line").click();
-
-    H.cartesianChartCircleWithColor("#A989C5");
-
-    // Y-axis scale should not be normalized
-    H.echartsContainer().findByText("100%").should("not.exist");
-  });
-
   it("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {

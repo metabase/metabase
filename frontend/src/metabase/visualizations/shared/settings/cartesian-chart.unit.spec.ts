@@ -209,6 +209,20 @@ describe("cartesian-chart defaults", () => {
 
     expect(result).toEqual(["sum", "sum_2"]);
   });
+
+  it("preserves saved metrics and dimensions when the query has not run yet (metabase#46308)", () => {
+    // A native question with a required filter that has no value selected does
+    // not run, so its series carries no result columns. Saving the question
+    // must not drop the persisted graph.metrics/graph.dimensions settings.
+    const series = createSeries({ display: "line", cols: [], rows: [] });
+    const settings = {
+      "graph.metrics": ["category"],
+      "graph.dimensions": ["count"],
+    };
+
+    expect(getDefaultMetrics(series, settings)).toEqual(["category"]);
+    expect(getDefaultDimensions(series, settings)).toEqual(["count"]);
+  });
 });
 
 const COLS = [
