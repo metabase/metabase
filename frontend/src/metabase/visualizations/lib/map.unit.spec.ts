@@ -35,6 +35,45 @@ describe("map", () => {
           `/api/tiles/${zoom}/${coord.x}/${coord.y}?query=${encodeURIComponent(encodedQuery)}&latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}`,
         );
       });
+
+      it("should percent-encode a base-type field ref into the query string (metabase#59984)", () => {
+        // A breakout column carries a `base-type` option, so the JSON-stringified
+        // field ref contains a "/" (e.g. "type/Float"). It must be percent-encoded
+        // into the query string, not placed in the URL path where Jetty decodes
+        // "%2F" back to "/" and rejects the request as an ambiguous path.
+        const datasetQuery: JsonQuery = {
+          database: 1,
+          type: "query",
+          query: { "source-table": 1 },
+        };
+        const latFieldRef = JSON.stringify([
+          "field",
+          5,
+          { "base-type": "type/Float" },
+        ]);
+        const lonFieldRef = JSON.stringify([
+          "field",
+          6,
+          { "base-type": "type/Float" },
+        ]);
+
+        const url = getTileUrl({
+          zoom,
+          coord,
+          latField: latFieldRef,
+          lonField: lonFieldRef,
+          datasetQuery,
+        });
+
+        const [path, query] = url.split("?");
+        // The field refs must not leak into the path.
+        expect(path).toBe(`/api/tiles/${zoom}/${coord.x}/${coord.y}`);
+        expect(query).toBe(
+          `query=${encodeURIComponent(JSON.stringify(datasetQuery))}&latField=${encodeURIComponent(latFieldRef)}&lonField=${encodeURIComponent(lonFieldRef)}`,
+        );
+        // "type/Float" is safely encoded as "type%2FFloat" in the query string.
+        expect(query).toContain("type%2FFloat");
+      });
     });
 
     describe("saved question", () => {

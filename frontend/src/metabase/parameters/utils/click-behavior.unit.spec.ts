@@ -625,6 +625,64 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
       expect(value).toEqual("2020-01-01");
     });
 
+    it("should format hour-granularity dates for variables as a time range (metabase#66277)", () => {
+      const source = { type: "column" as const, id: "SOME_DATE", name: "date" };
+      const target = { type: "variable" as const, id: "my_variable" };
+      const data = {
+        ...emptyData,
+        column: {
+          some_date: {
+            value: "2020-01-01T00:00:00+05:00",
+            column: createMockColumn({
+              effective_type: "type/DateTime",
+              unit: "hour",
+            }),
+          },
+        },
+      };
+      const extraData = {};
+      const clickBehavior = {
+        type: "link" as const,
+        linkType: "question" as const,
+        targetId: 123,
+      };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      expect(value).toEqual("2020-01-01T00:00~2020-01-01T01:00");
+    });
+
+    it("should format minute-granularity dates for variables as a time range (metabase#66277)", () => {
+      const source = { type: "column" as const, id: "SOME_DATE", name: "date" };
+      const target = { type: "variable" as const, id: "my_variable" };
+      const data = {
+        ...emptyData,
+        column: {
+          some_date: {
+            value: "2020-01-01T00:00:00+05:00",
+            column: createMockColumn({
+              effective_type: "type/DateTime",
+              unit: "minute",
+            }),
+          },
+        },
+      };
+      const extraData = {};
+      const clickBehavior = {
+        type: "link" as const,
+        linkType: "question" as const,
+        targetId: 123,
+      };
+      const value = formatSourceForTarget(source, target, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+      expect(value).toEqual("2020-01-01T00:00~2020-01-01T00:01");
+    });
+
     it("should format number/between parameters with binning info as a range", () => {
       const source = {
         type: "column" as const,

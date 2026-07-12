@@ -1112,67 +1112,6 @@ describe("scenarios > embedding > dashboard appearance", () => {
     );
   });
 
-  it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      enable_embedding: true,
-    });
-    cy.signOut();
-
-    H.visitEmbeddedPage(
-      {
-        resource: { dashboard: ORDERS_DASHBOARD_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          background: "false",
-        },
-        onBeforeLoad: (window) => {
-          window.overrideIsWithinIframe = true;
-        },
-      },
-    );
-
-    cy.findByTestId("embed-frame").should("exist");
-
-    cy.get("body.mb-wrapper").should(
-      "have.css",
-      "background-color",
-      "rgba(0, 0, 0, 0)",
-    );
-
-    cy.window().then((win) => {
-      delete win.overrideIsWithinIframe;
-    });
-  });
-
-  it("should not disable background via `#background=false` hash parameter when rendered without an iframe", () => {
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      enable_embedding: true,
-    });
-    cy.signOut();
-
-    H.visitEmbeddedPage(
-      {
-        resource: { dashboard: ORDERS_DASHBOARD_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          background: "false",
-        },
-      },
-    );
-
-    cy.findByTestId("embed-frame").should("exist");
-
-    cy.get("body.mb-wrapper").should(
-      "not.have.css",
-      "background-color",
-      "rgba(0, 0, 0, 0)",
-    );
-  });
-
   it("should apply theme hash parameter to static dashboard embed (metabase#66253)", () => {
     const visit = (theme) => {
       cy.clearLocalStorage();

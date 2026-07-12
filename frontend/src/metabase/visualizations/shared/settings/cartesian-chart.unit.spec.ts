@@ -163,6 +163,52 @@ describe("cartesian-chart defaults", () => {
 
     expect(result).toEqual(["m1"]);
   });
+
+  it("returns all metrics for a bar chart with multiple same-type aggregations, ignoring stale settings (metabase#68819)", () => {
+    // Two "Sum of Total" aggregations deduplicate to "sum" and "sum_2".
+    // Renaming one aggregation changes the deduplication, leaving the saved
+    // graph.metrics pointing at a column that no longer exists.
+    const cols = [
+      createMockColumn({
+        name: "issue68819_created_month",
+        display_name: "Created At",
+        base_type: "type/DateTime",
+        source: "breakout",
+      }),
+      createMockColumn({
+        name: "issue68819_product_category",
+        display_name: "Category",
+        base_type: "type/Text",
+        source: "breakout",
+      }),
+      createMockColumn({
+        name: "sum",
+        display_name: "Sum",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "sum_2",
+        display_name: "Sum",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+    ];
+    const series = createSeries({
+      display: "bar",
+      cols,
+      rows: [
+        ["2024-01", "Widget", 10, 20],
+        ["2024-02", "Gadget", 30, 40],
+      ],
+    });
+
+    const result = getDefaultMetrics(series, {
+      "graph.metrics": ["sum", "sum_2_missing"],
+    });
+
+    expect(result).toEqual(["sum", "sum_2"]);
+  });
 });
 
 const COLS = [
