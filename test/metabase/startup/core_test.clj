@@ -3,29 +3,21 @@
    [clojure.test :refer :all]
    [metabase.startup.core :as startup]))
 
-;; Standalone multimethods so the tests exercise run-startup-logic! in isolation from whatever
-;; validations and logic the rest of the app has globally registered, and independent of iteration order.
-(defmulti ^:private isolated-validation! keyword)
-(defmulti ^:private isolated-logic! keyword)
+(defn- impls
+  "Three startup impls that record their dispatch value into `ran`, with a throwing one in the middle.
+  Ordered so assertions are deterministic."
+  [ran]
+  [[::a    (fn [_] (swap! ran conj ::a))]
+   [::boom (fn [_] (throw (ex-info "boom" {})))]
+   [::c    (fn [_] (swap! ran conj ::c))]])
 
-(deftest run-startup-logic-test
-  (testing "a throwing validation aborts before any startup logic runs"
-    (remove-all-methods isolated-validation!)
-    (remove-all-methods isolated-logic!)
-    (let [logic-ran? (atom false)]
-      (defmethod isolated-validation! ::boom [_] (throw (ex-info "boom" {})))
-      (defmethod isolated-logic! ::should-not-run [_] (reset! logic-ran? true))
-      (with-redefs [startup/def-startup-validation! isolated-validation!
-                    startup/def-startup-logic!      isolated-logic!]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (startup/run-startup-logic!)))
-        (is (false? @logic-ran?) "startup logic must not run once a validation has failed"))))
-  (testing "a throwing startup-logic method is swallowed and later logic still runs"
-    (remove-all-methods isolated-validation!)
-    (remove-all-methods isolated-logic!)
-    (let [ran? (atom false)]
-      (defmethod isolated-logic! ::throws [_] (throw (ex-info "kaboom" {})))
-      (defmethod isolated-logic! ::runs [_] (reset! ran? true))
-      (with-redefs [startup/def-startup-validation! isolated-validation!
-                    startup/def-startup-logic!      isolated-logic!]
-        (is (nil? (startup/run-startup-logic!)))
-        (is (true? @ran?) "a swallowed logic error must not prevent the remaining logic from running")))))
+(deftest run-startup-impls-test
+  (testing "abort-on-error? — a throw propagates and stops the phase (used for validations)"
+    (let [ran (atom [])]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (#'startup/run-startup-impls! "test" (impls ran) true)))
+      (is (= [::a] @ran) "nothing after the throwing impl runs")))
+  (testing "not abort-on-error? — a throw is logged and the remaining impls still run (used for logic)"
+    (let [ran (atom [])]
+      (is (nil? (#'startup/run-startup-impls! "test" (impls ran) false)))
+      (is (= [::a ::c] @ran) "the impl after the throwing one still runs"))))
