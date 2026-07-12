@@ -164,12 +164,38 @@ Committed `f19ae1317f4`. Cleared BOTH backlogs by re-authoring against current H
 - **jest + agent worktrees:** run witnesses with `--modulePathIgnorePatterns '/.claude/worktrees/'`
   to avoid haste-map pollution while worktrees linger, or remove all worktrees first.
 
-## GRAND TOTAL: ~167 e2e repros culled, ~151 FE witnesses + 13 BE deftests
-Branch `dev-2347`, 49 commits ahead of master, tree clean.
-**All deferred witnesses and the BE-deftest backlog are now CLEARED (batch 17).**
-Only remaining item: FE **34395** (agent API-errored back in batch 7; never got a witness) —
-predicate-level `isActionDashCard` witness, don't render the whole embedded dashboard.
-Outcome log for the deferred/BE work: /tmp/rlc-deferred-outcomes.txt (ephemeral).
+## Batch 18 (fresh pf1-3 remainder): 8 landed — yield beat the forecast
+
+Committed `bf3736f0270`. Dispatched 13 agents on the branch-untouched pf1-3 remainder
+(older 2023-2026 single-file fixes). I predicted ~3 landings (expecting mostly
+obsoleted/geometry); actual was **8 landed, 3 keep (all obsoleted-by-rewrite), 2 be_deftest**.
+**Learning: old pf=1 fixes reduce BETTER than expected** — many are clean RTK-Query cache-tag
+wirings (60241, 44499), React hooks (33084), or router-effect guards (35009, 65501), not
+geometry. Even an apparent-geometry one (69831 full-width table) reduced to an `isEmbeddingSdk`
+computed value. So "old + low-pf" is NOT a proxy for "obsoleted."
+- Landed (8): 41196 60241 68285 35009 33084 65501 69831 44499.
+- keep obsoleted-by-rewrite (3): 56482 (FieldOrderSidesheet deleted), 28834 (QueryDownloadWidget),
+  29122 (query-time.js serialization).
+- be_deftest, e2e left in place (2): 47584 (long-alias oracle exists — NOT yet mutation-verified,
+  do that before culling), 32126 (oracle exists but #32126 rides a shared 4-issue e2e block).
+
+**Process-restart recovery (important gotcha):** the harness restarted mid-batch; 5 agents got
+"stopped" with no completion record, and `/tmp` was wiped (patches, agent maps, culler, outcome
+log all gone). Recovery: the agent WORKTREES survived — re-captured each patch via
+`git -C <worktree> add -A && git diff --cached HEAD`, and resumed the 5 stopped agents with
+SendMessage to get their final Report + confirm they'd completed mutation-discrimination (all had).
+Also: two "new file" witnesses (44499 collection.unit.spec.ts, and the earlier querying pattern)
+were divergent-base clobbers — the file already exists on dev-2347 — so merge by hand, don't apply.
+
+## GRAND TOTAL: ~175 e2e repros culled, ~159 FE witnesses + 13 BE deftests
+Branch `dev-2347`, 51 commits ahead of master, tree clean.
+Remaining items:
+- FE **34395** (agent API-errored in batch 7; never got a witness) — predicate-level
+  `isActionDashCard` witness, don't render the whole embedded dashboard.
+- **47584** be_deftest — mutation-verify the long-alias oracle discriminates, then cull its
+  e2e in models/models.cy.spec.js (currently left in place).
+- The remaining unmined pool is now essentially pf>=4 (704) + test_only (156) + the ~157
+  branch-touched pf1-3 that need the text-output protocol + per-issue triage. No clean sweep left.
 
 ## FE FAN-OUT COMPLETE — pool exhausted
 
