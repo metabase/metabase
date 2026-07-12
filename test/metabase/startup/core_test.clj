@@ -3,16 +3,29 @@
    [clojure.test :refer :all]
    [metabase.startup.core :as startup]))
 
-(deftest validations-run-before-logic-and-abort-test
-  (testing "a throwing startup validation aborts before any startup logic runs"
+;; Standalone multimethods so the tests exercise run-startup-logic! in isolation from whatever
+;; validations and logic the rest of the app has globally registered, and independent of iteration order.
+(defmulti ^:private isolated-validation! keyword)
+(defmulti ^:private isolated-logic! keyword)
+
+(deftest run-startup-logic-test
+  (testing "a throwing validation aborts before any startup logic runs"
+    (remove-all-methods isolated-validation!)
+    (remove-all-methods isolated-logic!)
     (let [logic-ran? (atom false)]
-      (try
-        (defmethod startup/def-startup-validation! ::boom [_]
-          (throw (ex-info "boom" {})))
-        (defmethod startup/def-startup-logic! ::should-not-run [_]
-          (reset! logic-ran? true))
+      (defmethod isolated-validation! ::boom [_] (throw (ex-info "boom" {})))
+      (defmethod isolated-logic! ::should-not-run [_] (reset! logic-ran? true))
+      (with-redefs [startup/def-startup-validation! isolated-validation!
+                    startup/def-startup-logic!      isolated-logic!]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (startup/run-startup-logic!)))
-        (is (false? @logic-ran?) "startup logic must not run once a validation has failed")
-        (finally
-          (remove-method startup/def-startup-validation! ::boom)
-          (remove-method startup/def-startup-logic! ::should-not-run))))))
+        (is (false? @logic-ran?) "startup logic must not run once a validation has failed"))))
+  (testing "a throwing startup-logic method is swallowed and later logic still runs"
+    (remove-all-methods isolated-validation!)
+    (remove-all-methods isolated-logic!)
+    (let [ran? (atom false)]
+      (defmethod isolated-logic! ::throws [_] (throw (ex-info "kaboom" {})))
+      (defmethod isolated-logic! ::runs [_] (reset! ran? true))
+      (with-redefs [startup/def-startup-validation! isolated-validation!
+                    startup/def-startup-logic!      isolated-logic!]
+        (is (nil? (startup/run-startup-logic!)))
+        (is (true? @ran?) "a swallowed logic error must not prevent the remaining logic from running")))))
