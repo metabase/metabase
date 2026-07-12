@@ -21,12 +21,12 @@
 
 (set! *warn-on-reflection* true)
 
-;; Both orphan sweeps below feed table names to DROP, so the schema scoping is safety logic, not just a
-;; filter: without it a LIKE pattern could match application tables in shared app-db mode.
+;; Both orphan sweeps feed table names to DROP, so in shared app-db mode the schema scoping keeps a LIKE
+;; pattern from matching and dropping application tables.
 
 (defn- scope-where-to-schema
   "Restrict an `information_schema.tables` WHERE (an aliased-`:t` `[:and ...]` vector) to the module schema.
-  A no-op in dedicated mode, where there is no schema."
+  A no-op without a schema (dedicated mode)."
   [where schema]
   (cond-> where schema (conj [:= :t.table_schema [:inline schema]])))
 

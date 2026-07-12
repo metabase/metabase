@@ -27,10 +27,10 @@
   (second (qualified-table-parts table-name)))
 
 (defn column-keyword
-  "A `table.column` reference as a dotted-name keyword, NOT a namespaced keyword.
-  HoneySQL renders a namespaced keyword's namespace as a single identifier, so a schema-qualified table in
-  the namespace position becomes one broken identifier; a dotted name renders as separate quoted parts.
-  Pass the table name as it should render -- qualified for an ordinary FROM/JOIN reference."
+  "A `table.column` reference as a dotted-name keyword, not a namespaced one.
+  HoneySQL quotes a keyword's namespace as one identifier, so a schema-qualified table there renders as a
+  single broken identifier. The dotted name renders as separate quoted parts.
+  Pass the table name as it should render: qualified for an ordinary FROM/JOIN reference."
   [table-name column]
   (keyword (str table-name "." (name column))))
 
