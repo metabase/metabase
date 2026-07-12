@@ -96,9 +96,9 @@ export function toStructured(
           }))
         : value.map((column) => ({ name: column.name }));
     } else {
-      // Omit an optional scalar left blank (e.g. a ClickHouse skip-index granularity): the backend rejects
-      // null but accepts the key being absent.
-      if (!field.required && value == null) {
+      // Omit an optional scalar left blank -- null (e.g. a ClickHouse skip-index granularity) or "" (a blank
+      // string or empty-option select): the backend rejects those but accepts the key being absent.
+      if (!field.required && (value == null || value === "")) {
         continue;
       }
       structured[field.name] = value;

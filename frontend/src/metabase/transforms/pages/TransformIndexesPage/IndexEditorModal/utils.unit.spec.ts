@@ -26,6 +26,21 @@ describe("toStructured", () => {
     expect("granularity" in structured).toBe(false);
   });
 
+  it("omits an optional string/select left blank instead of sending an empty string", () => {
+    const fields = [
+      field({ name: "name", type: "string" }),
+      field({ name: "collation", type: "select" }),
+    ];
+
+    const structured = toStructured("btree", fields, {
+      name: "idx",
+      collation: "",
+    });
+
+    expect(structured).toEqual({ kind: "btree", name: "idx" });
+    expect("collation" in structured).toBe(false);
+  });
+
   it("omits an optional column list left empty instead of sending []", () => {
     const fields = [
       field({ name: "style", type: "select" }),
