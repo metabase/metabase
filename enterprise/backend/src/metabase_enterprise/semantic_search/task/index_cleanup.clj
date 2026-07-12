@@ -21,6 +21,21 @@
 
 (set! *warn-on-reflection* true)
 
+;; Both orphan sweeps below feed table names to DROP, so the schema scoping is safety logic, not just a
+;; filter: without it a LIKE pattern could match application tables in shared app-db mode.
+
+(defn- scope-where-to-schema
+  "Restrict an `information_schema.tables` WHERE (an aliased-`:t` `[:and ...]` vector) to the module schema.
+  A no-op in dedicated mode, where there is no schema."
+  [where schema]
+  (cond-> where schema (conj [:= :t.table_schema [:inline schema]])))
+
+(defn- requalify-table-names
+  "Prefix bare `information_schema` table names with the module schema so they match how the metadata table
+  stores them. A no-op in dedicated mode."
+  [schema table-names]
+  (map #(cond->> % schema (str schema ".")) table-names))
+
 (defn- orphan-index-tables
   "Returns a list of semantic search index tables which are not referenced in the metadata table.
   Not expected to occur, but if it does, these tables can be dropped.
@@ -40,14 +55,14 @@
              :from [[:information_schema.tables :t]]
              :left-join [[(keyword metadata-table-name) :meta]
                          [:= :meta.table_name stored-name]]
-             :where (cond-> [:and
-                             [:like :t.table_name [:inline "index_table_%"]]
-                             [:= :meta.table_name nil]]
-                      schema (conj [:= :t.table_schema [:inline schema]]))}
+             :where (scope-where-to-schema [:and
+                                            [:like :t.table_name [:inline "index_table_%"]]
+                                            [:= :meta.table_name nil]]
+                                           schema)}
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name)
-         (map #(cond->> % schema (str schema "."))))))
+         (requalify-table-names schema))))
 
 (defn- parse-repair-table-timestamp
   "Extracts timestamp from repair table name. Returns nil if parsing fails."
@@ -70,8 +85,7 @@
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
         repair-tables-sql (-> {:select [:t.table_name]
                                :from [[:information_schema.tables :t]]
-                               :where (cond-> [:and [:like :t.table_name [:inline "repair_%"]]]
-                                        schema (conj [:= :t.table_schema [:inline schema]]))}
+                               :where (scope-where-to-schema [:and [:like :t.table_name [:inline "repair_%"]]] schema)}
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))
@@ -79,7 +93,7 @@
                         (filter (fn [table-name]
                                   (when-let [table-timestamp (parse-repair-table-timestamp table-name)]
                                     (t/before? table-timestamp retention-cutoff))))
-                        (map #(cond->> % schema (str schema "."))))]
+                        (requalify-table-names schema))]
     (when (seq old-tables)
       (log/infof "Found %d orphaned repair tables older than %d hours"
                  (count old-tables)
