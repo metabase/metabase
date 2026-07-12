@@ -53,26 +53,39 @@
           (is (not (semantic.db.datasource/pgvector-configured?)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support)))))))
 
-(deftest support-requires-creatable-extension-test
-  (testing "the app db is supported only when the vector extension is installed or the user can create it"
-    (with-redefs [mdb/data-source (constantly ::app-pool)]
-      (testing "already installed → supported; creatability is not probed"
-        (with-redefs [jdbc/execute-one! (fn [& _] {:installed true :available false})
-                      semantic.db.datasource/app-db-can-create-vector-extension?
-                      (fn [_] (throw (AssertionError. "must not probe creatability when already installed")))]
-          (is (true? (semantic.db.datasource/check-app-db-pgvector-support)))))
-      (testing "not available → unsupported; creatability is not probed"
-        (with-redefs [jdbc/execute-one! (fn [& _] {:installed false :available false})
-                      semantic.db.datasource/app-db-can-create-vector-extension?
-                      (fn [_] (throw (AssertionError. "must not probe creatability when unavailable")))]
-          (is (false? (semantic.db.datasource/check-app-db-pgvector-support)))))
-      (testing "available but not installed → supported only if the user can actually create it"
-        (with-redefs [jdbc/execute-one! (fn [& _] {:installed false :available true})
-                      semantic.db.datasource/app-db-can-create-vector-extension? (constantly true)]
-          (is (true? (semantic.db.datasource/check-app-db-pgvector-support))))
-        (with-redefs [jdbc/execute-one! (fn [& _] {:installed false :available true})
-                      semantic.db.datasource/app-db-can-create-vector-extension? (constantly false)]
-          (is (false? (semantic.db.datasource/check-app-db-pgvector-support))))))))
+(deftest support-requires-provisionable-store-test
+  (testing "supported only when the vector extension and the semantic_search schema exist or can be created"
+    (letfn [(check [] (semantic.db.datasource/check-app-db-pgvector-support))
+            (catalog [m] (fn [& _] m))]
+      (with-redefs [mdb/data-source (constantly ::app-pool)]
+        (testing "extension neither installed nor available → unsupported, no provisioning probe"
+          (with-redefs [jdbc/execute-one! (catalog {:installed false :available false :schema_exists false})
+                        semantic.db.datasource/app-db-can-provision-pgvector?
+                        (fn [& _] (throw (AssertionError. "must not probe when the extension is unavailable")))]
+            (is (false? (check)))))
+        (testing "extension installed and schema present → supported without a DDL probe"
+          (with-redefs [jdbc/execute-one! (catalog {:installed true :available true :schema_exists true})
+                        semantic.db.datasource/app-db-can-provision-pgvector?
+                        (fn [& _] (throw (AssertionError. "must not probe when already fully provisioned")))]
+            (is (true? (check)))))
+        (testing "installed but schema missing → probe schema creation only, not the extension"
+          (with-redefs [jdbc/execute-one! (catalog {:installed true :available true :schema_exists false})
+                        semantic.db.datasource/app-db-can-provision-pgvector?
+                        (fn [_ create-extension? create-schema?]
+                          (is (= [false true] [create-extension? create-schema?]))
+                          true)]
+            (is (true? (check)))))
+        (testing "available but not installed → probe both extension and schema creation"
+          (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema_exists false})
+                        semantic.db.datasource/app-db-can-provision-pgvector?
+                        (fn [_ create-extension? create-schema?]
+                          (is (= [true true] [create-extension? create-schema?]))
+                          true)]
+            (is (true? (check)))))
+        (testing "a privilege gap while provisioning → unsupported"
+          (with-redefs [jdbc/execute-one! (catalog {:installed false :available true :schema_exists false})
+                        semantic.db.datasource/app-db-can-provision-pgvector? (fn [& _] false)]
+            (is (false? (check)))))))))
 
 (deftest support-check-caching-test
   (with-redefs [semantic.db.datasource/db-url nil
