@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
+import { getFont } from "metabase/styled-components/selectors";
 
 import { type SetupOpts, setup } from "./setup";
 
@@ -41,5 +42,11 @@ describe("PublicOrEmbeddedQuestion", () => {
     expect(screen.getByTestId("settings")).toHaveTextContent(
       JSON.stringify({ foo: "bar" }),
     );
+  });
+
+  it("should apply the font from the `#font` hash parameter (metabase#45638)", async () => {
+    const { store } = await setupCommon({ hash: { font: "Roboto" } });
+
+    expect(getFont(store.getState())).toBe("Roboto");
   });
 });

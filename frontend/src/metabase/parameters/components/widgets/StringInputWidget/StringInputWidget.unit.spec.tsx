@@ -184,5 +184,23 @@ describe("StringInputWidget", () => {
       await userEvent.type(input, "{backspace}{enter}");
       expect(setValue).not.toHaveBeenLastCalledWith(undefined);
     });
+
+    it("should reset a required filter to its default value when cleared and submitted (metabase#57388)", async () => {
+      const { setValue } = setup({
+        value: ["Gizmo"],
+        parameter: createMockParameter({
+          required: true,
+          default: ["Gadget", "Widget"],
+        }),
+        isMultiSelect: true,
+      });
+
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "{backspace}");
+
+      const button = screen.getByRole("button", { name: "Set to default" });
+      await userEvent.click(button);
+      expect(setValue).toHaveBeenCalledWith(["Gadget", "Widget"]);
+    });
   });
 });

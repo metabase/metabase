@@ -56,6 +56,7 @@ interface TestDataGridProps {
   enableSelection?: boolean;
   pinnedTopRowsCount?: number;
   pinnedLeftColumnsCount?: number;
+  isColumnReorderingDisabled?: boolean;
 }
 
 const TestDataGrid = ({
@@ -72,6 +73,7 @@ const TestDataGrid = ({
   enableSelection = false,
   pinnedTopRowsCount,
   pinnedLeftColumnsCount,
+  isColumnReorderingDisabled,
 }: TestDataGridProps) => {
   const columns: ColumnOptions<SampleDataType>[] = useMemo(
     () => [
@@ -152,6 +154,7 @@ const TestDataGrid = ({
       onHeaderCellClick={onHeaderCellClick}
       onBodyCellClick={onBodyCellClick}
       onAddColumnClick={onAddColumnClick}
+      isColumnReorderingDisabled={isColumnReorderingDisabled}
     />
   );
 };
@@ -436,6 +439,32 @@ describe("DataGrid", () => {
     // And selected data rows
     expect(lines[1]).toBe("Item 1\tElectronics");
     expect(lines[2]).toBe("Item 2\tClothing");
+  });
+
+  it("makes column headers draggable for reordering by default", () => {
+    renderWithProviders(<TestDataGrid />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const draggableHeaders = screen
+      .getByTestId("table-header")
+      .querySelectorAll('[aria-roledescription="sortable"]');
+
+    expect(draggableHeaders).toHaveLength(DEFAULT_COLUMN_ORDER.length);
+  });
+
+  it("disables column reordering when isColumnReorderingDisabled is set (metabase#19817)", () => {
+    renderWithProviders(<TestDataGrid isColumnReorderingDisabled />);
+    act(() => {
+      jest.runAllTimers();
+    });
+
+    const draggableHeaders = screen
+      .getByTestId("table-header")
+      .querySelectorAll('[aria-roledescription="sortable"]');
+
+    expect(draggableHeaders).toHaveLength(0);
   });
 
   it("uses correct ARIA roles for grid structure (#70547)", () => {

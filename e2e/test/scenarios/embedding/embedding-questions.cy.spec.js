@@ -277,30 +277,6 @@ describe("scenarios [EE] > embedding > questions", () => {
     cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
   });
-
-  it("should display according to `#font` hash parameter (metabase#45638)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      enable_embedding: true,
-    });
-
-    H.visitEmbeddedPage(
-      {
-        resource: { question: ORDERS_QUESTION_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          font: "Roboto",
-        },
-      },
-    );
-
-    H.main().should(
-      "have.css",
-      "font-family",
-      'Roboto, "Noto Sans", sans-serif',
-    );
-  });
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {

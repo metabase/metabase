@@ -962,5 +962,49 @@ describe("getMappingOptionByTarget", () => {
         getMappingOptionByTarget([mappingOption], variableTarget, question),
       ).toBeUndefined();
     });
+
+    // A SQL question with a field-filter (dimension) template tag can be
+    // reverted to its MBQL editor version while a dashboard filter is still
+    // mapped to it. The leftover mapping target is a dimension template-tag
+    // reference, which is not a valid MBQL ref, so it must not reach
+    // `Lib.findColumnIndexesFromLegacyRefs` (which throws for such refs).
+    it("should ignore dimension template-tag targets on structured questions without throwing (metabase#35954)", () => {
+      const mappingOption: ParameterMappingOption = {
+        sectionName: "User",
+        name: "Name",
+        icon: "string",
+        target: [
+          "dimension",
+          [
+            "field",
+            1,
+            {
+              "base-type": "type/Text",
+            },
+          ],
+        ],
+        isForeign: true,
+      };
+
+      const dimensionTemplateTagTarget: ParameterTarget = [
+        "dimension",
+        ["template-tag", "RATING"],
+      ];
+
+      expect(() =>
+        getMappingOptionByTarget(
+          [mappingOption],
+          dimensionTemplateTagTarget,
+          question,
+        ),
+      ).not.toThrow();
+      expect(
+        getMappingOptionByTarget(
+          [mappingOption],
+          dimensionTemplateTagTarget,
+          question,
+        ),
+      ).toBeUndefined();
+    });
   });
 });
