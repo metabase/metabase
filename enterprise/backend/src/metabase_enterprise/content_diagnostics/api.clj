@@ -214,7 +214,7 @@
    :name         :entity_name
    :created-at   :entity_created_at
    :created-by   :entity_creator_name
-   :last-used-at :last_active_at})
+   :last-active-at :last_active_at})
 
 (def ^:private stale-entity-types
   "Entity types the `stale` finding type covers - every covered type emits today (see
@@ -258,7 +258,7 @@
   collection are excluded. `entity-types` (repeatable; `card`|`dashboard`|`document`|`transform`, omitted =
   all). `threshold-days` (positive int) keeps findings with `last_active_at` on or before `today -
   threshold-days` (never-used always pass). `query` case-insensitively substring-matches the entity name.
-  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-used-at`, default
+  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-active-at`, default
   `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types threshold-days query]

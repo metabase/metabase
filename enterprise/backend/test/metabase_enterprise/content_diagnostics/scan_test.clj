@@ -346,7 +346,7 @@
                 (is (= [dash-fid card-fid] (order)))))))))))
 
 (deftest api-sort-by-entity-attrs-test
-  (testing "GET /stale sorts by denormalized entity columns (name / created-at / created-by / last-used-at)"
+  (testing "GET /stale sorts by denormalized entity columns (name / created-at / created-by / last-active-at)"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -387,8 +387,8 @@
               (testing "created-by - by creator NAME (Amy < Zoe), independent of the 10-vs-5 id order"
                 (is (= [a-fid b-fid] (order :sort-column "created-by" :sort-direction "asc")))
                 (is (= [b-fid a-fid] (order :sort-column "created-by" :sort-direction "desc"))))
-              (testing "last-used-at - Jan before Jun"
-                (is (= [b-fid a-fid] (order :sort-column "last-used-at" :sort-direction "asc")))))))))))
+              (testing "last-active-at - Jan before Jun"
+                (is (= [b-fid a-fid] (order :sort-column "last-active-at" :sort-direction "asc")))))))))))
 
 (deftest api-entity-types-filter-test
   (testing "GET /stale filters by entity-types (repeatable; omitted = all)"
