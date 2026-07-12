@@ -107,38 +107,46 @@
                              :num-affected-source-files
                              :num-test-files-affected]))))
       (testing "config and graph metrics stay available alongside the blast radius counts"
-        (is (= {:num-direct-deps 2
+        (is (= {:top-level? true
+                :num-direct-deps 2
                 :num-transitive-deps 2
+                :num-transitive-namespaces-reachable 2
                 :num-direct-dependents 1
                 :num-transitive-dependents 1
                 :avg-dependency-path-length 1.0
                 :leaf? false
                 :root? false
                 :num-namespaces 2
+                :num-lines 0
                 :num-externally-used-namespaces 0
                 :num-declared-api-namespaces 1
                 :num-derived-api-namespaces 0
                 :num-unexpected-api-namespaces 0
                 :num-undeclared-api-namespaces 0
                 :num-declared-friends 1
+                :num-friend-exposed-namespaces 1
                 :num-direct-uses 2
                 :percent-of-repo-source-files-affected 0.6
                 :percent-of-repo-test-files-affected 0.5}
                (select-keys (get metrics-by-module 'a)
-                            [:num-direct-deps
+                            [:top-level?
+                             :num-direct-deps
                              :num-transitive-deps
+                             :num-transitive-namespaces-reachable
                              :num-direct-dependents
                              :num-transitive-dependents
                              :avg-dependency-path-length
                              :leaf?
                              :root?
                              :num-namespaces
+                             :num-lines
                              :num-externally-used-namespaces
                              :num-declared-api-namespaces
                              :num-derived-api-namespaces
                              :num-unexpected-api-namespaces
                              :num-undeclared-api-namespaces
                              :num-declared-friends
+                             :num-friend-exposed-namespaces
                              :num-direct-uses
                              :percent-of-repo-source-files-affected
                              :percent-of-repo-test-files-affected])))))))
@@ -150,19 +158,30 @@
     (is (= {:num-module-nodes 4
             :num-direct-edges 5
             :avg-out-degree 1.25
-            :avg-in-degree 1.25
-            :density 0.4166666666666667
+            :max-in-degree 3
+            :top-decile-fan-in-share 0.6
             :num-leaf-modules 1
             :num-root-modules 1
-            :num-modules-in-cycles 0
-            :num-circular-edges 0
+            :num-top-level-modules 4
+            :num-modules-in-2cycles 0
+            :num-2cycle-edges 0
             :num-nontrivial-sccs 0
+            :num-modules-in-any-scc 0
             :largest-scc-size 1
             :sum-squared-scc-sizes 4
+            :num-friend-edges 1
+            :num-modules-with-friends 1
+            :friend-exposed-namespaces 1
+            :total-declared-api-namespaces 3
+            :api-surface-ratio 0.6
+            :num-undeclared-api-leaks 0
+            :namespaces-per-module {:min 1 :mean 1.25 :median 1 :p90 2 :max 2 :total 5}
+            :lines-per-module {:min 0 :mean 0.0 :median 0 :p90 0 :max 0 :total 0}
+            :transitive-namespaces-reachable-per-module {:min 0 :mean 1.75 :median 1 :p90 4 :max 4 :total 7}
             :num-source-files 5
             :num-test-files 4
             :avg-tests-rerun-per-changed-source-file 2.4
             :median-tests-rerun-per-changed-source-file 2
-            :p90-tests-rerun-per-changed-source-file 4
+            :frac-source-files-rerunning-majority-of-tests 0.4
             :avg-downstream-modules-affected-per-changed-source-file 1.4}
            (module-metrics/repo-metrics deps config)))))
