@@ -56,13 +56,13 @@
         (log/errorf e "Error initializing startup logic %s" k)))))
 
 (defn- run-startup-logic!*
-  "Run `validations` (each aborts the boot on a throw), then `logic` (throws logged and skipped).
+  "Run `validation-impls` (each aborts the boot on a throw), then `startup-impls` (throws logged and skipped).
   Each is a seq of `[dispatch-value f]` pairs."
-  [validations logic]
-  (doseq [[k f] validations]
+  [validation-impls startup-impls]
+  (doseq [[k f] validation-impls]
     (log/infof "Running startup validation %s" (u/format-color 'green (name k)))
     (run-impl! k f true))
-  (doseq [[k f] logic]
+  (doseq [[k f] startup-impls]
     (log/infof "Running setup logic %s %s" (u/format-color 'green (name k)) (u/emoji "☑️"))
     (run-impl! k f false)))
 
