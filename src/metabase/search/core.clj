@@ -105,7 +105,7 @@
     (let [engines           (search.engine/supported-engines)
           semantic-serving? (= :search.engine/semantic (first engines))
           fallback          (when semantic-serving? (second engines))]
-      (throw (startup/fatal-ex-info
+      (throw (ex-info
               (cond
                 fallback
                 (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed. Set MB_SEARCH_ENGINE={0} to keep semantic search off, then remove MB_SEMANTIC_SEARCH_ENABLED."
@@ -116,7 +116,7 @@
 
                 :else
                 (trs "MB_SEMANTIC_SEARCH_ENABLED has been removed; remove it from your configuration."))
-              {:env-var "MB_SEMANTIC_SEARCH_ENABLED"})))))
+              {:env-var "MB_SEMANTIC_SEARCH_ENABLED", ::startup/fatal true})))))
 
 (defmethod startup/def-startup-logic! ::check-for-removed-env-vars [_]
   (check-for-removed-env-vars!))

@@ -31,16 +31,11 @@
 
 (defmethod startup-priority :default [_] 500)
 
-(defn fatal-ex-info
-  "Build an ex-info that [[run-startup-logic!]] rethrows to abort startup, instead of logging and continuing."
-  [message data]
-  (ex-info message (assoc data ::fatal true)))
-
 (defn run-startup-logic!
   "Call all implementations of `def-startup-logic!`. Called by metabase.core/init!
   Methods run in ascending [[startup-priority]] order, with ties broken by dispatch-value name
   for determinism.
-  Errors are logged and skipped unless flagged fatal via [[fatal-ex-info]], which aborts startup."
+  Errors are logged and skipped, unless the ex-data carries `::fatal true`, which aborts startup."
   []
   (doseq [[k f] (sort-by (fn [[k _]] [(startup-priority k) (name k)])
                          (methods def-startup-logic!))]
