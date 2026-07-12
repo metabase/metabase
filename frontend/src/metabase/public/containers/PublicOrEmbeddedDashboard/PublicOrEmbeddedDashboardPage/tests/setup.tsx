@@ -42,6 +42,7 @@ export type SetupOpts = {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   parameters?: Parameter[];
   customReducers?: Record<string, Reducer>;
+  extraDashcards?: DashboardCard[];
 };
 
 export async function setup(
@@ -54,6 +55,7 @@ export async function setup(
     enterprisePlugins,
     parameters = [],
     customReducers,
+    extraDashcards = [],
   }: SetupOpts = { dashboardTitle: "" },
 ) {
   mockSettings({
@@ -92,6 +94,8 @@ export async function setup(
       }),
     );
   });
+
+  dashcards.push(...extraDashcards);
 
   const dashboard = createMockDashboard({
     id: 1,

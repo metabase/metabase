@@ -1,5 +1,9 @@
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  createMockActionDashboardCard,
+  createMockImplicitQueryAction,
+} from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
 
@@ -15,6 +19,29 @@ const setupCommon = async (opts?: Partial<SetupOpts>) => {
 describe("PublicOrEmbeddedDashboardPage", () => {
   beforeEach(() => {
     setupLastDownloadFormatEndpoints();
+  });
+
+  it("should hide action dashcards on public/embedded dashboards (metabase#34395)", async () => {
+    await setupCommon({
+      extraDashcards: [
+        createMockActionDashboardCard({
+          id: 100,
+          card_id: null,
+          dashboard_tab_id: 1,
+          // a defined `action` (unlike the factory's default `undefined`, which
+          // JSON serialization would strip) is what marks this an action dashcard
+          action: createMockImplicitQueryAction(),
+        }),
+      ],
+    });
+
+    // the normal question dashcard still renders
+    expect(screen.getByText("Question")).toBeInTheDocument();
+
+    // the action dashcard is filtered out: only the question dashcard renders
+    const dashcards = screen.getAllByTestId("dashcard");
+    expect(dashcards).toHaveLength(1);
+    expect(dashcards[0]).toHaveAttribute("data-dashcard-key", "1");
   });
 
   it("should display dashboard tabs", async () => {
