@@ -201,6 +201,22 @@
   Cached for the JVM lifetime — extensions don't come and go under a running instance. Tests reset it."
   (atom nil))
 
+(def probe-retry-after
+  "Epoch-millis floor for the next app-db pgvector probe after a failure, or nil when none is pending.
+  Throttles the catalog query and its WARN so a persistent failure doesn't re-probe on every search and
+  20s indexer tick. Tests reset it."
+  (atom nil))
+
+(def ^:private probe-backoff-ms
+  "Cooldown after a failed app-db pgvector probe before it may run again."
+  (.toMillis (java.time.Duration/ofMinutes 1)))
+
+(defn- probe-due?
+  "True when no app-db pgvector probe backoff is active."
+  []
+  (let [after @probe-retry-after]
+    (or (nil? after) (>= (System/currentTimeMillis) after))))
+
 (defn check-app-db-pgvector-support
   "Can the application database act as the pgvector store?
   True when the `vector` extension is installed, or available to install.
@@ -224,26 +240,31 @@
 (defn- app-db-pgvector-supported?
   "Cached [[check-app-db-pgvector-support]]. Returns false (without caching) while the app DB is not yet
   set up, or when the check itself errors, so an early call or a transient connection failure cannot pin
-  a premature answer for the JVM lifetime."
+  a premature answer for the JVM lifetime. A failed probe backs off (see [[probe-retry-after]]) so a
+  persistent failure doesn't re-query and re-warn on every call."
   []
   (if-some [cached @app-db-pgvector-support]
     cached
     (boolean
-     (when (mdb/db-is-set-up?)
+     (when (and (mdb/db-is-set-up?) (probe-due?))
        (locking app-db-pgvector-support
-         (if-some [cached @app-db-pgvector-support]
-           cached
-           (try
-             (let [supported (check-app-db-pgvector-support)]
-               (when supported
-                 (log/info (str "Semantic search: using the application database as the pgvector store"
-                                " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
-                                " dedicated pgvector database.")))
-               (reset! app-db-pgvector-support supported)
-               supported)
-             (catch Exception e
-               (log/warn e "Semantic search: pgvector support check on the application database failed; will retry.")
-               false))))))))
+         (or @app-db-pgvector-support
+             ;; re-check under the lock: a racing thread may have cached a result or just opened a backoff
+             (when (probe-due?)
+               (try
+                 (let [supported (check-app-db-pgvector-support)]
+                   (when supported
+                     (log/info (str "Semantic search: using the application database as the pgvector store"
+                                    " (MB_PGVECTOR_DB_URL is not set). Set it if this instance should use a"
+                                    " dedicated pgvector database.")))
+                   (reset! app-db-pgvector-support supported)
+                   (reset! probe-retry-after nil)
+                   supported)
+                 (catch Exception e
+                   (reset! probe-retry-after (+ (System/currentTimeMillis) probe-backoff-ms))
+                   (log/warn e (str "Semantic search: pgvector support check on the application database failed;"
+                                    " will retry after backoff."))
+                   false)))))))))
 
 (defn pgvector-mode
   "How this instance reaches its pgvector database:

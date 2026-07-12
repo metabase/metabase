@@ -14,9 +14,10 @@
 (set! *warn-on-reflection* true)
 
 (defmacro ^:private with-support-cache
-  "Run body with [[semantic.db.datasource/app-db-pgvector-support]] rebound to a fresh atom holding `init`."
+  "Run body with the app-db pgvector support cache (holding `init`) and the probe backoff rebound to fresh atoms."
   [init & body]
-  `(with-redefs [semantic.db.datasource/app-db-pgvector-support (atom ~init)]
+  `(with-redefs [semantic.db.datasource/app-db-pgvector-support (atom ~init)
+                 semantic.db.datasource/probe-retry-after (atom nil)]
      ~@body))
 
 (deftest dedicated-mode-wins-test
@@ -67,16 +68,22 @@
             (is (= :app-db (semantic.db.datasource/pgvector-mode)))
             (is (= 1 @calls))
             (is (true? @semantic.db.datasource/app-db-pgvector-support))))))
-    (testing "a throwing check reads as unavailable but does NOT latch — a transient failure is retried"
+    (testing "a failed probe reads as unavailable, does NOT latch, and backs off before retrying"
       (with-support-cache nil
         (with-redefs [mdb/db-is-set-up? (constantly true)
                       semantic.db.datasource/check-app-db-pgvector-support (fn [] (throw (ex-info "boom" {})))]
           (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
           (is (nil? @semantic.db.datasource/app-db-pgvector-support)))
-        (with-redefs [mdb/db-is-set-up? (constantly true)
-                      semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
-          (is (= :app-db (semantic.db.datasource/pgvector-mode))
-              "the next call after a transient failure re-probes"))))
+        (testing "within the backoff window the check must not run again"
+          (with-redefs [mdb/db-is-set-up? (constantly true)
+                        semantic.db.datasource/check-app-db-pgvector-support
+                        (fn [] (throw (AssertionError. "must not re-probe during backoff")))]
+            (is (= :unavailable (semantic.db.datasource/pgvector-mode)))))
+        (testing "once the window clears, the next call re-probes"
+          (reset! semantic.db.datasource/probe-retry-after nil)
+          (with-redefs [mdb/db-is-set-up? (constantly true)
+                        semantic.db.datasource/check-app-db-pgvector-support (constantly true)]
+            (is (= :app-db (semantic.db.datasource/pgvector-mode)))))))
     (testing "the cache is resettable (JVM-lifetime semantics, tests/REPL reset it)"
       (with-support-cache false
         (is (= :unavailable (semantic.db.datasource/pgvector-mode)))
