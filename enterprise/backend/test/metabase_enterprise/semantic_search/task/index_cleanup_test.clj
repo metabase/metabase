@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest schema-scoping-helpers-test
+(deftest ^:parallel schema-scoping-helpers-test
   (testing "scope-where-to-schema adds the schema predicate only in shared app-db mode (non-nil schema)"
     (is (= [:and [:like :t.table_name [:inline "x_%"]]]
            (#'sut/scope-where-to-schema [:and [:like :t.table_name [:inline "x_%"]]] nil)))

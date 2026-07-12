@@ -212,7 +212,8 @@
     (mt/with-premium-features #{:semantic-search}
       (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
         ;; the extension is the first statement create! runs, so throwing here exercises the inner catch
-        (mt/with-dynamic-fn-redefs [jdbc/execute! (fn [& _] (throw (RuntimeException. "permission denied to create extension")))]
+        (mt/with-dynamic-fn-redefs [jdbc/execute!
+                                    (fn [& _] (throw (RuntimeException. "permission denied to create extension")))]
           (let [e (is (thrown? clojure.lang.ExceptionInfo
                                (semantic.index/create-index-table-if-not-exists!
                                 (semantic.env/get-pgvector-datasource!) @index-ref)))]

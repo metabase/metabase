@@ -54,6 +54,12 @@
        (map :tablename)
        set))
 
+(defn- schema-exists?
+  [connectable schema]
+  (some? (jdbc/execute-one! connectable
+                            ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema]
+                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
 (defn- opted-in?
   "True when MB_APPDB_PGVECTOR_MODE_TEST=true: the appdb-mode CI job (or a developer deliberately opting
   in). The round trip installs the vector extension and drops the semantic_search schema on cleanup, so it
@@ -71,11 +77,11 @@
     (testing "opted in, but the app db can't host pgvector — the CI service must be misconfigured"
       (is false "the appdb-mode job expects a pgvector-capable Postgres app db"))
 
-    ;; the app db already carries semantic-search state (a real app-db-mode deployment) — this test's
-    ;; cleanup drops the schema, so refuse rather than clobber it
-    (seq (tables-in-schema (mdb/data-source) "semantic_search"))
-    (testing "opted in, but a semantic_search schema with tables already exists — refusing to clobber it"
-      (is false "the appdb-mode job should start from a fresh app db with no semantic_search tables"))
+    ;; the app db already carries a semantic_search schema (a real app-db-mode deployment, or even an empty
+    ;; schema) — this test's cleanup DROP SCHEMA CASCADE would clobber it, so refuse rather than destroy it
+    (schema-exists? (mdb/data-source) "semantic_search")
+    (testing "opted in, but a semantic_search schema already exists — refusing to clobber it"
+      (is false "the appdb-mode job should start from a fresh app db with no semantic_search schema"))
 
     :else
     (mt/with-premium-features #{:semantic-search}
