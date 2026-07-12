@@ -14,10 +14,12 @@
 (set! *warn-on-reflection* true)
 
 (defmacro ^:private with-support-cache
-  "Run body with the app-db pgvector support cache (holding `init`) and the probe backoff rebound to fresh atoms."
+  "Run body with all three pieces of app-db probe state rebound to fresh atoms: the support cache (holding
+  `init`), the cooldown timer, and the log-once hint latch."
   [init & body]
   `(with-redefs [semantic.db.datasource/app-db-pgvector-support (atom ~init)
-                 semantic.db.datasource/probe-cooldown-timer (atom nil)]
+                 semantic.db.datasource/probe-cooldown-timer (atom nil)
+                 semantic.db.datasource/logged-pgvector-absent? (atom false)]
      ~@body))
 
 (deftest dedicated-mode-wins-test

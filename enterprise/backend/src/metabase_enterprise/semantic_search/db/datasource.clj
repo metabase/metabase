@@ -213,8 +213,9 @@
   "How long an unsupported or failed app-db pgvector probe is trusted before re-probing."
   (.toMillis (java.time.Duration/ofSeconds 30)))
 
-(defonce ^:private logged-pgvector-absent?
-  ;; log-once latch for the operator hint, since the negative probe now recurs every cooldown
+(defonce ^{:doc "Log-once latch for the \"no pgvector\" operator hint; the negative probe recurs each
+  cooldown, so without it the hint would repeat. Tests reset it."}
+  logged-pgvector-absent?
   (atom false))
 
 (defn- probe-due?
