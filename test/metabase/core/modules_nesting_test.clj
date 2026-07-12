@@ -181,6 +181,17 @@
              (dev.deps-graph/externally-used-namespaces-ignoring-friends
               deps (assoc-in base-config ['parent :api] '#{metabase.parent.internal}) 'parent))))))
 
+(deftest default-dependency-helpers-use-configured-prefixes-test
+  (let [config '{parent       {}
+                 parent.child {:ns-prefix metabase.special-child}}
+        seen-prefixes (promise)]
+    (with-redefs [dev.deps-graph/kondo-config (constantly config)
+                  dev.deps-graph/dependencies (fn [prefix->module]
+                                                (deliver seen-prefixes prefix->module)
+                                                [])]
+      (is (= [] (dev.deps-graph/external-usages 'parent)))
+      (is (= (dev.deps-graph/build-prefix->module config) @seen-prefixes)))))
+
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility helpers (parent-module, ancestor-chain, etc.)
 ;;;; -------------------------------------------------------------------------

@@ -379,10 +379,18 @@
    (let [fd (partial file-dependencies prefix->module)]
      (pmap fd (find-source-files)))))
 
+(declare kondo-config)
+
+(defn configured-dependencies
+  "Scan dependencies using every declared module's effective namespace prefix."
+  []
+  (let [config (kondo-config)]
+    (dependencies (build-prefix->module config))))
+
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
   ([module-symb]
-   (external-usages (dependencies) module-symb))
+   (external-usages (configured-dependencies) module-symb))
 
   ([deps module-symb]
    (for [dep    deps
@@ -397,7 +405,7 @@
 (defn external-usages-by-namespace
   "Return a map of module namespace => set of external namespaces using it"
   ([module-symb]
-   (external-usages-by-namespace (dependencies) module-symb))
+   (external-usages-by-namespace (configured-dependencies) module-symb))
 
   ([deps module-symb]
    (into (sorted-map)
@@ -429,7 +437,9 @@
   enlarge the API. Ancestors, siblings, cousins, and unrelated consumers
   still count because they must respect `module-symb`'s `:api`."
   ([module-symb]
-   (externally-used-namespaces-ignoring-friends (dependencies) (kondo-config) module-symb))
+   (let [config (kondo-config)]
+     (externally-used-namespaces-ignoring-friends
+      (dependencies (build-prefix->module config)) config module-symb)))
 
   ([deps kondo-config module-symb]
    (let [friends       (module-friends kondo-config module-symb)
@@ -503,7 +513,7 @@
 (defn module-usages-of-other-module
   "Information about how `module-x` uses `module-y`."
   ([module-x module-y]
-   (module-usages-of-other-module (dependencies) module-x module-y))
+   (module-usages-of-other-module (configured-dependencies) module-x module-y))
 
   ([deps module-x module-y]
    (let [module-x-ns->module-y-ns (->> (external-usages deps module-y)
@@ -771,7 +781,7 @@
     {api      []                         ; settings depends on api directly
      api-keys [permissions collections]} ; settings depends on permissions which depends on collections which depends on api-keys"
   ([module]
-   (all-module-deps-paths (dependencies) module))
+   (all-module-deps-paths (configured-dependencies) module))
   ([deps module]
    (all-module-deps-paths deps module (sorted-map) (atom #{}) []))
   ([deps module acc already-seen path]
@@ -801,7 +811,7 @@
               ...}
      ...}"
   ([module]
-   (module-dependencies-by-namespace (dependencies) module))
+   (module-dependencies-by-namespace (configured-dependencies) module))
 
   ([deps module]
    (into (sorted-map)
@@ -819,7 +829,7 @@
     ;; =>
     #{request}"
   [module namespace-symb-or-set]
-  (let [deps            (dependencies)
+  (let [deps            (configured-dependencies)
         namespace-symbs (if (symbol? namespace-symb-or-set)
                           #{namespace-symb-or-set}
                           namespace-symb-or-set)
@@ -833,7 +843,7 @@
 (defn leaf-modules
   "Modules that are leaf nodes in the module dependency tree -- nothing else depends on them."
   ([]
-   (leaf-modules (dependencies)))
+   (leaf-modules (configured-dependencies)))
   ([deps]
    (into (sorted-set)
          (comp (map :module)
@@ -846,7 +856,7 @@
   "Modules that `module` does not depend on, either directly or indirectly -- changes to any of these modules should not
   affect `module`."
   [module]
-  (let [deps        (dependencies)
+  (let [deps        (configured-dependencies)
         all-modules (into (sorted-set) (map :module) deps)
         module-deps (set (keys (all-module-deps-paths deps module)))]
     #_{:clj-kondo/ignore [:discouraged-var]}
@@ -887,7 +897,7 @@
 
     (dependencies-eliminated-by-renaming-namespaces 'users '{metabase.users.api metabase.users-rest.api})"
   [module old-namespace->new-namespace]
-  (let [deps            (dependencies)
+  (let [deps            (configured-dependencies)
         old-module-deps (into (sorted-set) (keys (all-module-deps-paths deps module)))
         new-deps        (simulate-rename deps old-namespace->new-namespace)
         new-module-deps (into (sorted-set) (keys (all-module-deps-paths new-deps module)))]
@@ -970,7 +980,7 @@
 (defn- indirect-dependents
   "Set of modules that either directly or indirectly depend on `module`."
   ([module]
-   (indirect-dependents (dependencies) module))
+   (indirect-dependents (configured-dependencies) module))
   ([deps module]
    (indirect-dependents deps module (sorted-set)))
   ([deps module acc]

@@ -543,12 +543,19 @@
                     ee-namespace-prefix))))))
 
 (defn- rest-module?
-  "True if `module` is a REST module. Under the nested-modules scheme, rest
-  modules are dotted children of their base module (e.g. `queries.rest`
-  nested under `queries`) — we identify them by the `.rest` suffix on the
-  module name string."
+  "True for both current `*-rest` modules and nested `.rest` modules."
   [module]
-  (str/ends-with? (str module) ".rest"))
+  (let [module-name (str module)]
+    (or (str/ends-with? module-name "-rest")
+        (str/ends-with? module-name ".rest"))))
+
+(deftest ^:parallel rest-module-conventions-test
+  (are [module] (rest-module? module)
+    'queries-rest
+    'queries.rest
+    'enterprise/queries-rest
+    'enterprise/queries.rest)
+  (is (not (rest-module? 'queries))))
 
 (deftest ^:parallel do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
