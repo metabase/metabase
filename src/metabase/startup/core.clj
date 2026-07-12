@@ -49,7 +49,7 @@
   With `abort-on-error?` a throw propagates; otherwise it is logged and the remaining pairs still run."
   [phase impls abort-on-error?]
   (doseq [[k f] impls]
-    (log/infof "Running %s %s" phase (u/format-color 'green (name k)))
+    (log/infof "Running %s %s %s" phase (u/format-color 'green (name k)) (u/emoji "☑️"))
     (if abort-on-error?
       (f k)
       (try
