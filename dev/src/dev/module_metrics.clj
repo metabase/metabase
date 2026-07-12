@@ -88,12 +88,16 @@
     (catch Exception _ 0)))
 
 (defn- distribution-stats
-  "Min / mean / median / p90 / max / total over a collection of numeric `values`."
+  "Min / p10 / p25 / mean / median / p90 / max / total over a collection of numeric `values`.
+  The low percentiles (p10, p25) and mean move as soon as a few modules are carved out of the blob,
+  well before the blob-pegged median and max budge."
   [values]
   (let [sorted (vec (sort values))
         n      (count sorted)]
     (ordered-map/ordered-map
      :min    (if (zero? n) 0 (first sorted))
+     :p10    (nearest-rank-percentile sorted 0.1)
+     :p25    (nearest-rank-percentile sorted 0.25)
      :mean   (safe-ratio (reduce + 0 sorted) n)
      :median (nearest-rank-percentile sorted 0.5)
      :p90    (nearest-rank-percentile sorted 0.9)
@@ -126,7 +130,15 @@
         module->sources          (merge (zipmap modules' (repeat (sorted-set)))
                                         (module->source-files deps))
         all-source-files         (into (sorted-set) (comp (filter :module) (map :filename)) deps)
-        all-test-files           (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod all-source-files)
+        ;; Relevant tests per module, resolved once. Every source file in a module shares this set and it
+        ;; also feeds the module's downstream test count, so we resolve ~180 times (per module) instead of
+        ;; ~1800 (per source file). This is the hot path — resolving per file re-globs the test tree ~10x.
+        module->relevant-test-files (into (sorted-map)
+                                          (map (fn [module]
+                                                 [module (deps-graph/source-filenames->relevant-test-filenames
+                                                          deps config prefix->mod (get module->sources module))]))
+                                          modules')
+        all-test-files           (into (sorted-set) (mapcat val) module->relevant-test-files)
         sccs                     (module-scc/strongly-connected-components direct-deps-graph)
         module->scc              (into {} (for [component sccs, m component] [m component]))]
     {:prefix->mod              prefix->mod
@@ -141,6 +153,7 @@
      :module->sources          module->sources
      :all-source-files         all-source-files
      :all-test-files           all-test-files
+     :module->relevant-test-files module->relevant-test-files
      :sccs                     sccs
      :module->scc              module->scc}))
 
@@ -148,7 +161,7 @@
   [deps config {:keys [prefix->mod modules direct-deps-graph module->paths transitive-deps-graph
                        direct-dependents-graph transitive-dependents circular-deps-graph
                        module->nses module->sources all-source-files all-test-files
-                       sccs module->scc]}]
+                       module->relevant-test-files sccs module->scc]}]
   (let [largest-scc (apply max-key count sccs)]
     (into []
           (map (fn [module]
@@ -163,7 +176,7 @@
                                                        (mapcat #(get module->sources %))
                                                        downstream-modules)
                        affected-source-files     (into source-files downstream-source-files)
-                       affected-test-files       (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod source-files)
+                       affected-test-files       (get module->relevant-test-files module)
                        derived-api-namespaces    (deps-graph/externally-used-namespaces-ignoring-friends deps config module)
                        declared-api              (declared-api-namespaces config module)
                        unexpected-api-namespaces (set/difference derived-api-namespaces
@@ -243,7 +256,9 @@
          module-metrics              (metrics* deps config ctx)
          source-file->module         (into {} (map (juxt :filename :module)) deps)
          source-file-test-counts     (sort (map (fn [source-file]
-                                                  (count (deps-graph/source-filenames->relevant-test-filenames deps config (:prefix->mod ctx) [source-file])))
+                                                  (count (get (:module->relevant-test-files ctx)
+                                                              (get source-file->module source-file)
+                                                              #{})))
                                                 (:all-source-files ctx)))
          source-file-downstream-mods (sort (map (fn [source-file]
                                                   (count (get (:transitive-dependents ctx)
@@ -261,7 +276,13 @@
          friend-holding-modules      (filter #(seq (get-in config [% :friends])) (:modules ctx))
          in-degrees                  (sort > (map :num-direct-dependents module-metrics))
          top-decile-n                (long (Math/ceil (/ num-modules 10.0)))
-         majority-test-threshold     (* 0.5 (count (:all-test-files ctx)))]
+         majority-test-threshold     (* 0.5 (count (:all-test-files ctx)))
+         ;; Namespaces living in modules trapped in a nontrivial SCC. Unlike the module-count SCC
+         ;; metrics, this is invariant to config-only node-splitting (splitting a cyclic module keeps
+         ;; its namespaces in the cycle) — so it stays flat under re-bucketing and only drops when a
+         ;; real carve pulls namespaces out of the blob. This is the honest coupling number.
+         cyclic-modules              (into #{} (mapcat identity) (filter #(> (count %) 1) (:sccs ctx)))
+         namespaces-in-cyclic        (reduce + 0 (map #(count (get module->nses %)) cyclic-modules))]
      (ordered-map/ordered-map
       ;; ---- graph structure ----
       :num-module-nodes num-modules
@@ -286,6 +307,9 @@
       ;; Σ|C|² over SCCs — the continuous fragmentation score. Unlike largest-scc-size or the pegged
       ;; tests-rerun median, this moves every time a cut shaves members off the giant component.
       :sum-squared-scc-sizes (reduce + (map #(let [n (count %)] (* n n)) (:sccs ctx)))
+      ;; Namespace-weighted cycle mass — node-split-invariant; the coupling metric that only real carves move.
+      :namespaces-in-cyclic-modules namespaces-in-cyclic
+      :frac-namespaces-in-cyclic-modules (safe-ratio namespaces-in-cyclic total-namespaces)
       ;; ---- encapsulation health (what config-only friend/api work moves) ----
       :num-friend-edges (reduce + 0 (map (fn [m] (count (get-in config [m :friends]))) (:modules ctx)))
       :num-modules-with-friends (count friend-holding-modules)

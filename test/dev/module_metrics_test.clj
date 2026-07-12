@@ -169,15 +169,17 @@
             :num-modules-in-any-scc 0
             :largest-scc-size 1
             :sum-squared-scc-sizes 4
+            :namespaces-in-cyclic-modules 0
+            :frac-namespaces-in-cyclic-modules 0.0
             :num-friend-edges 1
             :num-modules-with-friends 1
             :friend-exposed-namespaces 1
             :total-declared-api-namespaces 3
             :api-surface-ratio 0.6
             :num-undeclared-api-leaks 0
-            :namespaces-per-module {:min 1 :mean 1.25 :median 1 :p90 2 :max 2 :total 5}
-            :lines-per-module {:min 0 :mean 0.0 :median 0 :p90 0 :max 0 :total 0}
-            :transitive-namespaces-reachable-per-module {:min 0 :mean 1.75 :median 1 :p90 4 :max 4 :total 7}
+            :namespaces-per-module {:min 1 :p10 1 :p25 1 :mean 1.25 :median 1 :p90 2 :max 2 :total 5}
+            :lines-per-module {:min 0 :p10 0 :p25 0 :mean 0.0 :median 0 :p90 0 :max 0 :total 0}
+            :transitive-namespaces-reachable-per-module {:min 0 :p10 0 :p25 0 :mean 1.75 :median 1 :p90 4 :max 4 :total 7}
             :num-source-files 5
             :num-test-files 4
             :avg-tests-rerun-per-changed-source-file 2.4
