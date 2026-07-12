@@ -105,19 +105,6 @@
    (boolean (some #(= maybe-ancestor %)
                   (ancestor-chain declared-modules maybe-descendant)))))
 
-(defn- siblings?
-  "True if `a` and `b` share the same direct parent (and thus are siblings
-  in the module tree). Top-level modules are NOT siblings of each other —
-  each top-level module is its own root.
-
-  Returns a proper boolean (never `nil`), so callers using `false?`/`true?`
-  on the result get the expected behavior."
-  ([a b] (siblings? nil a b))
-  ([declared-modules a b]
-   (let [pa (parent-module declared-modules a)
-         pb (parent-module declared-modules b)]
-     (boolean (and pa pb (= pa pb))))))
-
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility rules
 ;;;;
@@ -145,9 +132,8 @@
 ;;;; same rule is enforced here at require-lint time against the concrete
 ;;;; resolved module (see [[namable-from?]] and [[usage-error]]).
 ;;;;
-;;;; The helpers below (`open-children`, `opens-child?`, `externally-visible?`,
-;;;; `external-face`) also back that test and dev tooling; at require-lint
-;;;; time the hook itself uses them only for the `:uses :any` namability check.
+;;;; The helpers below also back config validation; at require-lint time the
+;;;; hook itself uses them only for the `:uses :any` namability check.
 ;;;; -------------------------------------------------------------------------
 
 (defn- top-level-oss-module?
@@ -197,17 +183,6 @@
           (recur p)
           false)
         true))))
-
-(defn- external-face
-  "The closest externally-visible ancestor of `m` (or `m` itself if it is
-  externally visible). Used by the subtree-membership lint to compute the
-  module that an outsider would have to name in lieu of `m` itself."
-  [config m]
-  (let [declared (declared-modules config)]
-    (loop [m m]
-      (if (externally-visible? config m)
-        m
-        (recur (parent-module declared m))))))
 
 (defn- top-level-ancestor
   "The top-level module at the root of `m`'s subtree, or `m` itself if it is top-level."

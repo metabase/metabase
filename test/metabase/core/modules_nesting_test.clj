@@ -166,7 +166,7 @@
              result)))))
 
 ;;;; -------------------------------------------------------------------------
-;;;; Visibility helpers (parent-module, ancestor-chain, siblings?, etc.)
+;;;; Visibility helpers (parent-module, ancestor-chain, etc.)
 ;;;; -------------------------------------------------------------------------
 
 (deftest ^:parallel parent-module-test
@@ -187,18 +187,8 @@
       (is (= '(enterprise/transforms)
              (ancestor-chain 'enterprise/transforms.python))))))
 
-(deftest ^:parallel siblings?-test
-  (testing "`siblings?` is true for two modules with the same direct parent"
-    (let [siblings? (hook-fn 'siblings?)]
-      (is (true?  (siblings? 'lib.schema 'lib.be)))
-      (is (true?  (siblings? 'lib.be 'lib.schema)))
-      (is (false? (siblings? 'lib.schema 'lib.schema.foo))) ; parent vs child
-      (is (false? (siblings? 'lib.schema 'lib)))            ; child vs parent
-      (is (false? (siblings? 'lib 'query-processor)))       ; both top-level, no shared parent
-      (is (false? (siblings? 'lib 'lib))))))                 ; same module
-
 ;;;; -------------------------------------------------------------------------
-;;;; :module-exports set and external-face
+;;;; :module-exports set
 ;;;; -------------------------------------------------------------------------
 
 (deftest ^:parallel open-children-test
@@ -231,24 +221,6 @@
           (is (true?  (externally-visible? ok       'outer.middle.deepest)))
           (is (false? (externally-visible? bad-mid  'outer.middle.deepest)))
           (is (false? (externally-visible? bad-deep 'outer.middle.deepest))))))))
-
-(deftest ^:parallel external-face-test
-  (testing "`external-face` returns the closest externally-visible ancestor (or the module itself)"
-    (let [external-face (hook-fn 'external-face)]
-      (testing "top-level module is its own face"
-        (is (= 'lib (external-face {} 'lib))))
-      (testing "unopened child's face is its parent"
-        (let [config {:metabase/modules {'lib {:module-exports #{}}}}]
-          (is (= 'lib (external-face config 'lib.schema)))))
-      (testing "opened child's face is itself"
-        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
-          (is (= 'lib.schema (external-face config 'lib.schema)))))
-      (testing "grandchild of unopened child falls through to the grandparent"
-        (let [config {:metabase/modules {'lib        {:module-exports #{}}
-                                         'lib.schema {:module-exports #{'lib.schema.foo}}}}]
-          ;; lib.schema.foo's parent opens it, but lib does NOT open lib.schema,
-          ;; so the whole subtree is encapsulated behind `lib`.
-          (is (= 'lib (external-face config 'lib.schema.foo))))))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; STRICT MODEL: every cross-module access is an explicit :uses + :api
