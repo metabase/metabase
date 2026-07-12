@@ -1,7 +1,7 @@
 # Metabase MCP Server
 
 Metabase includes a built-in [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that lets AI
-clients connect directly to a Metabase instance. It uses the [Streamable HTTP
+clients connect directly to a Metabase instance. It speaks the 2026-07-28 stateless core over the [Streamable HTTP
 transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) and builds on
 Metabase's [Agent API](../agent_api/) to expose tools for searching, navigating, querying, visualizing, and
 creating/updating content - all scoped to the connecting user's permissions.
@@ -134,28 +134,78 @@ The `read_resource` **tool** (above) uses a separate URI scheme to navigate Meta
 reference content fetched via MCP `resources/read`, while `metabase://table/...` and friends are entity URIs passed
 to the `read_resource` tool.
 
-## Supported JSON-RPC methods
+## Protocol
 
-| Method                      | Description                                                                  |
-| --------------------------- | ---------------------------------------------------------------------------- |
-| `initialize`                | Initialize the MCP connection. Returns server capabilities and a session ID. |
-| `notifications/initialized` | Client notification that initialization is complete.                         |
+The server targets the **2026-07-28 stateless core**. There is no handshake to complete and no session to carry:
+every request stands on its own, and a client may open a connection and call a tool as its first message.
+
+| Method                      | Description                                                                 |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `server/discover`           | What the server is and what it supports. Replaces connect-time negotiation.  |
 | `tools/list`                | List available tools (filtered by the token's scopes).                       |
 | `tools/call`                | Call a tool with arguments.                                                  |
 | `resources/list`            | List available resources (filtered by the token's scopes).                   |
-| `resources/read`            | Read a resource by URI. Requires an initialized session.                     |
+| `resources/read`            | Read a resource by URI.                                                      |
 | `ping`                      | Keepalive ping.                                                              |
+| `initialize`                | Accepted from clients that predate the stateless core (see below).           |
+| `notifications/initialized` | Accepted as a no-op.                                                         |
 
-Requests can be sent individually or as a JSON-RPC batch. The server responds with JSON or SSE depending on the
-`Accept` header.
+One JSON-RPC message per POST — batching was removed from the spec, and an array body is refused rather than
+half-served. The server responds with JSON or SSE depending on the `Accept` header.
+
+**Everything hangs off the authenticated user.** Query handles are keyed `(user, uuid)`, throttling is keyed by
+user, and the embedding session key the MCP Apps iframe authenticates with is derived from the user id. A handle
+stored by one connection therefore resolves from the next, and there is nothing left for a session id to own.
+
+**Client capabilities travel per-request**, in `params._meta` under `io.modelcontextprotocol/capabilities`. That is
+how `tools/list` knows whether the caller can render MCP Apps, and so whether to offer the UI tools.
+
+**Cacheable results.** `tools/list`, `resources/list`, and `resources/read` carry `ttlMs` and `cacheScope` so a
+client can hold the payload in its prompt prefix across turns. `cacheScope` is `"global"` when every caller gets
+byte-identical content (the reference docs) and `"session"` when the content is settled by the caller's granted
+scopes and capabilities (the listings). Content that varies per caller in a way that must never be reused — the MCP
+Apps iframe, which embeds a live session key — carries no cache metadata at all. `tools/list` is sorted by name
+across both the manifest and the UI registry, because an unstable order costs the client its cache hit on every
+reconnect.
+
+**Routing headers.** A client may repeat the method in `Mcp-Method`, and the tool name in `Mcp-Name`, so a gateway
+can route a request without parsing its body. They are a hint, never the source of truth: if a header disagrees with
+the body the request is refused rather than resolved in either direction, since an intermediary routing one request
+while the server runs another is request smuggling.
+
+### Older clients
+
+`initialize` still works. It negotiates a protocol version both sides know and hands back an `Mcp-Session-Id`. That
+id is not established state — the server stores nothing behind it and looks nothing up by it. It exists because a
+pre-RC client advertises its capabilities exactly once, at the handshake, and never again: the id carries that
+client's MCP Apps capability in its own bytes, so a later cold `tools/list` can still honor it. `DELETE` is accepted
+from clients that send it on disconnect; it closes out the usage-analytics row and does nothing else.
+
+### Deliberately not built on
+
+Sampling, Roots, and Logging (deprecated); the Tasks API (experimental and being reworked — long queries live within
+HTTP timeouts plus handle/offset continuation); JSON-RPC batching and SSE resumability / `Last-Event-ID` (both
+removed from the spec).
+
+Tool schemas are published to the **client floor, not the spec ceiling**. The spec allows JSON Schema 2020-12
+conditionals, but the Claude API rejects top-level combinators and OpenAI strict mode cannot express discriminated
+unions, so the strict-client override layer stays unconditionally on.
+
+On the auth roadmap: Dynamic Client Registration is deprecated in favor of Client ID Metadata Documents, which the
+embedded OAuth server should plan for; Enterprise-Managed Authorization is worth tracking for centrally-managed
+deployments.
 
 ## Architecture
 
 The implementation lives in these files:
 
-- **[`api.clj`](api.clj)** - The HTTP handler. Parses JSON-RPC requests, validates authentication and session headers,
-  enforces origin checks (DNS rebinding protection), and dispatches to the appropriate method. Supports both JSON and
-  SSE response formats.
+- **[`api.clj`](api.clj)** - The HTTP handler. Parses the JSON-RPC request, authenticates it, enforces the origin
+  check (DNS rebinding protection), validates the routing headers against the body, and dispatches to the method.
+  Supports both JSON and SSE response formats.
+
+- **[`session.clj`](session.clj)** - The per-user state: the query-handle store (content-addressed, TTL'd, keyed
+  `(user, uuid)`) and the embedding session key the MCP Apps iframe authenticates with, derived from the user id.
+  Also mints the self-describing capability hint older clients get back from `initialize`.
 
 - **[`tools.clj`](tools.clj)** - Tool dispatch and manifest generation. Builds the tool list from Agent API endpoint
   metadata, checks scopes, and routes tool calls through synthetic Agent API requests. `two-channel-content` is the
@@ -178,11 +228,11 @@ The implementation lives in these files:
 
 ```
 MCP client
-  -> POST /api/metabase-mcp (JSON-RPC)
-  -> Origin + session validation
+  -> POST /api/metabase-mcp (one JSON-RPC message)
+  -> Origin check + routing-header agreement
   -> Auth: OAuth bearer token or browser session
   -> Scope check against requested tool
-  -> Synthetic request to Agent API endpoint
+  -> Synthetic request to Agent API endpoint, as the caller's real user
   -> Response materialized as MCP content
   -> JSON or SSE back to client
 ```

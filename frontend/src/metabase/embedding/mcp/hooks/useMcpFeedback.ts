@@ -14,9 +14,6 @@ import { submitMcpFeedback } from "../api";
 interface UseMcpFeedbackProps {
   instanceUrl: string;
 
-  /** ID for the current MCP session */
-  mcpSessionId: string;
-
   /** User prompt captured from construct_query */
   prompt: string | null;
 
@@ -29,7 +26,6 @@ interface UseMcpFeedbackProps {
 
 export function useMcpFeedback({
   instanceUrl,
-  mcpSessionId,
   prompt,
   query,
   sessionToken,
@@ -75,7 +71,6 @@ export function useMcpFeedback({
       await submitMcpFeedback({
         instanceUrl,
         sessionToken,
-        mcpSessionId,
         payload,
       });
 

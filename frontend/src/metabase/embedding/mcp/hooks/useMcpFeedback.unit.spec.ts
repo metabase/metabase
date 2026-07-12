@@ -23,7 +23,6 @@ describe("useMcpFeedback", () => {
       () =>
         useMcpFeedback({
           instanceUrl: "https://metabase.example",
-          mcpSessionId: "mcp-session-id",
           prompt: "visualize customers",
           query: "encoded-query",
           sessionToken: "session-token",

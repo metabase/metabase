@@ -11,7 +11,6 @@ import { storeDrillQuery } from "../api";
 interface McpGlobalConfig {
   instanceUrl?: string;
   sessionToken?: string;
-  mcpSessionId?: string;
 }
 
 type DrillThruName<T extends Lib.DrillThruType = Lib.DrillThruType> =
@@ -53,7 +52,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      const { instanceUrl, sessionToken, mcpSessionId } =
+      const { instanceUrl, sessionToken } =
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
       if (isClaudeHost(app)) {
@@ -69,7 +68,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      if (!instanceUrl || !sessionToken || !mcpSessionId) {
+      if (!instanceUrl || !sessionToken) {
         await defaultNavigate();
         return;
       }
@@ -78,14 +77,13 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
 
       let handle: string;
       try {
-        // Store the card server-side in the MCP session. This is universal —
+        // Store the card server-side under the signed-in user. This is universal —
         // works in all MCP clients (Claude Desktop, Cursor, VS Code).
         // The handle UUID is threaded into the agent message so render_drill_through
         // can fetch the payload without the LLM ever seeing it.
         ({ handle } = await storeDrillQuery({
           instanceUrl,
           sessionToken,
-          mcpSessionId,
           encodedQuery,
         }));
       } catch {

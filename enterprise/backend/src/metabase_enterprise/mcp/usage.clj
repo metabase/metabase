@@ -72,21 +72,24 @@
       (log/warn e "Failed to record MCP session"))))
 
 (defenterprise record-mcp-session-end!
-  "EE: stamp `ended_at` on the session row at teardown. Best-effort; the row may be absent
-  (e.g. the session was opened before the feature was enabled)."
+  "EE: stamp `ended_at` on the session row at teardown. Scoped to `user-id`, which is the whole
+  ownership check — the id is a client-supplied header the stateless transport otherwise ignores.
+  Best-effort; the row may be absent (e.g. the session was opened before the feature was enabled)."
   :feature :none
-  [session-id]
+  [{:keys [session-id user-id]}]
   (try
-    (when session-id
-      (t2/update! :model/McpSessionLog :id session-id {:ended_at :%now}))
+    (when (and session-id user-id)
+      (t2/update! :model/McpSessionLog {:id session-id :user_id user-id} {:ended_at :%now}))
     (catch Throwable e
       (log/warn e "Failed to record MCP session end"))))
 
 (defn- resolve-client-identity
   "Client identity for a tool-call row, denormalized so `v_mcp_tool_calls` needs no session join.
-  Resolved in priority order (matches the upcoming MCP RC, which drops sessions):
-    1. `client-info` from the call's `_meta[\"io.modelcontextprotocol/clientInfo\"]` (RC clients);
-    2. the identity stored on the session row at `initialize` (old-protocol clients);
+  Resolved in priority order:
+    1. `client-info` from the call's `_meta[\"io.modelcontextprotocol/clientInfo\"]`, which is where
+       clients on the stateless protocol carry their identity;
+    2. the identity stored on the session row at `initialize`, the only place a pre-RC client
+       states it;
     3. nothing.
   Returns `{:client_name <canonical> :client_version <version>}` (either key may be nil)."
   [client-info session-id]

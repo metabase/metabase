@@ -90,7 +90,7 @@
 (defenterprise record-mcp-session-end!
   "Stamp `ended_at` on an `mcp_session_log` row at session teardown. OSS no-op."
   metabase-enterprise.mcp.usage
-  [_session-id]
+  [_session-end-info]
   nil)
 
 (defenterprise record-mcp-tool-call!

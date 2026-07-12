@@ -144,16 +144,25 @@
 
 (deftest ^:parallel record-mcp-session-end!-stamps-ended-at-test
   (mt/with-premium-features #{:audit-app}
-    (let [sid (str "test-session-" (mt/random-name))]
+    (let [sid     (str "test-session-" (mt/random-name))
+          user-id (mt/user->id :rasta)]
       (try
-        (usage/record-mcp-session! {:session-id sid :user-id (mt/user->id :rasta) :client-info {:name "claude"}})
+        (usage/record-mcp-session! {:session-id sid :user-id user-id :client-info {:name "claude"}})
         (is (nil? (:ended_at (t2/select-one :model/McpSessionLog :id sid))))
-        (usage/record-mcp-session-end! sid)
+        (testing "another user cannot close out someone else's session — the id is a client-supplied
+                  header, so the user scope is the whole ownership check"
+          (is (= 0 (usage/record-mcp-session-end! {:session-id sid :user-id (mt/user->id :crowberto)})))
+          (is (nil? (:ended_at (t2/select-one :model/McpSessionLog :id sid)))))
+        (usage/record-mcp-session-end! {:session-id sid :user-id user-id})
         (is (some? (:ended_at (t2/select-one :model/McpSessionLog :id sid))))
         (finally (cleanup! sid)))))
   (testing "stamping a missing session row is a harmless no-op (zero rows updated, no throw)"
     (mt/with-premium-features #{:audit-app}
-      (is (= 0 (usage/record-mcp-session-end! (str "absent-" (mt/random-name))))))))
+      (is (= 0 (usage/record-mcp-session-end! {:session-id (str "absent-" (mt/random-name))
+                                               :user-id    (mt/user->id :rasta)})))))
+  (testing "a request that carries no session id has nothing to close out"
+    (mt/with-premium-features #{:audit-app}
+      (is (nil? (usage/record-mcp-session-end! {:session-id nil :user-id (mt/user->id :rasta)}))))))
 
 ;;; ------------------------------------------ record-mcp-tool-call! ----------------------------------------
 
@@ -274,7 +283,7 @@
           (mt/with-dynamic-fn-redefs [mcp.tools/dispatch-tool-call
                                       (fn [& _] (throw (ex-info "kaboom" {})))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"kaboom"
-                                  (mcp.tools/call-tool #{} sid tool {}))))
+                                  (mcp.tools/call-tool #{} tool {} {:session-id sid}))))
           (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
             (is (some? row) "an error row is recorded even though the handler threw")
             (is (= "error" (:status row))))

@@ -822,12 +822,14 @@
   {:pattern "(?:^mage.*)"
    :name    mage-namespaces}
   ;;
-  ;; MCP + Agent API tool code, excluding the Toucan models under `metabase.mcp.models.*` (the MCP
-  ;; server's own store) and tests. A tool call is a synthetic in-process request under the caller's
-  ;; real user, and the permission checks it must pass live in the domain functions the public REST
-  ;; handlers call — so tool code delegates to those and never reaches the app DB itself.
+  ;; MCP + Agent API tool code, excluding tests and the MCP server's own storage —
+  ;; `metabase.mcp.models.*` (its Toucan models) and `metabase.mcp.session` (the query-handle store
+  ;; and the embedding session key, which are the server's own rows, not user content). A tool call
+  ;; is a synthetic in-process request under the caller's real user, and the permission checks it
+  ;; must pass live in the domain functions the public REST handlers call — so tool code delegates to
+  ;; those and never reaches the app DB itself.
   ;;
-  {:pattern "^metabase\\.(?:mcp|agent-api)\\.(?!models\\.).*(?<!-test)$"
+  {:pattern "^metabase\\.(?:mcp|agent-api)\\.(?!models\\.)(?!session$).*(?<!-test)$"
    :name    mcp-tool-namespaces}]
 
  :config-in-ns

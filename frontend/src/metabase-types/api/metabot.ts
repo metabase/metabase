@@ -333,11 +333,6 @@ export type McpAppsFeedback = {
   };
 };
 
-export type SubmitMcpAppsFeedbackRequest = {
-  mcpSessionId: string;
-  payload: McpAppsFeedback;
-};
-
 /* Metabot v3 - Entity Types */
 
 export type MetabotId = number;

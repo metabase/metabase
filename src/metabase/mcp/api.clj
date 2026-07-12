@@ -1,6 +1,16 @@
 (ns metabase.mcp.api
   "MCP (Model Context Protocol) Streamable HTTP transport handler.
-   Exposes Metabase's agent tools via JSON-RPC 2.0 over each of the MCP endpoints."
+   Exposes Metabase's agent tools via JSON-RPC 2.0 over each of the MCP endpoints.
+
+   The transport targets the 2026-07-28 stateless core: there is no `initialize` handshake to
+   complete and no `Mcp-Session-Id` to carry, so every request is self-contained and any request
+   may arrive cold. A client declares its capabilities in each request's `_meta`, discovers the
+   server with `server/discover`, and everything the server needs to serve the call — the user,
+   their granted scopes, their query handles — hangs off the authenticated identity.
+
+   Clients that speak an older protocol still work: `initialize` is accepted, negotiates a protocol
+   version both sides know, and hands back an `Mcp-Session-Id` carrying the capabilities that
+   client will only ever advertise once. The server stores nothing behind it."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -43,7 +53,19 @@
   {:name    "metabase"
    :version "0.1.0"})
 
-(def ^:private protocol-version "2025-03-26")
+(def ^:private server-capabilities
+  {:tools {:listChanged true} :resources {}})
+
+(def ^:private protocol-version
+  "The protocol this server implements: stateless core, `server/discover`, cacheable results."
+  "2026-07-28")
+
+(def ^:private supported-protocol-versions
+  "Versions an `initialize` may negotiate down to. A client asking for one of these gets it echoed
+   back, because the stateless core is a superset of what they need — they simply keep sending the
+   handshake and the session header, and the server keeps ignoring them. Anything else negotiates up
+   to [[protocol-version]], which the spec allows and which the client may then refuse."
+  #{"2026-07-28" "2025-06-18" "2025-03-26"})
 
 (defn- jsonrpc-response [id result]
   {:jsonrpc "2.0" :id id :result result})
@@ -51,60 +73,109 @@
 (defn- jsonrpc-error [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message message}})
 
-(defn- handle-initialize [id params]
-  (when-let [client-info (:clientInfo params)]
-    (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
-  (jsonrpc-response
-   id
-   {:protocolVersion protocol-version
-    :capabilities    {:tools {:listChanged true} :resources {}}
-    :serverInfo      server-info}))
+;;; -------------------------------------------------- Caching -----------------------------------------------------
 
-(defn- mcp-app-ui-capability?
-  "Return true if initialize params advertise support for MCP Apps HTML resources."
-  [params]
+(def ^:private listing-cache
+  "Cache policy for `tools/list` and `resources/list`. The listing is settled by the caller's granted
+   scopes and advertised capabilities, so it is reusable for the life of a connection but not across
+   connections — hence the `session` scope. A short TTL bounds how long a client keeps offering a tool
+   an admin has since revoked, without costing the prompt-cache hit that motivates the metadata."
+  {:ttl-ms (* 5 60 1000)
+   :scope  "session"})
+
+(defn- cacheable
+  "Attach `CacheableResult` metadata to a JSON-RPC result: `ttlMs` (how long a client may reuse it)
+   and `cacheScope` (who may reuse it — `\"global\"` for identical-for-everyone content, `\"session\"`
+   for per-connection). A nil policy leaves the result unmarked, which means \"do not cache\"."
+  [result {:keys [ttl-ms scope]}]
+  (cond-> result
+    (and ttl-ms scope) (assoc :ttlMs ttl-ms :cacheScope scope)))
+
+;;; ------------------------------------------------ Capabilities ---------------------------------------------------
+
+(defn- mcp-app-ui-capabilities?
+  "Whether a client `capabilities` map advertises support for MCP Apps HTML resources."
+  [capabilities]
   ;; `json/decode+kw` preserves the slash in the JSON extension key `"io.modelcontextprotocol/ui"` as the
   ;; namespaced keyword `:io.modelcontextprotocol/ui`.
   (contains?
-   (set (get-in params [:capabilities :extensions :io.modelcontextprotocol/ui :mimeTypes]))
+   (set (get-in capabilities [:extensions :io.modelcontextprotocol/ui :mimeTypes]))
    "text/html;profile=mcp-app"))
 
-(defn- handle-tools-list [id _params session-id token-scopes]
-  (let [supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
-    (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes {:supports-mcp-ui?
-                                                                     supports-mcp-ui?})})))
+(defn- supports-mcp-ui?
+  "Whether the calling client can render MCP Apps, and so should be offered the UI tools.
+
+   Read from the request's own `_meta` capabilities when it carries them. A pre-RC client advertises
+   capabilities only once, at `initialize`, so for those we fall back to the hint riding in the
+   `Mcp-Session-Id` it echoes back. A client that says nothing either way is not a UI host."
+  [params session-id]
+  (if-let [capabilities (get-in params [:_meta :io.modelcontextprotocol/capabilities])]
+    (mcp-app-ui-capabilities? capabilities)
+    (true? (mcp.session/supports-mcp-ui? session-id))))
+
+;;; -------------------------------------------------- Methods -----------------------------------------------------
+
+(def ^:private discover-result
+  {:protocolVersion protocol-version
+   :capabilities    server-capabilities
+   :serverInfo      server-info})
+
+(defn- handle-discover
+  "`server/discover` — the stateless replacement for connect-time negotiation. Answers what the
+   server is and what it supports, without establishing anything."
+  [id _params]
+  (jsonrpc-response id discover-result))
+
+(defn- handle-initialize
+  "Back-compat handshake for clients that predate the stateless core. Reports what `server/discover`
+   reports, but at a protocol version both sides know."
+  [id params]
+  (when-let [client-info (:clientInfo params)]
+    (log/infof "MCP client connected: %s %s" (:name client-info) (:version client-info)))
+  (let [requested (:protocolVersion params)]
+    (jsonrpc-response
+     id
+     (assoc discover-result
+            :protocolVersion (if (contains? supported-protocol-versions requested)
+                               requested
+                               protocol-version)))))
+
+(defn- handle-tools-list [id params session-id token-scopes]
+  (jsonrpc-response
+   id
+   (cacheable {:tools (mcp.tools/list-tools token-scopes
+                                            {:supports-mcp-ui? (supports-mcp-ui? params session-id)})}
+              listing-cache)))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
-  (let [tool-name        (:name params)
-        arguments        (or (:arguments params) {})
+  (let [tool-name   (:name params)
+        arguments   (or (:arguments params) {})
         ;; RC clients carry their identity per-call in `_meta`; the recorder falls back to the
         ;; session's stored identity when it's absent. (`json/decode+kw` preserves the slash in
         ;; the extension key, so it's the namespaced keyword `:io.modelcontextprotocol/clientInfo`.)
-        client-info      (get-in params [:_meta :io.modelcontextprotocol/clientInfo])
-        supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
+        client-info (get-in params [:_meta :io.modelcontextprotocol/clientInfo])]
     (jsonrpc-response id (mcp.tools/call-tool token-scopes
-                                              session-id
                                               tool-name
                                               arguments
-                                              {:supports-mcp-ui? supports-mcp-ui?
+                                              {:supports-mcp-ui? (supports-mcp-ui? params session-id)
                                                :client-info      client-info
+                                               :session-id       session-id
                                                :request-context  request-context}))))
 
 (defn- handle-resources-list [id _params token-scopes]
-  (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
+  (jsonrpc-response id (cacheable (mcp.resources/list-resources token-scopes) listing-cache)))
 
-(defn- handle-resources-read [id params session-id token-scopes]
+(defn- handle-resources-read [id params token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (jsonrpc-error id -32602 "Missing required parameter: uri")
       (let [user-id     api/*current-user-id*
-            session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))
-            options     {:session-key session-key
-                         :session-id  session-id}
-            result      (mcp.resources/read-resource uri token-scopes options)]
+            session-key (when user-id (mcp.session/get-or-create-session-key! user-id))
+            result      (mcp.resources/read-resource uri token-scopes {:session-key session-key})]
         (case (:status result)
           (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
-          :ok                        (jsonrpc-response id {:contents (:contents result)}))))))
+          :ok                        (jsonrpc-response id (cacheable {:contents (:contents result)}
+                                                                     (:cache result))))))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
@@ -115,10 +186,11 @@
   (try
     (case method
       "notifications/initialized" nil
+      "server/discover"           (handle-discover id params)
       "tools/list"                (handle-tools-list id params session-id token-scopes)
       "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
       "resources/list"            (handle-resources-list id params token-scopes)
-      "resources/read"            (handle-resources-read id params session-id token-scopes)
+      "resources/read"            (handle-resources-read id params token-scopes)
       "ping"                      (handle-ping id params)
       (if id
         (jsonrpc-error id -32601 (str "Method not found: " method))
@@ -200,89 +272,88 @@
                     (approved-mcp-origin? origin))
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
-(defn- require-valid-session
-  "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
-   `core_session` has been materialized, verifies it belongs to `user-id`."
-  [user-id session-id]
-  (cond
-    (str/blank? session-id)
-    {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
+(defn- routing-header-conflict
+  "The RC lets a client repeat the JSON-RPC method — and, for `tools/call`, the tool name — in the
+   `Mcp-Method` and `Mcp-Name` headers, so a gateway can route a request without parsing its body.
+   They are a routing hint, never the source of truth. If a header disagrees with the body, an
+   intermediary has routed on one thing and we would be executing another; that is request smuggling,
+   so we refuse rather than pick a winner. Returns an error message, or nil when there is no conflict."
+  [headers {:keys [method params]}]
+  (let [header-method (get headers "mcp-method")
+        header-name   (get headers "mcp-name")]
+    (cond
+      (and header-method (not= header-method method))
+      (format "Mcp-Method header (%s) does not match the request method (%s)" header-method method)
 
-    (not (mcp.session/valid-id? session-id))
-    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
-
-    (not (mcp.session/owned-by-user? session-id user-id))
-    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
-
-    :else
-    {:session-id session-id}))
+      (and header-name
+           (= "tools/call" method)
+           (not= header-name (:name params)))
+      (format "Mcp-Name header (%s) does not match the tool being called (%s)"
+              header-name (:name params)))))
 
 ;;; -------------------------------------------------- Handlers ---------------------------------------------------
 
-(defn- handle-post
-  "Handle a POST request containing one or more JSON-RPC messages."
+(defn- request-context
+  "IP and User-Agent, read on the request thread so a tool-call row can denormalize them (gated PII)."
+  [request]
+  {:user-agent (get-in request [:headers "user-agent"])
+   :ip-address (request/ip-address request)})
+
+(defn- handle-legacy-initialize
+  "Answer a pre-RC `initialize`, minting the `Mcp-Session-Id` that client will echo back.
+
+   The id is not established state: it carries the client's MCP Apps capability so later `tools/list`
+   calls can honor it, because a pre-RC client advertises capabilities exactly once and never again.
+   RC clients repeat theirs in every request's `_meta` and never see this header. Nothing is looked up
+   by it — see the ns docstring.
+
+   Also opens the EE analytics row. Pre-RC clients are the only ones with no per-call client identity
+   in `_meta`, so this row is what attributes their tool calls."
   [user-id request]
   (let [body       (:body request)
-        session-id (get-in request [:headers "mcp-session-id"])
-        batch?     (sequential? body)]
+        params     (:params body)
+        ctx        (request-context request)
+        session-id (mcp.session/create! {:supports-mcp-ui? (mcp-app-ui-capabilities? (:capabilities params))})
+        response   (handle-initialize (:id body) params)]
+    (mcp.usage/record-mcp-session!
+     {:session-id  session-id
+      :user-id     user-id
+      :tenant-id   (some-> api/*current-user* deref :tenant_id)
+      :client-info (:clientInfo params)
+      :user-agent  (:user-agent ctx)
+      :ip-address  (:ip-address ctx)})
+    (if (accepts-sse? request)
+      (sse-response [response] {"Mcp-Session-Id" session-id})
+      (json-response 200 response {"Mcp-Session-Id" session-id}))))
+
+(defn- handle-post
+  "Handle a POST request carrying one JSON-RPC message."
+  [user-id request]
+  (let [body       (:body request)
+        session-id (get-in request [:headers "mcp-session-id"])]
     (cond
       (nil? body)
       (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
 
-      (and (not (map? body)) (not batch?))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid request: expected object or array"))
+      ;; JSON-RPC batching was removed in the 2026-07-28 spec: one message per POST.
+      (sequential? body)
+      (json-response 400 (jsonrpc-error nil -32600
+                                        "JSON-RPC batching is not supported. Send one request per POST."))
 
-      ;; JSON-RPC 2.0: empty batch is invalid
-      (and batch? (empty? body))
-      (json-response 400 (jsonrpc-error nil -32600 "Invalid request: empty batch"))
+      (not (map? body))
+      (json-response 400 (jsonrpc-error nil -32600 "Invalid request: expected object"))
 
-      ;; MCP spec: "The initialize request MUST NOT be part of a JSON-RPC batch"
-      (and batch? (some #(= "initialize" (:method %)) body))
-      (json-response 400 (jsonrpc-error nil -32600 "initialize must not be batched"))
-
-      ;; Initialize: create session and return response with session header
-      (and (not batch?) (= "initialize" (:method body)))
-      (let [params           (:params body)
-            supports-mcp-ui? (mcp-app-ui-capability? params)
-            session-id       (mcp.session/create! user-id {:supports-mcp-ui?
-                                                           supports-mcp-ui?})
-            init-response (handle-initialize (:id body) params)]
-        ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
-        ;; here, from the on-thread request, and never overwritten.
-        (mcp.usage/record-mcp-session!
-         {:session-id     session-id
-          :user-id        user-id
-          :tenant-id      (some-> api/*current-user* deref :tenant_id)
-          :client-info    (:clientInfo params)
-          :user-agent     (get-in request [:headers "user-agent"])
-          :ip-address     (request/ip-address request)})
-        (if (accepts-sse? request)
-          (sse-response [init-response] {"Mcp-Session-Id" session-id})
-          (json-response 200 init-response {"Mcp-Session-Id" session-id})))
-
-      ;; All other requests require a valid session
       :else
-      (let [{:keys [error]} (require-valid-session user-id session-id)]
-        (if error
-          error
-          (let [messages        (if batch? body [body])
-                ;; Captured on-thread from the request so each tool-call row can denormalize IP/UA
-                ;; (gated PII) alongside client identity — the view no longer joins the session.
-                request-context {:user-agent (get-in request [:headers "user-agent"])
-                                 :ip-address (request/ip-address request)}
-                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request) request-context)) messages)]
+      (if-let [conflict (routing-header-conflict (:headers request) body)]
+        (json-response 400 (jsonrpc-error (:id body) -32600 conflict))
+        (if (= "initialize" (:method body))
+          (handle-legacy-initialize user-id request)
+          (let [response (dispatch-request body session-id (:token-scopes request)
+                                           (request-context request))]
             (cond
-              (empty? responses)
-              {:status 202 :headers {} :body ""}
-
-              (accepts-sse? request)
-              (sse-response responses)
-
-              (and (not batch?) (= 1 (count responses)))
-              (json-response 200 (first responses))
-
-              :else
-              (json-response 200 responses))))))))
+              (nil? response)        {:status 202 :headers {} :body ""}
+              (accepts-sse? request) (sse-response [response])
+              :else                  (json-response 200 response))))))))
 
 (def ^:private tools-list-changed-notification
   {:jsonrpc "2.0" :method "notifications/tools/list_changed"})
@@ -291,45 +362,37 @@
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications).
    Polls the tool manifest hash on each keepalive tick — if the visible tool set has
    changed since the previous tick, emits an MCP `notifications/tools/list_changed`
-   message so the client knows to refetch `tools/list`. Stateless: each connection
-   tracks its own last-seen hash; no shared registry."
-  [user-id request respond raise]
-  (let [session-id (get-in request [:headers "mcp-session-id"])
-        token-scopes (:token-scopes request)
-        {:keys [error]} (require-valid-session user-id session-id)]
-    (cond
-      (some? error)
-      (respond error)
-
-      :else
-      (let [resp (streaming-response/streaming-response
-                  {:content-type "text/event-stream"
-                   :headers      {"Cache-Control" "no-cache"}
-                   :status       200}
-                  [os canceled-chan]
-                   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-                     (loop [last-hash (mcp.tools/tools-hash token-scopes)]
-                       (when-not (a/poll! canceled-chan)
-                         (.write writer ": keepalive\n\n")
-                         (.flush writer)
-                         (Thread/sleep 30000)
-                         (let [current-hash (mcp.tools/tools-hash token-scopes)]
-                           (when (not= current-hash last-hash)
-                             (.write writer ^String (sse-body [tools-list-changed-notification]))
-                             (.flush writer))
-                           (recur current-hash))))))]
-        (compojure.response/send* resp request respond raise)))))
+   message so the client knows to refetch `tools/list`. Each connection tracks its own
+   last-seen hash; no shared registry, and no session to resume — `Last-Event-ID`
+   resumability was removed from the spec."
+  [request respond raise]
+  (let [token-scopes (:token-scopes request)
+        resp (streaming-response/streaming-response
+              {:content-type "text/event-stream"
+               :headers      {"Cache-Control" "no-cache"}
+               :status       200}
+              [os canceled-chan]
+               (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+                 (loop [last-hash (mcp.tools/tools-hash token-scopes)]
+                   (when-not (a/poll! canceled-chan)
+                     (.write writer ": keepalive\n\n")
+                     (.flush writer)
+                     (Thread/sleep 30000)
+                     (let [current-hash (mcp.tools/tools-hash token-scopes)]
+                       (when (not= current-hash last-hash)
+                         (.write writer ^String (sse-body [tools-list-changed-notification]))
+                         (.flush writer))
+                       (recur current-hash))))))]
+    (compojure.response/send* resp request respond raise)))
 
 (defn- handle-delete
-  "Handle a DELETE request to tear down a session."
+  "Older clients DELETE on disconnect to tear their session down. There is no session to tear down,
+   so this only closes out the analytics row the `initialize` handshake opened, and only for the
+   caller's own row."
   [user-id request]
-  (let [session-id-header (get-in request [:headers "mcp-session-id"])
-        {:keys [session-id error]} (require-valid-session user-id session-id-header)]
-    (or error
-        (do (mcp.session/delete! session-id user-id)
-            ;; Stamp ended_at on the session row (EE-only, best-effort).
-            (mcp.usage/record-mcp-session-end! session-id)
-            {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
+  (mcp.usage/record-mcp-session-end! {:session-id (get-in request [:headers "mcp-session-id"])
+                                      :user-id    user-id})
+  {:status 200 :headers {"Content-Type" "application/json"} :body ""})
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
@@ -398,7 +461,7 @@
                            (respond (handle-post user-id request))
 
                            (= :get (:request-method request))
-                           (handle-get user-id request respond raise)
+                           (handle-get request respond raise)
 
                            (= :delete (:request-method request))
                            (respond (handle-delete user-id request))

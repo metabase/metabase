@@ -3,9 +3,12 @@
    stash query payloads server-side so the agent never has to carry them in the
    model context — it just receives a handle UUID it can pass to the corresponding
    MCP tool. Mounted as a sibling of `/api/metabase-mcp` so the JSON-RPC handler doesn't
-   have to special-case non-protocol routes."
+   have to special-case non-protocol routes.
+
+   The iframe authenticates with the embedding session key `metabase.mcp.session` derives for
+   the user, so `+auth` already establishes who is calling, and handles are stored and read
+   under that user. There is no transport session to check."
   (:require
-   [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,21 +17,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
-
-(defn- mcp-session-id-from-headers
-  [request]
-  (get-in request [:headers "mcp-session-id"]))
-
-(defn- check-session-header!
-  "Validate the `Mcp-Session-Id` header against `user-id`. Throws an api/check
-   exception on failure so defendpoint surfaces the right status code."
-  [session-id user-id]
-  (api/check (not (str/blank? session-id))
-             [400 (tru "Missing Mcp-Session-Id header")])
-  (api/check (mcp.session/valid-id? session-id)
-             [404 (tru "Invalid or expired session")])
-  (api/check (mcp.session/owned-by-user? session-id user-id)
-             [404 (tru "Invalid or expired session")]))
 
 (def ^:private feedback-text-max-length
   10000)
@@ -62,11 +50,8 @@
    `render_drill_through` tool can fetch it."
   [_route-params
    _query-params
-   {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]
-   request]
-  (let [session-id (mcp-session-id-from-headers request)]
-    (check-session-header! session-id api/*current-user-id*)
-    {:handle (mcp.session/store-handle! session-id api/*current-user-id* encodedQuery)}))
+   {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]]
+  {:handle (mcp.session/store-handle! api/*current-user-id* encodedQuery)})
 
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]
@@ -83,11 +68,8 @@
             [:conversation_data [:map
                                  [:source [:= "mcp"]]
                                  [:prompt {:optional true} OptionalFeedbackText]
-                                 [:query  {:optional true} OptionalFeedbackText]]]]
-   request]
-  (let [session-id (mcp-session-id-from-headers request)
-        _          (check-session-header! session-id api/*current-user-id*)]
-    (submit-mcp-feedback! body))
+                                 [:query  {:optional true} OptionalFeedbackText]]]]]
+  (submit-mcp-feedback! body)
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

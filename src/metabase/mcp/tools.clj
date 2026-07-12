@@ -185,7 +185,11 @@
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
-   When `token-scopes` is provided, only tools whose scope matches are included."
+   When `token-scopes` is provided, only tools whose scope matches are included.
+
+   Sorted by name across both sources, so the same scopes and client capabilities always produce
+   byte-identical bytes on the wire. Clients cache the tool list into the prompt prefix; an
+   unstable order costs them the cache hit on every reconnect."
   ([token-scopes]
    (list-tools token-scopes {:supports-mcp-ui? true}))
   ([token-scopes options]
@@ -197,7 +201,7 @@
                  (map (fn [tool]
                         (select-keys tool [:name :title :description :inputSchema :outputSchema
                                            :annotations :inputExamples :_meta]))))
-           (concat tools (mcp.resources/list-ui-tools))))))
+           (sort-by :name (concat tools (mcp.resources/list-ui-tools)))))))
 
 (defn- pad-left
   [^String s width]
@@ -276,26 +280,30 @@
 
 ;;; ------------------------------------------- Query Handle Transforms -------------------------------------------
 
+(defn- uuid-string?
+  [v]
+  (boolean (and (string? v) (parse-uuid v))))
+
 (defn- resolve-query-arg
   "Resolve the query argument for tools that accept a handle.
    If :query_handle is present, look it up and replace with :query.
    If :query is itself a UUID (the LLM passed the handle in the wrong field), resolve
    it too (and log a warning).
    Returns updated arguments, or ::handle-not-found if the handle doesn't exist."
-  [session-id tool-name arguments]
+  [tool-name arguments]
   (let [user-id api/*current-user-id*]
     (cond
       (:query_handle arguments)
       (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle
-                                        session-id user-id (:query_handle arguments))]
+                                        user-id (:query_handle arguments))]
         (-> arguments (dissoc :query_handle) (assoc :query encoded_query))
         ::handle-not-found)
 
-      (mcp.session/valid-id? (:query arguments))
+      (uuid-string? (:query arguments))
       (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
                      tool-name)
           (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle
-                                            session-id user-id (:query arguments))]
+                                            user-id (:query arguments))]
             (assoc arguments :query encoded_query)
             ::handle-not-found))
 
@@ -307,18 +315,17 @@
 
 (defn- make-store-construct-query-result
   "Build a body-transform fn for the construct tools (`construct_query`, `construct_native_query`).
-   The fn stores the base64 payload server-side under the calling user (with the current MCP session id
-   recorded for cleanup) and returns {:query_handle uuid} instead of {:query base64}, so the LLM carries
-   a short opaque UUID rather than the full base64 string.
+   The fn stores the base64 payload server-side under the calling user and returns {:query_handle uuid}
+   instead of {:query base64}, so the LLM carries a short opaque UUID rather than the full base64 string.
    The optional prompt is stored with the handle for later feedback submission.
 
    The fn validates its emitted shape against `construct-query-mcp-output-malli` — the same schema the
    manifest publishes as the tool's outputSchema — keeping the published schema and the actual emitted
    body in lockstep."
-  [session-id user-id]
+  [user-id]
   (fn [body]
     (if-let [encoded (:query body)]
-      (let [handle   (mcp.session/store-handle! session-id user-id encoded (:prompt body))
+      (let [handle   (mcp.session/store-handle! user-id encoded (:prompt body))
             new-body {:query_handle handle}]
         (when-not (construct-query-output-validator new-body)
           (throw (ex-info (str "construct_query body transform produced a shape that doesn't "
@@ -480,7 +487,7 @@
    and calls `invoke-agent-api`. For POST/PUT/PATCH requests, remaining args are
    sent as the request body. For other methods (GET/DELETE), remaining args are
    sent as query params."
-  [tool-def arguments token-scopes session-id]
+  [tool-def arguments token-scopes]
   (let [{:keys [method path]} (:endpoint tool-def)
         tool-name             (:name tool-def)
         method                (keyword (u/lower-case-en method))
@@ -488,8 +495,7 @@
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)
         body-transform-fn     (when (tools-storing-query-handle tool-name)
-                                (make-store-construct-query-result
-                                 session-id api/*current-user-id*))]
+                                (make-store-construct-query-result api/*current-user-id*))]
     (invoke-agent-api method api-path token-scopes remaining-args
                       :body-transform-fn body-transform-fn)))
 
@@ -521,7 +527,7 @@
 (defn- dispatch-tool-call
   "Resolve and invoke the handler for an MCP `tools/call`, returning MCP content on success
    or error content on failure. The instrumented [[call-tool]] wraps this."
-  [token-scopes session-id tool-name arguments options]
+  [token-scopes tool-name arguments options]
   (let [arguments (drop-nil-args arguments)
         supported (supported-extensions options)]
     (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
@@ -529,57 +535,57 @@
         (error-content (str "Insufficient scope to call tool: " tool-name) error-code-invalid-request)
         (if-let [missing-extensions (missing-required-extensions ui-tool supported)]
           (error-content (missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
-          ((:response-fn ui-tool) arguments {:session-id session-id})))
+          ((:response-fn ui-tool) arguments)))
       (if-let [tool-def (get (tool-index) tool-name)]
         (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
           (error-content (str "Insufficient scope to call tool: " tool-name) error-code-invalid-request)
           (if-let [missing-extensions (missing-required-extensions tool-def supported)]
             (error-content (missing-extensions-error tool-name missing-extensions) error-code-invalid-params)
             (let [arguments (if (tools-accepting-query-handle tool-name)
-                              (resolve-query-arg session-id tool-name arguments)
+                              (resolve-query-arg tool-name arguments)
                               arguments)]
               (if (= arguments ::handle-not-found)
                 (error-content "Query handle not found. The query may have expired — try running construct_query again." error-code-invalid-params)
                 (try
-                  (dispatch-via-agent-api tool-def arguments token-scopes session-id)
+                  (dispatch-via-agent-api tool-def arguments token-scopes)
                   (catch Exception e
                     (error-content (or (ex-message e) "Internal error") error-code-internal)))))))
         (error-content (str "Unknown tool: " tool-name) error-code-method-not-found)))))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
-   `token-scopes` from the original MCP session are propagated to the synthetic
-   agent-api request so that scope restrictions are enforced by the agent API's
-   `defendpoint` middleware. UI tool response-fns receive `{:session-id session-id}`
-   as opts in case a tool needs to scope reads to the calling MCP session.
+   `token-scopes` from the caller's token are propagated to the synthetic agent-api request so
+   that scope restrictions are enforced by the agent API's `defendpoint` middleware.
    Returns MCP content on success, or error content on failure.
 
    Every call — including scope-denied, unknown-tool, and error outcomes — is recorded to
    `mcp_tool_call_log` (EE-only, best-effort) with its timing, success/error status, and on
    error the JSON-RPC `error_code` + `error_message` (the latter gated/truncated by the writer)."
-  ([token-scopes session-id tool-name arguments]
-   (call-tool token-scopes session-id tool-name arguments {:supports-mcp-ui? true}))
-  ([token-scopes session-id tool-name arguments options]
+  ([token-scopes tool-name arguments]
+   (call-tool token-scopes tool-name arguments {:supports-mcp-ui? true}))
+  ([token-scopes tool-name arguments options]
    (let [start   (System/nanoTime)
          record! (fn [status error-code error-message]
                    (mcp.usage/record-mcp-tool-call!
                     {:tool-name     tool-name
                      :user-id       api/*current-user-id*
-                     :session-id    session-id
+                     ;; Analytics only: pre-RC clients advertise their identity once, at
+                     ;; `initialize`, so the recorder falls back to the session row's stored client
+                     ;; when the call's `_meta` carries none. Nothing else reads it.
+                     :session-id    (:session-id options)
                      :status        status
                      :duration-ms   (quot (- (System/nanoTime) start) 1000000)
                      :error-code    error-code
                      :error-message error-message
-                     ;; Identity + PII are denormalized onto the row (the view no longer joins the
+                     ;; Identity + PII are denormalized onto the row (the view does not join the
                      ;; session): client from the call's `_meta`, tenant from the current user,
-                     ;; IP/UA from the request. The recorder falls back to the session row's stored
-                     ;; client when `_meta` carries none, and gates the PII columns.
+                     ;; IP/UA from the request. The recorder gates the PII columns.
                      :client-info   (:client-info options)
                      :tenant-id     (some-> api/*current-user* deref :tenant_id)
                      :user-agent    (get-in options [:request-context :user-agent])
                      :ip-address    (get-in options [:request-context :ip-address])}))]
      (try
-       (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)
+       (let [result (dispatch-tool-call token-scopes tool-name arguments options)
              error? (boolean (:isError result))]
          (record! (if error? "error" "success")
                   (when error? (or (::error-code result) error-code-internal))

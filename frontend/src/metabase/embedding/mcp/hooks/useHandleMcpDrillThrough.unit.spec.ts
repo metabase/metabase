@@ -19,7 +19,6 @@ describe("useHandleMcpDrillThrough", () => {
     (window as any).metabaseConfig = {
       instanceUrl: "https://metabase.example",
       sessionToken: "session-token",
-      mcpSessionId: "mcp-session-id",
     };
 
     fetchMock.post("path:/api/embed-mcp/drills", { handle: "drill-handle" });

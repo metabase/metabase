@@ -63,8 +63,7 @@
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
-   :mcpSessionId (JSON-encoded or nil)."
+   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil)."
   [vars]
   (cond
     (io/resource embed-mcp-template-path)
@@ -148,6 +147,23 @@
            (chatgpt-client?)
            (assoc :domain url))}))
 
+(def ^:private CachePolicy
+  "How long a `resources/read` result may be reused, and by whom. Emitted as the RC's
+   `ttlMs`/`cacheScope` so clients can hold the payload across turns instead of re-reading it —
+   the whole point of the protocol's cache metadata is prompt-cache hits.
+
+   `\"global\"` means every caller gets byte-identical content. A resource whose body varies by
+   caller — notably the MCP Apps iframe, which embeds the caller's live embedding session key —
+   declares no policy at all and is never advertised as cacheable."
+  [:map
+   [:ttl-ms pos-int?]
+   [:scope  [:enum "global"]]])
+
+(def ^:private static-doc-cache
+  "Reference docs are read off the classpath and only change when the instance is upgraded."
+  {:ttl-ms (* 24 60 60 1000)
+   :scope  "global"})
+
 (mu/defn register-resource!
   "Register an MCP resource. Overwrites any existing entry with the same `:uri`."
   [resource :- [:map
@@ -156,7 +172,8 @@
                 [:description :string]
                 [:render-fn fn?]
                 [:mimeType {:optional true} :string]
-                [:scope    {:optional true} [:maybe :string]]]]
+                [:scope    {:optional true} [:maybe :string]]
+                [:cache    {:optional true} CachePolicy]]]
   (let [resource (update resource :mimeType #(or % "text/markdown"))]
     (swap! registry assoc-in [:uri->resource (:uri resource)] resource)
     resource))
@@ -242,13 +259,14 @@
 
 (defn read-resource
   "Read a registered resource by URI, gated by `token-scopes`. Returns one of
-   `{:status :ok :contents [...]}`, `{:status :scope-denied}`, or
+   `{:status :ok :contents [...] :cache <policy-or-nil>}`, `{:status :scope-denied}`, or
    `{:status :not-found}`. Single registry lookup keeps the gate atomic with the
    render, so callers cannot bypass the scope check."
   [uri token-scopes opts]
-  (if-let [{:keys [render-fn scope ui?] :as resource} (get-in @registry [:uri->resource uri])]
+  (if-let [{:keys [render-fn scope ui? cache] :as resource} (get-in @registry [:uri->resource uri])]
     (if (mcp.scope/public-or-matches? token-scopes scope)
       {:status   :ok
+       :cache    cache
        :contents [(cond-> (select-keys resource [:uri :mimeType])
                     true (assoc :text (render-fn opts))
                     ui?  (assoc :_meta (ui-meta resource)))]}
@@ -278,6 +296,7 @@
                     "operators, joins, expressions, multi-stage queries, worked examples, "
                     "and common pitfalls.")
   :mimeType    "text/markdown"
+  :cache       static-doc-cache
   :render-fn   (classpath-text-resource "metabot/prompts/tools/construct_notebook_query.md")})
 
 (defn- visualize-query-render-fn
@@ -291,14 +310,12 @@
   [tag]
   (fn [opts]
     (let [site-url    (system/site-url)
-          session-key (:session-key opts)
-          session-id  (:session-id opts)]
+          session-key (:session-key opts)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
              :instanceUrlRaw site-url
-             :sessionToken   (when session-key (json/encode session-key))
-             :mcpSessionId   (when session-id (json/encode session-id))})))))
+             :sessionToken   (when session-key (json/encode session-key))})))))
 
 (register-ui-resource!
  :visualize-query
@@ -354,11 +371,10 @@
                 :destructiveHint false
                 :idempotentHint  true
                 :openWorldHint   false}
-  :response-fn (fn [arguments {:keys [session-id]}]
+  :response-fn (fn [arguments]
                  (let [query    (:query arguments)
                        handle   (:query_handle arguments)
-                       resolved (some->> handle (mcp.session/resolve-query-handle
-                                                 session-id api/*current-user-id*))
+                       resolved (some->> handle (mcp.session/resolve-query-handle api/*current-user-id*))
                        encoded  (or query (:encoded_query resolved))
                        prompt   (:prompt resolved)]
                    (cond
@@ -403,9 +419,9 @@
                 :destructiveHint false
                 :idempotentHint  true
                 :openWorldHint   false}
-  :response-fn (fn [arguments {:keys [session-id]}]
+  :response-fn (fn [arguments]
                  (if-let [handle (:handle arguments)]
-                   (if-let [encoded (mcp.session/read-handle session-id api/*current-user-id* handle)]
+                   (if-let [encoded (mcp.session/read-handle api/*current-user-id* handle)]
                      {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
                       :structuredContent {:query encoded}}
                      {:content [{:type "text" :text "No drill-through found for that handle."}]

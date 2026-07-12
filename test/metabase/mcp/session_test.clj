@@ -18,9 +18,9 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- derived-hash
-  "Derives the embedding session key from an MCP session id, then hashes it."
-  [session-id]
-  (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))
+  "Derives a user's embedding session key, then hashes it the way core_session stores it."
+  [user-id]
+  (session/hash-session-key (mcp.session/derive-embedding-session-key user-id)))
 
 (defn- session-correlator
   [session-id]
@@ -33,78 +33,61 @@
        (->> (.getBytes (json/encode payload) StandardCharsets/UTF_8)
             (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
 
-(deftest create-returns-uuid-string-test
-  (testing "create! returns a session id with a UUID correlator without writing to the database"
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
+;;; ------------------------------------------ Client capability hint ---------------------------------------------
+
+(deftest create-mints-an-opaque-correlator-test
+  (testing "create! mints a session id with a UUID correlator, and two of them never collide"
+    (let [session-id (mcp.session/create! {:supports-mcp-ui? true})]
       (is (string? session-id))
       (is (some? (parse-uuid (session-correlator session-id))))
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
-          "No core_session should exist yet"))))
+      (is (not= session-id (mcp.session/create! {:supports-mcp-ui? true}))))))
 
-(deftest session-ui-capability-is-stateless-test
-  (testing "create! encodes MCP Apps UI support in an unsigned client capability hint"
-    (let [ui-session-id    (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})
-          plain-session-id (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? false})]
+(deftest session-ui-capability-is-self-describing-test
+  (testing "create! encodes MCP Apps UI support into the id itself, so nothing has to be stored"
+    (let [ui-session-id    (mcp.session/create! {:supports-mcp-ui? true})
+          plain-session-id (mcp.session/create! {:supports-mcp-ui? false})]
       (is (= 2 (count (str/split ui-session-id #"\.")))
-          "New MCP session ids should include a UUID correlator and a base64url JSON capability hint")
-      (is (some? (parse-uuid (session-correlator ui-session-id))))
+          "A session id is a UUID correlator plus a base64url JSON capability hint")
       (is (true? (mcp.session/supports-mcp-ui? ui-session-id)))
-      (is (false? (mcp.session/supports-mcp-ui? plain-session-id)))
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash ui-session-id)))
-          "Capability tracking should not materialize a core_session")
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash plain-session-id)))
-          "Capability tracking should not materialize a core_session"))))
+      (is (false? (mcp.session/supports-mcp-ui? plain-session-id))))))
 
 (deftest create-session-id-length-test
-  (testing "generated session ids fit the persisted mcp_query_handle.mcp_session_id column"
-    (is (<= (count (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})) 254)))
+  (testing "generated session ids stay within header and log-column limits"
+    (is (<= (count (mcp.session/create! {:supports-mcp-ui? true})) 254)))
   (testing "payload growth fails early in dev and tests"
-    (mt/with-dynamic-fn-redefs [mcp.session/encode-session-payload (fn [_payload]
-                                                                     (apply str (repeat 300 "x")))]
+    (mt/with-dynamic-fn-redefs [mcp.session/encode-capability-payload (fn [_payload]
+                                                                        (apply str (repeat 300 "x")))]
       (is (thrown-with-msg? AssertionError
                             #"MCP session id is too long"
-                            (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true}))))))
+                            (mcp.session/create! {:supports-mcp-ui? true}))))))
 
-(deftest legacy-session-ui-capability-test
-  (testing "plain UUID sessions minted before capability hints keep the old tools/list behavior"
-    (is (true? (mcp.session/supports-mcp-ui? (str (java.util.UUID/randomUUID)))))))
+(deftest supports-mcp-ui-without-a-hint-test
+  (testing "an id carrying no capability hint tells us nothing, and neither does no id at all — the
+            caller decides what an absent hint means"
+    (is (nil? (mcp.session/supports-mcp-ui? nil)))
+    (is (nil? (mcp.session/supports-mcp-ui? "not-a-session-id")))
+    (is (nil? (mcp.session/supports-mcp-ui? (str (random-uuid))))
+        "a plain UUID id predates capability hints")
+    (is (nil? (mcp.session/supports-mcp-ui? (str (random-uuid) ".not-base64")))
+        "an undecodable hint is no hint")))
 
-(deftest malformed-session-payload-test
-  (testing "two-part session ids must include a decodable capability hint"
-    (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) ".not-base64")))))
-  (testing "undecodable capability hints are logged"
-    (mt/with-log-messages-for-level [messages [metabase.mcp.session :warn]]
-      (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) ".not-base64"))))
-      (is (=? [{:level   :warn
-                :message "MCP session id contains an undecodable capability payload"}]
-              (messages)))))
-  (testing "blank capability hints are logged"
-    (mt/with-log-messages-for-level [messages [metabase.mcp.session :warn]]
-      (is (false? (mcp.session/valid-id? (str (java.util.UUID/randomUUID) "."))))
-      (is (=? [{:level   :warn
-                :message "MCP session id contains a blank capability payload"}]
-              (messages)))))
-  (testing "two-part session ids must match the supported capability hint shape"
-    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1}))))
-    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui "true"})))))
-  (testing "known payload versions preserve the UI capability hint"
-    (let [session-id (extended-session-id {:v 1 :ui true})]
-      (is (true? (mcp.session/valid-id? session-id)))
-      (is (true? (mcp.session/supports-mcp-ui? session-id)))))
-  (testing "unknown payload versions keep the session valid but disable UI capability"
-    (let [session-id (extended-session-id {:v 2 :ui true})]
-      (is (true? (mcp.session/valid-id? session-id)))
-      (is (false? (mcp.session/supports-mcp-ui? session-id)))))
-  (testing "two-part session ids must fit the persisted query-handle session id column"
-    (is (false? (mcp.session/valid-id? (extended-session-id {:v 1 :ui true :padding (apply str (repeat 300 "x"))}))))))
+(deftest capability-payload-versioning-test
+  (testing "a readable hint carries the UI capability through"
+    (is (true? (mcp.session/supports-mcp-ui? (extended-session-id {:v 1 :ui true}))))
+    (is (false? (mcp.session/supports-mcp-ui? (extended-session-id {:v 1 :ui false})))))
+  (testing "a hint this node cannot read degrades to no UI rather than erroring — during a rolling
+            deploy a newer node may mint a hint shape this one does not know"
+    (is (false? (mcp.session/supports-mcp-ui? (extended-session-id {:v 2 :ui true}))))
+    (is (false? (mcp.session/supports-mcp-ui? (extended-session-id {:v 1}))))))
+
+;;; ------------------------------------------ Embedding session key ----------------------------------------------
 
 (deftest derive-embedding-session-key-is-uuid-formatted-test
   (testing "derived key is UUID-formatted so it passes server.middleware.session/valid-session-key?"
     ;; If this regresses, the embedding SDK iframe will get 403s from /api when it sends the
     ;; derived key as X-Metabase-Session, because the middleware rejects non-UUID keys up-front.
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))
-          key        (mcp.session/derive-embedding-session-key session-id)
-          parsed     (parse-uuid key)]
+    (let [key    (mcp.session/derive-embedding-session-key (mt/user->id :crowberto))
+          parsed (parse-uuid key)]
       (is (some? parsed)
           "derive-embedding-session-key must return a UUID-formatted string")
       (is (= 8 (.version ^java.util.UUID parsed))
@@ -112,69 +95,31 @@
       (is (= 2 (.variant ^java.util.UUID parsed))
           "should carry the RFC 4122 variant (10xx)"))))
 
+(deftest derive-embedding-session-key-is-per-user-test
+  (testing "each user derives their own key, and it is stable across connections"
+    (let [crowberto (mcp.session/derive-embedding-session-key (mt/user->id :crowberto))
+          rasta     (mcp.session/derive-embedding-session-key (mt/user->id :rasta))]
+      (is (not= crowberto rasta))
+      (is (= crowberto (mcp.session/derive-embedding-session-key (mt/user->id :crowberto)))))))
+
 (deftest get-or-create-session-key-test
   (testing "first call creates a core_session and returns the derived embedding key"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          key        (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (= (mcp.session/derive-embedding-session-key session-id) key))
-      (is (not= session-id key)
-          "Derived key must not equal the MCP session id that travels on the wire")
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
+    (let [user-id (mt/user->id :crowberto)
+          key     (mcp.session/get-or-create-session-key! user-id)]
+      (is (= (mcp.session/derive-embedding-session-key user-id) key))
+      (is (t2/exists? :core_session :key_hashed (derived-hash user-id))
           "core_session should now exist")
-      (testing "subsequent calls return the same key and don't create duplicates"
-        (is (= key (mcp.session/get-or-create-session-key! session-id user-id)))
-        (is (= 1 (t2/count :core_session :key_hashed (derived-hash session-id))))))))
-
-(deftest delete-test
-  (testing "delete! removes the core_session if one was created"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
-      (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))))))
-
-(deftest delete-scoped-to-user-test
-  (testing "delete! only removes sessions owned by the given user"
-    (let [user-id    (mt/user->id :crowberto)
-          other-id   (mt/user->id :rasta)
-          session-id (mcp.session/create! user-id)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
-      (mcp.session/delete! session-id other-id)
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
-          "Session should still exist — wrong user")
-      (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
-          "Session should be deleted by the owning user"))))
-
-(deftest owned-by-user-test
-  (testing "returns true when no core_session exists yet"
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
-      (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :crowberto))))
-      (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :rasta))))))
-  (testing "returns true for the owning user, false for others"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          _          (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (true? (mcp.session/owned-by-user? session-id user-id)))
-      (is (false? (mcp.session/owned-by-user? session-id (mt/user->id :rasta)))))))
-
-(deftest delete-noop-without-session-test
-  (testing "delete! is a no-op when no core_session was ever created"
-    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
-      ;; Should not throw — just a no-op delete
-      (mcp.session/delete! session-id (mt/user->id :crowberto)))))
+      (testing "a later cold request returns the same key and does not create a duplicate"
+        (is (= key (mcp.session/get-or-create-session-key! user-id)))
+        (is (= 1 (t2/count :core_session :key_hashed (derived-hash user-id))))))))
 
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"
     (let [login-events (atom [])
-          user-id      (mt/user->id :crowberto)
-          session-id   (mcp.session/create! user-id)]
+          user-id      (mt/user->id :crowberto)]
       (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic payload]
                                                           (when (= topic :event/user-login)
                                                             (swap! login-events conj payload)))]
-        (mcp.session/get-or-create-session-key! session-id user-id))
+        (mcp.session/get-or-create-session-key! user-id))
       (is (empty? @login-events)
           "No :event/user-login should be published for MCP embedding sessions"))))

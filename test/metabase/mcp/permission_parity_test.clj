@@ -78,7 +78,7 @@
   (let [[tool-name arguments] tool
         denied?               (get parity-case :tool-denied? tool-denied?)
         tool-result           (mt/with-test-user user
-                                (mcp.tools/call-tool nil nil tool-name arguments))
+                                (mcp.tools/call-tool nil tool-name arguments))
         rest-response         (apply mt/user-http-request-full-response user rest-request)
         tool-outcome          (outcome (denied? tool-result))
         rest-outcome          (outcome (rest-denied? rest-response))]

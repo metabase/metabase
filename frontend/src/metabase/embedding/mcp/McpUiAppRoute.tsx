@@ -37,7 +37,6 @@ interface McpUiAppRouteContentProps {
 interface McpMetabaseConfig {
   instanceUrl: string;
   sessionToken: string;
-  mcpSessionId: string;
 }
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -101,9 +100,6 @@ function McpUiAppRouteContent({
   const handleDrillThrough = useHandleMcpDrillThrough(app);
   const isHosted = useSelector(getIsHosted);
 
-  const { mcpSessionId = "" } =
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
-
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
   const deserializedCard = useMemo(() => {
@@ -165,7 +161,6 @@ function McpUiAppRouteContent({
     handleFeedbackSubmit,
   } = useMcpFeedback({
     instanceUrl,
-    mcpSessionId,
     prompt,
     query,
     sessionToken,
