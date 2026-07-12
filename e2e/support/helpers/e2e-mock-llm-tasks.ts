@@ -7,16 +7,25 @@ type MockLlmToolCall = {
   input: Record<string, unknown>;
 };
 
-type MockLlmServerOptions =
+type MockLlmResponse =
   | {
-      port: number;
       responseText: string;
       toolCall?: never;
     }
   | {
-      port: number;
       responseText?: never;
       toolCall: MockLlmToolCall;
+    };
+
+type MockLlmResponses = [MockLlmResponse, ...MockLlmResponse[]];
+
+type MockLlmServerOptions =
+  | ({ port: number; responses?: never } & MockLlmResponse)
+  | {
+      port: number;
+      responses: MockLlmResponses;
+      responseText?: never;
+      toolCall?: never;
     };
 
 /**
@@ -74,6 +83,14 @@ function buildAnthropicToolUseSSE({ name, input }: MockLlmToolCall): string {
   return lines.join("\n");
 }
 
+function getMockLlmResponses(options: MockLlmServerOptions): MockLlmResponses {
+  if (options.responses != null) {
+    return options.responses;
+  }
+
+  return [options];
+}
+
 /**
  * Start a mock server that impersonates the Anthropic Messages API.
  *
@@ -93,17 +110,22 @@ export function startMockLlmServer(
       server = null;
     }
 
-    const response = options.toolCall
-      ? buildAnthropicToolUseSSE(options.toolCall)
-      : buildAnthropicSSE(options.responseText);
+    const responses = getMockLlmResponses(options).map((response) =>
+      response.toolCall
+        ? buildAnthropicToolUseSSE(response.toolCall)
+        : buildAnthropicSSE(response.responseText),
+    );
+    const responseIterator = responses[Symbol.iterator]();
 
     server = http.createServer((_req, res) => {
+      const { value } = responseIterator.next();
+
       res.writeHead(200, {
         "content-type": "text/event-stream",
         "cache-control": "no-cache",
         connection: "keep-alive",
       });
-      res.end(response);
+      res.end(value);
     });
 
     server.on("error", reject);

@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.streaming :as streaming]))
+   [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.tools.shared :as shared]))
 
 (deftest navigate-to-part-test
   (testing "creates correct navigate_to data part structure"
@@ -18,6 +19,32 @@
       (is (= "/model/123" (:data part1)))
       (is (= "/metric/456" (:data part2)))
       (is (= "/dashboard/789" (:data part3))))))
+
+(deftest reactions->data-parts-disabled-test
+  (testing "omits navigate_to when disabled"
+    (let [memory-atom (atom {:context {:disabled_data_parts ["navigate_to"]}})
+          reactions   [{:type :metabot.reaction/redirect :url "/question#xyz"}]
+          parts       (binding [shared/*memory-atom* memory-atom]
+                        (streaming/reactions->data-parts reactions))]
+      (is (= [] parts)))))
+
+(deftest expand-reactions-xf-disabled-test
+  (testing "does not add navigate_to via reactions when disabled"
+    (let [memory-atom (atom {:context {:disabled_data_parts ["navigate_to"]}})
+          parts       [{:type      :tool-output
+                        :id        "t1"
+                        :result    {:reactions [{:type :metabot.reaction/redirect :url "/question#abc"}]}}]
+          result      (binding [shared/*memory-atom* memory-atom]
+                        (into [] streaming/expand-reactions-xf parts))]
+      (is (= 1 (count result)))
+      (is (= :tool-output (:type (first result))))
+      (is (nil? (->> result (filter #(= "navigate_to" (:data-type %))) first))))))
+
+(deftest navigate-to-part-disabled-test
+  (testing "returns nil when context disables navigate_to"
+    (let [memory-atom (atom {:context {:disabled_data_parts ["navigate_to"]}})]
+      (binding [shared/*memory-atom* memory-atom]
+        (is (nil? (streaming/navigate-to-part "/question#abc123")))))))
 
 (deftest query->question-url-test
   (testing "converts query to /question# URL"
@@ -253,7 +280,17 @@
           result (into [] streaming/expand-data-parts-xf parts)]
       (is (= 3 (count result)))
       (is (= "a" (:data-type (second result))))
-      (is (= "b" (:data-type (nth result 2)))))))
+      (is (= "b" (:data-type (nth result 2))))))
+  (testing "omits data parts suppressed by the current profile"
+    (let [memory-atom     (atom {:context {:disabled_data_parts ["navigate_to"]}})
+          suppressed-part (binding [shared/*memory-atom* memory-atom]
+                            (streaming/navigate-to-part "/question#abc"))
+          tool-output     {:type   :tool-output
+                           :id     "t1"
+                           :result {:data-parts [suppressed-part]}}
+          result          (into [] streaming/expand-data-parts-xf [tool-output])]
+      (is (nil? suppressed-part))
+      (is (= [tool-output] result)))))
 
 (deftest resolve-links-xf-test
   (testing "resolves metabase:// links in text parts"

@@ -1,5 +1,3 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-
 const { H } = cy;
 
 const GENERATED_CARD_NAME = "Feature requests mentioned twice";
@@ -11,18 +9,30 @@ describe("documents > metabot (#73690)", () => {
     cy.signInAsAdmin();
     cy.task("startMockLlmServer", {
       port: MOCK_LLM_PORT,
-      toolCall: {
-        name: "document_construct_sql_chart",
-        input: {
-          database_id: SAMPLE_DB_ID,
-          name: GENERATED_CARD_NAME,
-          description: "Feature requests mentioned at least twice.",
-          analysis: "Count orders for a deterministic e2e chart.",
-          approach: "Use a simple aggregate query against the sample database.",
-          sql: "SELECT COUNT(*) AS count FROM ORDERS",
-          viz_settings: { chart_type: "bar" },
+      responses: [
+        {
+          toolCall: {
+            name: "construct_notebook_query",
+            input: {
+              query: {
+                "lib/type": "mbql/query",
+                stages: [
+                  {
+                    "lib/type": "mbql.stage/mbql",
+                    "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+                    limit: 10,
+                  },
+                ],
+              },
+              title: GENERATED_CARD_NAME,
+              visualization: { chart_type: "table" },
+              chart_name: GENERATED_CARD_NAME,
+              chart_description: "Feature requests mentioned at least twice.",
+            },
+          },
         },
-      },
+        { responseText: "Created a chart." },
+      ],
     });
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
     H.updateSetting(

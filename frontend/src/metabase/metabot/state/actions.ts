@@ -390,7 +390,7 @@ export const sendAgentRequest = createAsyncThunk<
           url: "/api/metabot/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
           // is upsetting the types, casting for now
-          body: request as JSONValue,
+          body: request as unknown as JSONValue,
           signal,
           sourceId: agentId,
         },

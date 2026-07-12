@@ -62,6 +62,7 @@
     turn for this profile. Lets a `:required-tool-call?` profile stop as soon as it produces its
     answer (e.g. `:sql` after `edit_sql_query`) instead of being forced to keep calling tools.
     Terminality is per-profile: the same tool is non-terminal in profiles that don't list it.
+  - :disabled-data-parts - Optional vector of data part types suppressed for this profile
 
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
@@ -73,7 +74,8 @@
                [:temperature :float]
                [:tools [:vector :any]]
                [:always-on-skills {:optional true} [:vector :keyword]]
-               [:terminal-tools {:optional true} [:set :string]]]]
+               [:terminal-tools {:optional true} [:set :string]]
+               [:disabled-data-parts {:optional true} [:vector :string]]]]
   (let [tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
         tool-names    (set tool-name-seq)]
@@ -200,16 +202,12 @@
   :prompt-template "document-generate-content.selmer"
   :max-iterations  10
   :temperature     0.3
-  :required-tool-call? true
-  ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
-  ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
-  :terminal-tools  #{"document_construct_model_chart" "document_construct_sql_chart"}
-  :tools           [#'tools/list-available-data-sources-tool
-                    #'tools/list-available-fields-tool
-                    #'tools/get-field-values-tool
-                    #'tools/document-schema-collect-tool
-                    #'tools/document-construct-model-chart-tool
-                    #'tools/document-construct-sql-chart-tool]})
+  :disabled-data-parts ["navigate_to"]
+  :tools           [#'tools/search-tool
+                    #'tools/read-resource-tool
+                    #'tools/create-sql-query-tool
+                    #'tools/construct-notebook-query-tool
+                    #'tools/create-chart-tool]})
 
 (register-profile!
  {:name            :slackbot

@@ -28,14 +28,13 @@
       (is (not (contains? scopes "agent:sql:*"))))))
 
 (deftest user-metabot-perms-other-tools-scopes-test
-  (testing "other-tools :yes grants viz, dashboard, document, alert scopes"
+  (testing "other-tools :yes grants viz, dashboard, and alert scopes"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
                    :permission/metabot-nlq            :no
                    :permission/metabot-other-tools    :yes})]
       (is (contains? scopes "agent:viz:*"))
       (is (contains? scopes "agent:dashboard:*"))
-      (is (contains? scopes "agent:document:*"))
       (is (contains? scopes "agent:alert:*"))
       (is (not (contains? scopes "agent:sql:*"))))))
 

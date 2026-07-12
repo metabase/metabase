@@ -81,7 +81,21 @@ export type MetabotHistoryEntry =
 
 export type MetabotHistory = any[];
 
-export type MetabotStateContext = Record<string, any>;
+export type MetabotStateContext = {
+  queries?: Record<string, DatasetQuery>;
+  charts?: Record<string, MetabotStateChart>;
+};
+
+export type MetabotStateChart = {
+  "chart-id": string;
+  "query-id": string;
+  "chart-type": CardDisplayType;
+  "chart-link"?: string;
+  "chart-content"?: string;
+  "chart-name": string;
+  "chart-description": string;
+  "query-content"?: string;
+};
 
 export type MetabotColumnType =
   | "number"
@@ -183,7 +197,7 @@ export type MetabotAgentRequest = {
 export type MetabotAgentResponse = {
   history: MetabotHistory[];
   conversation_id: string;
-  state: any;
+  state: MetabotStateContext;
 };
 
 export type MetabotProvider =

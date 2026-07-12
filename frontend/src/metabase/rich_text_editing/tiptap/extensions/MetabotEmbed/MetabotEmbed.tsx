@@ -1,3 +1,4 @@
+import { isFulfilled } from "@reduxjs/toolkit";
 import { type JSONContent, Node, mergeAttributes } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Selection } from "@tiptap/pm/state";
@@ -7,22 +8,34 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
+import { AIMarkdown } from "metabase/metabot/components/AIMarkdown/AIMarkdown";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
+  useMetabotAgent,
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
-import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import type { State } from "metabase/redux/store";
+import {
+  type EditorHost,
+  useEditorHost,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
+import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { getMentionsCacheKey } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/mentionsUtils";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
+import type {
+  Card,
+  DatasetQuery,
+  MetabotGenerateContentRequest,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 import { wrapCardEmbed } from "../shared/layout";
 
@@ -33,6 +46,31 @@ declare module "@tiptap/core" {
     runMetabot: ProseMirrorNode; // the metabot node in the AST
   }
 }
+
+const getMetabotPromptSerializer =
+  (getState: () => State, host: EditorHost): PromptSerializer =>
+  (node) => {
+    const payload: ReturnType<PromptSerializer> = { instructions: "" };
+    return node.content.content.reduce((acc, child) => {
+      // Serialize @ mentions in the metabot prompt.
+      if (child.type.name === SmartLink.name) {
+        const { model, entityId } = child.attrs;
+        const key = getMentionsCacheKey({ model, entityId });
+        const value = host.selectors.getMentionsCache(getState())[key];
+        if (!value) {
+          return acc;
+        }
+        acc.instructions += `[${value.name}](${key})`;
+        if (!acc.references) {
+          acc.references = {};
+        }
+        acc.references[key] = value.name;
+      } else {
+        acc.instructions += child.textContent;
+      }
+      return acc;
+    }, payload);
+  };
 
 const createTextNode = (text: string, marks?: JSONContent["marks"]) => {
   return { type: "text", text, marks };
@@ -45,7 +83,7 @@ const padWithUnstyledText = (content: JSONContent): JSONContent[] => [
   createTextNode(" "),
 ];
 
-export type PromptSerializer = (
+type PromptSerializer = (
   node: ProseMirrorNode,
 ) => MetabotGenerateContentRequest;
 
@@ -54,7 +92,7 @@ const serializePromptDefault: PromptSerializer = (node) => ({
 });
 
 export const MetabotNode = Node.create<{
-  serializePrompt?: PromptSerializer;
+  getState?: () => State;
 }>({
   name: "metabot",
   group: "block",
@@ -66,7 +104,7 @@ export const MetabotNode = Node.create<{
 
   addOptions() {
     return {
-      serializePrompt: serializePromptDefault,
+      getState: undefined,
     };
   },
 
@@ -130,7 +168,11 @@ export const MetabotNode = Node.create<{
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(MetabotComponent);
+    return ReactNodeViewRenderer(
+      this.editor.options.editable && this.options.getState
+        ? MetabotComponent
+        : MetabotComponentUneditable,
+    );
   },
 
   renderHTML({ HTMLAttributes }) {
@@ -144,107 +186,224 @@ export const MetabotNode = Node.create<{
   },
 });
 
+type SubmitInputResult = Awaited<
+  ReturnType<ReturnType<typeof useMetabotAgent>["submitInput"]>
+>;
+
+type MetabotChartDraft = {
+  chart_id: string;
+  chart_name: string;
+  chart_description: string;
+  queries: DatasetQuery[];
+  visualization_settings: {
+    chart_type: VisualizationDisplay;
+  };
+};
+
+type MetabotChartState = {
+  charts?: Record<string, MetabotChartDraft>;
+  queries?: Record<string, DatasetQuery>;
+};
+
+export const getChartAndQueryFromState = (state?: MetabotChartState) => {
+  const charts = state?.charts ?? {};
+
+  return Object.values(charts).map((chart) => ({
+    chart,
+    query: chart.queries[0],
+  }));
+};
+
+const getResponseChartAndQuery = (action: SubmitInputResult) => {
+  if (!isFulfilled(action)) {
+    return [];
+  }
+
+  return getChartAndQueryFromState(
+    action.payload.data?.state as MetabotChartState | undefined,
+  );
+};
+
+const MetabotComponentUneditable = memo(() => {
+  return (
+    <NodeViewWrapper>
+      <Flex
+        bg="background_page-secondary"
+        bd="1px solid var(--border-color)"
+        className={S.borderRadius}
+        pos="relative"
+        direction="column"
+        mb="md"
+      >
+        <Box
+          pos="absolute"
+          top={0}
+          right={0}
+          opacity="0.5"
+          className={S.closeButton}
+        >
+          <Box p="md">
+            <MetabotIcon data-show-on-print />
+          </Box>
+        </Box>
+        <Flex flex={1} direction="column" className={S.contentWrapper}>
+          <NodeViewContent className={S.codeBlockTextArea} />
+        </Flex>
+      </Flex>
+    </NodeViewWrapper>
+  );
+});
+MetabotComponentUneditable.displayName = "MetabotComponentUneditable";
+
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, node, extension }: NodeViewProps) => {
     const dispatch = useDispatch();
     const host = useEditorHost();
     const document = useSelector(host.selectors.getCurrentDocument);
-    const controllerRef = useRef<AbortController | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [errorText, setErrorText] = useState("");
-    const [queryMetabot] = useLazyMetabotGenerateContentQuery();
     const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
     const metabotName = useMetabotName();
 
+    // If no chart was found, show the last agent message instead.
+    const [noChartFoundError, setNoChartFoundError] = useState(false);
+
+    const {
+      submitInput,
+      resetConversation,
+      setProfileOverride,
+      cancelRequest,
+      isDoingScience: isLoading,
+      messages,
+    } = useMetabotAgent("document");
+
+    const lastMessage = useMemo(() => {
+      return (
+        messages.filter((m) => m.role === "agent" && m.type === "text").at(-1)
+          ?.message ?? ""
+      );
+    }, [messages]);
+
+    const errorMessage = useMemo(() => {
+      const message = messages.findLast(
+        (message) =>
+          message.role === "agent" && message.type === "turn_errored",
+      );
+
+      return (
+        message?.display?.message ??
+        (message ? t`Something went wrong` : undefined)
+      );
+    }, [messages]);
+
     const handleRunMetabot = async () => {
-      const serializePrompt =
-        extension?.options?.serializePrompt || serializePromptDefault;
+      const serializePrompt = extension?.options?.getState
+        ? getMetabotPromptSerializer(extension.options.getState, host)
+        : serializePromptDefault;
       const payload = serializePrompt(node);
 
       if (!payload.instructions.trim()) {
         return;
       }
-      const controller = new AbortController();
-      controllerRef.current = controller;
-      setIsLoading(true);
-      setErrorText("");
       editor.commands.focus();
 
-      const res = queryMetabot(payload);
-      controller.signal.addEventListener("abort", () => res.abort());
-      const { data, error } = await res;
-      if (controller.signal.aborted) {
+      setNoChartFoundError(false);
+      resetConversation();
+      setProfileOverride("document-generate-content");
+
+      const response = await submitInput(payload.instructions, {
+        preventOpenSidebar: true,
+      });
+
+      if (!isFulfilled(response) || !response.payload.success) {
         return;
       }
 
-      setIsLoading(false);
-
-      if (error || !data?.draft_card) {
-        setErrorText(
-          data?.error || t`There was a problem connecting to ${metabotName}`,
-        );
+      const chartAndQuery = getResponseChartAndQuery(response);
+      if (!chartAndQuery.length) {
+        setNoChartFoundError(true);
         return;
       }
 
       const nodePosition = getPos();
 
       if (nodePosition == null) {
-        setErrorText(t`Could not find ${metabotName} block`);
+        console.error(`Could not find ${metabotName} block`);
         return;
       }
 
-      const newCardId = host.actions.generateDraftCardId();
-      const card: Card = {
-        ...data.draft_card,
-        id: newCardId,
-        entity_id: "entity_id" as Card["entity_id"],
-        created_at: "",
-        updated_at: "",
-        name: data.draft_card.name || t`Exploration`,
-        description: null,
-        type: "question",
-        public_uuid: null,
-        enable_embedding: false,
-        embedding_params: null,
-        can_write: false,
-        can_restore: false,
-        can_delete: false,
-        can_manage_db: false,
-        initially_published_at: null,
-        collection_id: null,
-        collection_position: null,
-        dashboard: null,
-        dashboard_id: null,
-        dashboard_count: null,
-        result_metadata: [],
-        last_query_start: null,
-        average_query_time: null,
-        cache_ttl: null,
-        archived: false,
-      };
+      const cards = await Promise.all(
+        chartAndQuery.map(async ({ chart, query }) => {
+          const description = chart.chart_description;
+          const newCardId = host.actions.generateDraftCardId();
+          const card: Card = {
+            display: chart.visualization_settings.chart_type,
+            dataset_query: query,
+            database_id: query.database ?? undefined,
+            parameters: [],
+            visualization_settings: {},
+            id: newCardId,
+            entity_id: "entity_id" as Card["entity_id"],
+            created_at: "",
+            updated_at: "",
+            name: chart.chart_name,
+            description: null,
+            type: "question",
+            public_uuid: null,
+            enable_embedding: false,
+            embedding_params: null,
+            can_write: false,
+            can_restore: false,
+            can_delete: false,
+            can_manage_db: false,
+            initially_published_at: null,
+            collection_id: null,
+            collection_position: null,
+            dashboard: null,
+            dashboard_id: null,
+            dashboard_count: null,
+            result_metadata: [],
+            last_query_start: null,
+            average_query_time: null,
+            cache_ttl: null,
+            archived: false,
+          };
 
-      host.analytics.trackAskMetabot(document);
-      await dispatch(host.actions.loadMetadataForDocumentCard(card));
+          host.analytics.trackAskMetabot(document);
+          await dispatch(host.actions.loadMetadataForDocumentCard(card));
 
-      dispatch(
-        host.actions.createDraftCard({
-          originalCard: card,
-          modifiedData: {},
-          draftId: newCardId,
+          dispatch(
+            host.actions.createDraftCard({
+              originalCard: card,
+              modifiedData: {},
+              draftId: newCardId,
+            }),
+          );
+
+          return {
+            cardId: newCardId,
+            description,
+          };
         }),
       );
 
       editor.commands.insertContentAt(nodePosition, [
-        wrapCardEmbed({
-          type: "cardEmbed",
-          attrs: {
-            id: newCardId,
-          },
+        ...cards.flatMap(({ cardId, description }) => {
+          return [
+            wrapCardEmbed({
+              type: "cardEmbed",
+              attrs: {
+                id: cardId,
+              },
+            }),
+            ...(description
+              ? [
+                  {
+                    type: "paragraph",
+                    content: [createTextNode(description)],
+                  },
+                ]
+              : []),
+          ];
         }),
-        {
-          type: "paragraph",
-          content: [createTextNode(data.description)],
-        },
         {
           type: "paragraph",
           content: padWithUnstyledText(
@@ -257,12 +416,6 @@ export const MetabotComponent = memo(
       ]);
 
       deleteNode();
-    };
-
-    const handleStopMetabot = () => {
-      controllerRef.current?.abort();
-      setIsLoading(false);
-      setErrorText("");
     };
 
     const onRunMetabotRef = useLatest((target: ProseMirrorNode) => {
@@ -304,22 +457,15 @@ export const MetabotComponent = memo(
             opacity="0.5"
             className={S.closeButton}
           >
-            {editor.options.editable ? (
-              <Button
-                variant="subtle"
-                p="sm"
-                m="sm"
-                size="sm"
-                onClick={() => deleteNode()}
-              >
-                <Icon name="close" data-hide-on-print />
-                <MetabotIcon data-show-on-print />
-              </Button>
-            ) : (
-              <Box p="md">
-                <MetabotIcon />
-              </Box>
-            )}
+            <Button
+              variant="subtle"
+              p="sm"
+              m="sm"
+              size="sm"
+              onClick={() => deleteNode()}
+            >
+              <Icon name="close" data-hide-on-print />
+            </Button>
           </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
             <Box
@@ -327,7 +473,7 @@ export const MetabotComponent = memo(
               hidden={!!node.content.content.length}
               contentEditable={false}
             >
-              {t`Ask ${metabotName} to generate a chart for you, and use @ to select a specific Database to use`}
+              {t`Ask ${metabotName} to generate a chart for you, type @ to mention items`}
             </Box>
             <NodeViewContent
               contentEditable={isLoading ? false : undefined}
@@ -343,36 +489,41 @@ export const MetabotComponent = memo(
                 >
                   {t`Working on it...`}
                 </Text>
-              ) : errorText ? (
+              ) : errorMessage ? (
                 <Flex gap="sm" c="text-secondary">
                   <Icon name="warning" h="1.2rem" className={S.iconShrink} />
                   <Text c="text-secondary" lh={1.4}>
-                    {errorText}
+                    {errorMessage}
+                  </Text>
+                </Flex>
+              ) : noChartFoundError ? (
+                <Flex gap="sm" c="text-secondary">
+                  <Icon name="warning" h="1.2rem" className={S.iconShrink} />
+                  <Text c="text-secondary" lh={1.4}>
+                    <AIMarkdown disallowHeading>{lastMessage}</AIMarkdown>
                   </Text>
                 </Flex>
               ) : null}
             </Flex>
-            {editor.options.editable && (
-              <Tooltip
-                label={tooltip}
-                disabled={tooltip == null}
-                position="bottom"
+            <Tooltip
+              label={tooltip}
+              disabled={tooltip == null}
+              position="bottom"
+            >
+              <Button
+                size="sm"
+                disabled={!isMetabotEnabled}
+                onClick={() =>
+                  isLoading ? cancelRequest() : handleRunMetabot()
+                }
+                classNames={{
+                  label: CS.flex, // ensures icon is vertically centered
+                }}
+                data-hide-on-print
               >
-                <Button
-                  size="sm"
-                  disabled={!isMetabotEnabled}
-                  onClick={() =>
-                    isLoading ? handleStopMetabot() : handleRunMetabot()
-                  }
-                  classNames={{
-                    label: CS.flex, // ensures icon is vertically centered
-                  }}
-                  data-hide-on-print
-                >
-                  {isLoading ? <Icon name="close" /> : t`Run`}
-                </Button>
-              </Tooltip>
-            )}
+                {isLoading ? <Icon name="close" /> : t`Run`}
+              </Button>
+            </Tooltip>
           </Flex>
         </Flex>
       </NodeViewWrapper>

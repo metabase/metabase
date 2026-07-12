@@ -34,6 +34,7 @@ import {
   getCurrentDocument,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
+  getMentionsCache,
 } from "../../selectors";
 
 /**
@@ -47,6 +48,7 @@ export const documentEditorHost: EditorHost = {
     getChildTargetId,
     getHoveredChildTargetId,
     getHasUnsavedChanges,
+    getMentionsCache,
   },
   actions: {
     createDraftCard,

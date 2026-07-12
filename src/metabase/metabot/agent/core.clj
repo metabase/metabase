@@ -17,6 +17,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -291,11 +292,13 @@
          (map #(get-structured-output (:result %)))
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
-    (fn [mem {:keys [chart-id query-id chart-type query]}]
+    (fn [mem {:keys [chart-id query-id chart-type query chart-description chart-name]}]
       (memory/store-chart mem
                           chart-id
                           {:chart_id chart-id
                            :query_id query-id
+                           :chart_name chart-name
+                           :chart_description chart-description
                            :queries [query]
                            :visualization_settings {:chart_type chart-type}})))
    memory
@@ -329,6 +332,13 @@
   so they share consistent IDs."
   [context]
   (update context :user_is_viewing #(mapv ensure-context-item-id %)))
+
+(defn- apply-profile-context-settings
+  "Apply profile-owned context settings before memory is initialized."
+  [context profile]
+  (if-let [disabled-data-parts (seq (:disabled-data-parts profile))]
+    (update context :disabled_data_parts #(vec (distinct (concat % disabled-data-parts))))
+    context))
 
 (defn- extract-query-from-context-item
   "Extract [query-id query] from viewing context item."
@@ -419,11 +429,13 @@
 (defn- init-agent
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts]}]
-  (let [context      (assign-context-ids context)
-        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
+  (let [;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
         ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
+        context      (-> context
+                         assign-context-ids
+                         (apply-profile-context-settings profile))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/profile->tools profile capabilities)
         seeded       (-> (or state {})
@@ -512,7 +524,8 @@
           ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'            (reduce (xf rf) result llm-call)
+          result'            (binding [shared/*memory-atom* memory-atom]
+                               (reduce (xf rf) result llm-call))
           parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)

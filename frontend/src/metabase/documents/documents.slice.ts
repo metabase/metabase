@@ -11,14 +11,13 @@ import type {
   DocumentsState,
   MentionCacheItem,
 } from "metabase/redux/store/documents";
+import { getMentionsCacheKey } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/mentionsUtils";
 import type {
   Card,
   Document,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-
-import { getMentionsCacheKey } from "./utils/mentionsUtils";
 
 let nextDraftCardId = -1;
 
