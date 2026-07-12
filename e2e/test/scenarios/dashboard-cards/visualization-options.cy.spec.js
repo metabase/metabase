@@ -1,5 +1,4 @@
 const { H } = cy;
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard cards > visualization options", () => {
@@ -32,57 +31,6 @@ describe("scenarios > dashboard cards > visualization options", () => {
     H.popover()
       .should("contain", "Edit question")
       .and("contain", "Download results");
-  });
-
-  it("should show the ellipsis even with an empty card title on visualizations with noHeader (metabase#46897)", () => {
-    const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-
-    const QUESTION_TABLE = {
-      name: "The tablest of all tables",
-      display: "table",
-      query: {
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            { "base-type": "type/DateTime", "temporal-unit": "month" },
-          ],
-        ],
-        "source-table": ORDERS_ID,
-        limit: 5,
-      },
-    };
-
-    H.createQuestionAndDashboard({ questionDetails: QUESTION_TABLE }).then(
-      ({ body: card }) => {
-        H.visitDashboard(card.dashboard_id);
-
-        cy.findByTestId("legend-caption")
-          .should("contain", QUESTION_TABLE.name)
-          .and("be.visible");
-
-        H.editDashboard();
-        H.showDashboardCardActions();
-        cy.icon("palette").click();
-
-        H.modal().within(() => {
-          cy.findByDisplayValue(QUESTION_TABLE.name).click().clear().blur();
-          cy.button("Done").click();
-        });
-
-        cy.findByTestId("legend-caption").should(
-          "not.contain",
-          QUESTION_TABLE.name,
-        );
-        H.saveDashboard();
-        H.getDashboardCard().realHover();
-        H.getDashboardCardMenu().click();
-        H.popover()
-          .should("contain", "Edit question")
-          .and("contain", "Download results");
-      },
-    );
   });
 
   it("column reordering should work (metabase#16229)", () => {

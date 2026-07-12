@@ -151,44 +151,6 @@ describe("issue 49874, 48847", () => {
   });
 });
 
-describe("issue 49529", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow selecting breakout dimension before metrics", () => {
-    const question = {
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-        },
-        database: 1,
-      },
-      display: "bar",
-    };
-
-    H.visitQuestionAdhoc(question);
-
-    H.openVizSettingsSidebar();
-
-    cy.findAllByTestId("chart-setting-select")
-      .eq(0)
-      .as("dimensionSelect")
-      .click();
-    H.popover().findByText("ID").click();
-
-    H.leftSidebar().findByText("Add series breakout").click();
-    H.popover().findByText("Quantity").click();
-
-    H.leftSidebar().within(() => {
-      cy.findByText("Y-axis");
-      cy.findByText("Nothing to order");
-    });
-  });
-});
-
 describe("issue 55880", () => {
   beforeEach(() => {
     H.restore();

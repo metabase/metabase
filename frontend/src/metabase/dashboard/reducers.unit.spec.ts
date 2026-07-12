@@ -184,6 +184,53 @@ describe("dashboard reducers", () => {
         }),
       ).toEqual({ ...initState, editingDashboard: null });
     });
+
+    it("should not overwrite the editing dashboard with a newer version of the same dashboard (metabase#53132)", () => {
+      jest.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      const originalDashboard = createMockDashboard({
+        id: 1,
+        name: "Original",
+      });
+      const dirtyDashboardSameId = createMockDashboard({
+        id: 1,
+        name: "Edited",
+      });
+
+      const state = {
+        ...initState,
+        editingDashboard: originalDashboard,
+      } satisfies ReturnType<typeof reducer>;
+
+      const result = reducer(state, {
+        type: SET_EDITING_DASHBOARD,
+        payload: dirtyDashboardSameId,
+      });
+
+      // The duplicate dispatch for the same dashboard id must be ignored so the
+      // save flow's diff logic keeps seeing the pristine editing snapshot.
+      expect(result.editingDashboard).toBe(originalDashboard);
+    });
+
+    it("should replace the editing dashboard when a different dashboard is set", () => {
+      const originalDashboard = createMockDashboard({
+        id: 1,
+        name: "Original",
+      });
+      const otherDashboard = createMockDashboard({ id: 2, name: "Other" });
+
+      const state = {
+        ...initState,
+        editingDashboard: originalDashboard,
+      } satisfies ReturnType<typeof reducer>;
+
+      const result = reducer(state, {
+        type: SET_EDITING_DASHBOARD,
+        payload: otherDashboard,
+      });
+
+      expect(result.editingDashboard).toBe(otherDashboard);
+    });
   });
 
   describe("REMOVE_PARAMETER", () => {

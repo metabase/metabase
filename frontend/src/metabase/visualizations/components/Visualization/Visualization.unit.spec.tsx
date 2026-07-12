@@ -337,6 +337,54 @@ describe("Visualization", () => {
     });
   });
 
+  // Regression witness for metabase#46897.
+  //
+  // A `noHeader` visualization (e.g. a bar chart) renders its own header via
+  // CartesianChart's LegendCaption, and the dashcard ellipsis menu is threaded
+  // in as `actionButtons`. When the user clears the card title (empty string)
+  // and the chart has no legend (single series), the action buttons must still
+  // be visible. CartesianChart used to gate the LegendCaption on
+  // `hasTitle = showTitle && settings["card.title"]`: an empty title dropped the
+  // caption AND routed the buttons to the legend layout, which — with no legend
+  // to render — swallowed them, hiding the ellipsis. The fix gates on
+  // `showTitle` alone so the caption (and its action buttons) always render.
+  describe("issue 46897", () => {
+    it("keeps action buttons visible on a noHeader chart with an empty title", async () => {
+      await renderViz(
+        [
+          {
+            card: createMockCard({
+              name: "My chart",
+              display: "bar",
+              visualization_settings: createMockVisualizationSettings({
+                "card.title": "",
+                "graph.dimensions": ["Dimension"],
+                "graph.metrics": ["Count"],
+              }),
+            }),
+            data: createMockDatasetData({
+              cols: [
+                createMockCategoryColumn({ name: "Dimension" }),
+                createMockNumericColumn({ name: "Count" }),
+              ],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
+            }),
+          },
+        ],
+        {
+          showTitle: true,
+          isDashboard: true,
+          actionButtons: <div data-testid="dashcard-ellipsis" />,
+        },
+      );
+
+      expect(screen.getByTestId("dashcard-ellipsis")).toBeInTheDocument();
+    });
+  });
+
   it("should not show loader and error at the same time (metabase#63410)", async () => {
     await renderViz(undefined, {
       error: "This is my error message",

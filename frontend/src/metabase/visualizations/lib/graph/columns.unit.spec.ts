@@ -1,6 +1,37 @@
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import { getCartesianChartColumns, getReferencedColumns } from "./columns";
+import {
+  getCartesianChartColumns,
+  getColumnDescriptors,
+  getReferencedColumns,
+} from "./columns";
+
+describe("getColumnDescriptors", () => {
+  const dimension = createMockColumn({ name: "dimension" });
+  const metric = createMockColumn({ name: "metric" });
+  const columns = [dimension, metric];
+
+  it("resolves each name to its column and index", () => {
+    expect(getColumnDescriptors(["metric", "dimension"], columns)).toEqual([
+      { column: metric, index: 1 },
+      { column: dimension, index: 0 },
+    ]);
+  });
+
+  it("drops names that do not resolve against the dataset", () => {
+    // Regression for metabase#66745: renaming a native-query column leaves a
+    // stale name in graph.metrics/graph.dimensions. Unresolved names must be
+    // dropped entirely, not emitted as { index: -1, column: undefined }, which
+    // crashed the row/bar viz downstream.
+    expect(getColumnDescriptors(["renamed", "metric"], columns)).toEqual([
+      { column: metric, index: 1 },
+    ]);
+  });
+
+  it("returns an empty array when no name resolves", () => {
+    expect(getColumnDescriptors(["renamed"], columns)).toEqual([]);
+  });
+});
 
 describe("getCartesianChartColumns", () => {
   it("should ignore duplicated metrics in settings while preserving the order", () => {
@@ -21,6 +52,26 @@ describe("getCartesianChartColumns", () => {
         { column: metricColumn2, index: 2 },
         { column: metricColumn, index: 1 },
       ],
+    });
+  });
+
+  it("drops a metric whose column was renamed away (metabase#66745)", () => {
+    // Mirrors the e2e: graph.metrics referenced ["Total", "World"] but the
+    // "World" column was renamed, so only the resolvable metric survives and
+    // no { column: undefined } descriptor reaches the chart.
+    const dimensionColumn = createMockColumn({ name: "dimension" });
+    const metricColumn = createMockColumn({ name: "Total" });
+    const columns = [dimensionColumn, metricColumn];
+
+    expect(
+      getCartesianChartColumns(columns, {
+        "graph.dimensions": ["dimension"],
+        "graph.metrics": ["Total", "World"],
+      }),
+    ).toStrictEqual({
+      bubbleSize: undefined,
+      dimension: { column: dimensionColumn, index: 0 },
+      metrics: [{ column: metricColumn, index: 1 }],
     });
   });
 });

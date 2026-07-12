@@ -15,6 +15,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type {
   Card,
   ConcreteFieldReference,
+  Dataset,
   Join,
   LegacyDatasetQuery,
   NativeDatasetQuery,
@@ -70,6 +71,7 @@ type SetupOpts = {
   shouldStartAdHocQuestion?: boolean;
   queryBuilderMode?: QueryBuilderMode;
   isShowingTemplateTagsEditor?: boolean;
+  hasQueryResults?: boolean;
 };
 
 const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
@@ -115,6 +117,7 @@ async function setup({
   originalCard = getDefaultOriginalQuestion(card),
   queryBuilderMode = "view",
   isShowingTemplateTagsEditor = false,
+  hasQueryResults = true,
   run,
   shouldUpdateUrl,
   shouldStartAdHocQuestion,
@@ -155,9 +158,11 @@ async function setup({
     },
   });
 
+  const queryResults: Dataset[] | null = hasQueryResults ? [queryResult] : null;
+
   const qbState = createMockQueryBuilderState({
     card: originalCard,
-    queryResults: [queryResult],
+    queryResults,
     uiControls: createMockQueryBuilderUIControlsState({
       queryBuilderMode,
       isShowingTemplateTagsEditor,
@@ -874,6 +879,25 @@ describe("QB Actions > updateQuestion", () => {
       });
 
       expect(runQuerySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("updates a pivot question before results are loaded (metabase#28874)", async () => {
+      const originalSettings =
+        card.visualization_settings["pivot_table.column_split"];
+
+      const { result } = await setup({
+        card,
+        originalCard: card,
+        hasQueryResults: false,
+        run: false,
+      });
+
+      // Without loaded results (no raw series) the pivot column split must not
+      // be recomputed - doing so previously threw and broke the notebook editor.
+      expect(result).not.toBeNull();
+      expect(
+        result.card.visualization_settings["pivot_table.column_split"],
+      ).toEqual(originalSettings);
     });
   });
 });
