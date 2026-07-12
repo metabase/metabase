@@ -1,8 +1,8 @@
-import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { routerActions } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
 
