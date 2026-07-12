@@ -548,7 +548,10 @@
             [(keyword table-name) :content])
            sql-format-quoted)))
     (catch Exception e
-      (throw (ex-info "Failed to create index table" {} e)))))
+      ;; let an already-actionable error (e.g. the pgvector-extension guidance) surface unwrapped
+      (if (= ::extension-install-failed (:type (ex-data e)))
+        (throw e)
+        (throw (ex-info "Failed to create index table" {} e))))))
 
 (comment
   (def embedding-model {:provider "ollama"
