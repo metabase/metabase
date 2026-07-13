@@ -86,7 +86,11 @@ export const TreemapChart = ({
   const formatters = useMemo(
     () =>
       chartData
-        ? getTreemapFormatters(chartData.treemapColumns, settings)
+        ? getTreemapFormatters(
+            chartData.treemapColumns,
+            settings,
+            chartData.tree,
+          )
         : null,
     [chartData, settings],
   );
