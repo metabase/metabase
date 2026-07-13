@@ -2216,15 +2216,6 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 
 This will affect things like grouping by week or filtering in GUI queries. It won't affect most SQL queries, although it is used to set the WEEK_START session variable in Snowflake.
 
-### `MB_STATIC_VIZ_MODE`
-
-- Type: keyword
-- Default: `graalvm`
-
-How static visualizations (subscription/alert charts and pulse table cell colors) are rendered:
-  `graalvm` runs the JavaScript in-process on a pooled GraalVM context (default), or `node` runs it in a
-  pool of external Node.js child processes (requires a `node` binary on the host's PATH).
-
 ### `MB_SUBSCRIPTION_ALLOWED_DOMAINS`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
