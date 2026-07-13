@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
@@ -91,7 +91,7 @@ export const ResetPasswordForm = ({
             variant="filled"
             fullWidth
           />
-          <FormErrorMessage />
+          <FormErrorMessage data-testid="form-error-message" mt="md" />
         </Form>
       </FormProvider>
     </div>

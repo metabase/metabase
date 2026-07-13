@@ -2,9 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
@@ -67,7 +67,7 @@ export const ForgotPasswordForm = ({
             variant="filled"
             fullWidth
           />
-          <FormErrorMessage />
+          <FormErrorMessage data-testid="form-error-message" mt="md" />
         </Form>
       </FormProvider>
       <PasswordFormFooter>

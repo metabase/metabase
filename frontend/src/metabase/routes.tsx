@@ -1,6 +1,7 @@
 import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
 import App from "metabase/AppComponent";
+import ScaffoldActionForm from "metabase/_scaffold-action-form";
 import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
@@ -107,6 +108,8 @@ export const getRoutes = (store: AppStore) => {
         }}
         props={{ disableCommandPalette: true }}
       />
+
+      <Route path="/_scaffold-action-form" component={ScaffoldActionForm} />
 
       {/* For compatibility: use the standard setup for embedding */}
       <Redirect from="/setup/embedding" to="/setup" />

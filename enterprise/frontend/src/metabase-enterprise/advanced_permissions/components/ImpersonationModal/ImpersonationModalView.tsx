@@ -4,13 +4,13 @@ import * as Yup from "yup";
 
 import { Alert } from "metabase/common/components/Alert";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { Link } from "metabase/common/components/Link/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSelect,
   FormSubmitButton,
@@ -131,7 +131,7 @@ export const ImpersonationModalView = ({
               <ImpersonationWarning database={database} />
 
               <FormFooter hasTopBorder>
-                <FormErrorMessage inline />
+                <FormErrorMessage />
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
                 <FormSubmitButton
                   label={t`Save`}
