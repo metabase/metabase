@@ -234,9 +234,9 @@
   Attempts CREATE EXTENSION only when `create-extension?` and CREATE SCHEMA only when `create-schema?`, so
   an already-installed extension or existing schema needs no create privilege.
   A privilege error reads as false."
-  [data-source create-extension? create-schema?]
+  [app-datasource create-extension? create-schema?]
   (try
-    (jdbc/with-transaction [tx data-source {:rollback-only true}]
+    (jdbc/with-transaction [tx app-datasource {:rollback-only true}]
       (when create-extension?
         (jdbc/execute! tx ["CREATE EXTENSION IF NOT EXISTS vector"]))
       (when create-schema?
@@ -256,25 +256,25 @@
   here never mutate the app db; the persisted CREATE EXTENSION / CREATE SCHEMA run only on the activation
   path ([[metabase-enterprise.semantic-search.pgvector-api/init-semantic-search!]])."
   []
-  (let [data-source (mdb/data-source)
-        ;; schema_exists reads information_schema.schemata (privilege-filtered), not pg_namespace.
-        ;; It answers "a semantic_search schema this role can use exists", not mere catalog presence: a
-        ;; schema the app-db role lacks USAGE on reads as absent, so the store degrades to unavailable
-        ;; rather than passing here and crashing later when init creates tables it can't write.
-        {:keys [installed available schema_exists]}
-        (jdbc/execute-one! data-source
+  (let [app-datasource (mdb/data-source)
+        ;; The schema_exists SQL alias reads information_schema.schemata (privilege-filtered), not
+        ;; pg_namespace. It answers "a semantic_search schema this role can use exists", not mere catalog
+        ;; presence: a schema the app-db role lacks USAGE on reads as absent, so the store degrades to
+        ;; unavailable rather than passing here and crashing later when init creates tables it can't write.
+        {:keys [installed available schema-exists]}
+        (jdbc/execute-one! app-datasource
                            [(str "SELECT"
                                  " EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS installed,"
                                  " EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') AS available,"
                                  " EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?) AS schema_exists")
                             app-db-schema]
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+                           {:builder-fn jdbc.rs/as-unqualified-kebab-maps})]
     (cond
       (not (or installed available)) false
-      (and installed schema_exists)  true
-      :else                          (app-db-can-provision-pgvector? data-source
+      (and installed schema-exists)  true
+      :else                          (app-db-can-provision-pgvector? app-datasource
                                                                      (not installed)
-                                                                     (not schema_exists)))))
+                                                                     (not schema-exists)))))
 
 (defn- app-db-pgvector-supported?
   "Whether the application database can act as the pgvector store, via a cached probe.

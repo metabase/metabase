@@ -152,12 +152,12 @@
      (fn [execute! table-name]
        (let [kw-tbl             (keyword table-name)
              kw-gate            (keyword gate-table)
-             tbl-model          (semantic.util/column-keyword table-name "model")
-             tbl-model-id       (semantic.util/column-keyword table-name "model_id")
-             tbl-root-coll-type (semantic.util/column-keyword table-name "root_collection_type")
+             model-col          (semantic.util/column-keyword table-name "model")
+             model-id-col       (semantic.util/column-keyword table-name "model_id")
+             root-coll-type-col (semantic.util/column-keyword table-name "root_collection_type")
              gate-id            (semantic.util/column-keyword gate-table "id")
              gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") [:inline "root_collection_type"]]
-             composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
+             composite-gate-id  [:|| model-col [:inline "_"] model-id-col]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.
          (execute! {:update kw-tbl
@@ -165,7 +165,7 @@
                     :set    {:root_collection_type gate-doc-root}
                     :where  [:and
                              [:= gate-id composite-gate-id]
-                             [:= tbl-root-coll-type nil]
+                             [:= root-coll-type-col nil]
                              [:!= gate-doc-root nil]]})
          ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]

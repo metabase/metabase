@@ -67,8 +67,9 @@
           sql (sql/format ddl :quoted true)]
       (jdbc/execute-one! pgvector sql))
     ;; create attempt_at index
-    (let [ddl {:create-index [[(keyword (str (semantic.util/table-name-part (name dlq-table)) "_attempt_at_idx")) :if-not-exists] [dlq-table :attempt_at]]}
-          sql (sql/format ddl :quoted true)]
+    (let [idx-name (keyword (str (semantic.util/table-name-part (name dlq-table)) "_attempt_at_idx"))
+          ddl      {:create-index [[idx-name :if-not-exists] [dlq-table :attempt_at]]}
+          sql      (sql/format ddl :quoted true)]
       (jdbc/execute-one! pgvector sql))
     nil))
 

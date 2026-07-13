@@ -11,12 +11,12 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(deftest quote-ident-test
+(deftest ^:parallel quote-ident-test
   (testing "wraps in double quotes and doubles any embedded double quote (the next.jdbc.quoted/postgres contract)"
     (is (= "\"semantic_search\"" (semantic.util/quote-ident "semantic_search")))
     (is (= "\"weird\"\"name\"" (semantic.util/quote-ident "weird\"name")))))
 
-(deftest column-keyword-test
+(deftest ^:parallel column-keyword-test
   (testing "a dotted-name keyword (renders as separate identifiers), never a namespaced one"
     (is (= :index_table_1.model (semantic.util/column-keyword "index_table_1" "model")))
     (is (= :semantic_search.index_table_1.model
