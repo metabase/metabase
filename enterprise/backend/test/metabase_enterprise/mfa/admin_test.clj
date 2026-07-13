@@ -41,29 +41,12 @@
                                         :provider     "totp"
                                         :confirmed_at (t/instant)
                                         :credentials  {:secret (totp/generate-secret)}}
-                 :model/User {unenrolled-id :id, unenrolled-email :email} {}]
+                 :model/User _ {}]
     (testing "requires superuser"
       (mt/user-http-request :rasta :get 403 "ee/mfa/admin/overview"))
-    (let [overview (mt/user-http-request :crowberto :get 200 "ee/mfa/admin/overview")
-          listed?  (fn [user-id users] (boolean (some #(= user-id (:id %)) users)))]
+    (let [overview (mt/user-http-request :crowberto :get 200 "ee/mfa/admin/overview")]
       (is (boolean? (:encryption_key_set overview)))
       (is (pos? (:enrolled_count overview)))
       (testing "unenrolled count covers active users without a confirmed enrollment"
         ;; both temp users are active + personal; only one is enrolled
-        (is (pos? (:unenrolled_count overview))))
-      (testing "the per-user page is bounded and queryable via the confirmed_at column"
-        (is (<= (count (:unenrolled_users overview)) (:limit overview)))
-        (is (not (listed? enrolled-id (:unenrolled_users overview))))
-        ;; the temp user may fall past page 1 on a big test instance — page to them by offset
-        (loop [offset 0]
-          (let [{:keys [unenrolled_users limit unenrolled_count]}
-                (mt/user-http-request :crowberto :get 200 "ee/mfa/admin/overview" :offset offset)]
-            (cond
-              (listed? unenrolled-id unenrolled_users)
-              (is (some #(= unenrolled-email (:email %)) unenrolled_users))
-
-              (< (+ offset limit) unenrolled_count)
-              (recur (+ offset limit))
-
-              :else
-              (is false (str "unenrolled user " unenrolled-id " never appeared in any page")))))))))
+        (is (pos? (:unenrolled_count overview)))))))

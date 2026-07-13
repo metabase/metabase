@@ -170,8 +170,6 @@
       (events/publish-event! :event/mfa-disabled {:object user})))
   api/generic-204-no-content)
 
-(def ^:private unenrolled-users-page-size 50)
-
 (def ^:private unenrolled-user-where
   ;; active personal users without a confirmed TOTP enrollment; enrollment state is the
   ;; auth_identity.confirmed_at COLUMN (queryable), not the encrypted credentials JSON
@@ -188,30 +186,14 @@
 (api.macros/defendpoint :get "/admin/overview" :- [:map
                                                    [:encryption_key_set :boolean]
                                                    [:enrolled_count     :int]
-                                                   [:unenrolled_count   :int]
-                                                   [:unenrolled_users   [:sequential
-                                                                         [:map
-                                                                          [:id    ms/PositiveInt]
-                                                                          [:email ms/NonBlankString]]]]
-                                                   [:limit              :int]
-                                                   [:offset             :int]]
-  "Admin: enrollment overview — how many users have (and haven't) set up a second factor, whether
-  the instance encrypts secrets at rest, and a paginated page of the users without 2FA (the v1
-  compensating control for deferred instance-wide enforcement: admins act on names, not counts)."
-  [_route-params
-   {:keys [offset]} :- [:map [:offset {:default 0} ms/IntGreaterThanOrEqualToZero]]]
+                                                   [:unenrolled_count   :int]]
+  "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and
+  whether the instance encrypts secrets at rest."
+  []
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
    :enrolled_count     (t2/count :model/AuthIdentity :provider "totp" :confirmed_at [:not= nil])
-   :unenrolled_count   (t2/count :model/User {:where unenrolled-user-where})
-   :unenrolled_users   (map #(select-keys % [:id :email])
-                            (t2/select [:model/User :id :email]
-                                       {:where    unenrolled-user-where
-                                        :order-by [:%lower.email]
-                                        :limit    unenrolled-users-page-size
-                                        :offset   offset}))
-   :limit              unenrolled-users-page-size
-   :offset             offset})
+   :unenrolled_count   (t2/count :model/User {:where unenrolled-user-where})})
 
 ;;; -------------------------------------------------- Recovery codes --------------------------------------------------
 

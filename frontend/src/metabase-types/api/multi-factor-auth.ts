@@ -13,17 +13,8 @@ export interface MfaEnrollResponse {
   otpauth_uri: string;
 }
 
-export interface MfaUnenrolledUser {
-  id: number;
-  email: string;
-}
-
 export interface MfaAdminOverview {
   encryption_key_set: boolean;
   enrolled_count: number;
   unenrolled_count: number;
-  // one page of the users without a confirmed enrollment, ordered by email
-  unenrolled_users: MfaUnenrolledUser[];
-  limit: number;
-  offset: number;
 }

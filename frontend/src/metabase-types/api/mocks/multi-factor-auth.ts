@@ -27,8 +27,5 @@ export const createMockMfaAdminOverview = (
   encryption_key_set: true,
   enrolled_count: 0,
   unenrolled_count: 0,
-  unenrolled_users: [],
-  limit: 50,
-  offset: 0,
   ...opts,
 });
