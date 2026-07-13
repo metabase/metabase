@@ -1,8 +1,10 @@
 import type { ChangeEvent } from "react";
-import { useRef, useState } from "react";
-import { t } from "ttag";
+import { useMemo, useRef, useState } from "react";
+import { c, t } from "ttag";
 
+import { skipToken, useListCardsQuery } from "metabase/api";
 import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -66,18 +68,46 @@ export const QuestionActions = ({
     : undefined;
 
   const hasCollectionPermissions = question.canWrite();
-  const canAppend =
-    hasCollectionPermissions && !!question._card.based_on_upload;
+  const uploadTableId = question._card.based_on_upload;
+  const canAppend = hasCollectionPermissions && !!uploadTableId;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadWarningModalOpen, setIsUploadWarningModalOpen] =
+    useState(false);
+
+  const { data: cardsBasedOnUploadTable } = useListCardsQuery(
+    typeof uploadTableId === "number"
+      ? { f: "table", model_id: uploadTableId }
+      : skipToken,
+  );
+
+  const otherModelsBasedOnUploadTable = useMemo(
+    () =>
+      (cardsBasedOnUploadTable ?? []).filter(
+        (card) => card.type === "model" && card.id !== question.id(),
+      ),
+    [cardsBasedOnUploadTable, question],
+  );
+
+  const otherModelNames = otherModelsBasedOnUploadTable
+    .map((model) => model.name)
+    .join(", ");
 
   const handleUploadClick = (
     newUploadMode: UploadMode.append | UploadMode.replace,
   ) => {
-    if (fileInputRef.current) {
-      setUploadMode(newUploadMode);
-      fileInputRef.current.click();
+    setUploadMode(newUploadMode);
+
+    if (otherModelsBasedOnUploadTable.length > 0) {
+      setIsUploadWarningModalOpen(true);
+    } else {
+      fileInputRef.current?.click();
     }
+  };
+
+  const handleUploadWarningConfirm = () => {
+    setIsUploadWarningModalOpen(false);
+    fileInputRef.current?.click();
   };
 
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -158,6 +188,17 @@ export const QuestionActions = ({
               </Menu.Dropdown>
             </Menu>
           </Box>
+          <ConfirmModal
+            opened={isUploadWarningModalOpen}
+            title={t`Upload data to this model?`}
+            message={c(
+              "{0} is a comma-separated list of model names sharing the same uploaded table",
+            )
+              .t`This model shares its underlying uploaded table with ${otherModelNames}. This CSV upload will also change the data for those models, along with any other questions or models based on them.`}
+            confirmButtonText={t`Upload anyway`}
+            onConfirm={handleUploadWarningConfirm}
+            onClose={() => setIsUploadWarningModalOpen(false)}
+          />
         </>
       )}
       {!question.isArchived() && (
