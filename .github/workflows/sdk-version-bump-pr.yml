@@ -294,6 +294,9 @@ jobs:
           BRANCH: ${{ github.ref_name }}
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
+          # TODO (EMB-2095) auto-approve and auto-merge this PR once the computed
+          # version/distTag/tagAsLatest have proven out over a few real releases.
+          # Nothing gates on review today - merging is only manual as a seatbelt.
           gh pr create --base "$BRANCH" \
                        --assignee "${GITHUB_ACTOR}" \
                        --reviewer metabase/embedding \
