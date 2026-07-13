@@ -84,6 +84,23 @@
           (map (fn [clause] [:not clause]))
           (entity-collection-clauses [:in :collection_id pids]))))
 
+(defn findings-where
+  "Base WHERE for one finding-type's list: the valid + caller-visible base narrowed by the filters every
+  endpoint shares - personal-collection exclusion (unless `include-personal-collections`), `entity-types`,
+  and `query` name search - plus any finding-type-specific `extra-filters`. Each filter is precomputed so
+  a nil (no-op) is skipped, not conjoined as a null AND-term."
+  [finding-type {:keys [include-personal-collections entity-types query]} & extra-filters]
+  (let [personal-filter    (when-not include-personal-collections (exclude-personal-collections-clause))
+        entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
+                             [:in :entity_type (mapv name types)])
+        name-search-filter (name-search-clause query)]
+    (into (cond-> [:and (valid-clause finding-type) (visible-findings-clause)]
+            personal-filter    (conj personal-filter)
+            entity-type-filter (conj entity-type-filter)
+            name-search-filter (conj name-search-filter))
+          (filter some?)
+          extra-filters)))
+
 ;;; ----------------------------------- display hydration (shared layer) --------------------------------
 ;;; name/created_at/creator are denormalized (frozen at scan time); description, the collection
 ;;; breadcrumb, the transform owner, and slow roll-up culprits are live-hydrated, batched per entity-type.

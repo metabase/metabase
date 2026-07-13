@@ -14,7 +14,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.request.core :as request]
-   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -109,40 +108,24 @@
   (assoc api.common/base-sort-column->field :duration-ms :duration_ms))
 
 (defn- stale-where-clause
-  "WHERE for the stale list: the valid + permission-visible base, narrowed by the optional per-request
-  filters. Each optional filter is precomputed so a nil (no-op) filter is skipped, not conjoined as a
-  null AND-term."
-  [{:keys [include-personal-collections entity-types threshold-days query]}]
-  (let [personal-filter    (when-not include-personal-collections (api.common/exclude-personal-collections-clause))
-        entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
-                             [:in :entity_type (mapv name types)])
-        ;; "less stale than threshold-days" = active more recently than the cutoff → excluded. Never-used
-        ;; (`last_active_at` nil) is maximally stale, so it always passes. Mirrors the scan-time cutoff.
-        threshold-filter   (when threshold-days
-                             (let [cutoff (t/minus (t/local-date) (t/days threshold-days))]
-                               [:or [:= :last_active_at nil] [:<= :last_active_at cutoff]]))
-        name-search-filter (api.common/name-search-clause query)]
-    (cond-> [:and (api.common/valid-clause "stale") (api.common/visible-findings-clause)]
-      personal-filter    (conj personal-filter)
-      entity-type-filter (conj entity-type-filter)
-      threshold-filter   (conj threshold-filter)
-      name-search-filter (conj name-search-filter))))
+  "The shared finding-list WHERE plus the stale-specific `threshold-days` filter - keeps findings whose
+  `last_active_at` is on or before `today - threshold-days` (never-used always pass)."
+  [{:keys [threshold-days] :as params}]
+  (api.common/findings-where
+   "stale" params
+   ;; "less stale than threshold-days" = active more recently than the cutoff → excluded. Never-used
+   ;; (`last_active_at` nil) is maximally stale, so it always passes. Mirrors the scan-time cutoff.
+   (when threshold-days
+     (let [cutoff (t/minus (t/local-date) (t/days threshold-days))]
+       [:or [:= :last_active_at nil] [:<= :last_active_at cutoff]]))))
 
 (defn- slow-where-clause
-  "WHERE for the slow list: the valid + permission-visible base, narrowed by the optional per-request
-  filters. `min-duration-ms` is a native `duration_ms` floor - containers filter naturally, since they
-  stamp a representative duration. Same precompute-then-`cond->` shape as `stale-where-clause`."
-  [{:keys [include-personal-collections entity-types min-duration-ms query]}]
-  (let [personal-filter    (when-not include-personal-collections (api.common/exclude-personal-collections-clause))
-        entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
-                             [:in :entity_type (mapv name types)])
-        duration-filter    (when min-duration-ms [:>= :duration_ms min-duration-ms])
-        name-search-filter (api.common/name-search-clause query)]
-    (cond-> [:and (api.common/valid-clause "slow") (api.common/visible-findings-clause)]
-      personal-filter    (conj personal-filter)
-      entity-type-filter (conj entity-type-filter)
-      duration-filter    (conj duration-filter)
-      name-search-filter (conj name-search-filter))))
+  "The shared finding-list WHERE plus the slow-specific `min-duration-ms` floor on the native `duration_ms`
+  (containers filter naturally, since they stamp a representative duration)."
+  [{:keys [min-duration-ms] :as params}]
+  (api.common/findings-where
+   "slow" params
+   (when min-duration-ms [:>= :duration_ms min-duration-ms])))
 
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 
