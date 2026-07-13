@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DatabaseId, Table } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
