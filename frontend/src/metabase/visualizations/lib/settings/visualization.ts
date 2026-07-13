@@ -9,7 +9,6 @@ import type {
   SettingsExtra,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   ColumnSettings,
   DimensionReference,
@@ -84,11 +83,9 @@ function normalizeColumnSettings(
   for (const oldColumnKey of Object.keys(columnSettings)) {
     const [refOrName, fieldRef]: [string, DimensionReference] =
       JSON.parse(oldColumnKey);
-    // if the key is a reference, normalize the mbql syntax
+    // keys are re-serialized so legacy formatting differences don't matter
     const newColumnKey =
-      refOrName === "ref"
-        ? JSON.stringify(["ref", normalize(fieldRef)])
-        : oldColumnKey;
+      refOrName === "ref" ? JSON.stringify(["ref", fieldRef]) : oldColumnKey;
     newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
   }
   return newColumnSettings;

@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   AggregateFieldReference,
   DimensionReference,
@@ -89,7 +88,7 @@ export const getNormalizedDimensionReference = (
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
-    return normalize(normalizedReference);
+    return normalizedReference;
   }
 
   return mbql;
