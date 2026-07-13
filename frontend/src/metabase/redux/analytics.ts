@@ -42,6 +42,7 @@ export const trackDownloadResults = ({
     event: "download_results_clicked",
     resource_type: analyticsResourceType,
     accessed_via: accessedVia,
+    // Unjustified type cast. FIXME
     export_type: exportType as any,
   });
 };

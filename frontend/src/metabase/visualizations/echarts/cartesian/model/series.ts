@@ -345,6 +345,7 @@ export const getDimensionModel = (
         columnByCardId[series.card.id] = cardColumns.dimension.column;
         return columnByCardId;
       },
+      // Unjustified type cast. FIXME
       {} as Record<CardId, DatasetColumn>,
     ),
   };
@@ -857,6 +858,7 @@ export const getFormatters = (
 
         return formatterByStackName;
       },
+      // Unjustified type cast. FIXME
       {} as StackedSeriesFormatters,
     ),
     seriesLabelsFormatters: seriesLabelsFormattersInfo.reduce(
@@ -867,6 +869,7 @@ export const getFormatters = (
 
         return formatterBySeriesKey;
       },
+      // Unjustified type cast. FIXME
       {} as SeriesFormatters,
     ),
   };

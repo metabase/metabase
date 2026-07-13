@@ -20,6 +20,7 @@ const ELIGIBLE_DATABASE = createMockDatabase({
   settings: { "database-enable-workspaces": true },
 });
 
+// Unjustified type cast. FIXME
 function setup({ workspaces = [] as Workspace[] } = {}) {
   setupListWorkspacesEndpoint(workspaces);
   setupDatabasesEndpoints([ELIGIBLE_DATABASE]);

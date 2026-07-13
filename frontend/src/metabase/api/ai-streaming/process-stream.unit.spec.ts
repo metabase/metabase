@@ -100,6 +100,7 @@ describe("processChatResponse", () => {
 
   it("should ignore unhandled event types", async () => {
     const mockStream = createMockSSEStream([
+      // Unjustified type cast. FIXME
       { type: "reasoning-start", id: "r1" } as unknown as SSEEvent,
     ]);
     const config = getMockedCallbacks();

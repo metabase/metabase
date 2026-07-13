@@ -32,9 +32,11 @@ const ALL_COLS = [
   col("USER_AGENT", "User Agent"),
 ];
 
+// Unjustified type cast. FIXME
 const jsQuery = { database: 1, type: "query", query: {} } as DatasetQuery;
 
 function build(cols = ALL_COLS, hasTenants = true, hasPii = true) {
+  // Unjustified type cast. FIXME
   const data = { data: { cols, rows: [[]] } } as unknown as EventsData;
   const series = buildEventsRawSeries(data, jsQuery, hasTenants, hasPii);
   if (!series) {
@@ -53,6 +55,7 @@ function surfacedTableColumns(
   if (!("visualization_settings" in card)) {
     throw new Error("expected table.columns to be set");
   }
+  // Unjustified type cast. FIXME
   return card.visualization_settings["table.columns"] as {
     name: string;
     enabled: boolean;
@@ -67,6 +70,7 @@ describe("buildEventsRawSeries", () => {
     expect(buildEventsRawSeries(undefined, jsQuery, true, true)).toBeNull();
     expect(
       buildEventsRawSeries(
+        // Unjustified type cast. FIXME
         { data: { cols: [], rows: [] } } as unknown as EventsData,
         null,
         true,
@@ -80,6 +84,7 @@ describe("buildEventsRawSeries", () => {
       col("WEIRD_A", "Weird A"),
       col("USER_AGENT", "User Agent"),
     ];
+    // Unjustified type cast. FIXME
     const data = {
       data: { cols: foreign, rows: [[]] },
     } as unknown as EventsData;

@@ -53,6 +53,7 @@ function CreateActionForm({
 
   return (
     <FormProvider
+      // Unjustified type cast. FIXME
       initialValues={initialValues as FormValues}
       validationSchema={ACTION_SCHEMA}
       onSubmit={onCreate}

@@ -30,6 +30,7 @@ export function getCardUiParameters(
   const question = new Question(card, metadata);
 
   return valuePopulatedParameters.map((parameter) => {
+    // Unjustified type cast. FIXME
     const target: ParameterTarget | undefined = (
       parameter as ParameterWithTarget
     ).target;

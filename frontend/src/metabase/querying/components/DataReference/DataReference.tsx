@@ -22,6 +22,7 @@ export const DataReference = ({
 }) => {
   if (dataReferenceStack.length) {
     const page = dataReferenceStack[dataReferenceStack.length - 1];
+    // Unjustified type cast. FIXME
     const Pane = PANES[page.type] as ComponentType<
       DataReferencePaneProps<typeof page>
     >;

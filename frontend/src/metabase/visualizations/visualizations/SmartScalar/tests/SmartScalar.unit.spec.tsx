@@ -346,6 +346,7 @@ describe("SmartScalar", () => {
         series({
           rows,
           insights,
+          // Unjustified type cast. FIXME
           comparisonType: getPeriodsAgoComparison("hi" as unknown as number),
         }),
       );

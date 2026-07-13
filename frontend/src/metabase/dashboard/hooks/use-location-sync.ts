@@ -1,10 +1,10 @@
 import type { Location } from "history";
 import { useEffect, useMemo } from "react";
-import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import { isNullOrUndefined } from "metabase/utils/types";
 
@@ -20,6 +20,7 @@ const getDefaultDisplayOption = <
   Key extends SYNCED_KEY,
 >(
   key: Key,
+  // Unjustified type cast. FIXME
 ): Value => DEFAULT_SYNCED_DASHBOARD_OPTIONS[key] as Value;
 
 const isEmptyOrDefault = <
@@ -47,6 +48,7 @@ export const useLocationSync = <
   const dispatch = useDispatch();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);
+  // Unjustified type cast. FIXME
   const hashValue = (hashOptions[key] ?? null) as Value | null;
 
   const defaultValue = getDefaultDisplayOption<Value, Key>(key);

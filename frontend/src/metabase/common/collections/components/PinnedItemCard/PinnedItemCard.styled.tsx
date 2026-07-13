@@ -20,6 +20,7 @@ export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`
         `}
 `;
 
+// Unjustified type cast. FIXME
 export const ActionsContainer = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;

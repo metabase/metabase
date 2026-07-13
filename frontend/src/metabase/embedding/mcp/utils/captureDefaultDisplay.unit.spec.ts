@@ -5,6 +5,7 @@ import {
   captureDefaultDisplay,
 } from "./captureDefaultDisplay";
 
+// Unjustified type cast. FIXME
 const createQueryResult = () => ({}) as Dataset;
 
 const createState = ({

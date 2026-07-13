@@ -21,6 +21,7 @@ waitForAuthConfigAndStartEarlyAuthFlow();
 const manifest: { chunks: string[] } = "__SDK_CHUNK_MANIFEST__" as any;
 
 const scriptUrl =
+  // Unjustified type cast. FIXME
   (document.currentScript as HTMLScriptElement | null)?.src || "";
 const baseUrl = new URL("./", scriptUrl).href;
 

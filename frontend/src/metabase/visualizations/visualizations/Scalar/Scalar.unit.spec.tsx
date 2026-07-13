@@ -16,6 +16,7 @@ import {
 import { Scalar } from "./Scalar";
 
 const series = (value: number | null = 1.23) =>
+  // Unjustified type cast. FIXME
   [
     {
       card: createMockCard({ display: "scalar" }),
@@ -23,6 +24,7 @@ const series = (value: number | null = 1.23) =>
     },
   ] as Series;
 
+// Unjustified type cast. FIXME
 const mockedProps = {} as ComponentProps<typeof Scalar>;
 
 const settings = {

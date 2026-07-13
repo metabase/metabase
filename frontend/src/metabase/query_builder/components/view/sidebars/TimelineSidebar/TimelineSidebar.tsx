@@ -190,5 +190,6 @@ const formatDate = (date: Dayjs, unit?: DatetimeUnit) => {
   if (unit == null) {
     return date.format("ll");
   }
+  // Unjustified type cast. FIXME
   return formatDateTimeWithUnit(date.startOf(unit as OpUnitType), unit);
 };

@@ -712,6 +712,7 @@ describe("ModelActions", () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),
       });
+      // Unjustified type cast. FIXME
       const modelName = model.displayName() as string;
 
       expect(screen.queryByText(modelName)).not.toBeInTheDocument();

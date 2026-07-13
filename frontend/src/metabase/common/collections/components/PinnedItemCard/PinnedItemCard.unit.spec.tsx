@@ -56,6 +56,7 @@ const getCollectionItem = ({
   description?: string;
   collection_position?: number;
 } = {}): CollectionItem & { description: string } => {
+  // Unjustified type cast. FIXME
   return createMockCollectionItem({
     ...rest,
     id,

@@ -175,6 +175,7 @@ describe("WebhookForm", () => {
     });
 
     fetchMock.post("path:/api/channel/test", async (call) => {
+      // Unjustified type cast. FIXME
       const body = JSON.parse(call.options?.body as string);
       return body.details.url?.endsWith("good") ? { ok: true } : 400;
     });

@@ -81,6 +81,7 @@ export const CollectionBulkActions = memo(
           Promise.all(
             selectedItems
               .filter(isMovable)
+              // Unjustified type cast. FIXME
               .map((item) => setCollection(item as MovableItem, destination)),
           ),
         );

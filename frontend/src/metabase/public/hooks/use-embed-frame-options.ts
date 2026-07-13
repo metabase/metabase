@@ -19,6 +19,7 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     hide_download_button = null,
     downloads = DEFAULT_EMBED_DISPLAY_PARAMS.downloadsEnabled,
     locale,
+    // Unjustified type cast. FIXME
   } = parseHashOptions(location.hash) as EmbeddingHashOptions & {
     // this parameter is not supported anymore, but we access it in this hook to log an error
     hide_download_button?: boolean | null;

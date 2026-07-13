@@ -218,7 +218,8 @@ export function useListColumns(
   const rightColumns = useMemo(() => {
     return !listSettings
       ? []
-      : (listSettings.right
+      : // Unjustified type cast. FIXME
+        (listSettings.right
           .map((colName) => cols.find((col) => col.name === colName))
           .filter(Boolean) as DatasetColumn[]);
   }, [cols, listSettings]);

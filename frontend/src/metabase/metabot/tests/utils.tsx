@@ -135,6 +135,7 @@ export const lastReqBody = async (
   // The client calls `fetch(new Request(url, init))`, so the body lives on the
   // Request object rather than a separate init arg.
   const [request] = agentSpy.mock.lastCall ?? [];
+  // Unjustified type cast. FIXME
   return JSON.parse(await (request as Request).clone().text());
 };
 
@@ -255,6 +256,7 @@ export function setup(
   return {
     rerender,
     conversationIds: Object.keys(metabotInitialState.conversations),
+    // Unjustified type cast. FIXME
     store: store as Omit<typeof store, "getState"> & {
       getState: () => State;
     },

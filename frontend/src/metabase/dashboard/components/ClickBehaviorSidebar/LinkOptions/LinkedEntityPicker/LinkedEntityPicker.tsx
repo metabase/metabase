@@ -39,6 +39,7 @@ import S from "../LinkOptions.module.css";
 const LINK_TARGETS = {
   // TODO: we can probably just have one picker to pick either a question or a dashboard
   question: {
+    // Unjustified type cast. FIXME
     Name: ({ id }: { id: CardId | DashboardId | undefined }) => (
       <QuestionName id={id as CardId | undefined} />
     ),
@@ -206,6 +207,7 @@ export function LinkedEntityPicker({
           tabId: undefined,
         });
       } else {
+        // Unjustified type cast. FIXME
         updateSettings({
           ...clickBehavior,
           targetId,
@@ -307,6 +309,7 @@ export function LinkedEntityPicker({
       {isPickerOpen && (
         <PickerComponent
           title={getModalTitle()}
+          // Unjustified type cast. FIXME
           value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
           onChange={(newTarget) => {
             handleSelectLinkTargetEntityId(newTarget.id);
