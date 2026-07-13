@@ -1373,8 +1373,14 @@
                      :model/Card zero-scale-card (assoc (pivot-card-with-scalar 0) :created_at created_at)]
         (let [named-cards {:one-scale-card one-scale-card
                            :two-scale-card zero-scale-card
-                           :no-scale-card no-scale-card}]
-          ;; TODO: We don't support JSON for pivot tables, once we do, we should add them here
+                           :no-scale-card no-scale-card}
+              outputs (into {}
+                            (for [card-name [:one-scale-card :two-scale-card :no-scale-card]
+                                  ;; TODO: We don't support JSON for pivot tables, once we do, we should add them here
+                                  export-format [:csv :xlsx]]
+                              [[card-name export-format]
+                               (all-outputs! (get named-cards card-name)
+                                             {:export-format export-format :format-rows true :pivot true})]))]
           (doseq [[c1-name c2-name export-format expected] [[:one-scale-card  :no-scale-card  :csv  true]
                                                             [:one-scale-card  :two-scale-card :csv  false]
                                                             [:no-scale-card   :two-scale-card :csv  false]
@@ -1382,11 +1388,8 @@
                                                             [:one-scale-card  :two-scale-card :xlsx false]
                                                             [:no-scale-card   :two-scale-card :xlsx false]]]
             (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
-              (let [c1 (get named-cards c1-name)
-                    c2 (get named-cards c2-name)
-                    [unique-to-a unique-to-b _both]
-                    (data/diff (all-outputs! c1 {:export-format export-format :format-rows true :pivot true})
-                               (all-outputs! c2 {:export-format export-format :format-rows true :pivot true}))]
+              (let [[unique-to-a unique-to-b _both]
+                    (data/diff (get outputs [c1-name export-format]) (get outputs [c2-name export-format]))]
                 (if expected
                   (is (= [nil nil] [unique-to-a unique-to-b]))
                   (is (or (some? unique-to-a) (some? unique-to-b))))))))))))
