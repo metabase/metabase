@@ -15,14 +15,16 @@
                                                {:scan_id      "round-trip"
                                                 :entity_type  :card
                                                 :entity_id    1
-                                                :finding_type :stale
-                                                :details      {:threshold_days 90}}))
+                                                :finding_type :slow
+                                                :duration_ms  25000
+                                                :details      {:threshold_ms 15000}}))
           row (t2/select-one :model/ContentDiagnosticsFinding :id fid)]
-      (testing "keyword + JSON transforms round-trip; detected_at defaults; rows start active"
+      (testing "keyword + JSON transforms round-trip; duration_ms persists; detected_at defaults; rows start active"
         (is (=? {:scan_id        "round-trip"
                  :entity_type    :card
-                 :finding_type   :stale
-                 :details        {:threshold_days 90}
+                 :finding_type   :slow
+                 :duration_ms    25000
+                 :details        {:threshold_ms 15000}
                  :detected_at    some?
                  :invalidated_at nil}
                 row)))

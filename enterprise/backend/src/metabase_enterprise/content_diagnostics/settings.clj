@@ -11,3 +11,21 @@
   :type       :positive-integer
   :export?    true
   :doc        false)
+
+(defsetting content-diagnostics-slow-card-threshold-seconds
+  (deferred-tru "Cards whose average query time exceeds this are flagged slow by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    15
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
+
+(defsetting content-diagnostics-slow-transform-threshold-seconds
+  (deferred-tru "Transforms whose last run took longer than this are flagged slow by Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    60
+  :type       :positive-integer
+  :export?    true
+  :doc        false)
