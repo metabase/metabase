@@ -246,21 +246,15 @@ export function ExplorationSidebar({
     );
   } else if (isEmptyDueToHidden) {
     treeContent = (
-      <Stack
+      <Text
         flex={1}
-        gap="0.5rem"
         px="1rem"
+        c="text-secondary"
+        fs="italic"
         data-testid="exploration-all-hidden"
       >
-        {treeWithHidden.map((heading) => (
-          <Text key={heading.id} fw={500}>
-            {heading.name}
-          </Text>
-        ))}
-        <Text c="text-secondary" fs="italic">
-          {t`All queries have been hidden.`}
-        </Text>
-      </Stack>
+        {t`All items have been hidden.`}
+      </Text>
     );
   } else {
     treeContent = (
