@@ -98,23 +98,6 @@ jobs:
             exit 1
           fi
 
-      - name: Ensure no other open version-bump PR targets this branch
-        env:
-          BRANCH: ${{ github.ref_name }}
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: |
-          # The per-branch concurrency group above only serializes *runs* of
-          # this workflow, not open PRs - two bump PRs can sit open against
-          # the same branch simultaneously and race each other at release
-          # time (whichever release run reads package.template.json last on
-          # merge wins, and the other PR's release fails loudly on a
-          # duplicate git tag). Catch it here, before doing any work.
-          EXISTING_PR=$(gh pr list --base "$BRANCH" --label sdk-release-trigger --state open --json url --jq '.[0].url // empty')
-          if [ -n "$EXISTING_PR" ]; then
-            echo "::error::An open sdk-release-trigger PR already targets '$BRANCH': $EXISTING_PR. Merge or close it before opening another version bump."
-            exit 1
-          fi
-
       - name: Bump version with semver
         id: bump
         env:
