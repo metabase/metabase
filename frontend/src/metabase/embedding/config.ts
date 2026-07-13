@@ -1,5 +1,6 @@
 import {
   EMBEDDING_SDK_CONFIG,
+  isDataAppDev,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
@@ -47,7 +48,6 @@ export function setIsDataApp(
   { isDev = false }: { isDev?: boolean } = {},
 ) {
   EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
-  EMBEDDING_SDK_CONFIG.isDataApp = true;
   EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
   EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
   EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppName;
@@ -82,12 +82,5 @@ export function isEmbedding() {
  * The check that it is NOT a data app is required, as a data app is rendered inside an iframe inside Metabase
  */
 export function isEmbedPreview() {
-  return IFRAMED_IN_SELF && !EMBEDDING_SDK_CONFIG.isDataApp;
-}
-
-/**
- * Detect if a data app is run in dev env (Vite dev app)
- */
-export function isDataAppDev() {
-  return EMBEDDING_SDK_CONFIG.isDataAppDev;
+  return IFRAMED_IN_SELF && !isDataAppDev();
 }
