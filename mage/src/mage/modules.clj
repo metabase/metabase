@@ -163,8 +163,8 @@
   (or (get-in modules-config [module :ns-prefix])
       (default-ns-prefix-for module)))
 
-(def ^:private test-source-file-extensions
-  [".clj" ".cljc" ".cljs" ".bb"])
+(def ^:private backend-test-source-file-extensions
+  [".clj" ".cljc"])
 
 (defn- ns-prefix->test-path-fragment [ns-prefix]
   (->> (str/split ns-prefix #"\.")
@@ -189,7 +189,7 @@
         path-prefix    (module->test-path-prefix modules-config module)
         test-dir       (io/file path-prefix)
         test-files     (concat
-                        (for [extension test-source-file-extensions
+                        (for [extension backend-test-source-file-extensions
                               :let      [file (io/file (str path-prefix "_test" extension))]
                               :when     (.isFile file)]
                           file)
@@ -197,7 +197,7 @@
                           (for [file (file-seq test-dir)
                                 :when (and (.isFile ^java.io.File file)
                                            (some #(str/ends-with? (str file) %)
-                                                 test-source-file-extensions))]
+                                                 backend-test-source-file-extensions))]
                             file)))]
     (into (sorted-set)
           (comp (filter #(= module (file->module prefix->module (str %))))
