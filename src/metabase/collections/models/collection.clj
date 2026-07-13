@@ -1114,6 +1114,37 @@
                   (effective-ancestors* collection collection-id->collection)))
          collections)))
 
+(defn- collection-path*
+  "The breadcrumb path of one already-hydrated `collection`, e.g. \"Our analytics / Marketing / Q3\"."
+  [collection]
+  (let [;; a personal subtree's breadcrumb leads with the personal collection, not the "Our analytics" root
+        ancestors (cond->> (:effective_ancestors collection)
+                    (is-personal-collection-or-descendant-of-one? collection)
+                    (remove #(= "root" (:id %))))]
+    (->> (conj (vec ancestors) collection)
+         personal-collections-with-ui-details
+         (map :name)
+         (str/join " / "))))
+
+(defn collection-paths
+  "Breadcrumb paths for `collection-ids`, as `{id \"Our analytics / Marketing / Q3\"}`, resolved in one
+  batch. `nil` and `\"root\"` both map to the root collection's name, so a caller can look up an item's
+  location without special-casing items that live at the root.
+
+  Ancestors the caller can't read are omitted, exactly as the app's breadcrumb omits them. Ids that
+  don't resolve to a collection are absent from the result."
+  [collection-ids]
+  (let [ids   (into #{} (filter integer?) collection-ids)
+        colls (when (seq ids)
+                (t2/hydrate (t2/select [:model/Collection :id :name :location :personal_owner_id
+                                        :namespace :archived_directly]
+                                       :id [:in ids])
+                            :effective_ancestors))
+        root  (:name (root-collection-with-ui-details nil))]
+    (into {nil root "root" root}
+          (map (juxt :id collection-path*))
+          colls)))
+
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))

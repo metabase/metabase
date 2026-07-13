@@ -3,7 +3,10 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.agent-api.search :as agent-api.search]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.agent-api.tools :as agent-api.tools]
    [metabase.agent-api.validation :as agent-api.validation]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -63,22 +66,9 @@
 
 (defn- collection-path
   "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing / Q3\".
-  Ancestors the caller can't read are omitted, matching the app breadcrumb.
   A `nil` `collection-id` is the root collection (\"Our analytics\"), not a personal collection."
   [collection-id]
-  (if-not collection-id
-    (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                    :namespace :archived_directly]
-                                   collection-id)
-          ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
-          ;; drops ancestors the caller can't read. A personal subtree leads with the personal
-          ;; collection instead, so drop that root crumb for them.
-          ancestors (cond->> (:effective_ancestors (t2/hydrate coll :effective_ancestors))
-                      (collection/is-personal-collection-or-descendant-of-one? coll)
-                      (remove #(= "root" (:id %))))
-          chain     (collection/personal-collections-with-ui-details (conj (vec ancestors) coll))]
-      (str/join " / " (map :name chain)))))
+  (get (collections/collection-paths [collection-id]) collection-id))
 
 (defn submit-mcp-visualization-feedback!
   "Submit MCP Apps visualization feedback to Harbormaster.
@@ -159,15 +149,10 @@
   "Search for tables, models, metrics, saved questions, dashboards, and collections.
 
   Supports both term-based and semantic search queries. Results are ranked using
-  Reciprocal Rank Fusion when both query types are provided."
-  {:scope metabot/agent-search
-   :tool  {:name "search"
-           :title "Search Metabase Content"
-           :description (str "Search for tables, models, metrics, saved questions, dashboards, and collections "
-                             "in Metabase. "
-                             "Use term_queries for keyword search or semantic_queries for natural language search. "
-                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
-           :annotations {:read-only? true}}}
+  Reciprocal Rank Fusion when both query types are provided.
+
+  The `search` tool is served by `/v2/search`; this endpoint is HTTP-only."
+  {:scope metabot/agent-search}
   [_route-params
    _query-params
    {term-queries     :term_queries
@@ -186,6 +171,114 @@
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
+
+;;; ---------------------------------------------------- Search v2 ---------------------------------------------------
+
+(mr/def ::search-request
+  "Arguments to the `search` tool. Optional and nullable throughout: which of them are present is what
+  picks the mode, and [[metabase.agent-api.search/search]] refuses a call that picks none."
+  [:map
+   [:term_queries
+    {:optional true
+     :tool/description (str "Keyword queries, as an array of strings, matched against names and "
+                            "descriptions — for example [\"orders\", \"revenue\"]. Each query is "
+                            "searched separately and the rankings are merged, so send one query per "
+                            "concept rather than one long sentence.")}
+    [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
+   [:semantic_queries
+    {:optional true
+     :tool/description (str "Natural-language queries, as an array of strings, matched by meaning — "
+                            "for example [\"how much revenue did we make last quarter\"]. Add one only "
+                            "for a genuinely different facet of the request, not a reworded synonym.")}
+    [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
+   [:recent
+    {:optional true
+     :tool/description (str "Return the items you viewed most recently instead of searching. Takes "
+                            "`type`, `limit`, and `offset`; passing queries or any other filter with it "
+                            "is an error.")}
+    [:maybe :boolean]]
+   [:type
+    {:optional true
+     :tool/description (str "Restrict results to these types. Omit to search everything in the index. "
+                            "\"snippet\" is served from the snippet table rather than the index: it is "
+                            "matched by `term_queries` only, and cannot be combined with "
+                            "`collection_id` or `created_by`.")}
+    [:maybe [:sequential (into [:enum] agent-api.search/types)]]]
+   [:collection_id
+    {:optional true
+     :tool/description (str "Restrict results to a collection and everything nested under it. Accepts a "
+                            "numeric id or a 21-character entity_id.")}
+    [:maybe agent-api.tools/IdRef]]
+   [:created_by
+    {:optional true
+     :tool/description (str "Restrict results to content you created. Only questions, models, metrics, "
+                            "dashboards, measures, and documents record a creator.")}
+    [:maybe [:= "me"]]]
+   [:archived
+    {:optional true
+     :tool/description "Search the trash instead of live content."}
+    [:maybe :boolean]]
+   [:limit
+    {:optional true
+     :tool/description "Results per page (default 20, max 50)."}
+    [:maybe [:int {:min 1 :max 50}]]]
+   [:offset
+    {:optional true
+     :tool/description "Results to skip — page with the offset the truncation message names."}
+    [:maybe [:int {:min 0}]]]
+   [:response_format
+    {:optional true
+     :tool/description (str "\"concise\" (default) returns id, name, type, description, and "
+                            "collection_path per hit; \"detailed\" returns every field the search index "
+                            "carries.")}
+    agent-api.tools/ResponseFormatField]])
+
+(mr/def ::search-response-v2
+  "The bounded list envelope. `total` is absent when queries were given: a fused ranking is the union of
+  several ranked windows and so counts nothing. `truncated` marks a page with more behind it, and
+  `truncation_message` names the next offset and the parameters that narrow the set."
+  [:map
+   [:data               [:sequential :map]]
+   [:returned           :int]
+   [:total              {:optional true} :int]
+   [:truncated          {:optional true} :boolean]
+   [:truncation_message {:optional true} :string]])
+
+(api.macros/defendpoint :post "/v2/search" :- ::search-response-v2
+  "Find content in Metabase — the one entry point for discovery.
+
+  Three modes, and a call has to pick one: ranked queries (`term_queries` / `semantic_queries`), a
+  filter-only listing (`type` / `collection_id` / `created_by` / `archived`), or `recent: true`.
+  Snippets are not in the search index and are served from their own table under `type: [\"snippet\"]`."
+  {:scope "agent:discover:read"
+   :tool  {:name  "search"
+           :title "Search Metabase Content"
+           :description
+           (str "Find content in Metabase: questions, models, metrics, measures, segments, dashboards, "
+                "documents, collections, tables, databases, transforms, and snippets.\n"
+                "\n"
+                "Pick one of three modes:\n"
+                "- Rank by relevance: `term_queries` (keywords) and/or `semantic_queries` (natural "
+                "language). Both are arrays of strings; each query is searched separately and the "
+                "rankings merged, so send one query per concept.\n"
+                "- List by filter: `type`, `collection_id`, `created_by`, and/or `archived` with no "
+                "queries — \"all my dashboards\".\n"
+                "- `recent: true`: the items you viewed most recently.\n"
+                "\n"
+                "Every hit carries `type` and `id` — hand them straight to `get_content` to read one. "
+                "`collection_path` says where it lives. Page with `limit` (default 20, max 50) and "
+                "`offset`.")
+           :annotations {:read-only? true :idempotent? true}
+           :input-examples [{:semantic_queries ["revenue by region"] :term_queries ["revenue"]}
+                            {:type ["dashboard"] :created_by "me" :limit 50}
+                            {:recent true}]}}
+  [_route-params
+   _query-params
+   body :- ::search-request]
+  (agent-api.search/search
+   (-> body
+       (m/update-existing :term_queries coerce-query-list)
+       (m/update-existing :semantic_queries coerce-query-list))))
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 

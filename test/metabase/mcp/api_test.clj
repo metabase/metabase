@@ -644,7 +644,7 @@
     (search.tu/with-legacy-search
       (let [search-data (call-tool "search" {:term_queries ["orders"]})]
         (is (contains? search-data :data))
-        (is (contains? search-data :total_count)))))
+        (is (contains? search-data :returned)))))
   (testing "search accepts a singleton string as a one-element query list"
     (search.tu/with-legacy-search
       (is (contains? (call-tool "search" {:term_queries "orders"}) :data))))
@@ -652,7 +652,7 @@
     (search.tu/with-legacy-search
       (let [search-data (call-tool "search" {:term_queries "[\"orders\"]"})]
         (is (contains? search-data :data))
-        (is (contains? search-data :total_count))))))
+        (is (contains? search-data :returned))))))
 
 (deftest tool-result-emits-structured-content-test
   (testing "tools that declare outputSchema emit structuredContent — guards the regression where Claude Desktop got 500s because we declared outputSchema without matching structuredContent"
@@ -1244,7 +1244,7 @@
   (testing "tools/list with unrestricted scopes returns all tools"
     (is (= all-tool-names (set (map :name (mcp.tools/list-tools #{::scope/unrestricted}))))))
   (testing "tools/list with specific scope only returns matching tools"
-    (let [tool-names (set (map :name (mcp.tools/list-tools #{"agent:search"})))]
+    (let [tool-names (set (map :name (mcp.tools/list-tools #{"agent:discover:read"})))]
       (is (contains? tool-names "search"))
       (is (not (contains? tool-names "update_question")))
       (is (not (contains? tool-names "construct_query")))))

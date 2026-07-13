@@ -220,6 +220,72 @@ Response:
 }
 ```
 
+### POST /v2/search
+
+The `search` tool: one entry point for discovery, over every kind of content.
+Three modes, and a call has to pick exactly one — a call that picks none is a
+400 naming all three.
+
+| Mode | How you ask for it |
+| --- | --- |
+| Ranked search | `term_queries` (keywords) and/or `semantic_queries` (natural language) |
+| Listing | any filter (`type`, `collection_id`, `created_by`, `archived`) with no queries |
+| Recents | `recent: true` — the caller's recently viewed items |
+
+Each query is searched separately and the rankings are merged (reciprocal rank
+fusion), so send one query per concept rather than one long sentence.
+
+Request:
+
+```json
+{
+  "term_queries": ["revenue"],
+  "type": ["question", "dashboard"],
+  "collection_id": 12,
+  "created_by": "me",
+  "archived": false,
+  "limit": 20,
+  "offset": 0,
+  "response_format": "concise"
+}
+```
+
+- `type` — `question`, `model`, `metric`, `measure`, `segment`, `dashboard`,
+  `document`, `collection`, `table`, `database`, `transform`, `snippet`.
+- `collection_id` — a numeric id or a 21-character `entity_id`; matches the
+  collection and everything nested under it.
+- `created_by` — `"me"`. Only questions, models, metrics, dashboards, measures,
+  and documents record a creator; combining it with any other type is a 400
+  rather than an empty result.
+- `snippet` is not in the search index and is served from the snippet table:
+  it is matched by `term_queries` only, and cannot be combined with
+  `collection_id` or `created_by`. A caller without native-query permission
+  gets none.
+
+Response — the bounded list envelope. `total` is present only when the set is
+countable (a fused ranking is a union of ranked windows and counts nothing):
+
+```json
+{
+  "data": [
+    {
+      "id": 42,
+      "name": "Revenue Overview",
+      "type": "dashboard",
+      "description": "Weekly revenue vs target",
+      "collection_path": "Our analytics / Finance / KPIs"
+    }
+  ],
+  "returned": 1,
+  "total": 12,
+  "truncated": true,
+  "truncation_message": "12 results — showing 1. narrow with `type`, `collection_id` or page with `offset: 1`."
+}
+```
+
+`response_format: "detailed"` returns every field the search index carries
+instead of the five above.
+
 ### POST /v2/construct-query
 
 Construct an MBQL query from a representations JSON payload. Returns a

@@ -12,6 +12,7 @@
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.toolsets :as mcp.toolsets]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -120,12 +121,24 @@
    "query"           query-mcp-input-malli
    "execute_query"   execute-query-mcp-input-malli})
 
+(def ^:private list-envelope-mcp-output-malli
+  "MCP-visible output of a v2 list read. The rows travel once, in the `content` text block; the
+   structured channel carries only what a next call consumes — how much came back, how much there is,
+   and how to get the rest. See [[v2-content]]."
+  [:map
+   [:returned           {:tool/description "Rows in this page."} :int]
+   [:total              {:optional true :tool/description "Rows in the whole set, when it is countable."} [:maybe :int]]
+   [:truncated          {:optional true :tool/description "Whether more rows sit behind this page."} [:maybe :boolean]]
+   [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset and the parameters that narrow the set."} [:maybe :string]]])
+
 (def ^:private mcp-output-overrides
   "tool-name → Malli schema. Replaces the manifest's derived `:outputSchema`.
    Both construct tools emit `{:query_handle}` via the body transform (see
-   [[tools-storing-query-handle]]), so they share the same output schema."
+   [[tools-storing-query-handle]]), so they share the same output schema. A v2 list read declares the
+   structured channel, not the body: the body is in the text block."
   {"construct_query"        construct-query-mcp-output-malli
-   "construct_native_query" construct-query-mcp-output-malli})
+   "construct_native_query" construct-query-mcp-output-malli
+   "search"                 list-envelope-mcp-output-malli})
 
 (defn- override->input-json-schema [malli tool-name]
   (tools-manifest/assert-optional-fields-nullable! malli tool-name)
@@ -377,6 +390,16 @@
    (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
      (some? structured) (assoc :structuredContent structured))))
 
+(defn- v2-content
+  "MCP result for a v2 tool: the body once in the text block, and in `structuredContent` only the fields
+   a next call consumes. For a list envelope those are its counts and its truncation steer — never a
+   second copy of `:data`, which is what `text-content` does for v1 and what the response budget cannot
+   afford twice."
+  [body]
+  (two-channel-content body
+                       (when (and (map? body) (contains? body :data))
+                         (not-empty (dissoc body :data)))))
+
 ;; JSON-RPC error codes recorded as `mcp_tool_call_log.error_code` for failed tool calls.
 ;; Kept in sync with the `error_code` -> `error_type` CASE in the v_mcp_tool_calls view SQL. The
 ;; view also maps -32000 ("Server error") defensively (JSON-RPC reserves -32000..-32099), but the
@@ -442,8 +465,10 @@
    are preserved through the synthetic request.
 
    `body-transform-fn`, when provided, is applied to the 200 response body before
-   wrapping with text-content. Used to post-process construct_query results."
-  [method path token-scopes params & {:keys [body-transform-fn]}]
+   wrapping. Used to post-process construct_query results. `content-fn` wraps the body as MCP content
+   and defaults to [[text-content]]; v2 tools pass [[v2-content]]."
+  [method path token-scopes params & {:keys [body-transform-fn content-fn]
+                                      :or   {content-fn text-content}}]
   (let [result (promise)]
     (deliver-agent-api-response result method path token-scopes params)
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
@@ -453,8 +478,8 @@
         response
 
         (= 200 (:status response))
-        (text-content (cond-> (:body response)
-                        body-transform-fn (body-transform-fn)))
+        (content-fn (cond-> (:body response)
+                      body-transform-fn (body-transform-fn)))
 
         :else
         (error-content (extract-error-message response))))))
@@ -495,9 +520,11 @@
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)
         body-transform-fn     (when (tools-storing-query-handle tool-name)
-                                (make-store-construct-query-result api/*current-user-id*))]
+                                (make-store-construct-query-result api/*current-user-id*))
+        content-fn            (if (mcp.toolsets/tool->toolset tool-name) v2-content text-content)]
     (invoke-agent-api method api-path token-scopes remaining-args
-                      :body-transform-fn body-transform-fn)))
+                      :body-transform-fn body-transform-fn
+                      :content-fn content-fn)))
 
 ;; --- Design note: centralized null-stripping at the MCP boundary --------------------------------
 ;; The MCP inputSchema we publish makes every optional field required-and-nullable, because strict

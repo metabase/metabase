@@ -159,20 +159,25 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{api
+   :uses    #{activity-feed
+              api
               auth-identity
               channel
               collections
               dashboards
+              eid-translation
               events
               lib
               lib-be
               llm
               metabot
+              native-query-snippets
+              permissions
               queries
               query-permissions
               query-processor
               request
+              search
               server
               settings
               util}

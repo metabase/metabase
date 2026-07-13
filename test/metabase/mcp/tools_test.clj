@@ -5,6 +5,10 @@
    [clojure.walk :as walk]
    [metabase.api.macros.scope :as api.scope]
    [metabase.mcp.tools :as mcp.tools]
+   [metabase.mcp.toolsets :as mcp.toolsets]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
+   [metabase.test :as mt]
    [metabase.util.json :as json]))
 
 (deftest ^:parallel drop-nil-args-test
@@ -111,3 +115,31 @@
     (let [unrestricted (mcp.tools/tools-hash #{::api.scope/unrestricted})
           empty-scopes (mcp.tools/tools-hash #{})]
       (is (not= unrestricted empty-scopes)))))
+
+;;; ------------------------------------------- v2 tool results -----------------------------------------------------
+
+(deftest search-carries-its-rows-once-test
+  (binding [search.ingestion/*force-sync* true]
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Card _ {:name "TwoChannel Question"}]
+        (mt/with-test-user :rasta
+          (let [result (mcp.tools/call-tool nil "search" {:term_queries ["TwoChannel"] :type ["question"]})
+                text   (json/decode+kw (-> result :content first :text))]
+            (testing "the rows travel once, in the text block"
+              (is (= ["TwoChannel Question"] (map :name (:data text)))))
+            (testing "and structuredContent carries only what a next call consumes — never a second copy"
+              (is (= {:returned 1} (:structuredContent result)))
+              (is (not (contains? (:structuredContent result) :data))))
+            (testing "a fused ranking counts nothing, so it reports no total; a filter-only listing does"
+              (is (= {:returned 1 :total 1}
+                     (:structuredContent (mcp.tools/call-tool nil "search" {:type ["question"]})))))))))))
+
+(deftest search-is-granted-by-its-toolset-test
+  (testing "the tool declares the group scope its toolset grants, so tools/list filters it with the rest of discover"
+    (let [tool (some #(when (= "search" (:name %)) %)
+                     (mcp.tools/list-tools #{(mcp.toolsets/toolset-scope :discover)}))]
+      (is (some? tool))
+      (is (true? (get-in tool [:annotations :readOnlyHint])))
+      (testing "and its outputSchema describes the structured channel, not the body"
+        (is (= #{:returned :total :truncated :truncation_message}
+               (set (keys (get-in tool [:outputSchema :properties])))))))))

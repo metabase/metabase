@@ -21,6 +21,8 @@
    [metabase.mcp.tools :as mcp.tools]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -33,11 +35,13 @@
 ;;; --------------------------------------------------- Harness ----------------------------------------------------
 
 (defn- tool-body
-  "The tool result's payload: the structured channel when the tool declares one, else the text block."
+  "The tool result's payload. The text block carries it on every tool: a v2 result puts the body there
+   exactly once and reserves `structuredContent` for next-step fields, so reading the structured channel
+   first would see counts where the rows are."
   [result]
-  (or (:structuredContent result)
-      (when-let [text (some-> result :content first :text)]
-        (try (json/decode+kw text) (catch Exception _ text)))))
+  (or (when-let [text (some-> result :content first :text)]
+        (try (json/decode+kw text) (catch Exception _ text)))
+      (:structuredContent result)))
 
 (defn- query-failed?
   "Whether `body` is a query result the query processor refused to run. The QP reports a permission
@@ -192,3 +196,40 @@
         :expect   :allowed
         :tool     ["execute_question" {:id (:id card)}]
         :rest     [:post (str "card/" (:id card) "/query")]}))))
+
+;;; ------------------------------------------------- search -------------------------------------------------------
+;;
+;; `search` never refuses a call, so there is no denial to hold against REST's — it answers with what
+;; the caller can read. Its parity claim is therefore about the *result set*: the hits the tool returns
+;; are the hits the app's own search returns for that user, and content they cannot read is in neither.
+
+(defn- search-tool-names
+  [user term]
+  (mt/with-test-user user
+    (->> (mcp.tools/call-tool nil "search" {:term_queries [term] :type ["question"]})
+         tool-body
+         :data
+         (map :name)
+         set)))
+
+(defn- rest-search-names
+  [user term]
+  (->> (mt/user-http-request user :get 200 "search" :q term :models "card")
+       :data
+       (map :name)
+       set))
+
+(deftest search-returns-what-the-app-returns-parity-test
+  (binding [search.ingestion/*force-sync* true]
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card       _    {:name "ParityHidden Question" :collection_id (:id coll)}]
+        (mt/with-non-admin-groups-no-collection-perms coll
+          (testing "a question in a collection the caller cannot read is in neither surface's results"
+            (is (= #{} (search-tool-names :rasta "ParityHidden")))
+            (is (= (rest-search-names :rasta "ParityHidden")
+                   (search-tool-names :rasta "ParityHidden"))))
+          (testing "and an admin, who can read it, gets it from both"
+            (is (= #{"ParityHidden Question"} (search-tool-names :crowberto "ParityHidden")))
+            (is (= (rest-search-names :crowberto "ParityHidden")
+                   (search-tool-names :crowberto "ParityHidden")))))))))

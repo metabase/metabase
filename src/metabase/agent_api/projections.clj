@@ -37,7 +37,10 @@
    :field-values     {:concise [:field_id :values :has_more_values]}
    :measure          {:concise [:id :name :description :table_id :archived]}
    :parameter-values {:concise [:values :has_more_values]}
-   :search-result    {:concise [:id :name :model :description]}
+   ;; `collection_path` ("Finance / KPIs") is resolved server-side in one batch: the search engine gives a
+   ;; hit only its immediate collection, and an agent that wants to tell the user where something lives
+   ;; would otherwise walk the tree once per hit.
+   :search-result    {:concise [:id :name :type :description :collection_path]}
    :segment          {:concise [:id :name :description :table_id :archived]}
    :snippet          {:concise [:id :name :description :collection_id :archived]}
    :table            {:concise [:id :name :display_name :description :schema :db_id :entity_type

@@ -19,6 +19,7 @@
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
+  collection-paths
   create-library-collection!
   descendant-ids
   library-collection

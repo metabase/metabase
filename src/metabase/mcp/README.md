@@ -54,7 +54,7 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope                     | Grants access to                                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `agent:search`            | `search`                                                                                                       |
+| `agent:discover:read`     | the discover toolset: `search`                                                                                  |
 | `agent:resource:read`     | `read_resource` (always granted to any authenticated caller; per-URI perm checks happen inside the dispatcher) |
 | `agent:query:construct`   | `construct_query`                                                                                              |
 | `agent:query`             | `query`                                                                                                        |

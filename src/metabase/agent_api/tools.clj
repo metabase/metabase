@@ -14,6 +14,7 @@
    the MCP layer serializes them."
   (:require
    [metabase.api.common :as api]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -169,6 +170,19 @@
                              (tru "Invalid reference {0}: expected a numeric id or a 21-character entity_id."
                                   (pr-str v)))))
 
+(defn resolve-id
+  "The numeric id a ref names: an integer passes through, a 21-character entity_id is translated against
+   `model`, and one that names nothing is a 404. `nil` stays `nil`, so an absent optional id argument
+   threads through untouched. This is what lets a tool accept whichever identifier `search` handed the
+   agent without the agent having to translate it first."
+  [model ref]
+  (case (:kind (classify-ref ref))
+    :null      nil
+    :id        ref
+    :entity-id (eid-translation/->id-or-404 model ref)
+    (teaching-error (tru "{0} is not a valid id here: pass a numeric id or a 21-character entity_id."
+                         (pr-str ref)))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The `_write` method-enum recipe
 ;;; ──────────────────────────────────────────────────────────────────
@@ -277,9 +291,12 @@
   "Build a steering message naming the narrowing parameter(s) and the next offset. `total` and
    `returned` size the set; `noun` names the items (\"tables\"); `scope` is an optional qualifier
    (\"in schema `public`\"); `narrow-with` is a seq of parameter names that shrink the set; `offset`
-   and `limit`, when given, add the next-page hint."
+   and `limit`, when given, add the next-page hint. `total` may be absent — a fused ranking is a union
+   of several ranked windows and counts nothing — and then the message sizes only what was returned."
   [{:keys [total returned noun scope narrow-with offset limit]}]
-  (let [head    (str total " " noun (when scope (str " " scope)) " — showing " returned)
+  (let [head    (if total
+                  (str total " " noun (when scope (str " " scope)) " — showing " returned)
+                  (str "Showing " returned " " noun (when scope (str " " scope))))
         narrow  (when (seq narrow-with)
                   (str "narrow with "
                        (->> narrow-with (map #(str "`" (name %) "`")) (interpose ", ") (apply str))))
