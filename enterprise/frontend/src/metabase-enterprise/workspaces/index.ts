@@ -2,6 +2,7 @@ import { PLUGIN_WORKSPACES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { WorkspaceDatabaseSection } from "./components/WorkspaceDatabaseSection";
+import { WorkspacesSettingsPage } from "./pages/WorkspacesSettingsPage";
 import { getDataStudioRoutes, getWorkspaceDatabaseRoutes } from "./routes";
 import { canManageWorkspaces } from "./selectors";
 
@@ -11,5 +12,6 @@ export function initializePlugin() {
     PLUGIN_WORKSPACES.getDataStudioRoutes = getDataStudioRoutes;
     PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes = getWorkspaceDatabaseRoutes;
     PLUGIN_WORKSPACES.WorkspaceDatabaseSection = WorkspaceDatabaseSection;
+    PLUGIN_WORKSPACES.WorkspacesSettingsPage = WorkspacesSettingsPage;
   }
 }

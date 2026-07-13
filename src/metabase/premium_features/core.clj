@@ -23,6 +23,7 @@
   assert-has-feature
   assert-has-any-features
   canonically-has-feature?
+  check-token
   ee-feature-error
   is-trial?
   has-any-features?

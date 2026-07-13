@@ -248,6 +248,14 @@
      (s/assert* ::config parsed-config)
      (cond-> parsed-config expand-templates? expand-templates))))
 
+(defn validate-config
+  "Spec-validate `parsed-config` without applying anything — the same validation
+   [[initialize!]] performs before initializing sections. Throws when the map
+   does not match [[::config]]."
+  [parsed-config]
+  (s/assert* ::config parsed-config)
+  :ok)
+
 (defn- sort-by-initialization-order
   "Sort the various config sections. The `:settings` section should always be applied first (important, since it can
   affect the other sections)."

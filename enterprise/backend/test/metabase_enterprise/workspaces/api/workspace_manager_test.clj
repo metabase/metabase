@@ -94,6 +94,54 @@
             (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
                                   {:name "Nope" :database_ids []})))))))
 
+(deftest create-workspace-defaults-to-enabled-databases-test
+  (testing "POST / without database_ids attaches every database with workspaces enabled"
+    (mt/with-temp [:model/Database {enabled-1-id :id} {:engine   :postgres
+                                                       :details  {}
+                                                       :settings {:database-enable-workspaces true}}
+                   :model/Database {enabled-2-id :id} {:engine   :postgres
+                                                       :details  {}
+                                                       :settings {:database-enable-workspaces true}}
+                   :model/Database _ {:engine :postgres :details {}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+          (is (=? {:databases [{:database_id enabled-1-id :status "provisioned"}
+                               {:database_id enabled-2-id :status "provisioned"}]}
+                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                        {:name "All enabled"})))))))
+  (testing "POST / without database_ids is rejected when no database has workspaces enabled"
+    (mt/with-temp [:model/Database _ {:engine :postgres :details {}}]
+      (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/"
+                            {:name "Nope"}))))
+
+(deftest create-workspace-rolls-back-when-instance-vanishes-during-provisioning-test
+  (testing "POST / rolls back the whole workspace when its target instance disappears mid-provisioning"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/WorkspaceInstance {instance-id :id} {:name    "Vanishing"
+                                                               :url     "https://vanish.example.com"
+                                                               :details {:api-key "k"}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [vanishing-provisioner
+              (reify provisioning/Provisioner
+                (init! [_ _ _ _]
+                  ;; simulate another admin's `DELETE /instance/:id` landing while this
+                  ;; request's blocking provisioning step is still in flight.
+                  (t2/delete! :model/WorkspaceInstance :id instance-id)
+                  {:schema "mb_iso_vanish" :database_details {:user "u" :password "p"}})
+                (grant! [_ _ _ _ _] nil)
+                (destroy! [_ _ _ _] nil))]
+          (with-redefs [provisioning/dispatching-provisioner vanishing-provisioner]
+            (mt/user-http-request :crowberto :post 404 "ee/workspace-manager/"
+                                  {:name "Ghost Create" :database_ids [db-id] :instance_id instance-id}))
+          (is (not (t2/exists? :model/Workspace :name "Ghost Create"))
+              "the workspace must not exist after the instance vanished during provisioning")
+          (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
+              "the workspace's database rows must not exist either")
+          (is (t2/exists? :model/WorkspaceInstance :id instance-id)
+              "the simulated deletion itself is rolled back along with everything else"))))))
+
 (deftest metadata-export-test
   (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"
     (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}
@@ -132,6 +180,13 @@
       (is (= "After" (t2/select-one-fn :name :model/Workspace :id ws-id)))
       (testing "404 for a missing id"
         (mt/user-http-request :crowberto :put 404 "ee/workspace-manager/13371337" {:name "X"})))))
+
+(deftest rename-workspace-rolls-back-on-bad-instance-id-test
+  (testing "PUT /:id with a bad instance_id 404s and leaves the name unchanged (atomic with the rename)"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]
+      (mt/user-http-request :crowberto :put 404 (str "ee/workspace-manager/" ws-id)
+                            {:name "After" :instance_id Integer/MAX_VALUE})
+      (is (= "Before" (t2/select-one-fn :name :model/Workspace :id ws-id))))))
 
 (deftest download-config-endpoint-test
   (testing "GET /:id/config"

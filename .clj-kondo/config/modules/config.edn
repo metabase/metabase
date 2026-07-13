@@ -2830,13 +2830,15 @@
            permissions
            premium-features
            sample-data
+           search
            settings
            setup
            sync
            users
            util
+           enterprise/remote-sync
            enterprise/workspaces}
-   :model-imports #{:model/ApiKey :model/Database :model/User}}
+   :model-imports #{:model/ApiKey :model/Database :model/Notification :model/Pulse :model/User}}
 
   enterprise/advanced-permissions
   {:team "UX West"
@@ -3723,6 +3725,7 @@
            sql-tools
            util
            workspaces
+           enterprise/remote-sync
            enterprise/serialization}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database

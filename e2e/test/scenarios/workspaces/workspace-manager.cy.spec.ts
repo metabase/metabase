@@ -31,7 +31,7 @@ describe("scenarios > workspaces > workspace manager", () => {
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.newButton().click();
       H.NewWorkspaceModal.nameInput().type(workspaceName);
-      H.NewWorkspaceModal.databaseCheckbox(POSTGRES_DB_NAME).click();
+      H.NewWorkspaceModal.databaseItem(POSTGRES_DB_NAME).should("be.visible");
       H.NewWorkspaceModal.createButton().click();
 
       cy.log("the database (with all of its schemas) is attached at once");
@@ -84,7 +84,7 @@ describe("scenarios > workspaces > workspace manager", () => {
       H.WorkspaceListPage.visit();
       H.WorkspaceListPage.newButton().click();
       H.NewWorkspaceModal.nameInput().type(workspaceName);
-      H.NewWorkspaceModal.databaseCheckbox(MYSQL_DB_NAME).click();
+      H.NewWorkspaceModal.databaseItem(MYSQL_DB_NAME).should("be.visible");
       H.NewWorkspaceModal.createButton().click();
 
       H.WorkspaceListPage.workspace(workspaceName)

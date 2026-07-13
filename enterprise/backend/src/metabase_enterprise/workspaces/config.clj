@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.config
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
@@ -116,14 +117,29 @@
       :details   {}
       :is_sample true}]))
 
+(defn- settings-entry
+  "Remote-sync settings for the child instance: the parent's git connection with
+   `:read-write` type so the child can push its changes to a branch. nil when the
+   parent has no remote sync configured."
+  []
+  (when-let [{:keys [url token branch]} (remote-sync/connection-settings)]
+    {:remote-sync-url    url
+     :remote-sync-token  token
+     :remote-sync-branch branch
+     :remote-sync-type   "read-write"}))
+
 (defn build-workspace-config
   "Return a downloadable config.yml-shaped map for `workspace-id`:
 
     {:version 1
      :config  {:databases [...]
+               :settings  {:remote-sync-url ... :remote-sync-token ... :remote-sync-branch ... :remote-sync-type \"read-write\"}
                :workspace {:name      <ws-name>
                            :databases {<db-name> {:input_schemas [<schema-name> ...]
                                                   :output        {:db ? :schema ?}}}}}
+
+  The `:settings` block carries the parent's remote-sync git connection (only when
+  configured) so the child instance can pull shared content and push its changes.
 
   Each database entry merges the underlying `metabase_database.details` with the
   WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
@@ -149,13 +165,15 @@
                                [wsd db])
             ws-entries       (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
             stub-entries     (mapv stub-database-entry (stub-databases workspace-db-ids))
-            sample-entries   (sample-database-entries)]
+            sample-entries   (sample-database-entries)
+            settings         (settings-entry)]
         {:version 1
-         :config  {:databases (-> ws-entries
-                                  (into stub-entries)
-                                  (into sample-entries))
-                   :workspace {:name      (:name ws)
-                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
+         :config  (cond-> {:databases (-> ws-entries
+                                          (into stub-entries)
+                                          (into sample-entries))
+                           :workspace {:name      (:name ws)
+                                       :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
+                    settings (assoc :settings settings))}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

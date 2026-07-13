@@ -2,8 +2,11 @@ import fetchMock from "fetch-mock";
 
 import type {
   DeleteWorkspaceResponse,
+  TestWorkspaceInstanceConnectionResponse,
   Workspace,
   WorkspaceId,
+  WorkspaceInstance,
+  WorkspaceInstanceId,
 } from "metabase-types/api";
 
 const BASE_URL = "path:/api/ee/workspace-manager";
@@ -37,4 +40,28 @@ export function setupDeleteWorkspaceEndpoint(
 
 export function setupDeleteWorkspaceEndpointError(workspaceId: WorkspaceId) {
   fetchMock.delete(`${BASE_URL}/${workspaceId}`, { status: 500 });
+}
+
+export function setupListWorkspaceInstancesEndpoint(
+  instances: WorkspaceInstance[],
+) {
+  fetchMock.get(`${BASE_URL}/instance`, instances);
+}
+
+export function setupCreateWorkspaceInstanceEndpoint(
+  instance: WorkspaceInstance,
+) {
+  fetchMock.post(`${BASE_URL}/instance`, instance);
+}
+
+export function setupDeleteWorkspaceInstanceEndpoint(
+  instanceId: WorkspaceInstanceId,
+) {
+  fetchMock.delete(`${BASE_URL}/instance/${instanceId}`, 204);
+}
+
+export function setupTestWorkspaceInstanceConnectionEndpoint(
+  response: TestWorkspaceInstanceConnectionResponse,
+) {
+  fetchMock.post(`${BASE_URL}/instance/test`, response);
 }

@@ -25,6 +25,13 @@
            (apply mt/user-http-request :rasta :post 403 "ee/advanced-config/"
                   (multipart (yaml-bytes {:version 1 :config {}})))))))
 
+(deftest unsafe-init-superuser-only-test
+  (testing "POST /api/ee/advanced-config/unsafe-init requires superuser (and wipes nothing on a 403)"
+    (is (= "You don't have permissions to do that."
+           (apply mt/user-http-request :rasta :post 403 "ee/advanced-config/unsafe-init"
+                  (multipart (yaml-bytes {:version 1 :config {}})))))
+    (is (pos? (t2/count :model/User)))))
+
 (deftest does-not-expand-templates-test
   (testing "POST /api/ee/advanced-config does NOT expand `{{env VAR}}` templates"
     ;; The literal template appears in the inserted database's name; if env

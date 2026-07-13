@@ -1,13 +1,15 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.models.workspace-instance]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
+(comment metabase-enterprise.workspaces.models.workspace-database/keep-me
+         metabase-enterprise.workspaces.models.workspace-instance/keep-me)
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
@@ -54,17 +56,17 @@
    :creator_id))
 
 (defn list-workspaces
-  "Return every Workspace with its `:databases` (each with its `:database`) and
-  `:creator` hydrated."
+  "Return every Workspace with its `:databases` (each with its `:database`),
+  `:creator`, and `:instance` hydrated."
   []
-  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator [:databases :database]))
+  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator :instance [:databases :database]))
 
 (defn get-workspace
   "Return the Workspace with the given id and its `:databases` (each with its
-  `:database`) + `:creator` hydrated, or nil if none exists."
+  `:database`) + `:creator` + `:instance` hydrated, or nil if none exists."
   [id]
   (when-let [workspace (t2/select-one :model/Workspace :id id)]
-    (t2/hydrate workspace :creator [:databases :database])))
+    (t2/hydrate workspace :creator :instance [:databases :database])))
 
 (defn get-workspace-by-name
   "Return the Workspace with the given name and its `:databases` + `:creator` hydrated,

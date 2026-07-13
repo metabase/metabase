@@ -34,8 +34,10 @@ export const WorkspaceListPage = {
 export const NewWorkspaceModal = {
   get: () => modal(),
   nameInput: () => NewWorkspaceModal.get().findByLabelText("Name"),
-  databaseCheckbox: (name: string) =>
-    NewWorkspaceModal.get().findByRole("checkbox", { name }),
+  databaseItem: (name: string) =>
+    NewWorkspaceModal.get()
+      .findByRole("group", { name: "Databases" })
+      .findByText(name),
   createButton: () =>
     NewWorkspaceModal.get().findByRole("button", { name: "Create workspace" }),
   cancelButton: () =>

@@ -1,5 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupListWorkspaceInstancesEndpoint,
+  setupListWorkspacesEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
@@ -11,6 +15,9 @@ type SetupOpts = {
 };
 
 function setup({ databases = [] }: SetupOpts = {}) {
+  setupListWorkspacesEndpoint([]);
+  setupListWorkspaceInstancesEndpoint([]);
+
   renderWithProviders(<NewWorkspaceButton databases={databases} />);
 }
 

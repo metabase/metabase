@@ -176,15 +176,27 @@
       (throw (ex-info "Workspace not found"
                       {:status-code 404 :workspace_id workspace-id}))))
 
-(defn- assert-database-exists [database-id]
-  (or (t2/select-one :model/Database :id database-id)
-      (throw (ex-info "Database not found"
-                      {:status-code 404 :database_id database-id}))))
-
 (defn- assert-database-eligible-for-workspaces [database]
   (when-not (workspace-database/database-eligible-for-workspaces? database)
     (throw (ex-info "Workspaces are not enabled for this database"
                     {:status-code 400 :database_id (:id database)}))))
+
+(defn- assert-databases-exist-and-eligible
+  "Validate every id in `database-ids` exists (404) and is eligible for
+   workspaces (400, see [[workspace-database/database-eligible-for-workspaces?]]),
+   in one batch select. Returns `{:database_id ? :input_schemas [...]}` maps in
+   the same order as `database-ids`."
+  [database-ids]
+  (when (seq database-ids)
+    (let [databases-by-id (into {} (map (juxt :id identity)) (t2/select :model/Database :id [:in database-ids]))]
+      (mapv (fn [db-id]
+              (let [database (or (get databases-by-id db-id)
+                                 (throw (ex-info "Database not found"
+                                                 {:status-code 404 :database_id db-id})))]
+                (assert-database-eligible-for-workspaces database)
+                {:database_id   db-id
+                 :input_schemas (workspace-database/database-input-schemas database)}))
+            database-ids))))
 
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
@@ -210,12 +222,7 @@
    single transaction, so a provisioning failure rolls back the workspace and its
    database rows. Returns the created workspace, hydrated."
   [{:keys [name creator_id database_ids]}]
-  (let [databases (mapv (fn [db-id]
-                          (let [database (assert-database-exists db-id)]
-                            (assert-database-eligible-for-workspaces database)
-                            {:database_id   db-id
-                             :input_schemas (workspace-database/database-input-schemas database)}))
-                        database_ids)]
+  (let [databases (assert-databases-exist-and-eligible database_ids)]
     (t2/with-transaction [_conn]
       (let [ws (workspace/create-workspace! {:name       name
                                              :creator_id creator_id
