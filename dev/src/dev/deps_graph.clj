@@ -18,6 +18,66 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private module-boundary-ratchets-path
+  ".clj-kondo/config/modules/ratchets.edn")
+
+(declare kondo-config)
+
+(defn module-boundary-debt
+  "Current module-boundary escape-hatch and public-surface counts."
+  ([]
+   (module-boundary-debt (kondo-config)))
+  ([config]
+   (let [values    (vals config)
+         api-sizes (keep (fn [{:keys [api]}]
+                           (when (set? api)
+                             (count api)))
+                         values)]
+     {:api-any        (count (filter #(= :any (:api %)) values))
+      :friend-edges   (transduce (map (comp count :friends)) + 0 values)
+      :largest-api    (reduce max 0 api-sizes)
+      :module-exports (transduce (map (comp count :module-exports)) + 0 values)
+      :total-api      (reduce + 0 api-sizes)
+      :uses-any       (count (filter #(= :any (:uses %)) values))})))
+
+(defn module-boundary-ratchets
+  "Committed exact ratchets for [[module-boundary-debt]]."
+  []
+  (edn/read-string (slurp module-boundary-ratchets-path)))
+
+(defn lowered-module-boundary-ratchets
+  "Return `actual` when it only lowers `ratchets`; throw rather than blessing increased debt."
+  [ratchets actual]
+  (when-not (= (set (keys ratchets)) (set (keys actual)))
+    (throw (ex-info "Module-boundary ratchet metrics do not match"
+                    {:ratchets ratchets
+                     :actual actual})))
+  (let [increases (into (sorted-map)
+                        (filter (fn [[metric value]]
+                                  (> value (get ratchets metric -1))))
+                        actual)]
+    (when (seq increases)
+      (throw (ex-info "Refusing to increase module-boundary ratchets"
+                      {:increases increases
+                       :ratchets ratchets
+                       :actual actual})))
+    actual))
+
+(defn update-module-boundary-ratchets!
+  "Lower committed module-boundary ratchets to current values. Refuses increases."
+  [_]
+  (let [ratchets (module-boundary-ratchets)
+        actual   (module-boundary-debt)
+        updated  (lowered-module-boundary-ratchets ratchets actual)]
+    (if (= ratchets updated)
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println "Module-boundary ratchets are already current.")
+      (do
+        (spit module-boundary-ratchets-path
+              (str (pr-str (into (sorted-map) updated)) \newline))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println "Lowered module-boundary ratchets in" module-boundary-ratchets-path)))))
+
 (mu/defn- project-root-directory :- (ms/InstanceOfClass java.io.File)
   ^java.io.File []
   (.. (java.nio.file.Paths/get (.toURI (io/resource "dev/deps_graph.clj")))
@@ -379,8 +439,6 @@
    (let [fd (partial file-dependencies prefix->module)]
      (pmap fd (find-source-files)))))
 
-(declare kondo-config)
-
 (defn configured-dependencies
   "Scan dependencies using every declared module's effective namespace prefix."
   []
@@ -422,7 +480,7 @@
   [kondo-config module-symb]
   (get-in kondo-config [module-symb :friends]))
 
-(declare kondo-config module-ancestor-chain)
+(declare module-ancestor-chain)
 
 (defn externally-used-namespaces-ignoring-friends
   "All namespaces from a module that are used outside that module, excluding

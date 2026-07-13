@@ -390,36 +390,33 @@
                 (string? (:ns-prefix config)))
             ":ns-prefix must be a string when present")))))
 
-(deftest ^:parallel module-boundary-debt-may-not-increase-test
-  (testing "Module boundary escape hatches and public surface have ratcheted budgets"
-    (let [config      (dev.deps-graph/kondo-config)
-          values      (vals config)
-          api-sizes   (keep (fn [{:keys [api]}]
-                              (when (set? api)
-                                (count api)))
-                            values)
-          actual      {:api-any            (count (filter #(= :any (:api %)) values))
-                       :friend-edges       (transduce (map (comp count :friends)) + 0 values)
-                       :largest-api        (reduce max 0 api-sizes)
-                       :module-exports     (transduce (map (comp count :module-exports)) + 0 values)
-                       :total-api          (reduce + 0 api-sizes)
-                       :uses-any           (count (filter #(= :any (:uses %)) values))}
-          ;; Ratchet baseline (2026-07-12). Lower a budget when the corresponding debt is reduced.
-          ;; Baseline from master on 2026-07-13, before any nested-module config migrations.
-          budgets     {:api-any        1
-                       :friend-edges   28
-                       :largest-api    30
-                       :module-exports 0
-                       :total-api      538
-                       :uses-any       4}]
-      (doseq [[metric budget] budgets]
+(deftest ^:parallel module-boundary-debt-matches-ratchets-test
+  (testing "Module boundary escape hatches and public surface match their exact ratchets"
+    (let [actual   (dev.deps-graph/module-boundary-debt)
+          ratchets (dev.deps-graph/module-boundary-ratchets)]
+      (is (= (set (keys actual)) (set (keys ratchets)))
+          "Every debt metric must have an exact committed ratchet")
+      (doseq [[metric ratchet] ratchets
+              :let [value (get actual metric)]]
         (testing (format "\n%s" metric)
-          (is (<= (get actual metric) budget)
-              (format (str "%s increased from its budget of %d to %d. "
-                           "Reduce the new boundary debt or explicitly update the ratchet.")
-                      metric
-                      budget
-                      (get actual metric))))))))
+          (is (= value ratchet)
+              (if (< value ratchet)
+                (format (str "%s improved from %d to %d. Run `./bin/mage modules-validate "
+                             "--update-ratchets` and commit the lower value now.")
+                        metric ratchet value)
+                (format (str "%s increased from its ratchet of %d to %d. "
+                             "Reduce the new boundary debt; the updater will not bless increases.")
+                        metric ratchet value))))))))
+
+(deftest ^:parallel module-boundary-ratchets-can-only-be-lowered-test
+  (is (= {:debt 2}
+         (dev.deps-graph/lowered-module-boundary-ratchets {:debt 3} {:debt 2})))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Refusing to increase"
+                        (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:debt 3})))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"metrics do not match"
+                        (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:other 1}))))
 
 ;;;; Classpath / namespace convention
 ;;;;

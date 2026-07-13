@@ -373,8 +373,13 @@
     (u/exit 0)))
 
 (defn cli-validate-config!
-  "Run the authoritative module-config validation tests and exit with their status."
-  [_cli-args]
+  "Optionally lower debt ratchets, then run the authoritative module-config validation tests."
+  [cli-args]
+  (when (get-in cli-args [:options :update-ratchets])
+    (let [{:keys [exit], :or {exit -1}}
+          (shell/sh* "clojure" "-X:dev" "dev.deps-graph/update-module-boundary-ratchets!")]
+      (when-not (zero? exit)
+        (u/exit exit))))
   (let [{:keys [exit], :or {exit -1}}
         (shell/sh* "./bin/test-agent" ":only" "[metabase.core.modules-test]")]
     (u/exit exit)))

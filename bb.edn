@@ -260,7 +260,9 @@
 
   modules-validate
   {:doc "Validate module config, ownership, visibility, API, and model boundaries"
-   :examples [["./bin/mage modules-validate" "Run every module-config validation"]]
+   :examples [["./bin/mage modules-validate" "Run every module-config validation"]
+              ["./bin/mage modules-validate --update-ratchets" "Commit any lower module-debt ratchets, then validate"]]
+   :options [["-u" "--update-ratchets" "Lower module-debt ratchets to current values; refuses increases"]]
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-validate-config! parsed))}
 
