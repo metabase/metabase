@@ -1,28 +1,24 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
-   [clojure.string :as str]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util.log :as log])
-  (:import
-   (org.graalvm.polyglot PolyglotException)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (defn- convert-error
   "Convert sql-parsing generic error format to lib.validate format.
-   sql-parsing returns generic maps like {:type :syntax-error} or {:type :timeout :message \"...\"},
+   sql-parsing returns generic maps like {:type :syntax-error},
    and this function translates them to the lib.validate error format."
   [error]
   (case (:type error)
     :syntax-error       (lib/syntax-error)
     :missing-column     (lib/missing-column-error (:name error))
     :missing-table-alias (lib/missing-table-alias-error (:name error))
-    :timeout            (lib/validation-exception-error (:message error))
     ;; Fallback: pass through if already in correct format or unknown type
     error))
 
@@ -67,9 +63,9 @@
                       driver {:table table
                               :schema (or table-schema default-schema)}))))
             query-tables))
-    (catch PolyglotException e
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         #{}
         (throw e)))))
 
@@ -143,18 +139,17 @@
     (let [dialect (driver->dialect driver)
           ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
           ;; Convert to [{:schema ... :table ...} ...] format.
-          ;; Do NOT normalize case here — SQLGlot already applies dialect-appropriate case rules
-          ;; (e.g., uppercase for Snowflake, lowercase for Postgres). Additional normalization
-          ;; via normalize-table-spec would incorrectly lowercase Snowflake identifiers, breaking
-          ;; AppDB lookups where identifiers are stored in their native case.
-          ;; This matches the Macaw implementation which also returns raw identifiers.
+          ;; Do NOT normalize case here — identifiers are returned exactly as written in the SQL.
+          ;; Normalization via normalize-table-spec would incorrectly lowercase e.g. Snowflake
+          ;; identifiers, breaking AppDB lookups where identifiers are stored in their native
+          ;; case. This matches the Macaw implementation which also returns raw identifiers.
           table-tuples (sql-parsing/referenced-tables dialect sql-str)]
       (mapv (fn [[_catalog schema table]]
               {:schema schema :table table})
             table-tuples))
-    (catch PolyglotException e
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         []
         (throw e)))))
 
@@ -173,12 +168,7 @@
 
 (defmethod sql-tools/replace-names-impl :sqlglot
   [_parser driver sql-string replacements _opts]
-  ;; Convert map keys to list-of-pairs for JSON serialization
-  ;; {:tables {{:table "a"} "b"}} -> {:tables [[{:table "a"} "b"]]}
-  (let [replacements' (-> replacements
-                          (update :tables #(when % (vec %)))
-                          (update :columns #(when % (vec %))))]
-    (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
+  (sql-parsing/replace-names (driver->dialect driver) sql-string replacements))
 
 (defmethod sql-tools/transpile-sql-impl :sqlglot
   [_parser sql from-dialect to-dialect]

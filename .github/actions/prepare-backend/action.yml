@@ -36,13 +36,6 @@ runs:
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
 
-    - name: Install uv (for Python package installation)
-      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-      with:
-        enable-cache: false
-        version: "0.10.2" # keep in sync with mise.toml
-        github-token: ${{ github.token }}
-
     - name: Restore M2 cache
       uses: actions/cache/restore@v5
       with:

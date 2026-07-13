@@ -192,10 +192,8 @@ CLAUDE.local.md
 /logs
 /.clojure-mcp
 
-# Python dependencies (pip-installed, not committed)
-/resources/python-sources/sqlglot/
-/resources/python-sources/sqlglot-*.dist-info/
-/resources/python-sources/.lock
+# polyglot-sql-ffi native libraries (downloaded, not committed)
+/resources/polyglot-sql-ffi/*/
 __pycache__/
 .mcp.json
 .config/wt.toml
