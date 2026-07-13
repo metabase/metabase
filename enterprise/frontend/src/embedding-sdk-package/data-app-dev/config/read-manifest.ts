@@ -40,11 +40,6 @@ export function readManifest(
   };
 }
 
-/**
- * Read `slug` — the app's URL identity (`/apps/:slug`), the same value prod
- * reports as the X-Metabase-Client-Identifier — from the app's manifest.
- * Returns "" when absent.
- */
 export function readAppSlug(appRoot: string): string {
   const slug = readManifest(appRoot)?.manifest.slug;
 

@@ -7,6 +7,7 @@ import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
+  DataAppDevProvider,
   DevToolbar,
   createDataAppSandbox,
   installDevDiagnostics,
@@ -18,8 +19,6 @@ import {
   rebuiltEvent,
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
-
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
@@ -36,10 +35,8 @@ import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
 //
 // It mounts the diagnostics toolbar, builds the Near-Membrane sandbox, then
 // fetches + evaluates the app's IIFE bundle and renders it under
-// `MetabaseProvider`. Load failures go through `console.error`, so the toolbar
+// `DataAppDevProvider`. Load failures go through `console.error`, so the toolbar
 // surfaces them.
-
-const { MetabaseProvider } = sdkExports;
 
 const authConfig = {
   metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL,
@@ -57,10 +54,6 @@ if (!root) {
   throw new Error("#root not found");
 }
 const appRoot = createRoot(root);
-
-ensureMetabaseProviderPropsStore().updateInternalProps({
-  dataApp: { name: appSlug, isDev: true },
-});
 
 const sandbox = createDataAppSandbox({
   label: "dev",
@@ -91,9 +84,13 @@ async function loadAndRender() {
   const { component: Component, providerProps } = sandbox.evaluate(code)();
 
   appRoot.render(
-    <MetabaseProvider authConfig={authConfig} {...providerProps}>
+    <DataAppDevProvider
+      appSlug={appSlug}
+      authConfig={authConfig}
+      {...providerProps}
+    >
       <Component />
-    </MetabaseProvider>,
+    </DataAppDevProvider>,
   );
 }
 
