@@ -7,14 +7,7 @@ import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
 } from "metabase/query_builder/hooks";
-import {
-  ActionIcon,
-  Box,
-  DelayGroup,
-  Icon,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
+import { Box, DelayGroup, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -120,14 +113,14 @@ export function BreakoutColumnList({
           placeholder={t`Find...`}
           value={searchQuery}
           leftSection={<Icon name="search" />}
+          rightSectionPointerEvents="all"
           rightSection={
-            searchQuery.length > 0 && (
-              <Tooltip label={t`Clear`}>
-                <ActionIcon aria-label={t`Clear`} onClick={handleResetSearch}>
-                  <Icon name="close" />
-                </ActionIcon>
-              </Tooltip>
-            )
+            searchQuery.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={handleResetSearch}
+              />
+            ) : null
           }
           onChange={handleChangeSearchQuery}
         />

@@ -5,13 +5,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import {
-  ActionIcon,
-  Icon,
-  TextInput,
-  type TextInputProps,
-  Tooltip,
-} from "metabase/ui";
+import { Icon, Input, TextInput, type TextInputProps } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { IconName } from "metabase-types/api";
 
@@ -66,14 +60,14 @@ export const FilterableTree = ({
           placeholder={placeholder}
           value={filter}
           leftSection={<Icon name="search" />}
+          rightSectionPointerEvents="all"
           rightSection={
-            filter.length > 0 && (
-              <Tooltip label={t`Clear`}>
-                <ActionIcon aria-label={t`Clear`} onClick={() => setFilter("")}>
-                  <Icon name="close" />
-                </ActionIcon>
-              </Tooltip>
-            )
+            filter.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={() => setFilter("")}
+              />
+            ) : null
           }
           onChange={handleFilterChange}
         />

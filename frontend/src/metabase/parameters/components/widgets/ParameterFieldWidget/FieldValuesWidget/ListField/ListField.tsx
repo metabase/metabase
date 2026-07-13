@@ -8,15 +8,7 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import {
-  ActionIcon,
-  Checkbox,
-  Flex,
-  Icon,
-  Text,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
+import { Checkbox, Flex, Input, Text, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -183,14 +175,14 @@ export const ListField = ({
           value={filter}
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
+          rightSectionPointerEvents="all"
           rightSection={
-            filter.length > 0 && (
-              <Tooltip label={t`Clear`}>
-                <ActionIcon aria-label={t`Clear`} onClick={() => setFilter("")}>
-                  <Icon name="close" />
-                </ActionIcon>
-              </Tooltip>
-            )
+            filter.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={() => setFilter("")}
+              />
+            ) : null
           }
           data-testid="list-field"
         />

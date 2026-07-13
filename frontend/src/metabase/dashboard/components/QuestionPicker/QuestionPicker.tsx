@@ -21,14 +21,7 @@ import {
   canUserCreateQueries,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
-import {
-  ActionIcon,
-  Button,
-  Flex,
-  Icon,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
+import { Button, Flex, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -105,17 +98,14 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
         data-autofocus
         placeholder={t`Search…`}
         value={searchText}
+        rightSectionPointerEvents="all"
         rightSection={
-          searchText.length > 0 && (
-            <Tooltip label={t`Clear`}>
-              <ActionIcon
-                aria-label={t`Clear`}
-                onClick={() => setSearchText("")}
-              >
-                <Icon name="close" />
-              </ActionIcon>
-            </Tooltip>
-          )
+          searchText.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setSearchText("")}
+            />
+          ) : null
         }
         onChange={handleSearchTextChange}
       />

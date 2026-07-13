@@ -167,6 +167,9 @@ function LinkVizInner({
               // the dashcard really wants to turn all mouse events into drag events
               onMouseDown={(e) => e.stopPropagation()}
               size="sm"
+              // DashEditing disables pointer-events on card content; the Input
+              // wrapper's `none` breaks inheritance, so re-enable on both root
+              // and input or the field can't be clicked/typed into.
               styles={{
                 root: { pointerEvents: "all" },
                 input: { pointerEvents: "all" },

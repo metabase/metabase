@@ -7,7 +7,7 @@ import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { ActionIcon, Flex, Icon, TextInput, Tooltip } from "metabase/ui";
+import { Flex, Input, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -171,14 +171,14 @@ const SingleSelectListField = ({
           value={filter}
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
+          rightSectionPointerEvents="all"
           rightSection={
-            filter.length > 0 && (
-              <Tooltip label={t`Clear`}>
-                <ActionIcon aria-label={t`Clear`} onClick={handleResetClick}>
-                  <Icon name="close" />
-                </ActionIcon>
-              </Tooltip>
-            )
+            filter.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={handleResetClick}
+              />
+            ) : null
           }
           data-testid="single-select-list-field"
         />
