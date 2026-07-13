@@ -64,8 +64,9 @@
 
 (def ^:private SlowEntity
   "A hydrated culprit of a container roll-up: an embedded slow **card** of a dashboard/document finding.
-  Always a card - containers embed cards (dashcards / prose-mirror card embeds), never transforms; a slow
-  transform is its own leaf finding, not a member of another entity. `{id, name, entity_type, card_type?}`."
+  Always a card - a container embeds cards (a dashboard via its dashcards, a document via the cards embedded
+  in its body) and is flagged slow when one of those cards' queries is slow; it never embeds a transform, and
+  a slow transform is its own leaf finding, not a member of another entity. `{id, name, entity_type, card_type?}`."
   [:map
    [:id          :int]
    [:name        [:maybe :string]]
