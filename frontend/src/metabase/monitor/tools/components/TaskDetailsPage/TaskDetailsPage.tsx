@@ -68,128 +68,128 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           label={t`Back to Tasks`}
         />
 
-        <Box className={S.content} flex="1 1 auto" mih={0}>
-          <MonitorPageContent>
-            <Stack gap="sm">
-              <MonitorHeaderTitle>{t`Task details`}</MonitorHeaderTitle>
-              <Flex gap="md">
-                <Text fw="bold" w={120}>{t`ID`}</Text>
-                <Text>{task.id}</Text>
-              </Flex>
-              <Flex gap="md">
-                <Text fw="bold" w={120}>{t`Task`}</Text>
-                <Text>{task.task}</Text>
-              </Flex>
-              <Flex gap="md" align="center">
-                <Text fw="bold" w={120}>{t`Status`}</Text>
-                <TaskStatusBadge task={task} />
-              </Flex>
-              {task.run_id !== null && (
-                <Flex gap="md" align="baseline">
-                  <Text fw="bold" w={120}>{t`Task run`}</Text>
-                  <Anchor
-                    component={Link}
-                    to={Urls.monitorTaskRunDetails(task.run_id)}
-                  >
-                    {t`Go to the corresponding run`}
-                  </Anchor>
-                </Flex>
-              )}
-              <Flex gap="md">
-                <Text fw="bold" w={120}>{t`DB Name`}</Text>
-                <Text>
-                  {isLoadingDatabases ? (
-                    <Loader size="xs" />
-                  ) : db ? (
-                    dbName
-                  ) : (
-                    EMPTY_CELL_PLACEHOLDER
-                  )}
-                </Text>
-              </Flex>
-              <Flex gap="md">
-                <Text fw="bold" w={120}>{t`DB Engine`}</Text>
-                <Text>
-                  {isLoadingDatabases ? (
-                    <Loader size="xs" />
-                  ) : db ? (
-                    dbEngine
-                  ) : (
-                    EMPTY_CELL_PLACEHOLDER
-                  )}
-                </Text>
-              </Flex>
+        {/* <Box flex="1 1 auto" mih={0}> */}
+        <MonitorPageContent className={S.content}>
+          <Stack gap="sm">
+            <MonitorHeaderTitle>{t`Task details`}</MonitorHeaderTitle>
+            <Flex gap="md">
+              <Text fw="bold" w={120}>{t`ID`}</Text>
+              <Text>{task.id}</Text>
+            </Flex>
+            <Flex gap="md">
+              <Text fw="bold" w={120}>{t`Task`}</Text>
+              <Text>{task.task}</Text>
+            </Flex>
+            <Flex gap="md" align="center">
+              <Text fw="bold" w={120}>{t`Status`}</Text>
+              <TaskStatusBadge task={task} />
+            </Flex>
+            {task.run_id !== null && (
               <Flex gap="md" align="baseline">
-                <Text fw="bold" w={120}>{t`Started at`}</Text>
-                <Tooltip label={task.started_at}>
-                  <DateTime
-                    value={task.started_at}
-                    unit="minute"
-                    data-testid="started-at"
-                  />
-                </Tooltip>
-                <CopyButton value={task.started_at} />
+                <Text fw="bold" w={120}>{t`Task run`}</Text>
+                <Anchor
+                  component={Link}
+                  to={Urls.monitorTaskRunDetails(task.run_id)}
+                >
+                  {t`Go to the corresponding run`}
+                </Anchor>
               </Flex>
-              <Flex gap="md">
-                <Text fw="bold" w={120}>{t`Ended at`}</Text>
-                {task.ended_at ? (
-                  <Tooltip label={task.ended_at}>
-                    <DateTime
-                      value={task.ended_at}
-                      unit="minute"
-                      data-testid="ended-at"
-                    />
-                  </Tooltip>
+            )}
+            <Flex gap="md">
+              <Text fw="bold" w={120}>{t`DB Name`}</Text>
+              <Text>
+                {isLoadingDatabases ? (
+                  <Loader size="xs" />
+                ) : db ? (
+                  dbName
                 ) : (
                   EMPTY_CELL_PLACEHOLDER
                 )}
-                {task.ended_at && <CopyButton value={task.ended_at} />}
-              </Flex>
-              <Flex gap="md">
-                <Text fw="bold" w={120}>{t`Duration (ms)`}</Text>
-                <Text>{task.duration}</Text>
-              </Flex>
-              <Flex justify="space-between" align="flex-end">
-                <MonitorHeaderTitle>{t`JSON details`}</MonitorHeaderTitle>
-                <Button
-                  leftSection={<Icon name="download" />}
-                  variant="filled"
-                  onClick={handleDownload}
-                >{t`Download`}</Button>
-              </Flex>
-              <Box
-                className={S.codeContainer}
-                p={linesCount > 1 ? 0 : "xs"}
-                pos="relative"
-                mt="md"
-                data-testid="code-container"
-              >
-                <CodeEditor
-                  language="json"
-                  lineNumbers={linesCount > 1}
-                  readOnly
-                  value={code}
+              </Text>
+            </Flex>
+            <Flex gap="md">
+              <Text fw="bold" w={120}>{t`DB Engine`}</Text>
+              <Text>
+                {isLoadingDatabases ? (
+                  <Loader size="xs" />
+                ) : db ? (
+                  dbEngine
+                ) : (
+                  EMPTY_CELL_PLACEHOLDER
+                )}
+              </Text>
+            </Flex>
+            <Flex gap="md" align="baseline">
+              <Text fw="bold" w={120}>{t`Started at`}</Text>
+              <Tooltip label={task.started_at}>
+                <DateTime
+                  value={task.started_at}
+                  unit="minute"
+                  data-testid="started-at"
                 />
-
-                <Box p="sm" pos="absolute" right={0} top={0}>
-                  <CopyButton value={code} />
-                </Box>
-              </Box>
-
-              <MonitorHeaderTitle>{t`Logs`}</MonitorHeaderTitle>
-              {hasLogs ? (
-                <Box className={S.codeContainer}>
-                  <LogsViewer
-                    logs={task?.logs ?? []}
-                    data-testid="task-logs"
-                  ></LogsViewer>
-                </Box>
+              </Tooltip>
+              <CopyButton value={task.started_at} />
+            </Flex>
+            <Flex gap="md">
+              <Text fw="bold" w={120}>{t`Ended at`}</Text>
+              {task.ended_at ? (
+                <Tooltip label={task.ended_at}>
+                  <DateTime
+                    value={task.ended_at}
+                    unit="minute"
+                    data-testid="ended-at"
+                  />
+                </Tooltip>
               ) : (
-                <Text>{t`There are no captured logs`}</Text>
+                EMPTY_CELL_PLACEHOLDER
               )}
-            </Stack>
-          </MonitorPageContent>
-        </Box>
+              {task.ended_at && <CopyButton value={task.ended_at} />}
+            </Flex>
+            <Flex gap="md">
+              <Text fw="bold" w={120}>{t`Duration (ms)`}</Text>
+              <Text>{task.duration}</Text>
+            </Flex>
+            <Flex justify="space-between" align="flex-end">
+              <MonitorHeaderTitle>{t`JSON details`}</MonitorHeaderTitle>
+              <Button
+                leftSection={<Icon name="download" />}
+                variant="filled"
+                onClick={handleDownload}
+              >{t`Download`}</Button>
+            </Flex>
+            <Box
+              className={S.codeContainer}
+              p={linesCount > 1 ? 0 : "xs"}
+              pos="relative"
+              mt="md"
+              data-testid="code-container"
+            >
+              <CodeEditor
+                language="json"
+                lineNumbers={linesCount > 1}
+                readOnly
+                value={code}
+              />
+
+              <Box p="sm" pos="absolute" right={0} top={0}>
+                <CopyButton value={code} />
+              </Box>
+            </Box>
+
+            <MonitorHeaderTitle>{t`Logs`}</MonitorHeaderTitle>
+            {hasLogs ? (
+              <Box className={S.codeContainer}>
+                <LogsViewer
+                  logs={task?.logs ?? []}
+                  data-testid="task-logs"
+                ></LogsViewer>
+              </Box>
+            ) : (
+              <Text>{t`There are no captured logs`}</Text>
+            )}
+          </Stack>
+        </MonitorPageContent>
+        {/* </Box> */}
       </Stack>
     </Flex>
   );

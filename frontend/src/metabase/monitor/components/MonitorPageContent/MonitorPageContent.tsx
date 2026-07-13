@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { Box, type BoxProps, Stack } from "metabase/ui";
@@ -13,7 +14,10 @@ export function MonitorPageContent({
   ...boxProps
 }: MonitorPageContentProps) {
   return (
-    <Box {...boxProps}>
+    <Box
+      {...boxProps}
+      className={cx(S.MonitorPageWrapper, boxProps?.className)}
+    >
       <Stack gap="lg" className={S.MonitorPageContent}>
         {children}
       </Stack>

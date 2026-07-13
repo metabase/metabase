@@ -3,7 +3,7 @@
 }
 
 .content {
-  overflow-y: auto;
+  overflow: auto;
 }
 
 .codeContainer {
