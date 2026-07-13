@@ -22,6 +22,7 @@
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -142,8 +143,8 @@
   cards), and transform (leaf). The slow-card set is computed once and reused by both roll-ups; the
   denormalized display attrs are stamped by `common/attach-entity-attrs`."
   []
-  (let [card-threshold-ms      (* 1000 (cd.settings/content-diagnostics-slow-card-threshold-seconds))
-        transform-threshold-ms (* 1000 (cd.settings/content-diagnostics-slow-transform-threshold-seconds))
+  (let [card-threshold-ms      (u/seconds->ms (cd.settings/content-diagnostics-slow-card-threshold-seconds))
+        transform-threshold-ms (u/seconds->ms (cd.settings/content-diagnostics-slow-transform-threshold-seconds))
         card->avg-ms           (slow-card-id->avg-ms card-threshold-ms)
         slow-card-ids          (vec (keys card->avg-ms))]
     (common/attach-entity-attrs
