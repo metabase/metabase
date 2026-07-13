@@ -4,38 +4,44 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import {
+  Box,
   Button,
   Card,
   Group,
   Icon,
-  NumberInput,
+  SimpleGrid,
   Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { ScalarSegment } from "metabase-types/api";
+import type { DatasetColumn, GoalSegment, GoalValue } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
+import { SegmentBoundInput } from "./SegmentBoundInput";
 
 export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
+  allowQuestionReference?: boolean;
+  columns?: DatasetColumn[];
+  value: GoalSegment[];
+  onChange: (value: GoalSegment[]) => void;
   canRemoveAll?: boolean;
 };
 
 export const ChartSettingSegmentsEditor = ({
+  allowQuestionReference = false,
+  columns,
   value: segments,
   onChange,
   canRemoveAll = false,
 }: ChartSettingSegmentsEditorProps) => {
   const onChangeProperty = (
     index: number,
-    property: keyof ScalarSegment,
-    value: number | string | null,
+    property: keyof GoalSegment,
+    value: GoalValue | null,
   ) =>
     onChange([
       ...segments.slice(0, index),
@@ -50,66 +56,60 @@ export const ChartSettingSegmentsEditor = ({
       {segments.length > 0 ? (
         <Stack>
           {segments.map((segment, index) => (
-            <Card key={index} withBorder>
-              <Group align="flex-start" gap="sm">
-                <ColorSelector
-                  pillSize="large"
-                  className={S.ColorPill}
-                  value={segment.color}
-                  colors={getColorPalette()}
-                  onChange={(color) => onChangeProperty(index, "color", color)}
-                />
-
-                <Stack gap="sm" flex={1} miw={0}>
-                  <ChartSettingInput
-                    placeholder={t`Label for this range (optional)`}
-                    value={segment.label}
-                    onChange={(val) => onChangeProperty(index, "label", val)}
+            <Card key={index} shadow="none" withBorder>
+              <Stack>
+                <Group align="center" gap="sm" wrap="nowrap">
+                  <ColorSelector
+                    pillSize="large"
+                    className={S.ColorPill}
+                    value={segment.color}
+                    colors={getColorPalette()}
+                    onChange={(color) =>
+                      onChangeProperty(index, "color", color)
+                    }
                   />
 
-                  <Group gap="sm" grow>
-                    <NumberInput
-                      label={t`Min`}
-                      placeholder={t`Min`}
-                      value={segment.min ?? ""}
-                      onBlur={(e) => {
-                        const rawValue = e.target.value;
-                        const newValue =
-                          rawValue === "" ? null : parseFloat(rawValue);
-                        if (newValue !== segment.min) {
-                          onChangeProperty(index, "min", newValue);
-                        }
-                      }}
+                  <Box flex={1} miw={0}>
+                    <ChartSettingInput
+                      placeholder={t`Label for this range (optional)`}
+                      value={segment.label}
+                      onChange={(val) => onChangeProperty(index, "label", val)}
                     />
+                  </Box>
 
-                    <NumberInput
-                      label={t`Max`}
-                      placeholder={t`Max`}
-                      value={segment.max ?? ""}
-                      onBlur={(e) => {
-                        const rawValue = e.target.value;
-                        const newValue =
-                          rawValue === "" ? null : parseFloat(rawValue);
-                        if (newValue !== segment.max) {
-                          onChangeProperty(index, "max", newValue);
+                  {canRemove && (
+                    <Tooltip label={t`Remove range`}>
+                      <Button
+                        aria-label={t`Remove range`}
+                        leftSection={<Icon name="trash" c="text-disabled" />}
+                        onClick={() =>
+                          onChange(segments.filter((v, i) => i !== index))
                         }
-                      }}
-                    />
-                  </Group>
-                </Stack>
+                      />
+                    </Tooltip>
+                  )}
+                </Group>
 
-                {canRemove && (
-                  <Tooltip label={t`Remove range`}>
-                    <Button
-                      aria-label={t`Remove range`}
-                      leftSection={<Icon name="trash" c="text-disabled" />}
-                      onClick={() =>
-                        onChange(segments.filter((v, i) => i !== index))
-                      }
-                    />
-                  </Tooltip>
-                )}
-              </Group>
+                <SimpleGrid cols={2} spacing="sm">
+                  <SegmentBoundInput
+                    id={`segment-min-${index}`}
+                    label={t`Min`}
+                    value={segment.min}
+                    onChange={(value) => onChangeProperty(index, "min", value)}
+                    columns={columns}
+                    allowQuestionReference={allowQuestionReference}
+                  />
+
+                  <SegmentBoundInput
+                    id={`segment-max-${index}`}
+                    label={t`Max`}
+                    value={segment.max}
+                    onChange={(value) => onChangeProperty(index, "max", value)}
+                    columns={columns}
+                    allowQuestionReference={allowQuestionReference}
+                  />
+                </SimpleGrid>
+              </Stack>
             </Card>
           ))}
         </Stack>
@@ -144,7 +144,7 @@ function getColorPalette() {
   ];
 }
 
-function newSegment(segments: ScalarSegment[]) {
+function newSegment(segments: GoalSegment[]): GoalSegment {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
   const lastMax =

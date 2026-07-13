@@ -83,6 +83,10 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: ChartSettingSegmentsEditor,
       persistDefault: true,
+      getProps: ([{ data }]) => ({
+        columns: data.cols,
+        allowQuestionReference: true,
+      }),
       getWrapperStyle: () => ({
         marginLeft: 0,
         marginRight: 0,
