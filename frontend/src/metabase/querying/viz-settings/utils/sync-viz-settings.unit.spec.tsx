@@ -8,7 +8,11 @@ import {
   createMockTableColumnOrderSetting,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  PEOPLE_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
 import {
   type ColumnInfo,
@@ -538,6 +542,61 @@ describe("syncVizSettingsWithQuery", () => {
         "graph.metrics": ["sum", "sum_2"],
       });
     });
+
+    it("should not drop graph.metrics after adding a new query stage (metabase#44668)", () => {
+      const oldQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PEOPLE_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              { type: "column", name: "STATE", sourceName: "PEOPLE" },
+            ],
+          },
+        ],
+      });
+      // Adding a new stage turns the "count" aggregation into a plain
+      // pass-through column: it keeps the same name/key but is no longer an
+      // aggregation. It must still be kept in graph.metrics.
+      const newQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PEOPLE_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              { type: "column", name: "STATE", sourceName: "PEOPLE" },
+            ],
+          },
+          {
+            expressions: [
+              {
+                name: "Custom Number",
+                value: {
+                  type: "operator",
+                  operator: "*",
+                  args: [
+                    { type: "column", name: "count" },
+                    { type: "literal", value: 2 },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      });
+      const oldSettings = createMockVisualizationSettings({
+        "graph.metrics": ["count"],
+      });
+
+      const newSettings = syncVizSettingsWithQuery(
+        oldSettings,
+        newQuery,
+        oldQuery,
+      );
+      expect(newSettings).toEqual({
+        "graph.metrics": ["count"],
+      });
+    });
   });
 });
 
@@ -623,6 +682,32 @@ describe("syncVizSettingsWithSeries", () => {
           ...singleSeries,
           error: { status: 500 },
         })),
+      );
+      expect(newSettings).toEqual(oldSettings);
+    });
+
+    it("should ignore updates when the new series has no data yet (metabase#44415)", () => {
+      const seriesWithoutData = [
+        { card: createMockCard() },
+      ] as unknown as Series;
+      const newSettings = syncVizSettingsWithSeries(
+        oldSettings,
+        query,
+        seriesWithoutData,
+        oldSeries,
+      );
+      expect(newSettings).toEqual(oldSettings);
+    });
+
+    it("should ignore updates when the old series has no data yet (metabase#44415)", () => {
+      const seriesWithoutData = [
+        { card: createMockCard() },
+      ] as unknown as Series;
+      const newSettings = syncVizSettingsWithSeries(
+        oldSettings,
+        query,
+        newSeries,
+        seriesWithoutData,
       );
       expect(newSettings).toEqual(oldSettings);
     });

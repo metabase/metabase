@@ -89,6 +89,32 @@ describe("NotebookStep", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("lays out the step content and preview button columns with flexible widths so icons don't overflow on resize (metabase#53036)", () => {
+    setup();
+
+    /* eslint-disable testing-library/no-node-access -- walking to the flex column wrappers has no Testing Library equivalent */
+    const previewButtonColumn = screen.getByTestId(
+      "step-preview-button",
+    ).parentElement;
+    const stepRow = previewButtonColumn?.parentElement;
+    const contentColumn = stepRow?.firstElementChild;
+    /* eslint-enable testing-library/no-node-access */
+
+    // Both columns must size with `flex` (shrinkable flex-basis) rather than a
+    // fixed `width`, otherwise their contents overflow and overlap on a narrow
+    // viewport.
+    expect(contentColumn).toHaveStyle({
+      flex: `1 1 ${(11 / 12) * 100}%`,
+    });
+    expect(contentColumn).not.toHaveStyle({ width: `${(11 / 12) * 100}%` });
+    expect(previewButtonColumn).toHaveStyle({
+      flex: `1 1 ${(1 / 12) * 100}%`,
+    });
+    expect(previewButtonColumn).not.toHaveStyle({
+      width: `${(1 / 12) * 100}%`,
+    });
+  });
+
   it("sets the row limit only on blur", async () => {
     const step = createMockNotebookStep({ type: "limit" });
     const { updateQuery } = setup({ step });

@@ -1,14 +1,20 @@
+import dayjs from "dayjs";
 import { assoc } from "icepick";
+
+import "metabase/utils/dayjs";
 
 import { createMockEntitiesState } from "__support__/store";
 import {
+  getFilteredTimelines,
   getIsResultDirty,
   getIsVisualized,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
   getQuestionDetailsTimelineDrawerState,
+  getResultsMetadata,
   getShouldShowUnsavedChangesWarning,
+  getSubmittableQuestion,
 } from "metabase/query_builder/selectors";
 import type {
   QueryBuilderState,
@@ -20,11 +26,13 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   ConcreteFieldReference,
+  Database,
   NativeQuery,
   StructuredQuery,
 } from "metabase-types/api";
@@ -37,6 +45,8 @@ import {
   createMockTable,
   createMockTableColumnOrderSetting,
   createMockTemplateTag,
+  createMockTimeline,
+  createMockTimelineEvent,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import {
@@ -52,13 +62,15 @@ registerVisualizations();
 
 function getBaseState({
   uiControls = {},
+  database = createSampleDatabase(),
   ...state
 }: Partial<Omit<QueryBuilderState, "uiControls">> & {
   uiControls?: Partial<QueryBuilderUIControls>;
+  database?: Database;
 } = {}) {
   return createMockState({
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: [database],
       tables: [createMockTable({ id: "card__1" })],
     }),
     qb: createMockQueryBuilderState({
@@ -138,6 +150,38 @@ describe("getQuestion", () => {
     );
 
     expect(question?.card()).toEqual(assoc(card, "displayIsLocked", true));
+  });
+
+  it("should return an editable ad-hoc query for a read-only native model (metabase#56698)", () => {
+    const card = createMockCard({
+      id: 1,
+      type: "model",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: { query: "select 1 union all select 2" },
+      },
+    });
+
+    // A user without native permissions cannot edit the model's native query,
+    // but must still get an editable ad-hoc query composed on top of the model.
+    const question = getQuestion(
+      getBaseState({
+        card,
+        database: createSampleDatabase({ native_permissions: "none" }),
+      }),
+    );
+
+    expect(question).toBeInstanceOf(Question);
+    expect(question && Lib.sourceTableOrCardId(question.query())).toBe(
+      "card__1",
+    );
+    expect(question && Lib.queryDisplayInfo(question.query()).isEditable).toBe(
+      true,
+    );
+    expect(question && Lib.queryDisplayInfo(question.query()).isNative).toBe(
+      false,
+    );
   });
 });
 
@@ -424,6 +468,66 @@ describe("getIsResultDirty", () => {
   });
 });
 
+describe("getSubmittableQuestion", () => {
+  // metabase#30610: when the query has been edited but not re-run, the last
+  // query result's results_metadata is stale and must not be saved onto the
+  // card. getSubmittableQuestion drops it (sends null) whenever the result is
+  // dirty, and keeps it when the result matches the current query.
+  const RESULTS_METADATA_COLUMNS = [
+    createMockColumn({ name: "ID", display_name: "ID" }),
+    createMockColumn({ name: "TOTAL", display_name: "Total" }),
+  ];
+
+  function getState({
+    cardQuery,
+    lastRunQuery,
+  }: {
+    cardQuery: StructuredQuery;
+    lastRunQuery: StructuredQuery;
+  }) {
+    const makeCard = (query: StructuredQuery) =>
+      createMockCard({
+        dataset_query: { type: "query", database: SAMPLE_DB_ID, query },
+      });
+
+    return getBaseState({
+      card: makeCard(cardQuery),
+      lastRunCard: makeCard(lastRunQuery),
+      queryResults: [
+        createMockDataset({
+          data: createMockDatasetData({ cols: RESULTS_METADATA_COLUMNS }),
+        }),
+      ],
+    });
+  }
+
+  it("drops stale results_metadata when the result is dirty (metabase#30610)", () => {
+    const state = getState({
+      cardQuery: { "source-table": PRODUCTS_ID },
+      lastRunQuery: { "source-table": ORDERS_ID },
+    });
+    const question = getQuestion(state) as Question;
+
+    expect(getIsResultDirty(state)).toBe(true);
+    expect(getSubmittableQuestion(state, question).card().result_metadata).toBe(
+      null,
+    );
+  });
+
+  it("keeps results_metadata when the result is not dirty", () => {
+    const state = getState({
+      cardQuery: { "source-table": ORDERS_ID },
+      lastRunQuery: { "source-table": ORDERS_ID },
+    });
+    const question = getQuestion(state) as Question;
+
+    expect(getIsResultDirty(state)).toBe(false);
+    expect(
+      getSubmittableQuestion(state, question).card().result_metadata,
+    ).toEqual(getResultsMetadata(state)?.columns);
+  });
+});
+
 describe("getQuestionDetailsTimelineDrawerState", () => {
   it("should return a string representing the state of the question history timeline drawer", () => {
     const state = getBaseState({
@@ -481,6 +585,17 @@ describe("getIsVisualized", () => {
       ],
     });
     expect(getIsVisualized(state)).toBe(true);
+  });
+
+  // metabase#56094: after switching an auto-pivot table to the raw "data" view,
+  // display is "table" and `table.pivot` is not set, but `table.pivot_column`
+  // remains. The question must still count as visualized so the display toggle
+  // stays available to switch back to the pivot visualization.
+  it("should be true when display is table and only `table.pivot_column` is set (metabase#56094)", () => {
+    const question = { display: () => "table" } as unknown as Question;
+    const settings = { "table.pivot_column": "CATEGORY" };
+
+    expect(getIsVisualized.resultFunc(question, settings)).toBeTruthy();
   });
 });
 
@@ -583,5 +698,65 @@ describe("getShouldShowUnsavedChangesWarning", () => {
       });
       expect(getShouldShowUnsavedChangesWarning(state)).toBe(false);
     });
+  });
+});
+
+describe("getFilteredTimelines", () => {
+  function getTimelineWithEvents(
+    events: Array<{ id: number; name: string; timestamp: string }>,
+  ) {
+    return createMockTimeline({
+      id: 1,
+      events: events.map((event) => createMockTimelineEvent(event)),
+    });
+  }
+
+  function getEventNames(timelines: ReturnType<typeof getFilteredTimelines>) {
+    return timelines.flatMap((timeline) =>
+      (timeline.events ?? []).map((event) => event.name),
+    );
+  }
+
+  // metabase#23336: when a timeseries is bucketed by an absolute unit (e.g. year),
+  // the last x value is the *start* of the last bucket (Jan 1, 2024 for "count of
+  // orders by year"). Filtering events to [xDomain[0], xDomain[1]] drops any event
+  // that lands later within that final bucket. getFilteredTimelines must extend the
+  // domain by one data interval so those last-period events remain visible.
+  it("keeps events that fall within the last period of an absolute-unit timeseries (metabase#23336)", () => {
+    const xDomain: [dayjs.Dayjs, dayjs.Dayjs] = [
+      dayjs.utc("2020-01-01T00:00:00Z"),
+      dayjs.utc("2024-01-01T00:00:00Z"),
+    ];
+    const dataInterval: TimeSeriesInterval = { count: 1, unit: "year" };
+
+    const timeline = getTimelineWithEvents([
+      { id: 1, name: "In range", timestamp: "2022-05-01T12:00:00Z" },
+      { id: 2, name: "In last period", timestamp: "2024-09-10T12:00:00Z" },
+      { id: 3, name: "Beyond range", timestamp: "2025-06-01T12:00:00Z" },
+    ]);
+
+    const filtered = getFilteredTimelines.resultFunc(
+      [timeline],
+      xDomain,
+      dataInterval,
+    );
+
+    expect(getEventNames(filtered)).toEqual(["In range", "In last period"]);
+  });
+
+  it("does not extend the domain when there is no data interval", () => {
+    const xDomain: [dayjs.Dayjs, dayjs.Dayjs] = [
+      dayjs.utc("2020-01-01T00:00:00Z"),
+      dayjs.utc("2024-01-01T00:00:00Z"),
+    ];
+
+    const timeline = getTimelineWithEvents([
+      { id: 1, name: "In range", timestamp: "2022-05-01T12:00:00Z" },
+      { id: 2, name: "In last period", timestamp: "2024-09-10T12:00:00Z" },
+    ]);
+
+    const filtered = getFilteredTimelines.resultFunc([timeline], xDomain, null);
+
+    expect(getEventNames(filtered)).toEqual(["In range"]);
   });
 });

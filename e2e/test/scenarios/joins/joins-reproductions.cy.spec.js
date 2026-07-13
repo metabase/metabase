@@ -2,16 +2,8 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 describe("issue 14793", () => {
   const XRAY_DATASETS = 11; // enough to load most questions
 
@@ -594,80 +586,6 @@ describe("issue 27380", () => {
     cy.findByText("Product → Created At: Week");
   });
 });
-describe("issue 31769", () => {
-  const Q1 = {
-    "source-table": ORDERS_ID,
-    joins: [
-      {
-        fields: "all",
-        alias: "Products",
-        "source-table": PRODUCTS_ID,
-        condition: [
-          "=",
-          ["field", ORDERS.PRODUCT_ID, null],
-          ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-        ],
-      },
-      {
-        fields: "all",
-        alias: "People — User",
-        "source-table": PEOPLE_ID,
-        condition: [
-          "=",
-          ["field", ORDERS.USER_ID, null],
-          ["field", PEOPLE.ID, { "join-alias": "People — User" }],
-        ],
-      },
-    ],
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        PRODUCTS.CATEGORY,
-        { "base-type": "type/Text", "join-alias": "Products" },
-      ],
-    ],
-  };
-
-  const Q2 = {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-    breakout: [["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]],
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion({ name: "Q1", query: Q1 }).then(() => {
-      H.createQuestion({ name: "Q2", query: Q2 }).then((response) => {
-        cy.wrap(response.body.id).as("card_id_q2");
-        H.startNewQuestion();
-      });
-    });
-  });
-
-  it("shouldn't drop joins using Lib/MBQL 5 (metabase#31769)", () => {
-    H.selectSavedQuestionsToJoin("Q1", "Q2");
-
-    H.popover().findByText("Products → Category").click();
-    H.popover().findByText("Category").click();
-
-    H.visualize();
-
-    // Asserting there're two columns from Q1 and two columns from Q2
-    cy.findAllByTestId("header-cell").should("have.length", 4);
-
-    cy.get("@card_id_q2").then((cardId) => {
-      H.tableInteractive()
-        .findByText("Q2 - Products → Category → Category")
-        .should("exist");
-    });
-
-    H.tableInteractive().findByText("Products → Category").should("exist");
-  });
-});
-
 describe("issue 39448", () => {
   beforeEach(() => {
     H.restore();
@@ -792,116 +710,6 @@ describe("issue 27521", () => {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
-});
-
-describe("issue 42385", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-  });
-
-  it("should remove invalid draft join clause when query database changes (metabase#42385)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.join();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Reviews").click();
-    });
-
-    H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.miniPickerHeader().click();
-    H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Reviews").click();
-    });
-
-    H.getNotebookStep("join").within(() => {
-      cy.findByPlaceholderText("Search for tables and more...").should(
-        "be.visible",
-      );
-      cy.findByLabelText("Left column").should("not.exist");
-      cy.findByLabelText("Right column").should("not.exist");
-    });
-  });
-
-  it("should remove invalid join clause in incomplete draft state when query database changes (metabase#42385)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.join();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Products").click();
-    });
-
-    H.getNotebookStep("join")
-      .findByLabelText("Right table")
-      .findByText("Products")
-      .click();
-
-    H.miniPicker().findByText("Reviews").click();
-
-    H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.miniPickerHeader().click();
-    H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Reviews").click();
-    });
-
-    H.getNotebookStep("join").should("not.exist");
-  });
-});
-
-describe("issue 45300", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("joins using the foreign key only should not break the filter picker (metabase#45300)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": REVIEWS_ID,
-          joins: [
-            {
-              fields: "all",
-              strategy: "left-join",
-              alias: "Orders - Product",
-              condition: [
-                "=",
-                ["field", REVIEWS.PRODUCT_ID, { "base-type": "type/Integer" }],
-                [
-                  "field",
-                  ORDERS.PRODUCT_ID,
-                  {
-                    "base-type": "type/Integer",
-                    "join-alias": "Orders - Product",
-                  },
-                ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-          ],
-        },
-        parameters: [],
-      },
-    });
-
-    H.filter();
-    H.popover().within(() => {
-      cy.findAllByText("Product").should("have.length", 2).first().click();
-      cy.findByText("Category").click();
-      cy.findByText("Doohickey").click();
-      cy.button("Apply filter").click();
-    });
-    cy.wait("@dataset");
-
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Product → Category is Doohickey",
-    );
-  });
 });
 
 describe("issue 46675", () => {
