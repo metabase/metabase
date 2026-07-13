@@ -19,6 +19,11 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import {
+  type Sorting,
+  getNextSorting,
+  getSortingState,
+} from "metabase/utils/sorting";
 import type {
   Database,
   ListTasksSortColumn,
@@ -26,7 +31,25 @@ import type {
   Task,
 } from "metabase-types/api";
 
+import { TASK_SORT_COLUMNS } from "./utils";
+
 const COLUMN_WIDTHS = [0.25, 0.15, 0.12, 0.16, 0.16, 0.1, 0.06];
+
+const toSorting = ({
+  sort_column,
+  sort_direction,
+}: SortingOptions<ListTasksSortColumn>): Sorting<ListTasksSortColumn> => ({
+  column: sort_column,
+  direction: sort_direction,
+});
+
+const toSortingOptions = ({
+  column,
+  direction,
+}: Sorting<ListTasksSortColumn>): SortingOptions<ListTasksSortColumn> => ({
+  sort_column: column,
+  sort_direction: direction,
+});
 
 interface Props {
   databases: Database[];
@@ -54,7 +77,7 @@ export const TasksTable = ({
 
   const columns = useMemo(() => getColumns(databaseByID), [databaseByID]);
   const sortingState = useMemo(
-    () => getSortingState(sortingOptions),
+    () => getSortingState(toSorting(sortingOptions)),
     [sortingOptions],
   );
 
@@ -70,7 +93,13 @@ export const TasksTable = ({
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
       onSortingOptionsChange(
-        getSortingOptions(newSortingState, sortingOptions),
+        toSortingOptions(
+          getNextSorting(
+            newSortingState,
+            TASK_SORT_COLUMNS,
+            toSorting(sortingOptions),
+          ),
+        ),
       );
     },
     [sortingState, sortingOptions, onSortingOptionsChange],
@@ -225,38 +254,4 @@ function getColumns(
       cell: ({ row }) => <TaskStatusBadge task={row.original} />,
     },
   ];
-}
-
-function getSortingState(
-  sortingOptions: SortingOptions<ListTasksSortColumn>,
-): SortingState {
-  return [
-    {
-      id: sortingOptions.sort_column,
-      desc: sortingOptions.sort_direction === "desc",
-    },
-  ];
-}
-
-function getSortingOptions(
-  sortingState: SortingState,
-  currentOptions: SortingOptions<ListTasksSortColumn>,
-): SortingOptions<ListTasksSortColumn> {
-  const [firstSort] = sortingState;
-
-  if (firstSort !== undefined && isSortColumn(firstSort.id)) {
-    return {
-      sort_column: firstSort.id,
-      sort_direction: firstSort.desc ? "desc" : "asc",
-    };
-  }
-
-  return {
-    sort_column: currentOptions.sort_column,
-    sort_direction: currentOptions.sort_direction === "desc" ? "asc" : "desc",
-  };
-}
-
-function isSortColumn(id: string): id is ListTasksSortColumn {
-  return id === "started_at" || id === "ended_at" || id === "duration";
 }

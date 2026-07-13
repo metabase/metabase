@@ -108,9 +108,7 @@
                :query-hash        (codec/base64-encode (qp.util/query-hash {:database 1, :type :native}))
                :query-string      "toucans"
                :question-filter   "bird sales"
-               :collection-filter "coin collection"
-               :error-filter      "a"
-               :db-filter         "PU"
+               :search-term       "toucans"
                :sort-column       "card.id"
                :sort-direction    "desc"
                :dashboard-name    "wow"
@@ -152,7 +150,7 @@
                                            {:limit 1
                                             :type :internal,
                                             :fn "metabase-enterprise.audit-app.pages.queries/bad-table",
-                                            :args [nil nil nil "last_run_at" "desc"],
+                                            :args [nil "last_run_at" "desc"],
                                             :offset 0,
                                             :parameters []})]
         (is (=? {:status "completed"

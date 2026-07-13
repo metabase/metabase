@@ -7,20 +7,21 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import {
+  getNextOptionalSorting,
+  getSortingState,
+} from "metabase/utils/sorting";
 import type { DependencySortOptions } from "metabase-enterprise/dependencies/types";
 import { getNodeId } from "metabase-enterprise/dependencies/utils";
-import type { DependencyNode } from "metabase-types/api";
+import {
+  DEPENDENCY_SORT_COLUMNS,
+  type DependencyNode,
+} from "metabase-types/api";
 
 import { DiagnosticsEmptyState } from "../DiagnosticsEmptyState";
 import type { DependencyDiagnosticsMode } from "../types";
 
-import {
-  getColumnWidths,
-  getColumns,
-  getNotFoundMessage,
-  getSortingOptions,
-  getSortingState,
-} from "./utils";
+import { getColumnWidths, getColumns, getNotFoundMessage } from "./utils";
 
 type DiagnosticsTableProps = {
   nodes: DependencyNode[];
@@ -54,7 +55,9 @@ export const DiagnosticsTable = function DiagnosticsTable({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortOptionsChange(getSortingOptions(newSortingState));
+      onSortOptionsChange(
+        getNextOptionalSorting(newSortingState, DEPENDENCY_SORT_COLUMNS),
+      );
     },
     [sortingState, onSortOptionsChange],
   );
