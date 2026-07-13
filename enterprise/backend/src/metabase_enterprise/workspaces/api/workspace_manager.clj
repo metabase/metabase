@@ -33,6 +33,9 @@
   [:map {:closed true}
    [:name         ms/NonBlankString]
    [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]
+   ;; export branch; omitted = auto-named ws-<slug>-<id>. 409 when another
+   ;; workspace already exports to the same branch.
+   [:target_branch {:optional true} ms/NonBlankString]
    ;; when true, also mint the agent api-key, build config.yml, and spawn the child
    ;; instance via Harbormaster (blocking). Off by default so the config-download flow
    ;; and local rigs keep working without HM.
