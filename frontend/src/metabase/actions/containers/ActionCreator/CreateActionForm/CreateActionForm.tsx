@@ -53,6 +53,7 @@ function CreateActionForm({
 
   return (
     <FormProvider
+      // Unjustified type cast. FIXME
       initialValues={initialValues as FormValues}
       validationSchema={ACTION_SCHEMA}
       onSubmit={onCreate}
@@ -76,7 +77,7 @@ function CreateActionForm({
           />
           <FormModelPicker name="model_id" title={t`Model it's saved in`} />
           <FormFooter>
-            <FormErrorMessage data-testid="create-action-form-error" />
+            <FormErrorMessage />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}

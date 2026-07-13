@@ -138,6 +138,7 @@ export const ChartSettingFieldPicker = ({
             <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <Icon
+                  // Unjustified type cast. FIXME
                   ref={dragHandleRef as Ref<SVGSVGElement>}
                   name="grabber"
                   {...dragHandleListeners}

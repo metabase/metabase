@@ -101,7 +101,9 @@
      [:collection {:optional true} ::common/non-blank-string]
      ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
      ;; `:native` key), but their definition lives under this key.
-     [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+     ;;
+     ;; Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.
+     [:template-tags {:optional true} [:ref ::template-tag/template-tags]]
      ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
      ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
      ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.

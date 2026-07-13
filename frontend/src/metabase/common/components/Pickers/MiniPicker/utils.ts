@@ -293,6 +293,7 @@ export function getFolderAndHiddenFunctions(
       return true;
     }
 
+    // Unjustified type cast. FIXME
     return (
       !modelSet.has(item.model as MiniPickerPickableItem["model"]) &&
       !isFolder(item)
@@ -309,6 +310,7 @@ export const focusFirstMiniPickerItem = () => {
       '[data-testid="mini-picker"] [role="menuitem"]',
     );
     if (firstItem) {
+      // Unjustified type cast. FIXME
       (firstItem as HTMLElement)?.focus?.();
     }
   }, 10);

@@ -112,6 +112,7 @@ function getStartOfWeekDay(
 // we delete msgid property since it's redundant, but have to add it back in to
 // make ttag happy
 function addMsgIds(translationsObject: LocaleDataWithLanguage): void {
+  // Unjustified type cast. FIXME
   const msgs = translationsObject.translations[""] as Record<
     string,
     { msgid?: string; msgstr: string[] }

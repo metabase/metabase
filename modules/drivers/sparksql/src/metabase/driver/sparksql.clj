@@ -18,6 +18,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias sql.qp.like-built-in]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.performance :refer [select-keys every? empty? not-empty get-in]])
   (:import
@@ -34,11 +35,11 @@
   "t1")
 
 (defmethod sql.qp/->honeysql [:sparksql :field]
-  [driver [_ _ {::sql.params.substitution/keys [compiling-field-filter?]} :as field-clause]]
+  [driver [_ {::sql.params.substitution/keys [compiling-field-filter?]} _ :as field-clause]]
   ;; use [[source-table-alias]] instead of the usual `schema.table` to qualify fields e.g. `t1.field` instead of the
   ;; normal `schema.table.field`
   (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
-        field-clause  (driver-api/update-field-options
+        field-clause  (lib/update-options
                        field-clause
                        (fn [{source-table driver-api/qp.add.source-table, :as options}]
                          (-> options
@@ -259,8 +260,8 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:sparksql ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sparksql
   [_ e]

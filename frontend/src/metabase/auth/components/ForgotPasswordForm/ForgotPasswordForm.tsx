@@ -67,7 +67,7 @@ export const ForgotPasswordForm = ({
             variant="filled"
             fullWidth
           />
-          <FormErrorMessage data-testid="form-error-message" mt="md" />
+          <FormErrorMessage />
         </Form>
       </FormProvider>
       <PasswordFormFooter>

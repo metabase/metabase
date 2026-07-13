@@ -42,7 +42,9 @@ export function sanitizePluginSettings(
     }
 
     if ("widget" in value && typeof value.widget === "function") {
+      // Unjustified type cast. FIXME
       const Widget = value.widget as ComponentType<Record<string, unknown>>;
+      // Unjustified type cast. FIXME
       sanitizedSettings[settingId] = {
         ...value,
         widget: wrapPluginWidget(
@@ -79,6 +81,7 @@ function assertValidSettingWidgets(
     return;
   }
   for (const [settingId, def] of Object.entries(settings)) {
+    // Unjustified type cast. FIXME
     const widget = (def as { widget?: unknown }).widget;
     if (
       typeof widget === "string" &&

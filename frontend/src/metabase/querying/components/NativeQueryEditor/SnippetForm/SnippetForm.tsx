@@ -129,7 +129,7 @@ function SnippetFormInner({
                   {t`Archive`}
                 </Button>
               )}
-              <FormErrorMessage data-testid="snippet-form-error" />
+              <FormErrorMessage />
             </Flex>
             <Flex align="center" justify="center" gap="sm">
               {!!onCancel && (

@@ -66,7 +66,7 @@ const TimelineForm = ({
           />
           <IconField name="icon" title={t`Default icon`} options={icons} />
           <TimelineFormFooter>
-            <FormErrorMessage data-testid="timeline-form-error" />
+            <FormErrorMessage />
             {!isNew && (
               <FormArchiveButton onClick={onArchive}>
                 {t`Archive timeline and all events`}

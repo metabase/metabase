@@ -77,6 +77,7 @@ describe("SearchResult", () => {
 
     expect(screen.getByText(TEST_RESULT_QUESTION.name)).toBeInTheDocument();
     expect(
+      // Unjustified type cast. FIXME
       screen.getByText(TEST_RESULT_QUESTION.description as string),
     ).toBeInTheDocument();
     expect(getIcon("table2")).toBeInTheDocument();

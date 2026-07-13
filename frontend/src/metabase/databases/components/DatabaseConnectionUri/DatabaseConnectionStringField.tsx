@@ -64,6 +64,7 @@ export function DatabaseConnectionStringField({
       }
 
       const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
+      // Unjustified type cast. FIXME
       const fields = mapFieldsToNestedObject(fieldsMap) as DatabaseData;
       await setValues((previousValues) =>
         setDatabaseFormValues(previousValues, fields),

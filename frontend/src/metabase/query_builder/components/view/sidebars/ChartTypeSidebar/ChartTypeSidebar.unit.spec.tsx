@@ -11,6 +11,7 @@ const createResult = (insights: any[] | undefined): Dataset =>
   createMockDataset({
     data: {
       rows: [[1]],
+      // Unjustified type cast. FIXME
       cols: [{ name: "count", base_type: "type/Integer" }] as any,
       insights,
     },
@@ -18,6 +19,7 @@ const createResult = (insights: any[] | undefined): Dataset =>
 
 const setup = (result: Dataset) => {
   return renderWithProviders(
+    // Unjustified type cast. FIXME
     <ChartTypeSidebar question={null as any} result={result} />,
   );
 };
@@ -43,6 +45,7 @@ describe("ChartTypeSidebar", () => {
 
     rerender(
       <ChartTypeSidebar
+        // Unjustified type cast. FIXME
         question={null as any}
         result={resultWithoutInsights}
       />,

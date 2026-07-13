@@ -128,6 +128,7 @@ const FieldList = (props: FieldListProps) => {
       style={style}
       className={CS.full}
       onSubmit={handleSubmit}
+      // Unjustified type cast. FIXME
       {...({ testID: props["data-testid"] } as Record<string, unknown>)}
     >
       {isEditing && (
@@ -189,9 +190,11 @@ const FieldList = (props: FieldListProps) => {
                               databaseId={table.db_id!}
                               field={entity}
                               url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
+                              // Unjustified type cast. FIXME
                               icon={getIconForField(entity) as IconName}
                               isEditing={isEditing}
                               formField={getNestedFormField(
+                                // Unjustified type cast. FIXME
                                 entity.id as FieldId,
                               )}
                             />
@@ -216,4 +219,5 @@ const FieldList = (props: FieldListProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(FieldList as unknown as React.ComponentType);

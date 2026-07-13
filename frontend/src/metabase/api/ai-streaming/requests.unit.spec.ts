@@ -27,6 +27,7 @@ describe("ai requests", () => {
 
       // The client wraps the args in a `Request`, so assert on its URL.
       const [request] = fetchSpy.mock.calls[0];
+      // Unjustified type cast. FIXME
       expect((request as Request).url).toBe(
         "http://example.com/some-streamed-endpoint",
       );

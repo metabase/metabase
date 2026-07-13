@@ -40,6 +40,7 @@ export function fillParametersInText({
       );
 
       if (parameter) {
+        // Unjustified type cast. FIXME
         const rawParameterValue = parameterValues[parameter.id] as string;
         const parameterValue = urlEncode
           ? encodeURIComponent(rawParameterValue)

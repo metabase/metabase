@@ -58,6 +58,7 @@ export function TableClickBehaviorView({
   getClickBehaviorForColumn,
   onColumnClick,
 }: Props) {
+  // Unjustified type cast. FIXME
   const groupedColumns = useMemo(() => {
     const withClickBehaviors = columns.map((column) => ({
       column,

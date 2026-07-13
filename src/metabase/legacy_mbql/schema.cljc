@@ -391,7 +391,9 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
-                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
+                        (when-not ((some-fn nil? map?) opts)
+                          (throw (ex-info "Attempted to normalize an MBQL 5 :field clause as MBQL 4"
+                                          {:clause x})))
                         ;; if someone accidentally nests `:field` clauses fix it for them
                         (if (and (sequential? id-or-name)
                                  ((some-fn keyword? string?) (first id-or-name))
@@ -1690,7 +1692,10 @@
 
   Map of template tag name -> template tag definition"
   [:and
-   [:map-of ::lib.schema.common/non-blank-string [:ref ::TemplateTag]]
+   [:map-of
+    {:decode/normalize #'lib.schema.template-tag/normalize-template-tag-map}
+    ::lib.schema.common/non-blank-string
+    [:ref ::TemplateTag]]
    [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
 
 (defn- remove-empty-keys [m {:keys [non-empty-keys non-nil-keys]}]

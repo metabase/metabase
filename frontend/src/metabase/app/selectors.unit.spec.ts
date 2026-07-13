@@ -6,6 +6,7 @@ import type { RouterProps } from "metabase/selectors/app";
 import { getIsCollectionPathVisible } from "./selectors";
 
 const createLocation = (pathname: string): Location =>
+  // Unjustified type cast. FIXME
   ({
     pathname,
     search: "",

@@ -31,6 +31,7 @@ export const getMetabotState = (state: State) => {
 
 export const getActiveMetabotAgentIds = createSelector(
   getMetabotState,
+  // Unjustified type cast. FIXME
   (state) => Object.keys(state.conversations) as MetabotAgentId[],
 );
 

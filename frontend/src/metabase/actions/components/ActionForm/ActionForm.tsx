@@ -94,7 +94,7 @@ function ActionForm({
           />
         </Flex>
 
-        <FormErrorMessage data-testid="form-error-message" mt="md" />
+        <FormErrorMessage mt="md" />
       </Form>
     </FormProvider>
   );

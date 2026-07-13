@@ -59,6 +59,7 @@ describe("TableVisibilityToggle", () => {
           method: "PUT",
         },
       )[0];
+      // Unjustified type cast. FIXME
       const body = await (call.options?.body as unknown as Promise<string>);
 
       expect(JSON.parse(body)).toEqual({ visibility_type: "hidden" });
@@ -135,6 +136,7 @@ describe("TableVisibilityToggle", () => {
           method: "PUT",
         },
       )[0];
+      // Unjustified type cast. FIXME
       const body = await (call.options?.body as unknown as Promise<string>);
 
       expect(JSON.parse(body)).toEqual({ visibility_type: null });

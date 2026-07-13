@@ -14,6 +14,7 @@ describe("Themed Visualization", () => {
   it("inherits the chart label color from the theme", async () => {
     const TEST_COLOR = "rgb(44, 55, 66)";
 
+    // Unjustified type cast. FIXME
     const series = [
       {
         card: createMockCard({ name: "Card", display: "bar" }),

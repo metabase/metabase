@@ -91,7 +91,7 @@ export const ResetPasswordForm = ({
             variant="filled"
             fullWidth
           />
-          <FormErrorMessage data-testid="form-error-message" mt="md" />
+          <FormErrorMessage />
         </Form>
       </FormProvider>
     </div>
