@@ -53,7 +53,8 @@
   The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
   re-evaluate per use."
   []
-  ;; entitlement first: don't query the app db (the pgvector probe) for instances that can't use the answer
+  ;; entitlement first: short-circuit on the license flags for instances that can't use the answer, before
+  ;; the config check (here a cheap dedicated-URL string check, not the app-db pgvector probe)
   (and (premium-features/has-feature? :library)
        (premium-features/has-feature? :library-retrieval)
        (pgvector-configured?)
