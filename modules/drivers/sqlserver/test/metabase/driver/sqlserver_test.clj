@@ -591,7 +591,8 @@
 (deftest ^:parallel top-level-boolean-expressions-test
   (mt/test-driver :sqlserver
     (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
-      (let [bool-val  (fn [b] (sql.qp/mbql-clause-with-opts :sqlserver :value {:base-type :type/Boolean :effective-type :type/Boolean} b))]
+      (let [opts {:base-type :type/Boolean :effective-type :type/Boolean}
+            bool-val  (fn [b] (sql.qp/mbql-clause-with-opts :sqlserver :value opts b))]
         (letfn [(expression-ref [expression-name]
                   (sql.qp/mbql-clause :sqlserver :expression expression-name))
                 (orders-query [{:keys [expressions fields filters]
