@@ -1,8 +1,8 @@
-import { getDataFromClicked } from "metabase/parameters/utils/click-behavior";
 import { removeNewLines } from "metabase/utils/formatting/strings";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings } from "metabase-types/api";
 
+import { getDataFromClicked } from "./click-data";
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
 import { getJsxLinkRenderer } from "./registry";
 import { formatValue, getRemappedValue } from "./value";
