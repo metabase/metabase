@@ -17,11 +17,6 @@
   margin-top: 32px;
 }
 
-.collectionsBlock:hover .collectionsCreateButton,
-.collectionsBlock:focus-within .collectionsCreateButton {
-  opacity: 1;
-}
-
 .collectionsHeadingRow {
   display: flex;
   align-items: center;
@@ -31,11 +26,6 @@
 
 .collectionsHeadingRow .subNavHeading {
   margin-bottom: 0;
-}
-
-.collectionsCreateButton {
-  opacity: 0;
-  transition: opacity 150ms ease;
 }
 
 .header {
@@ -60,96 +50,95 @@
   flex-shrink: 0;
 }
 
-.headerButton {
+/* Top-level section list (shown when no section is drilled into). */
+.navList {
   display: flex;
-  height: 32px;
-  padding: var(--sm-spacing, 8px) var(--md-spacing, 12px);
-  justify-content: center;
-  align-items: center;
-  gap: var(--xs-spacing, 6px);
-  border-radius: var(--xs-radius, 6px);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease,
-    border-color 150ms ease;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-inline: 16px;
 }
 
-.headerSearchButton {
-  border: 0.5px solid var(--mb-color-border-strong, rgba(7, 23, 34, 0.51));
-  background: var(--mb-color-background-primary, #fff);
-  color: var(--mb-color-text-primary);
-}
-
-.headerSearchButton:hover {
-  border-radius: var(--xs-radius, 6px);
-  border: 0.5px solid var(--mb-color-border-strong, rgba(7, 23, 34, 0.51));
-  background: var(
-    --mb-color-background_surface-primary-hover,
-    rgba(7, 23, 34, 0.05)
-  );
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
-}
-
-.rail {
+.navListItem {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0 0.5rem;
-  padding-inline-start: 1rem;
-  margin-bottom: 8px;
-  flex-shrink: 0;
-}
-
-.railBtn {
-  display: flex;
-  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
   padding: 0.5rem;
   border: none;
-  background: var(--mb-color-background-secondary);
+  background: transparent;
   border-radius: var(--mantine-radius-md);
-  color: var(--mb-color-text-secondary);
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  text-align: start;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
   transition:
     background-color 150ms ease,
     color 150ms ease;
 }
 
-.railBtn:hover {
+.navListItem:hover {
   background-color: var(--mb-color-background_surface-hover);
   color: var(--mb-color-core-brand);
 }
 
-.railBtn.selected {
-  background-color: var(--mb-color-background_surface-selected);
+.navListItemIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-brand);
+}
+
+.navListItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Clickable heading at the top of a drilled-in section; returns to the list. */
+.backHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  padding-inline-start: 12px;
+  margin-bottom: 24px;
+  border: none;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 150ms ease;
+}
+
+.backHeader:hover {
   color: var(--mb-color-core-brand);
 }
 
-.railLabel {
-  display: inline-block;
-  max-width: 0;
-  margin-left: 0;
-  opacity: 0;
-  overflow: hidden;
-  font-size: 0.75rem;
-  font-weight: 700;
-  transition:
-    max-width 200ms ease,
-    margin-left 200ms ease,
-    opacity 200ms ease;
+.backHeaderChevron {
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
 }
 
-.railBtn.selected .railLabel {
-  max-width: 10rem;
-  margin-left: 0.375rem;
-  opacity: 1;
+.backHeader:hover .backHeaderChevron {
+  color: var(--mb-color-core-brand);
+}
+
+.backHeaderLabel {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .subNavHeading {
@@ -175,8 +164,7 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  /* 0.5rem rail gap + 1rem first-section offset (formerly .section margin-top) */
-  padding-top: calc(0.5rem + 1rem);
+  padding-top: 4px;
 }
 
 .root .sectionContent :global(a),
@@ -207,18 +195,13 @@
   background-color: var(--mb-color-background_surface-selected);
 }
 
-.queryBar {
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   flex-shrink: 0;
-  padding: 0.75rem 0.75rem;
+  padding: 0.75rem;
   padding-inline-start: 1rem;
-}
-
-.queryBarMenu {
-  width: 100%;
-}
-
-.queryButton {
-  width: 100%;
 }
 
 .libraryNestedItems {

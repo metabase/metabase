@@ -9,20 +9,12 @@ import { t } from "ttag";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { resetConversation } from "metabase/metabot/state";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import {
-  ActionIcon,
-  Box,
-  FixedSizeIcon,
-  Group,
-  Icon,
-  Menu,
-  Tooltip,
-} from "metabase/ui";
+import { ActionIcon, Box, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
@@ -62,12 +54,21 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     kbarQuery.setVisualState(VisualState.showing);
   }, [kbarQuery]);
 
-  const sections: { id: SectionId; label: string; icon: IconName }[] = [
-    { id: "collections", label: t`Home`, icon: "home" },
-    { id: "data", label: t`Data`, icon: "database" },
-    { id: "library", label: t`Library`, icon: "repository" },
-    { id: "playground", label: t`Playground`, icon: "play" },
-    { id: "monitor", label: t`Monitor`, icon: "gauge" },
+  const sectionMeta: Record<SectionId, { label: string; icon: IconName }> = {
+    collections: { label: t`Collections`, icon: "collection" },
+    data: { label: t`Data`, icon: "database" },
+    library: { label: t`Library`, icon: "repository" },
+    playground: { label: t`Playground`, icon: "play" },
+    monitor: { label: t`Monitor`, icon: "gauge" },
+  };
+
+  // Top-level sections listed in the nav, in order. "playground" stays routable
+  // but is intentionally omitted from the list.
+  const navSections: SectionId[] = [
+    "collections",
+    "data",
+    "library",
+    "monitor",
   ];
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
@@ -97,49 +98,36 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     () => getActiveSection(location.pathname, personalCollectionId),
     [location.pathname, personalCollectionId],
   );
-  const [activeSection, setActiveSection] = useState<SectionId>(
-    routeSection ?? "collections",
+
+  // `null` shows the top-level section list; otherwise we're drilled into a
+  // section and show its sub-nav with a back header.
+  const [expandedSection, setExpandedSection] = useState<SectionId | null>(
+    routeSection,
   );
   const [collectionsVisitKey, setCollectionsVisitKey] = useState(0);
-  const prevActiveSectionRef = useRef<SectionId>(routeSection ?? "collections");
+  const prevExpandedSectionRef = useRef<SectionId | null>(routeSection);
 
   // Lets a section "pin" itself so the next route change doesn't steal the
   // selection away (e.g. launching a SQL query lands on /question, which would
-  // otherwise switch the rail back to Home).
+  // otherwise switch the nav back to Collections).
   const pinnedSectionRef = useRef<SectionId | null>(null);
   const pinSection = useCallback((section: SectionId) => {
     pinnedSectionRef.current = section;
-    setActiveSection(section);
+    setExpandedSection(section);
   }, []);
 
-  const handleAskAi = useCallback(() => {
-    dispatch(resetConversation({ agentId: "ask" }));
-    dispatch(push(Urls.newQuestion({ mode: "ask", cardType: "question" })));
-  }, [dispatch]);
-
-  const handleQueryBuilder = useCallback(() => {
-    dispatch(
-      push(
-        Urls.newQuestion({
-          mode: "notebook",
-          creationType: "custom_question",
-          cardType: "question",
-        }),
-      ),
-    );
-  }, [dispatch]);
-
-  const handleSqlQuery = useCallback(() => {
-    dispatch(
-      push(
-        Urls.newQuestion({
-          DEPRECATED_RAW_MBQL_type: "native",
-          creationType: "native_question",
-          cardType: "question",
-        }),
-      ),
-    );
-  }, [dispatch]);
+  const openSection = (section: SectionId) => {
+    setExpandedSection(section);
+    // Already on this section's route? Just drill in and keep the context.
+    if (routeSection === section) {
+      return;
+    }
+    const target = defaultPaths[section];
+    if (target) {
+      pinSection(section);
+      dispatch(push(target));
+    }
+  };
 
   // Resizable width, clamped to [MIN_WIDTH, MAX_WIDTH] and persisted locally.
   const [width, setWidth] = useState(() => {
@@ -177,21 +165,21 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     [width],
   );
 
-  // Keep the selected icon in sync with the route as the user navigates.
+  // Keep the expanded section in sync with the route as the user navigates.
   useEffect(() => {
     const pendingPin = consumeProtoNavSectionPin();
     if (pendingPin) {
-      setActiveSection(pendingPin);
+      setExpandedSection(pendingPin);
       pinnedSectionRef.current = null;
       return;
     }
     if (pinnedSectionRef.current) {
-      setActiveSection(pinnedSectionRef.current);
+      setExpandedSection(pinnedSectionRef.current);
       pinnedSectionRef.current = null;
       return;
     }
     if (routeSection) {
-      setActiveSection(routeSection);
+      setExpandedSection(routeSection);
     }
   }, [routeSection]);
 
@@ -199,13 +187,13 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
   // starts expanded every time.
   useEffect(() => {
     if (
-      activeSection === "collections" &&
-      prevActiveSectionRef.current !== "collections"
+      expandedSection === "collections" &&
+      prevExpandedSectionRef.current !== "collections"
     ) {
       setCollectionsVisitKey((key) => key + 1);
     }
-    prevActiveSectionRef.current = activeSection;
-  }, [activeSection]);
+    prevExpandedSectionRef.current = expandedSection;
+  }, [expandedSection]);
 
   return (
     <Sidebar
@@ -238,8 +226,6 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
             <LogoIcon height={32} />
           </ForwardRefLink>
           <Group className={S.headerIconActions} gap="0.25rem" wrap="nowrap">
-            <ProtoNavMoreMenu />
-            <NotificationsButton />
             <Tooltip label={t`Search`} openDelay={1000}>
               <ActionIcon
                 aria-label={t`Search`}
@@ -249,100 +235,80 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
                 <FixedSizeIcon name="search" />
               </ActionIcon>
             </Tooltip>
+            <NewItemMenu
+              trigger={
+                <Tooltip label={t`New`} openDelay={1000}>
+                  <ActionIcon aria-label={t`New`} c="icon-secondary">
+                    <FixedSizeIcon name="add" />
+                  </ActionIcon>
+                </Tooltip>
+              }
+            />
           </Group>
         </Box>
 
-        <Box className={S.rail} role="tablist" aria-label={t`Sections`}>
-          {sections.map((section) => {
-            const isSelected = activeSection === section.id;
-            return (
-              <Tooltip
-                key={section.id}
-                label={section.label}
-                openDelay={1000}
-                disabled={isSelected}
-              >
+        {expandedSection === null ? (
+          <Box className={S.navList} role="list" aria-label={t`Sections`}>
+            {navSections.map((id) => {
+              const { label, icon } = sectionMeta[id];
+              return (
                 <button
+                  key={id}
                   type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  aria-label={section.label}
-                  className={cx(S.railBtn, { [S.selected]: isSelected })}
-                  onClick={() => {
-                    setActiveSection(section.id);
-                    const target = defaultPaths[section.id];
-                    if (target) {
-                      pinSection(section.id);
-                      dispatch(push(target));
-                    }
-                  }}
+                  className={S.navListItem}
+                  onClick={() => openSection(id)}
                 >
-                  <FixedSizeIcon name={section.icon} />
-                  <span className={S.railLabel}>{section.label}</span>
+                  <FixedSizeIcon name={icon} className={S.navListItemIcon} />
+                  <span className={S.navListItemLabel}>{label}</span>
                 </button>
-              </Tooltip>
-            );
-          })}
-        </Box>
+              );
+            })}
+          </Box>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={S.backHeader}
+              aria-label={t`Back to sections`}
+              onClick={() => setExpandedSection(null)}
+            >
+              <FixedSizeIcon
+                name="chevronleft"
+                className={S.backHeaderChevron}
+              />
+              <span className={S.backHeaderLabel}>
+                {sectionMeta[expandedSection].label}
+              </span>
+            </button>
 
-        <Box className={S.sectionContent}>
-          {activeSection === "collections" && (
-            <CollectionsSection
-              key={collectionsVisitKey}
-              isOpen={isOpen}
-              location={location}
-              params={params}
-            />
-          )}
-          {activeSection === "library" && (
-            <LibrarySection location={location} />
-          )}
-          {activeSection === "playground" && (
-            <PlaygroundSection location={location} />
-          )}
-          {activeSection === "data" && <DataSection location={location} />}
-          {activeSection === "monitor" && (
-            <MonitorSection location={location} />
-          )}
-        </Box>
+            <Box className={S.sectionContent}>
+              {expandedSection === "collections" && (
+                <CollectionsSection
+                  key={collectionsVisitKey}
+                  isOpen={isOpen}
+                  location={location}
+                  params={params}
+                />
+              )}
+              {expandedSection === "library" && (
+                <LibrarySection location={location} />
+              )}
+              {expandedSection === "playground" && (
+                <PlaygroundSection location={location} />
+              )}
+              {expandedSection === "data" && (
+                <DataSection location={location} />
+              )}
+              {expandedSection === "monitor" && (
+                <MonitorSection location={location} />
+              )}
+            </Box>
+          </>
+        )}
 
-        <Box className={S.queryBar}>
-          <Menu className={S.queryBarMenu} position="top-end" width="target">
-            <Menu.Target>
-              <button
-                type="button"
-                className={cx(
-                  S.headerButton,
-                  S.headerSearchButton,
-                  S.queryButton,
-                )}
-                aria-label={t`Query`}
-              >
-                <FixedSizeIcon name="message_circle" />
-                <span>{t`Query`}</span>
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<Icon name="sparkles" />}
-                onClick={handleAskAi}
-              >
-                {t`Ask AI`}
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="notebook" />}
-                onClick={handleQueryBuilder}
-              >
-                {t`Query builder`}
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="sql" />}
-                onClick={handleSqlQuery}
-              >
-                {t`SQL query`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+        <Box className={S.footer}>
+          <NotificationsButton />
+          <ProtoNavMoreMenu />
         </Box>
       </Box>
     </Sidebar>

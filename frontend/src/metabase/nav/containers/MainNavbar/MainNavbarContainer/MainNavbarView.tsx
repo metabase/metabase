@@ -16,7 +16,6 @@ import {
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
@@ -29,8 +28,7 @@ import {
 } from "metabase/nav/containers/ProtoNavbar/SubNav";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModal } from "metabase/redux/ui";
+import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -40,7 +38,7 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -107,7 +105,6 @@ export function MainNavbarView({
     "expand-collections-in-nav",
   );
 
-  const dispatch = useDispatch();
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const currentUser = useSelector(getUser);
@@ -238,52 +235,17 @@ export function MainNavbarView({
     ? t`Internal Collections`
     : t`Collections`;
 
+  // The drilled-in section's back header already names this section, so the
+  // heading is only rendered when tenants split it into "Internal Collections".
   const protoCollectionsBlock = (
     <SubNavSection>
       <ErrorBoundary>
         <div className={PN.collectionsBlock}>
-          <div className={PN.collectionsHeadingRow}>
-            <SubNavHeading>{collectionsHeading}</SubNavHeading>
-            {canWriteToCollections && !isTenantUser && (
-              <Menu position="bottom-end">
-                <Menu.Target>
-                  <ActionIcon
-                    className={PN.collectionsCreateButton}
-                    aria-label={t`Create new…`}
-                    variant="subtle"
-                    c="text-secondary"
-                    size="sm"
-                  >
-                    <Icon name="add" size={14} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Item
-                    leftSection={<Icon name="folder" />}
-                    onClick={() => {
-                      trackNewCollectionFromNavInitiated();
-                      handleCreateNewCollection();
-                    }}
-                  >
-                    {t`Collection`}
-                  </Menu.Item>
-                  <Menu.Item
-                    leftSection={<Icon name="dashboard" />}
-                    onClick={() => dispatch(setOpenModal("dashboard"))}
-                  >
-                    {t`Dashboard`}
-                  </Menu.Item>
-                  <Menu.Item
-                    leftSection={<Icon name="document" />}
-                    component={ForwardRefLink}
-                    to="/document/new"
-                  >
-                    {t`Document`}
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
-            )}
-          </div>
+          {showExternalCollectionsSection && (
+            <div className={PN.collectionsHeadingRow}>
+              <SubNavHeading>{t`Internal Collections`}</SubNavHeading>
+            </div>
+          )}
           {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
             <PLUGIN_REMOTE_SYNC.CollectionsNavTree
               collections={protoCollectionsTree}
