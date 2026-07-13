@@ -6,6 +6,8 @@ const action = createMockQueryAction({
   parameters: [
     {
       id: "abc-123",
+      name: "abc-123",
+      slug: "abc-123",
       target: ["variable", ["template-tag", "abc-123"]],
       type: "type/Text",
       required: false,
