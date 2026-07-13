@@ -6,10 +6,14 @@ import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { normal } = USERS;
 
+const NEW_PASSWORD = "NewPassword2fa!123";
+
+type MaildevEmail = { subject: string; html: string };
+
 describe("scenarios > admin > settings > multi-factor authentication", () => {
   beforeEach(() => {
     H.restore();
-    cy.request("POST", "/api/testing/reset-throttlers");
+    H.clearInbox();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     cy.intercept("PUT", "/api/setting/mfa-enforcement").as("updateEnforcement");
@@ -19,23 +23,17 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
   it("admin can enable and disable 2FA in authentication settings", () => {
     cy.visit("/admin/settings/authentication");
     mfaSetting().scrollIntoView();
-    mfaSetting().within(() => {
-      cy.findByText("Two-factor authentication").should("be.visible");
-      mfaToggle().should("not.be.checked").click();
-    });
+    mfaSetting().findByText("Two-factor authentication").should("be.visible");
+    mfaToggle().should("not.be.checked").click();
     cy.wait("@updateEnforcement");
     mfaSetting()
       .should("contain", "0 enrolled users")
       .and("contain", "users without 2FA");
 
     cy.log("Disable it again");
-    mfaSetting().within(() => {
-      mfaToggle().should("be.checked").click();
-    });
+    mfaToggle().should("be.checked").click();
     cy.wait("@updateEnforcement");
-    mfaSetting().within(() => {
-      mfaToggle().should("not.be.checked");
-    });
+    mfaToggle().should("not.be.checked");
     mfaSetting().should("not.contain", "enrolled");
   });
 
@@ -50,34 +48,8 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
     cy.findByTestId("account-header")
       .findByRole("tab", { name: "Security" })
       .should("be.visible");
-    cy.findByRole("button", {
-      name: "Set up two-factor authentication",
-    }).click();
-    H.modal().within(() => {
-      cy.findByLabelText("Confirm your password to begin").type(
-        normal.password,
-      );
-      cy.button("Continue").click();
-    });
-
-    cy.wait("@enroll").then(({ response }) => {
-      totpSecret = response?.body.secret;
-    });
-    cy.then(() => generateTotpCode(totpSecret, Date.now() / 1000)).then(
-      (code) => {
-        H.modal().within(() => {
-          cy.findByLabelText(
-            "Enter the 6-digit code from the authenticator app",
-          ).type(code);
-          cy.button("Set up authentication").click();
-        });
-      },
-    );
-
-    cy.log("Recovery codes are shown exactly once on enrollment");
-    H.modal().within(() => {
-      cy.findByText("Your recovery codes").should("be.visible");
-      cy.button("Done").click();
+    enrollViaUI().then((secret) => {
+      totpSecret = secret;
     });
     cy.findByRole("button", { name: "Disable" }).should("be.visible");
     cy.findByRole("button", { name: "Generate recovery codes" }).should(
@@ -89,7 +61,8 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
     cy.findByTestId("login-page")
       .findByText("Enter the 6-digit code from your authenticator app.")
       .should("be.visible");
-
+    // The backend rejects a reused TOTP time step, so take the code for the
+    // next 30-second window — validation accepts one step of clock skew.
     cy.then(() => generateTotpCode(totpSecret, Date.now() / 1000 + 30)).then(
       (code) => {
         cy.findByLabelText("Authenticator code").type(code);
@@ -120,26 +93,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
     }).should("be.enabled");
 
     cy.log("Re-enroll from scratch with a new secret");
-    cy.findByRole("button", {
-      name: "Set up two-factor authentication",
-    }).click();
-    H.modal().within(() => {
-      cy.findByLabelText("Confirm your password to begin").type(
-        normal.password,
-      );
-      cy.button("Continue").click();
-    });
-    cy.wait("@enroll").then(({ response }) => {
-      const newSecret = response?.body.secret;
-      H.modal().within(() => {
-        cy.findByLabelText(
-          "Enter the 6-digit code from the authenticator app",
-        ).type(generateTotpCode(newSecret, Date.now() / 1000));
-        cy.button("Set up authentication").click();
-        cy.findByText("Your recovery codes").should("be.visible");
-        cy.button("Done").click();
-      });
-    });
+    enrollViaUI();
     cy.findByRole("button", { name: "Disable" }).should("be.visible");
   });
 
@@ -185,9 +139,9 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
           .findByRole("alert")
           .should("contain", "Invalid authentication code.");
         cy.findByLabelText("Recovery code").clear().type(newCodes[0]);
-        // the submit button reads "Failed" for a few seconds after the
-        // rejected attempt before reverting to "Verify"
-        cy.button("Verify", 10000).click();
+        // the submit button transiently reads "Failed" after the rejected
+        // attempt but stays clickable, so match either label
+        cy.button(/Verify|Failed/).click();
         cy.findByTestId("greeting-message").should("be.visible");
       });
     });
@@ -203,22 +157,104 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       .findByText("Enter the 6-digit code from your authenticator app.")
       .should("be.visible");
 
-    H.clearInbox();
     cy.findByTestId("login-page").findByText("Email me a code").click();
     cy.findByTestId("login-page")
       .findByText("Code sent — check your email")
       .should("be.visible");
 
-    H.getInbox().then(({ body: emails }: { body: any[] }) => {
+    H.getInbox().then(({ body: emails }: { body: MaildevEmail[] }) => {
       const otpEmail = emails.find((email) =>
         email.subject.includes("Your sign-in code"),
       );
       expect(otpEmail, "sign-in code email").to.exist;
-      const [, code] = otpEmail.html.match(/>\s*(\d{6})\s*</);
-      cy.findByLabelText("Authenticator code").type(code);
+      const code = otpEmail?.html.match(/>\s*(\d{6})\s*</)?.[1];
+      expect(code, "6-digit code in the email body").to.be.a("string");
+      cy.findByLabelText("Authenticator code").type(String(code));
     });
     cy.button("Verify").click();
     cy.findByTestId("greeting-message").should("be.visible");
+  });
+
+  it("resetting a forgotten password does not bypass the second factor", () => {
+    enableMfa();
+    H.setupSMTP();
+    enrollNormalUser().then(({ secret }) => {
+      cy.log("Request a reset link and set a new password");
+      cy.signOut();
+      cy.visit("/auth/forgot_password");
+      cy.findByLabelText("Email address").type(normal.email);
+      cy.button("Send password reset email").click();
+      cy.findByTestId("login-page")
+        .findByText(/If the email exists/)
+        .should("be.visible");
+
+      // the reset email is sent asynchronously and lands next to the "2FA
+      // enabled" notification from enrollment — wait for both to be there
+      H.getInbox(2).then(({ body: emails }: { body: MaildevEmail[] }) => {
+        const resetEmail = emails.find((email) =>
+          email.subject.includes("Password Reset"),
+        );
+        expect(resetEmail, "password reset email").to.exist;
+        cy.visit(getResetLink(String(resetEmail?.html)));
+      });
+      cy.findByLabelText("Create a password").type(NEW_PASSWORD);
+      cy.findByLabelText("Confirm your password").type(NEW_PASSWORD);
+      cy.button("Save new password").click();
+
+      cy.log("No session is minted — the new password still needs a code");
+      cy.url().should("contain", "/auth/login");
+      cy.findByLabelText("Email address").type(normal.email);
+      cy.findByLabelText("Password").type(NEW_PASSWORD);
+      cy.button("Sign in").click();
+      cy.findByTestId("login-page")
+        .findByText("Enter the 6-digit code from your authenticator app.")
+        .should("be.visible");
+      cy.then(() => generateTotpCode(secret, Date.now() / 1000 + 30)).then(
+        (code) => {
+          cy.findByLabelText("Authenticator code").type(code);
+        },
+      );
+      cy.button("Verify").click();
+      cy.findByTestId("greeting-message").should("be.visible");
+    });
+  });
+
+  it("an enrolled user is still challenged and can disable 2FA after the license lapses", () => {
+    enableMfa();
+    enrollNormalUser().then(({ secret, recoveryCodes }) => {
+      cy.log("Drop the premium token — the gate must fail closed");
+      cy.signInAsAdmin();
+      H.deleteToken();
+
+      signInWithPassword();
+      cy.findByTestId("login-page")
+        .findByText("Enter the 6-digit code from your authenticator app.")
+        .should("be.visible");
+      cy.then(() => generateTotpCode(secret, Date.now() / 1000 + 30)).then(
+        (code) => {
+          cy.findByLabelText("Authenticator code").type(code);
+        },
+      );
+      cy.button("Verify").click();
+      cy.findByTestId("greeting-message").should("be.visible");
+
+      cy.log("Managing the existing enrollment still works without a license");
+      cy.visit("/account/security");
+      cy.findByRole("button", { name: "Disable" }).click();
+      H.modal().within(() => {
+        cy.findByLabelText(
+          "Confirm with an authenticator code or a recovery code",
+        ).type(recoveryCodes[0]);
+        cy.button("Disable").click();
+      });
+
+      cy.log("Without the feature there is no way back into setup");
+      cy.url().should("contain", "/account/profile");
+      cy.visit("/account/security");
+      cy.findByRole("button", {
+        name: "Set up two-factor authentication",
+      }).should("be.disabled");
+    });
   });
 
   it("admin can remove a user's enrollment to unlock them", () => {
@@ -245,7 +281,7 @@ function mfaSetting() {
 }
 
 function mfaToggle() {
-  return cy.findByLabelText(/Enabled|Disabled/);
+  return mfaSetting().findByLabelText(/Enabled|Disabled/);
 }
 
 function enableMfa() {
@@ -270,12 +306,40 @@ function enrollNormalUser() {
     );
 }
 
+function enrollViaUI(): Cypress.Chainable<string> {
+  cy.findByRole("button", {
+    name: "Set up two-factor authentication",
+  }).click();
+  H.modal().within(() => {
+    cy.findByLabelText("Confirm your password to begin").type(normal.password);
+    cy.button("Continue").click();
+  });
+  return cy.wait("@enroll").then(({ response }) => {
+    const secret = response?.body.secret;
+    H.modal().within(() => {
+      cy.findByLabelText(
+        "Enter the 6-digit code from the authenticator app",
+      ).type(generateTotpCode(secret, Date.now() / 1000));
+      cy.button("Set up authentication").click();
+      cy.findByText("Your recovery codes").should("be.visible");
+      cy.button("Done").click();
+    });
+    return cy.wrap(secret, { log: false });
+  });
+}
+
 function signInWithPassword() {
   cy.signOut();
   cy.visit("/auth/login");
   cy.findByLabelText("Email address").type(normal.email);
   cy.findByLabelText("Password").type(normal.password);
   cy.button("Sign in").click();
+}
+
+function getResetLink(html: string) {
+  const [, anchor] = html.match(/<a (.*)>/) ?? [];
+  const [, href] = String(anchor).match(/href="([^"]+)"/) ?? [];
+  return String(href);
 }
 
 function generateTotpCode(secret: string, unixSeconds: number): string {
