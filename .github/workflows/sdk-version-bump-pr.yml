@@ -290,12 +290,19 @@ jobs:
                        --label sdk-release-trigger \
                        --title "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }}" \
                        --body "$(cat <<'BODY'
-          Bumps the Embedding SDK version from `${{ steps.current.outputs.version }}` to `${{ steps.bump.outputs.new_version }}` (`${{ inputs.release_type }}`) and updates the `sdkRelease` metadata in `package.template.json`.
+          Bumps the Embedding SDK version in `package.template.json` and updates its `sdkRelease` metadata.
 
-          **Review before merging:**
-          - `sdkRelease.distTag` currently defaults to `${{ steps.sdk-release.outputs.dist_tag }}` - override it here if this release should publish under a different npm dist-tag.
-          - `sdkRelease.tagAsLatest` is auto-computed as `${{ steps.write-metadata.outputs.tag_as_latest }}` (`true` when this bump's major version matches `vars.LATEST_MAJOR_VERSION`, the current npm `latest` major - `false` otherwise) - still worth a second look here before merging, override it if this release should (or shouldn't) become the `latest` tag on npm.
-          ${{ inputs.release_type == 'preminor' && format('- This is a `preminor` bump (master -> next major''s alpha). Merging this PR (with the `sdk-release-trigger` label) publishes `{0}` to npm and tags the release exactly like any other bump - remove the label first if you want to bump the version without triggering a release.', steps.bump.outputs.new_version) || '' }}
+          | | |
+          |---|---|
+          | Branch | `${{ github.ref_name }}` |
+          | Release type | `${{ inputs.release_type }}` |
+          | Version | `${{ steps.current.outputs.version }}` → `${{ steps.bump.outputs.new_version }}` |
+          | npm dist-tag | `${{ steps.sdk-release.outputs.dist_tag }}` |
+          | Tag as `latest` | `${{ steps.write-metadata.outputs.tag_as_latest }}` |
+
+          `distTag` and `tagAsLatest` are computed defaults - edit them here if this release should publish under a different dist-tag, or should (not) become the `latest` tag on npm. `tagAsLatest` is `true` only when patching the current gold major (`vars.LATEST_MAJOR_VERSION`).
+
+          ${{ inputs.release_type == 'preminor' && format('This is a `preminor` bump (master -> next major''s alpha). Merging it publishes `{0}` to npm like any other bump - remove the `sdk-release-trigger` label first if you only want the version bump.', steps.bump.outputs.new_version) || '' }}
 
           Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
 
