@@ -389,26 +389,25 @@ describe("ExplorationSidebar", () => {
       status: "done",
     });
 
-    it("keeps the first thread with an all-hidden message when every page is hidden", () => {
+    it("keeps the first thread with an all-hidden note when every page is hidden", () => {
       setup({ queries: [hiddenQuery], blocks: [hiddenBlock] });
 
-      expect(screen.getByTestId("exploration-all-hidden")).toBeInTheDocument();
+      // The initial thread heading is retained, with an inline note below it.
       expect(screen.getByText("Initial investigation")).toBeInTheDocument();
       expect(
-        screen.getByText("All queries have been hidden."),
+        screen.getByText("All items have been hidden."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the all-hidden note (not the generic message) when there is nothing to show", () => {
+      setup({ queries: [] });
+
+      expect(
+        screen.getByText("All items have been hidden."),
       ).toBeInTheDocument();
       expect(
         screen.queryByText("Nothing to see here yet."),
       ).not.toBeInTheDocument();
-    });
-
-    it("shows the generic empty message when there is genuinely nothing", () => {
-      setup({ queries: [] });
-
-      expect(
-        screen.queryByTestId("exploration-all-hidden"),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
     });
 
     it("renders the hidden pages instead of the message when the filter is on", () => {

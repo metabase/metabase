@@ -683,7 +683,7 @@ describe("getExplorationSidebarTabsInfo", () => {
       expect(getAllPageIds(tree)).toEqual([String(STARRED_PAGE_ID)]);
     });
 
-    it("returns an empty tree when nothing is starred", () => {
+    it("shows no pages when nothing is starred", () => {
       const exploration = createExploration({
         queries: [unstarredQuery],
         blocks: [
@@ -704,7 +704,10 @@ describe("getExplorationSidebarTabsInfo", () => {
         ],
       });
 
-      expect(getFilteredSidebarTree(exploration, "stars")).toEqual([]);
+      // The initial thread heading is always retained, but it carries no pages.
+      expect(
+        getAllPageIds(getFilteredSidebarTree(exploration, "stars")),
+      ).toEqual([]);
     });
 
     it("excludes AI summary documents", () => {
@@ -764,9 +767,12 @@ describe("getExplorationSidebarTabsInfo", () => {
       expect(getAllPageIds(tree)).toEqual([String(DISCUSSED_PAGE_ID)]);
     });
 
-    it("returns an empty tree when there are no page comments", () => {
+    it("shows no pages when there are no page comments", () => {
+      // The initial thread heading is always retained, but it carries no pages.
       expect(
-        getFilteredSidebarTree(mixedPagesExploration, "discussions"),
+        getAllPageIds(
+          getFilteredSidebarTree(mixedPagesExploration, "discussions"),
+        ),
       ).toEqual([]);
     });
   });
@@ -868,7 +874,11 @@ describe("hidden pages", () => {
         }),
       ],
     });
-    expect(getExplorationSidebarTree(onlyHidden, dropHidden)).toEqual([]);
+    // The block heading is pruned; the initial thread heading is retained but
+    // carries no block headings.
+    expect(
+      getMetricHeadings(getExplorationSidebarTree(onlyHidden, dropHidden)),
+    ).toEqual([]);
   });
 });
 
