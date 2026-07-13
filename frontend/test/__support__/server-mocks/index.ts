@@ -28,6 +28,7 @@ export * from "./geojson";
 export * from "./google";
 export * from "./group";
 export * from "./impersonation";
+export * from "./index-manager";
 export * from "./library";
 export * from "./logger";
 export * from "./measure";

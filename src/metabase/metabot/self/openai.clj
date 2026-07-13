@@ -221,12 +221,14 @@
 (def ^:private supported-models
   "OpenAI chat models offered in the Metabot model picker, as a map of model id -> display name.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"gpt-5.5"      "GPT-5.5"
-   "gpt-5.5-pro"  "GPT-5.5 Pro"
-   "gpt-5.4"      "GPT-5.4"
-   "gpt-5.4-pro"  "GPT-5.4 Pro"
-   "gpt-5.4-mini" "GPT-5.4 Mini"
-   "gpt-5"        "GPT-5"})
+  {"gpt-5.6-sol"   "GPT-5.6 Sol"
+   "gpt-5.6-terra" "GPT-5.6 Terra"
+   "gpt-5.6-luna"  "GPT-5.6 Luna"
+   "gpt-5.5"       "GPT-5.5"
+   "gpt-5.5-pro"   "GPT-5.5 Pro"
+   "gpt-5.4"       "GPT-5.4"
+   "gpt-5.4-pro"   "GPT-5.4 Pro"
+   "gpt-5.4-mini"  "GPT-5.4 Mini"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -239,8 +241,6 @@
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
-  (when (and credentials (str/blank? (:api-key credentials)))
-    (throw (core/missing-api-key-ex "OpenAI")))
   (try
     (let [auth (core/resolve-auth "openai" "OpenAI"
                                   (when-let [k (or (not-empty (:api-key credentials))

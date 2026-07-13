@@ -28,6 +28,7 @@ export const TAG_TYPES = [
   "field-values",
   "glossary",
   "indexed-entity",
+  "table-index",
   "llm-models",
   "logger-preset",
   "measure",

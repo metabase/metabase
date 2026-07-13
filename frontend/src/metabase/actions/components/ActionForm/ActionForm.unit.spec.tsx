@@ -117,7 +117,7 @@ describe("Actions > ActionForm", () => {
 
       expect(
         screen.getByLabelText(/form field name/i, { selector: "input" }),
-      ).toHaveAttribute("type", "number");
+      ).toHaveAttribute("inputmode", "decimal");
     });
 
     it("displays a textarea input", () => {

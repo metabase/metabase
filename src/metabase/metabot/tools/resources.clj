@@ -569,22 +569,77 @@
       {:structured-output (assoc dashboard :result-type :entity)}
       {:status-code 404 :output (:output result)})))
 
-(defn- fetch-dashboard-items [id-str query-params]
+(defn- present-non-question-dashcard
+  "Dashcards not rendered as a saved question — virtual cards (headings, text, links, ...) and
+   action buttons (which may reference a backing model via `card_id` but render as a button).
+   They carry their `dashcard_id` — the handle `update_dashboard` remove/move/update_text
+   mutations take. The card's text (or a link card's target) renders as the item body via
+   `:description`."
+  [{:keys [id action_id visualization_settings]}]
+  (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
+    ;; action_id wins over the virtual display: frontend-created action buttons carry BOTH an
+    ;; action_id and a virtual_card with display "action", and should read as one type.
+    {:type        (cond
+                    action_id "action"
+                    display   (str "virtual_" display)
+                    :else     "virtual_dashcard")
+     :dashcard_id id
+     ;; action buttons carry their visible label here; nil for virtual cards
+     :name        (:button.label visualization_settings)
+     ;; external link URLs only: an entity link's stored :link :entity snapshot (name etc.) may
+     ;; describe something this user can't read, so rendering it would bypass the read-check the
+     ;; REST path applies via the :dashcard/linkcard-info hydration
+     :description (or (:text visualization_settings)
+                      (get-in visualization_settings [:link :url]))}))
+
+(defn- fetch-dashboard-items
+  "One item per dashcard in row/col (layout) order, each carrying the `dashcard_id` that
+   `update_dashboard` remove/move/update_text mutations take. On a tabbed dashboard the items come
+   grouped by tab (nil-tab dashcards belong to the first tab, where the frontend renders them),
+   each carries its `tab_id`, and the response's `:tabs` lists every tab — empty ones included —
+   in display order. Card-backed dashcards keep the card fields; virtual dashcards (headings,
+   text, links, ...) render their text; action buttons keep a `uri` to their backing model when
+   it's readable. Dashcards whose card is archived or unreadable are omitted."
+  [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        cards        (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                      :collection_id :database_id :table_id]
-                                     {:where    [:and
-                                                 [:= :archived false]
-                                                 [:exists {:select 1
-                                                           :from   [[:report_dashboardcard :dc]]
-                                                           :where  [:and
-                                                                    [:= :dc.card_id :report_card.id]
-                                                                    [:= :dc.dashboard_id dashboard-id]]}]]
-                                      :order-by [[:%lower.name :asc]]})
-                          (filter mi/can-read?)
-                          (mapv present-card))]
-    (list-result :dashboard-items cards query-params)))
+        tabs         (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id
+                                {:order-by [[:position :asc] [:id :asc]]})
+        dashcards    (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id
+                                 :visualization_settings]
+                                :dashboard_id dashboard-id
+                                {:order-by [[:row :asc] [:col :asc]]})
+        card-ids     (into #{} (keep :card_id) dashcards)
+        readable     (when (seq card-ids)
+                       (->> (t2/select [:model/Card :id :name :type :description :card_schema
+                                        :collection_id :database_id :table_id]
+                                       :id [:in card-ids]
+                                       :archived false)
+                            (filter mi/can-read?)
+                            (into {} (map (juxt :id identity)))))
+        ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
+                       ;; action_id wins over card_id: an action button may reference its backing
+                       ;; model through card_id but renders as a button — with a uri to that model
+                       ;; so it stays drillable.
+                       (if (and card_id (not action_id))
+                         (when-let [card (get readable card_id)]
+                           (assoc (present-card card) :dashcard_id id))
+                         (cond-> (present-non-question-dashcard dashcard)
+                           (get readable card_id) (assoc :uri (:uri (present-card (get readable card_id)))))))
+        items        (if (seq tabs)
+                       ;; group by tab without emitting tab pseudo-items — those would inflate the
+                       ;; paginated total; the tab list rides on the response as `:tabs` instead.
+                       ;; `sort-by` is stable, so the SQL row/col ordering survives within each
+                       ;; tab; a nil tab id means the frontend renders the card on the first tab.
+                       (let [tab-pos (into {} (map-indexed (fn [i {:keys [id]}] [id i])) tabs)
+                             eff-tab #(or (:dashboard_tab_id %) (:id (first tabs)))]
+                         (into []
+                               (keep (fn [dashcard]
+                                       (some-> (->item dashcard) (assoc :tab_id (eff-tab dashcard)))))
+                               (sort-by (comp tab-pos eff-tab) dashcards)))
+                       (into [] (keep ->item) dashcards))]
+    (cond-> (list-result :dashboard-items items query-params)
+      (seq tabs) (update :structured-output assoc :tabs (mapv #(select-keys % [:id :name]) tabs)))))
 
 ;; ----- Dispatch -----
 

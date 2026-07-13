@@ -8,63 +8,36 @@
     (referenced-tables sql dialect) → [[catalog schema table] ...]
     (referenced-fields dialect sql) → [[catalog schema table field] ...]
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
-    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
+    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
+
+  The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
+  GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
+  owns the JVM-side pre- and post-processing around it."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics-interface.core :as analytics]
-   [metabase.sql-parsing.common :as common]
-   [metabase.sql-parsing.pool :as python.pool]
+   [metabase.sql-parsing.parser :as parser]
+   [metabase.sql-parsing.protocol :as protocol]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
-   (java.io Closeable)
-   (java.util.concurrent ExecutionException TimeoutException)
-   (org.graalvm.polyglot Value)))
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Timeout handling --------------------------------------------------
+(defn- parser
+  "The [[metabase.sql-parsing.protocol/SqlParser]] implementation for the configured mode."
+  []
+  (parser/parser))
 
-(def ^:private ^:const default-timeout-ms
-  "Default timeout for Python operations in milliseconds.
-   GraalVM Python can occasionally hang (DEV-1393), so we wrap calls with a timeout."
-  30000) ; 30 seconds
-
-(defn- with-timeout*
-  "Execute f in a future with timeout. On timeout, throws TimeoutException.
-   The caller is responsible for cleaning up resources (e.g., disposing context)."
-  [timeout-ms f]
-  (let [fut (future (f))]
-    (try
-      (deref fut timeout-ms ::timeout)
-      (catch ExecutionException e
-        ;; Unwrap execution exception to get the real cause
-        (throw (or (.getCause e) e)))
-      (finally
-        ;; If we timed out or got an exception, try to cancel the future
-        ;; Note: This won't actually interrupt GraalVM, but prevents resource leaks
-        (future-cancel fut)))))
-
-(defmacro ^:private with-python-timeout
-  "Execute body with a timeout. If timeout is reached:
-   1. Interrupts the GraalVM context (actually stops execution)
-   2. Poisons context so it gets disposed rather than returned to pool
-   3. Logs warning and throws TimeoutException"
-  [ctx timeout-ms & body]
-  `(let [result# (with-timeout* ~timeout-ms (^:once fn* [] ~@body))]
-     (if (= result# ::timeout)
-       (do
-         ;; Actually interrupt the GraalVM context (1s grace period for soft interrupt)
-         ;; This is necessary because future-cancel doesn't stop GraalVM execution
-         (python.pool/interrupt! ~ctx 1000)
-         (python.pool/poison! ~ctx)
-         (analytics/inc! :metabase-sql-parsing/context-timeouts)
-         (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM interrupted")
-         (throw (TimeoutException. (str "Python execution timed out after " ~timeout-ms "ms"))))
-       result#)))
+(defn parse-error?
+  "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
+  backend threw it. Other Python-side failures (and non-sqlglot exceptions) are false."
+  [e]
+  (let [data (ex-data e)]
+    (boolean (and (:sql-parsing/error data)
+                  (= "ParseError" (:sql-parsing/python-error-type data))))))
 
 ;;; ----------------------------------------- VALUES clause stripping ------------------------------------------
 
@@ -214,14 +187,7 @@
    This is the pure parsing layer - it returns what's literally in the SQL.
    Default schema resolution happens in the matching layer (core.clj)."
   [dialect sql]
-  (let [sql (strip-large-values sql)]
-    (-> (with-open [^Closeable ctx (python.pool/python-context)]
-          (with-python-timeout ctx default-timeout-ms
-            (-> ^Value (common/eval-python ctx "sql_tools.referenced_tables")
-                (.execute ^Value (object-array [sql dialect]))
-                .asString)))
-        json/decode
-        vec)))
+  (protocol/referenced-tables (parser) dialect (strip-large-values sql)))
 
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
@@ -247,14 +213,7 @@
    (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [dialect sql]
-  (let [sql (strip-large-values sql)]
-    (-> (with-open [^Closeable ctx (python.pool/python-context)]
-          (with-python-timeout ctx default-timeout-ms
-            (-> ^Value (common/eval-python ctx "sql_tools.referenced_fields")
-                (.execute ^Value (object-array [sql dialect]))
-                .asString)))
-        json/decode
-        vec)))
+  (protocol/referenced-fields (parser) dialect (strip-large-values sql)))
 
 (defn returned-columns-lineage
   "Extract column lineage from SQL query, showing which output columns depend on which source columns.
@@ -274,18 +233,7 @@
    (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
    => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
   [dialect sql default-table-schema sqlglot-schema]
-  (let [sql (strip-large-values sql)]
-    (-> (with-open [^Closeable ctx (python.pool/python-context)]
-          (with-python-timeout ctx default-timeout-ms
-            ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
-            (-> ^Value (common/eval-python ctx "sql_tools.returned_columns_lineage")
-                (.execute ^Value (object-array [dialect
-                                                sql
-                                                default-table-schema
-                                                (json/encode sqlglot-schema)]))
-                .asString)))
-        json/decode
-        vec)))
+  (protocol/returned-columns-lineage (parser) dialect (strip-large-values sql) default-table-schema sqlglot-schema))
 
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.
@@ -317,14 +265,7 @@
    - \"invalid_expression\": Syntax/parse error
    - \"unhandled\": Other errors"
   [dialect sql default-table-schema & [sqlglot-schema]]
-  (let [sql (strip-large-values sql)]
-    (-> (with-open [^Closeable ctx (python.pool/python-context)]
-          (with-python-timeout ctx default-timeout-ms
-            ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
-            (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
-                (.execute ^Value (object-array [dialect sql default-table-schema (json/encode (or sqlglot-schema "{}"))]))
-                .asString)))
-        json/decode+kw)))
+  (protocol/validate-query (parser) dialect (strip-large-values sql) default-table-schema sqlglot-schema))
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
@@ -346,13 +287,7 @@
    (simple-query? nil \"SELECT * FROM users LIMIT 10\")
    => {:is_simple false :reason \"Contains a LIMIT\"}"
   [dialect sql]
-  (let [sql (strip-large-values sql)]
-    (-> (with-open [^Closeable ctx (python.pool/python-context)]
-          (with-python-timeout ctx default-timeout-ms
-            (-> ^Value (common/eval-python ctx "sql_tools.simple_query")
-                (.execute ^Value (object-array [sql dialect]))
-                .asString)))
-        json/decode+kw)))
+  (protocol/simple-query (parser) dialect (strip-large-values sql)))
 
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
@@ -370,11 +305,7 @@
 
    Returns: Modified SQL string with INTO clause"
   [dialect sql table-name]
-  (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout ctx default-timeout-ms
-      (-> ^Value (common/eval-python ctx "sql_tools.add_into_clause")
-          (.execute ^Value (object-array [sql table-name dialect]))
-          .asString))))
+  (protocol/add-into-clause (parser) dialect sql table-name))
 
 (defn- convert-field-type
   "Convert field type string (snake_case) to keyword (kebab-case)."
@@ -487,24 +418,18 @@
    On timeout, returns an error map instead of throwing, consistent with the
    'fail soft' pattern used for parsing failures."
   [dialect sql]
-  (let [sql (strip-large-values sql)]
-    (try
-      (let [raw (-> (with-open [^Closeable ctx (python.pool/python-context)]
-                      (with-python-timeout ctx default-timeout-ms
-                        (-> ^Value (common/eval-python ctx "sql_tools.field_references")
-                            (.execute ^Value (object-array [sql dialect]))
-                            .asString)))
-                    json/decode+kw)
-            used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
-            returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
-            errors (or (:errors raw) (get raw "errors") [])]
-        {:used-fields (set (map convert-field used-fields))
-         :returned-fields (vec (map convert-field returned-fields))
-         :errors (set (map convert-error errors))})
-      (catch TimeoutException e
-        {:used-fields #{}
-         :returned-fields []
-         :errors #{{:type :timeout :message (.getMessage e)}}}))))
+  (try
+    (let [raw (protocol/field-references (parser) dialect (strip-large-values sql))
+          used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
+          returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
+          errors (or (:errors raw) (get raw "errors") [])]
+      {:used-fields (set (map convert-field used-fields))
+       :returned-fields (vec (map convert-field returned-fields))
+       :errors (set (map convert-error errors))})
+    (catch TimeoutException e
+      {:used-fields #{}
+       :returned-fields []
+       :errors #{{:type :timeout :message (.getMessage e)}}})))
 
 (defn replace-names
   "Replace schema, table, and column names in SQL.
@@ -527,23 +452,14 @@
    (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
   [dialect sql replacements]
-  (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout ctx default-timeout-ms
-      (-> ^Value (common/eval-python ctx "sql_tools.replace_names")
-          (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
-          .asString))))
+  (protocol/replace-names (parser) dialect sql replacements))
 
 (defn is-single-stmt-of-type?
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
    and returns the query reconstructed from the parsed AST."
   [dialect sql stmt-type]
   (let [stripped-sql (strip-large-values sql)
-        result (-> (with-open [^Closeable ctx (python.pool/python-context)]
-                     (with-python-timeout ctx default-timeout-ms
-                       (-> ^Value (common/eval-python ctx "sql_tools.is_single_stmt_of_type")
-                           (.execute ^Value (object-array [stripped-sql stmt-type dialect]))
-                           .asString)))
-                   json/decode+kw
+        result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
                    (perf/update-keys (comp keyword u/->kebab-case-en)))]
     ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.
     ;; We generally want to use the reconstructed SQL, but if the original SQL had its values stripped (to avoid GraalPy OOM)
@@ -554,16 +470,15 @@
 (comment
   (referenced-tables "postgres" "select * from transactions")
 
-  (validate-sql-query "postgres" "SELECT * FROM users")
+  (validate-query "postgres" "SELECT * FROM users" nil)
 
   (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
 
 ;;;; Transpile sql
 
 (defn- normalize-transpilation-result
-  [json-str]
-  (-> json-str
-      json/decode+kw
+  [result]
+  (-> result
       (perf/update-keys (comp keyword u/->kebab-case-en))
       (m/update-existing :status (comp keyword u/->kebab-case-en))
       (m/update-existing :reason (comp keyword u/->kebab-case-en))))
@@ -571,9 +486,5 @@
 (defn transpile-sql
   "Transpiles sql string from one dialect to another."
   [sql from-dialect to-dialect]
-  (-> (with-open [^Closeable ctx (python.pool/python-context)]
-        (with-python-timeout ctx default-timeout-ms
-          (-> ^Value (common/eval-python ctx "sql_tools.transpile_sql")
-              (.execute ^Value (object-array [sql from-dialect to-dialect]))
-              .asString)))
-      normalize-transpilation-result))
+  (normalize-transpilation-result
+   (protocol/transpile-sql (parser) sql from-dialect to-dialect)))
