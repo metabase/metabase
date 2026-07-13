@@ -5,7 +5,8 @@
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -21,6 +22,20 @@
       (mt/with-premium-features #{}
         (mt/user-http-request :crowberto :post 204 "ee/mfa/admin/remove" {:user_id user-id})
         (is (nil? (enrollment/enrolled-method user-id)))))))
+
+(deftest admin-self-remove-test
+  ;; the in-session escape hatch before a lost authenticator becomes a full lockout: an admin can
+  ;; remove their OWN enrollment — there is no self-exclusion on admin/remove
+  (mt/with-temp [:model/AuthIdentity _ {:user_id     (mt/user->id :crowberto)
+                                        :provider    "totp"
+                                        :confirmed_at (t/instant)
+                                        :credentials  {:secret (totp/generate-secret)}}]
+    (try
+      (mt/user-http-request :crowberto :post 204 "ee/mfa/admin/remove"
+                            {:user_id (mt/user->id :crowberto)})
+      (is (nil? (enrollment/enrolled-method (mt/user->id :crowberto))))
+      (finally
+        (t2/delete! :model/AuthIdentity :user_id (mt/user->id :crowberto) :provider "totp")))))
 
 (deftest admin-remove-is-audited-test
   ;; audit rows require the :audit-app feature at event time (premium-features/log-enabled?)

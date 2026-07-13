@@ -25,6 +25,7 @@
    [metabase.sso.core :as sso]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [throttle.core :as throttle]
@@ -59,9 +60,15 @@
                     (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password")]
            (and password_hash (u.password/verify-password password password_salt password_hash)))
          (when (sso/ldap-enabled)
-           (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
-             (when-let [user-info (sso/find-user user-email)]
-               (sso/verify-password user-info password))))))))
+           ;; an unreachable directory fails closed: re-auth is denied (the user retries when the
+           ;; directory is back; admin/remove needs no re-auth), never an unhandled 500
+           (try
+             (when-let [user-email (t2/select-one-fn :email :model/User user-id)]
+               (when-let [user-info (sso/find-user user-email)]
+                 (sso/verify-password user-info password)))
+             (catch Exception e
+               (log/warn e "LDAP re-auth failed because the directory is unreachable")
+               false)))))))
 
 ;; Notification emails here are fire-and-log by construction: the messages/send-mfa-*-email!
 ;; senders route through email/send-message!, which catches and logs delivery failures — so an
