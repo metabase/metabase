@@ -93,13 +93,38 @@
     (catch Throwable e
       (log/error e "Failed to load sample database"))))
 
+(defn- migrate-sample-database-engine-in-place!
+  "A newer version left behind a non-H2 (SQLite) sample database that this version cannot use. The only
+  app-db differences between the two are the Database record's engine/details and the tables' schema
+  (SQLite reports no schema, H2 uses \"PUBLIC\"), so instead of deleting and rebuilding, edit those in
+  place and re-sync to reconcile the remaining sync-derived field metadata. Every Database/Table/Field id
+  is kept, so sample content, user-created content, and permissions all survive with no remapping."
+  [old-sample-db]
+  (log/infof "Migrating sample database engine from %s to :h2 in place" (:engine old-sample-db))
+  (let [details (try-to-extract-sample-database!)]
+    (t2/with-transaction [_conn]
+      ;; The Database model's before-update forbids changing a sample database's engine, so set the engine
+      ;; column directly. Details still go through the model so they get encrypted as usual. Engine is
+      ;; flipped first so the table update below dispatches on H2, not the (undriverable) SQLite engine.
+      (t2/query {:update (t2/table-name :model/Database)
+                 :set    {:engine "h2"}
+                 :where  [:= :id (:id old-sample-db)]})
+      (t2/update! :model/Database (:id old-sample-db) {:details details})
+      (t2/update! :model/Table :db_id (:id old-sample-db) {:schema "PUBLIC"}))
+    (sync/sync-database! (t2/select-one :model/Database :id (:id old-sample-db)))))
+
 (defn update-sample-database-if-needed!
-  "Update the path to the sample database DB if it exists in case the JAR has moved."
+  "Reconcile the existing sample database on launch. If a newer version left behind a non-H2 sample
+  database this version can't use (e.g. after a downgrade), convert it to H2 in place (see
+  [[migrate-sample-database-engine-in-place!]]); otherwise just refresh its connection details in case
+  the JAR has moved."
   ([]
    (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
 
   ([sample-db]
    (when sample-db
-     (let [intended (try-to-extract-sample-database!)]
-       (when (not= (:details sample-db) intended)
-         (t2/update! :model/Database (:id sample-db) {:details intended}))))))
+     (if (not= :h2 (:engine sample-db))
+       (migrate-sample-database-engine-in-place! sample-db)
+       (let [intended (try-to-extract-sample-database!)]
+         (when (not= (:details sample-db) intended)
+           (t2/update! :model/Database (:id sample-db) {:details intended})))))))
