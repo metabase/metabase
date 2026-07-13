@@ -70,6 +70,12 @@ export const useListKeyboardNavigation = <
     reset,
     cursorIndex,
     selectedItem,
-    getRef: (item: T) => (item === selectedItem ? selectedRef : undefined),
+    // a ref callback (not the ref object) so it can attach to elements narrower than R
+    getRef: (item: T) =>
+      item === selectedItem
+        ? (element: R | null) => {
+            selectedRef.current = element;
+          }
+        : undefined,
   };
 };

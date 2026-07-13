@@ -141,7 +141,7 @@ export const SearchResults = ({
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
     ItemType,
-    HTMLLIElement
+    HTMLElement
   >({
     list: dropdownItemList,
     onEnter: onEnterSelect,
@@ -188,7 +188,7 @@ export const SearchResults = ({
         })}
       </Box>
       {showFooter && (
-        <Box>
+        <Box ref={getRef(footerComponent)}>
           {footerComponent({
             metadata,
             isSelected: cursorIndex === dropdownItemList.length - 1,
