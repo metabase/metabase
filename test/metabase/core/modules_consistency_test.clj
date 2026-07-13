@@ -71,18 +71,20 @@
     (assert v (str ns-sym "/" sym " not found"))
     v))
 
-(def ^:private babashka-executable "./bin/bb")
-
-(def ^:private babashka-available
+(def ^:private babashka-executable
   (delay
-    (try
-      (zero? (:exit (shell/sh babashka-executable "--version")))
-      (catch java.io.IOException _
-        false))))
+    (cond
+      (.canExecute (io/file "./bin/bb")) "./bin/bb"
+      :else
+      (try
+        (when (zero? (:exit (shell/sh "bb" "--version")))
+          "bb")
+        (catch java.io.IOException _
+          nil)))))
 
 (defn- babashka-available?
   []
-  (force babashka-available))
+  (some? (force babashka-executable)))
 
 (defn- bb-mage-file->module [modules-config filename]
   (let [expr               (str "(do "
@@ -94,7 +96,7 @@
                                 ") "
                                 (pr-str filename)
                                 "))))")
-        {:keys [exit out err]} (shell/sh babashka-executable "-e" expr)]
+        {:keys [exit out err]} (shell/sh (force babashka-executable) "-e" expr)]
     (when-not (zero? exit)
       (throw (ex-info "Babashka mage.modules evaluation failed"
                       {:exit exit
@@ -111,7 +113,7 @@
                                 " "
                                 (pr-str (list 'quote module))
                                 "))))")
-        {:keys [exit out err]} (shell/sh babashka-executable "-e" expr)]
+        {:keys [exit out err]} (shell/sh (force babashka-executable) "-e" expr)]
     (when-not (zero? exit)
       (throw (ex-info "Babashka mage.modules test-path evaluation failed"
                       {:exit exit
@@ -130,7 +132,7 @@
                                 "    (prn ((deref updated-files->updated-modules) "
                                 (pr-str filenames)
                                 ")))))")
-        {:keys [exit out err]} (shell/sh babashka-executable "-e" expr)]
+        {:keys [exit out err]} (shell/sh (force babashka-executable) "-e" expr)]
     (when-not (zero? exit)
       (throw (ex-info "Babashka mage.modules updated-files evaluation failed"
                       {:exit exit
@@ -288,6 +290,12 @@
         (is (not (contains? (set (bb-mage-module->test-paths modules-config 'query-processor)) child-test)))
         (is (contains? (set (bb-mage-module->test-paths modules-config 'query-processor.cache-backend)) child-test)))
       (is true "Skipping mage.modules path assertions because `./bin/bb` is unavailable"))))
+
+(deftest ^:parallel mage-affected-tests-are-jvm-loadable-test
+  (if (babashka-available?)
+    (let [paths (set (bb-mage-module->test-paths {'lib {}} 'lib))]
+      (is (not (contains? paths "test/metabase/lib/js_test.cljs"))))
+    (is true "Skipping mage.modules path assertions because Babashka is unavailable")))
 
 (deftest ^:parallel explicit-prefix-map-overloads-remain-pure-test
   (testing "dev.deps-graph path helpers honor caller-supplied prefix->module maps instead of recomputing live config"
