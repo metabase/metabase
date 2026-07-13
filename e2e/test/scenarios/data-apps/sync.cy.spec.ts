@@ -12,10 +12,8 @@ describe("scenarios > data apps > repo sync", () => {
   });
 
   it("fails the pull and tells the admin which apps share a slug, applying none of the repo", () => {
-    // Real synced content alongside the apps, so "none of the repo was applied" is
-    // something the test can actually observe: the collection below must not land
-    // either, which only holds if the pull is rejected before the content import
-    // commits — not merely after the data apps are skipped.
+    // Real synced content alongside the apps: the collection must not land either,
+    // which only holds if the pull is rejected before the content import commits.
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps, two of which share a slug");

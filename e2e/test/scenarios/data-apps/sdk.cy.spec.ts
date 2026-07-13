@@ -79,8 +79,8 @@ describe("scenarios > data apps > SDK runtime", () => {
 
       visitAppRoute("static-question");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        // Not just the column header: the query object the hook produced has to
-        // have actually run, so the first Subtotal cell holds a real amount.
+        // A rendered value, not just the header: the hook's query object has to
+        // have actually run.
         cy.findAllByTestId("header-cell", { timeout: 30000 }).then(
           ($headers) => {
             const subtotalIndex = [...$headers].findIndex(

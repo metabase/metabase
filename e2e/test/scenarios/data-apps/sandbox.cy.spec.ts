@@ -48,9 +48,9 @@ describe("scenarios > data apps > sandbox & isolation", () => {
         cy.findByRole("link", { name: "Sandbox" }).click();
 
         // A blocked DOM API throws synchronously inside the sandbox.
-        cy.findByTestId("blocked-api-result", { timeout: 30000 }).should(
-          "contain",
-          "blocked createElement: script",
+        cy.findByTestId("probe-script", { timeout: 30000 }).should(
+          "have.text",
+          "blocked",
         );
 
         // A fetch to a host not in allowed_hosts is rejected by the sandbox.

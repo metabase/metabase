@@ -24,7 +24,6 @@ import { getTestEnv } from "./test-env";
 const describeError = (err: unknown): string =>
   (err as { message?: string })?.message ?? String(err);
 
-// A distinctive color used by the isolation probes (green).
 const PROBE_COLOR = "rgb(0, 128, 0)";
 
 function Overview() {
@@ -76,8 +75,6 @@ function Overview() {
   );
 }
 
-// A nested page reached via the data-app router — used to assert that internal
-// navigation is mirrored to the parent's URL bar.
 function Details() {
   return (
     <div data-testid="data-app-details" style={{ padding: 24 }}>
@@ -87,13 +84,8 @@ function Details() {
   );
 }
 
-// `useMetabaseQuery` states. Two queries, because they show different things: an
-// invalid one resolves to `error`, and a valid one is what `refetch` can actually
-// be seen re-running (refetching the broken query would land in `error` either
-// way, proving nothing).
 function QueryStates() {
   const { scalarQuery, errorQuery } = getTestEnv();
-  // The spec that routes here always injects `errorQuery`.
   const broken = useMetabaseQuery(errorQuery!);
   const working = useMetabaseQuery(scalarQuery);
   const count = working.data?.rawRows?.[0]?.[0];
@@ -121,7 +113,6 @@ function QueryStates() {
   );
 }
 
-// `useMetabaseQueryObject` feeding a non-drillable `StaticQuestion`.
 function StaticQuestionPage() {
   const { questionQuery } = getTestEnv();
   const q = useMetabaseQueryObject(questionQuery);
@@ -140,10 +131,7 @@ function StaticQuestionPage() {
   );
 }
 
-// Exercises the query-builder helpers `filter` / `breakout` / `orderBy` /
-// `aggregations` and renders the resulting row count.
 function Combinators() {
-  // The spec that routes here always injects `combinators`.
   const combinators = getTestEnv().combinators!;
   const countAgg = aggregations.count();
 
@@ -171,8 +159,6 @@ function Combinators() {
   );
 }
 
-// `useAction`: execute / isExecuting / result / error / reset. The spec creates a
-// real action and passes its id and parameters.
 function Actions() {
   const { actionId, actionParams } = getTestEnv();
   const action = useAction(actionId ?? null);
@@ -214,7 +200,6 @@ function Actions() {
   );
 }
 
-// `copy` — the sanctioned clipboard-write capability endowed into the sandbox.
 function Clipboard() {
   const [status, setStatus] = useState("idle");
 
@@ -238,8 +223,8 @@ function Clipboard() {
   );
 }
 
-// Renders a question that doesn't exist; with no app-supplied `errorComponent`,
-// the host shows its default neutral data-app error state ("Question not found").
+// With no app-supplied `errorComponent`, the host's default neutral error state
+// renders here.
 function MissingQuestion() {
   return (
     <div
@@ -257,13 +242,8 @@ function ThrowingPage(): JSX.Element {
   throw new Error("intentional data-app bundle render error");
 }
 
-// A synchronous probe of a blocked global — expected to throw inside the sandbox.
 type Probe = { id: string; run: () => void };
 
-// The sandbox distortion replaces blocked *function values* (methods and
-// constructors) with a throwing shim; a plain getter read (e.g.
-// `window.localStorage`) returns a non-function value and is not intercepted, so
-// only method/constructor calls reliably throw. These are all such calls.
 const BLOCKED_PROBES: Probe[] = [
   { id: "script", run: () => document.createElement("script") },
   { id: "window-open", run: () => window.open("https://blocked.test") },
@@ -280,10 +260,6 @@ const BLOCKED_PROBES: Probe[] = [
   },
 ];
 
-// Exercises the Near-Membrane sandbox. A broad set of blocked DOM/global APIs
-// (each expected to throw), `innerHTML` DOMPurify stripping, and network egress
-// gated by `allowed_hosts` (fetch + XHR, block AND allow paths). Each outcome is
-// rendered so a test can assert it.
 function Sandbox() {
   const { sandbox } = getTestEnv();
   const [probeResults, setProbeResults] = useState<Record<string, string>>({});
@@ -356,12 +332,6 @@ function Sandbox() {
         </div>
       ))}
       <div data-testid="probe-innerhtml">{innerHtml}</div>
-      {/* Retained for the existing test's assertions. */}
-      <div data-testid="blocked-api-result">
-        {probeResults.script === "blocked"
-          ? "blocked createElement: script"
-          : "ok: created"}
-      </div>
       <div data-testid="blocked-fetch-result">{blockedFetch}</div>
       <div data-testid="allowed-fetch-result">{allowedFetch}</div>
       <div data-testid="blocked-xhr-result">{blockedXhr}</div>
@@ -370,10 +340,6 @@ function Sandbox() {
   );
 }
 
-// Demonstrates that the iframe + Near-Membrane isolate the app from the parent:
-//  - CSS: an injected <style> that colors a probe AND `body` only affects the
-//    iframe document (the parent's `body` is untouched).
-//  - JS: a global set in the app's realm is not visible on the parent window.
 function Isolation() {
   const [cssInjected, setCssInjected] = useState("pending");
   const [jsMarker, setJsMarker] = useState("pending");
