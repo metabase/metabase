@@ -128,16 +128,20 @@
   The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
   and back to kebab-keys on response.
 
+  `opts` (optional) is merged into the clj-http request map — use it for per-call
+  settings like `:socket-timeout` / `:connection-timeout` (milliseconds).
+
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
-   & [body]]
+   & [body opts]]
   (let [{:keys [store-api-url
                 api-key]} (->config)
         ;; snake-cased body with `Secret`s still WRAPPED — safe to log (they self-redact)
         loggable-body     (some-> body m.util/deep-snake-keys)
-        request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
-                                             "Content-Type" "application/json"}}
+        request           (cond-> (merge opts
+                                         {:headers {"Authorization" (str "Bearer " api-key)
+                                                    "Content-Type" "application/json"}})
                             ;; wire body: expose secrets only here, at the encode boundary
                             body (assoc :body (json/encode (expose-secrets loggable-body))))
         ;; scrubbed request carried into any error map downstream (never the raw one)

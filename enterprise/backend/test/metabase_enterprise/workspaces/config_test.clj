@@ -301,16 +301,21 @@
                      [:config :api-keys]))))))
 
 (deftest create-workspace-names-target-branch-test
-  (testing "ws.core/create-workspace! names target_branch ws-<slug> and records base_branch"
+  (testing "ws.core/create-workspace! names target_branch ws-<slug>-<id> and records base_branch"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws.core/create-workspace! {:name         "My Cool Workspace"
                                            :creator_id   (mt/user->id :crowberto)
                                            :database_ids []})]
-        (is (= "ws-my_cool_workspace" (:target_branch ws)))
+        (is (= (str "ws-my_cool_workspace-" (:id ws)) (:target_branch ws)))
         (is (nil? (:base_branch ws))))
-      (let [ws (ws.core/create-workspace! {:name         "branchy"
-                                           :creator_id   (mt/user->id :crowberto)
-                                           :database_ids []
-                                           :base_branch  "develop"})]
-        (is (= "ws-branchy" (:target_branch ws)))
-        (is (= "develop" (:base_branch ws)))))))
+      (testing "id suffix keeps branches distinct for slug-equal names"
+        (let [ws1 (ws.core/create-workspace! {:name         "branchy"
+                                              :creator_id   (mt/user->id :crowberto)
+                                              :database_ids []
+                                              :base_branch  "develop"})
+              ws2 (ws.core/create-workspace! {:name         "Branchy"
+                                              :creator_id   (mt/user->id :crowberto)
+                                              :database_ids []})]
+          (is (= (str "ws-branchy-" (:id ws1)) (:target_branch ws1)))
+          (is (= "develop" (:base_branch ws1)))
+          (is (not= (:target_branch ws1) (:target_branch ws2))))))))

@@ -356,7 +356,13 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (let [response (oidc/token-request provider body authorization-header)]
-                  (revoke-other-sessions-on-workspace-login! body response)
+                  ;; Isolated so a revocation failure can't turn an already-issued token
+                  ;; into a 400 the client never receives — that would leave a live orphan
+                  ;; token, which is strictly worse than surviving stale sessions.
+                  (try
+                    (revoke-other-sessions-on-workspace-login! body response)
+                    (catch Exception e
+                      (log/error e "Failed to revoke other sessions on workspace-scoped login")))
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

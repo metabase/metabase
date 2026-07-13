@@ -16,6 +16,12 @@
 
 (set! *warn-on-reflection* true)
 
+;; Bounded timeouts so a stalled HM never pins an API thread indefinitely. Create is
+;; blocking on the HM side (machine spin-up + config hot-load), so its read timeout
+;; is generous; delete just enqueues.
+(def ^:private create-timeouts {:connection-timeout 10000, :socket-timeout 600000})
+(def ^:private delete-timeouts {:connection-timeout 10000, :socket-timeout 30000})
+
 (defn create-instance!
   "Create the child instance for a workspace (blocking; returns once the child is
   active with `config-yml` applied). Returns `{:id .. :url .. :status ..}`.
@@ -30,7 +36,8 @@
                                             :mb-version (:tag config/mb-version-info)
                                             ;; wrapped so it can never land in a log line; the client
                                             ;; exposes it only at the JSON-encode boundary
-                                            :config-yml (u.secret/secret config-yml)})]
+                                            :config-yml (u.secret/secret config-yml)}
+                                           create-timeouts)]
     (if (= ok? :ok)
       (select-keys (:body resp) [:id :url :status])
       (throw (ex-info (tru "Harbormaster failed to create the workspace instance.")
@@ -44,7 +51,8 @@
   success. Returns true on success; on failure logs and returns false — the caller
   reports it and HM's backstop reaper eventually collects the instance."
   [hm-instance-id]
-  (let [[ok? resp] (hm.client/make-request :delete (str "/api/v2/mb/workspaces/instances/" hm-instance-id))]
+  (let [[ok? resp] (hm.client/make-request :delete (str "/api/v2/mb/workspaces/instances/" hm-instance-id)
+                                           nil delete-timeouts)]
     (or (= ok? :ok)
         (= 404 (:status resp))
         (do (log/warnf "Harbormaster delete failed for workspace instance %s: status %s"
