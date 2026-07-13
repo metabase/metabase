@@ -1,6 +1,6 @@
 (ns metabase.channel.render.js.graal
   "The GraalVM [[metabase.channel.render.js.protocol/StaticVizRenderer]]: runs the static-viz JS
-  in-process on a pool of sandboxed GraalVM contexts (up to two by default).
+  in-process on a pool of sandboxed GraalVM contexts (up to three by default).
 
   We run the JS interpreted (no Graal compiler on a stock JDK) and silence the interpreter warning with
   the engine-level `engine.WarnInterpreterOnly` option. See
@@ -150,11 +150,12 @@
   :static-viz)
 
 (def ^:private ^Pool static-viz-context-pool
-  "A pool of up to two static-viz contexts, each held exclusively from acquire to release, so at most two
-  renders run at once — one per context, on the shared engine. When idle the pool shrinks to 0 and the
-  generator's `destroy` closes the context (and, on the last one, the shared engine); the first render
-  after an idle gap rebuilds them. See [[metabase.channel.render.js.common/create-pool]]."
-  (common/create-pool generate-context! destroy-context! {:max-size 2}))
+  "A pool of up to three static-viz contexts, each held exclusively from acquire to release, so at most
+  three renders run at once — one per context, on the shared engine. When idle for up to 10 minutes the
+  pool shrinks to 0 and the generator's `destroy` closes the context (and, on the last one, the shared
+  engine); the first render after an idle gap rebuilds them. See
+  [[metabase.channel.render.js.common/create-pool]]."
+  (common/create-pool generate-context! destroy-context! {:max-size 3, :idle-minutes 10}))
 
 (defn- do-with-static-viz-context
   "Borrow a pooled static-viz context and call `f` with it, held exclusively for the call (never let it —

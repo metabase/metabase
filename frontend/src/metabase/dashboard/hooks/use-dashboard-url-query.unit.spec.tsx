@@ -1,6 +1,5 @@
 import { act } from "@testing-library/react";
 import type { Location } from "history";
-import { push, replace } from "react-router-redux";
 
 import { renderHookWithProviders } from "__support__/ui";
 import { isEmbedPreview } from "metabase/embedding/config";
@@ -11,6 +10,7 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import { push, replace } from "metabase/router";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -21,8 +21,8 @@ import { useDashboardUrlQuery } from "./use-dashboard-url-query";
 // tab subscription. The react-router migration re-plumbs both of these, and
 // router.listen has no direct v7 equivalent, so this locks current behavior.
 
-jest.mock("react-router-redux", () => ({
-  ...jest.requireActual("react-router-redux"),
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual("metabase/router"),
   push: jest.fn((descriptor) => ({ type: "MOCK_PUSH", payload: descriptor })),
   replace: jest.fn((descriptor) => ({
     type: "MOCK_REPLACE",

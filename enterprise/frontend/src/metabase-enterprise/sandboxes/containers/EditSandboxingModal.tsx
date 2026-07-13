@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -10,6 +9,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
 import type { GroupTableAccessPolicy } from "metabase-types/api";

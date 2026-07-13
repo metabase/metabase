@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mysql-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mysql-test]}}}}}}
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -1099,3 +1100,91 @@
               "query should throw rather than completing normally")
           (is (< elapsed 30000)
               (format "query should be cancelled well before SLEEP(60) completes naturally — took %.0f ms" elapsed)))))))
+
+(deftest ^:parallel compile-create-index-test
+  (testing "btree renders with backticks; UNIQUE only when asked, direction only on btree"
+    (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]]
+           (driver/compile-create-index :mysql nil "t"
+                                        {:kind :btree :name "by_cat" :columns [{:name "category"}]})))
+    (is (= [["CREATE UNIQUE INDEX `by_cat` ON `s`.`t` (`category` DESC)"]]
+           (driver/compile-create-index :mysql "s" "t"
+                                        {:kind :btree :name "by_cat" :unique true
+                                         :columns [{:name "category" :direction :desc}]}))))
+  (testing "fulltext has no UNIQUE and no per-column direction"
+    (is (= [["CREATE FULLTEXT INDEX `ft_cat` ON `t` (`category`)"]]
+           (driver/compile-create-index :mysql nil "t"
+                                        {:kind :fulltext :name "ft_cat" :unique true
+                                         :columns [{:name "category" :direction :asc}]}))))
+  (testing "MySQL has no CREATE INDEX IF NOT EXISTS, so :if-not-exists guards via dynamic SQL instead"
+    (let [stmts (driver/compile-create-index :mysql nil "t"
+                                             {:kind :btree :name "by_cat" :if-not-exists true
+                                              :columns [{:name "category"}]})]
+      (is (not-any? #(str/includes? (first %) "IF NOT EXISTS") stmts)
+          "no literal IF NOT EXISTS clause")
+      (is (str/includes? (first (last stmts)) "DEALLOCATE PREPARE")
+          "ends by deallocating the prepared guard statement"))))
+
+(deftest ^:parallel compile-create-index-hex-escaping-test
+  (let [hex     (fn [^String s] (codecs/bytes->hex (.getBytes s "UTF-8")))
+        expr    (fn [s] (format "CONVERT(UNHEX('%s') USING utf8mb4)" (hex s)))
+        decode  (fn [h] (String. ^bytes (codecs/hex->bytes h) "UTF-8"))
+        compile (fn [schema table nm]
+                  (driver/compile-create-index
+                   :mysql schema table
+                   {:kind :btree :name nm :if-not-exists true :columns [{:name "category"}]}))
+        joined  (fn [stmts] (str/join "\n" (map first stmts)))]
+    (testing ":if-not-exists true guards the create with dynamic SQL, inlining every string as hex"
+      (let [stmts        (compile nil "t" "by_cat")
+            sql          (joined stmts)
+            plain-create (ffirst (driver/compile-create-index
+                                  :mysql nil "t"
+                                  {:kind :btree :name "by_cat" :columns [{:name "category"}]}))]
+        (testing "shape: existence check, IF guard, then PREPARE/EXECUTE/DEALLOCATE"
+          (is (= 5 (count stmts)))
+          (is (str/includes? (ffirst stmts)
+                             "@mb_idx_exists := (SELECT COUNT(*) FROM information_schema.statistics"))
+          (is (str/includes? (first (nth stmts 1)) "@mb_idx_sql := IF(@mb_idx_exists > 0, 'DO 0'"))
+          (is (= ["PREPARE mb_idx_stmt FROM @mb_idx_sql"] (nth stmts 2)))
+          (is (= ["EXECUTE mb_idx_stmt"] (nth stmts 3)))
+          (is (= ["DEALLOCATE PREPARE mb_idx_stmt"] (nth stmts 4))))
+        (testing "table and index name are compared as hex-encoded utf8mb4 expressions"
+          (is (str/includes? sql (str "table_name = " (expr "t"))))
+          (is (str/includes? sql (str "index_name = " (expr "by_cat")))))
+        (testing "the embedded CREATE is exactly the plain create, hex-encoded"
+          (is (str/includes? sql (expr plain-create)))
+          (is (str/starts-with? (decode (hex plain-create)) "CREATE INDEX")))
+        (testing "no schema compares against DATABASE(), not a hex literal"
+          (is (str/includes? sql "table_schema = DATABASE()")))))
+    (testing "an explicit schema is inlined as hex too"
+      (is (str/includes? (joined (compile "s" "t" "by_cat"))
+                         (str "table_schema = " (expr "s")))))
+    (testing "a backslash in the name (which defeats ansi quote-doubling) is hex-encoded, never literal"
+      (let [nm  "my\\index"
+            sql (joined (compile nil "t" nm))]
+        (is (str/includes? (hex nm) "5c")
+            "sanity: the name's hex includes the backslash byte 5c")
+        (is (str/includes? sql (hex nm))
+            "the exact bytes (backslash included) are inlined as hex")
+        (is (str/includes? sql (str "index_name = " (expr nm))))
+        (is (not (str/includes? sql "\\"))
+            "no raw backslash survives anywhere in the SQL, so it cannot escape a literal")
+        (is (= nm (decode (hex nm)))
+            "the hex round-trips back to the original name")))
+    (testing "an injection-style name is hex-encoded and cannot break out of a literal"
+      (let [nm  "a' OR 1=1 -- "
+            sql (joined (compile nil "t" nm))]
+        (is (str/includes? sql (hex nm))
+            "the payload is inlined as hex")
+        (is (str/includes? sql (str "index_name = " (expr nm))))
+        (is (not (str/includes? sql "1=1"))
+            "the injection text never appears unencoded")
+        (is (not (str/includes? sql "OR 1=1")))
+        (is (= nm (decode (hex nm)))
+            "the hex round-trips back to the original name")))
+    (testing ":if-not-exists false emits the plain single-statement CREATE, no dynamic SQL"
+      (let [stmts (driver/compile-create-index
+                   :mysql nil "t"
+                   {:kind :btree :name "by_cat" :if-not-exists false :columns [{:name "category"}]})]
+        (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]] stmts))
+        (is (not (str/includes? (ffirst stmts) "PREPARE")))
+        (is (not (str/includes? (ffirst stmts) "UNHEX")))))))

@@ -242,6 +242,14 @@ export function redirect(url: string): void {
   window.location.href = url;
 }
 
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function replaceLocation(url: string): void {
+  window.location.replace(url);
+}
+
 export function openSaveDialog(fileName: string, fileContent: Blob): void {
   const url = URL.createObjectURL(fileContent);
   const link = document.createElement("a");
