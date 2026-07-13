@@ -192,7 +192,7 @@
       (is (= [] (dev.deps-graph/external-usages 'parent)))
       (is (= (dev.deps-graph/build-prefix->module config) @seen-prefixes)))))
 
-(deftest simulate-rename-preserves-nested-module-ownership-test
+(deftest ^:parallel simulate-rename-preserves-nested-module-ownership-test
   (let [prefix->module {"metabase.parent" 'parent
                         "metabase.parent.child" 'parent.child}
         deps [{:namespace 'metabase.consumer.core

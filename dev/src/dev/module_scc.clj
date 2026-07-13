@@ -209,7 +209,7 @@
 
 (defn- nearest-rank
   "Nearest-rank percentile: the value at 1-based rank ⌈p·n⌉ of `sorted-values`, nil when empty. Matches
-  `dev.module-metrics`' percentile semantics so predicted numbers line up with the reported metrics."
+  [[dev.module-metrics/nearest-rank-percentile]] semantics so predicted numbers line up with the reported metrics."
   [sorted-values p]
   (when (seq sorted-values)
     (nth sorted-values (max 0 (dec (long (Math/ceil (* p (count sorted-values)))))))))
@@ -241,7 +241,7 @@
 (defn predicted-test-blast-radius
   "Predicted per-module tests-invalidated under (possibly modified) `graph`: a change to module `m`
   invalidates the test files owned by `m` and by every transitive dependent. This is the same
-  module-granularity rule `deps-graph/source-filenames->relevant-test-filenames` applies to the real graph,
+  module-granularity rule [[dev.deps-graph/source-filenames->relevant-test-filenames]] applies to the real graph,
   so running it on the unmodified graph reproduces today's numbers and running it on a cut graph predicts a
   carve's payoff, apples to apples. `module->tests` maps module → set of its test files. Returns
   `{:per-module {m count}, :median n, :mean n}`."
@@ -260,7 +260,7 @@
 
 (defn module->test-files
   "Map of module → set of its test files, via the same filesystem mapping the selective-CI helpers use.
-  (`deps-graph/module->test-files` is private; this is dev tooling, so we go through the var.)"
+  ([[dev.deps-graph/module->test-files]] is private; this is dev tooling, so we go through the var.)"
   [config modules]
   (into (sorted-map)
         (map (fn [m] [m (#'deps-graph/module->test-files config m)]))
