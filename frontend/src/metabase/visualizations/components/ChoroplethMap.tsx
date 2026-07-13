@@ -32,15 +32,17 @@ import type {
 } from "metabase/visualizations/types";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
-  CardId,
   CustomGeoJSONMap,
-  DatasetColumn,
   GeoJSONData,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { ChartWithLegend } from "./ChartWithLegend";
+import {
+  type FeatureClickContext,
+  buildFeatureClickObject,
+} from "./ChoroplethMap.utils";
 import { LeafletChoropleth } from "./LeafletChoropleth";
 import { LegacyChoropleth } from "./LegacyChoropleth";
 import { computeMinimalBounds } from "./leaflet-bounds";
@@ -270,77 +272,6 @@ function computeAspectRatio(
     );
   }
   return 1;
-}
-
-type FeatureClickContext = {
-  cols: DatasetColumn[];
-  dimensionIndex: number;
-  metricIndex: number;
-  settings: VisualizationSettings;
-  getFeatureName: (feature: Feature) => string;
-  getFeatureKey: (feature: Feature, opts?: { lowerCase?: boolean }) => string;
-  cardId: CardId;
-};
-
-function buildFeatureClickObject(
-  row: RowValue[] | undefined,
-  feature: Feature | null,
-  ctx: FeatureClickContext,
-) {
-  const {
-    cols,
-    dimensionIndex,
-    metricIndex,
-    settings,
-    getFeatureName,
-    getFeatureKey,
-    cardId,
-  } = ctx;
-
-  if (row == null) {
-    // This branch lets you click on empty regions. We use in dashboard cross-filtering.
-    return {
-      value: null,
-      column: cols[metricIndex],
-      dimensions: [],
-      data: feature
-        ? [
-            {
-              key: cols[dimensionIndex].display_name,
-              value: getFeatureKey(feature, { lowerCase: false }),
-              col: cols[dimensionIndex],
-            },
-          ]
-        : [],
-      settings,
-      cardId,
-    };
-  }
-
-  return {
-    value: row[metricIndex],
-    column: cols[metricIndex],
-    dimensions: [
-      {
-        value: row[dimensionIndex],
-        column: cols[dimensionIndex],
-      },
-    ],
-    data: row.map((value, index) => ({
-      key: cols[index].display_name,
-      value:
-        index === dimensionIndex && feature != null
-          ? getFeatureName(feature)
-          : value,
-      // We set clickBehaviorValue to the raw data value for use in a filter via crossfiltering.
-      // `value` above is used in the tool tips so it needs to use `getFeatureName`.
-      clickBehaviorValue: value,
-      col: cols[index],
-    })),
-    origin: { row, cols },
-    settings,
-    cardId,
-  };
 }
 
 function ChoroplethMapInner(props: ChoroplethMapProps) {

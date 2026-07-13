@@ -1546,4 +1546,147 @@ describe("ExplorationSidebar", () => {
       });
     });
   });
+
+  describe("programmatic selection scrolling", () => {
+    const BLOCK_ID = 800;
+    const PAGE_ID = 801;
+    const scrollIntoViewMock = jest.fn();
+
+    beforeEach(() => {
+      scrollIntoViewMock.mockClear();
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        configurable: true,
+        writable: true,
+        value: scrollIntoViewMock,
+      });
+    });
+
+    function renderNestedSidebar(
+      shouldScrollSelectionRef: { current: boolean },
+      selectedEntityId: TestSelectedEntityId,
+    ) {
+      const exploration = createExploration({
+        blocks: [
+          createBlock({
+            id: BLOCK_ID,
+            name: "Nested group",
+            pages: [
+              createPage({
+                id: PAGE_ID,
+                name: "Nested page",
+                query_ids: [1],
+              }),
+            ],
+          }),
+        ],
+        queries: [createQuery({ id: 1, name: "Nested query", status: "done" })],
+      });
+      const {
+        path,
+        explorationSidebarTabsInfo,
+        selectedSidebarTab,
+        getSelectedSidebarTabUrl,
+        getTree,
+      } = getSidebarTestContext(exploration);
+
+      return renderWithProviders(
+        <Route
+          path={path}
+          component={() => (
+            <ExplorationSidebar
+              exploration={exploration}
+              explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+              selectedSidebarTab={selectedSidebarTab}
+              getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+              tree={getTree()}
+              selectedEntityId={selectedEntityId}
+              setSelectedEntityId={jest.fn()}
+              getSelectedEntityIdUrl={() => path}
+              shouldScrollSelectionRef={shouldScrollSelectionRef}
+              isOpen
+              showHidden={false}
+              onToggleShowHidden={jest.fn()}
+            />
+          )}
+        />,
+        { withRouter: true, initialRoute: path },
+      );
+    }
+
+    it("scrolls the selected page into view and clears the scroll ref", () => {
+      const shouldScrollSelectionRef = { current: true };
+      renderNestedSidebar(shouldScrollSelectionRef, {
+        type: "page",
+        id: String(PAGE_ID),
+      });
+
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({ block: "nearest" });
+      expect(shouldScrollSelectionRef.current).toBe(false);
+    });
+
+    it("re-expands collapsed ancestors when programmatic navigation arms scrolling", async () => {
+      const shouldScrollSelectionRef = { current: false };
+      const { rerender } = renderNestedSidebar(shouldScrollSelectionRef, {
+        type: "page",
+        id: String(PAGE_ID),
+      });
+
+      const heading = screen.getByRole("group", { name: /Nested group/ });
+      await userEvent.click(heading);
+      expect(heading).toHaveAttribute("aria-expanded", "false");
+
+      shouldScrollSelectionRef.current = true;
+      rerender(
+        <Route
+          path={Urls.exploration(1)}
+          component={() => {
+            const exploration = createExploration({
+              blocks: [
+                createBlock({
+                  id: BLOCK_ID,
+                  name: "Nested group",
+                  pages: [
+                    createPage({
+                      id: PAGE_ID,
+                      name: "Nested page",
+                      query_ids: [1],
+                    }),
+                  ],
+                }),
+              ],
+              queries: [
+                createQuery({ id: 1, name: "Nested query", status: "done" }),
+              ],
+            });
+            const {
+              explorationSidebarTabsInfo,
+              selectedSidebarTab,
+              getSelectedSidebarTabUrl,
+              getTree,
+            } = getSidebarTestContext(exploration);
+            return (
+              <ExplorationSidebar
+                exploration={exploration}
+                explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+                selectedSidebarTab={selectedSidebarTab}
+                getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+                tree={getTree()}
+                selectedEntityId={{ type: "page", id: String(PAGE_ID) }}
+                setSelectedEntityId={jest.fn()}
+                getSelectedEntityIdUrl={() => Urls.exploration(1)}
+                shouldScrollSelectionRef={shouldScrollSelectionRef}
+                isOpen
+                showHidden={false}
+                onToggleShowHidden={jest.fn()}
+              />
+            );
+          }}
+        />,
+      );
+
+      expect(
+        screen.getByRole("group", { name: /Nested group/ }),
+      ).toHaveAttribute("aria-expanded", "true");
+    });
+  });
 });
