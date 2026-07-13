@@ -23,6 +23,7 @@ export const PinDropTarget = DropTarget(
       }
     },
     canDrop(props: PinDropTargetOwnProps, monitor: DropTargetMonitor) {
+      // Unjustified type cast. FIXME
       const { item } = monitor.getItem() as { item: CollectionItem };
       const { variant } = props;
       // NOTE: not necessary to check collection permission here since we

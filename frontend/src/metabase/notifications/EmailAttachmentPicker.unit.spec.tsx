@@ -475,9 +475,11 @@ function createPulse(): DashboardSubscription {
     can_write: true,
     collection_position: null,
     created_at: "2024-01-01T00:00:00Z",
+    // Unjustified type cast. FIXME
     creator: { id: 1, common_name: "Test", email: "test@test.com" } as any,
     creator_id: 1,
     disable_links: false,
+    // Unjustified type cast. FIXME
     entity_id: "test-entity-id" as any,
     id: 1,
     updated_at: "2024-01-01T00:00:00Z",
@@ -530,9 +532,11 @@ function createPulseWithDuplicateCardId(): DashboardSubscription {
     can_write: true,
     collection_position: null,
     created_at: "2024-01-01T00:00:00Z",
+    // Unjustified type cast. FIXME
     creator: { id: 1, common_name: "Test", email: "test@test.com" } as any,
     creator_id: 1,
     disable_links: false,
+    // Unjustified type cast. FIXME
     entity_id: "test-entity-id" as any,
     id: 2,
     updated_at: "2024-01-01T00:00:00Z",

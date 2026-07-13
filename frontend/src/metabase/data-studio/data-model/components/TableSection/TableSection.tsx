@@ -1,5 +1,4 @@
 import { memo, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -24,6 +23,7 @@ import {
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Box,
   Button,

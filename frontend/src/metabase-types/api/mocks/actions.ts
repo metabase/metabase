@@ -137,6 +137,7 @@ export const createMockFieldSettings = (
 export const createMockImplicitActionFieldSettings = (
   opts?: Partial<FieldSettings>,
 ) =>
+  // Unjustified type cast. FIXME
   ({
     id: "",
     hidden: false,

@@ -160,7 +160,7 @@ function getCachedChartComponent(
 type PublicChatMessage =
   | Extract<MetabotChatMessage, { type: "text" }>
   | (Extract<MetabotChatMessage, { type: "data_part" }> & {
-      part: { type: "navigate_to" };
+      part: { type: "data-navigate_to" };
     });
 
 const isPublicMessage = (
@@ -169,7 +169,7 @@ const isPublicMessage = (
 ): message is PublicChatMessage =>
   message.type === "text" ||
   (message.type === "data_part" &&
-    message.part.type === "navigate_to" &&
+    message.part.type === "data-navigate_to" &&
     finalNavigateToIds.has(message.id));
 
 const mapMessage = (
@@ -189,9 +189,9 @@ const mapMessage = (
         ({ id, role: "agent", type: "text", message }) as const,
     )
     .with(
-      { role: "agent", type: "data_part", part: { type: "navigate_to" } },
+      { role: "agent", type: "data_part", part: { type: "data-navigate_to" } },
       ({ id, part }) => {
-        const questionPath = part.value;
+        const questionPath = part.data;
         const Chart = authConfig
           ? getCachedChartComponent(questionPath, cache, authConfig)
           : FallbackChartComponent;

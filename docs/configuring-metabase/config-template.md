@@ -314,6 +314,7 @@ config:
     sql-tools-parser-backend: sqlglot
     ssh-heartbeat-interval-sec: 180
     start-of-week: sunday
+    static-viz-mode: graalvm
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
@@ -322,7 +323,7 @@ config:
     thread-interrupt-escalation-timeout-ms: 0
     transform-run-job-sql-concurrency: 3
     transform-timeout: 240
-    transforms-enabled: false
+    transforms-enabled: null
     unaggregated-query-row-limit: null
     uploads-settings: null
     usage-metadata-enabled: false

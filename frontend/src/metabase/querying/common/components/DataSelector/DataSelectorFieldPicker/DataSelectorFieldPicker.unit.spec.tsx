@@ -33,6 +33,7 @@ describe("DataSelectorFieldPicker", () => {
         <DataSelectorFieldPicker
           {...props}
           isLoading={true}
+          // Unjustified type cast. FIXME
           selectedTable={{ display_name: displayName } as Table}
         />,
       );
@@ -64,6 +65,7 @@ describe("DataSelectorFieldPicker", () => {
       render(
         <DataSelectorFieldPicker
           {...props}
+          // Unjustified type cast. FIXME
           selectedTable={selectedTable as Table}
           fields={[checkNotNull(metadata.field(ORDERS.PRODUCT_ID))]}
         />,
@@ -78,6 +80,7 @@ describe("DataSelectorFieldPicker", () => {
       render(
         <DataSelectorFieldPicker
           {...props}
+          // Unjustified type cast. FIXME
           selectedTable={{ display_name: "Orders" } as Table}
           fields={[
             checkNotNull(metadata.field(ORDERS.ID)),

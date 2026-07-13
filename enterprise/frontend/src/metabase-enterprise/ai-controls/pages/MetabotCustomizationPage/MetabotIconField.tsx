@@ -51,6 +51,7 @@ export function MetabotIconField() {
     }
     const reader = new FileReader();
     reader.onload = async (readerEvent) => {
+      // Unjustified type cast. FIXME
       const dataUri = readerEvent.target?.result as string;
       if (!(await isFileIntact(dataUri))) {
         setIconError(

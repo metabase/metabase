@@ -1,3 +1,4 @@
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import { createMockSettingsState } from "metabase/redux/store/mocks/settings";
 import { createMockState } from "metabase/redux/store/mocks/state";
@@ -22,14 +23,14 @@ const loadModule = () => import("./snowplow");
 
 function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
   return {
-    getState: () =>
-      createMockState({
-        sdk: createMockSdkState(),
-        settings: createMockSettingsState({
-          "anon-tracking-enabled": true,
-          ...overrides,
-        }),
+    getState: (): SdkStoreState => ({
+      ...createMockState(),
+      sdk: createMockSdkState(),
+      settings: createMockSettingsState({
+        "anon-tracking-enabled": true,
+        ...overrides,
       }),
+    }),
   };
 }
 

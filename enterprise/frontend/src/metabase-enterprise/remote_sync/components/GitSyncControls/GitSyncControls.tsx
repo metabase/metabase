@@ -30,7 +30,7 @@ import {
 } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type { ExportPreflightResponse } from "metabase-types/api";
 
-import { trackBranchSwitched, trackPullChanges } from "../../analytics";
+import { trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
@@ -38,23 +38,21 @@ import { type SyncError, parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
 import { SyncConflictModal } from "../SyncConflictModal";
 
-import { BranchDropdown } from "./BranchDropdown";
 import S from "./GitSyncControls.module.css";
 import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
-
-type DropdownView = "options" | "branch";
 
 export const GitSyncControls = () => {
   const dispatch = useDispatch();
   const conflictVariant = useSelector(getSyncConflictVariant);
-  const { isVisible, currentBranch, isBranchSetByEnv } = useGitSyncVisible();
+  // Branch switching now lives in the instance Settings panel (behind destructive-action guard rails),
+  // so these controls show the current branch read-only and expose only Push/Pull.
+  const { isVisible, currentBranch } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
   const [runExportPreflight] = useLazyGetExportPreflightQuery();
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
-  const [nextBranch, setNextBranch] = useState<string | null>(null);
   // Set when a push or pull needs the conflict modal; carries whether a clean merge is available.
   const [conflictPreflight, setConflictPreflight] =
     useState<ExportPreflightResponse | null>(null);
@@ -68,10 +66,9 @@ export const GitSyncControls = () => {
   const [isCheckingPreflight, setIsCheckingPreflight] = useState(false);
   const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
-  const [dropdownView, setDropdownView] = useState<DropdownView>("options");
   const combobox = useCombobox();
 
-  const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
+  const { isDirty } = useRemoteSyncDirtyState();
 
   // An export task that ends in conflict (the push lost the preflight->execute race, or fell through a
   // preflight error) is otherwise silent: the middleware can't toast (no hook), so surface it here, then
@@ -100,12 +97,7 @@ export const GitSyncControls = () => {
   });
   const { has_changes: hasRemoteChanges } = hasRemoteChangesData || {};
 
-  const isSwitchingBranch = !!nextBranch;
-  const isLoading =
-    isSyncTaskRunning ||
-    isSwitchingBranch ||
-    isImporting ||
-    isCheckingPreflight;
+  const isLoading = isSyncTaskRunning || isImporting || isCheckingPreflight;
 
   // If `error` is a branch-mismatch rejection (another session switched branches), open the
   // out-of-date modal prompting a refresh and return true so the caller can stop. Returns false for
@@ -115,6 +107,7 @@ export const GitSyncControls = () => {
       hasBranchMismatch,
       errorMessage,
       currentBranch: serverBranch,
+      // Unjustified type cast. FIXME
     } = parseSyncError(error as SyncError);
     if (hasBranchMismatch) {
       setBranchMismatch({
@@ -125,75 +118,6 @@ export const GitSyncControls = () => {
     }
     return false;
   }, []);
-
-  const changeBranch = useCallback(
-    async (branch: string | null, isNewBranch?: boolean) => {
-      if (branch == null) {
-        console.warn("Trying to switch to null branch");
-        return;
-      }
-
-      if (!isNewBranch) {
-        if (currentBranch == null) {
-          return;
-        }
-        // expected_branch is the branch we're switching away from: reject if another session already
-        // moved off it, so we don't switch from a stale base. unwrap() so a rejection (e.g. the CAS 409)
-        // throws and reaches handleBranchSelect's catch instead of resolving silently.
-        await importChanges({
-          branch,
-          expected_branch: currentBranch,
-        }).unwrap();
-
-        trackBranchSwitched({
-          triggeredFrom: "app-bar",
-        });
-      }
-
-      setNextBranch(null);
-    },
-    [importChanges, currentBranch],
-  );
-
-  const handleBranchSelect = useCallback(
-    async (branch: string, isNewBranch?: boolean) => {
-      try {
-        if (branch === currentBranch) {
-          return;
-        }
-
-        setNextBranch(branch);
-
-        const freshDirtyData = await refetchDirty().unwrap();
-        const hasDirtyChanges = freshDirtyData.dirty.length > 0;
-
-        if (hasDirtyChanges && !isNewBranch) {
-          dispatch(syncConflictVariantUpdated("switch-branch"));
-        } else {
-          await changeBranch(branch, isNewBranch);
-          setNextBranch(null);
-        }
-      } catch (error) {
-        setNextBranch(null);
-        if (showBranchMismatchIfPresent(error)) {
-          return;
-        }
-        sendToast({
-          icon: "warning",
-          toastColor: "feedback-negative",
-          message: t`Sorry, we were unable to switch branches.`,
-        });
-      }
-    },
-    [
-      currentBranch,
-      refetchDirty,
-      dispatch,
-      changeBranch,
-      sendToast,
-      showBranchMismatchIfPresent,
-    ],
-  );
 
   const handlePushClick = useCallback(async () => {
     if (!currentBranch) {
@@ -282,6 +206,7 @@ export const GitSyncControls = () => {
         return;
       }
 
+      // Unjustified type cast. FIXME
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
 
       if (hasConflict) {
@@ -308,13 +233,8 @@ export const GitSyncControls = () => {
 
   const handleCloseSyncConflictModal = useCallback(() => {
     dispatch(syncConflictVariantUpdated(null));
-    setNextBranch(null);
     setConflictPreflight(null);
   }, [dispatch]);
-
-  const handleSwitchBranchClick = useCallback(() => {
-    setDropdownView("branch");
-  }, []);
 
   if (!isVisible || !currentBranch) {
     return null;
@@ -336,10 +256,7 @@ export const GitSyncControls = () => {
             bd="none"
             mr="lg"
             disabled={isLoading}
-            onClick={() => {
-              setDropdownView("options");
-              combobox.toggleDropdown();
-            }}
+            onClick={() => combobox.toggleDropdown()}
             leftSection={
               <Icon name="git_branch" c="text-secondary" size={14} />
             }
@@ -365,25 +282,14 @@ export const GitSyncControls = () => {
           </Button>
         </Combobox.Target>
 
-        {dropdownView === "options" ? (
-          <GitSyncOptionsDropdown
-            isPullDisabled={!hasRemoteChanges}
-            isPullError={hasRemoteChangesError}
-            isLoadingPull={isFetchingRemoteChanges}
-            isPushDisabled={!isDirty || isLoading}
-            isSwitchBranchDisabled={isBranchSetByEnv}
-            onPullClick={handlePullClick}
-            onPushClick={handlePushClick}
-            onSwitchBranchClick={handleSwitchBranchClick}
-          />
-        ) : (
-          <BranchDropdown
-            baseBranch={currentBranch}
-            combobox={combobox}
-            onChange={handleBranchSelect}
-            value={currentBranch}
-          />
-        )}
+        <GitSyncOptionsDropdown
+          isPullDisabled={!hasRemoteChanges}
+          isPullError={hasRemoteChangesError}
+          isLoadingPull={isFetchingRemoteChanges}
+          isPushDisabled={!isDirty || isLoading}
+          onPullClick={handlePullClick}
+          onPushClick={handlePushClick}
+        />
       </Combobox>
 
       {showPushModal && (
@@ -396,7 +302,6 @@ export const GitSyncControls = () => {
       {conflictVariant && (
         <SyncConflictModal
           currentBranch={currentBranch}
-          nextBranch={nextBranch}
           onClose={handleCloseSyncConflictModal}
           variant={conflictVariant}
           canMerge={conflictPreflight?.clean}

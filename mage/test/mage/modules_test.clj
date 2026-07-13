@@ -363,7 +363,8 @@
           ;;            Added premium-features to driver-affecting-overrides (#69561)
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
           ;; 2026-06-04 Bumped to 42 due to run-tracking addition (Zombie transform reaper #75194)
-          max-allowed-count 42]
+          ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
+          max-allowed-count 44]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

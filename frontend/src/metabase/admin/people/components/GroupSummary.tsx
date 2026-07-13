@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { Box, type BoxProps } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 

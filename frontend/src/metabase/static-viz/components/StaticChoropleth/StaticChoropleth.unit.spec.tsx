@@ -17,6 +17,7 @@ import {
 import { StaticChoropleth } from "./StaticChoropleth";
 import { getStaticChoroplethSettings } from "./utils";
 
+// Unjustified type cast. FIXME
 const renderingContext = {
   getColor: (name: string) =>
     name === "text-secondary" ? "#888888" : "#000000",
@@ -64,6 +65,7 @@ const geoJson: FeatureCollection = {
   ],
 };
 
+// Unjustified type cast. FIXME
 const rawSeries = [
   {
     card: { display: "map" },

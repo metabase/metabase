@@ -1,5 +1,4 @@
 import type { ConnectedProps } from "react-redux";
-import { push } from "react-router-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
 import {
@@ -58,6 +57,7 @@ import {
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
 import type { State } from "metabase/redux/store";
+import { push } from "metabase/router";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,

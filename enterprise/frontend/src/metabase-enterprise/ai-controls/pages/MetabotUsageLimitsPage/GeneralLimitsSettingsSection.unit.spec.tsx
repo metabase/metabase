@@ -26,6 +26,7 @@ function setup({
   limitType = "tokens",
   limitPeriod = "monthly",
   quotaMessage = "",
+  // Unjustified type cast. FIXME
   instanceMaxUsage = null as number | null,
 }: SetupOpts = {}) {
   setupPropertiesEndpoints(

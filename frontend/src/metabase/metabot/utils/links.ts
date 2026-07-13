@@ -21,6 +21,7 @@ export type MetabaseProtocolEntityModel =
 const isMetabaseProtocolEntityModel = (
   model: string,
 ): model is MetabaseProtocolEntityModel => {
+  // Unjustified type cast. FIXME
   return (METABASE_PROTOCOL_ENTITY_MODELS as readonly string[]).includes(model);
 };
 

@@ -1301,7 +1301,7 @@ The Anthropic API Key.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4-5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
@@ -2242,6 +2242,15 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 
 This will affect things like grouping by week or filtering in GUI queries. It won't affect most SQL queries, although it is used to set the WEEK_START session variable in Snowflake.
 
+### `MB_STATIC_VIZ_MODE`
+
+- Type: keyword
+- Default: `graalvm`
+
+How static visualizations (subscription/alert charts and pulse table cell colors) are rendered:
+  `graalvm` runs the JavaScript in-process on a pooled GraalVM context (default), or `node` runs it in a
+  pool of external Node.js child processes (requires a `node` binary on the host's PATH).
+
 ### `MB_SUBSCRIPTION_ALLOWED_DOMAINS`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -2327,10 +2336,14 @@ Controls the timeout for transform runs, including the queries they execute. Thi
 ### `MB_TRANSFORMS_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `transforms-enabled`.
 - [Configuration file name](./config-file.md): `transforms-enabled`
 
-Enable transforms for instances that have not explicitly purchased the transform add-on.
+Whether transforms are enabled.
+
+When enabled, data analysts and admins can write, schedule and run transforms.
+  Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 

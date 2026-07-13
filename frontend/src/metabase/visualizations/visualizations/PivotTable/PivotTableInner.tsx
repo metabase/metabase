@@ -250,6 +250,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       let newColumnWidths: Partial<HeaderWidthType> = {};
 
       if (columnType === "leftHeader") {
+        // Unjustified type cast. FIXME
         const newLeftHeaderColumnWidths = [...(leftHeaderWidths as number[])];
         newLeftHeaderColumnWidths[columnIndex] = Math.max(
           newWidth,
@@ -473,6 +474,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                       )
                     }
                     onScroll={({ scrollLeft }) =>
+                      // Unjustified type cast. FIXME
                       onScroll({ scrollLeft } as OnScrollParams)
                     }
                     scrollLeft={scrollLeft}
@@ -511,6 +513,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           height={bodyHeight - scrollBarOffsetSize()}
                           scrollTop={scrollTop}
                           onScroll={({ scrollTop }) =>
+                            // Unjustified type cast. FIXME
                             onScroll({ scrollTop } as OnScrollParams)
                           }
                         />
@@ -563,6 +566,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                             );
                           }}
                           onScroll={({ scrollLeft, scrollTop }) =>
+                            // Unjustified type cast. FIXME
                             onScroll({
                               scrollLeft,
                               scrollTop,

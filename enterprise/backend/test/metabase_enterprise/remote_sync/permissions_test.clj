@@ -553,7 +553,7 @@
 
 (deftest transform-superuser-can-read-test
   (testing "can_read should be true for superusers"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace :transforms}
@@ -612,7 +612,7 @@
 
 (deftest transform-writable-when-remote-sync-read-write-test
   (testing "can_write should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -633,7 +633,7 @@
 
 (deftest transform-writable-when-remote-sync-disabled-test
   (testing "can_write should be true for transforms when remote-sync is not enabled"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         ;; remote-sync-url is not set, so remote-sync-enabled returns false
         (mt/with-temporary-setting-values [settings/remote-sync-url nil
@@ -675,7 +675,7 @@
 
 (deftest transform-creation-allowed-in-read-write-mode-test
   (testing "can_create should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]

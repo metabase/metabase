@@ -249,6 +249,7 @@ export const FormValuesPatcher = <T extends object>({
       return;
     }
     const patches: Partial<T> = {};
+    // Unjustified type cast. FIXME
     for (const key of Object.keys(nextValues) as (keyof T)[]) {
       if (isEqual(formValues[key], prevValues[key])) {
         /**

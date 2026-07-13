@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 
 import {
   collectionApi,
@@ -11,6 +10,7 @@ import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";

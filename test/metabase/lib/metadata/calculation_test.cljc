@@ -1236,3 +1236,39 @@
         (is (contains? nnames "Products → ID"))
         (is (contains? nnames "Products - User → ID"))
         (is (= 2 (count (filter #(str/includes? % "→ ID") nnames))))))))
+
+#?(:clj
+   (defmethod lib.metadata.calculation/display-name-method ::throws
+     [_query _stage-number x _style]
+     (throw (:throwable x))))
+
+#?(:clj
+   (deftest ^:synchronized suggested-name-vm-error-test
+     (testing "a VM Error thrown while describing the query propagates out of suggested-name"
+       (with-redefs [lib.metadata.calculation/describe-query (fn [_query] (throw (Error. "boom")))]
+         (is (thrown? Error
+                      (lib.metadata.calculation/suggested-name (lib.tu/venues-query))))))
+     (testing "an Exception thrown while describing the query yields nil"
+       (with-redefs [lib.metadata.calculation/describe-query (fn [_query] (throw (ex-info "boom" {})))]
+         (is (nil? (lib.metadata.calculation/suggested-name (lib.tu/venues-query))))))))
+
+#?(:clj
+   (deftest ^:parallel display-name-vm-error-test
+     (testing "a VM Error thrown while computing a display name propagates unwrapped"
+       (let [e (Error. "boom")]
+         (is (identical? e
+                         (try
+                           (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                  {:lib/type ::throws, :throwable e})
+                           nil
+                           (catch Error actual actual))))))
+     (testing "an Exception thrown while computing a display name is wrapped with context"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                    {:lib/type ::throws
+                                                                     :throwable (ex-info "boom" {})}))))
+     (testing "an AssertionError thrown while computing a display name is contained (wrapped), not propagated"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                    {:lib/type ::throws
+                                                                     :throwable (AssertionError. "boom")}))))))

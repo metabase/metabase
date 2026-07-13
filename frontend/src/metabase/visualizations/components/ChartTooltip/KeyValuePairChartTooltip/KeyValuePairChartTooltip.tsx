@@ -104,6 +104,7 @@ const getRows = (hovered: HoveredObject) => {
       dimensions.push(...hovered.dimensions);
     }
     if (hovered.value !== undefined) {
+      // Unjustified type cast. FIXME
       dimensions.push({
         value: hovered.value,
         column: hovered.column,

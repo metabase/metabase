@@ -244,3 +244,98 @@
           ;; The original exception should be thrown, not the setAutoCommit exception
           (is (= msg (ex-message e))))
         (is (true? @autocommit-reset-called))))))
+
+;;; ------------------------------ before-commit + transaction-state ------------------------------
+;;; The mq transactional outbox relies on this machinery: it inserts its rows from a before-commit
+;;; callback (so they commit atomically with the business transaction) and stashes the ids in
+;;; transaction-state to publish them from an after-commit callback once the commit lands.
+
+(deftest do-before-commit-runs-immediately-outside-transaction-test
+  (let [calls (atom [])]
+    (mdb.connection/do-before-commit (fn [] (swap! calls conj :ran)))
+    (is (= [:ran] @calls) "outside a transaction do-before-commit runs the thunk immediately")))
+
+(deftest before-commit-callbacks-run-before-commit-and-commit-their-writes-test
+  (let [email (mt/random-email)
+        order (atom [])]
+    (try
+      (t2/with-transaction [_conn]
+        (mdb.connection/do-before-commit
+         (fn []
+           (swap! order conj :before-commit)
+           (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))))
+        (swap! order conj :body)
+        (is (= [:body] @order) "before-commit callback has not run during the body"))
+      (is (= [:body :before-commit] @order)
+          "before-commit runs after the body returns, as part of the commit sequence")
+      (is (t2/exists? :model/User :email email)
+          "a row inserted from a before-commit callback commits with the transaction")
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest before-commit-callbacks-not-run-on-rollback-test
+  (let [calls (atom [])]
+    (is (thrown?
+         Exception
+         (t2/with-transaction [_conn]
+           (mdb.connection/do-before-commit (fn [] (swap! calls conj :should-not-run)))
+           (throw (ex-info "force rollback" {})))))
+    (is (= [] @calls) "before-commit callbacks do not run when the transaction rolls back")))
+
+(deftest throwing-before-commit-rolls-back-the-transaction-test
+  (let [email (mt/random-email)]
+    (try
+      (is (thrown-with-msg?
+           Exception #"boom"
+           (t2/with-transaction [_conn]
+             (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+             (is (t2/exists? :model/User :email email) "row is visible inside the transaction")
+             (mdb.connection/do-before-commit (fn [] (throw (ex-info "boom" {})))))))
+      (is (not (t2/exists? :model/User :email email))
+          "the business write rolls back when a before-commit callback throws")
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest before-commit-callbacks-from-rolled-back-nested-transaction-are-discarded-test
+  (let [calls (atom [])]
+    (t2/with-transaction [conn]
+      (mdb.connection/do-before-commit (fn [] (swap! calls conj :outer)))
+      (is (thrown?
+           Exception
+           (t2/with-transaction [_ conn]
+             (mdb.connection/do-before-commit (fn [] (swap! calls conj :nested-should-not-run)))
+             (throw (ex-info "force savepoint rollback" {}))))))
+    (is (= [:outer] @calls)
+        "only the outer before-commit callback runs; the rolled-back nested one is discarded")))
+
+(deftest before-commit-can-schedule-after-commit-test
+  ;; the mq transactional outbox works this way: a before-commit callback does its DB write, then
+  ;; schedules the post-commit publish over what it just wrote.
+  (let [order (atom [])]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-before-commit
+       (fn []
+         (swap! order conj :before)
+         (mdb.connection/do-after-commit (fn [] (swap! order conj :after))))))
+    (is (= [:before :after] @order)
+        "an after-commit scheduled from a before-commit runs after the transaction commits")))
+
+(deftest transaction-state-shared-across-nested-transactions-test
+  (t2/with-transaction [conn]
+    (let [outer-state mdb.connection/*transaction-state*]
+      (is (some? outer-state) "transaction-state is bound inside a transaction")
+      (t2/with-transaction [_ conn]
+        (is (identical? outer-state mdb.connection/*transaction-state*)
+            "nested transactions share the same transaction-state atom"))))
+  (is (nil? mdb.connection/*transaction-state*) "transaction-state is nil outside a transaction"))
+
+(deftest transaction-state-from-rolled-back-nested-transaction-is-discarded-test
+  (t2/with-transaction [conn]
+    (swap! mdb.connection/*transaction-state* assoc :outer-key "outer-val")
+    (is (thrown?
+         Exception
+         (t2/with-transaction [_ conn]
+           (swap! mdb.connection/*transaction-state* assoc :inner-key "inner-val")
+           (throw (ex-info "force savepoint rollback" {})))))
+    (is (= {:outer-key "outer-val"} @mdb.connection/*transaction-state*)
+        "data stashed by a rolled-back nested transaction is discarded from transaction-state")))

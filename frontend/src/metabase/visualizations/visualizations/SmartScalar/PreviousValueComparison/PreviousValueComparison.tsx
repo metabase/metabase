@@ -42,7 +42,8 @@ export function PreviousValueComparison({
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
-      ? formatChangeAutoPrecision(percentChange as number, {
+      ? // Unjustified type cast. FIXME
+        formatChangeAutoPrecision(percentChange as number, {
           fontFamily,
           fontWeight: 900,
           width: getChangeWidth(width),
@@ -132,7 +133,7 @@ export function PreviousValueComparison({
         </VariationDetails>
 
         {showsOtherValuesInTooltip && (
-          <Badge px="xs" size="xs" variant="light" w={ELLIPSIS_BADGE_WIDTH}>
+          <Badge size="xs" variant="light" w={ELLIPSIS_BADGE_WIDTH}>
             <Group align="center" h="100%">
               <Icon name="ellipsis" size={12} />
             </Group>

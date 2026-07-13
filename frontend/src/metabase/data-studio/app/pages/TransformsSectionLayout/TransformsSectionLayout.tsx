@@ -24,14 +24,14 @@ export function TransformsSectionLayout({
 }: TransformsSectionLayoutProps) {
   usePageTitle(t`Transforms`, { titleIndex: 1 });
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
-  const isTransformsEnabled = useSetting("transforms-enabled");
+  const isTransformsSetupComplete = useSetting("transforms-setup-complete");
   const isHosted = useSetting("is-hosted?");
   const { transformsDatabases, isLoadingDatabases, databasesError } =
     useTransformSupportedDbs();
 
   if (shouldShowUpsell) {
     return <PLUGIN_TRANSFORMS.TransformsUpsellPage />;
-  } else if (!isTransformsEnabled && !isHosted) {
+  } else if (!isTransformsSetupComplete && !isHosted) {
     return <EnableTransformsPage />;
   }
 
