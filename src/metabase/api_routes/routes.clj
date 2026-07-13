@@ -170,7 +170,6 @@
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
-   "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
@@ -196,6 +195,7 @@
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
+   "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api

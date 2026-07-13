@@ -198,7 +198,8 @@
   ai-tracing
   {:team "Metabot"
    :api  #{metabase.ai-tracing.api
-           metabase.ai-tracing.core}
+           metabase.ai-tracing.core
+           metabase.ai-tracing.init}
    :uses #{api
            settings
            util}}
