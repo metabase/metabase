@@ -131,7 +131,8 @@
     "embedding-iframe-full-app"
     "embedding-iframe-static"
     "embedding-public"
-    "embedding-simple"})
+    "embedding-simple"
+    "data-app"})
 
 (defn- track-sdk-response
   "Tabulates the number of responses by status code made by clients of the SDK."
@@ -143,6 +144,7 @@
     "embedding-iframe-static"   (analytics/inc! :metabase-embedding-iframe-static/response {:status (str status)})
     "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
+    "data-app"                  (analytics/inc! :metabase-data-app/response {:status (str status)})
     (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn embedding-context?

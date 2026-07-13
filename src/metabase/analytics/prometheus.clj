@@ -554,6 +554,9 @@
    (prometheus/counter :metabase-embedding-simple/response
                        {:description "Number of simple (modular) embedding responses by status code."
                         :labels [:status]})
+   (prometheus/counter :metabase-data-app/response
+                       {:description "Number of data app responses by status code."
+                        :labels [:status]})
    (prometheus/counter :metabase-gsheets/connection-deleted
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-manually-synced

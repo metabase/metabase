@@ -1,10 +1,13 @@
 import {
-  setEmbedPreviewHeader,
-  setRequestClientHeaders,
-} from "metabase/embedding/lib/embedding-request-auth";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { PLUGIN_API } from "metabase/plugins";
+  EMBEDDING_SDK_CONFIG,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
+
+import { setEmbedPreviewHeader } from "./lib/auth/set-embed-preview-header";
+import { setReactSdkEmbedReferrerHeader } from "./lib/auth/set-react-sdk-embed-referrer-header";
+import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";
 
 type InternalEmbeddingConfig = {
   isPublicEmbedding: boolean;
@@ -35,7 +38,24 @@ export function setIsStaticEmbedding() {
     PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
       setRequestClientHeaders({ name: "embedding-iframe-static" });
   }
+
   EMBEDDING_CONFIG.isStaticEmbedding = true;
+}
+
+export function setIsDataApp(dataAppName: string) {
+  EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+  EMBEDDING_SDK_CONFIG.isDataApp = true;
+  EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
+  EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppName;
+
+  PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+    setRequestClientHeaders({
+      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
+    });
+
+  PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer =
+    setReactSdkEmbedReferrerHeader;
 }
 
 export function isPublicEmbedding() {
@@ -51,9 +71,9 @@ export function isEmbedding() {
 }
 
 /**
- * Detect if this page is embedded in itself, i.e. it's an embed preview.
- * It will need to do something different if we ever embed Metabase in itself for another reason.
+ * Detect if this page is an embed preview.
+ * The check that it is NOT a data app is required, as a data app is rendered inside an iframe inside Metabase
  */
 export function isEmbedPreview() {
-  return IFRAMED_IN_SELF;
+  return IFRAMED_IN_SELF && !EMBEDDING_SDK_CONFIG.isDataApp;
 }

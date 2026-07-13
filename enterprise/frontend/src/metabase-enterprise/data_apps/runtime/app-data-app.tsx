@@ -1,9 +1,10 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
-import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { setIsDataApp } from "metabase/embedding/config";
 
 import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
+import { readNameFromUrl } from "./lib/read-name-from-url";
 
 /**
  * Entry point loaded by `data-app.html` and served from `/embed/apps/:name`.
@@ -14,7 +15,7 @@ import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp
  * window, and renders the resulting component.
  */
 
-EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+setIsDataApp(readNameFromUrl() ?? "");
 
 // Register the full SDK bundle surface in-process (no separately-loaded
 // `main.bundle.js` request) so everything the data-app sandbox endows resolves
@@ -22,7 +23,7 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 // implementations the package component facades look up at render time.
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 
-function _init() {
+const init = () => {
   document.body.style.margin = "0";
 
   const rootElement = document.getElementById("root");
@@ -33,10 +34,10 @@ function _init() {
   }
 
   createRoot(rootElement).render(<DataAppIframeApp />);
-}
+};
 
 if (document.readyState !== "loading") {
-  _init();
+  init();
 } else {
-  document.addEventListener("DOMContentLoaded", _init);
+  document.addEventListener("DOMContentLoaded", init);
 }
