@@ -418,6 +418,15 @@
                         #"metrics do not match"
                         (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:other 1}))))
 
+(deftest ^:parallel legacy-rest-module-debt-test
+  (testing "Only deprecated -rest module symbols count as debt; hyphenated namespace prefixes remain valid"
+    (is (= 2
+           (:legacy-rest-modules
+            (dev.deps-graph/module-boundary-debt
+             {'actions-rest          {}
+              'actions.rest          {:ns-prefix "metabase.actions-rest"}
+              'enterprise/users-rest {}}))))))
+
 ;;;; Classpath / namespace convention
 ;;;;
 ;;;; Asymmetric rules, matching how the classpath separation actually works
@@ -540,13 +549,31 @@
                     ee-namespace-prefix))))))
 
 (defn- rest-module?
-  "True for both current `*-rest` modules and nested `.rest` modules."
+  "True for canonical nested `.rest` modules and deprecated `-rest` compatibility symbols."
   [module]
   (let [module-name (str module)]
     (or (str/ends-with? module-name "-rest")
         (str/ends-with? module-name ".rest"))))
 
-(deftest ^:parallel rest-module-conventions-test
+(defn- routes-module?
+  "True for route aggregators, which are allowed to assemble REST routes."
+  [module]
+  (let [module-name (str module)]
+    (or (str/ends-with? module-name "-routes")
+        (str/ends-with? module-name ".routes"))))
+
+(defn- core-module?
+  "True for OSS and EE core initializer modules."
+  [module]
+  (= (name module) "core"))
+
+(defn- allowed-rest-consumer?
+  "Whether `module` may depend on REST modules."
+  [module]
+  ((some-fn rest-module? routes-module? core-module?) module))
+
+(deftest ^:parallel rest-module-recognition-test
+  ;; Deprecated symbols must remain recognizable until they are removed, or they would bypass the guard.
   (are [module] (rest-module? module)
     'queries-rest
     'queries.rest
@@ -556,15 +583,15 @@
 
 (deftest ^:parallel do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
-          :when                                (not (rest-module? module))
+          :when                                (not (allowed-rest-consumer? module))
           used-module                          (when (set? uses)
                                                  uses)]
     (is (not (rest-module? used-module))
-        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+        (format "Do not use REST modules (%s) in non-REST modules (%s) -- move things from %s to %s if needed"
                 used-module
                 module
                 used-module
-                (symbol (str/replace used-module #"-rest$" ""))))))
+                (symbol (str/replace (str used-module) #"(?:-rest|\.rest)$" ""))))))
 
 ;;;; Model boundary tests
 

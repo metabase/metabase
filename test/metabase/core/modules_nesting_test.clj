@@ -489,6 +489,35 @@
                                'lib.other
                                'metabase.lib.schema.foo)))))))
 
+(deftest ^:parallel usage-error-uses-any-rest-module-test
+  (testing "`:uses :any` does not allow domain modules to depend on REST modules"
+    (let [config {:metabase/modules {'actions      {:api :any}
+                                     'actions.rest {:ns-prefix "metabase.actions-rest"
+                                                    :api       :any}
+                                     'caller       {:uses :any
+                                                    :api  :any}}}
+          expected (str "Do not use REST modules (actions.rest) in non-REST modules (caller) "
+                        "-- move things from actions.rest to actions if needed")]
+      (is (= expected (usage-error config 'caller 'metabase.actions-rest.api))))))
+
+(deftest ^:parallel usage-error-rest-module-exceptions-test
+  (testing "REST modules, route aggregators, and core initializers may use REST modules"
+    (let [config {:metabase/modules {'actions        {:module-exports #{'actions.rest}
+                                                      :api            :any}
+                                     'actions.rest   {:ns-prefix "metabase.actions-rest"
+                                                      :api       :any}
+                                     'questions.rest {:ns-prefix "metabase.questions-rest"
+                                                      :uses      :any
+                                                      :api       :any}
+                                     'api-routes     {:uses :any
+                                                      :api  :any}
+                                     'core           {:uses :any
+                                                      :api  :any}}}]
+      (are [caller] (nil? (usage-error config caller 'metabase.actions-rest.api))
+        'questions.rest
+        'api-routes
+        'core))))
+
 ;;;; -------------------------------------------------------------------------
 ;;;; `enterprise/X` shorthand: EE module as a nested child of OSS X
 ;;;;

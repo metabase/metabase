@@ -33,12 +33,13 @@
                            (when (set? api)
                              (count api)))
                          values)]
-     {:api-any        (count (filter #(= :any (:api %)) values))
-      :friend-edges   (transduce (map (comp count :friends)) + 0 values)
-      :largest-api    (reduce max 0 api-sizes)
-      :module-exports (transduce (map (comp count :module-exports)) + 0 values)
-      :total-api      (reduce + 0 api-sizes)
-      :uses-any       (count (filter #(= :any (:uses %)) values))})))
+     {:api-any             (count (filter #(= :any (:api %)) values))
+      :friend-edges        (transduce (map (comp count :friends)) + 0 values)
+      :largest-api         (reduce max 0 api-sizes)
+      :legacy-rest-modules (count (filter #(str/ends-with? (str %) "-rest") (keys config)))
+      :module-exports      (transduce (map (comp count :module-exports)) + 0 values)
+      :total-api           (reduce + 0 api-sizes)
+      :uses-any            (count (filter #(= :any (:uses %)) values))})))
 
 (defn module-boundary-ratchets
   "Committed exact ratchets for [[module-boundary-debt]]."

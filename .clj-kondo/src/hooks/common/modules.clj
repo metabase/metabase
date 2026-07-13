@@ -422,7 +422,33 @@
   [config current-module required-module]
   (let [allowed-modules (allowed-modules config current-module)]
     (or (= allowed-modules :any)
-        (boolean (contains? allowed-modules required-module)))))
+        ;; coerce to a set: `:uses` is normally a set, but a hand-edited vector would make `contains?`
+        ;; test index membership and reject every legitimately-declared dependency.
+        (boolean (contains? (set allowed-modules) required-module)))))
+
+(defn- rest-module?
+  "Whether `module` is a canonical nested `.rest` module or uses the deprecated `-rest` compatibility form."
+  [module]
+  (let [module-name (str module)]
+    (or (str/ends-with? module-name "-rest")
+        (str/ends-with? module-name ".rest"))))
+
+(defn- routes-module?
+  "Whether `module` is a route aggregator allowed to assemble REST routes."
+  [module]
+  (let [module-name (str module)]
+    (or (str/ends-with? module-name "-routes")
+        (str/ends-with? module-name ".routes"))))
+
+(defn- core-module?
+  "Whether `module` is a core initializer allowed to load route aggregators."
+  [module]
+  (= (name module) "core"))
+
+(defn- allowed-rest-consumer?
+  "Whether `module` may depend on REST modules."
+  [module]
+  ((some-fn rest-module? routes-module? core-module?) module))
 
 (defn- descendant-of?
   "True if `viewer` is a descendant of `viewed` in the module tree (or they
@@ -479,10 +505,11 @@
   The required module must be in current's `:uses` (always, even between
   relatives), and the required namespace must be in the required module's
   `:api` — unless current is a descendant of the required module (subtree
-  trust) or appears in its `:friends`. See [[allowed-module-namespace?]] for
-  the access-path details. When current's `:uses` is `:any`, the namability
-  rule (see [[namable-from?]]) is additionally enforced here, since the
-  config-level test only covers set-valued `:uses`.
+  trust) or appears in its `:friends`. Non-REST modules may not depend on REST
+  modules, except for route aggregators and core initializers. See
+  [[allowed-module-namespace?]] for the access-path details. When current's
+  `:uses` is `:any`, the namability rule (see [[namable-from?]]) is additionally
+  enforced here, since the config-level test only covers set-valued `:uses`.
 
   `current-ns` is accepted but currently unused by the check. It's kept in
   the signature because the hook callers already have it handy and future
@@ -497,6 +524,14 @@
                 required-module
                 current-module
                 current-module)
+
+        (and (not (allowed-rest-consumer? current-module))
+             (rest-module? required-module))
+        (format "Do not use REST modules (%s) in non-REST modules (%s) -- move things from %s to %s if needed"
+                required-module
+                current-module
+                required-module
+                (symbol (str/replace (str required-module) #"(?:-rest|\.rest)$" "")))
 
         ;; `:uses :any` skips the declaration-level namability test (it only validates set-valued
         ;; `:uses`), so enforce the same rule here against the concrete resolved module.
