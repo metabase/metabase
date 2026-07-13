@@ -1,8 +1,8 @@
 name: Schedule Release - Auto Patch
 
 on:
-  schedule:
-    - cron: "0 21 * * 1-5" # every weekday at 21:00 UTC (4 pm EST / 5 pm EDT)
+  # schedule:
+  #   - cron: "0 21 * * 1-5" # every weekday at 21:00 UTC (4 pm EST / 5 pm EDT)
 
 permissions:
   actions: write
