@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.qmoutbox1
+      id: v64.qmoutbox1
       author: nvoxland
       comment: Create the transactional outbox table backing persistent queue publishes
       changes:
@@ -59,7 +59,7 @@ databaseChangeLog:
                     gates on created_at instead.
 
   - changeSet:
-      id: v63.qmoutbox2
+      id: v64.qmoutbox2
       author: nvoxland
       comment: Index queue_message_outbox.created_at for the recovery sweep
       changes:
@@ -71,7 +71,7 @@ databaseChangeLog:
                   name: created_at
 
   - changeSet:
-      id: v63.qmoutbox3
+      id: v64.qmoutbox3
       author: nvoxland
       dbms: postgresql
       comment: >-
@@ -96,7 +96,7 @@ databaseChangeLog:
               )
 
   - changeSet:
-      id: v63.qmoutbox4
+      id: v64.qmoutbox4
       author: nvoxland
       comment: Index queue_message_outbox.next_attempt_at for the recovery sweep's due-row lookup
       changes:
