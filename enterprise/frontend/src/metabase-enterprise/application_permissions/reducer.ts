@@ -80,6 +80,8 @@ const SAVE_APPLICATION_PERMISSIONS =
 export const saveApplicationPermissions = createThunkAction(
   SAVE_APPLICATION_PERMISSIONS,
   () => async (dispatch, getState) => {
+    // getState() is typed as the base State, which doesn't include the
+    // enterprise plugin slice this reducer registers at runtime.
     const { applicationPermissions, applicationPermissionsRevision } = (
       getState() as ApplicationPermissionsState
     ).plugins.applicationPermissionsPlugin;
