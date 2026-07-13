@@ -198,7 +198,8 @@ export function formatValueRaw(
     isDate(column) ||
     isDateValue(value) ||
     dayjs.isDayjs(value) ||
-    dayjs(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    // Unjustified type cast. FIXME
+    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
     // Unjustified type cast. FIXME
     return formatDateTimeWithUnit(value as string | number, "minute", options);

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
@@ -22,6 +21,7 @@ import { assertNumericId } from "metabase/admin/permissions/types";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Route } from "metabase/router";
+import { push } from "metabase/router";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import {

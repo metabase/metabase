@@ -106,7 +106,8 @@ const ControlledParametersEmbedJsPlayground = () => {
           <SegmentedControl
             size="xs"
             value={mode}
-            onChange={(value) => setMode(value)}
+            // Unjustified type cast. FIXME
+            onChange={(value) => setMode(value as Mode)}
             data={[
               { value: "controlled", label: "controlled" },
               { value: "uncontrolled", label: "uncontrolled" },

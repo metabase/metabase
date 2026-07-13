@@ -3,7 +3,6 @@ import { useDisclosure } from "@mantine/hooks";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useContext, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -21,6 +20,7 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,

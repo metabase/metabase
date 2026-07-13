@@ -124,6 +124,7 @@
     :model/SourceSegmentDaily
     :model/SsoRelayState
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant

@@ -76,7 +76,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -120,6 +120,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -131,6 +132,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-mysql:
     if: ${{ !inputs.skip }}
@@ -191,7 +193,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -243,6 +245,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -254,6 +257,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
@@ -307,7 +311,7 @@ jobs:
             github.event_name == 'push' &&
             (
               github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-')
+              startsWith(github.ref_name, 'release-x')
             ) &&
             ''
           ) ||
@@ -353,6 +357,7 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -364,6 +369,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
   app-db-tests-result:
     needs:

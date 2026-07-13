@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useCreateTimelineEventMutation,
@@ -7,6 +5,7 @@ import {
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type {

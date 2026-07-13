@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.transforms.execute-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
@@ -143,7 +144,7 @@
         (testing "create-table-from-schema! should create the table successfully"
           (transforms-base.u/create-table-from-schema! driver db-id table-schema)
           (let [table-exists? (driver/table-exists? driver (mt/db) {:schema schema-name :name table-name})]
-            (is (some? table-exists?) "Table should exist in the database schema")
+            (is (true? table-exists?) "Table should exist in the database schema")
             (driver/drop-table! driver db-id (:name table-schema))))))))
 
 (deftest transform-schema-created-if-needed-test
@@ -542,3 +543,41 @@
               (finally
                 (t2/update! :model/Database db-id {:write_data_details old-write-details})
                 (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))))
+
+(deftest transform-run-refreshes-target-stats-test
+  (testing "completing a transform run leaves its target table analyzed, so a dependent transform plans
+            against real stats instead of the empty estimate a freshly CTAS'd table starts with"
+    ;; The ANALYZE effect is observable on Postgres (Redshift inherits the same impl); assert it here.
+    (mt/test-driver :postgres
+      (mt/dataset transforms-dataset/transforms-test
+        (let [schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+              source-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+              admin-spec  (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              ;; A table has one pg_statistic row per analyzed column; a never-analyzed CTAS table has none.
+              analyzed-column-count
+              (fn [table-name]
+                (-> (jdbc/query admin-spec
+                                ["SELECT count(*) AS n FROM pg_stats WHERE schemaname = ? AND tablename = ?"
+                                 schema table-name])
+                    first :n))
+              run-and-wait! (fn [transform]
+                              (transforms.execute/execute! transform {:run-method :manual})
+                              (transforms.tu/wait-for-table (-> transform :target :name) 10000))]
+          (testing "real lifecycle: the target ends up with planner stats"
+            (with-transform-cleanup! [target {:type "table" :schema schema :name "products_analyzed"}]
+              (mt/with-temp [:model/Transform t {:name   "analyzed"
+                                                 :source {:type :query :query (make-query source-name)}
+                                                 :target target}]
+                (run-and-wait! t)
+                (is (pos? (analyzed-column-count (:name target)))
+                    "complete-execution! should have run ANALYZE, populating pg_statistic for the target"))))
+          (testing "control: with the refresh hook stubbed out, the same run leaves no stats — so the rows
+                    above come from our refresh, not from Postgres analyzing on its own"
+            (with-transform-cleanup! [target {:type "table" :schema schema :name "products_unanalyzed"}]
+              (mt/with-temp [:model/Transform t {:name   "unanalyzed"
+                                                 :source {:type :query :query (make-query source-name)}
+                                                 :target target}]
+                (with-redefs [driver/refresh-table-stats! (fn [& _] nil)]
+                  (run-and-wait! t))
+                (is (zero? (analyzed-column-count (:name target)))
+                    "a freshly materialized table has no planner stats until something analyzes it")))))))))

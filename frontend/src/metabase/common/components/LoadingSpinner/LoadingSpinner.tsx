@@ -1,7 +1,7 @@
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 
-import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
+import S from "./LoadingSpinner.module.css";
 
 interface Props {
   className?: string;
@@ -10,27 +10,31 @@ interface Props {
   "data-testid"?: string;
 }
 
-const BaseLoadingSpinner = ({
+/**
+ * @deprecated: use Loader from "metabase/ui"
+ */
+export const LoadingSpinner = ({
   className,
   size = 32,
   borderWidth = 4,
   "data-testid": dataTestId,
 }: Props) => (
-  <SpinnerRoot
+  <Flex
+    align="center"
+    fz={0}
     className={className}
     data-testid={dataTestId ?? "loading-indicator"}
   >
     {isReducedMotionPreferred() ? (
       <Icon name="hourglass" size="24" />
     ) : (
-      <SpinnerIcon iconSize={size} borderWidth={borderWidth} />
+      <Box
+        display="inline-block"
+        w={`${size}px`}
+        h={`${size}px`}
+        className={S.spinnerIcon}
+        style={{ "--border-width": `${borderWidth}px` }}
+      />
     )}
-  </SpinnerRoot>
+  </Flex>
 );
-
-/**
- * @deprecated: use Loader from "metabase/ui"
- */
-export const LoadingSpinner = Object.assign(BaseLoadingSpinner, {
-  Root: SpinnerRoot,
-});

@@ -5,15 +5,15 @@ import * as Yup from "yup";
 import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormProvider,
   FormSubmitButton,
+  FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
@@ -81,7 +81,12 @@ function SnippetFormInner({
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
-        <Form disabled={!dirty && !isInitiallyDirty} className={S.SnippetForm}>
+        <Form
+          as={Stack}
+          gap="md"
+          disabled={!dirty && !isInitiallyDirty}
+          className={S.SnippetForm}
+        >
           <FormTextarea
             classNames={{ input: S.FormSnippetTextArea }}
             name="content"
@@ -90,16 +95,15 @@ function SnippetFormInner({
             autosize={false}
             resize="vertical"
             rows={5}
-            mb="md"
           />
-          <FormInput
+          <FormTextInput
             name="name"
-            title={t`Give your snippet a name`}
+            label={t`Give your snippet a name`}
             placeholder={t`Current Customers`}
           />
-          <FormInput
+          <FormTextInput
             name="description"
-            title={t`Add a description`}
+            label={t`Add a description`}
             placeholder={t`It's optional but oh, so helpful`}
             nullable
           />
@@ -127,7 +131,7 @@ function SnippetFormInner({
               )}
               <FormErrorMessage inline />
             </Flex>
-            <Flex align="center" justify="center" gap="sm" mt="md">
+            <Flex align="center" justify="center" gap="sm">
               {!!onCancel && (
                 <Button type="button" size="sm" onClick={onCancel}>
                   {t`Cancel`}

@@ -2,6 +2,7 @@
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:refer-clojure :exclude [get-in some not-empty])
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -35,7 +36,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [get-in not-empty some]]
+   [metabase.util.performance :as perf :refer [get-in mapv not-empty some]]
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
@@ -69,6 +70,8 @@
                               :full-join                              false
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
+                              :index/fetch                            true
+                              :index/standalone-create                true
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
@@ -91,8 +94,7 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
-                              ;; currently disabled as :describe-indexes is not supported
-                              :transforms/index-ddl                   false
+                              :transforms/index-ddl                   true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
@@ -1447,6 +1449,103 @@
                               nil))
                           (ex-message e)))]
            result))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :mysql
+  [_driver _database]
+  ;; spatial is niche, and InnoDB silently rewrites USING HASH into btree, so neither is offered.
+  (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
+    {:btree    {:lifecycle    :standalone
+                :display-name (deferred-tru "B-Tree")
+                :fields       [driver.common/index-name-field
+                               driver.common/index-unique-field
+                               driver.common/index-columns-field]}
+     :fulltext {:lifecycle    :standalone
+                :display-name (deferred-tru "Full-text")
+                :fields       name+cols}}))
+
+(defn- mysql-index-column-sql
+  "Quote an indexed column, appending `ASC`/`DESC` only for btree (fulltext has no per-column order)."
+  [btree? {col-name :name :keys [direction]}]
+  (cond-> (sql.u/quote-name :mysql :field col-name)
+    (and btree? direction) (str " " (u/upper-case-en (name direction)))))
+
+(defn- create-index-sql
+  [schema table {index-name :name, :keys [kind columns unique]}]
+  (let [fulltext? (= kind :fulltext)
+        target    (apply sql.u/quote-name :mysql :table (if (not-empty schema) [schema table] [table]))
+        cols      (str/join ", " (map #(mysql-index-column-sql (not fulltext?) %) columns))]
+    (format "CREATE %sINDEX %s ON %s (%s)"
+            (cond fulltext? "FULLTEXT "
+                  unique    "UNIQUE "
+                  :else     "")
+            (sql.u/quote-name :mysql :field index-name)
+            target
+            cols)))
+
+(defn- utf8-string-expr
+  "A MySQL expression evaluating to the string `s`, hex-encoded so there is nothing to escape and SQL injection is
+  impossible. Index names are unvalidated free-form user input and `sql.u/escape-sql` is explicitly not safe for that
+  (a backslash defeats its quote-doubling, and its escaping is session-dependent), so we use the hex pattern instead."
+  [^String s]
+  (format "CONVERT(UNHEX('%s') USING utf8mb4)" (codecs/bytes->hex (.getBytes s "UTF-8"))))
+
+(defmethod driver/compile-create-index :mysql
+  [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]
+  (let [create (create-index-sql schema table structured)]
+    (if-not if-not-exists
+      [[create]]
+      ;; MySQL has no `CREATE INDEX IF NOT EXISTS`, and the apply path re-issues creates on full rebuilds, so guard
+      ;; with dynamic SQL that runs the create only when no index of this name exists. Strings (including the whole
+      ;; CREATE statement) are inlined as hex-encoded expressions rather than bound params because the MariaDB driver
+      ;; rejects `?` placeholders inside `SET @var := (SELECT ...)`.
+      [[(format "SET @mb_idx_exists := (SELECT COUNT(*) FROM information_schema.statistics
+                                        WHERE table_schema = %s AND table_name = %s AND index_name = %s)"
+                (if (not-empty schema) (utf8-string-expr schema) "DATABASE()")
+                (utf8-string-expr table)
+                (utf8-string-expr index-name))]
+       [(format "SET @mb_idx_sql := IF(@mb_idx_exists > 0, 'DO 0', %s)"
+                (utf8-string-expr create))]
+       ["PREPARE mb_idx_stmt FROM @mb_idx_sql"]
+       ["EXECUTE mb_idx_stmt"]
+       ["DEALLOCATE PREPARE mb_idx_stmt"]])))
+
+(defn- mysql-index-type->kind
+  [index-type]
+  (case (u/upper-case-en (or index-type ""))
+    "FULLTEXT" :fulltext
+    "SPATIAL"  :spatial
+    :btree))
+
+(defn- mysql-index-rows->index
+  "Collapse one index's per-column `information_schema.statistics` rows (ordered by `SEQ_IN_INDEX`) into an index map."
+  [rows]
+  (let [{:keys [index_name non_unique index_type]} (first rows)]
+    {:name              index_name
+     :kind              (mysql-index-type->kind index_type)
+     :access-method     (some-> index_type u/lower-case-en)
+     :is-unique         (zero? (long non_unique))
+     :is-primary        (= index_name "PRIMARY")
+     :is-valid          true
+     :key-columns       (mapv :column_name rows)
+     :include-columns   []
+     :partial-predicate nil
+     :definition        nil}))
+
+(defmethod driver/fetch-table-indexes :mysql
+  [_driver database schema table]
+  (->> (jdbc/query
+        (sql-jdbc.conn/db->pooled-connection-spec database)
+        ["SELECT index_name, seq_in_index, column_name, non_unique, index_type
+          FROM information_schema.statistics
+          WHERE table_schema = COALESCE(?, DATABASE()) AND table_name = ?
+          ORDER BY index_name, seq_in_index"
+         (not-empty schema) table])
+       (partition-by :index_name)
+       (mapv mysql-index-rows->index)))
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
   "metabot/prompts/dialects/mysql.md")

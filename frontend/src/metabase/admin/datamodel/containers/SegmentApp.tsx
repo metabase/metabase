@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -15,6 +14,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import type { Route } from "metabase/router";
+import { push } from "metabase/router";
 import type {
   CreateSegmentRequest,
   Segment,
