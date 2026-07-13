@@ -191,8 +191,6 @@ const elements = [
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes-embed.tsx",
-    "frontend/src/metabase/route-guards.tsx",
-    "frontend/src/metabase/route-guards.unit.spec.tsx",
     "frontend/src/metabase/LoadCurrentUser.tsx",
     "frontend/src/metabase/LoadCurrentUser.unit.spec.tsx",
     "frontend/src/metabase/routes-public.tsx",

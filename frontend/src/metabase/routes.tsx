@@ -66,12 +66,6 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import { IndexRedirect, IndexRoute, Redirect, Route } from "metabase/router";
-import { SearchApp } from "metabase/search/containers/SearchApp";
-import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
-import { Setup } from "metabase/setup/components/Setup";
-import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
-
-import { LoadCurrentUser } from "./LoadCurrentUser";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -80,7 +74,13 @@ import {
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
-} from "./route-guards";
+} from "metabase/router/guards";
+import { SearchApp } from "metabase/search/containers/SearchApp";
+import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
+import { Setup } from "metabase/setup/components/Setup";
+import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+
+import { LoadCurrentUser } from "./LoadCurrentUser";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
 
 type AppStore = Store<State> & {
