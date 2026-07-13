@@ -56,6 +56,9 @@
           results (jdbc/execute! pgvector anti-join-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (log/infof "Found %d documents in gate table that should be deleted" (count results))
       results)
+    ;; TODO (Chris 2026-07-13) -- swallowing the error reads as "no lost deletes", so a transient anti-join
+    ;; failure silently skips tombstoning that run. Tolerated because the next repair pass retries; revisit
+    ;; if lost deletes start slipping through.
     (catch Exception e
       (log/errorf e "Error finding lost deletes between gate table %s and repair table %s"
                   gate-table-name repair-table-name))))

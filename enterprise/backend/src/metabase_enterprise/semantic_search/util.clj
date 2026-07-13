@@ -71,14 +71,18 @@
         (:index_exists false))))
 
 (defn semantic-search-configured?
-  "Might this instance have a pgvector DB: a dedicated MB_PGVECTOR_DB_URL, or a Postgres app DB
-  (which may support pgvector -- [[semantic-search-capable?]] runs the probe that answers for sure).
-  The boot-static input: gates Quartz job scheduling, which happens once at startup, so it must be
-  cheap and infallible -- it never queries the DB. The runtime gates (license, kill switch, engine
-  activity) are checked per job execution instead, so flipping them never requires a restart."
+  "Whether to schedule the semantic-search Quartz jobs at startup.
+  True when the `:semantic-search` feature is present and a pgvector store might exist: a dedicated
+  MB_PGVECTOR_DB_URL, or a Postgres app DB that [[semantic-search-capable?]] can probe to answer for sure.
+  Cheap and infallible by contract -- it runs at boot and never queries the DB."
   []
-  (or (semantic.db.datasource/dedicated-url-configured?)
-      (= :postgres (mdb/db-type))))
+  ;; The license is in this boot gate, not only the per-execution gates, so an unlicensed instance's
+  ;; scheduler stays free of no-op jobs. The asymmetry is deliberate: removing the feature at runtime lets
+  ;; the scheduled jobs no-op via semantic-search-active?, but adding it needs a restart before they
+  ;; schedule. The kill switch and engine activity stay per-execution so they never need one.
+  (and (premium-features/has-feature? :semantic-search)
+       (or (semantic.db.datasource/dedicated-url-configured?)
+           (= :postgres (mdb/db-type)))))
 
 (defn semantic-search-capable?
   "Does this instance have the infrastructure for semantic search: the premium feature and a pgvector DB.

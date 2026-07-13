@@ -205,7 +205,9 @@
       (when (semantic.index-metadata/control-and-metadata-tables-exist? pgvector index-metadata)
         (cleanup-stale-indexes! pgvector index-metadata)
         (cleanup-old-gate-tombstones! pgvector index-metadata))
-      ;; repair-table cleanup is information_schema-driven and safe without initialization
+      ;; Repair-table cleanup is information_schema-driven, so it needs no bookkeeping tables and runs
+      ;; outside the guard above. Shared app-db mode scopes the sweep to the module schema; dedicated mode
+      ;; owns the whole DB, so its `repair_%` sweep is DB-wide by design (a mispointed URL is the caller's).
       (cleanup-orphan-repair-tables! pgvector index-metadata))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
