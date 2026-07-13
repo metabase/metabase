@@ -154,6 +154,7 @@ export function createElementNSDistortion(pluginId: CustomVizPluginId) {
       this,
       namespaceURI,
       qualifiedName,
+      // Unjustified type cast. FIXME
       options as ElementCreationOptions,
     );
   };

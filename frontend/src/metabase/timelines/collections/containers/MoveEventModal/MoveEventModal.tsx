@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useGetCollectionQuery,
@@ -7,6 +5,7 @@ import {
   useListTimelinesQuery,
 } from "metabase/api";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import MoveEventModal, {
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";

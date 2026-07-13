@@ -37,6 +37,7 @@ type ShouldOpenInBlankWindowOptions = {
 export function shouldOpenInBlankWindow(
   url: string,
   {
+    // Unjustified type cast. FIXME
     event = (typeof window !== "undefined" ? window.event : undefined) as
       | MouseEvent
       | undefined,

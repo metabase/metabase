@@ -28,7 +28,7 @@ const deltaPercent = (current, base) =>
  * brotliBytes (estimated when no .br shipped), but a cached base point recorded
  * before brotli logging may not, so the delta still falls back to gzip per row.
  */
-function buildStatsRows({ measurements, previous, threshold, date, commit, version }) {
+function buildStatsRows({ measurements, previous, threshold, date, commit, commitMessage, version }) {
   const previousOf = (bundle, kind) => previous.find(row => row.bundle === bundle && row.kind === kind);
 
   let maxServedDeltaPercent = 0;
@@ -51,6 +51,10 @@ function buildStatsRows({ measurements, previous, threshold, date, commit, versi
       "Commit": commit,
       "Bundle": measurement.bundle,
       "Kind": measurement.kind, // "initial" or "total"
+      // The stats table carries a free-text Description column; append-csv
+      // requires every table column to be present. Populate it with the commit
+      // subject so the chart's points are self-describing.
+      "Description": commitMessage,
       "Raw bytes": measurement.rawBytes,
       "Gzip bytes": measurement.gzipBytes,
       "Brotli bytes": measurement.brotliBytes, // as-served (shipped .br, else estimated)
@@ -126,6 +130,7 @@ function main() {
     threshold: Number(env.MIN_DELTA_PERCENT ?? 1),
     date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
     commit: (env.HEAD_SHA || "").slice(0, 12),
+    commitMessage: (env.COMMIT_MESSAGE || "").split("\n")[0], // subject line only
     version: readVersion(env.VERSION_PROPS),
   });
 

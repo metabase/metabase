@@ -62,7 +62,11 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       if (response.error) {
         const message = getErrorMessage(response.error, t`Error saving ${key}`);
 
-        sendToast({ message, icon: "warning", toastColor: "danger" });
+        sendToast({
+          message,
+          icon: "warning",
+          toastColor: "feedback-negative",
+        });
       } else {
         sendToast({ message: t`Changes saved` });
       }
@@ -86,10 +90,15 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
 
       if (response.error) {
         const message =
+          // Unjustified type cast. FIXME
           (response.error as { data?: { message: string } })?.data?.message ||
           t`Error saving settings`;
 
-        sendToast({ message, icon: "warning", toastColor: "danger" });
+        sendToast({
+          message,
+          icon: "warning",
+          toastColor: "feedback-negative",
+        });
       } else {
         sendToast({ message: t`Changes saved`, icon: "check_filled" });
       }
@@ -98,6 +107,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     [updateSettings, sendToast],
   );
 
+  // Unjustified type cast. FIXME
   const settingValue = settings?.[
     settingName
   ] as EnterpriseSettingValue<SettingName>;
@@ -145,10 +155,15 @@ export const useAdminSettings = <
       if (toast) {
         if (response.error) {
           const message =
+            // Unjustified type cast. FIXME
             (response.error as { data?: { message: string } })?.data?.message ||
             t`Error saving settings`;
 
-          sendToast({ message, icon: "warning", toastColor: "danger" });
+          sendToast({
+            message,
+            icon: "warning",
+            toastColor: "feedback-negative",
+          });
         } else {
           sendToast({ message: t`Changes saved`, icon: "check_filled" });
         }
@@ -161,11 +176,13 @@ export const useAdminSettings = <
 
   type Values = { [K in SettingNames[number]]: EnterpriseSettings[K] };
   const values = useMemo(() => {
+    // Unjustified type cast. FIXME
     return (settings ? _.pick(settings, ...settingNames) : {}) as Values;
   }, [settings, settingNames]);
 
   type Details = { [K in SettingNames[number]]: SettingDefinition<K> };
   const details = useMemo(() => {
+    // Unjustified type cast. FIXME
     return (
       settingsDetails ? _.pick(settingsDetails, ...settingNames) : {}
     ) as Details;

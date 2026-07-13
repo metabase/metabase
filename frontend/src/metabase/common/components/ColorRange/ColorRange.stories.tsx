@@ -17,7 +17,7 @@ export const Default = {
   render: Template,
 
   args: {
-    colors: [color("white"), color("core-brand")],
+    colors: [color("core-white"), color("core-brand")],
   },
 };
 
@@ -25,7 +25,7 @@ export const Inverted = {
   render: Template,
 
   args: {
-    colors: [color("core-brand"), color("white")],
+    colors: [color("core-brand"), color("core-white")],
   },
 };
 
@@ -33,6 +33,10 @@ export const ThreeColors = {
   render: Template,
 
   args: {
-    colors: [color("error"), color("white"), color("success")],
+    colors: [
+      color("feedback-negative"),
+      color("core-white"),
+      color("feedback-positive"),
+    ],
   },
 };

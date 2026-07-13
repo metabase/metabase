@@ -102,7 +102,9 @@ const DragSourceComponent = DragSource(
       if (!monitor.didDrop()) {
         return;
       }
+      // Unjustified type cast. FIXME
       const { item } = monitor.getItem() as { item: CollectionItem };
+      // Unjustified type cast. FIXME
       const { collection, pinIndex } = monitor.getDropResult() as {
         collection?: Collection;
         pinIndex?: number;
@@ -114,6 +116,7 @@ const DragSourceComponent = DragSource(
             await Promise.all(
               items
                 .filter(isMovable)
+                // Unjustified type cast. FIXME
                 .map((i) => setCollection(i as MovableItem, collection)),
             );
           } else if (pinIndex !== undefined) {
@@ -154,7 +157,7 @@ export function ItemDragSource(props: ItemDragSourceProps) {
     sendToast({
       message: getErrorMessage(error),
       icon: "warning_triangle_filled",
-      iconColor: "warning",
+      iconColor: "feedback-warning",
     });
   return (
     <DragSourceComponent

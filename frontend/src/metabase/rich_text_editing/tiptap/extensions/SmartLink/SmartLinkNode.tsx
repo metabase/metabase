@@ -36,7 +36,6 @@ import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
 import type {
   Card,
-  CardDisplayType,
   Collection,
   Dashboard,
   Database,
@@ -513,6 +512,7 @@ export const SmartLinkComponent = memo(
         ? getIcon(cachedEntity)
         : getIcon(
             entityToObjectWithModel(
+              // Unjustified type cast. FIXME
               entity as NonNullable<typeof networkEntity>,
               model,
             ),
@@ -557,8 +557,11 @@ function entityToObjectWithModel(
   model: SuggestionModel | null,
 ): ObjectWithModel {
   return {
+    // Unjustified type cast. FIXME
     model: ((entity as Dashboard).model || model || "") as IconModel,
-    display: (entity as Card).display as CardDisplayType,
+    // Unjustified type cast. FIXME
+    display: (entity as Card).display,
+    // Unjustified type cast. FIXME
     is_personal: (entity as Collection).is_personal,
   };
 }

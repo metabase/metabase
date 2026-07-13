@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import {
   Box,
   Button,
@@ -38,6 +38,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     useDatabaseConnection({ databaseId: params.databaseId, engines });
   const [showSidePanel, { open: openSidePanel, close: closeSidePanel }] =
     useDisclosure(false);
+  // Unjustified type cast. FIXME
   const [selectedEngineKey, setSelectedEngineKey] = useState<EngineKey>(
     database?.engine as EngineKey,
   );
@@ -45,6 +46,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
     !!selectedEngineKey && !!ENGINE_DOC_MAP[selectedEngineKey];
 
   const onEngineChange = (engineKey?: string) => {
+    // Unjustified type cast. FIXME
     setSelectedEngineKey(engineKey as EngineKey);
   };
 

@@ -8,6 +8,7 @@ import { createMockCollection } from "metabase-types/api/mocks";
 import { getCollectionFromCollectionsTree } from "./collection";
 
 const createMockStateWithCollectionsTree = (collections: Collection[]) => {
+  // Unjustified type cast. FIXME
   return createMockState({
     "metabase-api": {
       queries: {

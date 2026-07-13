@@ -24,6 +24,7 @@ export function EditorTabs({
     <ul
       className={EditorTabsS.TabBar}
       style={
+        // Unjustified type cast. FIXME
         {
           // TODO: Re-write this component to use actual buttons and better semantic colors
           "--active-tab-color": "var(--mb-color-text-brand-hover)",

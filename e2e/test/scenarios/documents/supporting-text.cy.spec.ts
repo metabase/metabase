@@ -323,10 +323,12 @@ describe("documents supporting text", () => {
     H.documentContent()
       .findByTestId("document-card-supporting-text")
       .then(($supportingText) => {
+        // Unjustified type cast. FIXME
         const initialSupportingTextWidth = $supportingText.width() as number;
         cy.wrap(initialSupportingTextWidth).as("initialSupportingTextWidth");
 
         H.getDocumentCard("Orders").then(($card) => {
+          // Unjustified type cast. FIXME
           const initialCardWidth = $card.width() as number;
           cy.wrap(initialCardWidth).as("initialCardWidth");
         });
@@ -345,10 +347,12 @@ describe("documents supporting text", () => {
     H.documentContent()
       .findByTestId("document-card-supporting-text")
       .then(($supportingText) => {
+        // Unjustified type cast. FIXME
         const newSupportingTextWidth = $supportingText.width() as number;
         cy.wrap(newSupportingTextWidth).as("newSupportingTextWidth");
 
         H.getDocumentCard("Orders").then(($card) => {
+          // Unjustified type cast. FIXME
           const newCardWidth = $card.width() as number;
           cy.wrap(newCardWidth).as("newCardWidth");
 
@@ -413,9 +417,11 @@ describe("documents supporting text", () => {
     H.documentContent()
       .findByTestId("document-card-supporting-text")
       .then(($supportingText) => {
+        // Unjustified type cast. FIXME
         const reloadedSupportingTextWidth = $supportingText.width() as number;
 
         H.getDocumentCard("Orders").then(($card) => {
+          // Unjustified type cast. FIXME
           const reloadedCardWidth = $card.width() as number;
 
           cy.get<number>("@newSupportingTextWidth").then((savedWidth) => {

@@ -31,6 +31,7 @@ export const getMetabotState = (state: State) => {
 
 export const getActiveMetabotAgentIds = createSelector(
   getMetabotState,
+  // Unjustified type cast. FIXME
   (state) => Object.keys(state.conversations) as MetabotAgentId[],
 );
 
@@ -136,7 +137,7 @@ export const getFinalNavigateToMessageIdsPerTurn = createSelector(
     new Set(
       splitByTurn(messages).flatMap((turn) => {
         const lastNav = turn.findLast(
-          (m) => m.type === "data_part" && m.part.type === "navigate_to",
+          (m) => m.type === "data_part" && m.part.type === "data-navigate_to",
         );
         return lastNav ? [lastNav.id] : [];
       }),

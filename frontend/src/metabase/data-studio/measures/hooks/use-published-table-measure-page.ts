@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -10,6 +9,7 @@ import {
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import type { MeasureTabUrls } from "../types";

@@ -101,6 +101,9 @@ jobs:
           CACHE_OUT: bundle-size-cache/last.json
           ROWS_OUT: artifacts/upload-rows.json
           VERSION_PROPS: artifacts/version.properties
+          # Passed via env (not interpolated into the shell) so the commit
+          # message can't inject commands; the script keeps only the subject.
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
         run: node ./.github/scripts/bundle-size-stats-prepare.js
       - name: Upload sizes (with deltas) to Stats
         id: upload

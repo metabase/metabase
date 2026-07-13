@@ -178,6 +178,7 @@ describe("Table editing", () => {
     () => {
       H.restore("postgres-writable");
       H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
 
       const SOURCE_TABLE = "Animals";

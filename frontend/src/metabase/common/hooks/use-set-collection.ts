@@ -34,7 +34,6 @@ import type {
   Collection,
   CollectionItem,
   Dashboard,
-  DashboardId,
   Document,
   NativeQuerySnippet,
   Table,
@@ -79,6 +78,7 @@ const MOVABLE_MODELS = new Set<MovableModel>([
 export function isMovable<T extends { model: string }>(
   item: T,
 ): item is T & { model: MovableModel } {
+  // Unjustified type cast. FIXME
   return MOVABLE_MODELS.has(item.model as MovableModel);
 }
 
@@ -141,7 +141,7 @@ export function useSetCollection() {
                   archived,
                 }
               : {
-                  dashboard_id: destination.id as DashboardId,
+                  dashboard_id: destination.id,
                   archived: false,
                   delete_old_dashcards: true,
                 };
@@ -369,6 +369,7 @@ export function canMoveItem(item: CollectionItem, collection?: Collection) {
     !isReadOnlyCollection(item) &&
     isMovable(item) &&
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
+    // Unjustified type cast. FIXME
     !isLibraryCollection(item as Pick<Collection, "type">)
   );
 }

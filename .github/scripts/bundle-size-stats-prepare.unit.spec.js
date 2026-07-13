@@ -1,6 +1,6 @@
 const { buildStatsRows } = require("./bundle-size-stats-prepare");
 
-const meta = { date: "2026-06-30", commit: "abc123", version: "" };
+const meta = { date: "2026-06-30", commit: "abc123", commitMessage: "Fix the thing (#123)", version: "" };
 const measurement = (over = {}) => ({
   bundle: "embedding-sdk-chunked",
   kind: "total",
@@ -25,6 +25,7 @@ describe("buildStatsRows", () => {
     expect(result.reason).toBe("first point");
     expect(result.rows[0]["Gzip bytes delta"]).toBe("");
     expect(result.rows[0]["Brotli delta %"]).toBe("");
+    expect(result.rows[0]["Description"]).toBe("Fix the thing (#123)");
     expect(result.cacheRows[0]).toEqual({
       bundle: "embedding-sdk-chunked",
       kind: "total",

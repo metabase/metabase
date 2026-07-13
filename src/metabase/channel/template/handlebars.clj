@@ -12,7 +12,7 @@
    (com.github.jknack.handlebars.cache ConcurrentMapTemplateCache)
    (com.github.jknack.handlebars.context MapValueResolver)
    (com.github.jknack.handlebars.io
-    ClassPathTemplateLoader)))
+    ClassPathTemplateLoader CompositeTemplateLoader TemplateLoader)))
 
 (set! *warn-on-reflection* true)
 
@@ -24,10 +24,23 @@
     (when reload?
       (.setReload (.getCache <>) true))))
 
+(def ^:private template-dirs
+  "Classpath dirs holding `.hbs` templates. A bare template name resolves
+  against these dirs in order."
+  ["/metabase/channel/email/"
+   "/notification/channel_template/"])
+
 (defn classpath-loader
-  "Create a ClassPathTemplateLoader with a prefix and postfix."
-  [prefix postfix]
-  (ClassPathTemplateLoader. prefix postfix))
+  "Create a `ClassPathTemplateLoader` with a prefix and suffix."
+  ^TemplateLoader [prefix suffix]
+  (ClassPathTemplateLoader. prefix suffix))
+
+(defn default-loader
+  "A `CompositeTemplateLoader` over [[template-dirs]]: on a name it tries each
+  dir's loader in order and returns the first hit, throwing if all miss."
+  ^TemplateLoader []
+  (CompositeTemplateLoader.
+   (into-array TemplateLoader (map #(classpath-loader % ".hbs") template-dirs))))
 
 (defn- wrap-context
   [context]
@@ -45,7 +58,7 @@
       (.build)))
 
 (def ^:private default-hbs
-  (delay (u/prog1 (registry (classpath-loader "/" "") :reload? true)
+  (delay (u/prog1 (registry (default-loader) :reload? true)
            (handlebars-helper/register-helpers <> handlebars-helper/default-helpers))))
 
 (when config/is-dev?
@@ -57,32 +70,28 @@
                  (catch Exception e
                    (log/warn e "Error reloading default helpers"))))))
 
-(def ^:private allowed-template-prefixes
-  "Set of allowed directory prefixes for template paths."
-  #{"metabase/channel/email/"
-    "notification/channel_template/"})
-
-(defn valid-template-path?
-  "Returns true if the template path is safe: ends with .hbs, does not contain ..,
-  and starts with one of the allowed prefixes."
-  [^String path]
+(defn valid-template-name?
+  "True iff `template-name` is a well-formed relative template name: non-blank,
+  no leading `/`, no `..`, and no `.hbs` suffix (the loader appends it)."
+  [^String template-name]
   (boolean
-   (and (str/ends-with? path ".hbs")
-        (not (str/includes? path ".."))
-        (some #(str/starts-with? path %) allowed-template-prefixes))))
+   (and (not (str/blank? template-name))
+        (not (str/starts-with? template-name "/"))
+        (not (str/includes? template-name ".."))
+        (not (str/ends-with? template-name ".hbs")))))
 
-(defn- validate-template-path!
-  "Validate that a template path is safe, throw if not."
-  [^String path]
-  (when-not (valid-template-path? path)
-    (throw (ex-info "invalid template path" {:path path}))))
+(defn- validate-template-name!
+  "Validate that a template name is well-formed, throw if not."
+  [^String template-name]
+  (when-not (valid-template-name? template-name)
+    (throw (ex-info "invalid template name" {:template-name template-name}))))
 
 (defn render
   "Render a template with a context."
   ([template-name context]
    (render @default-hbs template-name context))
   ([^Handlebars req ^String template-name ctx]
-   (validate-template-path! template-name)
+   (validate-template-name! template-name)
    (let [template ^Template (.compile req template-name)]
      (.apply template (build-context ctx)))))
 
@@ -100,4 +109,4 @@
   (render-string "{{format-date \"2000-01-02\" \"YYYY-dd-MM\" }}" {})
   (render-string "Hello {{name}}" {:name "Ngoc"})
   (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})
-  (render "metabase/channel/email/_header.hbs" {}))
+  (render "_header" {}))

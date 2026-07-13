@@ -102,7 +102,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {
             return (
               <Flex justify="center" py="19rem">
-                <Text color="error" size="1.25rem" px="md">
+                <Text color="feedback-negative" size="1.25rem" px="md">
                   {fetchError instanceof Error
                     ? (fetchError?.message ?? defaultErrMsg)
                     : defaultErrMsg}
@@ -135,7 +135,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         px="1.25rem"
       >
         {mutationError ? (
-          <Text color="error">
+          <Text color="feedback-negative">
             {mutationError instanceof Error
               ? (mutationError?.message ?? defaultErrMsg)
               : defaultErrMsg}
@@ -150,7 +150,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "error" : "core-brand"}
+            color={mutationError ? "feedback-negative" : "core-brand"}
           >
             {t`Move these questions`}
           </Button>

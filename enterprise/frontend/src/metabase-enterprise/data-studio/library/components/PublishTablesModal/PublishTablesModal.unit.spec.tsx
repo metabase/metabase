@@ -63,6 +63,7 @@ function setup({
     collection: { id: 6464 },
     collectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: dataCollection.id as number,
         name: dataCollection.name,
         model: "collection",
@@ -76,12 +77,13 @@ function setup({
   });
   setupCollectionByIdEndpoint({ collections: [dataCollection] });
   setupCollectionItemsEndpoint({
-    collection: { id: dataCollection.id as number },
+    collection: { id: dataCollection.id },
     collectionItems: [],
   });
   setupRootCollectionItemsEndpoint({
     rootCollectionItems: [
       createMockCollectionItem({
+        // Unjustified type cast. FIXME
         id: dataCollection.id as number,
         name: dataCollection.name,
         model: "collection",

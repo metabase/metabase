@@ -57,6 +57,7 @@ export function color(color: any, palette: ColorPalette = colors) {
   };
 
   if (color in fullPalette) {
+    // Unjustified type cast. FIXME
     return fullPalette[color as keyof ColorPalette];
   }
 

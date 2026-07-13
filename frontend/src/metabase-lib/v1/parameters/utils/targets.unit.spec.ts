@@ -53,7 +53,9 @@ const metadata = createMockMetadata({
   databases: [sampleDb, savedQuestionsDb],
 });
 
+// Unjustified type cast. FIXME
 const db = metadata.database(SAMPLE_DB_ID) as Database;
+// Unjustified type cast. FIXME
 const productsTable = metadata.table(PRODUCTS_ID) as Table;
 const provider = createMetadataProvider({
   databaseId: db.id,

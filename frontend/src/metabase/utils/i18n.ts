@@ -42,7 +42,7 @@ export function setLocalization(
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
   updateDayjsLocale(language);
-  updateStartOfWeek(MetabaseSettings.get("start-of-week") as DayOfWeekId);
+  updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
     preserveLatinNumbersInDayjsLocale(language);
@@ -112,6 +112,7 @@ function getStartOfWeekDay(
 // we delete msgid property since it's redundant, but have to add it back in to
 // make ttag happy
 function addMsgIds(translationsObject: LocaleDataWithLanguage): void {
+  // Unjustified type cast. FIXME
   const msgs = translationsObject.translations[""] as Record<
     string,
     { msgid?: string; msgstr: string[] }

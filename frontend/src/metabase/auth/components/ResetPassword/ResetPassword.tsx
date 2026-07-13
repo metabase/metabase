@@ -1,6 +1,5 @@
 import type { Location } from "history";
 import { useCallback } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
@@ -9,6 +8,7 @@ import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
+import { replace } from "metabase/router";
 import { Button } from "metabase/ui";
 
 import type { ResetPasswordData } from "../../types";

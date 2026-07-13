@@ -12,6 +12,8 @@
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
@@ -93,13 +95,15 @@
 
 ;;; ------------------------------------------------- Transfer Strategies -------------------------------------------------
 
-(defn- table-schema [table-name metadata]
-  {:name (if (keyword? table-name) table-name (keyword table-name))
-   :columns (mapv (fn [{:keys [name base_type]}]
-                    {:name name
-                     :type (python-runner/restricted-insert-type base_type)
-                     :nullable? true})
-                  (:fields metadata))})
+(defn- table-schema [table-name metadata indexes]
+  (cond-> {:name (if (keyword? table-name) table-name (keyword table-name))
+           :columns (mapv (fn [{:keys [name base_type]}]
+                            {:name name
+                             :type (python-runner/restricted-insert-type base_type)
+                             :nullable? true})
+                          (:fields metadata))}
+    ;; Python builds the table via `create-table!` (not a CTAS), so this is where inline indexes get rendered.
+    (seq indexes) (assoc :indexes indexes)))
 
 (defn- insert-data!
   "Insert data from source into an existing table."
@@ -115,14 +119,14 @@
 
 (defn- transfer-with-rename-tables-strategy!
   "Transfer data using the rename-tables*! multimethod with atomicity guarantees."
-  [driver db-id table-name metadata data-source]
+  [driver db-id table-name metadata indexes data-source]
   (let [source-table-name (transforms-base.u/temp-table-name driver (namespace table-name))
         temp-table-name (u/poll {:thunk #(transforms-base.u/temp-table-name driver (namespace table-name))
                                  :done? #(not= source-table-name %)
                                  :interval-ms 1})]
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
-      (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
+      (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata indexes) data-source)
       (transforms-base.u/rename-tables! driver db-id {table-name temp-table-name
                                                       source-table-name table-name})
       (transforms-base.u/drop-table! driver db-id temp-table-name)
@@ -135,11 +139,11 @@
 
 (defn- transfer-with-create-drop-rename-strategy!
   "Transfer data using create + drop + rename to minimize time without data."
-  [driver db-id table-name metadata data-source]
+  [driver db-id table-name metadata indexes data-source]
   (let [source-table-name (transforms-base.u/temp-table-name driver (namespace table-name))]
     (log/info "Using create-drop-rename strategy to minimize downtime")
     (try
-      (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
+      (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata indexes) data-source)
       (transforms-base.u/drop-table! driver db-id table-name)
       (driver/rename-table! driver db-id source-table-name table-name)
       (catch Exception e
@@ -151,14 +155,31 @@
 
 (defn- transfer-with-drop-create-fallback-strategy!
   "Transfer data using drop + create fallback strategy."
-  [driver db-id table-name metadata data-source]
+  [driver db-id table-name metadata indexes data-source]
   (log/info "Using drop-create fallback strategy")
   (try
     (transforms-base.u/drop-table! driver db-id table-name)
-    (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source)
+    (create-table-and-insert-data! driver db-id (table-schema table-name metadata indexes) data-source)
     (catch Exception e
       (log/error e "Failed to transfer data using drop-create fallback strategy")
       (throw e))))
+
+(defn- upsert-with-merge-strategy!
+  "Upsert the staged data into `table-name`, keyed on `unique-key` (a vector of column names)."
+  [driver db table-name metadata data-source unique-key]
+  (let [db-id   (:id db)
+        staging (transforms-base.u/temp-table-name driver (namespace table-name))]
+    (transforms-base.u/validate-merge-unique-key! unique-key (mapv :name (:fields metadata)))
+    (create-table-and-insert-data! driver db-id (table-schema staging metadata nil) data-source)
+    (try
+      (let [[sql & params] (sql.qp/format-honeysql driver {:select [:*], :from [staging]})
+            select     {:query sql, :params (vec params)}
+            merge-spec {:unique-key unique-key
+                        :columns    (mapv :name (:fields metadata))}]
+        (driver/execute-raw-queries! driver (driver/connection-spec driver db)
+                                     (driver.sql/compile-merge driver table-name select merge-spec)))
+      (finally
+        (transforms-base.u/drop-table! driver db-id staging)))))
 
 (defmulti ^:private transfer-file-to-db
   {:arglists '([driver db transform metadata temp-file])}
@@ -172,16 +193,26 @@
   ;; like non-incremental and drop-and-recreate rather than appending.
   (if (transforms-base.u/full-incremental-run? transform)
     ((get-method transfer-file-to-db :table) driver db transform metadata temp-file)
-    ;; Normal incremental: append if table exists, create if it doesn't
+    ;; Normal incremental: append (or merge) if table exists, create if it doesn't
     (let [table-name (transforms-base.u/qualified-table-name driver target)
           table-exists? (transforms-base.u/target-table-exists? transform)
           data-source {:type :jsonl-file
-                       :file temp-file}]
-      (if (not table-exists?)
+                       :file temp-file}
+          unique-key (transforms-base.u/merge-target-unique-key transform)]
+      (cond
+        (not table-exists?)
         (do
           (log/info "New table")
-          (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
-        (insert-data! driver db-id (table-schema table-name metadata) data-source)))))
+          (create-table-and-insert-data! driver db-id
+                                         (table-schema table-name metadata (:indexes target))
+                                         data-source))
+
+        unique-key
+        (upsert-with-merge-strategy! driver db table-name metadata data-source unique-key)
+
+        :else
+        ;; Append into an existing table: no create, so no inline indexes to apply.
+        (insert-data! driver db-id (table-schema table-name metadata nil) data-source)))))
 
 (defmethod transfer-file-to-db :table
   [driver {db-id :id :as db}
@@ -189,22 +220,23 @@
    metadata temp-file]
   (let [table-name (transforms-base.u/qualified-table-name driver target)
         table-exists? (transforms-base.u/target-table-exists? transform)
+        indexes (:indexes target)
         data-source {:type :jsonl-file
                      :file temp-file}]
     (cond
       (not table-exists?)
       (do
         (log/info "New table")
-        (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
+        (create-table-and-insert-data! driver db-id (table-schema table-name metadata indexes) data-source))
 
       (driver.u/supports? driver :atomic-renames db)
-      (transfer-with-rename-tables-strategy! driver db-id table-name metadata data-source)
+      (transfer-with-rename-tables-strategy! driver db-id table-name metadata indexes data-source)
 
       (driver.u/supports? driver :rename db)
-      (transfer-with-create-drop-rename-strategy! driver db-id table-name metadata data-source)
+      (transfer-with-create-drop-rename-strategy! driver db-id table-name metadata indexes data-source)
 
       :else
-      (transfer-with-drop-create-fallback-strategy! driver db-id table-name metadata data-source))))
+      (transfer-with-drop-create-fallback-strategy! driver db-id table-name metadata indexes data-source))))
 
 ;;; ------------------------------------------------- Cancellation -------------------------------------------------
 

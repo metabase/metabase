@@ -149,7 +149,7 @@ function createSeriesBuildConfig({
       tree,
       formatPercent,
     ),
-    headerTintTarget: renderingContext.getColor("white"),
+    headerTintTarget: renderingContext.getColor("core-white"),
     renderingContext,
   };
 }

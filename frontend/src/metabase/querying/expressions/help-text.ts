@@ -52,6 +52,7 @@ function getExample(
   args: Lib.ClauseArgDefinition[],
 ): Lib.ExpressionParts {
   return {
+    // Unjustified type cast. FIXME
     operator: name as Lib.ExpressionOperator,
     options: {},
     args: args.flatMap((arg) => arg.example).filter(isNotNull),
