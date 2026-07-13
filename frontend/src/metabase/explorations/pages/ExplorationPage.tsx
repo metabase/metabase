@@ -52,10 +52,7 @@ import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
-import {
-  getInterestingTimelineIds,
-  getMostInterestingTimelineId,
-} from "../components/ExplorationVisualization/utils";
+import { getMostInterestingTimelineId } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
 import {
   type CommentDrafts,
@@ -429,11 +426,6 @@ export function ExplorationPage({
     [availableTimelines],
   );
 
-  const interestingTimelineIds: ReadonlySet<TimelineId> = useMemo(
-    () => getInterestingTimelineIds(selectedQueries),
-    [selectedQueries],
-  );
-
   const selectedTimelineId: TimelineId | null = useMemo(() => {
     if (!selectedPage) {
       return null;
@@ -553,7 +545,6 @@ export function ExplorationPage({
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}
-              interestingTimelineIds={interestingTimelineIds}
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}

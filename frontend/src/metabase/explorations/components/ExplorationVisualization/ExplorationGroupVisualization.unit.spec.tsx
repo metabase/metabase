@@ -180,7 +180,6 @@ interface SetupOpts {
   datasets?: Map<number, Dataset>;
   errors?: Map<number, unknown>;
   availableTimelines?: Timeline[];
-  interestingTimelineIds?: ReadonlySet<number>;
   selectedTimelineId?: number | null;
   onSelectTimelineId?: (timelineId: number | null) => void;
   isCommentsSidebarOpen?: boolean;
@@ -193,7 +192,6 @@ function setup({
   datasets,
   errors,
   availableTimelines = [],
-  interestingTimelineIds,
   selectedTimelineId = null,
   onSelectTimelineId = jest.fn(),
   isCommentsSidebarOpen = false,
@@ -225,7 +223,6 @@ function setup({
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
-          interestingTimelineIds={interestingTimelineIds}
           commentDrafts={{}}
           setCommentDrafts={jest.fn()}
           isCommentsSidebarOpen={isCommentsSidebarOpen}

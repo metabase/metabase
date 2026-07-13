@@ -465,24 +465,6 @@ export function getMaxTimelineInterestingness(
 }
 
 /**
- * Set of timeline ids whose max-aggregated score across `queries` passes
- * the global interestingness threshold (see `metabase/explorations/constants`).
- * Used by `TimelineDropdown` to decide which items get the
- * `PotentiallyInterestingMarker`.
- */
-export function getInterestingTimelineIds(
-  queries: ExplorationQuery[],
-): ReadonlySet<TimelineId> {
-  const result = new Set<TimelineId>();
-  for (const [id, score] of getMaxTimelineInterestingness(queries)) {
-    if (score >= TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD) {
-      result.add(id);
-    }
-  }
-  return result;
-}
-
-/**
  * Picks the most-interesting timeline for `queries` restricted to the
  * timelines actually available in the dropdown. Returns `null` when no
  * candidate passes the threshold or when no scored timeline is available.

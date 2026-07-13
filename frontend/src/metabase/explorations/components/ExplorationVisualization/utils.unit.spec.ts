@@ -25,7 +25,6 @@ import {
   getCommentLabel,
   getExploreFurtherFilters,
   getHeatMapSeries,
-  getInterestingTimelineIds,
   getMaxTimelineInterestingness,
   getMostInterestingTimelineId,
 } from "./utils";
@@ -192,42 +191,6 @@ describe("getMaxTimelineInterestingness", () => {
     ]);
     expect(result.get(10)).toBeCloseTo(0.85);
     expect(result.get(20)).toBeCloseTo(0.9);
-  });
-});
-
-describe("getInterestingTimelineIds", () => {
-  it("includes only timelines whose max score passes the 0.7 threshold", () => {
-    const result = getInterestingTimelineIds([
-      makeQuery({
-        id: 1,
-        timeline_interestingness: [
-          { timeline_id: 10, interestingness_score: 0.69 }, // below
-          { timeline_id: 20, interestingness_score: 0.7 }, // exact threshold passes
-          { timeline_id: 30, interestingness_score: 0.95 }, // well above
-        ],
-      }),
-    ]);
-    expect(result.has(10)).toBe(false);
-    expect(result.has(20)).toBe(true);
-    expect(result.has(30)).toBe(true);
-  });
-
-  it("aggregates across queries (max-rule): a timeline that's interesting for ANY query is interesting", () => {
-    const result = getInterestingTimelineIds([
-      makeQuery({
-        id: 1,
-        timeline_interestingness: [
-          { timeline_id: 10, interestingness_score: 0.4 },
-        ],
-      }),
-      makeQuery({
-        id: 2,
-        timeline_interestingness: [
-          { timeline_id: 10, interestingness_score: 0.9 },
-        ],
-      }),
-    ]);
-    expect(result.has(10)).toBe(true);
   });
 });
 

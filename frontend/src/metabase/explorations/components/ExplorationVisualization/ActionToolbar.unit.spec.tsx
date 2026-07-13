@@ -6,7 +6,6 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  within,
 } from "__support__/ui";
 import { createPage } from "metabase/explorations/test-utils";
 import type {
@@ -59,7 +58,6 @@ interface SetupOpts {
   page?: ExplorationPageNode;
   timelines?: Timeline[];
   selectedTimelineId?: TimelineId | null;
-  interestingTimelineIds?: ReadonlySet<TimelineId>;
   showTimelineDropdown?: boolean;
   withUndos?: boolean;
 }
@@ -68,7 +66,6 @@ function setup({
   page = createPage({ id: PAGE_ID }),
   timelines = [],
   selectedTimelineId = null,
-  interestingTimelineIds,
   showTimelineDropdown = true,
   withUndos = false,
 }: SetupOpts = {}) {
@@ -85,7 +82,6 @@ function setup({
       availableTimelines={timelines}
       selectedTimelineId={selectedTimelineId}
       onSelectTimelineId={onSelectTimelineId}
-      interestingTimelineIds={interestingTimelineIds}
     />,
     { withUndos },
   );
@@ -151,25 +147,17 @@ describe("ActionToolbar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows available timelines when opened, with marker on interesting ones", async () => {
-      setup({
-        timelines: [releases, incidents],
-        interestingTimelineIds: new Set([releases.id]),
-      });
+    it("shows available timelines when opened", async () => {
+      setup({ timelines: [releases, incidents] });
 
       await openTimelineMenu();
 
-      const releasesItem = await screen.findByRole("menuitem", {
-        name: /Releases/,
-      });
-      const incidentsItem = screen.getByRole("menuitem", { name: /Incidents/ });
-
       expect(
-        within(releasesItem).getByTestId("potentially-interesting-marker"),
+        await screen.findByRole("menuitem", { name: "Releases" }),
       ).toBeInTheDocument();
       expect(
-        within(incidentsItem).queryByTestId("potentially-interesting-marker"),
-      ).not.toBeInTheDocument();
+        screen.getByRole("menuitem", { name: "Incidents" }),
+      ).toBeInTheDocument();
     });
   });
 
