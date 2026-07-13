@@ -88,6 +88,13 @@ export const getNormalizedDimensionReference = (
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
+    // MBQL normalization drops empty options from expression and aggregation
+    // references, while field references keep the options position.
+    if (normalizedOptions == null && !isFieldReference(normalizedReference)) {
+      // slice does not narrow the tuple type
+      return normalizedReference.slice(0, 2) as DimensionReference;
+    }
+
     return normalizedReference;
   }
 

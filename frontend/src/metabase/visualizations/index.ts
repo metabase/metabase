@@ -52,8 +52,22 @@ export function registerVisualization(visualization: Visualization) {
         visualization.name,
     );
   }
+  // visualizations.get falls back to the default visualization, so check
+  // has() to only look at actual registrations.
   if (visualizations.has(identifier)) {
-    if (isStorybookActive) {
+    const existing = visualizations.get(identifier);
+    // static-viz/register.ts used to register the same component modules as
+    // the app, so duplicate registrations were identical and skipping them was
+    // harmless. It now registers bare definition objects to keep components
+    // out of the static-viz bundle, so when both sides load in one runtime
+    // (storybook), keep the renderable component over the bare definition.
+    const existingIsComponent = typeof existing === "function";
+    const incomingIsComponent = typeof visualization === "function";
+    if (incomingIsComponent && !existingIsComponent) {
+      // fall through and overwrite the bare definition with the component
+    } else if (!incomingIsComponent && existingIsComponent) {
+      return;
+    } else if (isStorybookActive) {
       console.error(
         `Visualization with that identifier is already registered: ` +
           visualization.name,
@@ -61,12 +75,12 @@ export function registerVisualization(visualization: Visualization) {
 
       // do not throw if it's storybook
       return;
+    } else {
+      throw new Error(
+        t`Visualization with that identifier is already registered: ` +
+          visualization.name,
+      );
     }
-
-    throw new Error(
-      t`Visualization with that identifier is already registered: ` +
-        visualization.name,
-    );
   }
   visualizations.set(identifier, visualization);
   for (const alias of visualization.aliases || []) {
