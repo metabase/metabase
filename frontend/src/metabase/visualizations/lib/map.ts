@@ -1,4 +1,4 @@
-import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
+import { isSelfEmbedInIframe as getIsEmbedPreview } from "metabase/embedding/config";
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type { DashboardId, JsonQuery, Parameter } from "metabase-types/api";

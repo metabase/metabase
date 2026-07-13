@@ -1,4 +1,4 @@
-import { isEmbedPreview } from "metabase/embedding/config";
+import { isSelfEmbedInIframe } from "metabase/embedding/config";
 import { PLUGIN_API, reinitialize } from "metabase/plugins";
 
 import {
@@ -12,7 +12,7 @@ jest.mock("metabase/embedding/config", () => ({
   isEmbedPreview: jest.fn(),
 }));
 
-const mockIsEmbedPreview = jest.mocked(isEmbedPreview);
+const mockIsEmbedPreview = jest.mocked(isSelfEmbedInIframe);
 
 afterEach(() => {
   mockIsEmbedPreview.mockReset();

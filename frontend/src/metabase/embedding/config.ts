@@ -1,6 +1,7 @@
+import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import {
   EMBEDDING_SDK_CONFIG,
-  isDataAppDev,
+  isDataApp,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
@@ -35,7 +36,7 @@ export function setIsStaticEmbedding() {
    * This header is only used for analytics and for checking if we want to disable some features in the
    * embedding iframe (only for Documents at the time of this comment)
    */
-  if (!isEmbedPreview()) {
+  if (!isSelfEmbedInIframe()) {
     PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
       setRequestClientHeaders({ name: "embedding-iframe-static" });
   }
@@ -47,7 +48,10 @@ export function setIsDataApp(
   dataAppName: string,
   { isDev = false }: { isDev?: boolean } = {},
 ) {
+  const sdkPackageVersion = getSdkPackageVersion();
+
   EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+  EMBEDDING_SDK_CONFIG.isDataApp = true;
   EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
   EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
   EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppName;
@@ -55,6 +59,7 @@ export function setIsDataApp(
   PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
     setRequestClientHeaders({
       name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      version: sdkPackageVersion,
       identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
     });
 
@@ -78,9 +83,9 @@ export function isEmbedding() {
 }
 
 /**
- * Detect if this page is an embed preview.
+ * Detect if this page is self embed within Metabase (embed preview).
  * The check that it is NOT a data app is required, as a data app is rendered inside an iframe inside Metabase
  */
-export function isEmbedPreview() {
-  return IFRAMED_IN_SELF && !isDataAppDev();
+export function isSelfEmbedInIframe() {
+  return IFRAMED_IN_SELF && !isDataApp();
 }

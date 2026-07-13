@@ -5,6 +5,7 @@ export const EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID = "metabase-sdk-portal-root";
 type InternalSdkConfig = {
   isEmbeddingSdk: boolean;
   isMcpApp: boolean;
+  isDataApp: boolean;
   isDataAppDev: boolean;
   metabaseClientRequestHeader:
     | "embedding-sdk-react"
@@ -27,6 +28,11 @@ export const EMBEDDING_SDK_CONFIG: InternalSdkConfig = {
    * Whether we are in the MCP Apps context.
    **/
   isMcpApp: false,
+
+  /**
+   * Whether we are in the Data App context.
+   **/
+  isDataApp: false,
 
   /**
    * Whether the data app runs in the local development flow. Reported to the
@@ -81,6 +87,11 @@ export const isEmbeddingMcpApp = () => EMBEDDING_SDK_CONFIG.isMcpApp;
  */
 export const isEmbeddingEajs = () =>
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding;
+
+/**
+ * Whether we are in the Data App context.
+ */
+export const isDataApp = () => EMBEDDING_SDK_CONFIG.isDataApp;
 
 /**
  * Whether we are in the Data App context.

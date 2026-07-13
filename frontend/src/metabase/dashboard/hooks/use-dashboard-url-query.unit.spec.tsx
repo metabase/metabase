@@ -2,7 +2,7 @@ import { act } from "@testing-library/react";
 import type { Location } from "history";
 
 import { renderHookWithProviders } from "__support__/ui";
-import { isEmbedPreview } from "metabase/embedding/config";
+import { isSelfEmbedInIframe } from "metabase/embedding/config";
 import { selectTab } from "metabase/redux/dashboard";
 import {
   createMockDashboardState,
@@ -112,7 +112,7 @@ describe("useDashboardUrlQuery", () => {
     // Unjustified type cast. FIXME
     (replace as jest.Mock).mockClear();
     // Unjustified type cast. FIXME
-    (isEmbedPreview as jest.Mock).mockReturnValue(false);
+    (isSelfEmbedInIframe as jest.Mock).mockReturnValue(false);
   });
 
   it("syncs a parameter-value change with replace (not push), writing the parameter slug values into the query", () => {
@@ -159,7 +159,7 @@ describe("useDashboardUrlQuery", () => {
 
   it("does not sync when isEmbedPreview() is true", () => {
     // Unjustified type cast. FIXME
-    (isEmbedPreview as jest.Mock).mockReturnValue(true);
+    (isSelfEmbedInIframe as jest.Mock).mockReturnValue(true);
 
     setup({
       parameters: [createMockParameter({ id: "1", slug: "text" })],

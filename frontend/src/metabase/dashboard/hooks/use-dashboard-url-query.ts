@@ -4,7 +4,7 @@ import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import { isEmbedPreview } from "metabase/embedding/config";
+import { isSelfEmbedInIframe } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import type { InjectedRouter } from "metabase/router";
@@ -57,7 +57,7 @@ export function useDashboardUrlQuery(
      * This causes the iframe to reload when changing the preview hash from appearance
      * settings because now the base URL (including the query string) is different.
      */
-    if (isEmbedPreview() || !dashboardId) {
+    if (isSelfEmbedInIframe() || !dashboardId) {
       return;
     }
 
