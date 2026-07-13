@@ -117,10 +117,10 @@ jobs:
 
           case "$RELEASE_TYPE" in
             alpha)
-              NEW_VERSION=$(npx --yes semver -i prerelease --preid=alpha "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes semver@7 -i prerelease --preid=alpha "$CURRENT_VERSION")
               ;;
             beta)
-              NEW_VERSION=$(npx --yes semver -i prerelease --preid=beta "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes semver@7 -i prerelease --preid=beta "$CURRENT_VERSION")
               ;;
             custom)
               # The prerelease id this branch already carries, if any. alpha/beta
@@ -140,23 +140,30 @@ jobs:
                 exit 1
               fi
 
+              # Anything outside [a-z][a-z0-9-]* would bump fine here and then die
+              # further down, where the id is read back out of the new version.
+              if [ -n "$PRERELEASE_ID" ] && ! echo "$PRERELEASE_ID" | grep -qE '^[a-z][a-z0-9-]*$'; then
+                echo "::error::prerelease_id '$PRERELEASE_ID' must be lowercase, start with a letter, and contain only letters, digits and hyphens (e.g. data-apps)."
+                exit 1
+              fi
+
               # First cut: caller supplies the id. Later bumps: no --preid, so
               # semver reuses the id already in the version and bumps its counter
               # (0.62.5-data-apps.0 -> 0.62.5-data-apps.1).
               if [ -n "$PRERELEASE_ID" ]; then
-                NEW_VERSION=$(npx --yes semver -i prerelease --preid="$PRERELEASE_ID" "$CURRENT_VERSION")
+                NEW_VERSION=$(npx --yes semver@7 -i prerelease --preid="$PRERELEASE_ID" "$CURRENT_VERSION")
               else
-                NEW_VERSION=$(npx --yes semver -i prerelease "$CURRENT_VERSION")
+                NEW_VERSION=$(npx --yes semver@7 -i prerelease "$CURRENT_VERSION")
               fi
               ;;
             preminor)
               # master -> next major's alpha (0.63.0-alpha.5 -> 0.64.0-alpha.0).
               # `alpha` above only ever increments the existing prerelease
               # counter, so it can never bump the minor version.
-              NEW_VERSION=$(npx --yes semver -i preminor --preid=alpha "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes semver@7 -i preminor --preid=alpha "$CURRENT_VERSION")
               ;;
             patch)
-              NEW_VERSION=$(npx --yes semver -i patch "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes semver@7 -i patch "$CURRENT_VERSION")
               ;;
             *)
               echo "::error::Unsupported release_type: $RELEASE_TYPE"
