@@ -1,8 +1,7 @@
 (ns metabase.sql-parsing.common
-  "Shared helpers for the pooled sqlglot parsers ([[metabase.sql-parsing.graal]] and
-  [[metabase.sql-parsing.python]]): the python-sources locations, the lazy dev sqlglot install, the
-  protocol reify over a transport function, and the dirigiste worker-pool factory (copied from
-  [[metabase.channel.render.js.common]])."
+  "Shared helpers for pooled sqlglot parsers (see [[metabase.sql-parsing.graal]]): the python-sources
+  locations, the lazy dev sqlglot install, the protocol reify over a transport function, and the
+  dirigiste worker-pool factory (copied from [[metabase.channel.render.js.common]])."
   (:require
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
