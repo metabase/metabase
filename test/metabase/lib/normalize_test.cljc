@@ -1,7 +1,7 @@
 (ns metabase.lib.normalize-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    #?@(:clj ([metabase.lib.normalize :as lib.normalize]))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
