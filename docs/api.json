@@ -27698,7 +27698,7 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string",
-              "enum" : [ "created_at", "message_count", "total_tokens", "user", "profile_id", "ip_address" ]
+              "enum" : [ "created_at", "message_count", "total_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
             }, {
               "type" : "null"
             } ]
@@ -27792,6 +27792,11 @@
                             }, {
                               "type" : "null"
                             } ]
+                          },
+                          "cache_read_tokens" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
                           },
                           "user" : {
                             "oneOf" : [ {
@@ -27908,7 +27913,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
+                        "required" : [ "conversation_id", "created_at", "summary", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
                       }
                     },
                     "limit" : {

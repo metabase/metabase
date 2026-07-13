@@ -105,6 +105,17 @@
    "minPoolSize"                          0
    "initialPoolSize"                      0
    "maxPoolSize"                          (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
+   ;; [From dox] The number of milliseconds a client calling getConnection() will wait for a Connection to be
+   ;; checked-in or acquired when the pool is exhausted. Zero means wait indefinitely. Setting any positive value will
+   ;; cause the getConnection() call to time out and break with an SQLException after the specified number of
+   ;; milliseconds.
+   ;;
+   ;; Without this, once the pool hits maxPoolSize every additional query blocks forever waiting for a free
+   ;; connection, so a backlog can grow without bound under load. With it, an over-loaded instance sheds load: the
+   ;; checkout fails fast and the QP turns the resulting timeout into an HTTP 503 (see
+   ;; [[metabase.driver.sql-jdbc.execute/do-with-resolved-connection]]). The number of queries allowed to wait at once
+   ;; is separately bounded by [[driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts]].
+   "checkoutTimeout"                      (driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]

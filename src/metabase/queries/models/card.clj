@@ -1264,22 +1264,11 @@
     (empty? metadata)
     ::serdes/skip
 
-    (model? card)
-    (let [native?   (lib/native? (:dataset_query card))
-          keep-keys (into #{:name}
-                          (map u/->snake_case_en)
-                          (lib/model-preserved-keys native?))]
-      (mapv (fn [m]
-              (-> (select-keys m keep-keys)
-                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
-                  (m/update-existing :id serdes/*export-field-fk*)))
-            metadata))
-
-    ;; Native non-model cards keep their result_metadata. Unlike MBQL cards, their columns can't be re-derived
-    ;; from the query at import time without executing the SQL, and downstream questions that join them depend
-    ;; on this metadata to resolve join columns. We whitelist the portable keys (dropping computed `:lib/*`,
+    ;; Native cards — models included — keep their result_metadata. Unlike MBQL cards, their columns can't be
+    ;; re-derived from the query at import time without executing the SQL, and downstream questions that join them
+    ;; depend on this metadata to resolve join columns. We whitelist the portable keys (dropping computed `:lib/*`,
     ;; `:fingerprint`, etc.) rather than the model soft-key set, since native columns also need their structural
-    ;; type info preserved.
+    ;; type info preserved. This must precede the model branch, whose soft-key set omits type info.
     (lib/native? (:dataset_query card))
     (let [keep-keys #{:name :base_type :effective_type :field_ref :database_type
                       :display_name :semantic_type :description :visibility_type :settings
@@ -1290,6 +1279,16 @@
                   (m/update-existing :id                 serdes/*export-field-fk*)
                   (m/update-existing :field_ref          serdes/export-mbql)
                   (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))
+            metadata))
+
+    (model? card)
+    (let [keep-keys (into #{:name}
+                          (map u/->snake_case_en)
+                          (lib/model-preserved-keys false))]
+      (mapv (fn [m]
+              (-> (select-keys m keep-keys)
+                  (m/update-existing :fk_target_field_id serdes/*export-field-fk*)
+                  (m/update-existing :id serdes/*export-field-fk*)))
             metadata))
 
     :else
