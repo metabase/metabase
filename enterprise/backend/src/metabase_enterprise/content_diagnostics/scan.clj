@@ -156,8 +156,9 @@
                      :details             details})))))
 
 (defn scan!
-  "Run a full scan synchronously: every checker → one `scan_id` batch → persisted. Side-effecting;
-  the persisted findings are the result."
+  "Run a full scan synchronously: every checker → one `scan_id` batch → persisted. The persisted findings
+  are the real result; returns the scan's topline `{:scan_id :finding_count :duration_ms}` for callers
+  that report it (the demo `POST /scan`)."
   []
   (let [timer    (u/start-timer)
         scan-id  (str (random-uuid))
@@ -167,5 +168,8 @@
     ;; success — a failed scan never invalidates prior findings, though already-committed chunks of the
     ;; failed batch stay active alongside them.
     (finding/invalidate-superseded! scan-id (covered-finding-types))
-    (log/infof "Content Diagnostics scan %s: %d findings in %.0f ms"
-               scan-id (count findings) (u/since-ms timer))))
+    (let [duration-ms (u/since-ms timer)]
+      (log/infof "Content Diagnostics scan %s: %d findings in %.0f ms" scan-id (count findings) duration-ms)
+      {:scan_id       scan-id
+       :finding_count (count findings)
+       :duration_ms   (Math/round duration-ms)})))

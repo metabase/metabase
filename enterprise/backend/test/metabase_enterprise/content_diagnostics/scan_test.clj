@@ -64,8 +64,8 @@
                            [:transform never-ran-transform]}
               fresh-keys #{[:card fresh-card] [:dashboard fresh-dash]
                            [:document fresh-doc] [:transform fresh-transform]}
-              ;; recover this run's scan_id from a guaranteed-flagged temp entity — scan! returns nil,
-              ;; the persisted findings are the result
+              ;; recover this run's scan_id from a guaranteed-flagged temp entity — pins that the
+              ;; persisted rows (not just scan!'s returned topline) carry the batch's scan_id
               scan-id    (t2/select-one-fn :scan_id :model/ContentDiagnosticsFinding
                                            :entity_type :card :entity_id stale-card-1)
               rows       (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id)

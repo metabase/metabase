@@ -1,6 +1,7 @@
 (ns metabase-enterprise.content-diagnostics.api
   "Content Diagnostics API - a paginated, batch-hydrated latest-per-entity finding list, mounted
-  behind `premium-handler … :content-diagnostics` (`+auth` + feature gate). The scan runs on a Quartz job.
+  behind `premium-handler … :content-diagnostics` (`+auth` + feature gate). The scan runs on a Quartz job;
+  a demo/dev-only `POST /scan` also triggers it synchronously.
 
   Response shape: a flat identity (`id, finding_type, entity_type, entity_id, detected_at,
   entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated
@@ -242,6 +243,17 @@
       name-search-filter (conj name-search-filter))))
 
 ;;; ------------------------------------------------ endpoints ------------------------------------------
+
+(api.macros/defendpoint :post "/scan"
+  :- [:map
+      [:scan_id       :string]
+      [:finding_count :int]
+      [:duration_ms   :int]]
+  "Run a scan **synchronously** and return its topline. Demo/dev-only — the production trigger is the
+  scheduled Quartz job. Synchronous (calls `scan/scan!` directly, not `trigger-now!`) so it works with
+  the scheduler disabled (`MB_DISABLE_SCHEDULER=true`)."
+  []
+  (scan/scan!))
 
 (api.macros/defendpoint :get "/stale"
   :- [:map
