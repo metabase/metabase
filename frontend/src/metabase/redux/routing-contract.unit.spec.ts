@@ -1,30 +1,28 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { createMemoryHistory } from "history";
+
 import {
   goBack,
   push,
   replace,
   routerMiddleware,
-  routerReducer,
+  routing,
   syncHistoryWithStore,
-} from "react-router-redux";
-
+} from "metabase/router";
 import { getLocation } from "metabase/selectors/routing";
 
 // Keystone characterization test for the navigation TRANSPORT seam.
 //
-// The router migration replaces react-router-redux's `push`/`replace`/`goBack`
-// action creators + `routerMiddleware` + `routerReducer` + `syncHistoryWithStore`
-// with our own ~50-line equivalents (see TANSTACK-MIGRATION-PLAN.md, the
-// "react-router-redux" section). This test pins the observable contract that the
-// replacement must preserve byte-for-byte:
+// `metabase/router` re-owns react-router-redux's `push`/`replace`/`goBack`
+// action creators + `routerMiddleware` + `routing` reducer +
+// `syncHistoryWithStore`. This test pins the observable contract that the
+// replacement preserves byte-for-byte:
 //
 //   dispatch(push/replace/goBack)  ->  state.routing  +  @@router/LOCATION_CHANGE
 //
-// It wires up the SAME transport `store.js` / `app.js` use (routerMiddleware +
-// routerReducer + a memory history + syncHistoryWithStore), isolated from the
-// rest of the app graph. POST-MIGRATION: swap the four react-router-redux imports
-// for their `metabase/router` equivalents and this test must still pass.
+// It wires up the SAME transport `store.js` / `app.js` use (the router
+// middleware + the routing reducer + a memory history + syncHistoryWithStore),
+// isolated from the rest of the app graph.
 
 const LOCATION_CHANGE = "@@router/LOCATION_CHANGE";
 
@@ -37,7 +35,7 @@ const setup = () => {
 
   const history = createMemoryHistory();
   const store = configureStore({
-    reducer: { routing: routerReducer },
+    reducer: { routing },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: false,

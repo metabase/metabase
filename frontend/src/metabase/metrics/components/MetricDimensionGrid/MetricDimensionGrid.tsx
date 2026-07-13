@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,6 +6,7 @@ import type { DimensionType } from "metabase/common/metrics/utils/dimension-type
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Button,
   Flex,
