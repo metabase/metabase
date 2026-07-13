@@ -49,6 +49,7 @@ import {
 } from "metabase/plugins";
 import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { DevRunningStateScaffold } from "metabase/querying/components/QueryVisualization/DevRunningStateScaffold";
 import type { State } from "metabase/redux/store";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -165,6 +166,11 @@ export const getRoutes = (store: AppStore) => {
           <Route path="getting-started" component={CanAccessOnboarding}>
             <IndexRoute component={Onboarding} />
           </Route>
+
+          <Route
+            path="_dev/running-state"
+            component={DevRunningStateScaffold}
+          />
 
           <Route path="search" component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
