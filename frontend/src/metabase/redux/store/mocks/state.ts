@@ -1,4 +1,4 @@
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import type { State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -19,9 +19,9 @@ import { createMockSetupState } from "./setup";
 import { createMockUploadState } from "./upload";
 import { createMockVisualizerState } from "./visualizer";
 
-export function createMockState<S extends Pick<SdkStoreState, "sdk">>(
-  opts?: S,
-): SdkStoreState;
+export function createMockState(
+  opts: Partial<State> & SdkSharedStoreState,
+): State & SdkSharedStoreState;
 export function createMockState(opts?: Partial<State>): State;
 export function createMockState(opts: any) {
   return {

@@ -2,13 +2,13 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -573,8 +573,8 @@ export const getSelectedTabId = createSelector(
     (state) => getSetting(state, "site-url"),
     getDashboard,
     (state) => state.dashboard.selectedTabId,
-    (state: State) =>
-      (state as Partial<SdkStoreState>).sdk?.initialDashboardTabId,
+    (state: State & Partial<SdkSharedStoreState>) =>
+      state.sdk?.initialDashboardTabId,
   ],
   (isWebApp, siteUrl, dashboard, selectedTabId, sdkInitialDashboardTabId) => {
     if (dashboard && selectedTabId === null) {
