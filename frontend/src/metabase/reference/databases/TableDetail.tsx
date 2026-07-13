@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -13,6 +12,7 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
+import { push } from "metabase/router";
 import {
   getShallowFields as getFields,
   getMetadata,
@@ -245,4 +245,5 @@ const TableDetail = (props: TableDetailProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(TableDetail as unknown as React.ComponentType);

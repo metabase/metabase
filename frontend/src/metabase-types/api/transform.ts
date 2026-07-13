@@ -1,6 +1,7 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
+import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
@@ -67,6 +68,7 @@ export type Transform = {
   table?: Table | null;
   last_run?: TransformRun | null;
   creator?: UserInfo;
+  requestable_indexes?: RequestableIndexes | null;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &

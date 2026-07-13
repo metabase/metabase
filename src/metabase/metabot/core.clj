@@ -21,6 +21,8 @@
   agent-question-create
   agent-question-execute
   agent-question-update
+  agent-metric-create
+  agent-metric-update
   agent-resource-read
   agent-search
   agent-sql-construct

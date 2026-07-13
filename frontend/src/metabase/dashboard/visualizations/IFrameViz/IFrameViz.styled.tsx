@@ -35,6 +35,7 @@ export const StyledInput = styled(Textarea)`
   ${interactiveDashcardElementCss}
 `;
 
+// Unjustified type cast. FIXME
 export const InteractiveText = styled(Text)<TextProps>`
   ${interactiveDashcardElementCss}
 ` as unknown as typeof Text;

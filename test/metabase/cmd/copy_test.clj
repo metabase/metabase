@@ -39,6 +39,8 @@
     :model/Dependency
     :model/DependencyStatus
     :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
     :model/MetabotConversation
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
@@ -64,6 +66,7 @@
     :model/SourceSegmentDaily
     :model/SsoRelayState
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     ;; TODO we should remove these models from here once serialization is supported

@@ -500,8 +500,8 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]

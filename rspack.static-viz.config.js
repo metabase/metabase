@@ -31,9 +31,9 @@ module.exports = (env) => {
 
     entry: {
       "lib-static-viz": {
-        import: "./static-viz/index.tsx",
+        import: "./app-static-viz.ts",
         library: {
-          name: "StaticViz",
+          name: "MetabaseStaticViz",
           type: "var",
         },
       },
@@ -43,7 +43,7 @@ module.exports = (env) => {
       path: BUILD_PATH + "/app/dist",
       filename: "[name].bundle.js",
       publicPath: "/app/dist",
-      globalObject: "{}",
+      globalObject: "globalThis",
     },
 
     module: {
@@ -76,8 +76,8 @@ module.exports = (env) => {
                   },
                 },
 
-                sourceMaps: true,
-                minify: false, // produces same bundle size, but cuts 1s locally
+                sourceMaps: false,
+                minify: true,
                 env: {
                   targets: ["defaults"],
                 },
@@ -138,7 +138,7 @@ module.exports = (env) => {
       },
     },
     optimization: {
-      minimize: false,
+      minimize: true,
     },
     plugins: [
       new rspack.EnvironmentPlugin({

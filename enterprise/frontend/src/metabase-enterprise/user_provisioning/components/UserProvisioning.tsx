@@ -96,6 +96,7 @@ export const UserProvisioning = () => {
   );
 
   const samlUserProvisioningEnabled = useSetting(
+    // Unjustified type cast. FIXME
     "saml-user-provisioning-enabled?" as any,
   );
   const showSamlWarning = samlUserProvisioningEnabled && !isScimInitialized;

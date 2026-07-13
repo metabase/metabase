@@ -41,20 +41,20 @@ import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
-    .with({ type: "todo_list" }, () => true)
-    .with({ type: "transform_suggestion" }, () => true)
-    .with({ type: "navigate_to" }, () => true)
-    .with({ type: "code_edit" }, () => true)
-    .with({ type: "generated_entity" }, () => true)
-    .with({ type: "adhoc_viz" }, () => false)
-    .with({ type: "static_viz" }, () => false)
+    .with({ type: "data-todo_list" }, () => true)
+    .with({ type: "data-transform_suggestion" }, () => true)
+    .with({ type: "data-navigate_to" }, () => true)
+    .with({ type: "data-code_edit" }, () => true)
+    .with({ type: "data-generated_entity" }, () => true)
+    .with({ type: "data-adhoc_viz" }, () => false)
+    .with({ type: "data-static_viz" }, () => false)
     .exhaustive();
 
 const isUserVisibleDataPartMessage = (
   message: MetabotAgentDataPartMessage,
 ): boolean =>
   match(message)
-    .with({ part: { type: "code_edit" } }, ({ metadata }) => {
+    .with({ part: { type: "data-code_edit" } }, ({ metadata }) => {
       return metadata?.codeEditBuffer?.source.database_id != null;
     })
     .otherwise(({ part }) => isUserVisibleDataPart(part));
@@ -297,7 +297,7 @@ const AgentTurnAlert = ({
     <Flex align="center" gap="sm">
       <Icon
         name={variant === "error" ? "warning" : "info"}
-        c={variant === "error" ? "error" : "text-secondary"}
+        c={variant === "error" ? "feedback-negative" : "text-secondary"}
         size="1rem"
         flex="0 0 auto"
       />

@@ -18,7 +18,7 @@ export const publishTables = (request: BulkTableRequest) => {
 
       return requestPublishTables({
         ...request,
-        collection_id: dataCollection?.id as number,
+        collection_id: dataCollection?.id,
       });
     });
 };

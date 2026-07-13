@@ -1,7 +1,6 @@
 import type { LocationDescriptorObject } from "history";
 import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
-import { type Route, withRouter } from "react-router";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -20,6 +19,7 @@ import type {
 } from "metabase/databases/types";
 import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
+import { type Route, withRouter } from "metabase/router";
 import { Text } from "metabase/ui";
 import type {
   DatabaseData,
@@ -83,10 +83,12 @@ export const DatabaseEditConnectionForm = withRouter(
           onSubmitted(savedDB);
         });
       } catch (error) {
+        // Unjustified type cast. FIXME
         throw getSubmitError(error as DatabaseEditErrorType);
       }
     };
 
+    // Unjustified type cast. FIXME
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
         <LoadingAndErrorWrapper

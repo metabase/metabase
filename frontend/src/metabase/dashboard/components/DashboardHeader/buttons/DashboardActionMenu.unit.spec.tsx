@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -8,7 +7,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
-import type { ChannelApiResponse, User } from "metabase-types/api";
+import { Route } from "metabase/router";
 import {
   createMockCard,
   createMockDashboard,
@@ -55,7 +54,7 @@ const setup = ({
   setupNotificationChannelsEndpoints({
     email: { configured: hasEmailSetup },
     slack: { configured: hasSlackSetup },
-  } as ChannelApiResponse["channels"]);
+  });
 
   const { store } = renderWithProviders(
     <Route
@@ -81,12 +80,12 @@ const setup = ({
       withRouter: true,
       storeInitialState: {
         currentUser: isEnterprise
-          ? ({
+          ? {
               ...currentUser,
               permissions: {
                 can_access_subscription: canManageSubscriptions ?? false,
               },
-            } as User)
+            }
           : currentUser,
         ...(isEnterprise && {
           settings: mockSettings(

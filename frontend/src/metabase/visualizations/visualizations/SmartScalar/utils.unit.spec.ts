@@ -258,8 +258,10 @@ describe("SmartScalar > utils", () => {
           ["2019-11-01", 300],
         ];
         const isValid = isComparisonValid(
+          // Unjustified type cast. FIXME
           comparison as SmartScalarComparison,
           series({ rows, insights: [] }),
+          // Unjustified type cast. FIXME
           settings as VisualizationSettings,
         );
 
@@ -361,11 +363,7 @@ describe("SmartScalar > utils", () => {
             "scalar.comparisons": [comparison],
           };
 
-          const isValid = isComparisonValid(
-            comparison,
-            multiSeries,
-            settings as VisualizationSettings,
-          );
+          const isValid = isComparisonValid(comparison, multiSeries, settings);
 
           expect(isValid).toBe(true);
         });
@@ -381,8 +379,10 @@ describe("SmartScalar > utils", () => {
           };
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -400,8 +400,10 @@ describe("SmartScalar > utils", () => {
           };
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -420,11 +422,7 @@ describe("SmartScalar > utils", () => {
             "scalar.comparisons": [comparison],
           };
 
-          const isValid = isComparisonValid(
-            comparison,
-            multiSeries,
-            settings as VisualizationSettings,
-          );
+          const isValid = isComparisonValid(comparison, multiSeries, settings);
 
           expect(isValid).toBe(false);
         });
@@ -441,8 +439,10 @@ describe("SmartScalar > utils", () => {
           };
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -467,7 +467,7 @@ describe("SmartScalar > utils", () => {
             ["2019-11-01", 300],
           ];
           const isValid = isComparisonValid(
-            comparison as SmartScalarComparisonStaticNumber,
+            comparison,
             series({ rows, insights: [] }),
             settings,
           );
@@ -490,8 +490,10 @@ describe("SmartScalar > utils", () => {
           ];
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonStaticNumber,
             series({ rows, insights: [] }),
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 
@@ -513,8 +515,10 @@ describe("SmartScalar > utils", () => {
           ];
 
           const isValid = isComparisonValid(
+            // Unjustified type cast. FIXME
             comparison as SmartScalarComparisonStaticNumber,
             series({ rows, insights: [] }),
+            // Unjustified type cast. FIXME
             settings as VisualizationSettings,
           );
 

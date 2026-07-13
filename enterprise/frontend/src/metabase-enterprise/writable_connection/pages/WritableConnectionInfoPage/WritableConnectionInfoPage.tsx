@@ -1,6 +1,4 @@
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -14,6 +12,8 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type { DatabaseFormConfig } from "metabase/databases/types";
 import { useDispatch } from "metabase/redux";
+import type { Route } from "metabase/router";
+import { push } from "metabase/router";
 import { Box, Flex, ScrollArea, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, DatabaseData } from "metabase-types/api";

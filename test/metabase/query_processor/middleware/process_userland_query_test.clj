@@ -50,7 +50,8 @@
                                        :query-execution-query (:json_query query-execution)})))))]
           (run
            (fn qe-result* []
-             (let [qe (deref result 1000 ::timed-out)]
+             ;; generous deadline: slow exports (xlsx/POI) on loaded CI runners miss a 1s window
+             (let [qe (deref result 30000 ::timed-out)]
                (cond-> qe
                  (:running_time qe) (update :running_time int?)
                  (:hash qe)         (update :hash (fn [^bytes a-hash]

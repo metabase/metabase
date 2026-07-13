@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
@@ -15,6 +14,7 @@ import {
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Loader } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import {

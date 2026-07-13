@@ -35,6 +35,7 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 export default {
@@ -48,7 +49,7 @@ const DefaultTemplate: StoryFn<{
 }> = ({
   series,
   isDashboard,
-  bgColor = "white",
+  bgColor = "core-white",
   theme,
   hasDevWatermark,
 }: {

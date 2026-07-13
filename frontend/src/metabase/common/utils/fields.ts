@@ -573,6 +573,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
 
 export const FIELD_SEMANTIC_TYPES_MAP = FIELD_SEMANTIC_TYPES.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
+  // Unjustified type cast. FIXME
   {} as Record<FieldSemanticType["id"], FieldSemanticType>,
 );
 

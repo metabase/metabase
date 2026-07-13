@@ -52,6 +52,7 @@ describe("getWaterfallChartModel", () => {
     measureText: () => 10,
     measureTextHeight: () => 10,
     fontFamily: "Arial",
+    // Unjustified type cast. FIXME
     theme: { cartesian: { label: { fontSize: 12 } } } as any,
   };
 

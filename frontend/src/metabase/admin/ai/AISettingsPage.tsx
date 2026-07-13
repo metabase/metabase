@@ -17,7 +17,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import { useRouter } from "metabase/router/useRouter";
+import { useRouter } from "metabase/router";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";

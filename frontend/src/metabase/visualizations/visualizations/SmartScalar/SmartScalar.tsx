@@ -129,6 +129,7 @@ export function SmartScalar({
             gridSize={gridSize}
             height={valueHeight}
             totalNumGridCols={totalNumGridCols}
+            // Unjustified type cast. FIXME
             value={displayValue as string}
             width={getValueWidth(width)}
           />

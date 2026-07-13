@@ -10,7 +10,7 @@
 }
 
 .error {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   margin: 0.5rem 0;
   white-space: pre-wrap;
 }
