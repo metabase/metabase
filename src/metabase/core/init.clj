@@ -64,7 +64,6 @@
    [metabase.settings.init]
    [metabase.setup.init]
    [metabase.slackbot.init]
-   [metabase.sql-parsing.init]
    [metabase.sql-tools.init]
    [metabase.sso.init]
    [metabase.store-api.init]
