@@ -71,10 +71,12 @@
     (assert v (str ns-sym "/" sym " not found"))
     v))
 
+(def ^:private babashka-executable "./bin/bb")
+
 (def ^:private babashka-available
   (delay
     (try
-      (zero? (:exit (shell/sh "bb" "--version")))
+      (zero? (:exit (shell/sh babashka-executable "--version")))
       (catch java.io.IOException _
         false))))
 
@@ -92,7 +94,7 @@
                                 ") "
                                 (pr-str filename)
                                 "))))")
-        {:keys [exit out err]} (shell/sh "bb" "-e" expr)]
+        {:keys [exit out err]} (shell/sh babashka-executable "-e" expr)]
     (when-not (zero? exit)
       (throw (ex-info "Babashka mage.modules evaluation failed"
                       {:exit exit
@@ -109,7 +111,7 @@
                                 " "
                                 (pr-str (list 'quote module))
                                 "))))")
-        {:keys [exit out err]} (shell/sh "bb" "-e" expr)]
+        {:keys [exit out err]} (shell/sh babashka-executable "-e" expr)]
     (when-not (zero? exit)
       (throw (ex-info "Babashka mage.modules test-path evaluation failed"
                       {:exit exit
@@ -128,7 +130,7 @@
                                 "    (prn ((deref updated-files->updated-modules) "
                                 (pr-str filenames)
                                 ")))))")
-        {:keys [exit out err]} (shell/sh "bb" "-e" expr)]
+        {:keys [exit out err]} (shell/sh babashka-executable "-e" expr)]
     (when-not (zero? exit)
       (throw (ex-info "Babashka mage.modules updated-files evaluation failed"
                       {:exit exit
@@ -264,13 +266,28 @@
         (is (contains? (module->test-files modules-config 'lib.schema)
                        "test/metabase/lib/schema_test.cljc")))
       (if (babashka-available?)
-        (testing "mage.modules emits both exact-file and nested-directory test paths"
-          (is (= #{"test/metabase/actions_rest"}
-                 (set (bb-mage-module->test-paths modules-config 'actions.rest))))
-          (is (= #{"test/metabase/lib/schema"
-                   "test/metabase/lib/schema_test.cljc"}
-                 (set (bb-mage-module->test-paths modules-config 'lib.schema)))))
+        (testing "mage.modules emits exact files owned by each module"
+          (is (contains? (set (bb-mage-module->test-paths modules-config 'actions.rest))
+                         "test/metabase/actions_rest/api_test.clj"))
+          (is (contains? (set (bb-mage-module->test-paths modules-config 'lib.schema))
+                         "test/metabase/lib/schema/util_test.cljc"))
+          (is (contains? (set (bb-mage-module->test-paths modules-config 'lib.schema))
+                         "test/metabase/lib/schema_test.cljc")))
         (is true "Skipping mage.modules path assertions because `bb` is unavailable")))))
+
+(deftest ^:parallel parent-test-discovery-excludes-declared-child-tests-test
+  (let [child-test "test/metabase/query_processor/middleware/cache_backend/db_test.clj"
+        modules-config {'query-processor               {}
+                        'query-processor.cache-backend {:ns-prefix "metabase.query-processor.middleware.cache-backend"}}
+        module->test-files (private-fn 'dev.deps-graph 'module->test-files)]
+    (testing "dev dependency tooling assigns a nested test only to its exact owner"
+      (is (not (contains? (module->test-files modules-config 'query-processor) child-test)))
+      (is (contains? (module->test-files modules-config 'query-processor.cache-backend) child-test)))
+    (if (babashka-available?)
+      (testing "Mage affected-test paths assign a nested test only to its exact owner"
+        (is (not (contains? (set (bb-mage-module->test-paths modules-config 'query-processor)) child-test)))
+        (is (contains? (set (bb-mage-module->test-paths modules-config 'query-processor.cache-backend)) child-test)))
+      (is true "Skipping mage.modules path assertions because `./bin/bb` is unavailable"))))
 
 (deftest ^:parallel explicit-prefix-map-overloads-remain-pure-test
   (testing "dev.deps-graph path helpers honor caller-supplied prefix->module maps instead of recomputing live config"
