@@ -127,13 +127,8 @@
   ([clause]
    (case-boolean->comparison clause default-boolean-types))
   ([clause boolean-field-types]
-   (letfn [(rewrite-cases [cond-cases]
-             (mapv (fn [[e1 e2]]
-                     [(boolean->comparison e1 boolean-field-types) e2])
-                   cond-cases))]
-     (driver-api/match-one clause
-       [tag (opts :guard :lib/uuid) cond-cases & more] ;; mbql5
-       (into [tag opts (rewrite-cases cond-cases)] more)
-
-       [tag cond-cases & more]
-       (into [tag (rewrite-cases cond-cases)] more)))))
+   (let [rewrite-cases (fn [cond-cases]
+                         (mapv (fn [[e1 e2]]
+                                 [(boolean->comparison e1 boolean-field-types) e2])
+                               cond-cases))]
+     (update clause 2 rewrite-cases))))

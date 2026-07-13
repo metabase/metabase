@@ -46,7 +46,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :sqlserver, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true

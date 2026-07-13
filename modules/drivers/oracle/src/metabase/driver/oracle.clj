@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :oracle, :parent #{:sql-jdbc
+(driver/register! :oracle, :parent #{:sql-mbql5 :sql-jdbc
                                      ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (doseq [[feature supported?] {:convert-timezone                 true
@@ -546,8 +546,8 @@
 
 ;; Oracle 23+ supports booleans in conditional expressions. Once Oracle 21c and 19c are no longer supported, we can
 ;; drop these boolean->comparison conversions.
-(defn- boolean->comparison [clause]
-  (sql.qp.boolean-to-comparison/boolean->comparison clause boolean-field-types))
+(defn- boolean->comparison [driver clause]
+  (sql.qp.boolean-to-comparison/boolean->comparison driver clause boolean-field-types))
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :filter]
   [driver _ honeysql-form query]
@@ -822,3 +822,9 @@
 (defmethod sql.qp/transform-literal-like-pattern-honeysql :oracle
   [_driver like-rhs-honeysql]
   [:escape like-rhs-honeysql [:raw "CHR(92)"]])
+
+(defmethod sql.qp/->honeysql [:oracle :value]
+  [driver [_ {:keys [base-type effective-type]} value]]
+  ((get-method sql.qp/->honeysql [::sql.qp.empty-string-is-null/empty-string-is-null :value])
+   driver
+   [:value value {:base_type base-type :effective_type effective-type}]))
