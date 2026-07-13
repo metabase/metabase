@@ -616,12 +616,11 @@
            :database 1
            :stages   [{:lib/type      :mbql.stage/native
                        :native        "SELECT * FROM table WHERE {{checkin_date}};"
-                       :template-tags {"checkin_date"
-                                       {:dimension    [:field {} 2]
+                       :template-tags [{:dimension    [:field {} 2]
                                         :display-name "Checkin Date"
                                         :name         "checkin_date"
                                         :type         :dimension
-                                        :widget-type  :date/all-options}}}]}
+                                        :widget-type  :date/all-options}]}]}
           (lib.query/query-from-legacy-inner-query
            meta/metadata-provider
            1
