@@ -76,6 +76,7 @@ jest.mock("metabase/api/exploration", () => ({
     },
   },
   useSetPageStarredMutation: () => [mockMutationTrigger()],
+  useSetPagesHiddenMutation: () => [mockMutationTrigger()],
 }));
 
 function makeTimeseriesDataset(): Dataset {
