@@ -32,7 +32,7 @@ jest.mock("metabase/router", () => ({
 
 jest.mock("metabase/embedding/config", () => ({
   ...jest.requireActual("metabase/embedding/config"),
-  isEmbedPreview: jest.fn(() => false),
+  isSelfEmbedInIframe: jest.fn(() => false),
 }));
 
 const DASHBOARD_ID = 1;
@@ -157,7 +157,7 @@ describe("useDashboardUrlQuery", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("does not sync when isEmbedPreview() is true", () => {
+  it("does not sync when isSelfEmbedInIframe() is true", () => {
     // Unjustified type cast. FIXME
     (isSelfEmbedInIframe as jest.Mock).mockReturnValue(true);
 
