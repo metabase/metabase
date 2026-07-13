@@ -117,15 +117,15 @@ describe("ModelCacheRefreshJobs", () => {
       ],
     });
 
-    const rows = () => screen.getAllByTestId("model-cache-log-row");
+    const getRows = () => screen.getAllByTestId("model-cache-log-row");
     await screen.findAllByTestId("model-cache-log-row");
-    expect(rows()[0]).toHaveTextContent("Zebra");
-    expect(rows()[1]).toHaveTextContent("Apple");
+    expect(getRows()[0]).toHaveTextContent("Zebra");
+    expect(getRows()[1]).toHaveTextContent("Apple");
 
     await userEvent.click(screen.getByRole("columnheader", { name: /Model/ }));
 
-    expect(rows()[0]).toHaveTextContent("Apple");
-    expect(rows()[1]).toHaveTextContent("Zebra");
+    expect(getRows()[0]).toHaveTextContent("Apple");
+    expect(getRows()[1]).toHaveTextContent("Zebra");
   });
 
   it("sorts client-side by Collection when its header is clicked", async () => {
@@ -136,16 +136,16 @@ describe("ModelCacheRefreshJobs", () => {
       ],
     });
 
-    const rows = () => screen.getAllByTestId("model-cache-log-row");
+    const getRows = () => screen.getAllByTestId("model-cache-log-row");
     await screen.findAllByTestId("model-cache-log-row");
-    expect(rows()[0]).toHaveTextContent("Zeta");
-    expect(rows()[1]).toHaveTextContent("Alpha");
+    expect(getRows()[0]).toHaveTextContent("Zeta");
+    expect(getRows()[1]).toHaveTextContent("Alpha");
 
     await userEvent.click(
       screen.getByRole("columnheader", { name: /Collection/ }),
     );
 
-    expect(rows()[0]).toHaveTextContent("Alpha");
-    expect(rows()[1]).toHaveTextContent("Zeta");
+    expect(getRows()[0]).toHaveTextContent("Alpha");
+    expect(getRows()[1]).toHaveTextContent("Zeta");
   });
 });
