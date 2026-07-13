@@ -21,7 +21,18 @@ import { QuestionName } from "metabase/common/components/QuestionName";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { Button, Center, Icon, Loader, Radio, Stack } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Center,
+  Icon,
+  Loader,
+  Menu,
+  Radio,
+  Stack,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
@@ -204,20 +215,55 @@ const EditSandboxingModal = ({
             <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            <Button
-              data-testid="custom-view-picker-button"
-              onClick={showModal}
-              fullWidth
-              rightSection={<Icon name="ellipsis" />}
-              styles={{
-                inner: {
-                  justifyContent: "space-between",
-                },
-                root: { "&:active": { transform: "none" } },
-              }}
-            >
-              {policyCard?.name ?? t`Select a question`}
-            </Button>
+            <Box pos="relative">
+              <Button
+                data-testid="custom-view-picker-button"
+                onClick={showModal}
+                fullWidth
+                rightSection={policyCard ? undefined : <Icon name="ellipsis" />}
+                styles={{
+                  inner: {
+                    justifyContent: "space-between",
+                  },
+                  label: policyCard ? { paddingRight: "2rem" } : undefined,
+                  root: { "&:active": { transform: "none" } },
+                }}
+              >
+                {policyCard?.name ?? t`Select a question`}
+              </Button>
+              {policyCard && (
+                <Menu position="bottom-end">
+                  <Menu.Target>
+                    <ActionIcon
+                      aria-label={t`Question options`}
+                      pos="absolute"
+                      right="0.75rem"
+                      top="50%"
+                      style={{ transform: "translateY(-50%)" }}
+                    >
+                      <Icon name="ellipsis" />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      component="a"
+                      href={Urls.card(policyCard)}
+                      target="_blank"
+                      rel="noreferrer"
+                      leftSection={<Icon name="external" />}
+                    >
+                      {t`Go to question`}
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={showModal}
+                      leftSection={<Icon name="refresh" />}
+                    >
+                      {t`Replace`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+            </Box>
             {showPickerModal && (
               <QuestionPickerModal
                 value={
