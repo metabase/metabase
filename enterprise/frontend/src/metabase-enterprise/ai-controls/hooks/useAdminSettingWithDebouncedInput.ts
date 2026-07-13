@@ -16,6 +16,7 @@ export function useAdminSettingWithDebouncedInput<T>(
   defaultValue: T | null = null,
 ) {
   const { value: settingValue, updateSetting } = useAdminSetting(settingName);
+  // Unjustified type cast. FIXME
   const [inputValue, setInputValue] = useState<T>(settingValue as T);
   const { sendErrorToast } = useMetadataToasts();
 
@@ -25,6 +26,7 @@ export function useAdminSettingWithDebouncedInput<T>(
       inputValue === undefined && // Input has not been initialized
       settingValue !== undefined // and setting has been fetched
     ) {
+      // Unjustified type cast. FIXME
       setInputValue((settingValue || defaultValue) as T);
     }
   }, [defaultValue, inputValue, settingValue]);
@@ -32,6 +34,7 @@ export function useAdminSettingWithDebouncedInput<T>(
   const debouncedSaveSetting = useDebouncedCallback(async (value: T) => {
     const response = await updateSetting({
       key: settingName,
+      // Unjustified type cast. FIXME
       value: value as EnterpriseSettingValue<typeof settingName>,
       toast: false,
     });

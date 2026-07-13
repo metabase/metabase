@@ -218,6 +218,7 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
         },
   );
 
+  // Unjustified type cast. FIXME
   const models = modelsResult.data?.data as ModelResult[] | undefined;
 
   const recentsCap = getMaxRecentModelCount(models?.length ?? 0);

@@ -32,6 +32,7 @@ export function buildInitialValues(
   structured?: StructuredIndex,
   carriedValues?: IndexFormValues,
 ): IndexFormValues {
+  // Unjustified type cast. FIXME
   const source = structured as Record<string, IndexFieldValue> | undefined;
   return Object.fromEntries(
     fields.map((field) => [
@@ -94,5 +95,6 @@ export function toStructured(
       structured[field.name] = value;
     }
   }
+  // Unjustified type cast. FIXME
   return structured as StructuredIndex;
 }

@@ -186,6 +186,7 @@ describe("Database", () => {
       const database = setup();
       const question = database.nativeQuestion({ query: "SELECT 1" });
 
+      // Unjustified type cast. FIXME
       const query = question.legacyNativeQuery() as NativeQuery;
       expect(query.queryText()).toBe("SELECT 1");
     });

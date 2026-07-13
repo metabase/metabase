@@ -89,6 +89,7 @@ export function HomepageSetting() {
       />
       <Radio.Group
         value={mode}
+        // Unjustified type cast. FIXME
         onChange={(v) => handleModeChange(v as Mode)}
         name="homepage-mode"
         aria-label={t`Homepage`}

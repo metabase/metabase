@@ -47,6 +47,7 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
           ...map,
           [limitObj.group_id]: limitObj.max_usage,
         }),
+        // Unjustified type cast. FIXME
         {} as GroupLimitsMap,
       ),
     [groupLimits],

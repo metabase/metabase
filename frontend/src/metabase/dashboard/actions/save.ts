@@ -154,6 +154,7 @@ export const updateDashboardAndCards = createThunkAction(
           .map((dc) =>
             dispatch(
               cardApi.endpoints.updateCard.initiate(
+                // Unjustified type cast. FIXME
                 dc.card as UpdateCardRequest,
               ),
             ).unwrap(),

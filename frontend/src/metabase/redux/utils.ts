@@ -57,6 +57,7 @@ export function withAction<TArgs extends unknown[]>(actionType: string) {
         // thunk, return a new thunk
         return async (dispatch: Dispatch, getState: () => State) => {
           try {
+            // Unjustified type cast. FIXME
             const payload = await (payloadOrThunk as Thunk)(dispatch, getState);
             const dispatchValue = { type: actionType, payload: payload };
             dispatch(dispatchValue);

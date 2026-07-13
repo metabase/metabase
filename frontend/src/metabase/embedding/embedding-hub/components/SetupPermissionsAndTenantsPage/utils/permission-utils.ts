@@ -82,6 +82,7 @@ export function buildPermissionsGraph(
       viewData[schema] = {};
     }
 
+    // Unjustified type cast. FIXME
     (viewData[schema] as Record<TableId, string>)[tableId] = "sandboxed";
   }
 

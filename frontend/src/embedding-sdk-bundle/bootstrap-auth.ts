@@ -162,6 +162,7 @@ async function performFullAuthFlow(config: {
     ? { method: "jwt" as const, url: config.jwtProviderUri }
     : await connectToInstanceAuthSso(config.metabaseInstanceUrl, {
         headers,
+        // Unjustified type cast. FIXME
         preferredAuthMethod: config.preferredAuthMethod as
           | "jwt"
           | "saml"

@@ -47,6 +47,7 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
 
     cy.get("@questionId").then(async (questionId) => {
       const token = await getSignedJwtForResource({
+        // Unjustified type cast. FIXME
         resourceId: questionId as unknown as number,
         resourceType: "question",
       });
@@ -80,6 +81,7 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
 
     cy.get("@questionEntityId").then(async (questionEntityId) => {
       const token = await getSignedJwtForResource({
+        // Unjustified type cast. FIXME
         resourceId: questionEntityId as unknown as number,
         resourceType: "question",
       });
@@ -137,6 +139,7 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
 
     cy.get("@questionId").then(async (questionId) => {
       const token = await getSignedJwtForResource({
+        // Unjustified type cast. FIXME
         resourceId: questionId as unknown as number,
         resourceType: "question",
       });

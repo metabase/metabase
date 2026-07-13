@@ -97,6 +97,7 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     dashboardId != null ? { id: dashboardId } : skipToken,
   );
 
+  // Unjustified type cast. FIXME
   const locationState = props.location.state as { cardId?: number } | undefined;
 
   const onSearchItemSelect = (result: SearchResult) => {

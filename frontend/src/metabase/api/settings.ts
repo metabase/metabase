@@ -20,6 +20,7 @@ export const settingsApi = Api.injectEndpoints({
         url: "/api/setting",
       }),
       transformResponse: (response: SettingDefinition[]) =>
+        // Unjustified type cast. FIXME
         _.indexBy(response, "key") as SettingDefinitionMap,
       providesTags: ["session-properties"],
     }),

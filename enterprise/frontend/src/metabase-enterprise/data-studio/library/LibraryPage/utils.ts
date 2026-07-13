@@ -26,6 +26,7 @@ export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
   if (treeItem.model === "empty-state" || isEmptyStateData(treeItem.data)) {
     return null;
   }
+  // Unjustified type cast. FIXME
   const entityId = treeItem.data.id as number;
   if (treeItem.model === "metric") {
     return Urls.dataStudioMetric(entityId);

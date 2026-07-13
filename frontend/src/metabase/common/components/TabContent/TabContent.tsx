@@ -22,6 +22,7 @@ export const TabContent = function TabContent<T>({
     return { value, idPrefix, onChange };
   }, [value, idPrefix, onChange]);
 
+  // Unjustified type cast. FIXME
   return (
     <TabContext.Provider value={context as TabContextType}>
       {children}

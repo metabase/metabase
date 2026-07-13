@@ -21,6 +21,7 @@ const EMPTY_GROUP_LIST: Group[] = [];
 // typed them as `Group[]`. Downstream code never reads `members` from list
 // results, so we cast to preserve the existing call signatures.
 export const selectGroupList = (state: State): Group[] =>
+  // Unjustified type cast. FIXME
   (permissionApi.endpoints.listPermissionsGroups.select({})(state).data ??
     EMPTY_GROUP_LIST) as Group[];
 

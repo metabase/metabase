@@ -68,6 +68,7 @@ export async function setup({
       component={() => (
         <MockDashboardContext
           dashboard={dashboard}
+          // Unjustified type cast. FIXME
           setDashboardAttributes={setDashboardAttribute as any}
           closeSidebar={onClose}
         >

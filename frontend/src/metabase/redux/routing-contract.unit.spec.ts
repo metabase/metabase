@@ -46,6 +46,7 @@ const setup = () => {
 
   const locationChanges = () =>
     actions.filter((a) => a.type === LOCATION_CHANGE);
+  // Unjustified type cast. FIXME
   const location = () => getLocation(store.getState() as any);
 
   return { store, history: syncedHistory, location, locationChanges };

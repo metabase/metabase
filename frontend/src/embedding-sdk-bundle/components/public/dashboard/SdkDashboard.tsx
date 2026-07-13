@@ -669,6 +669,7 @@ const SdkDashboardInner = ({
   );
 };
 
+// Unjustified type cast. FIXME
 export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
   supportsGuestEmbed: true,
 }) as typeof SdkDashboardInner &

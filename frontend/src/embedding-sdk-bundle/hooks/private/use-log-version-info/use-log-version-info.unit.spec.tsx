@@ -16,9 +16,11 @@ const setup = async ({
   sdkPackageVersion: string;
   sdkBundleVersion: string;
 }) => {
+  // Unjustified type cast. FIXME
   (getBuildInfo as jest.Mock).mockReturnValueOnce({
     version: sdkPackageVersion,
   });
+  // Unjustified type cast. FIXME
   (getBuildInfo as jest.Mock).mockReturnValueOnce({
     version: sdkBundleVersion,
   });

@@ -245,4 +245,5 @@ const TableDetail = (props: TableDetailProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(TableDetail as unknown as React.ComponentType);

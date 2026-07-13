@@ -28,6 +28,7 @@ const createChartLayout = (): ChartLayout => ({
 const createChartInstance = (
   pixelByDate: Record<string, number>,
 ): EChartsType =>
+  // Unjustified type cast. FIXME
   ({
     convertToPixel: (_finder: unknown, value: string) =>
       pixelByDate[value] ?? NaN,

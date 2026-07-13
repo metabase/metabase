@@ -98,6 +98,7 @@ describe("query builder code edits from omnibot", () => {
       };
     });
 
+    // Unjustified type cast. FIXME
     const storeInitialState = createMockState({
       currentUser: createMockUser(),
       settings: mockSettings({
@@ -121,6 +122,7 @@ describe("query builder code edits from omnibot", () => {
         storeInitialState: storeInitialState,
       },
     );
+    // Unjustified type cast. FIXME
     const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
       dispatch: ThunkDispatch<State, void, AnyAction>;
       getState: () => State;
@@ -136,6 +138,7 @@ describe("query builder code edits from omnibot", () => {
         sendAgentRequest({
           agentId: "omnibot",
           message: "Please rewrite this query",
+          // Unjustified type cast. FIXME
           conversation_id: conversationId as string,
           context: {
             user_is_viewing: [

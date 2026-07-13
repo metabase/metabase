@@ -59,6 +59,7 @@ export const EmojiSuggestionExtension =
             range: Range;
             props: { emoji?: string };
           }) => {
+            // Unjustified type cast. FIXME
             const emoji = (props as any)?.emoji as string | undefined;
             if (!emoji) {
               return;
@@ -234,6 +235,7 @@ function renderEmojiPicker() {
 // Helpers
 function setEmojiPopupOpen(editor: Editor, isOpen: boolean) {
   try {
+    // Unjustified type cast. FIXME
     const storage = (editor.storage as any).emojiSuggestion;
     if (storage) {
       storage.isEmojiPopupOpen = isOpen;

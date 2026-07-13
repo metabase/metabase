@@ -121,6 +121,7 @@ export function GroupLimitsSettingsSection() {
     <SettingsSection title={t`Group and tenant limits`}>
       <Tabs
         value={activeTab}
+        // Unjustified type cast. FIXME
         onChange={(value) => setActiveTab(value as GroupLimitsTabValue)}
       >
         <Tabs.List mb="md">

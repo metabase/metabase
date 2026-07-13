@@ -49,6 +49,7 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
         error: null,
       };
     } catch (error) {
+      // Unjustified type cast. FIXME
       return { widgets: [], error: error as Error };
     }
   }, [transformedSeries, handleChangeSettings]);

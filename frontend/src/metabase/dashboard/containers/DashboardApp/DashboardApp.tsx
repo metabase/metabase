@@ -104,6 +104,7 @@ export const DashboardApp = ({
 
   const parameterQueryParams = location.query;
   const dashboardId =
+    // Unjustified type cast. FIXME
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
   useRegisterDashboardMetabotContext();
@@ -155,6 +156,7 @@ export const DashboardApp = ({
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
+        // Unjustified type cast. FIXME
         setError(error as string);
       }
     }

@@ -11,6 +11,7 @@ import type { DimensionClickHandler } from "./types";
 // needed for visualizationIsClickable to return true when a custom handler is
 // attached; handleVisualizationClick short-circuits before this action runs
 const CLICKABLE_MODE: ClickActionsMode = {
+  // Unjustified type cast. FIXME
   actionsForClick: () => [{ name: "custom-click" } as any],
 };
 

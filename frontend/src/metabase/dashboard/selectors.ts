@@ -714,6 +714,7 @@ export const getParameterMappingsBeforeEditing = createSelector(
         }
 
         map[parameterId][dashcard.id] =
+          // Unjustified type cast. FIXME
           parameterMapping as DashboardParameterMapping;
       }
     }

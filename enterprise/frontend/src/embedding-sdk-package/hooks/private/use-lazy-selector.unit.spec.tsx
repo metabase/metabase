@@ -69,6 +69,7 @@ const makeStore = (initialStatus: string) => {
  * "store with a real status".
  */
 const getStatus = (state: SdkStoreState) =>
+  // Unjustified type cast. FIXME
   (state as unknown as FakeState).sdk?.initStatus?.status ?? null;
 
 /**
@@ -100,6 +101,7 @@ const Provider = ({ status }: { status: string }) => {
   useEffect(() => {
     const store = makeStore(status);
     ensureMetabaseProviderPropsStore().updateInternalProps({
+      // Unjustified type cast. FIXME
       reduxStore: store as any,
     });
     return () => {
@@ -112,9 +114,11 @@ const Provider = ({ status }: { status: string }) => {
 describe("useLazySelector — provider remount with stale consumer", () => {
   // Clear the window-scoped singleton so each test starts from scratch.
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     delete (window as any)[PROPS_STORE_KEY];
   });
   afterEach(() => {
+    // Unjustified type cast. FIXME
     delete (window as any)[PROPS_STORE_KEY];
   });
 

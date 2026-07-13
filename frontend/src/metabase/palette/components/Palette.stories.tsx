@@ -37,6 +37,7 @@ registerVisualization(LineChart);
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
 
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {
