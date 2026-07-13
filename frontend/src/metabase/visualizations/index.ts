@@ -41,6 +41,10 @@ export function setDefaultVisualization(visualization: Visualization) {
   defaultVisualization = visualization;
 }
 
+function isVisualizationComponent(visualization: Visualization | undefined) {
+  return typeof visualization === "function";
+}
+
 export function registerVisualization(visualization: Visualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
@@ -52,30 +56,30 @@ export function registerVisualization(visualization: Visualization) {
         visualization.name,
     );
   }
-  // visualizations.get falls back to the default visualization, so check
-  // has() to only look at actual registrations.
   if (visualizations.has(identifier)) {
-    const existing = visualizations.get(identifier);
-    // static-viz/register.ts used to register the same component modules as
-    // the app, so duplicate registrations were identical and skipping them was
-    // harmless. It now registers bare definition objects to keep components
-    // out of the static-viz bundle, so when both sides load in one runtime
-    // (storybook), keep the renderable component over the bare definition.
-    const existingIsComponent = typeof existing === "function";
-    const incomingIsComponent = typeof visualization === "function";
-    if (incomingIsComponent && !existingIsComponent) {
-      // fall through and overwrite the bare definition with the component
-    } else if (!incomingIsComponent && existingIsComponent) {
-      return;
-    } else if (isStorybookActive) {
-      console.error(
-        `Visualization with that identifier is already registered: ` +
-          visualization.name,
-      );
+    const registeredVisualization = visualizations.get(identifier);
+    const isReplacingDefinitionWithComponent =
+      isVisualizationComponent(visualization) &&
+      !isVisualizationComponent(registeredVisualization);
+    const isRegisteringDefinitionOverComponent =
+      !isVisualizationComponent(visualization) &&
+      isVisualizationComponent(registeredVisualization);
 
-      // do not throw if it's storybook
+    if (isRegisteringDefinitionOverComponent) {
       return;
-    } else {
+    }
+
+    if (!isReplacingDefinitionWithComponent) {
+      if (isStorybookActive) {
+        console.error(
+          `Visualization with that identifier is already registered: ` +
+            visualization.name,
+        );
+
+        // do not throw if it's storybook
+        return;
+      }
+
       throw new Error(
         t`Visualization with that identifier is already registered: ` +
           visualization.name,
