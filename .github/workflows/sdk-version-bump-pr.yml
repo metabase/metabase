@@ -177,15 +177,13 @@ jobs:
           LATEST_MAJOR_VERSION: ${{ vars.LATEST_MAJOR_VERSION }}
           RELEASE_TYPE: ${{ inputs.release_type }}
         run: |
-          # These are sensible starting defaults, not a policy decision - the
-          # whole point of this PR is that a human reviews/edits distTag and
-          # tagAsLatest before merging.
+          # Defaults, computed from the branch and the release type. They are
+          # written into the bump PR so they are visible and can be edited there
+          # before merging - but the release does not wait on anyone's approval;
+          # whoever dispatched the bump already made the call.
           #
-          # "<major>-stable" and "<major>-beta" ARE real, already-live npm
-          # dist-tags (confirmed via `npm dist-tag ls @metabase/embedding-sdk-react`
-          # - 51-stable through 62-stable, and 57-beta through 62-beta, are all
-          # in active use today); plain "alpha" is also real and in use. So are
-          # the one-off <major>-<id> tags (56-esbuild, 63-data-apps).
+          # Every dist-tag below is real and in use today: alpha, <major>-beta,
+          # <major>-stable, and the one-off <major>-<id> (56-esbuild, 63-data-apps).
           MAJOR_VERSION="${{ steps.bump.outputs.major_version }}"
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
 
