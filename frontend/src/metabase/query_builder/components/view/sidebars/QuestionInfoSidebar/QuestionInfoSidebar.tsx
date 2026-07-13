@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
 import { Link } from "metabase/common/components/Link";
 import {
@@ -30,7 +30,7 @@ import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 
 interface QuestionInfoSidebarProps {
   question: Question;
-  onSave: (question: Question) => Promise<Question>;
+  onSave: (question: Question) => Promise<void>;
 }
 
 export const QuestionInfoSidebar = ({

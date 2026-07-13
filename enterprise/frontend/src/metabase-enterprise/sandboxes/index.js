@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,6 +17,7 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
+import { push } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { DataPermissionValue } from "metabase-types/api";
 
@@ -68,7 +68,6 @@ export function initializePlugin() {
         key=":tableId/segmented"
         path=":tableId/segmented"
         modal={EditSandboxingModal}
-        modalProps={{ enableMouseEvents: true }}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
@@ -76,7 +75,6 @@ export function initializePlugin() {
         key="segmented/group/:groupId"
         path="segmented/group/:groupId"
         modal={EditSandboxingModal}
-        modalProps={{ enableMouseEvents: true }}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);

@@ -13,9 +13,9 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
-   [metabase.search.settings :as search.settings]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -44,13 +44,7 @@
   #{:postgres :h2})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
-  (and (or config/is-dev?
-           ;; TODO (Chris 2025-11-07) This backwards dependency is unfortunate, we should find a better solution.
-           ;;                         Perhaps just an explicit setting for enabling it.
-           ;;                         This also opens us up to swapping out the fallback, e.g. to elastic search.
-           ;; if the default engine is semantic we want appdb to be available, as we want to mix results
-           (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
-       (supported-db? (mdb/db-type))))
+  (supported-db? (mdb/db-type)))
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
@@ -112,6 +106,30 @@
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
+(defn- filter-layers
+  "Ordered `[label add-clauses-fn]` pairs that layer the structural + permission `WHERE` clauses onto an index
+  query. Defined once so [[results]] and the debug [[diagnose]] probe share the exact same chain, and so the
+  diagnostic can attribute exclusion to the first layer (per-permission, then per-filter) that drops a row."
+  [search-ctx]
+  (concat
+   [[:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
+    [:table-permissions      (partial add-table-where-clauses search-ctx)]
+    [:transform-source-type  #(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                                    search-ctx
+                                                    :search_index.model
+                                                    :search_index.source_type))]]
+   (for [[filter-key clause] (search.filter/filter-clauses search-ctx)]
+     [filter-key #(sql.helpers/where % clause)])))
+
+(defn- base-filtered-query
+  "The structural + permission filtered index query (no scoring), parameterized by `search-string`. Passing a
+  blank/nil `search-string` drops the fulltext predicate while keeping every other filter (see
+  `specialization/base-query`)."
+  [search-ctx search-string select-items]
+  (reduce (fn [qry [_ f]] (f qry))
+          (search.index/search-query search-string search-ctx select-items)
+          (filter-layers search-ctx)))
+
 (defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
@@ -151,15 +169,8 @@
             (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
       (let [weights (search.config/weights search-ctx)
             scorers (search.scoring/scorers search-ctx)
-            query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
-                         (add-collection-join-and-where-clauses search-ctx)
-                         (add-table-where-clauses search-ctx)
-                         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                                                 search-ctx
-                                                 :search_index.model
-                                                 :search_index.source_type)))
-                         (search.scoring/with-scores search-ctx scorers)
-                         (search.filter/with-filters search-ctx))]
+            query   (->> (base-filtered-query search-ctx search-string [:legacy_input])
+                         (search.scoring/with-scores search-ctx scorers))]
         (->> (t2/query query)
              (map (partial rehydrate weights (keys scorers)))))
       (catch Exception e
@@ -186,6 +197,65 @@
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))
+
+(defn- restrict-to-row [model id qry]
+  (sql.helpers/where qry [:and
+                          [:= :search_index.model model]
+                          [:= :search_index.model_id (str id)]]))
+
+(defn- row-present? [qry]
+  (-> qry
+      (assoc :select [[[:inline 1] :one]] :limit 1)
+      (dissoc :order-by)
+      t2/query
+      seq
+      boolean))
+
+(defn- first-excluding-layer
+  "Apply the structural + permission [[filter-layers]] cumulatively to the row-restricted, text-free query.
+  Returns the label of the first layer after which the row disappears, or nil if it survives all layers."
+  [search-ctx model id]
+  (loop [qry    (->> (search.index/search-query nil search-ctx [:model_id])
+                     (restrict-to-row model id))
+         layers (filter-layers search-ctx)]
+    (when-let [[[label f] & more] (seq layers)]
+      (let [qry' (f qry)]
+        (if-not (row-present? qry')
+          label
+          (recur qry' more))))))
+
+(defn- appdb-diagnose
+  [search-ctx model id]
+  (let [active (search.index/active-table)]
+    (if (nil? active)
+      {:type :missing-from-index :details {:reason :no-active-index}}
+      (let [index-row (t2/select-one active :model model :model_id (str id))]
+        (cond
+          (nil? index-row)
+          {:type :missing-from-index :details {:active-table active}}
+
+          ;; Perms-first invariant from `search.engine/diagnose`: an access denial is reported ahead of any query
+          ;; filter. The post-query permission check runs first since it can deny rows the SQL layers admit
+          ;; (archived-write, table query perms, …). For read-checked models, that means a collection/table denial
+          ;; may be reported as the generic `:permissions` instead of the more specific SQL-layer label.
+          ;; Inside `first-excluding-layer` the SQL permission layers (collection/table) likewise precede the
+          ;; structural filter clauses (including `:models`).
+          :else
+          (if-not (search.impl/check-result-permissions search-ctx (rehydrate {} [] index-row))
+            {:type :filtered :details {:excluded-by :permissions}}
+            (if-let [layer (first-excluding-layer search-ctx model id)]
+              {:type :filtered :details {:excluded-by layer}}
+              (let [search-string (:search-string search-ctx)]
+                (if (and (not (str/blank? search-string))
+                         (not (row-present? (->> (base-filtered-query search-ctx search-string [:model_id])
+                                                 (restrict-to-row model id)))))
+                  {:type    :not-matching
+                   :details {:search-string search-string :search-native-query (boolean (:search-native-query search-ctx))}}
+                  {:type :candidate :details {:search-string search-string}})))))))))
+
+(defmethod search.engine/diagnose :search.engine/appdb
+  [search-ctx model id]
+  (appdb-diagnose search-ctx model id))
 
 (defn- populate-index! [context]
   (search.index/index-docs! context (search.ingestion/searchable-documents)))

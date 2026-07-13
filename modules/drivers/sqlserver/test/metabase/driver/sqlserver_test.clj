@@ -132,6 +132,37 @@
                                                     :port               1433
                                                     :additional-options "trustServerCertificate=false"})))))
 
+(deftest ^:parallel reject-details-with-dangerous-additional-options-test
+  (mt/test-driver :sqlserver
+    (let [details (:details (mt/db))]
+      (testing "db details with potentially dangerous additional options are rejected"
+        (are [bad-option] (let [bad-opts-details (assoc details :additional-options bad-option)
+                                bad-host-details (update details :host str ";" bad-option)]
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-opts-details)))
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-host-details))))
+          "socketFactoryClass=bad.Factory"
+          "socketFactoryConstructorArg=bad"
+          "trustManagerClass=bad.TrustManager"
+          "trustManagerConstructorArg=/etc/passwd"
+          "accessTokenCallbackClass=bad.Callback"
+          "socketfactoryclass=bad.Factory"
+          "SOCKETFACTORYCLASS=bad.Factory"
+          "socketFactoryClass=bad.Factory;socketFactoryConstructorArg=bad"
+          "socketFactoryClass=bad.Factory;trustServerCertificate=false"
+          "trustServerCertificate=false;socketFactoryClass=bad.Factory"))
+      (testing "db details without potentially dangerous options are accepted"
+        (are [options] (let [details (assoc details :additional-options options)]
+                         (is (true? (driver/can-connect? :sqlserver details))))
+          nil
+          ""
+          " "
+          "trustServerCertificate=false"
+          "trustStore=/path/to/store;trustStorePassword=password;trustStoreType=pkcs12")))))
+
 (deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
@@ -951,3 +982,35 @@
                    (lib/expression "diff-minutes" diff-minutes)
                    (qp/process-query)
                    (mt/rows))))))))
+
+(deftest ^:parallel compile-create-index-test
+  (testing "nonclustered renders with double-quoted identifiers; UNIQUE only when asked, ASC/DESC per column"
+    (is (= [["CREATE NONCLUSTERED INDEX \"by_cat\" ON \"t\" (\"category\")"]]
+           (driver/compile-create-index :sqlserver nil "t"
+                                        {:kind :nonclustered :name "by_cat" :columns [{:name "category"}]})))
+    (is (= [["CREATE UNIQUE NONCLUSTERED INDEX \"by_cat\" ON \"dbo\".\"t\" (\"category\" DESC, \"price\" ASC)"]]
+           (driver/compile-create-index :sqlserver "dbo" "t"
+                                        {:kind :nonclustered :name "by_cat" :unique true
+                                         :columns [{:name "category" :direction :desc} {:name "price" :direction :asc}]}))))
+  (testing "clustered renders the CLUSTERED keyword"
+    (is (= [["CREATE CLUSTERED INDEX \"by_cat\" ON \"t\" (\"category\")"]]
+           (driver/compile-create-index :sqlserver nil "t"
+                                        {:kind :clustered :name "by_cat" :columns [{:name "category"}]}))))
+  (testing "SQL Server has no CREATE INDEX IF NOT EXISTS, so :if-not-exists guards via a T-SQL IF NOT EXISTS block"
+    (let [[[stmt]] (driver/compile-create-index :sqlserver "dbo" "t"
+                                                {:kind :nonclustered :name "by_cat" :if-not-exists true
+                                                 :columns [{:name "category"}]})]
+      (is (str/starts-with? stmt "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'by_cat'")
+          "guards on the index name before creating")
+      (is (str/includes? stmt "CREATE NONCLUSTERED INDEX \"by_cat\"")
+          "still emits the create")))
+  (testing "a SQL-injection payload is escaped in every context the name lands: quoted identifier and N'' literal"
+    (let [[[stmt]] (driver/compile-create-index :sqlserver "dbo" "t"
+                                                {:kind :nonclustered :name "by\"cat'; DROP TABLE x; --" :if-not-exists true
+                                                 :columns [{:name "cat\"; DROP TABLE x; --"}]})]
+      (is (str/includes? stmt "CREATE NONCLUSTERED INDEX \"by\"\"cat'; DROP TABLE x; --\"")
+          "index name is a doubled-quote identifier in the CREATE")
+      (is (str/includes? stmt "(\"cat\"\"; DROP TABLE x; --\")")
+          "column is a doubled-quote identifier")
+      (is (str/includes? stmt "name = N'by\"cat''; DROP TABLE x; --'")
+          "name in the IF NOT EXISTS guard is a doubled-quote N'' string literal"))))

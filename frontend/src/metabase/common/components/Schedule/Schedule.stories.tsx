@@ -18,6 +18,7 @@ const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getPublicStore(storeInitialState) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {

@@ -31,7 +31,7 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
       pointer-events: none;
 
       &:hover {
-        background: var(--mb-color-background-primary);
+        background: var(--mb-color-background_page-primary);
 
         ${SidebarLink.RightElement} {
           opacity: 0;

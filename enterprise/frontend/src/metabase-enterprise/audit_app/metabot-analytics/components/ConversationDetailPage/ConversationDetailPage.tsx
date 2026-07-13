@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { MetabotAdminLayout } from "metabase/admin/ai/MetabotAdminLayout";
@@ -19,6 +18,7 @@ import type {
 import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
+import type { WithRouterProps } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -198,7 +198,7 @@ function FeedbackCard({
           />
           <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
           {!feedback.positive && feedback.issue_type && (
-            <Badge variant="light" bg="background-error" c="error" ml="xs">
+            <Badge color="negative" ml="xs" size="sm">
               {getIssueTypeLabel(feedback.issue_type)}
             </Badge>
           )}
@@ -216,10 +216,10 @@ function FeedbackCard({
             hideActions
             getCopyText={noopGetCopyText}
             submittedFeedback={undefined}
-            bg="background-secondary"
+            bg="background_page-secondary"
             p="md"
             pb="0"
-            bd="1px solid var(--mb-color-border)"
+            bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />
         )}

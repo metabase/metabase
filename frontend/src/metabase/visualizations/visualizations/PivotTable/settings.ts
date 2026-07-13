@@ -225,9 +225,7 @@ export const settings = {
         const hasOnlyFormattableColumns =
           columnFormat.columns
             .map((columnName) =>
-              (data.cols as DatasetColumn[]).find(
-                (column) => column.name === columnName,
-              ),
+              data.cols.find((column) => column.name === columnName),
             )
             .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 
@@ -260,7 +258,7 @@ export const _columnSettings = {
     inline: true,
     getWrapperStyle: () => ({
       paddingBottom: "1rem",
-      borderBottom: `1px solid var(--mb-color-border)`,
+      borderBottom: `1px solid var(--mb-color-border-neutral)`,
     }),
     getProps: () => ({
       options: [

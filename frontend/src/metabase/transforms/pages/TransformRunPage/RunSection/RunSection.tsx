@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -9,10 +8,11 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -92,7 +92,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
-      c="text-tertiary"
+      c="text-disabled"
       ml="lg"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );

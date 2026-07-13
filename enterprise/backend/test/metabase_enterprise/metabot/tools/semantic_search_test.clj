@@ -88,15 +88,15 @@
                             :entity-types ["table"]}
                       results (search/search args)]
                   (is (empty? results)))))
-            (testing "search with metabot verified content flag"
+            (testing "search with metabot verified-or-curated content flag"
               (let [metabot {:entity_id "test-bot"
                              :use_verified_content true}]
                 (with-redefs [t2/select-one (fn [model & _]
                                               (is (= :model/Metabot model) "Should query for Metabot model")
                                               metabot)
                               search-core/search (fn [context]
-                                                   ;; Verify that verified flag is set when metabot has use_verified_content
-                                                   (is (true? (:verified context)))
+                                                   ;; use_verified_content now drives the curated filter, not :verified
+                                                   (is (true? (:curated? context)))
                                                    {:data [dashboard]})]
                   (let [results (search/search {:term-queries ["test"]
                                                 :metabot-id "test-bot"
@@ -120,7 +120,7 @@
     (mt/with-test-user :rasta
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-and-without-semantic-search! test-mock-embeddings
-          (search.tu/with-new-search-and-legacy-search
+          (search.tu/with-appdb-search-and-legacy-search
             (let [semantic-support? (search.engine/supported-engine? :search.engine/semantic)]
               ;; "belligerent" and "bellicose" are semantically similar to our search terms
               ;; ("combative", "quarrelsome") but should NOT match since we're only doing keyword search
@@ -146,7 +146,7 @@
     (mt/with-test-user :rasta
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (with-semantic-search-if-available! test-mock-embeddings
-          (search.tu/with-new-search-and-legacy-search
+          (search.tu/with-appdb-search-and-legacy-search
             ;; "belligerent" and "baseline" will match via keyword search (exact match in term-queries)
             ;; "ancillary" and "adjunct" will match via semantic search (similar embeddings)
             ;; "bellicose" and "quixotic" should NOT match (not in search terms)

@@ -1,4 +1,5 @@
 import type { CurrencyStyle } from "metabase/utils/formatting";
+import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -30,10 +31,19 @@ import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
-import type { PieRow, SmartScalarComparison } from "./visualization-settings";
+import type {
+  PieRow,
+  SmartScalarComparison,
+  TreemapRow,
+} from "./visualization-settings";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
+
+export type CardCreationType =
+  | "simple_question"
+  | "custom_question"
+  | "native_question";
 
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
@@ -117,6 +127,9 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: number;
   displayIsLocked?: boolean;
+
+  // Not part of the card API contract, a transient marker for how the card was created
+  creationType?: CardCreationType;
 }
 
 export type LineSize = "S" | "M" | "L";
@@ -239,16 +252,48 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
 
-export interface ColumnSettings {
+export type ColumnSettings = TimeOnlyOptions & {
+  _column_title_full?: string;
+  "pivot_table.column_show_totals"?: boolean;
+  text_align?: "left" | "middle" | "right";
+  click_behavior?: ClickBehavior;
+  clicked?: any;
+  collapseNewlines?: boolean;
+  column?: any;
   column_title?: string;
-  number_separators?: string;
+  compact?: boolean;
   currency?: string;
   currency_style?: CurrencyStyle;
-  click_behavior?: ClickBehavior;
-
-  // some options are untyped
+  date_abbreviate?: boolean;
+  date_format?: string;
+  date_separator?: string;
+  date_style?: string | null;
+  decimals?: number;
+  isExclude?: boolean;
+  jsx?: boolean;
+  link_text?: string;
+  link_url?: string;
+  majorWidth?: number;
+  markdown_template?: any;
+  maximumFractionDigits?: number;
+  negativeInParentheses?: boolean;
+  noRange?: boolean;
+  number_separators?: string;
+  number_style?: string;
+  prefix?: string;
+  remap?: any;
+  removeDay?: boolean;
+  removeYear?: boolean;
+  rich?: boolean;
+  scale?: number;
+  show_mini_bar?: boolean;
+  stringifyNull?: boolean;
+  suffix?: string;
+  type?: string;
+  view_as?: string | null;
+  weekday_enabled?: boolean;
   [key: string]: any;
-}
+};
 
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
@@ -354,6 +399,16 @@ export type VisualizationSettings = {
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
+  // Treemap settings
+  "treemap.grouping"?: string;
+  "treemap.sub_grouping"?: string | null;
+  "treemap.value"?: string;
+  "treemap.rows"?: TreemapRow[];
+  "treemap.show_parent_labels"?: boolean;
+  "treemap.show_parent_values"?: boolean;
+  "treemap.show_leaf_labels"?: boolean;
+  "treemap.show_leaf_values"?: boolean;
 
   // BoxPlot settings
   "boxplot.whisker_type"?: BoxPlotWhiskerType;
@@ -509,9 +564,9 @@ export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
-  card_id?: CardId | EntityToken;
-  entityIdentifier?: EntityUuid | EntityToken;
-  parameter_id: ParameterId;
+  cardId?: CardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
   value: ParameterValueOrArray;
 };
 

@@ -77,6 +77,7 @@ export const MultipleDates = {
 export const DatesRange = {
   name: "Dates range",
   args: {
+    // Unjustified type cast. FIXME
     type: "range" as DatePickerProps["type"],
     defaultValue: [sampleArgs.date1, sampleArgs.date2],
     defaultDate: sampleArgs.date1,
@@ -86,7 +87,7 @@ export const DatesRange = {
 export const DatesRangeSdk = {
   render: () => (
     <SdkVisualizationWrapper theme={theme}>
-      <Box bg="background-primary">
+      <Box bg="background_page-primary">
         <DatePicker {...DatesRange.args} />
       </Box>
     </SdkVisualizationWrapper>

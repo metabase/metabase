@@ -1,6 +1,5 @@
 import type { LocationDescriptorObject } from "history";
 import { Component } from "react";
-import type * as tippy from "tippy.js";
 
 import { connect } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
@@ -45,8 +44,6 @@ export class ClickActionsPopover extends Component<
   state: State = {
     popoverAction: null,
   };
-
-  instance: tippy.Instance | null = null;
 
   componentDidUpdate(prevProps: Readonly<ChartClickActionsProps>): void {
     const { clicked } = this.props;
@@ -123,9 +120,6 @@ export class ClickActionsPopover extends Component<
       popover = (
         <PopoverContent
           onClick={this.handleClickAction}
-          onResize={() => {
-            this.instance?.popperInstance?.update();
-          }}
           onChangeCardAndRun={(options) =>
             onChangeCardAndRun({ drillName: popoverAction.name, ...options })
           }

@@ -12,21 +12,21 @@
 }
 
 .overlay {
-  background-color: var(--mb-color-overlay);
+  background-color: var(--mb-color-modal-overlay);
   padding: 11px;
 }
 
 .content {
-  background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .header {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .ModalCloseButton {
-  color: var(--mb-color-text-tertiary) !important;
+  color: var(--mb-color-text-disabled) !important;
   padding: 0;
   width: rem(18px);
   height: rem(18px);

@@ -1,15 +1,12 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
-   [clojure.string :as str]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util.log :as log])
-  (:import
-   (org.graalvm.polyglot PolyglotException)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +31,6 @@
   (case driver
     nil                  nil
     :postgres            "postgres"
-    :postgres-mbql5      "postgres"
     :mysql               "mysql"
     :snowflake           "snowflake"
     :bigquery            "bigquery"
@@ -47,7 +43,6 @@
     :clickhouse          "clickhouse"
     :vertica             nil
     :h2                  nil
-    :h2-mbql5            nil
     ;; Default: try using the driver name as dialect
     (name driver)))
 
@@ -69,9 +64,9 @@
                       driver {:table table
                               :schema (or table-schema default-schema)}))))
             query-tables))
-    (catch PolyglotException e
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         #{}
         (throw e)))))
 
@@ -154,9 +149,9 @@
       (mapv (fn [[_catalog schema table]]
               {:schema schema :table table})
             table-tuples))
-    (catch PolyglotException e
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         []
         (throw e)))))
 

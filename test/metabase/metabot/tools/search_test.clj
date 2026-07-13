@@ -6,6 +6,7 @@
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.search :as search]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
@@ -136,9 +137,50 @@
                     :description "Order table"
                     :database_id 42
                     :database_schema "public"
+                    :official false
+                    :data_authority nil
                     :updated_at "2024-01-01"
                     :created_at "2024-01-01"}]
       (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-curation-signals-test
+  (testing "non-null curation signals (curated, official collection, table data_authority + data_layer) carried through"
+    (is (=? {:type           "table"
+             :curated        true
+             :official       true
+             :data_authority "authoritative"
+             :data_layer     "final"}
+            (#'search/postprocess-search-result
+             {:model          "table"
+              :id             9
+              :table_name     "Gold"
+              :name           "Gold"
+              :database_id    1
+              :table_schema   "public"
+              :curated        true
+              :data_authority "authoritative"
+              :data_layer     "final"
+              :collection     {:id 3 :name "Official" :authority_level "official"}})))))
+
+(deftest ^:parallel search-result-xml-renders-curation-signals-test
+  (testing "the XML the LLM actually sees carries curated/data_layer/data_authority for a table result —
+            the render path that was a no-op until these reached search results (BOT-1570)"
+    (let [result (#'search/postprocess-search-result
+                  {:model          "table"
+                   :id             9
+                   :table_name     "Gold"
+                   :name           "Gold"
+                   :database_id    1
+                   :table_schema   "public"
+                   :curated        true
+                   :data_authority "authoritative"
+                   :data_layer     "final"
+                   :collection     {:id 3 :name "Official" :authority_level "official"}})
+          xml    (llm-shape/search-result->xml result)]
+      (is (str/includes? xml "is_curated=\"true\""))
+      (is (str/includes? xml "is_official=\"true\""))
+      (is (str/includes? xml "data_layer=\"final\""))
+      (is (str/includes? xml "data_authority=\"authoritative\"")))))
 
 (deftest ^:parallel postprocess-search-result-test-2
   (testing "model (dataset) result postprocessing"
@@ -157,6 +199,7 @@
                     :description "Model for sales"
                     :database_id 43
                     :verified true
+                    :official false
                     :collection {}
                     :updated_at "2024-01-02"
                     :created_at "2024-01-02"}]
@@ -195,6 +238,7 @@
                     :name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
+                    :official true
                     :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
@@ -216,6 +260,7 @@
                     :description "Question desc"
                     :database_id nil
                     :verified true
+                    :official false
                     :collection {:id 11 :name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
@@ -236,6 +281,7 @@
                     :description "Metric desc"
                     :database_id nil
                     :verified false
+                    :official false
                     :collection {}
                     :updated_at "2024-01-05"
                     :created_at "2024-01-05"}]
@@ -422,6 +468,66 @@
               (is (some? dash-res) "expected the dashboard to appear in search results")
               (is (not (contains? dash-res :portable_entity_id))))))))))
 
+(deftest entity-refs->search-results-test
+  (testing "hydrates {:model :id} refs (as stored by the semantic layer) into enriched search records"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card {m-id :id m-eid :entity_id}
+                     {:name "Hydrate Sample Model" :type :model
+                      :database_id (mt/id) :table_id (mt/id :orders)
+                      :dataset_query {:database (mt/id) :type :query
+                                      :query {:source-table (mt/id :orders)}}}]
+        (mt/with-temp [:model/Card {q-id :id} {:name "Hydrate Sample Question"
+                                               :database_id (mt/id) :table_id (mt/id :orders)
+                                               :dataset_query {:database (mt/id) :type :query
+                                                               :query {:source-table (mt/id :orders)}}}]
+          (let [results (search/entity-refs->search-results
+                         [{:model "model" :id m-id}
+                          {:model "table" :id (mt/id :orders)}
+                          {:model "card" :id q-id}              ; normalized to "question"
+                          {:model "model" :id Integer/MAX_VALUE}]) ; nonexistent → dropped
+                by-id   (into {} (map (juxt (juxt :type :id) identity)) results)]
+            (testing "model ref hydrates with type, name, and portable_entity_id"
+              (is (=? {:type "model" :name "Hydrate Sample Model" :portable_entity_id m-eid
+                       :database_id (mt/id)}
+                      (get by-id ["model" m-id]))))
+            (testing "table ref hydrates with type table and a database name"
+              (is (=? {:type "table" :database_id (mt/id) :database_name string?}
+                      (get by-id ["table" (mt/id :orders)]))))
+            (testing "a card ref hydrates as the agent-facing type question"
+              (is (=? {:type "question" :name "Hydrate Sample Question"}
+                      (get by-id ["question" q-id]))))
+            (testing "refs whose entity no longer exists are dropped"
+              (is (= 3 (count results))))))))))
+
+(deftest entity-refs->search-results-same-card-two-types-test
+  (testing "a card referenced under two (possibly stale) type strings collapses to one record with its current type"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card {c-id :id} {:name "Dual Typed" :type :model
+                                             :database_id (mt/id) :table_id (mt/id :orders)
+                                             :dataset_query {:database (mt/id) :type :query
+                                                             :query {:source-table (mt/id :orders)}}}]
+        (let [results (search/entity-refs->search-results
+                       [{:model "model" :id c-id} {:model "metric" :id c-id}])]
+          (is (= [["model" c-id]] (map (juxt :type :id) results))
+              "one record, carrying the card's current type"))))))
+
+(deftest entity-refs->search-results-respects-read-perms-test
+  (testing "hydration drops entities the current user can't read — a curated entry may point at a restricted one"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {restricted-id :id}
+                     {:name "Secret Card" :collection_id coll-id
+                      :database_id (mt/id) :table_id (mt/id :orders)
+                      :dataset_query {:database (mt/id) :type :query
+                                      :query {:source-table (mt/id :orders)}}}]
+        (let [refs [{:model "card" :id restricted-id}]]
+          (testing "a superuser can read it"
+            (mt/with-test-user :crowberto
+              (is (= [restricted-id] (map :id (search/entity-refs->search-results refs))))))
+          (testing "a user without access to its collection does not see it"
+            (mt/with-test-user :rasta
+              (is (empty? (search/entity-refs->search-results refs))))))))))
+
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
                 "`source-table:` without a separate entity_details call. We look up\n"
@@ -495,3 +601,13 @@
                                     (map (comp first #(str/split % #"\s") :name))))]
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
+
+(deftest card-ref-hydration-emits-current-string-type-test
+  (testing "a card ref hydrates to the Card's CURRENT type as a string — not the stale ref type, not a keyword"
+    ;; regression: a stale index hit across a metric<->model relabel must describe the entity by its current
+    ;; shape, and the type must be the agent-facing string (a :model keyword breaks entity-class + enrichers).
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:type :model}]
+        (let [[result] (search/entity-refs->search-results [{:model "metric" :id card-id}])]
+          (is (= "model" (:type result)))
+          (is (string? (:type result))))))))

@@ -331,26 +331,21 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     it("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
       assignRecipient();
-      // This is extremely fragile
-      // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
-      cy.findByLabelText("Attach results").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Questions to attach").click();
-      clickButton("Done");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subscriptions");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Emailed hourly").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete this subscription").scrollIntoView();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Questions to attach");
-      cy.findAllByRole("listitem")
-        .contains("Orders")
-        .closest("li")
-        .within(() => {
-          cy.findByRole("checkbox").should("be.checked");
-        });
+
+      H.sidebar().within(() => {
+        cy.findByLabelText("Attach results")
+          .should("not.be.checked")
+          .click({ force: true }); // Input is placed behind the lable due to tooltip in label
+        cy.findByText("Questions to attach").click();
+        clickButton("Done");
+
+        cy.findByText("Subscriptions").should("exist");
+        cy.findByText("Emailed hourly").click();
+
+        cy.findByText("Delete this subscription").scrollIntoView();
+        cy.findByText("Questions to attach").should("be.visible");
+        cy.findByLabelText("Orders").should("be.checked");
+      });
     });
 
     it("should localize schedule type in the delete-confirmation modal", () => {
@@ -379,9 +374,13 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
       assignRecipient();
 
-      cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Attach results")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Questions to attach").click();
-      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Send only attachments").should("be.checked");
 
       H.sendEmailAndAssert((email) => {

@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useField } from "formik";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import { useGetFieldQuery } from "metabase/api";
@@ -8,7 +8,6 @@ import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import { SchemaTableAndFieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import { Text } from "metabase/ui";
-import Field from "metabase-lib/v1/metadata/Field";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { FieldId } from "metabase-types/api";
 
@@ -40,9 +39,7 @@ export function MappedFieldPicker({
     { skip: selectedFieldId === null },
   );
 
-  const fieldObject = useMemo(() => {
-    return field && selectedFieldId ? new Field(field) : null;
-  }, [field, selectedFieldId]);
+  const selectedField = field && selectedFieldId ? field : null;
 
   const selectButtonRef = useRef<HTMLButtonElement>();
 
@@ -61,8 +58,8 @@ export function MappedFieldPicker({
   );
 
   const renderTriggerElement = useCallback(() => {
-    const label = fieldObject?.display_name || t`None`;
-    const tableName = fieldObject?.table?.display_name;
+    const label = selectedField?.display_name || t`None`;
+    const tableName = selectedField?.table?.display_name;
 
     return (
       <SelectButton
@@ -70,14 +67,15 @@ export function MappedFieldPicker({
           root: cx(
             MappedFieldPickerS.StyledSelectButton,
             {
-              [MappedFieldPickerS.hasValue]: fieldObject,
+              [MappedFieldPickerS.hasValue]: selectedField,
             },
             className,
           ),
           icon: MappedFieldPickerS.StyledSelectIcon,
         }}
-        hasValue={!!fieldObject}
+        hasValue={!!selectedField}
         tabIndex={tabIndex}
+        // Unjustified type cast. FIXME
         ref={selectButtonRef as any}
         onClear={() => onChange(null)}
       >
@@ -86,17 +84,17 @@ export function MappedFieldPicker({
         </span>
       </SelectButton>
     );
-  }, [className, fieldObject, onChange, tabIndex]);
+  }, [className, selectedField, onChange, tabIndex]);
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
-  // During the initial load, fieldObject might have `table_id` set to `card__$ID` (retrieved from metadata)
+  // During the initial load, the field might have `table_id` set to `card__$ID` (retrieved from metadata)
   // But at some point, we fetch  the field object by ID to get the real table ID and pass it to the selector
   // Until it's fetched, we need to pass `null` as `selectedTableId` to avoid invalid selector state
   // This should be removed once DataSelector handles prop changes better
   const selectedTableId =
-    !fieldObject || isVirtualCardId(fieldObject.table?.id)
+    !selectedField || isVirtualCardId(selectedField.table?.id)
       ? null
-      : fieldObject?.table?.id;
+      : selectedField?.table?.id;
 
   return (
     <>
@@ -113,7 +111,7 @@ export function MappedFieldPicker({
         )}
         selectedDatabaseId={databaseId}
         selectedTableId={selectedTableId}
-        selectedSchemaId={fieldObject?.table?.schema?.id}
+        selectedSchemaId={selectedField?.table?.schema}
         selectedFieldId={selectedFieldId}
         getTriggerElementContent={renderTriggerElement}
         hasTriggerExpandControl={false}

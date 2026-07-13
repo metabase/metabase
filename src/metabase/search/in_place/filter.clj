@@ -30,6 +30,12 @@
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
 
+(def ^:private max-document-search-length
+  "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
+  A leading-wildcard LIKE can't use an index, so this bounds the worst case for pathologically large
+  documents. Mirrors the appdb engine's `metabase.search.ingestion/max-searchable-value-length`."
+  500000)
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -85,6 +91,10 @@
          (and (#{"action"} model)
               (= column (search.config/column-with-model-alias model :dataset_query)))
          [:like [:lower :query_action.dataset_query] wildcarded-token]
+
+         (and (= model "document")
+              (= column (search.config/column-with-model-alias "document" :document)))
+         [:like [:lower [:left column [:inline max-document-search-length]]] wildcarded-token]
 
          :else
          [:like [:lower column] wildcarded-token])))))
@@ -156,6 +166,54 @@
                            [:= :moderation_review.moderated_item_type "dashboard"]
                            [:= :moderation_review.most_recent true]))
     (sql.helpers/where query false-clause)))
+
+;; Curated filters — the "verified or curated content" setting for Metabot. The canonical rule is
+;; [[metabase.collections.curation/curated?]], which the appdb/semantic engines apply via a precomputed
+;; `curated` index column. The legacy in-place engine has no such column, so it approximates the rule
+;; in SQL over the signals that are tractable here: verified + official-collection for card-like models,
+;; and published-at-final-layer or authoritative for tables. Library-membership-by-root-collection-type is
+;; not enforced here; the legacy engine is being retired. Keep in sync with [[curated?]].
+
+(defn- curated-card-like-query
+  "Build the curated OR clause for a card-like `model` (`item-type` is the moderation_review type)."
+  [model item-type query]
+  (let [or-clauses (cond-> []
+                     (premium-features/has-feature? :content-verification)
+                     (conj [:= :cur_mr.status "verified"])
+                     (premium-features/has-feature? :official-collections)
+                     (conj [:= :cur_coll.authority_level "official"]))]
+    (-> query
+        (cond-> (premium-features/has-feature? :content-verification)
+          (sql.helpers/left-join [:moderation_review :cur_mr]
+                                 [:and
+                                  [:= :cur_mr.moderated_item_id (search.config/column-with-model-alias model :id)]
+                                  [:= :cur_mr.moderated_item_type item-type]
+                                  [:= :cur_mr.most_recent true]]))
+        (cond-> (premium-features/has-feature? :official-collections)
+          (sql.helpers/left-join [:collection :cur_coll]
+                                 [:= :cur_coll.id (search.config/column-with-model-alias model :collection_id)]))
+        (sql.helpers/where (if (seq or-clauses) (into [:or] or-clauses) false-clause)))))
+
+(doseq [[model item-type] [["card" "card"] ["dataset" "card"] ["metric" "card"] ["dashboard" "dashboard"]]]
+  (defmethod build-optional-filter-query [:curated model]
+    [_filter model query curated?]
+    (assert (true? curated?) "filter for non-curated content is not supported")
+    (curated-card-like-query model item-type query)))
+
+(defmethod build-optional-filter-query [:curated "table"]
+  [_filter model query curated?]
+  (assert (true? curated?) "filter for non-curated content is not supported")
+  ;; Approximate collections.curation/curated? for tables: authoritative tables count unconditionally;
+  ;; published tables count only at the `final` layer. Unlike curated? (feature-ungated, since the precomputed
+  ;; column is only written while a feature is active), this live in-place filter gates the published branch
+  ;; on the current :library feature, matching the card-like in-place filters above.
+  (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
+        published-final (when (premium-features/has-feature? :library)
+                          [:and
+                           [:= (search.config/column-with-model-alias model :is_published) true]
+                           [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
+    (sql.helpers/where query (cond-> [:or authoritative]
+                               published-final (conj published-final)))))
 
 ;; Created at filters
 
@@ -346,6 +404,7 @@
                 models
                 search-native-query
                 verified
+                curated?
                 non-temporal-dim-ids
                 has-temporal-dim
                 display-type
@@ -362,6 +421,7 @@
       (some? last-edited-by)       (set/intersection (:last-edited-by feature->supported-models))
       (true? search-native-query)  (set/intersection (:search-native-query feature->supported-models))
       (true? verified)             (set/intersection (:verified feature->supported-models))
+      (true? curated?)             (set/intersection (:curated feature->supported-models))
       (some? non-temporal-dim-ids) (set/intersection (:non-temporal-dim-ids feature->supported-models))
       (some? has-temporal-dim)     (set/intersection (:has-temporal-dim feature->supported-models))
       (seq   display-type)         (set/intersection (:display-type feature->supported-models)))))
@@ -381,6 +441,7 @@
                 search-string
                 search-native-query
                 verified
+                curated?
                 ids
                 non-temporal-dim-ids
                 has-temporal-dim
@@ -412,6 +473,9 @@
 
       (some? verified)
       (#(build-optional-filter-query :verified model % verified))
+
+      (true? curated?)
+      (#(build-optional-filter-query :curated model % curated?))
 
       (and (some? ids)
            (contains? models model))

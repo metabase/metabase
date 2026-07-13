@@ -8,6 +8,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
 
 (deftest extract-model-and-id
@@ -83,7 +84,20 @@
       (with-redefs [search.spec/spec spec-fn]
         (is (= "[table]\nname: CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
-            "Transformation functions should not be applied to embeddable text for semantic search")))))
+            "Transformation functions should not be applied to embeddable text for semantic search"))))
+  (testing "embeddable-text omits fields listed in :embedding-exclude"
+    (let [spec-fn (constantly {:search-terms      {:name true :document str}
+                               :embedding-exclude #{:document}})
+          record  {:model    "document"
+                   :name     "Q3 Planning"
+                   :document "the full document body"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[document]\nname: Q3 Planning"
+               (#'search.ingestion/embeddable-text record))
+            "Excluded fields must not appear in the semantic-search embedding text")
+        (is (= "Q3 Planning the full document body"
+               (#'search.ingestion/searchable-text record))
+            "Excluded fields remain in full-text searchable-text")))))
 
 (deftest execute-all-function-attrs-test
   (testing "function-attr returning a map merges its keys into the document"
@@ -188,3 +202,19 @@
         (search/init-index!)
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))
+
+(deftest curation-signals-surfaced-in-results-test
+  (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
+            so Metabot can render them (BOT-1570) — not just stored in the filtering column"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _ {:db_id          db-id
+                                     :name           "Curatedgoldtbl"
+                                     :active         true
+                                     :data_authority :authoritative
+                                     :data_layer     :final}]
+        (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                          (filter (comp #{"table"} :model))
+                          first)]
+          (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
+                  result)))))))

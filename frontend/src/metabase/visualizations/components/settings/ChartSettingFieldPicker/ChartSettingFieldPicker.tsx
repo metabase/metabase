@@ -122,10 +122,11 @@ export const ChartSettingFieldPicker = ({
     <Group
       className={cx(S.root, className)}
       data-testid="chartsettings-field-picker"
-      bg="background-primary"
+      bg="background_page-primary"
       align="center"
     >
       <ChartSettingSelect
+        variant="unstyled"
         pl={hasLeftSection ? "sm" : 0}
         w="100%"
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
@@ -137,6 +138,7 @@ export const ChartSettingFieldPicker = ({
             <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <Icon
+                  // Unjustified type cast. FIXME
                   ref={dragHandleRef as Ref<SVGSVGElement>}
                   name="grabber"
                   {...dragHandleListeners}

@@ -808,7 +808,7 @@
                                         driver/*driver*
                                         (t2/select-one :model/Database (mt/id)))
                                        :tables
-                                       set)
+                                       (into #{}))
                       default-table-set (tables-set)
                       do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
                   (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
@@ -1084,6 +1084,51 @@
                             (format "UPDATE %s SET name = 'a' WHERE id = -1; UPDATE %s SET name = 'b' WHERE id = -1" venues-table venues-table)
                             (format "INSERT INTO %s (name) VALUES ('x'); SELECT 1;" venues-table)
                             (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table)))))))))))))))
+
+(deftest impersonated-action-write-permission-denied-test
+  (testing "An impersonated custom action whose role lacks write grants surfaces the DB permission error and leaves the row unchanged"
+    (mt/test-drivers (mt/normal-driver-select {:+features [:connection-impersonation :actions/custom]})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            ;; role-a is granted SELECT only (no INSERT/UPDATE/DELETE)
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (let [granting-details (impersonation-granting-details driver/*driver* (mt/db))
+                  spec             (sql-jdbc.conn/connection-details->spec driver/*driver* granting-details)
+                  read-name        (fn [] (-> (jdbc/query spec [(format "SELECT name FROM %s WHERE id = 1" venues-table)])
+                                              first :name))]
+              (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                       :details (impersonation-details driver/*driver* (mt/db))}]
+                (mt/with-db database
+                  (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                    (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                  (sync/sync-database! database {:scan :schema})
+                  (mt/with-actions-enabled
+                    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                   :attributes     {"impersonation_attr" role-a}}
+                      (let [original-name (read-name)
+                            execute-action-with-sql
+                            (fn [sql]
+                              (mt/with-actions [{_card-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                                                {action-id :action-id} {:type          :query
+                                                                        :name          "Test action"
+                                                                        :dataset_query (update (mt/native-query {:query sql})
+                                                                                               :type name)
+                                                                        :database_id   (mt/id)
+                                                                        :parameters    []}]
+                                (actions.execution/execute-action! (action/select-action :id action-id) {})))]
+                        (testing "write is denied for a role with only SELECT"
+                          (is (thrown-with-msg?
+                               java.lang.Exception
+                               #"(?i)permission denied|denied to user|not authorized"
+                               (execute-action-with-sql
+                                (format "UPDATE %s SET name = 'hacked' WHERE id = 1" venues-table)))))
+                        (testing "the row is unchanged"
+                          (is (= original-name (read-name))))))))))))))))
 
 (deftest admins-can-run-show-timezone-statement-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})

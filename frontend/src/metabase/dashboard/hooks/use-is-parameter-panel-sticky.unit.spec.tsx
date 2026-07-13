@@ -26,7 +26,9 @@ describe("useIsParameterPanelSticky", () => {
   const invokeIntersection = (isIntersecting: boolean) => {
     act(() => {
       intersectionCallback?.(
+        // Unjustified type cast. FIXME
         [{ isIntersecting } as IntersectionObserverEntry],
+        // Unjustified type cast. FIXME
         {} as IntersectionObserver,
       );
     });

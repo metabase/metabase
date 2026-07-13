@@ -1,15 +1,15 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Link } from "metabase/router";
 import {
   Card,
   Center,
@@ -83,7 +83,7 @@ export function ArchivedSnippetsPage() {
         py={0}
       />
       <Stack
-        bg="background-secondary"
+        bg="background_page-secondary"
         data-testid="archived-snippets-page"
         pb="2rem"
         px="3.5rem"

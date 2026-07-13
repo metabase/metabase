@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackMeasureCreateStarted } from "metabase/data-studio/analytics";
-import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
+import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
+import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -29,6 +29,7 @@ export function MeasureList({ table }: MeasureListProps) {
     getUserCanWriteMeasures(state, table.is_published),
   );
   const onNewMeasureClick = () => {
+    // Unjustified type cast. FIXME
     trackMeasureCreateStarted(table.id as ConcreteTableId);
   };
   const newMeasureUrl = Urls.newDataStudioDataModelMeasure({

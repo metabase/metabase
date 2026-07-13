@@ -51,7 +51,9 @@
         (let [cnt->ids (group-by-frequency ids)
               lock-name (view-count-lock model)]
           (log/debugf "Writing %d items to %s view counts with lock %s" (count ids) model lock-name)
-          (cluster-lock/with-cluster-lock lock-name
+          ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+          ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+          (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
             ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
             ;; specifically search-index enqueues on after-update.
             (t2/query {:update (t2/table-name model)
@@ -137,6 +139,28 @@
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 
+(derive ::card-query-model-view :metabase/event)
+(derive :event/card-query ::card-query-model-view)
+
+(m/defmethod events/publish-event! ::card-query-model-view
+  "Log a view for models, which are opened as ad-hoc `card__id` queries that fire :event/card-query but never
+  :event/card-read. The :ad-hoc + model guards keep regular cards (logged via card-read) and downloads out."
+  [topic {:keys [card-id user-id context]}]
+  (span/with-span!
+    {:name    "view-log-model-query"
+     :topic   topic
+     :user-id user-id}
+    (try
+      (when (and (= context :ad-hoc)
+                 (= :model (t2/select-one-fn :type :model/Card :id card-id)))
+        (increment-view-counts! :model/Card card-id)
+        (record-views! (generate-view :model :model/Card
+                                      :object-id card-id
+                                      :user-id   user-id
+                                      :context   :question)))
+      (catch Throwable e
+        (log/warnf e "Failed to process card query view event. %s" topic)))))
+
 (derive ::dashboard-queried :metabase/event)
 (derive :event/dashboard-queried ::dashboard-queried)
 
@@ -152,7 +176,9 @@
       ;; (specifically :hook/search-index after-update). The search index can tolerate staleness on this field: the
       ;; index will catch up on the next re-index cycle or when the dashboard is edited. This matches the pattern used
       ;; in increment-view-counts!*
-      (cluster-lock/with-cluster-lock dashboard-statistics-lock
+      ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+      ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+      (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
         (t2/query {:update (t2/table-name :model/Dashboard)
                    :set    {:last_viewed_at (into [:case]
                                                   (mapcat (fn [[id timestamp]]

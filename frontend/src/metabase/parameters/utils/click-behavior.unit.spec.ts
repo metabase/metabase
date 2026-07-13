@@ -236,6 +236,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
         userAttribute: ["attr"],
       };
 
+      // Unjustified type cast. FIXME
       for (const [targetParameterType, expectedSources] of [
         [
           "id",
@@ -331,6 +332,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
         });
       }
 
+      // Unjustified type cast. FIXME
       for (const [targetVariableType, expectedSources] of [
         [
           "text",
@@ -408,6 +410,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
         });
       }
 
+      // Unjustified type cast. FIXME
       for (const [field, expectedSources] of [
         [
           productTitle,
@@ -467,6 +470,7 @@ describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
                   "template-tags": {
                     my_field_filter: {
                       default: null,
+                      // Unjustified type cast. FIXME
                       dimension: ["field", field.id as FieldId, null],
                       "display-name": "My Field Filter",
                       id: "foo123",

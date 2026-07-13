@@ -4,6 +4,10 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.64.0
+
+- Self-hosted environments must now explicitly enable transforms before beginning to use them via the API. Admins can enable transforms in Data Studio or by setting the MB_TRANSFORMS_ENABLED environment variable to true.
+
 ## Metabase 0.61.0
 
 - `POST /api/metabot/describe/card` and `POST /api/metabot/describe/dashboard/:id` have been removed. These endpoints
@@ -23,13 +27,16 @@ title: API changelog
   between group ids and collection id indicate that the group provides no permissions for the collection. For
   example, what was returned in versions before 0.56.13:
   ```json
-  {"revision": 2, "groups": {"1": {"root": "write", "1": "read", "2": "none"}}}
+  {
+    "revision": 2,
+    "groups": { "1": { "root": "write", "1": "read", "2": "none" } }
+  }
   ```
   becomes:
   ```json
-  {"revision": 2, "groups": {"1": {"root": "write", "1": "read"}}}
+  { "revision": 2, "groups": { "1": { "root": "write", "1": "read" } } }
   ```
-  in versions 0.56.13 and up. 
+  in versions 0.56.13 and up.
 
 ## Metabase 0.55.0
 

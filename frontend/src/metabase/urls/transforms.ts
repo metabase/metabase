@@ -6,6 +6,8 @@ import type {
   TableId,
   TransformId,
   TransformJobId,
+  TransformJobRunSortColumn,
+  TransformJobRunStatus,
   TransformRunMethod,
   TransformRunSortColumn,
   TransformRunStatus,
@@ -69,6 +71,10 @@ export function transformSettings(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/settings`;
 }
 
+export function transformIndexes(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/indexes`;
+}
+
 export function transformDependencies(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/dependencies`;
 }
@@ -91,6 +97,51 @@ export function newTransformJob() {
 
 export function transformJob(id: TransformJobId) {
   return `${JOBS_ROOT_URL}/${id}`;
+}
+
+export type TransformJobRunListParams = {
+  page?: number;
+  status?: TransformJobRunStatus;
+  runMethod?: TransformRunMethod;
+  startTime?: string;
+  sortColumn?: TransformJobRunSortColumn;
+  sortDirection?: SortDirection;
+};
+
+export function transformJobRuns(
+  id: TransformJobId,
+  {
+    page,
+    status,
+    runMethod,
+    startTime,
+    sortColumn,
+    sortDirection,
+  }: TransformJobRunListParams = {},
+) {
+  const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  if (status != null) {
+    searchParams.set("status", status);
+  }
+  if (runMethod != null) {
+    searchParams.set("run-method", runMethod);
+  }
+  if (startTime != null) {
+    searchParams.set("start-time", startTime);
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  const baseUrl = `${JOBS_ROOT_URL}/${id}/runs`;
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
 export type TransformRunListParams = {

@@ -76,7 +76,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           >{t`Start by selecting a dataset`}</Title>
           <Title
             size="h5"
-            c="text-tertiary"
+            c="text-disabled"
           >{t`Find something to visualize in the column on the left.`}</Title>
         </Flex>
       </Center>
@@ -148,7 +148,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <Center className={S.SwapAffordanceIcon}>
             <Stack align="center" gap="xs" p="xs">
               <Icon name="sync" />
-              <Text c="white" size="sm">
+              <Text c="core-white" size="sm">
                 {t`Replace`}
               </Text>
             </Stack>

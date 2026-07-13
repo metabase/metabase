@@ -22,22 +22,25 @@ import type { SortDirection } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
+import type { GlossaryField } from "./types";
 
 export type GlossaryTableProps = {
   className?: string;
   glossary: GlossaryItem[];
-  onCreate: (term: string, definition: string) => Promise<void> | void;
-  onEdit: (
+  readOnly?: boolean;
+  onCreate?: (term: string, definition: string) => Promise<void> | void;
+  onEdit?: (
     id: number,
     term: string,
     definition: string,
   ) => Promise<void> | void;
-  onDelete: (id: number) => Promise<void> | void;
+  onDelete?: (id: number) => Promise<void> | void;
 };
 
 export function GlossaryTable({
   className,
   glossary,
+  readOnly = false,
   onCreate,
   onEdit,
   onDelete,
@@ -45,14 +48,23 @@ export function GlossaryTable({
   const [isCreating, setIsCreating] = useState(false);
   const metabotName = useMetabotName();
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingField, setEditingField] = useState<
-    "term" | "definition" | null
-  >(null);
+  const [editingField, setEditingField] = useState<GlossaryField | null>(null);
   const [deletingItem, setDeletingItem] = useState<GlossaryItem | null>(null);
   const [sortColumnName, setSortColumnName] = useState<
     keyof GlossaryItem | null
   >(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const startEditing = (id: number, field: GlossaryField) => {
+    if (readOnly) {
+      return;
+    }
+    if (isCreating) {
+      setIsCreating(false);
+    }
+    setEditingId(id);
+    setEditingField(field);
+  };
 
   const sortedRows = useMemo(() => {
     if (!sortColumnName) {
@@ -79,20 +91,22 @@ export function GlossaryTable({
         <Text>
           {t`Define terms to help your team and ${metabotName} understand your data.`}
         </Text>
-        <Button
-          variant="default"
-          size="sm"
-          leftSection={<Icon name="add" />}
-          onClick={() => {
-            if (editingId) {
-              setEditingId(null);
-              setEditingField(null);
-            }
-            setIsCreating(true);
-          }}
-        >
-          {t`New term`}
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="default"
+            size="sm"
+            leftSection={<Icon name="add" />}
+            onClick={() => {
+              if (editingId) {
+                setEditingId(null);
+                setEditingField(null);
+              }
+              setIsCreating(true);
+            }}
+          >
+            {t`New term`}
+          </Button>
+        )}
       </Group>
       <CommonTable
         className={cx(S.table, className)}
@@ -120,6 +134,7 @@ export function GlossaryTable({
         sortColumnName={sortColumnName}
         sortDirection={sortDirection}
         onSort={(column, dir) => {
+          // Unjustified type cast. FIXME
           setSortColumnName(column as keyof GlossaryItem);
           setSortDirection(dir);
         }}
@@ -134,7 +149,7 @@ export function GlossaryTable({
                   existingTerms={existingTerms}
                   onCancel={() => setIsCreating(false)}
                   onSave={async (term, definition) => {
-                    await onCreate(term, definition);
+                    await onCreate?.(term, definition);
                     setIsCreating(false);
                   }}
                 />
@@ -142,11 +157,17 @@ export function GlossaryTable({
             );
           }
 
+          // Unjustified type cast. FIXME
           const item = row as GlossaryItem;
           const isEditing = editingId === item.id;
 
           return (
-            <tr className={cx(S.row, { [S.rowEditor]: isEditing })}>
+            <tr
+              className={cx(S.row, {
+                [S.rowEditor]: isEditing,
+                [S.readOnly]: readOnly,
+              })}
+            >
               {isEditing ? (
                 <GlossaryRowEditor
                   item={item}
@@ -156,7 +177,7 @@ export function GlossaryTable({
                     .map((g) => g.term)}
                   onCancel={() => setEditingId(null)}
                   onSave={async (newTerm, newDefinition) => {
-                    await onEdit(item.id, newTerm, newDefinition);
+                    await onEdit?.(item.id, newTerm, newDefinition);
                     setEditingId(null);
                     setEditingField(null);
                   }}
@@ -166,14 +187,7 @@ export function GlossaryTable({
                   <Box
                     component="td"
                     valign="top"
-                    onClick={() => {
-                      if (isCreating) {
-                        setIsCreating(false);
-                      }
-
-                      setEditingId(item.id);
-                      setEditingField("term");
-                    }}
+                    onClick={() => startEditing(item.id, "term")}
                   >
                     <Text lh="1.2" fw="bold" pt="xs">
                       {item.term}
@@ -183,13 +197,7 @@ export function GlossaryTable({
                     component="td"
                     valign="top"
                     style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
-                    onClick={() => {
-                      if (isCreating) {
-                        setIsCreating(false);
-                      }
-                      setEditingId(item.id);
-                      setEditingField("definition");
-                    }}
+                    onClick={() => startEditing(item.id, "definition")}
                   >
                     <Text lh="1.2" pt="xs">
                       {item.definition}
@@ -203,17 +211,19 @@ export function GlossaryTable({
                     p="sm"
                     w="25px"
                   >
-                    <Tooltip label={t`Delete`}>
-                      <ActionIcon
-                        aria-label={t`Delete`}
-                        variant="subtle"
-                        c="text-tertiary"
-                        className={cx(S.action)}
-                        onClick={() => setDeletingItem(item)}
-                      >
-                        <Icon name="trash" />
-                      </ActionIcon>
-                    </Tooltip>
+                    {!readOnly && (
+                      <Tooltip label={t`Delete`}>
+                        <ActionIcon
+                          aria-label={t`Delete`}
+                          variant="subtle"
+                          c="text-disabled"
+                          className={cx(S.action)}
+                          onClick={() => setDeletingItem(item)}
+                        >
+                          <Icon name="trash" />
+                        </ActionIcon>
+                      </Tooltip>
+                    )}
                   </Box>
                 </>
               )}
@@ -229,7 +239,7 @@ export function GlossaryTable({
         onClose={() => setDeletingItem(null)}
         onConfirm={async () => {
           if (deletingItem) {
-            await onDelete(deletingItem.id);
+            await onDelete?.(deletingItem.id);
             setDeletingItem(null);
           }
         }}

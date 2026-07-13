@@ -50,6 +50,7 @@ export function ModelCacheToggle({
     isLoading: isLoadingDb,
     error: dbError,
   } = useGetDatabaseQuery(
+    // Unjustified type cast. FIXME
     model.databaseId() ? { id: model.databaseId() as number } : skipToken,
   );
 

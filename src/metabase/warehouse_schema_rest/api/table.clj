@@ -73,7 +73,7 @@
   - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           can-query can-write include-transform-targets]}
+           published-only can-query can-write include-transform-targets]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -83,6 +83,7 @@
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
+       [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
@@ -110,6 +111,7 @@
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])
                      owner-email             (conj [:= :owner_email     owner-email])
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
+                     published-only          (conj [:= :is_published true])
                      (and unused-only (premium-features/has-feature? :dependencies))
                      (conj [:not-exists {:select [:*]
                                          :from   [[:dependency :d]]
@@ -218,7 +220,8 @@
          (let [database (t2/select-one :model/Database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+           (if (binding [driver.settings/*allow-testing-h2-connections* true
+                         driver.settings/*allow-testing-sqlite-connections* true]
                  (driver.u/can-connect-with-details? (:engine database) (:details database)))
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
@@ -459,19 +462,25 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by
-  uploading a CSV file."
-  {:multipart true}
+  uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size  upload/max-upload-size-bytes
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
+   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
+   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                  ["collection_id" {:optional true} :string]]]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -483,19 +492,25 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
-  been created by uploading a CSV file."
-  {:multipart true}
+  been created by uploading a CSV file.
+
+  The file may be at most 50 MB; larger uploads are rejected with a 413 response."
+  {:multipart {:max-file-size  upload/max-upload-size-bytes
+               :max-file-count upload/max-upload-part-count}}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
+   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
+   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
+                                                  ["collection_id" {:optional true} :string]]]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -531,7 +546,8 @@
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true
+                            driver.settings/*allow-testing-sqlite-connections* true]
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e

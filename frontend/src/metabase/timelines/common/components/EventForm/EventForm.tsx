@@ -111,7 +111,7 @@ const EventForm = ({
               name="name"
               label={t`Event name`}
               placeholder={t`Product launch`}
-              autoFocus
+              data-autofocus
             />
             <Flex align="end" gap="md">
               <FormDateInput
@@ -177,6 +177,7 @@ const EventForm = ({
               leftSection={values.icon ? <Icon name={values.icon} /> : null}
               renderOption={({ option }) => (
                 <Group p="sm" fw="bold">
+                  {/* Unjustified type cast. FIXME */}
                   {option.value && <Icon name={option.value as IconName} />}
                   <span>{option.label}</span>
                 </Group>

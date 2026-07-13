@@ -21,7 +21,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import {
@@ -911,7 +911,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.PARENT,
+            // Unjustified type cast. FIXME
             id: COLLECTION.PARENT.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.PARENT.entity_id as BaseEntityId,
             location: COLLECTION.PARENT.location || "/",
             type: undefined,
@@ -924,7 +926,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.CHILD,
+            // Unjustified type cast. FIXME
             id: COLLECTION.CHILD.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.CHILD.entity_id as BaseEntityId,
             location: COLLECTION.CHILD.location || "/",
             type: undefined,

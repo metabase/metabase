@@ -162,7 +162,8 @@ export const getLastSettingsPutPayload = async () => {
   expect(lastSettingsCall).toBeTruthy();
   expect(lastSettingsCall.options?.body).toBeTruthy();
 
-  return JSON.parse((await lastSettingsCall.options!.body!) as string);
+  // Unjustified type cast. FIXME
+  return JSON.parse((await lastSettingsCall.options.body!) as string);
 };
 
 export const skipTokenStep = async (name = "Skip") =>

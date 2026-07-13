@@ -1,10 +1,8 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Dashboard } from "metabase-types/api";
@@ -14,7 +12,7 @@ import { CreateDashboardForm } from "./CreateDashboardForm";
 export interface CreateDashboardModalProps {
   opened: boolean;
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
-  targetCollection?: SdkCollectionId | null;
+  targetCollection?: CollectionId | null;
   onCreate?: (dashboard: Dashboard) => void;
   onClose: () => void;
 }
@@ -39,15 +37,12 @@ export const CreateDashboardModal = ({
     [onCreate, onClose, dispatch],
   );
 
-  useEscapeToCloseModal(onClose);
-
   return (
     <Modal
       title={t`New dashboard`}
       onClose={() => onClose?.()}
       data-testid="new-dashboard-modal"
       size="lg"
-      closeOnEscape={false}
       opened={opened}
     >
       <CreateDashboardForm

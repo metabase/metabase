@@ -12,12 +12,12 @@ import { usePrevious } from "react-use";
 import { isEqual } from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import {
   canPlaceEntityInCollection,
   getEntityTypeFromCardType,
   isInstanceAnalyticsCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
@@ -249,6 +249,7 @@ export const FormValuesPatcher = <T extends object>({
       return;
     }
     const patches: Partial<T> = {};
+    // Unjustified type cast. FIXME
     for (const key of Object.keys(nextValues) as (keyof T)[]) {
       if (isEqual(formValues[key], prevValues[key])) {
         /**

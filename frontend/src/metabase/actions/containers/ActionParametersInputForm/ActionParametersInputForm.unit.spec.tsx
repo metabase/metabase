@@ -59,6 +59,7 @@ function setup(options?: Partial<ActionParametersInputModalProps>) {
 async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
   render(
     <ActionParametersInputModal
+      opened
       showEmptyState={false}
       title="Test Modal"
       onClose={_.noop}
@@ -139,7 +140,7 @@ describe("Actions > ActionParametersInputForm", () => {
     );
     expect(screen.getByPlaceholderText("Parameter 2")).toHaveAttribute(
       "type",
-      "number",
+      "text",
     );
   });
 

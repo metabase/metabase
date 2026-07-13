@@ -26,7 +26,7 @@ describe("getMetabotManagedProviderLimitToastProps", () => {
             {
               id: "metabot-managed-provider-limit",
               timeoutId: null,
-            } as any,
+            },
           ],
         },
       },

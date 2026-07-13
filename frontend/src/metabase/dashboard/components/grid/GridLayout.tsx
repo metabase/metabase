@@ -86,6 +86,7 @@ export function GridLayout<T extends { id: number | null }>(
   const theme = useMantineTheme();
 
   const [currentBreakpoint, setCurrentBreakpoint] = useState(
+    // Unjustified type cast. FIXME
     (ReactGridLayout as any).utils.getBreakpointFromWidth(
       breakpoints,
       gridWidth,
@@ -187,7 +188,7 @@ export function GridLayout<T extends { id: number | null }>(
         // lives a separate style tree from the rest of the app.
         cellStrokeColor:
           theme.other?.dashboard?.gridBorderColor ??
-          theme.fn.themeColor("border"),
+          theme.fn.themeColor("border-neutral"),
       }),
     [cellSize, gridWidth, margin, cols, theme],
   );

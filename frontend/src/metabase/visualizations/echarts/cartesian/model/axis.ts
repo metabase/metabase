@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
 import {
@@ -42,12 +41,12 @@ import { formatValue } from "metabase/visualizations/lib/formatting";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
 import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {
-  ColumnSettings,
   ComputedVisualizationSettings,
   Extent,
   VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   NumericScale,
@@ -170,23 +169,21 @@ function generateSplits(
 function axisCost(extents: Extent[], favorUnsplit = true) {
   const axisExtent = d3.extent(extents.flatMap((e) => e));
 
-  // TODO: handle cases where members of axisExtent is undefined
-  const axisRange = axisExtent[1]! - axisExtent[0]!;
+  const axisRange =
+    axisExtent[0] != null ? axisExtent[1] - axisExtent[0] : undefined;
 
   if (favorUnsplit && extents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
-  } else if (axisRange === 0) {
+  } else if (axisRange === 0 || !axisRange) {
     return 0;
   } else {
-    return extents.reduce(
-      (sum, seriesExtent) =>
-        sum +
-        Math.pow(
-          axisRange / (seriesExtent[1] - seriesExtent[0]),
-          SPLIT_AXIS_COST_FACTOR,
-        ),
-      0,
-    );
+    return extents.reduce((sum, seriesExtent) => {
+      const seriesRange = seriesExtent[1] - seriesExtent[0];
+      if (seriesRange === 0) {
+        return sum;
+      }
+      return sum + Math.pow(axisRange / seriesRange, SPLIT_AXIS_COST_FACTOR);
+    }, 0);
   }
 }
 
@@ -282,6 +279,7 @@ const getYAxisSplit = (
         seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, string | undefined>,
   );
 
@@ -391,7 +389,7 @@ export const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   stackType: StackType,
-  formattingOptions?: OptionsType,
+  formattingOptions?: ColumnSettings,
 ): AxisFormatter => {
   const isNormalized = stackType === "normalized";
 
@@ -502,7 +500,7 @@ function getYAxisExtent(
 interface YAxisModelOptions {
   stackModels?: StackModel[];
   stackType?: StackType;
-  formattingOptions?: OptionsType;
+  formattingOptions?: ColumnSettings;
   gridSize?: VisualizationGridSize;
   showLabel?: boolean;
 }
@@ -823,6 +821,7 @@ function getNumericXAxisModel(
 export const isNumeric = (
   scale: ComputedVisualizationSettings["graph.x_axis.scale"],
 ): scale is NumericScale => {
+  // Unjustified type cast. FIXME
   return numericScale.includes(scale as NumericScale);
 };
 
@@ -1011,7 +1010,9 @@ export function getScaledMinAndMax(
 
   const { toEChartsAxisValue } = yAxisScaleTransforms;
 
+  // Unjustified type cast. FIXME
   const customMin = min != null ? (toEChartsAxisValue(min) as number) : null;
+  // Unjustified type cast. FIXME
   const customMax = max != null ? (toEChartsAxisValue(max) as number) : null;
 
   return { customMin, customMax };

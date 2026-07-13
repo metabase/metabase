@@ -16,9 +16,10 @@ const DefaultErrorMessage = ({ message, theme }: Props) => {
         display: "flex",
         alignItems: "center",
         padding: "1.25rem 1rem",
-        background: theme?.colors?.background ?? colors["background-error"],
+        background:
+          theme?.colors?.background ?? colors["background_surface-error"],
         color: theme?.colors?.["text-primary"] ?? colors["text-primary"],
-        border: `1px solid ${theme?.colors?.error ?? colors.error}`,
+        border: `1px solid ${theme?.colors?.error ?? colors["feedback-negative"]}`,
         borderRadius: "0.5rem",
         textAlign: "center",
         lineHeight: "1.4rem",

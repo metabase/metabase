@@ -16,7 +16,6 @@
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.experiment :as experiment]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -529,13 +528,13 @@
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
      (neg? offset)    (recur driver day-of-week-honeysql-expr (+ offset 7) mod-fn)
-     :else            (-> [:coalesce
-                           [:nullif
-                            (mod-fn (h2x/+ day-of-week-honeysql-expr offset) (inline-num 7))
-                            [:inline 0]]
-                           [:inline 7]]
-                          (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
-                                                           "integer"))))))
+     ;; `((dow + offset - 1) % 7) + 1` shifts the day-of-week into the range [1, 7] and propagates NULL.
+     :else            (let [shifted (if (= offset 1)
+                                      day-of-week-honeysql-expr
+                                      (h2x/+ day-of-week-honeysql-expr (dec offset)))]
+                        (-> (h2x/+ (mod-fn shifted (inline-num 7)) (inline-num 1))
+                            (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
+                                                             "integer")))))))
 
 (defmulti quote-style
   "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
@@ -1462,7 +1461,7 @@
     [:aggregation-options ag {:name name}]
     (->honeysql driver (h2x/identifier :field-alias name))
 
-    [:aggregation-options ag options]
+    [:aggregation-options ag _]
     (&recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
@@ -2307,7 +2306,10 @@
   [driver query]
   (apply-clauses driver {} query))
 
-(defn- mbql->honeysql* [driver query]
+(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
+  "Build the HoneySQL form we will compile to SQL and execute."
+  [driver :- :keyword
+   query  :- :map]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
@@ -2322,32 +2324,6 @@
           inner-query       (or (:query query) query)
           mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
       (recur driver mbql5-query))))
-
-(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5
-                                           :postgres :postgres-mbql5})
-
-(defn- mbql5-experiment-report
-  [driver experimental-driver query]
-  (fn [{:keys [match? candidate-outcome control-outcome] :as result}]
-    (when-let [report-fn @experiment/default-report-fn]
-      (report-fn result))
-    (when-not match?
-      (log/with-context {:experimental-mbql5-driver :mismatch
-                         :driver driver
-                         :experimental-driver experimental-driver}
-        (log/warnf "MBQL5 experiment mismatch:\nQuery: %s\nControl result: %s\nCandidate result: %s"
-                   query control-outcome candidate-outcome)))))
-
-(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
-  "Build the HoneySQL form we will compile to SQL and execute."
-  [driver :- :keyword
-   query  :- :map]
-  (if-let [experimental-driver (experimental-mbql5-drivers driver)]
-    (experiment/experiment {:name :experimental-mbql5-driver
-                            :report-fn (mbql5-experiment-report driver experimental-driver query)}
-                           (mbql->honeysql* driver query)
-                           (mbql->honeysql* experimental-driver query))
-    (mbql->honeysql* driver query)))
 
 ;;;; MBQL -> Native
 

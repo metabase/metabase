@@ -90,6 +90,7 @@ const ChartSettingFieldsPartitionInternal = ({
       {Object.keys(items).map((partitionName) => (
         <PartitionContainer
           key={partitionName}
+          // Unjustified type cast. FIXME
           partitionName={partitionName as keyof ColumnNameColumnSplitSetting}
           partitions={partitions}
           items={items}
@@ -185,7 +186,7 @@ const PartitionContainer = ({
             <Box
               w="100%"
               p="0.75rem"
-              bg="border"
+              bg="border-neutral"
               c="text-secondary"
               className={CS.rounded}
             >
@@ -237,7 +238,7 @@ const DroppableItem = ({
       ref={setNodeRef}
       mih="2.5rem"
       className={CS.rounded}
-      {...(isDragging && !disabled && { bg: "border" })}
+      {...(isDragging && !disabled && { bg: "border-neutral" })}
     >
       {children}
     </Box>

@@ -1,6 +1,5 @@
 import { useClickOutside } from "@mantine/hooks";
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
@@ -9,6 +8,7 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { AdminPath } from "metabase/redux/store";
+import { push } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
@@ -64,7 +64,7 @@ export const AdminNavbar = ({
       align="center"
       justify="space-between"
       h={ADMIN_NAVBAR_HEIGHT}
-      bg="admin-navbar"
+      bg="navbar-admin"
       fz="0.85rem"
       px="1rem"
       py="0.5rem"
@@ -156,7 +156,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           pos="fixed"
           top={ADMIN_NAVBAR_HEIGHT}
           right={0}
-          bg="admin-navbar"
+          bg="navbar-admin"
           mah={`calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`}
           bdrs="0 0 0 0.5rem"
           style={{ overflowY: "auto" }}

@@ -26,6 +26,7 @@ import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
+import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { initializePlugins } from "sdk-ee-plugins";
 
@@ -141,42 +142,44 @@ export const ComponentProviderInternal = (
 
   return (
     <EmotionCacheProvider>
-      <SdkThemeProvider theme={theme}>
-        <EnsureSingleInstance
-          groupId="component-providers"
-          instanceId={ensureSingleInstanceId}
-        >
-          {({ isInstanceToRender }) => (
-            <>
-              <LocaleProvider locale={locale || instanceLocale}>
-                {children}
+      <OverlayStackProvider>
+        <SdkThemeProvider theme={theme}>
+          <EnsureSingleInstance
+            groupId="component-providers"
+            instanceId={ensureSingleInstanceId}
+          >
+            {({ isInstanceToRender }) => (
+              <>
+                <LocaleProvider locale={locale || instanceLocale}>
+                  {children}
 
-                {isInstanceToRender && pluginsReady && (
-                  <ContentTranslationsProvider />
+                  {isInstanceToRender && pluginsReady && (
+                    <ContentTranslationsProvider />
+                  )}
+                </LocaleProvider>
+
+                {isInstanceToRender && (
+                  <>
+                    <Global styles={SCOPED_CSS_RESET} />
+
+                    <SdkFontsGlobalStyles
+                      baseUrl={authConfig.metabaseInstanceUrl}
+                    />
+
+                    <SdkUsageProblemDisplay
+                      authConfig={authConfig}
+                      allowConsoleLog={allowConsoleLog}
+                      isLocalHost={isLocalHost}
+                    />
+
+                    <PortalContainer />
+                  </>
                 )}
-              </LocaleProvider>
-
-              {isInstanceToRender && (
-                <>
-                  <Global styles={SCOPED_CSS_RESET} />
-
-                  <SdkFontsGlobalStyles
-                    baseUrl={authConfig.metabaseInstanceUrl}
-                  />
-
-                  <SdkUsageProblemDisplay
-                    authConfig={authConfig}
-                    allowConsoleLog={allowConsoleLog}
-                    isLocalHost={isLocalHost}
-                  />
-
-                  <PortalContainer />
-                </>
-              )}
-            </>
-          )}
-        </EnsureSingleInstance>
-      </SdkThemeProvider>
+              </>
+            )}
+          </EnsureSingleInstance>
+        </SdkThemeProvider>
+      </OverlayStackProvider>
     </EmotionCacheProvider>
   );
 };
@@ -197,11 +200,11 @@ export const ComponentProvider = memo(function ComponentProvider({
   }
 
   return (
-    <MetabaseReduxProvider store={reduxStoreRef.current!}>
+    <MetabaseReduxProvider store={reduxStoreRef.current}>
       <METABOT_SDK_EE_PLUGIN.MetabotProvider>
         <ComponentProviderInternal
           {...props}
-          reduxStore={reduxStoreRef.current!}
+          reduxStore={reduxStoreRef.current}
         >
           {children}
         </ComponentProviderInternal>

@@ -2888,13 +2888,101 @@
            :created_at       :%now}
           attrs)))
 
+(deftest collapse-uniform-table-permissions-migration-test
+  (testing "Migrations v62.2026-07-07T00:00:00 through v62.2026-07-07T00:00:05:
+            uniform full-coverage :blocked view-data table rows collapse to a db-level row (#76077)"
+    (impl/test-migrations ["v62.2026-07-07T00:00:00" "v62.2026-07-07T00:00:05"] [migrate!]
+      (let [group-id (t2/insert-returning-pk! :permissions_group {:name "collapse-test-group"})
+            db!      (fn [db-name]
+                       (t2/insert-returning-pk! :metabase_database
+                                                {:details    "{}"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :engine     "h2"
+                                                 :is_sample  false
+                                                 :name       db-name}))
+            table!   (fn [db-id active?]
+                       (t2/insert-returning-pk! :metabase_table
+                                                {:db_id      db-id
+                                                 :name       (mt/random-name)
+                                                 :schema     "PUBLIC"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :active     active?}))
+            perm!    (fn [db-id table-id perm-type perm-value]
+                       (t2/insert! :data_permissions
+                                   {:group_id    group-id
+                                    :db_id       db-id
+                                    :table_id    table-id
+                                    :schema_name (when table-id "PUBLIC")
+                                    :perm_type   perm-type
+                                    :perm_value  perm-value}))
+            rows     (fn [db-id perm-type]
+                       (t2/select-fn-set (juxt :table_id :perm_value) :data_permissions
+                                         :group_id group-id :db_id db-id :perm_type perm-type))
+            ;; db-1: uniform :blocked covering all active tables (+ a :blocked row for an inactive table)
+            ;; → collapses
+            db-1     (db! "collapse-uniform")
+            t1a      (table! db-1 true)
+            t1b      (table! db-1 true)
+            t1-off   (table! db-1 false)
+            ;; db-2: partial coverage → untouched
+            db-2     (db! "collapse-partial")
+            t2a      (table! db-2 true)
+            _t2b     (table! db-2 true)
+            ;; db-3: mixed values → untouched
+            db-3     (db! "collapse-mixed")
+            t3a      (table! db-3 true)
+            t3b      (table! db-3 true)
+            ;; db-4: uniform but :unrestricted → untouched
+            db-4     (db! "collapse-unrestricted")
+            t4a      (table! db-4 true)
+            ;; db-5: uniform :no create-queries (not view-data) → untouched
+            db-5     (db! "collapse-other-type")
+            t5a      (table! db-5 true)
+            ;; db-6: active tables uniformly :blocked, but an INACTIVE table's row differs → untouched;
+            ;; the differing row must survive so a reactivated table picks its value back up
+            db-6     (db! "collapse-inactive-differs")
+            t6a      (table! db-6 true)
+            t6-off   (table! db-6 false)
+            ;; db-7: table row duplicating an equal-value db-level row → duplicate deleted
+            db-7     (db! "collapse-dup-of-db-level")
+            t7a      (table! db-7 true)]
+        (perm! db-1 t1a "perms/view-data" "blocked")
+        (perm! db-1 t1b "perms/view-data" "blocked")
+        (perm! db-1 t1-off "perms/view-data" "blocked")
+        (perm! db-2 t2a "perms/view-data" "blocked")
+        (perm! db-3 t3a "perms/view-data" "blocked")
+        (perm! db-3 t3b "perms/view-data" "unrestricted")
+        (perm! db-4 t4a "perms/view-data" "unrestricted")
+        (perm! db-5 t5a "perms/create-queries" "no")
+        (perm! db-6 t6a "perms/view-data" "blocked")
+        (perm! db-6 t6-off "perms/view-data" "unrestricted")
+        (perm! db-7 nil "perms/view-data" "unrestricted")
+        (perm! db-7 t7a "perms/view-data" "unrestricted")
+        (migrate!)
+        (testing "uniform :blocked collapses to a single db-level row, dropping the inactive table's row too"
+          (is (= #{[nil "blocked"]} (rows db-1 "perms/view-data"))))
+        (testing "partial coverage untouched"
+          (is (= #{[t2a "blocked"]} (rows db-2 "perms/view-data"))))
+        (testing "mixed values untouched"
+          (is (= #{[t3a "blocked"] [t3b "unrestricted"]} (rows db-3 "perms/view-data"))))
+        (testing "uniform non-blocked value untouched"
+          (is (= #{[t4a "unrestricted"]} (rows db-4 "perms/view-data"))))
+        (testing "non-view-data perm types untouched"
+          (is (= #{[t5a "no"]} (rows db-5 "perms/create-queries"))))
+        (testing "a differing value on an inactive table's row blocks the collapse"
+          (is (= #{[t6a "blocked"] [t6-off "unrestricted"]} (rows db-6 "perms/view-data"))))
+        (testing "table rows duplicating an equal-value db-level row are deleted"
+          (is (= #{[nil "unrestricted"]} (rows db-7 "perms/view-data"))))))))
+
 (defn- collection-entity-id
   [collection-id]
   (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test
-  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02-updated: backfill canonical Library root entity IDs"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02-updated-2: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id (insert-legacy-library-collection! {:name      "Library"
                                                            :slug      "library"
                                                            :type      "library"
@@ -2917,9 +3005,42 @@
         (is (= "librarylibrarymetrics"
                (collection-entity-id metrics-id)))))))
 
+(deftest backfill-legacy-library-root-collection-entity-ids-mysql-utf8mb3-test
+  (testing "Library root entity ID backfill handles utf8mb3 MySQL app DB sessions (#76510)"
+    (mt/test-driver :mysql
+      (impl/with-temp-empty-app-db [conn :mysql]
+        (impl/run-migrations-in-range! conn
+                                       [(str "v" "00.00-000") "v62.2026-05-13T12:00:00"]
+                                       {:inclusive-end? false})
+        (jdbc/execute! {:connection conn}
+                       "ALTER TABLE collection CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci")
+        (let [library-id (insert-legacy-library-collection! {:name      "Library"
+                                                             :slug      "library"
+                                                             :type      "library"
+                                                             :entity_id "legacy-library-root"})
+              data-id    (insert-legacy-library-collection! {:name      "Data"
+                                                             :slug      "data"
+                                                             :type      "library-data"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-data"})
+              metrics-id (insert-legacy-library-collection! {:name      "Metrics"
+                                                             :slug      "metrics"
+                                                             :type      "library-metrics"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-metric"})]
+          (jdbc/execute! {:connection conn} "SET NAMES utf8 COLLATE utf8_general_ci")
+          (impl/run-migrations-in-range! conn
+                                         ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"])
+          (is (= "librarylibrarylibrary"
+                 (collection-entity-id library-id)))
+          (is (= "librarylibrarydatadat"
+                 (collection-entity-id data-id)))
+          (is (= "librarylibrarymetrics"
+                 (collection-entity-id metrics-id))))))))
+
 (deftest backfill-legacy-library-root-collection-entity-ids-test-2
   (testing "ambiguous Library Data direct children are not modified"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id        (insert-legacy-library-collection! {:name      "Library"
                                                                   :slug      "library"
                                                                   :type      "library"
@@ -2951,7 +3072,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-3
   (testing "Library Data collections outside Library root do not count as ambiguous"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id      (insert-legacy-library-collection! {:name      "Library"
                                                                 :slug      "library"
                                                                 :type      "library"
@@ -2979,7 +3100,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-4
   (testing "pre-existing canonical Library rows with missing types prevent entity_id collisions"
-    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [canonical-library-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Library"
                                                                      :slug      "canonical-library"
                                                                      :type      nil
@@ -3133,3 +3254,83 @@
         (testing "user-settings with a real coercion is untouched"
           (is (= "type/Number"
                  (t2/select-one-fn :effective_type :metabase_field_user_settings :field_id with-coercion-id))))))))
+
+(deftest task-run-notification-id-backfill-test
+  ;; Backfill is Postgres/MySQL only: H2 has no JSON-path extraction functions and isn't a production
+  ;; app-db anyway. Skip the whole test there.
+  (when (#{:postgres :mysql} (mdb/db-type))
+    (testing "v62 backfills task_run.notification_id from the notification-send task_history child"
+      (impl/test-migrations ["v62.2026-06-06T00:00:00"] [migrate!]
+        (let [recent    (t/offset-date-time)
+              old       (t/minus (t/offset-date-time) (t/days 100))
+              new-run!  (fn [started run-type status]
+                          (t2/insert-returning-pk! :task_run {:run_type    run-type
+                                                              :entity_type "card"
+                                                              :entity_id   1
+                                                              :status      status
+                                                              :started_at  started}))
+              new-th!   (fn [run-id task status details]
+                          ;; insert via table name (not the model) so task_details is stored as the raw
+                          ;; JSON string the backfill reads, without the model's :json transform.
+                          (t2/insert! :task_history {:task         task
+                                                     :status       status
+                                                     :started_at   recent
+                                                     :run_id       run-id
+                                                     :task_details details}))
+              ;; the three task_history shapes a real notification-send produces, plus the edge cases
+              success   (new-run! recent "alert"        "success")   ; normal: succeeded, notification_id top-level
+              failed    (new-run! recent "alert"        "failed")    ; failed: with-task-history nests under original-info
+              abandoned (new-run! recent "alert"        "abandoned") ; abandoned: died before writing any task_history
+              too-old   (new-run! old    "alert"        "success")   ; outside the 90-day window
+              chan-only (new-run! recent "alert"        "success")   ; only a channel-send child, no notification-send
+              subscript (new-run! recent "subscription" "success")   ; dashboard subscription, also attributed
+              jnull     (new-run! recent "alert"        "success")   ; JSON-null id top-level (GDGT-2680)
+              jnull-orig (new-run! recent "alert"       "failed")    ; JSON-null id under original-info (GDGT-2680)
+              no-id     (new-run! recent "alert"        "success")   ; no notification_id key at all
+              no-id-orig (new-run! recent "alert"       "failed")    ; original-info present but no notification_id key
+              invalid   (new-run! recent "alert"        "success")   ; non-JSON task_details — MySQL only (GDGT-2680)
+              other     (new-run! recent "sync"         "success")]  ; neither alert nor subscription
+          (new-th! success    "notification-send" "success" "{\"notification_id\":101}")
+          (new-th! failed     "notification-send" "failed"  "{\"status\":\"failed\",\"message\":\"boom\",\"original-info\":{\"notification_id\":102}}")
+          ;; `abandoned` intentionally has NO task_history (the run was killed before writing one)
+          (new-th! too-old    "notification-send" "success" "{\"notification_id\":104}")
+          (new-th! chan-only  "channel-send"      "success" "{\"notification_id\":105,\"channel_type\":\"channel/email\"}")
+          (new-th! subscript  "notification-send" "success" "{\"notification_id\":107}")
+          ;; a JSON-null value (not an absent key) made MySQL strict mode reject CAST('null' AS UNSIGNED)
+          (new-th! jnull      "notification-send" "success" "{\"notification_id\":null}")
+          (new-th! jnull-orig "notification-send" "failed"  "{\"status\":\"failed\",\"original-info\":{\"notification_id\":null}}")
+          ;; valid JSON, but the notification_id key is simply absent (top-level, and inside original-info)
+          (new-th! no-id      "notification-send" "success" "{\"status\":\"skipped\"}")
+          (new-th! no-id-orig "notification-send" "failed"  "{\"status\":\"failed\",\"original-info\":{\"status\":\"started\"}}")
+          (new-th! other      "notification-send" "success" "{\"notification_id\":106}")
+          ;; MySQL-only: invalid JSON is skipped by the JSON_VALID guard. Postgres' ::jsonb cast has no
+          ;; such guard and would throw on a non-JSON row, so this case can't run there.
+          (when (= :mysql (mdb/db-type))
+            (new-th! invalid "notification-send" "success" "not-json"))
+          (migrate!)
+          (let [nid #(t2/select-one-fn :notification_id :task_run :id %)]
+            (testing "attributed from a notification-send child in the window"
+              (testing "normal successful send, top-level notification_id"
+                (is (= 101 (nid success))))
+              (testing "failed send, notification_id nested under original-info"
+                (is (= 102 (nid failed))))
+              (testing "subscription run is attributed too"
+                (is (= 107 (nid subscript)))))
+            (testing "not attributed"
+              (testing "abandoned run with no task_history stays null"
+                (is (nil? (nid abandoned))))
+              (testing "run older than the 90-day window"
+                (is (nil? (nid too-old))))
+              (testing "channel-send-only run (no notification-send)"
+                (is (nil? (nid chan-only))))
+              (testing "neither alert nor subscription"
+                (is (nil? (nid other))))
+              (testing "JSON-null notification_id stays null instead of crashing the migration (GDGT-2680)"
+                (is (nil? (nid jnull)))
+                (is (nil? (nid jnull-orig))))
+              (testing "task_details with no notification_id key stays null"
+                (is (nil? (nid no-id)))
+                (is (nil? (nid no-id-orig))))
+              (when (= :mysql (mdb/db-type))
+                (testing "invalid JSON task_details is skipped by JSON_VALID, run stays null (GDGT-2680)"
+                  (is (nil? (nid invalid))))))))))))

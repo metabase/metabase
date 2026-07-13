@@ -12,10 +12,10 @@ export const CardRoot = styled(Link)`
   display: flex;
   align-items: center;
   padding: 1rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-primary);
-  box-shadow: 0 7px 20px var(--mb-color-shadow);
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: 0 7px 20px var(--mb-color-shadow-default);
   max-width: 100%;
 
   ${breakpointMinSmall} {
@@ -27,6 +27,6 @@ export const CardRoot = styled(Link)`
   }
 
   &:hover {
-    box-shadow: 0 10px 22px ${() => alpha("shadow", 0.09)};
+    box-shadow: 0 10px 22px ${() => alpha("shadow-default", 0.09)};
   }
 `;

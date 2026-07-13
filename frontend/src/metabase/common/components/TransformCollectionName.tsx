@@ -1,13 +1,14 @@
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { isRootCollection } from "metabase/collections/utils";
+import { isRootCollection } from "metabase/common/collections/utils";
 import type { CollectionId } from "metabase-types/api";
 
 export function TransformCollectionName({ id }: { id: CollectionId }) {
   const { data: collection } = useGetCollectionQuery(
     !isRootCollection({ id }) && Number.isSafeInteger(id)
-      ? { id: id as number, namespace: "transforms" }
+      ? // Unjustified type cast. FIXME
+        { id: id as number, namespace: "transforms" }
       : skipToken,
   );
 

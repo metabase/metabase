@@ -26,4 +26,5 @@ export type SdkListenerPredicate = NonNullable<
 export const sdkListenerMiddleware = createListenerMiddleware();
 
 export const startSdkListening =
+  // Unjustified type cast. FIXME
   sdkListenerMiddleware.startListening as SdkStartListening;

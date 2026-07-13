@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
@@ -7,10 +5,12 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { ChecklistItemValue } from "metabase/redux/store";
 import {
   createMockAppState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -20,7 +20,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { Onboarding } from "../Onboarding";
-import type { ChecklistItemValue } from "../types";
 
 export type SetupProps = {
   isAdmin?: boolean;

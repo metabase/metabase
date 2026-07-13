@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
 
 import { getDataStudioSegmentRoutes } from "metabase/data-studio/segments/routes";
+import { IndexRoute, Route } from "metabase/router";
 
 import { LibraryPage } from "./LibraryPage";
 import { LibrarySectionLayout } from "./LibrarySectionLayout";

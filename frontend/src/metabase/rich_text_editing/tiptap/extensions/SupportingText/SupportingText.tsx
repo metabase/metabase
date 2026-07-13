@@ -11,18 +11,13 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-} from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux/hooks";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
+import { push } from "metabase/router";
 import { Box } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -137,11 +132,12 @@ const SupportingTextComponent = ({
   node,
   selected,
 }: NodeViewProps) => {
-  const { ref: viewportRef, isInViewport } = useNodeInViewport();
-  const childTargetId = useSelector(getChildTargetId);
-  const document = useSelector(getCurrentDocument);
+  const host = useEditorHost();
+  const { ref: viewportRef, isInViewport } = host.useNodeInViewport();
+  const childTargetId = useSelector(host.selectors.getChildTargetId);
+  const document = useSelector(host.selectors.getCurrentDocument);
   const { _id } = node.attrs;
-  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+  const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
     skip: !isInViewport,
   });
   const isOpen = childTargetId === _id;

@@ -23,6 +23,7 @@ describe("getCurrentTab", () => {
     ${"/data-studio/transforms/new/query"}                | ${"transforms"}
     ${"/data-studio/data"}                                | ${"data"}
     ${"/data-studio/data/database/1"}                     | ${"data"}
+    ${"/data-studio/settings"}                            | ${"settings"}
     ${"/data-studio"}                                     | ${"data"}
   `(
     "should return '$expectedTab' for pathname '$pathname'",

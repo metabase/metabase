@@ -1,8 +1,6 @@
 import type { LocationDescriptorObject } from "history";
 import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
-import { type Route, withRouter } from "react-router";
-import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -10,7 +8,10 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { isDbModifiable } from "metabase/common/utils/database";
+import {
+  getDbNotModifiableMessage,
+  isDbModifiable,
+} from "metabase/common/utils/database";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import type {
   DatabaseFormConfig,
@@ -18,6 +19,7 @@ import type {
 } from "metabase/databases/types";
 import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
+import { type Route, withRouter } from "metabase/router";
 import { Text } from "metabase/ui";
 import type {
   DatabaseData,
@@ -81,10 +83,12 @@ export const DatabaseEditConnectionForm = withRouter(
           onSubmitted(savedDB);
         });
       } catch (error) {
+        // Unjustified type cast. FIXME
         throw getSubmitError(error as DatabaseEditErrorType);
       }
     };
 
+    // Unjustified type cast. FIXME
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
         <LoadingAndErrorWrapper
@@ -95,6 +99,7 @@ export const DatabaseEditConnectionForm = withRouter(
           {isDbModifiable({
             id: database?.id,
             is_attached_dwh: isAttachedDWH,
+            is_sample: database?.is_sample,
           }) ? (
             <DatabaseForm
               initialValues={database}
@@ -107,7 +112,7 @@ export const DatabaseEditConnectionForm = withRouter(
               onEngineChange={onEngineChange}
             />
           ) : (
-            <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>
+            <Text my="md">{getDbNotModifiableMessage(database)}</Text>
           )}
         </LoadingAndErrorWrapper>
         <LeaveRouteConfirmModal

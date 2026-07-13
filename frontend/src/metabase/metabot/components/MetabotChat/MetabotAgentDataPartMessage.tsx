@@ -31,31 +31,31 @@ export const AgentDataPartMessage = ({
   debug,
 }: AgentDataPartMessageProps) =>
   match(message)
-    .with({ part: { type: "todo_list" } }, ({ part }) => (
-      <AgentTodoListMessage todos={part.value} />
+    .with({ part: { type: "data-todo_list" } }, ({ part }) => (
+      <AgentTodoListMessage todos={part.data} />
     ))
-    .with({ part: { type: "transform_suggestion" } }, (msg) => (
+    .with({ part: { type: "data-transform_suggestion" } }, (msg) => (
       <AgentSuggestionMessage message={msg} readonly={readonly} />
     ))
-    .with({ part: { type: "navigate_to" } }, ({ part }) => {
+    .with({ part: { type: "data-navigate_to" } }, ({ part }) => {
       const sourcePills = (
         <NavigateToTablePills
-          path={part.value}
+          path={part.data}
           messageId={readonly ? undefined : message.externalId}
         />
       );
 
       return (
         <Stack gap="md">
-          {debug && <NavigateToDataPart type={part.type} path={part.value} />}
+          {debug && <NavigateToDataPart type={part.type} path={part.data} />}
           {sourcePills}
         </Stack>
       );
     })
-    .with({ part: { type: "code_edit" } }, ({ part, metadata }) => {
+    .with({ part: { type: "data-code_edit" } }, ({ part, metadata }) => {
       const sourcePills = (
         <CodeEditTablePills
-          value={part.value}
+          value={part.data}
           buffer={metadata?.codeEditBuffer}
           messageId={readonly ? undefined : message.externalId}
         />
@@ -63,30 +63,32 @@ export const AgentDataPartMessage = ({
 
       return (
         <Stack gap="md">
-          {debug && <CodeEditDataPart type={part.type} value={part.value} />}
+          {debug && <CodeEditDataPart type={part.type} value={part.data} />}
           {sourcePills}
         </Stack>
       );
     })
     .with(
-      { part: { type: "generated_entity", value: { type: "card" } } },
+      { part: { type: "data-generated_entity", data: { type: "card" } } },
       ({ part }) => (
         <Stack gap="md">
-          {debug && <DataPartJsonCard type={part.type} value={part.value} />}
-          <MetabotInlineChart value={part.value} />
+          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+          <MetabotInlineChart value={part.data} />
         </Stack>
       ),
     )
-    .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
-      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
+    .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
-    .with({ part: { type: "static_viz" } }, ({ part }) =>
-      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
+    .with({ part: { type: "data-static_viz" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
     .exhaustive((msg: unknown) => {
       console.warn("AgentDataPartMessage received an unexpected value:", msg);
       return null;
     });
+
+const formatPartType = (type: string) => type.replace(/^data-/, "");
 
 const DataPartJsonCard = ({
   type,
@@ -106,7 +108,7 @@ const DataPartJsonCard = ({
 
   return (
     <Box
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
       className={Styles.agentPartCard}
     >
@@ -119,7 +121,7 @@ const DataPartJsonCard = ({
       >
         <Flex align="center">
           <Icon name="document" c="text-secondary" mr="sm" />
-          <Text fw="bold">{type}</Text>
+          <Text fw="bold">{formatPartType(type)}</Text>
         </Flex>
         <ActionIcon
           h="sm"
@@ -131,9 +133,9 @@ const DataPartJsonCard = ({
       </Flex>
       <Box
         p="sm"
-        bg="background-primary"
+        bg="background_page-primary"
         style={{
-          borderTop: "1px solid var(--mb-color-border)",
+          borderTop: "1px solid var(--mb-color-border-neutral)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",
           borderBottomRightRadius: "var(--mantine-radius-sm)",
         }}
@@ -161,7 +163,7 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
     direction="row"
     align="center"
     justify="space-between"
-    bd="1px solid var(--mb-color-border)"
+    bd="1px solid var(--mb-color-border-neutral)"
     bdrs="sm"
     className={Styles.agentPartCard}
     p="sm"
@@ -169,7 +171,7 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
   >
     <Flex align="center">
       <Icon name="document" c="text-secondary" mr="sm" />
-      <Text fw="bold">{type}</Text>
+      <Text fw="bold">{formatPartType(type)}</Text>
     </Flex>
     <ActionIcon
       component={ForwardRefLink}
@@ -195,7 +197,7 @@ const CodeEditDataPart = ({
 
   return (
     <Box
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
       className={Styles.agentPartCard}
     >
@@ -208,10 +210,10 @@ const CodeEditDataPart = ({
       >
         <Flex align="center" gap="sm">
           <Icon name="document" c="text-secondary" />
-          <Text fw="bold">{type}</Text>
+          <Text fw="bold">{formatPartType(type)}</Text>
           <Text c="text-secondary">{t`Buffer ID: ${value.buffer_id}`}</Text>
-          <Badge variant="light" size="sm">
-            {value.mode}
+          <Badge color="brand" size="sm" variant="light">
+            {getModeLabel(value.mode)}
           </Badge>
         </Flex>
         <ActionIcon
@@ -224,7 +226,7 @@ const CodeEditDataPart = ({
       </Flex>
       <Box
         style={{
-          borderTop: "1px solid var(--mb-color-border)",
+          borderTop: "1px solid var(--mb-color-border-neutral)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",
           borderBottomRightRadius: "var(--mantine-radius-sm)",
           overflow: "hidden",
@@ -235,3 +237,9 @@ const CodeEditDataPart = ({
     </Box>
   );
 };
+
+function getModeLabel(mode: MetabotCodeEdit["mode"]): string {
+  return match(mode)
+    .with("rewrite", () => t`Rewrite`)
+    .exhaustive();
+}

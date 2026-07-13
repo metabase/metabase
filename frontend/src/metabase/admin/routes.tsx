@@ -1,12 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
 import { Fragment } from "react";
-import {
-  IndexRedirect,
-  IndexRoute,
-  Redirect,
-  Route,
-  type RouteComponent,
-} from "react-router";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
@@ -35,21 +28,27 @@ import {
   EmbeddingSettings,
   GuestEmbedsSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
-import { Help } from "metabase/admin/tools/components/Help";
-import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
-import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
-import { LogLevelsModal } from "metabase/admin/tools/components/LogLevelsModal";
-import { Logs } from "metabase/admin/tools/components/Logs";
-import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import {
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
+import { Help } from "metabase/monitor/tools/components/Help";
+import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
+import { JobTriggersModal } from "metabase/monitor/tools/components/JobTriggersModal";
+import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
+import { Logs } from "metabase/monitor/tools/components/Logs";
+import {
+  ModelCachePage,
+  ModelCacheRefreshJobModal,
+} from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
+import { ToolsApp } from "metabase/monitor/tools/components/ToolsApp";
+import { ToolsUpsell } from "metabase/monitor/tools/components/ToolsUpsell";
+import {
+  getNotificationsRoutes,
+  getTasksRoutes,
+} from "metabase/monitor/tools/routes";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -66,6 +65,13 @@ import {
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Redirect,
+  Route,
+  type RouteComponent,
+} from "metabase/router";
 import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
@@ -74,9 +80,6 @@ import { OAuthAuthorizationsPage } from "./ai/OAuthAuthorizationsPage";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { getSettingsRoutes } from "./settingsRoutes";
-import { ToolsApp } from "./tools/components/ToolsApp";
-import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
 import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,
@@ -277,6 +280,7 @@ export const getRoutes = (
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
+          {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
             <Route key="mcp" path="mcp" component={McpSettingsPage} />
@@ -347,18 +351,11 @@ export const getRoutes = (
               <ModalRoute
                 path=":jobKey"
                 modal={JobTriggersModal}
-                modalProps={{ wide: true }}
+                modalProps={{ size: "85%" }}
               />
             </Route>
             <Route path="logs" component={Logs}>
-              <ModalRoute
-                path="levels"
-                modal={LogLevelsModal}
-                modalProps={{
-                  // EventSandbox interferes with mouse text selection in CodeMirror editor
-                  disableEventSandbox: true,
-                }}
-              />
+              <ModalRoute path="levels" modal={LogLevelsModal} />
             </Route>
             {PLUGIN_DEPENDENCIES.isEnabled && (
               <Route

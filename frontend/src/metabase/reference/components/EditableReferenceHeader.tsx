@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { memo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
+import L from "metabase/reference/components/List/List.module.css";
+import { Link } from "metabase/router";
 import { Button, Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 

@@ -54,7 +54,7 @@ export function DependentsSection({ cardId }: DependentsSectionProps) {
     <Stack role="region" aria-label={label}>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          <Badge variant="filled" bg="core-brand">
+          <Badge color="brand" size="sm">
             {allDependents.length}
           </Badge>
           <Title order={5}>{label}</Title>

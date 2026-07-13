@@ -11,12 +11,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import { Toggle } from "metabase/common/components/Toggle";
 import type { ExportFormat } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
-import { Box, Checkbox, Group, Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Checkbox, Group, Icon, Switch, Text, Tooltip } from "metabase/ui";
 import type { SubscriptionSupportingCard } from "metabase-types/api";
+
+import S from "./EmailAttachmentPicker.module.css";
 
 const DEFAULT_ATTACHMENT_TYPE: AttachmentType = "csv";
 
@@ -249,6 +250,13 @@ export function EmailAttachmentPicker({
   }, [cards, pulse]);
 
   const canAttachFiles = !!allowDownload;
+
+  // Whether to attach a server-rendered PDF of the whole dashboard, stored per-channel in
+  // `details.include_pdf` alongside `attachment_only`. The BE reads it on the email path.
+  const includePdf =
+    canAttachFiles &&
+    pulse.channels.some((channel) => !!channel.details?.include_pdf);
+
   const canConfigurePivoting = cards.some((card) => card.display === "pivot");
   const areAllSelected = cards.length === selectedCardIds.size;
   const areOnlySomeSelected =
@@ -274,18 +282,41 @@ export function EmailAttachmentPicker({
       if (!includeAttachment) {
         const emptySet = new Set<string>();
         setSelectedCardIds(emptySet);
+        // Keep "send only attachments" on if a PDF is still attached; otherwise clear it.
         updatePulseCards(selectedAttachmentType, emptySet, {
           ...exportOptions,
-          isAttachmentOnly: false,
+          isAttachmentOnly: includePdf ? exportOptions.isAttachmentOnly : false,
         });
       }
 
       setIsEnabled(includeAttachment);
-      if (!includeAttachment) {
+      if (!includeAttachment && !includePdf) {
         dispatchExportOptions({ type: "DISABLE_ATTACHMENT_ONLY" });
       }
     },
-    [selectedAttachmentType, updatePulseCards, exportOptions],
+    [selectedAttachmentType, updatePulseCards, exportOptions, includePdf],
+  );
+
+  const onToggleIncludePdf = useCallback(
+    (checked: boolean) => {
+      // When no attachments remain (no PDF and no files), "send only" is meaningless — clear it.
+      const noAttachmentsLeft = !checked && !isEnabled;
+      setPulse({
+        ...pulse,
+        channels: pulse.channels.map((channel) => ({
+          ...channel,
+          details: {
+            ...channel.details,
+            include_pdf: checked,
+            ...(noAttachmentsLeft ? { attachment_only: false } : {}),
+          },
+        })),
+      });
+      if (noAttachmentsLeft) {
+        dispatchExportOptions({ type: "DISABLE_ATTACHMENT_ONLY" });
+      }
+    },
+    [pulse, setPulse, isEnabled],
   );
 
   const setAttachmentType = useCallback(
@@ -378,52 +409,91 @@ export function EmailAttachmentPicker({
     isPivotingEnabled,
   ]);
 
-  const onToggleAttachmentOnly = useCallback(() => {
-    const newOptions = {
-      ...exportOptions,
-      isAttachmentOnly: !isAttachmentOnly,
-    };
-    dispatchExportOptions({ type: "TOGGLE_ATTACHMENT_ONLY" });
-    updatePulseCards(selectedAttachmentType, selectedCardIds, newOptions);
-  }, [
-    selectedAttachmentType,
-    selectedCardIds,
-    updatePulseCards,
-    exportOptions,
-    isAttachmentOnly,
-  ]);
+  const onToggleAttachmentOnly = useCallback(
+    (checked: boolean) => {
+      const newOptions = {
+        ...exportOptions,
+        isAttachmentOnly: checked,
+      };
+      dispatchExportOptions({ type: "TOGGLE_ATTACHMENT_ONLY" });
+      updatePulseCards(selectedAttachmentType, selectedCardIds, newOptions);
+    },
+    [selectedAttachmentType, selectedCardIds, updatePulseCards, exportOptions],
+  );
 
   return (
     <div>
-      <Group
-        className={CS.borderTop}
-        justify="space-between"
-        pt="1.5rem"
-        pb="1.5rem"
-        opacity={canAttachFiles ? 1 : 0.6}
-      >
-        <Group gap="0">
-          <Text fw="bold">{t`Attach results as files`}</Text>
-          <Icon
-            name="info"
-            c="text-secondary"
-            ml="0.5rem"
-            size={12}
-            tooltip={
-              disabledReason ||
-              t`Attachments can contain up to 2,000 rows of data.`
+      <Switch
+        checked={includePdf}
+        onChange={(e) => onToggleIncludePdf(e.target.checked)}
+        disabled={!canAttachFiles}
+        mb="md"
+        classNames={{
+          body: S.AttachmentSwitchBody,
+          input: S.AttachmentSwitchInput,
+        }}
+        label={<Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>}
+        labelPosition="left"
+      />
+      <Tooltip label={disabledReason} disabled={!disabledReason}>
+        <Box>
+          <Switch
+            label={
+              <Group gap={0}>
+                <Text
+                  fw="bold"
+                  c={disabledReason ? "text-secondary" : "text-primary"}
+                >{t`Attach CSV/XLSX with results`}</Text>
+                <Icon
+                  name="info"
+                  c="text-secondary"
+                  ml="0.5rem"
+                  size={12}
+                  tooltip={
+                    !disabledReason
+                      ? t`Attachments can contain up to 2,000 rows of data.`
+                      : undefined
+                  }
+                />
+              </Group>
             }
-          />
-        </Group>
-        <Tooltip label={disabledReason} disabled={!disabledReason}>
-          <Toggle
             aria-label={t`Attach results`}
-            value={isEnabled && canAttachFiles}
-            onChange={toggleAttach}
+            checked={isEnabled && canAttachFiles}
+            onChange={(e) => toggleAttach(e.target.checked)}
             disabled={!canAttachFiles}
+            labelPosition="left"
+            classNames={{
+              body: S.AttachmentSwitchBody,
+              input: S.AttachmentSwitchInput,
+            }}
+            mb="md"
           />
-        </Tooltip>
-      </Group>
+        </Box>
+      </Tooltip>
+      {(includePdf || isEnabled) && canAttachFiles && (
+        <Switch
+          label={
+            <Group gap={0}>
+              <Text fw="bold">{t`Send only attachments (no charts)`}</Text>
+              <Icon
+                name="info"
+                c="text-secondary"
+                ml="0.5rem"
+                size={12}
+                tooltip={t`When enabled, only file attachments will be sent (no email content).`}
+              />
+            </Group>
+          }
+          aria-label={t`Send only attachments`}
+          checked={isAttachmentOnly}
+          onChange={(e) => onToggleAttachmentOnly(e.target.checked)}
+          labelPosition="left"
+          classNames={{
+            body: S.AttachmentSwitchBody,
+            input: S.AttachmentSwitchInput,
+          }}
+        />
+      )}
       {isEnabled && canAttachFiles && (
         <div>
           <Box py="1rem">
@@ -482,23 +552,6 @@ export function EmailAttachmentPicker({
               ))}
             </ul>
           </div>
-          <Group justify="space-between" pt="1rem">
-            <Group gap="0">
-              <Text fw="bold">{t`Send only attachments (no charts)`}</Text>
-              <Icon
-                name="info"
-                c="text-secondary"
-                ml="0.5rem"
-                size={12}
-                tooltip={t`When enabled, only file attachments will be sent (no email content).`}
-              />
-            </Group>
-            <Toggle
-              aria-label={t`Send only attachments`}
-              value={isAttachmentOnly}
-              onChange={onToggleAttachmentOnly}
-            />
-          </Group>
         </div>
       )}
     </div>

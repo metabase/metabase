@@ -3,10 +3,9 @@ import { t } from "ttag";
 
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { NotificationType } from "metabase/notifications/types";
 import { Button } from "metabase/ui";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
-
-import type { NotificationType } from "../../types";
 
 type UnsubscribeModalProps = {
   item: Alert | DashboardSubscription;
@@ -56,7 +55,7 @@ function UnsubscribeModal({
         <Button
           key="submit"
           variant="filled"
-          color="error"
+          color="feedback-negative"
           onClick={handleUnsubscribeClick}
         >
           {t`Unsubscribe`}

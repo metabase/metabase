@@ -34,7 +34,7 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  border-bottom: 1px solid var(--mb-color-border-subtle);
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
   min-width: max-content;
   height: 37px;
 }
@@ -51,11 +51,11 @@
    the total horizontal separator is now 2px + 1px = 3px,
    matching the .pinnedColumnsSection.withSeparator at 3px.
  */
-  border-bottom: 2px solid var(--mb-color-border-subtle);
+  border-bottom: 2px solid var(--mb-color-border-neutral-subtle);
 }
 
 .pinnedColumnsSection.withSeparator {
-  border-right: 3px solid var(--mb-color-border-subtle);
+  border-right: 3px solid var(--mb-color-border-neutral-subtle);
 }
 
 .centerRowsSection {
@@ -105,7 +105,7 @@
 
 .focusedCell {
   user-select: text;
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
   outline-offset: -2px;
 }
 
@@ -172,7 +172,7 @@
 }
 
 .row:hover .headerCell {
-  box-shadow: inset -1px 0 0 var(--mb-color-border-subtle);
+  box-shadow: inset -1px 0 0 var(--mb-color-border-neutral-subtle);
 }
 
 .cellHoverVisible {

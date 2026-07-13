@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import type { RouteComponent } from "react-router";
 
 import type { State } from "metabase/redux/store";
+import type { RouteComponent } from "metabase/router";
 import type { Database } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";

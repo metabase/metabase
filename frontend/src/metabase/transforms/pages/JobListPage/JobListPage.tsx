@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListTransformJobsQuery } from "metabase/api";
@@ -7,11 +6,12 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSetting } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
@@ -79,7 +79,7 @@ export const JobListPage = () => {
         maxWidth: 200,
         cell: ({ row }) =>
           isMeterLocked || !row.original.active ? (
-            <TransformBadge bg="background-secondary">
+            <TransformBadge bg="background_page-secondary">
               {t`Disabled`}
             </TransformBadge>
           ) : null,

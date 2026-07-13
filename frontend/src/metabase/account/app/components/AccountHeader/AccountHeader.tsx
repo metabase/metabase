@@ -2,10 +2,10 @@ import type { Path } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Radio } from "metabase/common/components/Radio";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
-import { Box, Flex, Title, rem } from "metabase/ui";
+import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
 
@@ -26,6 +26,10 @@ export const AccountHeader = ({
     () => PLUGIN_IS_PASSWORD_USER.every((predicate) => predicate(user)),
     [user],
   );
+  const mfaEnforcement = useSetting("mfa-enforcement");
+  const isMfaEnabled = mfaEnforcement != null && mfaEnforcement !== "off";
+  const hasSecurityTab =
+    isMfaEnabled && (hasPasswordChange || user.sso_source === "ldap");
 
   const tabs = useMemo(
     () => [
@@ -33,10 +37,13 @@ export const AccountHeader = ({
       ...(hasPasswordChange
         ? [{ name: t`Password`, value: "/account/password" }]
         : []),
+      ...(hasSecurityTab
+        ? [{ name: t`Security`, value: "/account/security" }]
+        : []),
       { name: t`Login History`, value: "/account/login-history" },
       { name: t`Notifications`, value: "/account/notifications" },
     ],
-    [hasPasswordChange],
+    [hasPasswordChange, hasSecurityTab],
   );
 
   const userFullName = getFullName(user);
@@ -48,7 +55,7 @@ export const AccountHeader = ({
       direction="column"
       justify="center"
       align="center"
-      bg="background-primary"
+      bg="background_page-primary"
       pt={{ base: "sm", sm: "md" }}
     >
       <Flex direction="column" align="center" p={{ base: "md", md: rem(64) }}>
@@ -64,12 +71,19 @@ export const AccountHeader = ({
           {user.email}
         </Title>
       </Flex>
-      <Radio
-        value={path}
-        variant="underlined"
-        options={tabs}
-        onChange={onChangeLocation}
-      />
+      <Tabs
+        listBorder={false}
+        value={path ?? null}
+        onChange={(value) => value && onChangeLocation?.(value)}
+      >
+        <Tabs.List>
+          {tabs.map((tab) => (
+            <Tabs.Tab key={tab.value} value={tab.value}>
+              {tab.name}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
     </Flex>
   );
 };

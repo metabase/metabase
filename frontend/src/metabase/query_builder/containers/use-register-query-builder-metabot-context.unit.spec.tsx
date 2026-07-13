@@ -112,6 +112,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const viewing = getUserIsViewing(result);
+    // Unjustified type cast. FIXME
     expect((viewing as any)?.id).toEqual(card.id);
     expect(viewing?.type).toEqual(card.type);
   });

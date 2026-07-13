@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
@@ -34,6 +34,10 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
     {
       label: t`Settings`,
       to: Urls.transformSettings(id),
+    },
+    {
+      label: t`Indexes`,
+      to: Urls.transformIndexes(id),
     },
   ];
 

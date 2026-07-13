@@ -1,7 +1,7 @@
 import type { DropTargetMonitor } from "react-dnd";
 import { DropTarget } from "react-dnd";
 
-import { isItemPinned } from "metabase/collections/utils";
+import { isItemPinned } from "metabase/common/collections/utils";
 import type { CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
@@ -28,6 +28,7 @@ export const PinnedItemSortDropTarget = DropTarget(
       props: PinnedItemSortDropTargetOwnProps,
       monitor: DropTargetMonitor,
     ) {
+      // Unjustified type cast. FIXME
       const { item } = monitor.getItem() as { item: CollectionItem };
       const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
 

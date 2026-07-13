@@ -9,7 +9,7 @@ export const ErrorBox = ({ children }: { children: ErrorDetails }) => (
     p="md"
     mt="sm"
     fw="bold"
-    bg="background-secondary"
+    bg="background_page-secondary"
     mah="16rem"
   >
     {/* ensure we don't try to render anything except a string */}

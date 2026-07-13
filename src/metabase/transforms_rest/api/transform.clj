@@ -80,6 +80,7 @@
    [:description [:maybe :string]]
    [:source :any]
    [:target :any]
+   [:table_dependencies {:optional true} [:maybe [:sequential :map]]]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
@@ -101,7 +102,11 @@
    [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:can_read {:optional true} :boolean]
    [:can_write {:optional true} :boolean]
-   [:can_execute {:optional true} :boolean]])
+   [:can_execute {:optional true} :boolean]
+   ;; Index methods requestable on the target table (driver capability); nil when unsupported. Set only by GET /:id.
+   ;; Referenced by registry keyword (not a require) to avoid a transforms-rest -> driver module dependency; the schema
+   ;; is registered by `metabase.driver`, which is loaded well before any response is coerced.
+   [:requestable_indexes {:optional true} [:maybe :metabase.driver/supported-index-methods]]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}

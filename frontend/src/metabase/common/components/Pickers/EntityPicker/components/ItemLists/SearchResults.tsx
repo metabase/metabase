@@ -246,13 +246,14 @@ export function SearchScopeSelector() {
       align="center"
       px="md"
       py="sm"
-      bg="background-secondary"
+      bg="background_page-secondary"
       mb="xs"
       data-testid="search-scope-selector"
     >
       <Text>{t`Where to search:`}</Text>
       <SegmentedControl
         value={searchScope ? String(searchScope) : "all"}
+        // Unjustified type cast. FIXME
         onChange={(newValue) => setSearchScope(newValue as SearchScope)}
         data={options}
       />

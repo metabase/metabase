@@ -55,6 +55,7 @@ const getClickBehaviorTarget = (
       })
     : {};
 
+  // Unjustified type cast. FIXME
   const parameterIdValuePairs = (
     parameterMapping
       ? getParameterIdValuePairs(parameterMapping, {

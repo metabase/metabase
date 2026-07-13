@@ -32,6 +32,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -67,9 +68,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; drop this once postgres is mbql5-compliant by default
-(def ^:dynamic *driver* :postgres)
-
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
                       ;;    can debug it. This is much less confusing when trying to fix broken tests.
@@ -77,9 +75,7 @@
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
                       (binding [sync-util/*log-exceptions-and-continue?* false]
-                        (mt/with-test-user :rasta (thunk))
-                        (binding [*driver* :postgres-mbql5]
-                          (mt/with-test-user :rasta (thunk))))))
+                        (mt/with-test-user :rasta (thunk)))))
 
 (deftest ^:parallel extract-test
   (is (= ["extract(month from NOW())"]
@@ -106,7 +102,7 @@
            ")"]
           "2021-10-03T09:00:00"
           "2021-10-03T09:00:00"]
-         (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
+         (as-> [:datetime-diff {} "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
            (sql.qp/->honeysql :postgres <>)
            (sql.qp/format-honeysql :postgres <>)
            (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
@@ -199,7 +195,7 @@
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
 (deftest ^:sequential edge-case-identifiers-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
         (is (= {:columns ["id" "dotted.name"]
@@ -250,7 +246,7 @@
     [["Cam" 1]]]])
 
 (deftest duplicate-names-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Make sure that duplicate column names (e.g. caused by using a FK) still return both columns"
       (mt/dataset duplicate-names
         (is (= {:columns ["name" "name_2"]
@@ -275,10 +271,11 @@
   [& args]
   (->> (apply driver/describe-database args)
        :tables
+       (into [])
        (sort-by :name)))
 
 (deftest materialized-views-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing (str "Check that we properly fetch materialized views. As discussed in #2355 they don't come back from "
                   "JDBC `DatabaseMetadata` so we have to fetch them manually.")
       (tx/drop-if-exists-and-create-db! driver/*driver* "materialized_views_test")
@@ -293,7 +290,7 @@
                   (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Check that we properly fetch foreign tables."
       (tx/drop-if-exists-and-create-db! driver/*driver* "fdw_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "fdw_test"})]
@@ -327,7 +324,7 @@
                   (describe-database->tables :postgres database))))))))
 
 (deftest estimated-row-count-hides-zero-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Check that tables with n_live_tup = 0 return nil for estimated_row_count to avoid confusion with stale stats"
       (tx/drop-if-exists-and-create-db! driver/*driver* "estimated_count_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "estimated_count_test"})]
@@ -339,7 +336,7 @@
                   (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing (str "make sure that if a view is dropped and recreated that the original Table object is marked active "
                   "rather than a new one being created (#3331)")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "dropped_views_test"})
@@ -371,7 +368,7 @@
                         (t2/select [:model/Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
 (deftest partitioned-table-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing (str "Make sure that partitioned tables (in addition to the individual partitions themselves) are"
                   " synced properly (#15049)")
       (let [db-name "partitioned_table_test"
@@ -451,7 +448,7 @@
                "rather than on the array path argument:\n  " out-sql)))))
 
 (deftest ^:parallel json-field-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Deal with complicated identifier (#22967)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                         {:database (assoc meta/database :engine driver/*driver*, :id 1)
@@ -480,7 +477,7 @@
 
 (defn- ^:private maybe-convert-and-compile [driver query]
   (cond-> query
-    (= driver :postgres-mbql5) (lib.convert/->mbql5)
+    (= driver :postgres) (lib.convert/->mbql5)
     :always qp.compile/compile))
 
 (defn- ^:private json-alias-mock-metadata-provider [driver]
@@ -501,7 +498,7 @@
                        :database-type "VARCHAR"})]}))
 
 (deftest ^:parallel json-alias-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
         ;; need to make this a function to avoid a duplicate `:lib/uuid` error when we use it in `compile-res`
@@ -542,7 +539,7 @@
                  (:params compile-res))))))))
 
 (deftest ^:parallel json-alias-test-2
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
         (let [field-ordinary (sql.qp/mbql-clause-with-opts driver/*driver* :field nil 1)
@@ -576,7 +573,7 @@
                                           :breakout     [[:field 1 nil]]}})}]}))
 
 (deftest ^:parallel json-breakout-in-model-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
       (qp.store/with-metadata-provider (json-alias-in-model-mock-metadata-provider driver/*driver*)
         (let [nested (maybe-convert-and-compile
@@ -608,7 +605,7 @@
 ;;; `Unterminated string literal started at position N` before the SQL ever reaches the server
 ;;; (#73721).
 (deftest contains-filter-jdbc-parser-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "PGJDBC parses :contains/:starts-with/:ends-with SQL regardless of standard_conforming_strings (#73721)"
       (let [mp       (mt/metadata-provider)
             venues   (lib.metadata/table mp (mt/id :venues))
@@ -638,7 +635,7 @@
                          (str "PGJDBC should prepare the SQL; got SQL: " sql)))))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
       (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-with-schema-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-with-schema-test"
@@ -663,7 +660,7 @@
                     {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
 (deftest describe-funky-name-table-nested-field-columns-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
       (tx/drop-if-exists-and-create-db! driver/*driver* "describe-json-funky-names-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-funky-names-test"
@@ -697,7 +694,7 @@
      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
 (deftest uuid-columns-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (mt/dataset with-uuid
       (testing "Check that we can load a Postgres Database with a :type/UUID"
         (is (= [{:name "id", :base_type :type/Integer}
@@ -804,7 +801,7 @@
      [[:raw "'10.4.4.15'::inet"]]]]])
 
 (deftest inet-columns-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing (str "Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` "
                   "(otherwise this wouldn't work)")
       (mt/dataset ip-addresses
@@ -832,7 +829,7 @@
         (thunk)))))
 
 (deftest ^:parallel money-columns-in-results-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "It should be possible to return money column results (#3754)"
       (sql-jdbc.execute/do-with-connection-with-options
        :postgres
@@ -846,7 +843,7 @@
                     (row-thunk))))))))))
 
 (deftest money-columns-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
       (do-with-money-test-db!
        (fn []
@@ -927,14 +924,14 @@
     (driver/notify-database-updated :postgres database)))
 
 (deftest ^:parallel enums-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
              (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause-with-opts driver/*driver* :value {:database_type "bird type", :base_type :type/PostgresEnum} "toucan")))))))
 
 (deftest enums-test-2
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
        (testing "check that we can actually fetch the enum types from a DB"
@@ -1013,8 +1010,39 @@
                       :data
                       (select-keys [:rows :native_form]))))))))))
 
+(deftest enum-field-filter-test
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (let [mp            (lib.metadata.jvm/application-database-metadata-provider (u/the-id db))
+             table-id      (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "birds")
+             type-field-id (t2/select-one-pk :model/Field :table_id table-id :name "type")
+             type-field    (lib.metadata/field mp type-field-id)]
+         (testing "an MBQL string/= param on a postgres enum column filters correctly (#40396)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (lib/query mp (lib.metadata/table mp table-id))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension (lib.convert/->legacy-MBQL (lib/ref type-field))]
+                                         :value  ["toucan"]}]))))))
+         (testing "a native field filter over a postgres enum column filters correctly (#63537)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    (assoc (-> (lib/native-query mp "SELECT * FROM birds WHERE {{type}}")
+                               (lib/with-template-tags
+                                 {"type" {:name         "type"
+                                          :display-name "Type"
+                                          :type         :dimension
+                                          :dimension    (lib/ref type-field)
+                                          :widget-type  :string/=}}))
+                           :parameters [{:type   :string/=
+                                         :target [:dimension [:template-tag "type"]]
+                                         :value  ["toucan"]}])))))))))))
+
 (deftest enums-test-3
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (do-with-enums-db!
      (fn [db]
        (tx/create-view-of-table! driver/*driver* db "birds_m" "birds" true)
@@ -1093,7 +1121,7 @@
                       (select-keys [:rows :native_form]))))))))))
 
 (deftest enums-actions-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "actions with enums"
       (do-with-enums-db!
        (fn [enums-db]
@@ -1290,7 +1318,7 @@
 ;; this contains special tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest check-constraint-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "violate check constraints"
       (tx/drop-if-exists-and-create-db! driver/*driver* "check-constraint-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "check-constraint-test"})]
@@ -1320,7 +1348,7 @@
 ;; this contains special tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest action-error-handling-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "violate not-null constraints with multiple columns"
       (tx/drop-if-exists-and-create-db! driver/*driver* "not-null-constraint-on-multiple-cols")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "not-null-constraint-on-multiple-cols"})]
@@ -1366,7 +1394,7 @@
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
 (deftest timezone-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (letfn [(get-timezone-with-report-timezone [report-timezone]
               (mt/with-temporary-setting-values [report-timezone report-timezone]
                 (ffirst
@@ -1386,7 +1414,7 @@
                (get-timezone-with-report-timezone "Crunk Burger")))))))
 
 (deftest fingerprint-time-fields-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Make sure we're able to fingerprint TIME fields (#5911)"
       (tx/drop-if-exists-and-create-db! driver/*driver* "time_field_test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
@@ -1429,7 +1457,7 @@
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
 (deftest ^:parallel exception-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing (str "If the DB throws an exception, is it properly returned by the query processor? Is it status "
                   ":failed? (#9942)")
       (is (thrown-with-msg?
@@ -1454,7 +1482,7 @@
 ;;; see [[metabase.query-processor.middleware.annotate-test/native-query-infer-effective-type-test]] for a test that
 ;;; just makes sure metadata is calculated correctly.
 (deftest ^:parallel pgobject-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Make sure PGobjects are decoded correctly"
       (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.01) AS sleep;"}))]
         (testing "rows"
@@ -1471,7 +1499,7 @@
                   (mt/cols results))))))))
 
 (deftest ^:parallel id-field-parameter-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "We should be able to filter a PK column with a String value -- should get parsed automatically (#13263)"
       (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
              (mt/rows
@@ -1480,7 +1508,7 @@
 
 (deftest dont-sync-tables-with-no-select-permissions-test
   (testing "Make sure we only sync databases for which the current user has SELECT permissions"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (tx/drop-if-exists-and-create-db! driver/*driver* "no-select-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -1503,7 +1531,7 @@
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (tx/drop-if-exists-and-create-db! driver/*driver* "json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -1542,7 +1570,7 @@
 
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (tx/drop-if-exists-and-create-db! driver/*driver* "composite-pks-test")
       (with-redefs [table-rows-sample/nested-field-sample-limit 4]
         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
@@ -1578,7 +1606,7 @@
 
 (deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (mt/dataset attempted-murders
         (let [query (mt/mbql-query attempts
                       {:aggregation [[:count]]
@@ -1591,7 +1619,7 @@
 
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (mt/dataset test-data
         (let [query (mt/mbql-query people
                       {:fields [!month.birth_date
@@ -1613,7 +1641,7 @@
                      (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
 
 (deftest postgres-ssl-connectivity-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (if (config/config-bool :mb-postgres-ssl-test-ssl)
       (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
@@ -1628,7 +1656,7 @@
        "-----END CERTIFICATE-----"))
 
 (deftest handle-nil-client-ssl-properties-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "Setting only one of the client SSL params doesn't result in an NPE error (#19984)"
       (mt/with-temp-file [dummy-root-cert   "dummy-root-cert.pem"
                           dummy-client-cert "dummy-client-cert.pem"]
@@ -1700,7 +1728,7 @@
               (str/ends-with? ".p12"))))))
 
 (deftest syncable-schemas-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"public"}
@@ -1720,7 +1748,7 @@
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
 
 (deftest table-privileges-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
         (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -1796,7 +1824,7 @@
 
 (deftest query-canceled?-test
   (testing "Recognizes timeout exceptions from postgres"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (mt/dataset test-data
         (let [long-sleep-sql "select pg_sleep(5)"]
           (sql-jdbc.execute/do-with-connection-with-options
@@ -1812,7 +1840,7 @@
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (sql-jdbc.execute/do-with-connection-with-options
        :postgres (mt/id) nil
        (fn [conn]
@@ -1830,7 +1858,7 @@
 
 (deftest get-tables-parity-with-jdbc-test
   (testing "make sure our get-tables return result consistent with jdbc getTables"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (mt/with-empty-db
         (sql-jdbc.execute/do-with-connection-with-options
          :postgres
@@ -1868,7 +1896,7 @@
 
 (deftest ^:parallel date-plus-integer-test
   (testing "Can we add a {{date}} template tag parameter to an integer in SQL queries? (#40755)"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (is (= [[#t "2024-07-03"]]
              (mt/rows
               (qp/process-query
@@ -1884,7 +1912,7 @@
                 :middleware {:format-rows? false}})))))))
 
 (deftest ^:parallel xml-column-is-readable-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (let [xml-str "<abc>abc</abc>"]
       (is (= [[xml-str]]
              (mt/rows
@@ -1894,7 +1922,7 @@
                 :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
 
 (deftest ^:parallel temporal-column-with-binning-keeps-type
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)]
       (doseq [[field bins] [[:birth_date [:year :quarter :month :week :day]]
                             [:created_at [:year :quarter :month :week :day :hour :minute]]]
@@ -1910,7 +1938,7 @@
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
 
 (deftest ^:parallel datetime-diff-works-for-all-units
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (let [mp (mt/metadata-provider)]
       (doseq [[field units] [[:birth_date [:year :quarter :month :week :day]]
                              [:created_at [:year :quarter :month :week :day :hour :minute :second]]]
@@ -1925,7 +1953,7 @@
             (is (->> query qp/process-query mt/rows))))))))
 
 (deftest have-select-privelege?-timeout-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
@@ -1940,7 +1968,7 @@
                              driver/*driver* conn schema table-name))))))))))))
 
 (deftest sync-writable-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "`sync-tables-and-database!` should set is_writable correctly based on table privileges"
       (let [db-name "sync_writable_test"
             details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
@@ -1983,7 +2011,7 @@
 
 (deftest ^:parallel null-array-query-test
   (testing "queries with nulls in arrays should be returned in a readable format"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (is (= [[[nil]
                [nil nil]
                [1 nil 3]
@@ -1999,7 +2027,7 @@
 
 (deftest ^:parallel arrays-have-base-type
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (is (=? [{:name "id"
                 :database_type "int4"
                 :base_type :type/Integer}
@@ -2018,7 +2046,7 @@
 
 (deftest can-edit-model-metadata
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (let [query "SELECT *
                    FROM (
                      VALUES
@@ -2070,7 +2098,7 @@
           (is (= provider (provider-detection/detect-provider-from-database database))))))))
 
 (deftest ^:parallel complex-types-in-notification-payload
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "we handle complex types in notifications"
       (let [sql "SELECT
                     i AS id,
@@ -2100,7 +2128,9 @@
                FROM generate_series(1, 5000) AS i;"
             results (qp/process-query (mt/native-query {:query sql})
                                       (temp-storage/notification-rff
-                                       5000 {:context 'complex-types-in-notification-payload}))]
+                                       {:budget (temp-storage/make-resident-budget
+                                                 {:per-card 5000 :resident-cap Long/MAX_VALUE :floor Long/MAX_VALUE})}
+                                       {:context 'complex-types-in-notification-payload}))]
         (is (integer? (:data.rows-file-size results)))
         (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1
@@ -2132,7 +2162,7 @@
 
 (deftest bytea-column-not-truncated-test
   (testing "fix for #30671"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       (mt/dataset (mt/dataset-definition
                    "bytea_dataset"
                    [["bytea_table"
@@ -2166,10 +2196,10 @@
         (test-pgobject-caching pg-obj-map)))))
 
 (deftest canceled-query-no-stacktrace-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (letfn [(catch-exceptions [run]
               (let [query    (cond-> {:type :query, :database 1}
-                               (= driver/*driver* :postgres-mbql5) (lib.convert/->mbql5))
+                               (= driver/*driver* :postgres) (lib.convert/->mbql5))
                     metadata {}
                     rows     []
                     qp       (fn [query rff]
@@ -2222,7 +2252,7 @@
                   (is (empty? bad-messages)))))))))))
 
 (deftest bit-strings-can-be-filtered
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (mt/dataset (mt/dataset-definition
                  "bit_string_dataset"
                  [["bit_string_table"
@@ -2289,36 +2319,32 @@
                      (mt/rows (qp/process-query query)))))))))))
 
 (deftest set-network-timeout-test
-  (mt/test-driver *driver*
-    (let [db-name (u/lower-case-en (format "network-timeout-%s-%s" (name driver/*driver*) (mt/random-name)))
-          spec    (sql-jdbc.conn/connection-details->spec
-                   driver/*driver*
-                   (mt/dbdef->connection-details driver/*driver* :db {:database-name db-name}))]
-      (tx/with-temp-database! driver/*driver* db-name
-        ;; Use a raw spec against a unique DB; the shared test-data DB can be created/dropped by concurrent
-        ;; :postgres and :postgres-mbql5 test setup.
-        (letfn [(run-pg-sleep []
-                  (sql-jdbc.execute/do-with-connection-with-options
-                   driver/*driver* spec nil
-                   (fn [^Connection conn]
-                     (with-open [stmt (.createStatement conn)]
-                       (.execute stmt "SELECT pg_sleep(6)")))))]
-          (testing "network hangs are interrupted after *network-timeout-ms*"
-            (binding [driver.settings/*network-timeout-ms* 3000]
-              (is (thrown-with-msg?
-                   org.postgresql.util.PSQLException
-                   #"An I/O error occurred while sending to the backend"
-                   (try
-                     (run-pg-sleep)
-                     (catch Exception e
-                       (is (true? (some #(instance? java.net.SocketTimeoutException %)
-                                        (u/full-exception-chain e))))
-                       (throw e)))))))
-          (testing "network hangs are not interrupted before *network-timeout-ms*"
-            (is (true? (run-pg-sleep)))))))))
+  (mt/test-driver :postgres
+    (testing "network hangs are interrupted after *network-timeout-ms*"
+      (binding [driver.settings/*network-timeout-ms* 3000]
+        (is (thrown-with-msg?
+             org.postgresql.util.PSQLException
+             #"An I/O error occurred while sending to the backend"
+             (try
+               (sql-jdbc.execute/do-with-connection-with-options
+                driver/*driver* (mt/id) nil
+                (fn [^Connection conn]
+                  (with-open [stmt (.createStatement conn)]
+                    (.execute stmt "SELECT pg_sleep(6)"))))
+               (catch Exception e
+                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                  (u/full-exception-chain e))))
+                 (throw e)))))))
+    (testing "network hangs are not interrupted before *network-timeout-ms*"
+      (is (true?
+           (sql-jdbc.execute/do-with-connection-with-options
+            driver/*driver* (mt/id) nil
+            (fn [^Connection conn]
+              (with-open [stmt (.createStatement conn)]
+                (.execute stmt "SELECT pg_sleep(6)")))))))))
 
 (deftest ^:parallel parse-final-identifier-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"
@@ -2365,7 +2391,7 @@
                                (sql.u/quote-name :postgres :field ~role))]))))
 
 (deftest workspace-precondition-usage-grant-option-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
       (mt/with-empty-db
         (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -2396,7 +2422,7 @@
                     (is (nil? (postgres/assert-has-usage-grant-option! user-spec schema)))))))))))))
 
 (deftest workspace-precondition-table-grant-option-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
       (mt/with-empty-db
         (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -2433,7 +2459,7 @@
                     (is (nil? (postgres/assert-has-grant-option! user-spec schema)))))))))))))
 
 (deftest workspace-precondition-alter-default-privileges-test
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
       (mt/with-empty-db
         (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -2479,7 +2505,7 @@
   ;; row targeting the iso-user and confirm `destroy-workspace-isolation!`
   ;; still cleans up without raising "user cannot be dropped because some
   ;; objects depend on it".
-  (mt/test-driver *driver*
+  (mt/test-driver :postgres
     (testing "destroy succeeds when a non-current_user grantor seeded a default-priv targeting the iso-user"
       (mt/with-empty-db
         (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -2528,3 +2554,15 @@
                                         [(format "DROP USER IF EXISTS %s" qiso)])
                          (catch Throwable t
                            (log/warnf t "Test cleanup: DROP USER %s failed" qiso)))))))))))))
+
+(deftest ^:synchronized reducible-query-streams-large-result-set-test
+  (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
+    (mt/test-driver :postgres
+      ;; A 2.1-billion-row generate_series in the SELECT list streams row-by-row (no server-side materialization).
+      ;; Pulling just the first few is fast ONLY if reducible-query streams (a cursor) and stops early; without
+      ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size.
+      (let [n      Integer/MAX_VALUE
+            result (sql-jdbc.execute/reducible-query
+                    (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
+        (testing "only the first rows are pulled, not all ~2 billion"
+          (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))

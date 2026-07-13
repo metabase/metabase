@@ -13,13 +13,6 @@ import { t } from "ttag";
 
 import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
-import { trackDocumentAskMetabot } from "metabase/documents/analytics";
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
-import { getCurrentDocument } from "metabase/documents/selectors";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
@@ -27,6 +20,7 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
@@ -153,7 +147,8 @@ export const MetabotNode = Node.create<{
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, node, extension }: NodeViewProps) => {
     const dispatch = useDispatch();
-    const document = useSelector(getCurrentDocument);
+    const host = useEditorHost();
+    const document = useSelector(host.selectors.getCurrentDocument);
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
@@ -198,10 +193,11 @@ export const MetabotComponent = memo(
         return;
       }
 
-      const newCardId = generateDraftCardId();
+      const newCardId = host.actions.generateDraftCardId();
       const card: Card = {
         ...data.draft_card,
         id: newCardId,
+        // Unjustified type cast. FIXME
         entity_id: "entity_id" as Card["entity_id"],
         created_at: "",
         updated_at: "",
@@ -228,11 +224,11 @@ export const MetabotComponent = memo(
         archived: false,
       };
 
-      trackDocumentAskMetabot(document);
-      await dispatch(loadMetadataForDocumentCard(card));
+      host.analytics.trackAskMetabot(document);
+      await dispatch(host.actions.loadMetadataForDocumentCard(card));
 
       dispatch(
-        createDraftCard({
+        host.actions.createDraftCard({
           originalCard: card,
           modifiedData: {},
           draftId: newCardId,
@@ -295,7 +291,7 @@ export const MetabotComponent = memo(
     return (
       <NodeViewWrapper>
         <Flex
-          bg="background-secondary"
+          bg="background_page-secondary"
           bd="1px solid var(--border-color)"
           className={S.borderRadius}
           pos="relative"

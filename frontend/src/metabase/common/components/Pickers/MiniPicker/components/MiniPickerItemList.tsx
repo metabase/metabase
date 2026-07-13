@@ -158,7 +158,7 @@ function RootItemList() {
             setPath([
               {
                 model: "collection",
-                id: "root" as any, // cmon typescript, trust me
+                id: "root",
                 name: rootCollectionError ? t`Collections` : t`Our analytics`,
               },
             ]);
@@ -301,7 +301,7 @@ function DatabaseItemList({
         : skipToken,
     );
 
-  const dbId = parent.model === "database" ? parent.id : parent.database_id!;
+  const dbId = parent.model === "database" ? parent.id : parent.database_id;
 
   const schemas = allSchemas?.filter((schema) => {
     return !isHidden({
@@ -499,6 +499,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
   ): SearchRequest => {
     const params: SearchRequest = {
       q: query,
+      // Unjustified type cast. FIXME
       models: models as SearchModel[],
       limit: 50,
       context: "data-picker",
@@ -605,7 +606,7 @@ export const MiniPickerListLoader = () => (
         height="1.5rem"
         width="100%"
         radius="0.5rem"
-        bg="background-secondary"
+        bg="background_page-secondary"
       />
     </Repeat>
   </Stack>

@@ -5,18 +5,18 @@ import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPag
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { userInitials } from "metabase/common/utils/user";
-import { trackDataStudioOpened } from "metabase/data-studio/analytics";
-import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
-import {
-  getCanAccessOnboardingPage,
-  getIsNewInstance,
-} from "metabase/home/selectors";
+import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
+import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
+import { prepareInitials } from "metabase/common/utils/user";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
 import { setOpenModal } from "metabase/redux/ui";
 import { getAdminPaths } from "metabase/selectors/admin";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/selectors/onboarding";
 import { getUser } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -151,7 +151,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               size="2.25rem"
               p="sm"
               variant="outline"
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               aria-label={t`Settings`}
               bdrs="50%"
               className={className}
@@ -174,10 +174,10 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               radius="lg"
               size={32}
               className={S.Avatar}
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               data-testid="app-switcher-target"
             >
-              {user ? userInitials(user) : "?"}
+              {user ? prepareInitials(user) : "?"}
             </Avatar>
           )}
         </Menu.Target>
@@ -191,11 +191,11 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
             >
               <Group wrap="nowrap">
                 <Avatar color="core-brand" radius="lg" size={32}>
-                  {user ? userInitials(user) : "?"}
+                  {user ? prepareInitials(user) : "?"}
                 </Avatar>
                 <Stack gap="xs">
                   <Text lh="xs">{user?.first_name}</Text>
-                  <Text c="text-tertiary" fz="md" lh="xs">
+                  <Text c="text-disabled" fz="md" lh="xs">
                     {user?.email}
                   </Text>
                 </Stack>

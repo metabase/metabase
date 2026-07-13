@@ -1,5 +1,5 @@
 .highlight {
-  background: var(--mb-color-background-brand);
+  background: var(--mb-color-background_surface-brand-subtle);
 }
 
 .editor {
@@ -32,14 +32,14 @@
     }
 
     .cm-gutters {
-      background-color: var(--mb-color-background-secondary);
+      background-color: var(--mb-color-background_page-secondary);
       border: none;
     }
 
     .cm-gutterElement {
       font-weight: bold;
       font-size: 10px;
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       vertical-align: baseline;
       display: flex;
       align-items: center;
@@ -56,7 +56,7 @@
     }
 
     .cm-selectionBackground {
-      background: var(--mb-color-focus) !important;
+      background: var(--mb-color-input-focus) !important;
       border-radius: 1px;
     }
 
@@ -76,7 +76,7 @@
 
     .cm-matchingBracket {
       background: none !important;
-      outline: 0.5px solid var(--mb-color-text-tertiary);
+      outline: 0.5px solid var(--mb-color-text-disabled);
       border-radius: 2px;
     }
 
@@ -92,7 +92,7 @@
     }
 
     .cm-completionDetail {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       font-style: normal;
       text-align: right;
       overflow: hidden;
@@ -114,9 +114,9 @@
     .cm-tooltip-autocomplete {
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
       border-radius: 4px;
-      background-color: var(--mb-color-background-primary);
+      background-color: var(--mb-color-background_page-primary);
       color: var(--mb-color-text-primary);
-      border: 1px solid var(--mb-color-border);
+      border: 1px solid var(--mb-color-border-neutral);
       max-width: 520px;
 
       ul li {
@@ -135,7 +135,7 @@
 
         &:hover,
         &[aria-selected="true"] {
-          background-color: var(--mb-color-background-hover);
+          background-color: var(--mb-color-background_surface-hover);
           color: var(--mb-color-text-primary);
         }
       }

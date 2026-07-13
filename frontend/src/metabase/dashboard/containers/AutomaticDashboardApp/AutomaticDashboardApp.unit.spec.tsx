@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupAutoDashboardEndpoints,
@@ -13,6 +12,7 @@ import {
   within,
 } from "__support__/ui";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,

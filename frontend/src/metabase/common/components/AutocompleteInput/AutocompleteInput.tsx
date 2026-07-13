@@ -60,6 +60,7 @@ export const AutocompleteInput = ({
   });
 
   const handleListMouseDown = (event: React.MouseEvent<HTMLElement>) => {
+    // Unjustified type cast. FIXME
     if (optionsListRef.current?.contains(event.target as Node)) {
       event.preventDefault();
       // also stops the native event before it reaches document, where the
@@ -120,10 +121,7 @@ export const AutocompleteInput = ({
           }}
         />
       </Popover.Target>
-      <Popover.Dropdown
-        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={close}
-      >
+      <Popover.Dropdown>
         <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
           {filteredOptions.map((item, index) => (
             <SelectList.Item

@@ -24,13 +24,16 @@
   org.apache.arrow/arrow-vector          {:mvn/version "18.3.0"}
   ;; was 1.71.0. bumping to 77
   io.grpc/grpc-netty-shaded              {:mvn/version "1.77.0"}
+  io.opentelemetry/opentelemetry-api     {:mvn/version "1.62.0"}             ; pinned: google-cloud-bigquery 2.55.3 pulls opentelemetry-api 1.47.0 (W3CBaggagePropagator DoS vuln)
   ;; Netty 4.2.x — latest patched release. grpc-netty-shaded bundles its own
   ;; shaded netty, but these modules are still pulled through arrow-memory-netty
   ;; and must be pinned for security scanning.
-  io.netty/netty-common                  {:mvn/version "4.2.12.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.12.Final"}
-  ;; pinned: google-cloud-bigquery pulls 2.18.2 which has resource exhaustion vulns
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}
+  io.netty/netty-common                  {:mvn/version "4.2.15.Final"}
+  io.netty/netty-buffer                  {:mvn/version "4.2.15.Final"}
+  ;; pinned: google-cloud-bigquery pulls 2.18.2 which has resource exhaustion vulns (jackson-core)
+  ;; and a deserialization vuln (jackson-databind)
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}
+  com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.5"}
   ;; Need gson ≥ 2.9.0 for JsonWriter.value(float) used in
   ;; BigQueryRetryAlgorithm error handling (#73736).
   com.google.code.gson/gson {:mvn/version "2.12.1"}}}

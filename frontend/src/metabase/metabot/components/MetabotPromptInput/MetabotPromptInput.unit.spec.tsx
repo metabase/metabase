@@ -11,7 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { createMockState } from "metabase/redux/store/mocks";
 import { MetabotMentionPluginKey } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
@@ -29,6 +29,7 @@ const defaultProps = {
   onChange: jest.fn(),
   onStop: jest.fn(),
   suggestionConfig: {
+    // Unjustified type cast. FIXME
     suggestionModels: ["table", "database"] as SuggestionModel[],
   },
 };
@@ -90,6 +91,7 @@ describe("MetabotPromptInput", () => {
 
     await userEvent.type(getEditor(), "@");
 
+    // Unjustified type cast. FIXME
     const editor = ref.current as { view: { state: EditorState } } | null;
     expect(editor).toBeTruthy();
     const mentionState = MetabotMentionPluginKey.getState(editor!.view.state);

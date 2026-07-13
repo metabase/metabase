@@ -141,7 +141,8 @@ export function createMockCloudAddOns(
           is_default: true,
         },
       ],
-      product_type: "other" as any, // test unexpected product_type
+      // test unexpected product_type
+      product_type: "other" as any,
       self_service: true,
     },
 

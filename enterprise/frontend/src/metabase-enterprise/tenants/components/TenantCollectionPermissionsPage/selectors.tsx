@@ -17,14 +17,14 @@ import {
   DataPermissionType,
   type PermissionEditorType,
 } from "metabase/admin/permissions/types";
+import { collectionApi } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { getCollectionIcon } from "metabase/common/collections/utils";
 import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
-import { collectionApi } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import { getCollectionIcon } from "metabase/collections/utils";
+} from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
@@ -137,6 +137,7 @@ const getTenantCollection = createSelector(
     }
 
     if (collectionId === ROOT_COLLECTION.id) {
+      // Unjustified type cast. FIXME
       return {
         ...ROOT_COLLECTION,
         name: t`Root shared collection`,
@@ -238,6 +239,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
               ),
               warning: getTenantCollectionWarning(
                 group.id,
+                // Unjustified type cast. FIXME
                 collection as ExpandedCollection,
                 permissions,
               ),

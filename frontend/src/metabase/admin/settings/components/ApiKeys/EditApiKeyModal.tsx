@@ -70,7 +70,7 @@ const RegenerateKeyModal = ({
             </Stack>
             {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
             <Paper
-              bg="background-secondary"
+              bg="background_page-secondary"
               radius="md"
               px="md"
               py="sm"
@@ -160,6 +160,7 @@ export const EditApiKeyModal = ({
                     input: {
                       // override the disabled-gray so the masked key stays readable in both themes
                       color: "var(--mb-color-text-primary) !important",
+                      // Unjustified type cast. FIXME
                       fontFamily: fontFamilyMonospace as string,
                     },
                   }}

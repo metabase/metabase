@@ -34,6 +34,7 @@ export const MetabotLayoutSetting = () => {
         onChange={(layout) =>
           updateSettings({
             layout:
+              // Unjustified type cast. FIXME
               layout === "auto" ? undefined : (layout as "stacked" | "sidebar"),
           })
         }

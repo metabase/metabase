@@ -1005,6 +1005,7 @@ describe("documents", () => {
 
             cy.log(`${ogHeight}, ${newHeight}`);
 
+            // Unjustified type cast. FIXME
             expect(newHeight).to.be.lessThan(ogHeight as number);
           });
         });
@@ -1854,6 +1855,8 @@ describe("documents", () => {
       cy.findByTestId("toast-undo")
         .should("be.visible")
         .and("contain.text", "Document saved");
+      // dismiss after asserting so toasts don't stack into later lookups
+      H.undoToast().icon("close").click({ force: true });
 
       cy.log("Make another change");
       H.documentContent().click();
@@ -1862,6 +1865,7 @@ describe("documents", () => {
       cy.contains('[data-testid="toast-undo"]', "Document saved").should(
         "be.visible",
       );
+      H.undoToast().icon("close").click({ force: true });
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();

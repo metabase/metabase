@@ -71,7 +71,7 @@
                   nil)))))))))
 
 (deftest is-temp-transform-tables-test
-  (mt/with-premium-features #{}
+  (mt/with-premium-features #{:hosting :transforms-basic}
     (testing "tables with schema"
       (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
             table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
@@ -80,7 +80,8 @@
 
 (deftest create-table-from-schema!-test
   (testing "create-table-from-schema! preserves column order from schema definition"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table
+                                                     :test/dynamic-dataset-loading)
       (let [driver driver/*driver*
             db-id (mt/id)
             schema-name (when (get-method sql.tx/session-schema driver)

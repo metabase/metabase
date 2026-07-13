@@ -1,14 +1,14 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListTransformJobTransformsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import CS from "metabase/css/core/index.css";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Transform, TransformJobId } from "metabase-types/api";

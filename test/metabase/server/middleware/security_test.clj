@@ -116,11 +116,22 @@
       "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
       "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
       "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
+  (testing "Should parse arbitrary schemes, not just a closed allowlist (MCP clients use e.g. vscode-webview, electron, chrome-extension)"
+    (are [url expected] (= expected
+                           (mw.security/parse-url url))
+      "electron://example.com"         {:protocol "electron" :domain "example.com" :port nil}
+      "vscode-webview://abc123"        {:protocol "vscode-webview" :domain "abc123" :port nil}
+      "chrome-extension://abc123"      {:protocol "chrome-extension" :domain "abc123" :port nil}
+      "ftp://example.com"              {:protocol "ftp" :domain "example.com" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
-      "ftp://example.com"
       "://example.com"
-      "example:com")))
+      "example:com"
+      ;; scheme must start with a letter (RFC 3986)
+      "1abc://example.com"
+      ;; domain may not contain characters outside hostname/IPv4/wildcard syntax
+      "http://exa mple.com"
+      "http://exa@mple.com")))
 
 (deftest ^:parallel test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
@@ -128,7 +139,13 @@
     (is (= 2 (count (mw.security/parse-approved-origins "   example.com      example.org   ")))))
   (testing "Should filter out invalid origins without throwing"
     (is (= 1 (count (mw.security/parse-approved-origins "example.org ://example.com"))))
-    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com"))))))
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com")))))
+  (testing "A trailing slash or path should have no effect (#75839)"
+    (is (= [{:protocol "http" :domain "localhost" :port "6274"}]
+           (mw.security/parse-approved-origins "http://localhost:6274/")))
+    (is (= (mw.security/parse-approved-origins "http://localhost:6274")
+           (mw.security/parse-approved-origins "http://localhost:6274/")
+           (mw.security/parse-approved-origins "http://localhost:6274/some/path")))))
 
 (deftest ^:parallel test-approved-domain?
   (testing "Exact match"
@@ -191,6 +208,12 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
+  (testing "Should allow custom schemes used by MCP clients, not just a closed allowlist"
+    (is (mw.security/approved-origin? "electron://example.com" "electron://example.com"))
+    (is (mw.security/approved-origin? "chrome-extension://abc123" "chrome-extension://abc123"))
+    (is (not (mw.security/approved-origin? "electron://example.com" "app://example.com"))))
+  (testing "A trailing slash on an approved origin should have no effect (#75839)"
+    (is (mw.security/approved-origin? "http://localhost:6274" "http://localhost:6274/")))
   (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))
@@ -550,19 +573,38 @@
     (mt/with-temporary-setting-values [csp-img-enabled false
                                        csp-img-allowed-hosts "example.com"]
       (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
-  (testing "with csp-img-enabled, img-src is restricted to 'self' and data: by default"
+  (testing "with csp-img-enabled, img-src is restricted to 'self', data: and the tile server by default"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts ""]
-      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+                                       csp-img-allowed-hosts ""
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
   (testing "nil csp-img-allowed-hosts behaves like empty input"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts nil]
-      (is (= "img-src 'self' data:" (csp-directive "img-src")))))
+                                       csp-img-allowed-hosts nil
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
   (testing "csp-img-allowed-hosts widens img-src (with wildcard expansion)"
     (mt/with-temporary-setting-values [csp-img-enabled true
-                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"]
-      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com"
+                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com https://*.tile.openstreetmap.org"
              (csp-directive "img-src"))))))
+
+(deftest csp-header-img-src-tile-server-tests
+  (testing "img-src always allows the configured map tile server"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""]
+      (testing "{s} subdomain placeholder is replaced with wildcard"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data: https://*.tile.openstreetmap.org"
+                 (csp-directive "img-src")))))
+      (testing "custom tile server host and port are allowed; path and query (e.g. api keys) are dropped"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://tiles.example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
+          (is (= "img-src 'self' data: https://tiles.example.com:8443"
+                 (csp-directive "img-src")))))
+      (testing "a relative tile template contributes no host"
+        (mt/with-temporary-setting-values [map-tile-server-url "/local/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data:" (csp-directive "img-src"))))))))
 
 (deftest csp-header-font-src-tests
   (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"
@@ -598,9 +640,10 @@
         (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
         (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address)))))
   (testing "in prod the dev server origin is not added"
-    (mt/with-temporary-setting-values [csp-img-enabled true]
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
       (with-redefs [config/is-dev? false]
-        (is (= "img-src 'self' data:" (csp-directive "img-src")))
+        (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))
         (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
 
 (deftest ^:parallel parse-allowed-resource-hosts-test

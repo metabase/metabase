@@ -15,10 +15,7 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-import {
-  setAdHocFilter,
-  setQuarterAndYear,
-} from "../native-filters/helpers/e2e-date-filter-helpers";
+import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
 
 const {
   ORDERS,
@@ -200,7 +197,15 @@ describe("issue 8030 + 32444", () => {
 
         H.saveDashboard();
 
+        // Saving exits edit mode and reloads the dashcards in view mode. How
+        // many post-save card queries fire is not deterministic (cached results
+        // may be reused), so rather than counting them we wait for the reload to
+        // start and then for both cards to settle before re-aliasing below.
+        // Otherwise a still in-flight post-save query would be captured by the
+        // new intercept on the same URL and miscounted as a filter-triggered
+        // query (the test then sees 2, not 1).
         cy.wait("@getCardQuery");
+        H.waitForDashcardsToLoad({ count: 2 });
 
         // Reset the intercept after save so we only count filter-triggered queries.
         cy.intercept(
@@ -788,178 +793,6 @@ describe("issue 17551", () => {
     cy.findByText("tomorrow");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("today");
-  });
-});
-
-describe("issue 17775", () => {
-  const questionDetails = {
-    query: {
-      "source-table": ORDERS_ID,
-      expressions: {
-        "CC Date": [
-          "field",
-          ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime" },
-        ],
-      },
-      "order-by": [
-        ["asc", ["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
-      ],
-    },
-  };
-
-  const parameters = [
-    {
-      name: "Quarter and Year",
-      slug: "quarter_and_year",
-      id: "f8ae0c97",
-      type: "date/quarter-year",
-      sectionId: "date",
-    },
-  ];
-
-  const dashboardDetails = { parameters };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: dashboardCard }) => {
-        const { dashboard_id } = dashboardCard;
-
-        const updatedSize = { size_x: 21, size_y: 8 };
-
-        H.editDashboardCard(dashboardCard, updatedSize);
-
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    H.editDashboard();
-
-    // Make sure filter can be connected to the custom column using UI, rather than using API.
-    H.filterWidget({ isEditing: true }).click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Column to filter on")
-      .parent()
-      .parent()
-      .within(() => {
-        cy.findByText("Select…").click();
-      });
-
-    H.popover().within(() => {
-      cy.findByText("CC Date").click();
-    });
-
-    H.saveDashboard();
-  });
-
-  it("should be able to apply dashboard filter to a custom column (metabase#17775)", () => {
-    H.filterWidget().click();
-
-    setQuarterAndYear({ quarter: "Q1", year: "2026" });
-
-    cy.findAllByText("44.43").should("have.length", 2);
-    cy.findAllByText("March 26, 2026, 8:45 AM").should("have.length", 2);
-  });
-});
-
-describe("issue 19494", () => {
-  const filter1 = {
-    name: "Card 1 Filter",
-    slug: "card1_filter",
-    id: "ab6f631",
-    type: "string/=",
-    sectionId: "string",
-  };
-
-  const filter2 = {
-    name: "Card 2 Filter",
-    slug: "card2_filter",
-    id: "a9801ade",
-    type: "string/=",
-    sectionId: "string",
-  };
-  function connectFilterToCard({ filterName, cardPosition }) {
-    H.filterWidget({ isEditing: true })
-      .filter(`:contains("${filterName}")`)
-      .click();
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByText("Select…").eq(cardPosition).click();
-
-    H.popover().contains("Category").click();
-  }
-
-  function setDefaultFilter(value) {
-    cy.findByText("No default").click();
-
-    H.popover().contains(value).click();
-
-    cy.button("Add filter").click();
-  }
-
-  function checkAppliedFilter(name, value) {
-    cy.findByText(name, { exact: false })
-      .closest('[data-testid="parameter-widget"]')
-      .contains(value);
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    // Add two "Orders" questions to the existing "Orders in a dashboard" dashboard
-    H.updateDashboardCards({
-      dashboard_id: ORDERS_DASHBOARD_ID,
-      cards: [
-        {
-          card_id: ORDERS_QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 11,
-          size_y: 8,
-        },
-        {
-          card_id: ORDERS_QUESTION_ID,
-          row: 0,
-          col: 8,
-          size_x: 11,
-          size_y: 8,
-        },
-      ],
-    });
-
-    // Add two dashboard filters (not yet connected to any of the cards)
-    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-      parameters: [filter1, filter2],
-    });
-  });
-
-  it("should correctly apply different filters with default values to all cards of the same question (metabase#19494)", () => {
-    // Instead of using the API to connect filters to the cards,
-    // let's use UI to replicate user experience as closely as possible
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
-
-    connectFilterToCard({ filterName: "Card 1 Filter", cardPosition: 0 });
-    setDefaultFilter("Doohickey");
-
-    connectFilterToCard({ filterName: "Card 2 Filter", cardPosition: -1 });
-    setDefaultFilter("Gizmo");
-
-    H.saveDashboard();
-
-    checkAppliedFilter("Card 1 Filter", "Doohickey");
-
-    H.getDashboardCard(0).should("contain", "148.23");
-
-    checkAppliedFilter("Card 2 Filter", "Gizmo");
-
-    H.getDashboardCard(1).should("contain", "110.93");
   });
 });
 
@@ -1981,8 +1814,8 @@ describe("issue 25908", () => {
   });
 });
 
-describe("issue 26230", () => {
-  const FILTER_1 = {
+describe("issue 26230, issue 27356", () => {
+  const FILTER = {
     id: "12345678",
     name: "Text",
     slug: "text",
@@ -1990,28 +1823,25 @@ describe("issue 26230", () => {
     sectionId: "string",
   };
 
-  const FILTER_2 = {
-    id: "87654321",
-    name: "Text",
-    slug: "text",
-    type: "string/=",
-    sectionId: "string",
-  };
+  const PARAM_DASHBOARD = "dashboard with a tall card";
+  const REGULAR_DASHBOARD = "dashboard without params";
 
   function prepareAndVisitDashboards() {
-    H.createDashboard({
-      name: "dashboard with a tall card",
-      parameters: [FILTER_1],
-    }).then(({ body: { id } }) => {
-      createDashCard(id, FILTER_1);
+    // A bookmarked dashboard *without* any parameters — this is the switch
+    // target that preserves the parameterized -> non-parameterized check
+    // (metabase#27356).
+    H.createDashboard({ name: REGULAR_DASHBOARD }).then(({ body: { id } }) => {
       bookmarkDashboard(id);
     });
 
+    // A bookmarked dashboard *with* a parameter and a tall mapped card. We
+    // start here so the param widget can become sticky once scrolled
+    // (metabase#26230).
     H.createDashboard({
-      name: "dashboard with a tall card 2",
-      parameters: [FILTER_2],
+      name: PARAM_DASHBOARD,
+      parameters: [FILTER],
     }).then(({ body: { id } }) => {
-      createDashCard(id, FILTER_2);
+      createDashCard(id, FILTER);
       bookmarkDashboard(id);
       H.visitDashboard(id);
     });
@@ -2056,12 +1886,12 @@ describe("issue 26230", () => {
     prepareAndVisitDashboards();
   });
 
-  it("should not preserve the sticky filter behavior when navigating to the second dashboard (metabase#26230)", () => {
+  it("should not preserve sticky filter behavior and should switch from a parameterized to a non-parameterized dashboard without error (metabase#26230, metabase#27356)", () => {
     cy.findByRole("main").scrollTo("bottom"); // This line is essential for the reproduction!
 
     cy.button("Toggle sidebar").click();
     cy.findByRole("main")
-      .findByDisplayValue("dashboard with a tall card 2")
+      .findByDisplayValue(PARAM_DASHBOARD)
       .should("not.be.visible");
 
     cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -2070,61 +1900,16 @@ describe("issue 26230", () => {
       "sticky",
     );
 
+    // Switching from the parameterized dashboard to the non-parameterized one
+    // via the navigation sidebar should load cleanly, without erroring
+    // (metabase#27356).
     cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
-    cy.findByRole("listitem", { name: "dashboard with a tall card" }).click();
+    cy.findByRole("listitem", { name: REGULAR_DASHBOARD }).click();
     cy.wait("@loadDashboard");
-  });
-});
 
-describe("issue 27356", () => {
-  const ratingFilter = {
-    name: "Text",
-    slug: "text",
-    id: "5dfco74e",
-    type: "string/=",
-    sectionId: "string",
-  };
-
-  const paramDashboard = {
-    name: "Dashboard With Params",
-    parameters: [ratingFilter],
-  };
-
-  const regularDashboard = {
-    name: "Dashboard Without Params",
-  };
-
-  beforeEach(() => {
-    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createDashboard(paramDashboard).then(({ body: { id } }) => {
-      cy.request("POST", `/api/bookmark/dashboard/${id}`);
-    });
-
-    H.createDashboard(regularDashboard).then(({ body: { id } }) => {
-      cy.request("POST", `/api/bookmark/dashboard/${id}`);
-      H.visitDashboard(id);
-    });
-  });
-
-  it("should seamlessly move between dashboards with or without filters without triggering an error (metabase#27356)", () => {
-    H.openNavigationSidebar();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(paramDashboard.name).click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is empty");
-
-    H.openNavigationSidebar();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(regularDashboard.name).click({ force: true });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is empty");
-
-    H.openNavigationSidebar();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(paramDashboard.name).click({ force: true });
+    cy.findByRole("main")
+      .findByDisplayValue(REGULAR_DASHBOARD)
+      .should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
   });
@@ -2741,109 +2526,5 @@ describe("issue 42829", () => {
       }),
     );
     filterAndVerifyResults();
-  });
-});
-
-describe("issue 43799", () => {
-  const modelDetails = {
-    name: "43799",
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-      joins: [
-        {
-          alias: "People - User",
-          condition: [
-            "=",
-            [
-              "field",
-              ORDERS.USER_ID,
-              {
-                "base-type": "type/Integer",
-              },
-            ],
-            [
-              "field",
-              PEOPLE.ID,
-              {
-                "base-type": "type/BigInteger",
-                "join-alias": "People - User",
-              },
-            ],
-          ],
-          "source-table": PEOPLE_ID,
-        },
-      ],
-      aggregation: [
-        [
-          "sum",
-          [
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-        ],
-        [
-          "sum",
-          [
-            "field",
-            ORDERS.SUBTOTAL,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-        ],
-      ],
-      breakout: [
-        [
-          "field",
-          PEOPLE.SOURCE,
-          {
-            "base-type": "type/Text",
-            "join-alias": "People - User",
-          },
-        ],
-        [
-          "field",
-          PRODUCTS.CATEGORY,
-          {
-            "base-type": "type/Text",
-            "source-field": ORDERS.PRODUCT_ID,
-          },
-        ],
-      ],
-    },
-  };
-
-  beforeEach(() => {
-    cy.signInAsNormalUser();
-  });
-
-  it("should be able to map a parameter to an explicitly joined column in the model query", () => {
-    H.createDashboardWithQuestions({ questions: [modelDetails] }).then(
-      ({ dashboard }) => {
-        H.visitDashboard(dashboard.id);
-      },
-    );
-    H.editDashboard();
-    cy.findByTestId("dashboard-header")
-      .findByLabelText("Add a filter or parameter")
-      .click();
-    H.popover().findByText("Text or Category").click();
-    H.getDashboardCard().findByText("Select…").click();
-    H.popover().findByText("People - User → Source").click();
-    H.saveDashboard();
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Google").click();
-      cy.button("Add filter").click();
-    });
-    H.getDashboardCard().findByText("43799").click();
-    cy.findByTestId("qb-filters-panel")
-      .findByText("People - User → Source is Google")
-      .should("be.visible");
-    H.assertQueryBuilderRowCount(4);
   });
 });

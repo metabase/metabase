@@ -92,7 +92,10 @@
   ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
   ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
   ;;   the toucan instance (which the render-term keeps populated).
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer})
+  ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
+  ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
+  ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -123,7 +126,11 @@
    :collection-type         :text
    :collection-location     :text
    :root-collection-type    :text
-   :data-layer              :text})
+   :data-layer              :text
+   :data-authority          :text
+   ;; Precomputed at ingestion (see metabase.search.ingestion) from the curation signals above, so the
+   ;; "verified or curated content" filter is a single indexed boolean rather than a composite OR.
+   :curated                 :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -151,7 +158,8 @@
          :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
          :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
          :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
-         :data-layer])                                      ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
+         :data-layer                                        ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
+         :data-authority])                                  ;;  input to the precomputed :curated flag (authoritative tables)
        distinct
        vec))
 
@@ -196,6 +204,7 @@
    [:search-terms [:or
                    [:sequential {:min 1} :keyword]
                    [:map-of :keyword [:or fn? true?]]]]
+   [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -397,7 +406,12 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
-   - `:search-terms` - Vector of searchable text fields (required)
+   - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
+     column keyword to either `true` (use the raw value) or a transform fn applied for
+     full-text search (required)
+   - `:embedding-exclude` - Set of `:search-terms` keys to omit from the semantic-search
+     embedding text (they remain in full-text search). Use for fields whose raw value is
+     not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
    - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
    - `:where` - HoneySQL where clause to filter indexed records

@@ -17,6 +17,7 @@ import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
+import type { ChecklistItemValue } from "metabase/redux/store";
 import {
   getDocsUrl,
   getIsHosted,
@@ -46,7 +47,6 @@ import {
   trackChecklistItemCTAClicked,
   trackChecklistItemExpanded,
 } from "./analytics";
-import type { ChecklistItemValue } from "./types";
 
 export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);
@@ -225,6 +225,7 @@ export const Onboarding = () => {
             label: S.label,
           }}
           onChange={(value: string | null) =>
+            // Unjustified type cast. FIXME
             handleValueChange(value as ChecklistItemValue | null)
           }
         >
@@ -339,7 +340,7 @@ export const Onboarding = () => {
                       <Text>
                         {jt`Hover over a table and click the yellow lightning bolt ${(
                           <Icon
-                            c="warning"
+                            c="feedback-warning"
                             className={S.inlineIcon}
                             key="bolt_icon"
                             name="bolt_filled"

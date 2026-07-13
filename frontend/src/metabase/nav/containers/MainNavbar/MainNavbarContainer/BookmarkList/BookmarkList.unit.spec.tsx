@@ -96,6 +96,7 @@ describe("BookmarkList", () => {
 
         const row = screen.getByText(name).closest("a");
         expect(
+          // Unjustified type cast. FIXME
           within(row as HTMLElement).getByLabelText(`${icon} icon`),
         ).toBeInTheDocument();
       },

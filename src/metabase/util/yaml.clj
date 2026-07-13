@@ -9,17 +9,35 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
-   [metabase.util.log :as log]
-   [potemkin :as p])
+   [metabase.util.log :as log])
   (:import
    (java.nio.file Files Path)
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
 
-(p/import-vars
- [yaml
-  parse-stream])
+(def ^:const nesting-depth-limit
+  "Maximum YAML nesting depth allowed when parsing.
+
+  SnakeYAML defaults to 50, which is too shallow for deeply nested MBQL. MBQL sometimes contains expressions with many
+  nested function calls like `replace(replace(...))`. There's no depth limit on the YAML output, so they are perfectly
+  valid queries that can be saved, executed and exported. But with the default depth limit, they cannot be imported,
+  leaving remote-sync users stuck (see #71257 / UXW-3770).
+
+  We raise the limit so that anything Metabase can export can also be re-imported, while keeping a finite bound as a
+  sanity guard against pathological/malicious input. Callers may override via the `:nesting-depth-limit` opt."
+  10000)
+
+(defn- with-parse-defaults
+  "Merges Metabase's default parsing options into `opts`; preserving any values the caller supplied."
+  [opts]
+  (merge {:nesting-depth-limit nesting-depth-limit} opts))
+
+(defn parse-stream
+  "Returns Clojure data structures for a stream of YAML read from `reader`, with opts passed to
+  clj-yaml. Applies Metabase's default parsing options (see [[with-parse-defaults]])."
+  [reader & {:as opts}]
+  (yaml/parse-stream reader (with-parse-defaults opts)))
 
 (defn- vectorized
   "Returns x with lazy seqs converted to vectors wherever they appear in the data structure."
@@ -47,9 +65,10 @@
   (yaml/generate-string x opts))
 
 (defn parse-string
-  "Returns a Clojure object parsed from YAML in string s with opts passed to clj-yaml."
+  "Returns a Clojure object parsed from YAML in string s with opts passed to clj-yaml.
+  Applies Metabase's default parsing options (see [[with-parse-defaults]])."
   [s & {:as opts}]
-  (vectorized (yaml/parse-string s opts)))
+  (vectorized (yaml/parse-string s (with-parse-defaults opts))))
 
 ;; Legacy API:
 

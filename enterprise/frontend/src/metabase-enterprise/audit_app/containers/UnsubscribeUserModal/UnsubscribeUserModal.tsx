@@ -7,7 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Stack, Text } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import { AuditApi } from "metabase-enterprise/services";
+import { useUnsubscribeUserFromSubscriptionsMutation } from "metabase-enterprise/api";
 import type { User } from "metabase-types/api";
 
 interface UnsubscribeUserModal {
@@ -22,6 +22,9 @@ export const UnsubscribeUserModal = ({
   const userId = parseInt(params.userId, 10);
   const { data: user, isLoading, error } = useGetUserQuery(userId);
 
+  const [unsubscribeUserFromSubscriptions] =
+    useUnsubscribeUserFromSubscriptionsMutation();
+
   const [sendToast] = useToast();
 
   const [errorMessage, setErrorMessage] = useState<string>();
@@ -35,7 +38,7 @@ export const UnsubscribeUserModal = ({
 
   const handleConfirmClick = async (user: User) => {
     try {
-      await AuditApi.unsubscribe_user({ id: user.id });
+      await unsubscribeUserFromSubscriptions(user.id).unwrap();
       sendToast({ message: t`Unsubscribe successful` });
       onClose();
     } catch (error) {

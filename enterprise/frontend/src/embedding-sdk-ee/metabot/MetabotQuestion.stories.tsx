@@ -59,9 +59,15 @@ export const RedirectReaction = {
     msw: {
       handlers: [
         mockStreamResponse([
-          `0:"Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})"`,
-          `2:{"type":"navigate_to","version":1,"value":"${MOCK_AD_HOC_QUESTION_ID}"}
-`,
+          { type: "text-start", id: "t1" },
+          {
+            type: "text-delta",
+            id: "t1",
+            delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
+          },
+          { type: "text-end", id: "t1" },
+          { type: "data-navigate_to", data: MOCK_AD_HOC_QUESTION_ID },
+          { type: "finish", finishReason: "stop" },
         ]),
       ],
     },
@@ -116,9 +122,9 @@ const CenteredLayoutPreview = ({ children }: { children: React.ReactNode }) => (
   <Stack align="center" justify="center">
     <Flex
       m="40px"
-      bg="background-primary"
+      bg="background_page-primary"
       style={{
-        border: "1px solid var(--mb-color-border)",
+        border: "1px solid var(--mb-color-border-neutral)",
         borderRadius: "16px",
       }}
     >

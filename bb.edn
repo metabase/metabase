@@ -265,6 +265,15 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
+  fix-modules-config
+  {:doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
+   :examples [["./bin/mage fix-modules-config" "Fix the modules config (uses the running dev REPL if available, else a JVM)"]
+              ["./bin/mage fix-modules-config --port 59498" "Use the dev REPL on a specific nREPL port"]]
+   ;; Cold-JVM fallback invokes `clojure -X:dev dev.modules-config/fix-config!`.
+   :options [["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]
@@ -373,9 +382,9 @@
                         ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
                         ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
                         ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["4"    "Configured status = skip"                "SKIP" "driver is quarantined"]
+                        ["4"    "Configured status = skip (PR branches)" "SKIP" "driver is quarantined"]
                         ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
-                        ["5"    "On master or release branch"             "RUN"  "master/release branch"]
+                        ["5"    "On master or release branch"             "RUN"  "master/release branch (quarantine ignored)"]
                         ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
                         ["7"
                          "Cloud driver + its files changed"
@@ -391,6 +400,8 @@
                         ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
         "\nThis table decides only WHETHER a driver runs. A driver's configured status then\n"
         "applies to that decision (see 'Driver Status' below) and never overrides it.\n"
+        "\nNote: the remote quarantine list (status = skip) is ignored entirely on master and\n"
+        "release-* branches -- every driver runs and gates there (Priority 4 is bypassed).\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
         "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"

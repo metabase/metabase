@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
-import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type { UrlableModel } from "metabase/urls/modelToUrl";
 import type { MentionableUser, RecentItem } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -36,11 +36,13 @@ export function entityToUrlableModel<
   },
 >(entity: T, model: SuggestionModel | null): UrlableModel {
   const result: UrlableModel = {
+    // Unjustified type cast. FIXME
     id: entity.id as number, // it is string | number in reality, but then gets casted to a string in "modelToUrl"
     model: model || "",
     name: isMentionableUser(entity)
       ? entity.common_name
-      : (entity.name as string),
+      : // Unjustified type cast. FIXME
+        (entity.name as string),
   };
 
   if ("db_id" in entity && entity.db_id) {
@@ -65,6 +67,7 @@ export function mbProtocolModelToSuggestionModel(inputModel: string): string {
   // data. casting here still afford some amount of internal type awareness as these
   // two types might diverge in the future.
   const model: SuggestionModel = match(
+    // Unjustified type cast. FIXME
     inputModel as MetabaseProtocolEntityModel,
   )
     .with("model", () => "dataset" as const)

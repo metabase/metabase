@@ -17,11 +17,14 @@
                                                    com.azure/azure-core-http-netty]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}
+  io.opentelemetry/opentelemetry-api {:mvn/version "1.62.0"}             ; pinned: pulls vulnerable opentelemetry-api (W3CBaggagePropagator DoS vuln)
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version
   org.bouncycastle/bcpkix-jdk18on   {:mvn/version "1.84"}
   org.bouncycastle/bcprov-jdk18on   {:mvn/version "1.84"}
   ;; pinned: snowflake-jdbc-thin 4.1.0 pulls jackson-core 2.18.4.1 which has resource exhaustion vulns
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.2"}
+  ;; and jackson-databind 2.18.4 which has a deserialization vuln
+  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.21.5"}
+  com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.5"}
   ;; pinned: AWS SDK (transitive via snowflake-jdbc-thin) pulls netty 4.1.126.Final
   ;; (SNYK-JAVA-IONETTY-16438930, SNYK-JAVA-IONETTY-16438322). Pin the full family to avoid mixed-version classpath.
   io.netty/netty-codec                    {:mvn/version "4.1.135.Final"}

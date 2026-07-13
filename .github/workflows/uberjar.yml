@@ -128,6 +128,9 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
+      # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
+      # (the bundle-size check reads them for both the PR head and its base ref).
+      EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v6
@@ -143,6 +146,14 @@ jobs:
           java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
       - name: Build
         run: ./bin/build.sh
+      - name: Upload bundle stats
+        if: ${{ matrix.edition == 'ee' && env.EMIT_BUNDLE_STATS == 'true' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: metabase-bundle-stats-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          path: target/bundle-stats
+          if-no-files-found: warn
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
