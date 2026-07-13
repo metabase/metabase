@@ -34,6 +34,7 @@ export * from "./measure";
 export * from "./metabot";
 export * from "./metric";
 export * from "./model-indexes";
+export * from "./multi-factor-auth";
 export * from "./native-query-snippet";
 export * from "./oauth";
 export * from "./performance";

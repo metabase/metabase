@@ -174,6 +174,10 @@
   "Should we enable user/group provisioning via SCIM?"
   :scim)
 
+(define-premium-feature enable-multi-factor-auth?
+  "Should we enable native multi-factor authentication for interactive logins?"
+  :multi-factor-auth)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []
@@ -410,6 +414,7 @@
    :hosting                        (is-hosted?)
    :metabot-v3                     (enable-metabot-v3?)
    :metabase-ai-managed            (enable-metabase-ai-managed?)
+   :multi-factor-auth              (enable-multi-factor-auth?)
    :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
