@@ -1,27 +1,26 @@
 (ns metabase.mcp.session
   "Per-user state for the MCP server: the embedding session key the MCP Apps iframe
-   authenticates with, and the query-handle store.
+   authenticates with.
 
-   Both key off the **authenticated user**, never a transport session. The 2026-07-28
+   It keys off the **authenticated user**, never a transport session. The 2026-07-28
    protocol has no `initialize` handshake and no `Mcp-Session-Id`, so any request can
-   arrive cold: a handle stored by one connection resolves from the next, and the iframe
-   gets the same embedding session whichever connection rendered it.
+   arrive cold, and the iframe gets the same embedding session whichever connection
+   rendered it.
 
    A client that speaks an older protocol still gets an `Mcp-Session-Id` back from
    `initialize`. It is a self-describing capability hint — an opaque correlator plus the
    client's MCP Apps support, encoded in the id itself — that the server echoes and never
    stores. RC clients send those capabilities in each request's `_meta` instead and never
-   see the header. Either way the server holds no session state."
+   see the header. Either way the server holds no session state.
+
+   The query handles a tool call mints and resolves live in [[metabase.agent-api.handles]],
+   keyed the same way."
   (:require
    [clojure.string :as str]
-   [java-time.api :as t]
    [metabase.app-db.core :as app-db]
-   [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
-   [metabase.util :as u]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2])
+   [metabase.util.json :as json])
   (:import
    (java.nio ByteBuffer)
    (java.nio.charset StandardCharsets)
@@ -200,99 +199,3 @@
   (when-let [{:keys [payload extended]} (session-parts session-id)]
     (when extended
       (true? (:ui payload)))))
-
-;;; -------------------------------------------- Query Handle Store -----------------------------------------------
-;; DB-backed, user-scoped, TTL'd store for MBQL query payloads referenced by MCP tool calls and the
-;; embedding iframe. The model carries only the opaque handle UUID; the query itself lives here so the
-;; LLM never has to hold it. The store is content-addressed: the handle UUID is a deterministic hash of
-;; (user, query), so an iteration loop that re-stores the same query reuses one row rather than piling
-;; up a row per attempt.
-;;
-;; Rows hold plain JSON. Payloads arriving as base64 (the shape the agent-api construct endpoints still
-;; emit) are decoded on write; reads hand the query back in the base64 shape those callers expect and
-;; decode any pre-migration base64 row on the fly. Both conversions fall away once the agent-api
-;; boundary speaks JSON directly.
-
-(defn- json-payload?
-  "True if `payload` is JSON rather than base64. A serialized MBQL query is a JSON object, so it starts
-   with `{`; base64 never does."
-  [payload]
-  (str/starts-with? (str/triml payload) "{"))
-
-(defn- ->stored-json
-  "Normalize a query payload to the JSON text stored in a handle row."
-  [payload]
-  (if (json-payload? payload)
-    payload
-    (u/decode-base64 payload)))
-
-(defn- stored->base64
-  "Return a stored query payload as base64, the shape handle callers hand to the agent-api and iframe.
-   Pre-migration rows already hold base64 and pass through unchanged."
-  [payload]
-  (if (json-payload? payload)
-    (u/encode-base64 payload)
-    payload))
-
-(defn- content-addressed-handle-id
-  "Deterministic handle UUID for a (`user-id`, `query-json`) pair."
-  ^String [user-id query-json]
-  (str (UUID/nameUUIDFromBytes
-        (.getBytes (str user-id " " query-json) StandardCharsets/UTF_8))))
-
-(defn- handle-expires-at
-  []
-  (t/plus (t/offset-date-time) (t/days (mcp.settings/mcp-query-handle-ttl-days))))
-
-(defn store-handle!
-  "Store `encoded-query` for `user-id` and return the handle UUID.
-
-   Content-addressed: storing the same query twice for the same user yields the same handle and a single
-   row. The handle expires after [[metabase.mcp.settings/mcp-query-handle-ttl-days]].
-
-   `prompt` is optional but should be supplied for construct_query handles so visualize_query can return
-   the original prompt to the MCP iframe."
-  ([user-id encoded-query]
-   (store-handle! user-id encoded-query nil))
-  ([user-id encoded-query prompt]
-   (let [query-json (->stored-json encoded-query)
-         handle-id  (content-addressed-handle-id user-id query-json)]
-     ;; Re-storing the same query refreshes the TTL and, when a prompt is supplied, the prompt —
-     ;; so an iteration loop keeps a single live row rather than resurrecting an expired one.
-     (app-db/update-or-insert!
-      :model/McpQueryHandle
-      {:id handle-id}
-      (fn [existing]
-        (cond-> {:user_id       user-id
-                 :encoded_query query-json
-                 :expires_at    (handle-expires-at)}
-          prompt                       (assoc :prompt prompt)
-          (and (nil? prompt) existing) (assoc :prompt (:prompt existing)))))
-     handle-id)))
-
-(defn- find-handle-row
-  "Look up a live (unexpired) handle row by `handle-id`, scoped to `user-id`. Handle ids are globally
-   unique, so this returns at most one row."
-  [user-id handle-id]
-  (when (and user-id handle-id)
-    (t2/select-one :model/McpQueryHandle
-                   {:where [:and
-                            [:= :id handle-id]
-                            [:= :user_id user-id]
-                            [:> :expires_at :%now]]})))
-
-(defn read-handle
-  "Return the stored query for `handle-id` owned by `user-id` (base64, for the agent-api and iframe
-   callers), or nil if no live handle exists."
-  [user-id handle-id]
-  (some-> (find-handle-row user-id handle-id)
-          :encoded_query
-          stored->base64))
-
-(defn resolve-query-handle
-  "Return {:encoded_query <base64> :prompt ...} for `handle-id` owned by `user-id`, or nil if no live
-   handle exists."
-  [user-id handle-id]
-  (when-let [row (find-handle-row user-id handle-id)]
-    {:encoded_query (stored->base64 (:encoded_query row))
-     :prompt        (:prompt row)}))

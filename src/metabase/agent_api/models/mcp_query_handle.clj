@@ -1,4 +1,5 @@
-(ns metabase.mcp.models.mcp-query-handle
+(ns metabase.agent-api.models.mcp-query-handle
+  "The rows behind [[metabase.agent-api.handles]]: one stored query per (user, query), with a TTL."
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

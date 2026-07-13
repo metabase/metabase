@@ -2,7 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.test :refer :all]
-   [metabase.mcp.session :as mcp.session]
+   [metabase.agent-api.handles :as agent-api.handles]
    [metabase.metabot.config :as metabot.config]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
@@ -41,8 +41,8 @@
   (testing "the handle is stored for the caller — the iframe's session key is the whole ownership check,
             and only that user can read the query back"
     (let [handle (:handle (:body (post-drill {:encodedQuery "ZW5jb2RlZA=="})))]
-      (is (some? (mcp.session/read-handle (mt/user->id :crowberto) handle)))
-      (is (nil? (mcp.session/read-handle (mt/user->id :rasta) handle))))))
+      (is (some? (agent-api.handles/read-handle (mt/user->id :crowberto) handle)))
+      (is (nil? (agent-api.handles/read-handle (mt/user->id :rasta) handle))))))
 
 (deftest drills-post-rejects-blank-body-test
   (testing "blank encodedQuery returns 400"

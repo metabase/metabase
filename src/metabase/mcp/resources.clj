@@ -12,11 +12,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
+   [metabase.agent-api.handles :as agent-api.handles]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
    [metabase.mcp.scope :as mcp.scope]
-   [metabase.mcp.session :as mcp.session]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -374,7 +374,7 @@
   :response-fn (fn [arguments]
                  (let [query    (:query arguments)
                        handle   (:query_handle arguments)
-                       resolved (some->> handle (mcp.session/resolve-query-handle api/*current-user-id*))
+                       resolved (some->> handle (agent-api.handles/resolve-query-handle api/*current-user-id*))
                        encoded  (or query (:encoded_query resolved))
                        prompt   (:prompt resolved)]
                    (cond
@@ -421,7 +421,7 @@
                 :openWorldHint   false}
   :response-fn (fn [arguments]
                  (if-let [handle (:handle arguments)]
-                   (if-let [encoded (mcp.session/read-handle api/*current-user-id* handle)]
+                   (if-let [encoded (agent-api.handles/read-handle api/*current-user-id* handle)]
                      {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
                       :structuredContent {:query encoded}}
                      {:content [{:type "text" :text "No drill-through found for that handle."}]

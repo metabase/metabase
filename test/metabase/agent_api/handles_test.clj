@@ -1,10 +1,9 @@
-(ns metabase.mcp.models.mcp-query-handle-test
-  "Tests for the user-scoped, TTL'd, content-addressed MCP query handle store in
-   `metabase.mcp.session`."
+(ns metabase.agent-api.handles-test
+  "The user-scoped, TTL'd, content-addressed query handle store."
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.mcp.session :as mcp.session]
+   [metabase.agent-api.handles :as handles]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -29,26 +28,26 @@
   (testing "a query stored for one user resolves back to the identical query and is invisible to others"
     (let [owner-id (mt/user->id :crowberto)
           other-id (mt/user->id :rasta)
-          handle   (mcp.session/store-handle! owner-id (json/encode sample-query))]
+          handle   (handles/store-handle! owner-id (json/encode sample-query))]
       (is (some? (parse-uuid handle)) "store-handle! returns a UUID string")
-      (is (= sample-query (resolved-query (mcp.session/read-handle owner-id handle))))
-      (is (= sample-query (resolved-query (:encoded_query (mcp.session/resolve-query-handle
+      (is (= sample-query (resolved-query (handles/read-handle owner-id handle))))
+      (is (= sample-query (resolved-query (:encoded_query (handles/resolve-query-handle
                                                            owner-id handle)))))
-      (is (nil? (mcp.session/read-handle other-id handle))
+      (is (nil? (handles/read-handle other-id handle))
           "another user cannot resolve the handle")
-      (is (nil? (mcp.session/read-handle owner-id (str (random-uuid))))
+      (is (nil? (handles/read-handle owner-id (str (random-uuid))))
           "unknown handles resolve to nil"))))
 
 (deftest stores-plain-json-test
   (testing "the stored payload is plain JSON, not base64"
     (let [owner-id (mt/user->id :crowberto)
-          handle   (mcp.session/store-handle! owner-id (json/encode sample-query))
+          handle   (handles/store-handle! owner-id (json/encode sample-query))
           stored   (t2/select-one-fn :encoded_query :model/McpQueryHandle :id handle)]
       (is (= sample-query (json/decode+kw stored))
           "the row holds the JSON verbatim")))
   (testing "a handle hangs off nothing but its owner"
     (let [owner-id (mt/user->id :crowberto)
-          handle   (mcp.session/store-handle! owner-id (json/encode {:database 9 :stages []}))
+          handle   (handles/store-handle! owner-id (json/encode {:database 9 :stages []}))
           row      (t2/select-one :model/McpQueryHandle :id handle)]
       (is (= owner-id (:user_id row)))
       (is (nil? (:core_session_id row)))
@@ -59,14 +58,14 @@
   (testing "storing the same query twice for the same user yields the same handle and a single row"
     (let [owner-id (mt/user->id :crowberto)
           query    (json/encode {:database 3 :stages [{:source-table 42}]})
-          h1       (mcp.session/store-handle! owner-id query)
-          h2       (mcp.session/store-handle! owner-id query)]
+          h1       (handles/store-handle! owner-id query)
+          h2       (handles/store-handle! owner-id query)]
       (is (= h1 h2) "same (user, query) is a stable handle")
       (is (= 1 (t2/count :model/McpQueryHandle :id h1)))))
   (testing "different users storing the same query get distinct handles"
     (let [query   (json/encode {:database 4 :stages [{:source-table 7}]})
-          h-crow  (mcp.session/store-handle! (mt/user->id :crowberto) query)
-          h-rasta (mcp.session/store-handle! (mt/user->id :rasta) query)]
+          h-crow  (handles/store-handle! (mt/user->id :crowberto) query)
+          h-rasta (handles/store-handle! (mt/user->id :rasta) query)]
       (is (not= h-crow h-rasta)))))
 
 (deftest base64-back-compat-test
@@ -79,9 +78,9 @@
                    :user_id       owner-id
                    :encoded_query base64
                    :expires_at    (t/plus (t/offset-date-time) (t/days 1))})
-      (is (= base64 (mcp.session/read-handle owner-id handle))
+      (is (= base64 (handles/read-handle owner-id handle))
           "base64 rows pass through unchanged")
-      (is (= sample-query (resolved-query (mcp.session/read-handle owner-id handle)))))))
+      (is (= sample-query (resolved-query (handles/read-handle owner-id handle)))))))
 
 (deftest expiry-test
   (testing "an expired handle does not resolve to the query"
@@ -92,5 +91,5 @@
                    :user_id       owner-id
                    :encoded_query (json/encode sample-query)
                    :expires_at    (t/minus (t/offset-date-time) (t/days 1))})
-      (is (nil? (mcp.session/read-handle owner-id handle)))
-      (is (nil? (mcp.session/resolve-query-handle owner-id handle))))))
+      (is (nil? (handles/read-handle owner-id handle)))
+      (is (nil? (handles/resolve-query-handle owner-id handle))))))

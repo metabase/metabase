@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.agent-api.browse-collection :as agent-api.browse-collection]
    [metabase.agent-api.browse-data :as agent-api.browse-data]
+   [metabase.agent-api.execute-query :as agent-api.execute-query]
    [metabase.agent-api.get-content :as agent-api.get-content]
    [metabase.agent-api.parameter-values :as agent-api.parameter-values]
    [metabase.agent-api.search :as agent-api.search]
@@ -925,26 +926,6 @@
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
-(defn- native-marker?
-  "True if `node` is a map carrying a native-SQL marker: a `:native` query body (the universal signal
-   across legacy and MBQL 5 native forms), a legacy `:type :native`, or an MBQL 5 `:mbql.stage/native`
-   `:lib/type`. Membership tests cover the keyword and json-decoded string forms and never coerce, so
-   junk values don't throw. A legitimate serialized MBQL query carries none of these."
-  [node]
-  (and (map? node)
-       (or (contains? node :native)
-           (contains? #{:native "native"} (:type node))
-           (contains? #{:mbql.stage/native "mbql.stage/native"} (:lib/type node)))))
-
-(defn- native-query?
-  "True if `query-map` (a decoded, client-reachable query) contains native SQL anywhere in its tree —
-   legacy top-level `:type :native`, a legacy nested `:source-query`'s `:native`, or an MBQL 5
-   `:mbql.stage/native` stage, including inside joins or nested joins.
-   A whole-tree scan, because these endpoints are MBQL-only by scope: a native marker at any depth
-   means the payload is smuggling raw SQL, regardless of how it's nested."
-  [query-map]
-  (boolean (some native-marker? (tree-seq coll? seq query-map))))
-
 (defn- reject-native-query!
   "Throw a 400 if `query-map` is a native query.
 
@@ -955,7 +936,7 @@
   raw SQL, defeating the scope split and bypassing the execute-sql kill switch. Force native
   execution onto `/v1/execute-sql`, which is correctly scoped."
   [query-map]
-  (when (native-query? query-map)
+  (when (agent-api.execute-query/native-query? query-map)
     (throw (ex-info "Native queries are not supported here; use execute_sql instead."
                     {:status-code 400 :query-map query-map}))))
 
@@ -1109,15 +1090,10 @@
   - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}
   - On failure: {:status :failed :error \"message\" ...}
 
-  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
-  {:scope metabot/agent-query-execute
-   :tool  {:name "execute_query"
-           :description (str "Execute a previously constructed query and return raw results with column metadata, "
-                             "row count, and execution time. Use this when the user explicitly asks for raw data, "
-                             "rows, columns, counts, metadata, or programmatic query results. If the user asks to "
-                             "show, display, visualize, plot, chart, or present the result, use visualize_query "
-                             "instead.")
-           :annotations {:read-only? true :idempotent? true}}}
+  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated).
+
+  The `execute_query` tool is served by `/v2/execute-query`; this endpoint is HTTP-only."
+  {:scope metabot/agent-query-execute}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]
@@ -1127,6 +1103,130 @@
     (reject-native-query! query)
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query (prepare-combined-query query) rff))))
+
+;;; ------------------------------------------------ Execute Query v2 ------------------------------------------------
+
+(mr/def ::execute-query-request-v2
+  "Arguments to the `execute_query` tool. Exactly one of `query` | `query_handle` names the query, and
+  which one is a runtime rule, not a schema combinator: strict clients reject a top-level `oneOf`.
+
+  `:query` is typed as an opaque `:map` at this boundary on purpose. The portable MBQL 5 shape is
+  `::lib.schema/external-query`, which references `::lib.schema/query` and its `:optional`
+  non-nullable keys (`:lib/metadata`, `:database`, …) — publishing it would emit JSON Schema strict
+  clients reject, and the deep validation happens in the resolution pipeline anyway, where the errors
+  can teach."
+  [:map
+   [:query
+    {:optional true
+     :tool/description (str "A Metabase MBQL 5 query as a JSON object, in the portable dialect described "
+                            "in this tool's description. Use `query_handle` instead when you have one.")}
+    [:maybe :map]]
+   [:query_handle
+    {:optional true
+     :tool/description (str "A handle returned by a previous `execute_query`, `execute_sql`, or "
+                            "`visualize_query` — it names the query those calls already validated. "
+                            "Required to page: pass it with the `offset` the truncation message named.")}
+    [:maybe ms/UUIDString]]
+   [:validate_only
+    {:optional true
+     :tool/description (str "Validate the query and mint its handle without running it (default false). "
+                            "The dry run: no warehouse query, no rows.")}
+    [:maybe :boolean]]
+   [:row_limit
+    {:optional true
+     :tool/description (str "Rows to return (default " agent-api.execute-query/default-row-limit
+                            ", max " agent-api.execute-query/max-row-limit ").")}
+    [:maybe [:int {:min 1 :max agent-api.execute-query/max-row-limit}]]]
+   [:offset
+    {:optional true
+     :tool/description (str "Rows to skip — page with the `query_handle` and the offset the truncation "
+                            "message names. Must be a multiple of `row_limit`.")}
+    [:maybe [:int {:min 0}]]]
+   [:response_format
+    {:optional true
+     :tool/description (str "\"concise\" (default) describes each column by name, display name, "
+                            "description, and type; \"detailed\" returns every field the query processor "
+                            "carries about it. Rows are unaffected.")}
+    agent-api.tools/ResponseFormatField]])
+
+(mr/def ::execute-query-response-v2
+  "The dataset REST shape — `cols` and `rows` as value arrays — plus the handle for what ran and the
+  steer to the next page. `validate_only` returns the handle alone: nothing ran, so there is nothing to
+  report about it."
+  [:map
+   [:query_handle       ms/UUIDString]
+   [:validated          {:optional true} :boolean]
+   [:cols               {:optional true} [:sequential :map]]
+   [:rows               {:optional true} [:sequential [:sequential :any]]]
+   [:row_count          {:optional true} :int]
+   [:truncated          {:optional true} :boolean]
+   [:truncation_message {:optional true} :string]])
+
+(api.macros/defendpoint :post "/v2/execute-query" :- ::execute-query-response-v2
+  "Run an MBQL query — the one entry point for a query the caller holds.
+
+  Takes portable MBQL 5 JSON or a `query_handle`, validates it against the database's metadata with
+  teaching errors, and runs it unless `validate_only`. Returns a `query_handle` either way, so a save
+  or a visualization reuses the query that just ran rather than regenerating it."
+  {:scope "agent:query:read"
+   :tool  {:name  "execute_query"
+           :title "Run a Query"
+           :description
+           (str "Run a query and get its rows. Pass `query` (MBQL 5 JSON, below) or a `query_handle` "
+                "from an earlier call — exactly one.\n"
+                "\n"
+                "Every call returns a `query_handle` naming the query that ran. Pass it to "
+                "`question_write` to save exactly what you just saw, to `visualize_query` to chart it, "
+                "or back here with an `offset` to read the next page. `validate_only: true` checks the "
+                "query and mints the handle without running it.\n"
+                "\n"
+                "`row_limit` defaults to " agent-api.execute-query/default-row-limit " (max "
+                agent-api.execute-query/max-row-limit "). A truncated page says so and names the next "
+                "`offset`. To answer a question about many rows, aggregate — do not page through them.\n"
+                "\n"
+                "**The query format.** Every clause is `[\"op\", {}, ...args]` — the options map at "
+                "position 1 is mandatory, even when empty. Every field reference is "
+                "`[\"field\", {}, [<database>, <schema>, <table>, <column>]]`: names, never numeric ids "
+                "(`schema` is null for databases without schemas). A reference to an earlier stage's "
+                "output is the bare column name: `[\"field\", {}, \"count\"]`. Use `search` and "
+                "`browse_data` to learn the exact names first; never invent them.\n"
+                "\n"
+                "The top level is `{\"lib/type\": \"mbql/query\", \"stages\": [...]}`. Each stage is "
+                "`{\"lib/type\": \"mbql.stage/mbql\", ...}`, and the *first* one carries either "
+                "`source-table` (a `[<database>, <schema>, <table>]` name array) or `source-card` (a "
+                "question, model, or metric `entity_id`); later stages read the previous stage's "
+                "output. Per-stage keys: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, "
+                "`joins`, `order-by`, `limit`.\n"
+                "\n"
+                "```\n"
+                "{\"lib/type\": \"mbql/query\",\n"
+                " \"stages\": [{\"lib/type\": \"mbql.stage/mbql\",\n"
+                "             \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"],\n"
+                "             \"aggregation\": [[\"count\", {}]],\n"
+                "             \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"},\n"
+                "                           [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}\n"
+                "```\n"
+                "\n"
+                "Pitfalls: a missing `{}` options map; a numeric id where a name array belongs; and "
+                "filtering on an aggregation (`[\">\", {}, [\"aggregation\", {}, 0], 10]`) in the same "
+                "stage that aggregates — that needs a second stage.\n"
+                "\n"
+                "Raw SQL goes to `execute_sql`; a saved question goes to `run_saved_question`.")
+           :annotations {:read-only? true :idempotent? true}
+           :input-examples
+           [{:query {:lib/type "mbql/query"
+                     :stages   [{:lib/type     "mbql.stage/mbql"
+                                 :source-table ["Sample Database" "PUBLIC" "ORDERS"]
+                                 :aggregation  [["count" {}]]}]}}
+            {:query_handle "1c9d2f3a-5b6e-4a7c-8d9e-0f1a2b3c4d5e" :offset 100}
+            {:query {:lib/type "mbql/query"
+                     :stages   [{:lib/type     "mbql.stage/mbql"
+                                 :source-table ["Sample Database" "PUBLIC" "ORDERS"]}]}
+             :validate_only true}]}}
+  [_route-params
+   _query-params
+   body :- ::execute-query-request-v2]
+  (agent-api.execute-query/execute-query body))
 
 ;;; --------------------------------------------------- Execute SQL --------------------------------------------------
 

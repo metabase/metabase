@@ -6,12 +6,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
+   [metabase.agent-api.handles :as agent-api.handles]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
-   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.toolsets :as mcp.toolsets]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.server.streaming-response :as streaming-response]
@@ -93,18 +93,6 @@
                                                 "with `query`.")}
     [:maybe ms/NonBlankString]]])
 
-(def ^:private execute-query-mcp-input-malli
-  "MCP-visible input for `execute_query`.
-  The wire endpoint requires `:query`; the MCP tool also accepts `:query_handle`, resolved by
-  [[resolve-query-arg]] before dispatch."
-  [:map
-   [:query {:optional true
-            :tool/description "Base64-encoded MBQL query. Use `query_handle` instead when available."}
-    [:maybe ms/NonBlankString]]
-   [:query_handle {:optional true
-                   :tool/description "Handle returned by construct_query — preferred over raw `query`."}
-    [:maybe ms/UUIDString]]])
-
 (def ^:private construct-query-mcp-output-malli
   "MCP-visible output of `construct_query`.
    The agent_api endpoint returns `{:query base64}`; the MCP body transform stores that and emits
@@ -118,8 +106,7 @@
 (def ^:private mcp-input-overrides
   "tool-name → Malli schema. Replaces the manifest's derived `:inputSchema`."
   {"construct_query" construct-query-mcp-input-malli
-   "query"           query-mcp-input-malli
-   "execute_query"   execute-query-mcp-input-malli})
+   "query"           query-mcp-input-malli})
 
 (def ^:private list-envelope-mcp-output-malli
   "MCP-visible output of a v2 list read. The rows travel once, in the `content` text block; the
@@ -151,6 +138,17 @@
    [:truncation_message {:optional true :tool/description "How to reach the rest."} [:maybe :string]]
    [:omitted            {:optional true :tool/description "Requested items not in this response, by type and id."} [:maybe [:sequential :map]]]])
 
+(def ^:private execute-query-mcp-output-malli
+  "MCP-visible output of `execute_query`. The rows travel once, in the `content` text block; the
+   structured channel carries the handle — what a save, a chart, or a next page is addressed by — plus
+   the count and the truncation steer."
+  [:map
+   [:query_handle       {:tool/description "The query that ran. Pass it to `question_write`, `visualize_query`, or back to `execute_query` with an `offset`."} ms/UUIDString]
+   [:validated          {:optional true :tool/description "`validate_only` only: the query is valid and nothing ran."} [:maybe :boolean]]
+   [:row_count          {:optional true :tool/description "Rows in this page."} [:maybe :int]]
+   [:truncated          {:optional true :tool/description "Whether more rows may sit behind this page."} [:maybe :boolean]]
+   [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset, and what narrows the result instead."} [:maybe :string]]])
+
 (def ^:private parameter-values-mcp-output-malli
   "MCP-visible output of `get_parameter_values`. The values themselves travel in the text block; the structured
    channel carries the one field a next call acts on — whether the list was capped, and so whether to narrow it."
@@ -168,7 +166,8 @@
    "browse_data"            browse-data-mcp-output-malli
    "browse_collection"      list-envelope-mcp-output-malli
    "get_content"            get-content-mcp-output-malli
-   "get_parameter_values"   parameter-values-mcp-output-malli})
+   "get_parameter_values"   parameter-values-mcp-output-malli
+   "execute_query"          execute-query-mcp-output-malli})
 
 (defn- override->input-json-schema [malli tool-name]
   (tools-manifest/assert-optional-fields-nullable! malli tool-name)
@@ -337,7 +336,7 @@
   (let [user-id api/*current-user-id*]
     (cond
       (:query_handle arguments)
-      (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle
+      (if-let [{:keys [encoded_query]} (agent-api.handles/resolve-query-handle
                                         user-id (:query_handle arguments))]
         (-> arguments (dissoc :query_handle) (assoc :query encoded_query))
         ::handle-not-found)
@@ -345,7 +344,7 @@
       (uuid-string? (:query arguments))
       (do (log/warnf "MCP tool %s: agent passed a UUID handle in :query; resolving as :query_handle"
                      tool-name)
-          (if-let [{:keys [encoded_query]} (mcp.session/resolve-query-handle
+          (if-let [{:keys [encoded_query]} (agent-api.handles/resolve-query-handle
                                             user-id (:query arguments))]
             (assoc arguments :query encoded_query)
             ::handle-not-found))
@@ -368,7 +367,7 @@
   [user-id]
   (fn [body]
     (if-let [encoded (:query body)]
-      (let [handle   (mcp.session/store-handle! user-id encoded (:prompt body))
+      (let [handle   (agent-api.handles/store-handle! user-id encoded (:prompt body))
             new-body {:query_handle handle}]
         (when-not (construct-query-output-validator new-body)
           (throw (ex-info (str "construct_query body transform produced a shape that doesn't "
@@ -377,12 +376,15 @@
         new-body)
       body)))
 
-;; Tools whose :query_handle is resolved by `resolve-query-arg` (it swaps the handle for the stored
-;; base64 :query) before the agent-api dispatch in `call-tool`. `visualize_query` also accepts a
-;; handle, but it's a UI tool that resolves the handle itself (see `metabase.mcp.resources`) and
-;; never reaches this dispatch path, so it's intentionally absent here.
+;; Tools whose endpoint takes a base64 `:query` and has no `query_handle` argument of its own, so
+;; `resolve-query-arg` swaps the handle for the stored query before dispatch. Membership is exactly
+;; that: a tool whose endpoint resolves handles itself must not be listed, or its handle would be
+;; consumed here and never reach it. That covers every v2 tool (a handle is part of their wire
+;; contract, so an HTTP caller of the agent API gets the same semantics an MCP client does) and
+;; `visualize_query`, a UI tool that resolves the handle in `metabase.mcp.resources` and never reaches
+;; this dispatch path at all.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "query" "create_question" "update_question" "create_metric" "update_metric"})
+  #{"query" "create_question" "update_question" "create_metric" "update_metric"})
 
 ;; Tools whose 200 body is `{:query base64}` and gets stored as a handle, returning `{:query_handle}`.
 ;; `construct_query` (MBQL) and `construct_native_query` (native SQL) both follow this contract.
@@ -421,19 +423,21 @@
      (some? structured) (assoc :structuredContent structured))))
 
 (def ^:private v2-payload-keys
-  "The keys a v2 body carries its payload under: a list envelope's `:data`, and `get_parameter_values`' `:values` —
-   the one v2 read whose body is the REST shape verbatim rather than an envelope. What is left after they are removed
-   is the machine channel."
-  [:data :values])
+  "Every key a v2 body carries its payload under: a list envelope's `:data`, `get_parameter_values`' `:values`, and
+   `execute_query`'s `:cols` + `:rows` — the two reads whose body is the REST shape verbatim rather than an envelope.
+   What is left after they are removed is the machine channel. A v2 tool that puts its payload under a new key must
+   name it here, or [[v2-content]] will mirror that payload into `structuredContent` and send it twice."
+  [:data :values :cols :rows])
 
 (defn- v2-content
   "MCP result for a v2 tool: the body once in the text block, and in `structuredContent` only the fields
-   a next call consumes. For a list envelope those are its counts and its truncation steer — never a
-   second copy of `:data`, which is what `text-content` does for v1 and what the response budget cannot
-   afford twice."
+   a next call consumes — counts, a truncation steer, a query handle. Never a second copy of the payload,
+   which is what `text-content` does for v1 and what the response budget cannot afford twice. A body that
+   is all machine channel (`execute_query` under `validate_only`) has nothing removed and travels whole
+   through both."
   [body]
   (two-channel-content body
-                       (when (and (map? body) (some #(contains? body %) v2-payload-keys))
+                       (when (map? body)
                          (not-empty (apply dissoc body v2-payload-keys)))))
 
 ;; JSON-RPC error codes recorded as `mcp_tool_call_log.error_code` for failed tool calls.

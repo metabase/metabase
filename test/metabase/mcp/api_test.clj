@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.agent-api.handles :as agent-api.handles]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
@@ -294,7 +295,7 @@
             the user, so a connection that never saw the store still reads from it"
     (let [user-id (mt/user->id :crowberto)
           handle  (mt/with-current-user user-id
-                    (mcp.session/store-handle! user-id encoded-query))]
+                    (agent-api.handles/store-handle! user-id encoded-query))]
       (is (=? {:status 200
                :body   {:result {:structuredContent {:query encoded-query}}}}
               (call-ui-tool "render_drill_through" {:handle handle}))))))
@@ -304,7 +305,7 @@
     (let [owner-id (mt/user->id :crowberto)
           payload  (u/encode-base64 (json/encode {:sentinel (str (random-uuid))}))
           handle   (mt/with-current-user owner-id
-                     (mcp.session/store-handle! owner-id payload))
+                     (agent-api.handles/store-handle! owner-id payload))
           response (call-ui-tool :rasta "visualize_query" {:query_handle handle})]
       (is (=? {:status 200
                :body   {:result {:isError true
@@ -769,7 +770,7 @@
                     ;; can clean up even if a later step throws.
                     question-data  (call-tool "create_question"
                                               {:name  "Smoke Question"
-                                               :query (mcp.session/read-handle
+                                               :query (agent-api.handles/read-handle
                                                        (mt/user->id :crowberto)
                                                        (:query_handle construct-data))})
                     _              (reset! question-id (:id question-data))
@@ -808,26 +809,27 @@
                 (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 
 (deftest tools-call-execute-query-test
-  (testing "execute_query returns a streaming response captured as MCP text content"
-    (let [streamed?   (atom false)
-          original-fn (mt/original-fn #'mcp.tools/capture-streaming-response)]
-      (mt/with-dynamic-fn-redefs [mcp.tools/capture-streaming-response
-                                  (fn [response]
-                                    (reset! streamed? true)
-                                    (original-fn response))]
-        (let [db-name        (t2/select-one-fn :name :model/Database (mt/id))
-              external-query {:lib/type "mbql/query"
-                              :stages   [{:lib/type     "mbql.stage/mbql"
-                                          :source-table [db-name "PUBLIC" "ORDERS"]
-                                          :limit        5}]}
-              construct-data (call-tool "construct_query" {:query external-query})
-              execute-data   (call-tool "execute_query" {:query_handle (:query_handle construct-data)})]
-          (is (true? @streamed?) "execute_query should use the streaming response path")
-          (is (=? {:status    "completed"
-                   :row_count 5
-                   :data      {:cols sequential?
-                               :rows (fn [rows] (= 5 (count rows)))}}
-                  execute-data)))))))
+  (testing "execute_query runs a plain MBQL query and carries the rows once, in the text block"
+    (let [db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
+          result         (get-in (mcp-request (jsonrpc-request "tools/call"
+                                                               {:name      "execute_query"
+                                                                :arguments {:query external-query}}))
+                                 [:body :result])
+          body           (json/decode+kw (-> result :content first :text))]
+      (is (=? {:row_count 5
+               :cols      sequential?
+               :rows      (fn [rows] (= 5 (count rows)))}
+              body))
+      (testing "and the structured channel carries only what a next call consumes"
+        (is (= #{:query_handle :row_count} (set (keys (:structuredContent result)))))
+        (is (= (:query_handle body) (get-in result [:structuredContent :query_handle]))))
+      (testing "the handle it minted names the same query"
+        (is (=? {:row_count 5}
+                (call-tool "execute_query" {:query_handle (:query_handle body)})))))))
 
 (deftest tools-call-query-accepts-query-handle-test
   (testing "the `query` tool resolves a query_handle and streams results, same as a fresh query body"
@@ -998,7 +1000,7 @@
   (testing "visualize_query resolves a stored handle"
     (let [user-id (mt/user->id :crowberto)
           handle  (mt/with-current-user user-id
-                    (mcp.session/store-handle! user-id encoded-query))]
+                    (agent-api.handles/store-handle! user-id encoded-query))]
       (is (=? {:status 200
                :body   {:result {:structuredContent {:query encoded-query}}}}
               (call-ui-tool "visualize_query" {:query_handle handle})))))
@@ -1042,7 +1044,7 @@
   (testing "render_drill_through resolves a stored handle to its encoded query"
     (let [user-id (mt/user->id :crowberto)
           handle  (mt/with-current-user user-id
-                    (mcp.session/store-handle! user-id encoded-query))]
+                    (agent-api.handles/store-handle! user-id encoded-query))]
       ;; The error path returns no :structuredContent, so asserting it is present is
       ;; equivalent to asserting :isError is not set.
       (is (=? {:status 200

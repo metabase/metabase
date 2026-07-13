@@ -556,6 +556,88 @@ Response — the REST shape verbatim. A value is `[value]`, or
 }
 ```
 
+### POST /v2/execute-query
+
+The `execute_query` tool: one call for a query you hold. It validates, runs, and
+hands back a handle for what ran — the three things v1 needed `construct_query`,
+`execute_query`, and `query` for.
+
+Exactly one of `query` | `query_handle` names the query. `query` is portable MBQL
+5 (the `::lib.schema/external-query` dialect described under
+`/v2/construct-query`): field refs are name arrays, sources are table-name paths
+or card entity_ids, never numeric ids, never base64. `query_handle` is a handle a
+previous call minted.
+
+| Parameter | Meaning |
+| --- | --- |
+| `query` | Portable MBQL 5, as a JSON object. |
+| `query_handle` | A handle from an earlier `execute_query` / `execute_sql` / `visualize_query`. |
+| `validate_only` | Validate and mint the handle without running anything (default `false`). |
+| `row_limit` | Rows to return (default 100, max 2000). |
+| `offset` | Rows to skip. Must be a multiple of the page size. |
+| `response_format` | `"concise"` (default) or `"detailed"` — shapes `cols`, never `rows`. |
+
+Request:
+
+```json
+{
+  "query": {
+    "lib/type": "mbql/query",
+    "stages": [{"lib/type": "mbql.stage/mbql",
+                "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+                "aggregation": [["count", {}]],
+                "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "CATEGORY"]]]}]
+  },
+  "row_limit": 100
+}
+```
+
+Response — the dataset REST shape (`cols` + `rows` as value arrays), plus the
+handle and, when a page is cut, the steer to the next one:
+
+```json
+{
+  "query_handle": "1c9d2f3a-5b6e-4a7c-8d9e-0f1a2b3c4d5e",
+  "cols": [{"name": "CATEGORY", "base_type": "type/Text"},
+           {"name": "count", "base_type": "type/Integer"}],
+  "rows": [["Doohickey", 42137], ["Gadget", 39041]],
+  "row_count": 2
+}
+```
+
+`row_count` is the rows in *this* page, as it is everywhere else in the REST API.
+There is no total: counting the whole result set would cost a second warehouse
+query on every call, so a full page instead comes back with `truncated: true` and
+a `truncation_message` naming the next `offset`. Continue by passing the
+`query_handle` back with that offset — the query itself never re-travels.
+
+A page is `row_limit` rows, or fewer if the instance's own row cap for the query
+is lower (`unaggregated-query-row-limit` / `aggregated-query-row-limit`, which an
+admin can set per database). The page is sized to what the query processor will
+actually return, because it enforces its cap by trimming the result rather than
+narrowing the SQL — so a wider page would drop rows that the next `offset` then
+steps over. `offset` is a multiple of that page size: MBQL pages by page number,
+so an arbitrary offset is not expressible, and every offset a truncation message
+names conforms. A query with no `order-by` is told so in its truncation message:
+`offset` compiles to SQL `OFFSET`, whose row order across two windows a database
+does not guarantee, so paging an unordered query can repeat one row and miss
+another.
+
+A handle comes back from every call, including `validate_only`, which returns
+`{"query_handle": "...", "validated": true}` and nothing else. It is the query
+that ran, so saving it via `question_write` saves byte-identically what the caller
+saw, rather than a regenerated near-miss. The store is content-addressed and keyed
+by `(user, query)`: the same query from the same user is the same handle, and a
+handle another user minted resolves to a 404.
+
+Errors teach. An unresolvable name comes back as a 400 with the `error` keyword
+from the resolution pipeline (`unknown-table`, `unknown-field`, `unknown-card`, …)
+and a message naming the recovery. It deliberately does **not** list the names it
+could have meant: the resolution pipeline's metadata provider is un-sandboxed, so
+a candidate list would tell a sandboxed caller which tables exist that they cannot
+otherwise see. A native query, however it arrives, is a 400 pointing at
+`/v1/execute-sql` — this endpoint carries the MBQL scope, not the SQL one.
+
 ### POST /v2/construct-query
 
 Construct an MBQL query from a representations JSON payload. Returns a
@@ -672,7 +754,8 @@ To fetch the next page:
 
 ### POST /v1/execute
 
-Execute a query returned by /v2/construct-query.
+Execute a query returned by /v2/construct-query. HTTP-only: the `execute_query`
+tool is served by `/v2/execute-query`.
 
 **Important: streaming response.** This endpoint streams results, so the HTTP
 status code (202) is sent before query execution completes. A 202 status does

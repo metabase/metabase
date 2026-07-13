@@ -10,9 +10,9 @@
    under that user. There is no transport session to check."
   (:require
    [metabase.agent-api.api :as agent-api]
+   [metabase.agent-api.handles :as agent-api.handles]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -51,7 +51,7 @@
   [_route-params
    _query-params
    {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]]
-  {:handle (mcp.session/store-handle! api/*current-user-id* encodedQuery)})
+  {:handle (agent-api.handles/store-handle! api/*current-user-id* encodedQuery)})
 
 (api.macros/defendpoint :post "/feedback" :- [:map
                                               [:status [:= 204]]

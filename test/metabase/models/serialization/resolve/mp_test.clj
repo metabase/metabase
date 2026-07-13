@@ -162,7 +162,8 @@
               (is (= :unknown-table (:error d)))
               (is (= 400 (:status-code d)))
               (is (true? (:agent-error? d)))
-              (is (re-find #"entity_details" msg) "message points the LLM at entity_details to re-list")
+              (is (re-find #"List the database's tables" msg)
+                  "message names the recovery — listing the database's tables — rather than a tool, since Metabot and the agent API have different catalogs")
               (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
                 (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
                                          (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
@@ -228,8 +229,8 @@
             (testing "ex-data carries only the rejected path — no candidates / schemas"
               (is (nil? (:candidates d)))
               (is (nil? (:available-schemas d))))
-            (testing "message points the LLM at entity_details for self-correction"
-              (is (re-find #"entity_details" msg)))))))))
+            (testing "message names the recovery — list the database's tables — for self-correction"
+              (is (re-find #"List the database's tables" msg)))))))))
 
 (deftest ^:parallel import-table-fk-error-test-2
   (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"

@@ -4,6 +4,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as met]
+   [metabase.agent-api.handles :as handles]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.permission-parity-test :as parity]
    [metabase.test :as mt]))
 
@@ -64,3 +68,22 @@
             :expect   :allowed
             :tool     ["execute_question" {:id (:id card)}]
             :rest     [:post (str "card/" (:id card) "/query")]}))))))
+
+(deftest execute-query-sandboxed-user-parity-test
+  (testing "a sandboxed user may run an ad-hoc MBQL query — the sandbox filters rows, it does not deny"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {}}}
+        ;; Addressed by handle rather than by the portable name dialect: the sandbox fixture runs against a
+        ;; temp copy of the database, which carries the same name as the original, and a name that two
+        ;; databases answer to resolves to neither.
+        (let [mp     (lib-be/application-database-metadata-provider (mt/id))
+              query  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                         (lib/limit 1)
+                         lib/prepare-for-serialization)
+              handle (handles/store-query! (mt/user->id :rasta) query)]
+          (parity/check-parity!
+           {:scenario :sandboxed-user
+            :user     :rasta
+            :expect   :allowed
+            :tool     ["execute_query" {:query_handle handle}]
+            :rest     [:post "dataset" (mt/mbql-query venues {:limit 1})]}))))))

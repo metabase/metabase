@@ -54,11 +54,11 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope                     | Grants access to                                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `agent:discover:read`     | the discover toolset: `search`, `browse_data`, `browse_collection`, `get_parameter_values`                      |
+| `agent:discover:read`     | the discover toolset: `search`, `browse_data`, `browse_collection`, `get_content`, `get_parameter_values`       |
+| `agent:query:read`        | the query toolset: `execute_query`                                                                             |
 | `agent:resource:read`     | `read_resource` (always granted to any authenticated caller; per-URI perm checks happen inside the dispatcher) |
 | `agent:query:construct`   | `construct_query`                                                                                              |
 | `agent:query`             | `query`                                                                                                        |
-| `agent:query:execute`     | `execute_query`                                                                                                |
 | `agent:sql:construct`     | `construct_native_query`                                                                                       |
 | `agent:sql:execute`       | `execute_sql`                                                                                                  |
 | `agent:question:create`   | `create_question`                                                                                              |
@@ -99,7 +99,7 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `construct_query` | Construct a query against a table or metric. Accepts the user's original `prompt` when available. Returns an opaque `query_handle` for use with `execute_query` or `visualize_query`.          |
 | `construct_native_query` | Construct a native (raw SQL) query for a database. Returns an opaque `query_handle` to feed `create_question` and save it. Does not execute the SQL; native handles are rejected by `execute_query`/`query` (use `execute_sql` to run raw SQL). |
 | `query`           | Query a table or metric directly. Supports pagination via continuation tokens.                                                                                                                 |
-| `execute_query`   | Execute a previously constructed query and return results with column metadata.                                                                                                                |
+| `execute_query`   | Run a query: portable MBQL 5 JSON or a `query_handle`, `validate_only` for a dry run, `row_limit` + `offset` to page. Returns the rows in the dataset REST shape and a `query_handle` naming what ran — the handle a save or a chart reuses. |
 | `execute_sql`     | Execute a raw SQL query against a database. Requires the user to have native-query permission on the target database. Can be disabled instance-wide via the `mcp-execute-sql-enabled` setting. |
 | `execute_question` | Run a saved question by id and return its rows + column metadata. Runs under the caller's permissions. Parameterized questions are not supported (returns an error). |
 
@@ -115,8 +115,9 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `update_dashboard`  | Update a dashboard's metadata (name, description, collection, archived).                                          |
 | `create_collection` | Create a new collection. Optionally nested under a `parent_collection_id`.                                        |
 
-Query results are limited to 200 rows per request. When more rows are available, the response includes a
-`continuation_token` that can be passed back to fetch the next page.
+The v1 `query` tool returns at most 200 rows per request and pages with a `continuation_token` that carries the
+whole query. `execute_query` returns `row_limit` rows (default 100, max 2000) and pages with the `query_handle` and
+an `offset`, so the query stays server-side.
 
 `read_resource` list responses cap at 25 items with `truncated` / `total` signals; drill into specific URIs to see
 more, or refine via `search`.
@@ -242,9 +243,13 @@ The implementation lives in these files:
   check (DNS rebinding protection), validates the routing headers against the body, and dispatches to the method.
   Supports both JSON and SSE response formats.
 
-- **[`session.clj`](session.clj)** - The per-user state: the query-handle store (content-addressed, TTL'd, keyed
-  `(user, uuid)`) and the embedding session key the MCP Apps iframe authenticates with, derived from the user id.
-  Also mints the self-describing capability hint older clients get back from `initialize`.
+- **[`session.clj`](session.clj)** - The embedding session key the MCP Apps iframe authenticates with, derived
+  from the user id. Also mints the self-describing capability hint older clients get back from `initialize`.
+
+- **[`../agent_api/handles.clj`](../agent_api/handles.clj)** - The query-handle store: content-addressed, TTL'd,
+  keyed `(user, uuid)`. It sits in the Agent API rather than here because the v2 endpoints mint and resolve
+  handles themselves — an HTTP caller of the Agent API gets the same handle semantics an MCP client does, and
+  MCP is one transport over it rather than its owner.
 
 - **[`tools.clj`](tools.clj)** - Tool dispatch and manifest generation. Builds the tool list from Agent API endpoint
   metadata, checks scopes, and routes tool calls through synthetic Agent API requests. `two-channel-content` is the

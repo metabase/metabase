@@ -14,6 +14,15 @@
   :export?    true
   :doc        false)
 
+(defsetting mcp-query-handle-ttl-days
+  (deferred-tru "Number of days a stored MCP query handle stays resolvable before it expires.")
+  :type       :integer
+  :default    14
+  :visibility :internal
+  :export?    false
+  :audit      :no-value
+  :doc        false)
+
 (defsetting mcp-execute-sql-enabled
   (deferred-tru "Whether the MCP `execute_sql` tool is available. Disable to remove the tool entirely; underlying native-query permissions still apply when enabled.")
   :type       :boolean

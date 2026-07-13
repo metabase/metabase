@@ -26,7 +26,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -373,3 +374,31 @@
             (is (= #{"ParityHidden Question"} (search-tool-names :crowberto "ParityHidden")))
             (is (= (rest-search-names :crowberto "ParityHidden")
                    (search-tool-names :crowberto "ParityHidden")))))))))
+
+;;; ------------------------------------------------ execute_query -------------------------------------------------
+
+(defn- portable-venues-query
+  "The VENUES table in the external dialect `execute_query` takes: names, never ids."
+  []
+  {:lib/type "mbql/query"
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "VENUES"]
+               :limit        1}]})
+
+(deftest execute-query-baseline-parity-test
+  (testing "the positive control: with full permissions both surfaces run the query"
+    (check-parity!
+     {:scenario :full-permissions
+      :user     :rasta
+      :expect   :allowed
+      :tool     ["execute_query" {:query (portable-venues-query)}]
+      :rest     [:post "dataset" (mt/mbql-query venues {:limit 1})]})))
+
+(deftest execute-query-blocked-database-parity-test
+  (perms.test-util/with-no-data-perms-for-all-users!
+    (check-parity!
+     {:scenario :blocked-database
+      :user     :rasta
+      :expect   :denied
+      :tool     ["execute_query" {:query (portable-venues-query)}]
+      :rest     [:post "dataset" (mt/mbql-query venues {:limit 1})]})))
