@@ -110,22 +110,25 @@ interface ModalRouteProps {
 }
 
 // react-router Route wrapper that handles routed modals
-class _ModalRoute extends Route {
-  static createRouteFromReactElement(element: React.ReactElement) {
-    const { modal, modalProps, noWrap } = element.props;
-
-    if (modal) {
-      element = cloneElement(element, {
-        component: ModalWithRoute(modal, modalProps, noWrap),
-      });
-
-      // @ts-expect-error - Route.createRouteFromReactElement is not typed
-      return Route.createRouteFromReactElement(element);
-    } else {
-      throw new Error("`modal` property is missing from ModalRoute");
-    }
-  }
+function _ModalRoute(): null {
+  throw new Error(
+    "<ModalRoute> configures the route tree and is never rendered directly",
+  );
 }
+
+_ModalRoute.createRouteFromReactElement = (element: React.ReactElement) => {
+  const { modal, modalProps, noWrap } = element.props;
+
+  if (modal) {
+    element = cloneElement(element, {
+      component: ModalWithRoute(modal, modalProps, noWrap),
+    });
+
+    return Route.createRouteFromReactElement(element);
+  } else {
+    throw new Error("`modal` property is missing from ModalRoute");
+  }
+};
 
 // Casting ModalRoute as there's no way to properly type its props
 // ModalRoute extends react-router's Route which is not generic,
