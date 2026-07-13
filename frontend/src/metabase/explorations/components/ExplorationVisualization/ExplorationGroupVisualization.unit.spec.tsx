@@ -7,6 +7,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import type {
   Comment,
   Dataset,
+  ExplorationBlockNodeType,
   ExplorationQuery,
   Timeline,
 } from "metabase-types/api";
@@ -77,6 +78,7 @@ jest.mock("metabase/api/exploration", () => ({
   },
   useSetPageStarredMutation: () => [mockMutationTrigger()],
   useSetPagesHiddenMutation: () => [mockMutationTrigger()],
+  useExploreFurtherMutation: () => [mockMutationTrigger()],
 }));
 
 function makeTimeseriesDataset(): Dataset {
@@ -144,6 +146,7 @@ interface SetupOpts {
   onSelectTimelineId?: (timelineId: number | null) => void;
   isCommentsSidebarOpen?: boolean;
   wasCommentsSidebarOpen?: boolean;
+  blockType?: ExplorationBlockNodeType;
 }
 
 function setup({
@@ -156,6 +159,7 @@ function setup({
   onSelectTimelineId = jest.fn(),
   isCommentsSidebarOpen = false,
   wasCommentsSidebarOpen = false,
+  blockType = "metric",
 }: SetupOpts) {
   mockDatasetsByQueryId.clear();
   mockErrorsByQueryId.clear();
@@ -178,6 +182,7 @@ function setup({
           explorationId={1}
           page={{ ...page, query_ids: queries.map((q) => q.id) }}
           queries={queries}
+          blockType={blockType}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}

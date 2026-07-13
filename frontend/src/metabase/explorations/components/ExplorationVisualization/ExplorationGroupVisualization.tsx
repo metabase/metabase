@@ -577,7 +577,7 @@ function CommentBadge({ label, iconName, buttonProps }: CommentBadgeProps) {
       {...buttonProps}
     >
       <Group gap={4} wrap="nowrap">
-        <Icon name={iconName} size={12} />
+        <Icon name={iconName} size={12} aria-hidden />
         {label}
       </Group>
     </UnstyledButton>

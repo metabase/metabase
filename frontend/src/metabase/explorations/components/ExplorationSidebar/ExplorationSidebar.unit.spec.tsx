@@ -454,6 +454,7 @@ describe("ExplorationSidebar", () => {
     );
 
     const path = Urls.exploration(exploration.id);
+    const shouldScrollSelectionRef = { current: true };
     const sidebarWith = (
       tree: ReturnType<typeof getExplorationSidebarTree>,
     ) => (
@@ -466,7 +467,7 @@ describe("ExplorationSidebar", () => {
         selectedEntityId={{ type: "page", id: String(REVENUE_PAGE_ID) }}
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
-        shouldScrollSelectionRef={{ current: true }}
+        shouldScrollSelectionRef={shouldScrollSelectionRef}
         isOpen
         showHidden={false}
         onToggleShowHidden={jest.fn()}
@@ -543,6 +544,7 @@ describe("ExplorationSidebar", () => {
         getSelectedSidebarTabUrl,
         getTree,
       } = getSidebarTestContext(exploration);
+      const shouldScrollSelectionRef = { current: true };
       const sidebarWith = (
         tree: ReturnType<typeof getExplorationSidebarTree>,
         selectedId: string,
@@ -556,7 +558,7 @@ describe("ExplorationSidebar", () => {
           selectedEntityId={{ type: "page", id: selectedId }}
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
-          shouldScrollSelectionRef={{ current: true }}
+          shouldScrollSelectionRef={shouldScrollSelectionRef}
           isOpen
           showHidden={false}
           onToggleShowHidden={jest.fn()}
