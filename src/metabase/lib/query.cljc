@@ -136,25 +136,25 @@
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
         (lib.util.match/replace
-          x
-          [:field
-           (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-           (id :guard pos-int?)]
-          (if (some #{:mbql/stage-metadata} &parents)
-            &match
-            (update &match 1 merge
+         x
+         [:field
+          (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+          (id :guard pos-int?)]
+         (if (some #{:mbql/stage-metadata} &parents)
+           &match
+           (update &match 1 merge
                    ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
                    ;;       case no change is performed. Find a way how to handle this properly!
-                    (when-not (and (some? (:base-type options))
-                                   (not= (:base-type options)
-                                         (:base-type (lib.metadata/field metadata-provider id))))
+                   (when-not (and (some? (:base-type options))
+                                  (not= (:base-type options)
+                                        (:base-type (lib.metadata/field metadata-provider id))))
                      ;; Following key is used to track which base-types we added during `query` call. It is used in
                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
                      ;; as legacy -> pmbql -> legacy looks closer to the original.
-                      (merge (when-not (contains? options :base-type)
-                               {::transformation-added-base-type true})
-                             (-> (lib.metadata/field metadata-provider id)
-                                 (select-keys [:base-type :effective-type]))))))))
+                     (merge (when-not (contains? options :base-type)
+                              {::transformation-added-base-type true})
+                            (-> (lib.metadata/field metadata-provider id)
+                                (select-keys [:base-type :effective-type]))))))))
     x))
 
 (mu/defn query-with-stages :- ::lib.schema/query
@@ -177,18 +177,19 @@
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
-  (try
-    (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                        (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
-          mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
-          mbql5-query (add-types-to-fields mbql5-query mp)]
-      (merge
-       mbql5-query
-       (query-with-stages mp (:stages mbql5-query))))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
-                      {:legacy-query legacy-query}
-                      e)))))
+  (lib.util/recover
+   (fn []
+     (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                         (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
+           mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
+           mbql5-query (add-types-to-fields mbql5-query mp)]
+       (merge
+        mbql5-query
+        (query-with-stages mp (:stages mbql5-query)))))
+   (fn [e]
+     (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
+                     {:legacy-query legacy-query}
+                     e)))))
 
 (defmulti ^:private query-method
   "Implementation for [[query]]."
@@ -230,20 +231,20 @@
                    (-> stage
                        (add-types-to-fields metadata-provider)
                        (lib.util.match/replace
-                         [:expression
-                          (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                          expression-name]
-                         (let [found-ref (try
-                                           (m/remove-vals
-                                            #(= :type/* %)
-                                            (-> (lib.expression/expression-ref query stage-number expression-name)
-                                                second
-                                                (select-keys [:base-type :effective-type])))
-                                           (catch #?(:clj Exception :cljs :default) _
-                                             ;; This currently does not find expressions defined in join stages
-                                             nil))]
-                           ;; Fallback if metadata is missing
-                           [:expression (merge found-ref opts) expression-name]))))
+                        [:expression
+                         (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                         expression-name]
+                        (let [found-ref (try
+                                          (m/remove-vals
+                                           #(= :type/* %)
+                                           (-> (lib.expression/expression-ref query stage-number expression-name)
+                                               second
+                                               (select-keys [:base-type :effective-type])))
+                                          (catch #?(:clj Exception :cljs :default) _
+                                            ;; This currently does not find expressions defined in join stages
+                                            nil))]
+                          ;; Fallback if metadata is missing
+                          [:expression (merge found-ref opts) expression-name]))))
                  (m/indexed stages))))
         (->> (lib.normalize/normalize ::lib.schema/query)))))
 

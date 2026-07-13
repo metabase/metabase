@@ -944,27 +944,27 @@
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
   (lib.util.match/replace filter-clause
-    [:!=
-     [:field id-or-name (opts :guard #(= (:temporal-unit %) :hour-of-day))]
-     & (args :guard #(every? number? %))]
-    (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
+                          [:!=
+                           [:field id-or-name (opts :guard #(= (:temporal-unit %) :hour-of-day))]
+                           & (args :guard #(every? number? %))]
+                          (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
-    [:!=
-     [:field id-or-name (opts :guard #(#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit %)))]
-     & (args :guard #(every? u.time/timestamp-coercible? %))]
-    (let [args (mapv u.time/coerce-to-timestamp args)]
-      (if (every? u.time/valid? args)
-        (let [unit         (:temporal-unit opts)
-              field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
-              extract-expr (case unit
-                             :day-of-week     [:get-day-of-week field :iso]
-                             :month-of-year   [:get-month field]
-                             :quarter-of-year [:get-quarter field])
-              extract-unit (if (= unit :day-of-week) :day-of-week-iso unit)]
-          (into [:!= extract-expr]
-                (map #(u.time/extract % extract-unit))
-                args))
-        &match))))
+                          [:!=
+                           [:field id-or-name (opts :guard #(#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit %)))]
+                           & (args :guard #(every? u.time/timestamp-coercible? %))]
+                          (let [args (mapv u.time/coerce-to-timestamp args)]
+                            (if (every? u.time/valid? args)
+                              (let [unit         (:temporal-unit opts)
+                                    field        [:field id-or-name (not-empty (dissoc opts :temporal-unit))]
+                                    extract-expr (case unit
+                                                   :day-of-week     [:get-day-of-week field :iso]
+                                                   :month-of-year   [:get-month field]
+                                                   :quarter-of-year [:get-quarter field])
+                                    extract-unit (if (= unit :day-of-week) :day-of-week-iso unit)]
+                                (into [:!= extract-expr]
+                                      (map #(u.time/extract % extract-unit))
+                                      args))
+                              &match))))
 
 (defclause* !=
   [:and
@@ -1009,27 +1009,27 @@
   #46438 for details."
   [clause]
   (lib.util.match/replace clause
-    [:between
-     [:+
-      field
-      [:interval (offset-value :guard integer?) (offset-unit :guard keyword?)]]
-     [:relative-datetime
-      (start-value :guard integer?)
-      (start-unit :guard keyword?)]
-     [:relative-datetime
-      (end-value :guard integer?)
-      (end-unit :guard keyword?)]]
-    (let [offset-value (- offset-value)]
-      (if (and (= start-unit end-unit)
-               (or (and (pos? offset-value) (zero? start-value) (pos? end-value))
-                   (and (neg? offset-value) (neg? start-value) (zero? end-value))))
-        [:relative-time-interval
-         field
-         (if (neg? offset-value) start-value end-value)
-         start-unit
-         offset-value
-         offset-unit]
-        &match))))
+                          [:between
+                           [:+
+                            field
+                            [:interval (offset-value :guard integer?) (offset-unit :guard keyword?)]]
+                           [:relative-datetime
+                            (start-value :guard integer?)
+                            (start-unit :guard keyword?)]
+                           [:relative-datetime
+                            (end-value :guard integer?)
+                            (end-unit :guard keyword?)]]
+                          (let [offset-value (- offset-value)]
+                            (if (and (= start-unit end-unit)
+                                     (or (and (pos? offset-value) (zero? start-value) (pos? end-value))
+                                         (and (neg? offset-value) (neg? start-value) (zero? end-value))))
+                              [:relative-time-interval
+                               field
+                               (if (neg? offset-value) start-value end-value)
+                               start-unit
+                               offset-value
+                               offset-unit]
+                              &match))))
 
 ;; :between is INCLUSIVE just like SQL !!!
 (defclause* between
@@ -1157,7 +1157,7 @@
   (one-of
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
-    ;; SUGAR filters drivers do not need to implement
+   ;; SUGAR filters drivers do not need to implement
    in not-in does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
 
 (mr/def ::Filter
