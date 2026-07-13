@@ -10,8 +10,8 @@
   [{:namespace 'metabase.a.core
     :filename  "src/metabase/a/core.clj"
     :module    'a
-    :deps      [{:namespace 'metabase.b.core :module 'b}
-                {:namespace 'metabase.c.api :module 'c}]}
+    :deps      [{:namespace 'metabase.b.core, :module 'b}
+                {:namespace 'metabase.c.api,  :module 'c}]}
    {:namespace 'metabase.a.api
     :filename  "src/metabase/a/api.clj"
     :module    'a
@@ -19,7 +19,7 @@
    {:namespace 'metabase.b.core
     :filename  "src/metabase/b/core.clj"
     :module    'b
-    :deps      [{:namespace 'metabase.c.api :module 'c}]}
+    :deps      [{:namespace 'metabase.c.api, :module 'c}]}
    {:namespace 'metabase.c.api
     :filename  "src/metabase/c/api.clj"
     :module    'c
@@ -27,18 +27,18 @@
    {:namespace 'metabase.d.core
     :filename  "src/metabase/d/core.clj"
     :module    'd
-    :deps      [{:namespace 'metabase.a.api :module 'a}
-                {:namespace 'metabase.c.api :module 'c}]}])
+    :deps      [{:namespace 'metabase.a.api, :module 'a}
+                {:namespace 'metabase.c.api, :module 'c}]}])
 
 (def ^:private config
   {'a {:api     #{'metabase.a.api}
        :uses    #{'b 'c}
        :friends #{'d}}
-   'b {:api  #{'metabase.b.core}
-       :uses #{'c}}
-   'c {:api #{'metabase.c.api}}
-   'd {:api  #{}
-       :uses #{'a 'c}}})
+   'b {:api     #{'metabase.b.core}
+       :uses    #{'c}}
+   'c {:api     #{'metabase.c.api}}
+   'd {:api     #{}
+       :uses    #{'a 'c}}})
 
 (def ^:private module->test-files
   {'a #{"test/metabase/a/a_core_test.clj"}
@@ -86,39 +86,39 @@
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
                               (fn [_deps _config _prefix->mod source-filenames]
                                 (relevant-test-files source-filenames))]
-    (let [metrics     (module-metrics/metrics deps config)
+    (let [metrics           (module-metrics/metrics deps config)
           metrics-by-module (into {} (map (juxt :module identity)) metrics)]
       (testing "blast radius metrics prioritize downstream impact and test reruns"
-        (is (= {:dependencies {:direct-count              0
-                               :transitive-count          0
+        (is (= {:dependencies {:direct-count             0
+                               :transitive-count         0
                                :reachable-namespace-count 0
-                               :max-depth                 0}
-                :dependents   {:direct-count     3
-                               :transitive-count 3}
-                :cycles       {:component-size       1
-                               :in-largest-component? false}
-                :blast-radius {:source-file-count 5
-                               :test-file-count   4}}
+                               :max-depth                0}
+                :dependents   {:direct-count             3
+                               :transitive-count         3}
+                :cycles       {:component-size           1
+                               :in-largest-component?     false}
+                :blast-radius {:source-file-count         5
+                               :test-file-count           4}}
                (select-keys (get metrics-by-module 'c)
                             [:dependencies :dependents :cycles :blast-radius]))))
       (testing "config and graph metrics stay available alongside the blast radius counts"
-        (is (= {:top-level? true
-                :dependencies {:direct-count              2
-                               :transitive-count          2
-                               :reachable-namespace-count 2
-                               :max-depth                 1}
-                :dependents {:direct-count     1
-                             :transitive-count 1}
-                :size {:namespace-count 2
-                       :line-count      0}
-                :api {:declared-namespace-count     1
-                      :used-namespace-count         0
-                      :noncanonical-namespace-count 0
-                      :undeclared-namespace-count   0}
-                :friends {:count                   1
-                          :exposed-namespace-count 1}
-                :blast-radius {:source-file-count 3
-                               :test-file-count   2}}
+        (is (= {:top-level?    true
+                :dependencies {:direct-count                 2
+                               :transitive-count             2
+                               :reachable-namespace-count    2
+                               :max-depth                    1}
+                :dependents   {:direct-count                 1
+                               :transitive-count             1}
+                :size         {:namespace-count              2
+                               :line-count                   0}
+                :api          {:declared-namespace-count     1
+                               :used-namespace-count         0
+                               :noncanonical-namespace-count 0
+                               :undeclared-namespace-count   0}
+                :friends      {:count                        1
+                               :exposed-namespace-count      1}
+                :blast-radius {:source-file-count            3
+                               :test-file-count              2}}
                (select-keys (get metrics-by-module 'a)
                             [:top-level?
                              :dependencies
@@ -132,32 +132,35 @@
   (mt/with-dynamic-fn-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
                               (fn [_deps _config _prefix->mod source-filenames]
                                 (relevant-test-files source-filenames))]
-    (is (= {:graph {:module-count                4
-                    :top-level-module-count      4
-                    :edge-count                  5
-                    :mean-out-degree             1.25
-                    :max-in-degree               3
-                    :top-decile-in-degree-share 0.6}
-            :cycles {:cyclic-module-count            0
-                     :largest-component-module-count 0
-                     :cyclic-namespace-count         0
-                     :cyclic-namespace-ratio         0.0}
-            :encapsulation {:friend-edge-count               1
-                            :friend-exposed-namespace-count  1
-                            :privileged-access-path-count     1
-                            :api-namespace-count              3
-                            :api-surface-ratio                0.6
-                            :undeclared-api-namespace-count   0}
-            :size {:namespace-count 5
-                   :line-count 0
-                   :namespaces-per-module {:p25 1 :mean 1.25 :median 1 :p90 2 :max 2}
-                   :lines-per-module {:p25 0 :mean 0.0 :median 0 :p90 0 :max 0}
-                   :reachable-namespaces-per-module {:p25 0 :mean 1.75 :median 1 :p90 4 :max 4}}
-            :blast-radius {:source-file-count                       5
-                           :test-file-count                         4
-                           :mean-test-files-per-source-file         2.4
-                           :majority-test-suite-source-file-ratio   0.4
-                           :mean-downstream-modules-per-source-file 1.4}}
+    (is (= {:graph         {:module-count                            4
+                            :top-level-module-count                  4
+                            :edge-count                              5
+                            :mean-out-degree                         1.25
+                            :max-in-degree                           3
+                            :top-decile-in-degree-share              0.6}
+            :cycles        {:cyclic-module-count                     0
+                            :largest-component-module-count          0
+                            :cyclic-namespace-count                  0
+                            :cyclic-namespace-ratio                  0.0}
+            :encapsulation {:friend-edge-count                       1
+                            :friend-exposed-namespace-count          1
+                            :privileged-access-path-count            1
+                            :api-namespace-count                     3
+                            :api-surface-ratio                       0.6
+                            :undeclared-api-namespace-count          0}
+            :size          {:namespace-count                         5
+                            :line-count                              0
+                            :namespaces-per-module
+                            {:p25 1, :mean 1.25, :median 1, :p90 2, :max 2}
+                            :lines-per-module
+                            {:p25 0, :mean 0.0,  :median 0, :p90 0, :max 0}
+                            :reachable-namespaces-per-module
+                            {:p25 0, :mean 1.75, :median 1, :p90 4, :max 4}}
+            :blast-radius  {:source-file-count                       5
+                            :test-file-count                         4
+                            :mean-test-files-per-source-file         2.4
+                            :majority-test-suite-source-file-ratio   0.4
+                            :mean-downstream-modules-per-source-file 1.4}}
            (module-metrics/repo-metrics deps config)))))
 
 (deftest ^:parallel empty-repo-metrics-test
@@ -174,7 +177,7 @@
             :cyclic-namespace-count         0
             :cyclic-namespace-ratio         0.0}
            (:cycles metrics)))
-    (is (= {:p25 0 :mean 0.0 :median 0 :p90 0 :max 0}
+    (is (= {:p25 0, :mean 0.0, :median 0, :p90 0, :max 0}
            (get-in metrics [:size :namespaces-per-module])))
     (is (= 0.0 (get-in metrics [:blast-radius :mean-test-files-per-source-file])))))
 
