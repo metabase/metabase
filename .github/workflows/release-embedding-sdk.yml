@@ -1,32 +1,30 @@
-# UNVERIFIED (EMB-1518 scaffold): the `pull_request` trigger below and the
-# switch from hardcoded version/dist-tag logic to reading
-# enterprise/frontend/src/embedding-sdk-package/package.template.json's
-# `sdkRelease` block have not been run or reviewed by the embedding team
-# (Nicolo/Roman) yet - this can only really be verified by triggering a real
-# release. See .github/workflows/sdk-version-bump-pr.yml for step 1 of the
-# new two-step process.
+# Step 2 of the SDK release process: merging a version-bump PR (opened by
+# sdk-version-bump-pr.yml, labeled `sdk-release-trigger`) publishes the version
+# and dist-tag committed in package.template.json's `sdkRelease` block.
 #
-# MIGRATION NOTE: this workflow file (with the pull_request trigger and the
-# sdkRelease-reading logic) only exists on branches it's been merged/ported
-# to. A release branch cut before this change has neither this trigger nor
-# the sdkRelease field - merging a `sdk-release-trigger` PR there is a silent
-# no-op (nothing fires) rather than an error. Releasing from such a branch
-# needs this whole workflow file (plus sdk-version-bump-pr.yml) backported to
-# it first, not just the package.template.json field. It also needs a
-# concrete semver `version` in package.template.json before its first bump -
-# branches that went gold under the pre-EMB-1518 after-gold checklist have a
-# `0.N.x` placeholder there instead, which sdk-version-bump-pr.yml's bump
-# step now rejects with a clear error rather than failing silently.
+# workflow_dispatch publishes the same way, from the branch chosen in the ref
+# picker, without a PR. It reads the same committed sdkRelease block and never
+# bumps the version - so it is not how you cut a release. Use it only to publish
+# a version that is already committed, when the bump PR cannot do it.
+#
+# To retry a failed run, re-run the failed jobs on that run rather than
+# dispatching a fresh one: if publish-npm already succeeded, a fresh run would
+# stop at check-git-tag on the existing tag.
 name: Release Metabase Embedding SDK for React
 run-name: Release SDK from ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.pull_request.base.ref }}
 
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: "Not used for anything - select the actual branch/tag to release from using the 'Use workflow from' picker above this form when dispatching manually."
-        type: string
+      read_first:
+        description: |
+          ⚠️ To cut a release, use the "SDK Version Bump PR" workflow instead — it bumps the version and opens a PR; merging that PR publishes.
+          This publishes the version already committed in package.template.json. It never bumps. Pick the branch in "Use workflow from" above.
+          Use it only when neither the bump PR nor re-running the failed jobs will do.
+        type: choice
         required: false
+        options:
+          - Publish the committed version from the branch picked in "Use workflow from" above
   # Step 2 of the new release process: merging a version-bump PR (opened by
   # sdk-version-bump-pr.yml, labeled `sdk-release-trigger`) triggers a release
   # of whatever branch that PR targeted. See `prepare-release` below.
