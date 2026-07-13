@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
