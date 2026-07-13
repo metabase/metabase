@@ -2,11 +2,6 @@
   overflow-wrap: break-word;
 }
 
-/* select the tab class twice as a specificity hack */
-.tab.tab {
-  padding: 0.6875rem 1rem;
-}
-
 .tree {
   overflow-y: auto;
   /*
@@ -66,9 +61,9 @@
   background-image:
     linear-gradient(
       90deg,
-      #0000 calc(50% - var(--shimmer-spread)),
+      transparent calc(50% - var(--shimmer-spread)),
       var(--mb-color-background-primary),
-      #0000 calc(50% + var(--shimmer-spread))
+      transparent calc(50% + var(--shimmer-spread))
     ),
     linear-gradient(
       var(--mb-color-text-secondary),
