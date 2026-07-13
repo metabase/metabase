@@ -1257,6 +1257,7 @@
            app-db
            config
            llm
+           metabot
            oauth-server
            premium-features
            request
@@ -1328,7 +1329,6 @@
               settings
               slackbot
               sql-tools
-              store-api
               sync
               system
               task
