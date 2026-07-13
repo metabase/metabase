@@ -1,24 +1,59 @@
-/* eslint-disable react/prop-types */
 /* eslint-disable react/display-name */
-import { Component } from "react";
+import { Component, type ComponentType } from "react";
 import _ from "underscore";
 
 import { updateSettings } from "metabase/visualizations/lib/settings";
 import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
+
+type ChartSettingNestedSettingsProps<T> = {
+  series: Series;
+  objects: T[];
+  value?: Record<string, VisualizationSettings>;
+  onChange: (value: Record<string, VisualizationSettings>) => void;
+  initialKey?: string | null;
+  onEndShowWidget?: () => void;
+  extra?: any;
+  getObjectKey: (object: T) => string;
+  getObjectSettings: (
+    allStoredSettings: Record<string, VisualizationSettings>,
+    object: T,
+  ) => any;
+  getSettingDefinitionsForObject: (
+    series: Series,
+    object: T,
+  ) => VisualizationSettingsDefinitions;
+  getComputedSettingsForObject: (
+    series: Series,
+    object: T,
+    storedSettings: VisualizationSettings,
+    extra: any,
+  ) => ComputedVisualizationSettings;
+};
+
+type ChartSettingNestedSettingsState = {
+  objectKeyOverride?: string | null;
+};
 
 /**
  * @deprecated HOCs are deprecated
  */
-export const chartSettingNestedSettings = (ComposedComponent) =>
-  class extends Component {
-    constructor(props) {
-      super(props);
-      this.state = {};
-    }
+export const chartSettingNestedSettings = <T,>(
+  ComposedComponent: ComponentType<any>,
+): ComponentType<any> =>
+  class extends Component<
+    ChartSettingNestedSettingsProps<T> & Record<string, unknown>,
+    ChartSettingNestedSettingsState
+  > {
+    state: ChartSettingNestedSettingsState = {};
 
-    getEditingObjectKey = () => {
+    getEditingObjectKey = (): string | null | undefined => {
       const { getObjectKey } = this.props;
       return (
         this.state.objectKeyOverride ||
@@ -29,7 +64,7 @@ export const chartSettingNestedSettings = (ComposedComponent) =>
       );
     };
 
-    handleChangeEditingObject = (editingObject) => {
+    handleChangeEditingObject = (editingObject: T | null) => {
       const { getObjectKey } = this.props;
       // objectKeyOverride allows child components to set the editing object key to a different value than is derived
       // from the props. For example, this is used by the "More options" button in ChartNestedSettingSeries.
@@ -42,24 +77,33 @@ export const chartSettingNestedSettings = (ComposedComponent) =>
       }
     };
 
-    handleChangeSettingsForEditingObject = (newSettings) => {
+    handleChangeSettingsForEditingObject = (
+      newSettings: Partial<VisualizationSettings>,
+    ) => {
       const editingObjectKey = this.getEditingObjectKey();
       if (editingObjectKey != null) {
         this.handleChangeSettingsForObjectKey(editingObjectKey, newSettings);
       }
     };
 
-    handleChangeSettingsForObject = (object, newSettings) => {
+    handleChangeSettingsForObject = (
+      object: T,
+      newSettings: Partial<VisualizationSettings>,
+    ) => {
       const objectKey = this.props.getObjectKey(object);
       if (objectKey != null) {
         this.handleChangeSettingsForObjectKey(objectKey, newSettings);
       }
     };
 
-    handleChangeSettingsForObjectKey = (changedKey, changedSettings) => {
+    handleChangeSettingsForObjectKey = (
+      changedKey: string,
+      changedSettings: Partial<VisualizationSettings>,
+    ) => {
       const { objects, onChange, getObjectKey, getObjectSettings } = this.props;
       const oldSettings = this.props.value || {};
-      const newSettings = objects.reduce((newSettings, object) => {
+      const newSettings: Record<string, VisualizationSettings> = {};
+      for (const object of objects) {
         const currentKey = getObjectKey(object);
         const objectSettings = getObjectSettings(oldSettings, object);
         if (currentKey === changedKey) {
@@ -72,17 +116,16 @@ export const chartSettingNestedSettings = (ComposedComponent) =>
           // entries, which would corrupt the settings map (EMB-1940).
           newSettings[currentKey] = objectSettings;
         }
-        return newSettings;
-      }, {});
+      }
       onChange(newSettings);
     };
 
     getSettingsWidgetsForObject = (
-      series,
-      object,
-      storedSettings,
-      onChangeSettings,
-      extra,
+      series: Series,
+      object: T,
+      storedSettings: VisualizationSettings,
+      onChangeSettings: (newSettings: Partial<VisualizationSettings>) => void,
+      extra: any,
     ) => {
       const { getSettingDefinitionsForObject, getComputedSettingsForObject } =
         this.props;

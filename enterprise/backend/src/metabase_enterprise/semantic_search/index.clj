@@ -440,8 +440,16 @@
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
-  (let [index-name (str (:table-name index) suffix)]
+  ;; index names are bare: an index lands in its table's schema and cannot be schema-qualified
+  (let [index-name (str (semantic.util/table-name-part (:table-name index)) suffix)]
     (hash-identifier-if-exceeds-pg-limit index-name)))
+
+(defn schema-qualified-index-name
+  "The index name qualified with its table's schema (when the table has one), for catalog lookups —
+  an index lives in the same schema as its table."
+  [index index-name]
+  (let [[schema _] (semantic.util/qualified-table-parts (:table-name index))]
+    (cond->> index-name schema (str schema "."))))
 
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."
@@ -503,7 +511,15 @@
                     (format "whitespace in the table name (%s) is not currently supported" table-name))
           {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
-      (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+      (try
+        (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+        (catch Exception e
+          ;; Extension install commonly fails on privileges (may need superuser); give the operator the way out.
+          (throw (ex-info (str "Failed to install the pgvector extension. Have a privileged user run"
+                               " CREATE EXTENSION vector; on this database, or set MB_PGVECTOR_DB_URL to a"
+                               " database where it is installed.")
+                          {:type ::extension-install-failed}
+                          e))))
       (when force-reset? (drop-index-table! connectable index))
       (jdbc/execute!
        connectable
@@ -532,7 +548,10 @@
             [(keyword table-name) :content])
            sql-format-quoted)))
     (catch Exception e
-      (throw (ex-info "Failed to create index table" {} e)))))
+      ;; let an already-actionable error (e.g. the pgvector-extension guidance) surface unwrapped
+      (if (= ::extension-install-failed (:type (ex-data e)))
+        (throw e)
+        (throw (ex-info "Failed to create index table" {} e))))))
 
 (comment
   (def embedding-model {:provider "ollama"
@@ -1031,13 +1050,17 @@
     (first decoded)))
 
 (defn- find-scan-node
-  "Depth-first search of an EXPLAIN plan tree for the scan node over `table-name`."
+  "Depth-first search of an EXPLAIN plan tree for the scan node over `table-name`.
+  EXPLAIN reports \"Relation Name\" unqualified, so compare on the bare name part."
   [plan table-name]
-  (when (map? plan)
-    (if (and (#{"Seq Scan" "Index Scan" "Index Only Scan" "Bitmap Heap Scan"} (get plan "Node Type"))
-             (= table-name (get plan "Relation Name")))
-      plan
-      (some #(find-scan-node % table-name) (get plan "Plans")))))
+  (let [bare-name (semantic.util/table-name-part table-name)
+        search    (fn search [node]
+                    (when (map? node)
+                      (if (and (#{"Seq Scan" "Index Scan" "Index Only Scan" "Bitmap Heap Scan"} (get node "Node Type"))
+                               (= bare-name (get node "Relation Name")))
+                        node
+                        (some search (get node "Plans")))))]
+    (search plan)))
 
 (defn- scan-node-metrics
   "Pull the index-table scan node out of an EXPLAIN plan tree and summarise it: the plan node chosen, the
@@ -1134,7 +1157,7 @@
         ;; path); production traffic leaves it unset and gets the fail-fast.
         (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
                    (not (:vector-search-allow-missing-index? search-context))
-                   (not (semantic.util/index-exists? db (hnsw-index-name index))))
+                   (not (semantic.util/index-exists? db (schema-qualified-index-name index (hnsw-index-name index)))))
           (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
                                "Set the semantic-search-vector-strategy setting to an index-backed strategy "
                                "(:hnsw or :hnsw-iterative-*) to build it.")

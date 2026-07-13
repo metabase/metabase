@@ -19,9 +19,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
@@ -80,18 +78,6 @@
                       (remove #(= "root" (:id %))))
           chain     (collection/personal-collections-with-ui-details (conj (vec ancestors) coll))]
       (str/join " / " (map :name chain)))))
-
-(defn submit-mcp-visualization-feedback!
-  "Submit MCP Apps visualization feedback to Harbormaster.
-
-  MCP Apps do not create `metabot_message` rows, so this intentionally skips
-  local feedback persistence and forwards the MCP visualization context."
-  [body]
-  (let [metabot-id (api/check-500 (metabot.config/normalize-metabot-id metabot.config/embedded-metabot-id))
-        body       (assoc body :metabot_id metabot-id)]
-    (metabot.config/check-metabot-enabled!)
-    (metabot.feedback/submit-to-harbormaster!
-     (metabot.feedback/mcp-harbormaster-payload body))))
 
 ;;; --------------------------------------------------- Schemas ------------------------------------------------------
 

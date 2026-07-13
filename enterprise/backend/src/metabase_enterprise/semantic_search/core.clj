@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.embedders]
-   [metabase-enterprise.semantic-search.embedding]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
@@ -20,6 +20,8 @@
    [potemkin :as p]
    [toucan2.realize :as t2.realize]))
 
+;; import-vars requires full namespace symbols, so it can't use the alias
+#_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
@@ -37,7 +39,12 @@
   "Enterprise implementation of semantic search engine support check."
   :feature :semantic-search
   []
-  (semantic.util/semantic-search-available?))
+  ;; Gate engine selection on a usable embedder. App-db mode gives every Postgres instance a pgvector
+  ;; store, so without this the engine auto-activates with no embedder configured and every index and
+  ;; query embed fails. available?/capable? skip the gate on purpose: an existing index still needs
+  ;; maintenance while the embedder is temporarily unconfigured.
+  (and (semantic.util/semantic-search-available?)
+       (semantic.embedding/embedding-supported? (semantic.embedding/get-configured-model))))
 
 (defn build-hnsw-index-async!
   "Build the HNSW index on the active semantic search index in the background, returning promptly.
@@ -190,6 +197,7 @@
         (init! searchable-documents {}))
       (semantic.repair/with-repair-table!
         pgvector
+        index-metadata
         (fn [repair-table-name]
           ;; Re-gate all provided documents, populating the repair table as we go
           (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents

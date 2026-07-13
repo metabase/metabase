@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ChartSettingFieldsPicker } from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 
-const DEFAULT_PROPS = {
+type ChartSettingFieldsPickerProps = React.ComponentProps<
+  typeof ChartSettingFieldsPicker
+>;
+
+const DEFAULT_PROPS: ChartSettingFieldsPickerProps = {
   options: [
     { name: "Count", value: "count" },
     { name: "Average of Total", value: "avg" },
@@ -12,9 +16,10 @@ const DEFAULT_PROPS = {
   columnHasSettings: () => true,
   value: ["avg", "count"],
   addAnother: "Add another series",
+  onChange: jest.fn(),
 };
 
-const setup = (props) => {
+const setup = (props?: Partial<ChartSettingFieldsPickerProps>) => {
   renderWithProviders(
     <ChartSettingFieldsPicker {...DEFAULT_PROPS} {...props} />,
   );
