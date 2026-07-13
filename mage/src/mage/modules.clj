@@ -186,16 +186,24 @@
 
 (defn- module->test-paths
   [modules-config module]
-  (let [path-prefix (module->test-path-prefix modules-config module)
-        test-dir    (io/file path-prefix)]
+  (let [prefix->module (build-prefix->module modules-config)
+        path-prefix    (module->test-path-prefix modules-config module)
+        test-dir       (io/file path-prefix)
+        test-files     (concat
+                        (for [extension test-source-file-extensions
+                              :let      [file (io/file (str path-prefix "_test" extension))]
+                              :when     (.isFile file)]
+                          file)
+                        (when (.isDirectory test-dir)
+                          (for [file (file-seq test-dir)
+                                :when (and (.isFile ^java.io.File file)
+                                           (some #(str/ends-with? (str file) %)
+                                                 test-source-file-extensions))]
+                            file)))]
     (into (sorted-set)
-          (concat
-           (for [extension test-source-file-extensions
-                 :let      [file (io/file (str path-prefix "_test" extension))]
-                 :when     (.isFile file)]
-             (str file))
-           (when (.isDirectory test-dir)
-             [(str test-dir)])))))
+          (comp (filter #(= module (file->module prefix->module (str %))))
+                (map str))
+          test-files)))
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."

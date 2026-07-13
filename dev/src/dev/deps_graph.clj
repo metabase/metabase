@@ -1035,13 +1035,16 @@
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
   [modules-config :- [:map-of :any :any]
-   module :- :symbol]
-  (let [path-prefix    (module->test-path-prefix modules-config module)
+   module-sym :- :symbol]
+  (let [prefix->module (build-prefix->module modules-config)
+        path-prefix    (module->test-path-prefix modules-config module-sym)
         test-dir       (io/file path-prefix)
         nested-tests   (when (.isDirectory test-dir)
                          (into
                           (sorted-set)
-                          (map file->path-relative-to-project-root)
+                          (comp (filter #(= module-sym
+                                            (module prefix->module (file->namespace %))))
+                                (map file->path-relative-to-project-root))
                           (ns.find/find-sources-in-dir test-dir)))]
     (into (existing-test-file-paths path-prefix)
           nested-tests)))
