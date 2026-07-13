@@ -91,7 +91,7 @@ jobs:
           # Any other branch is a one-off (esbuild, data-apps, ...) and may only
           # publish to its own <major>-<prerelease-id> dist-tag. `patch` here
           # would strip the id (0.62.5-data-apps.0 -> 0.62.5), compute distTag
-          # <major>-stable, and - if the major matches vars.LATEST_VERSION - take
+          # <major>-stable, and - if the major matches vars.LATEST_MAJOR_VERSION - take
           # the npm `latest` tag, shipping a feature branch as the stable release.
           if [ "$BRANCH" != "master" ] && [[ "$BRANCH" != release-x.* ]] && [ "$RELEASE_TYPE" != "custom" ]; then
             echo "::error::'$BRANCH' is not master or a release branch - only release_type=custom is allowed here (got release_type=$RELEASE_TYPE)."
@@ -193,7 +193,7 @@ jobs:
         id: sdk-release
         env:
           BRANCH: ${{ github.ref_name }}
-          LATEST_VERSION: ${{ vars.LATEST_VERSION }}
+          LATEST_MAJOR_VERSION: ${{ vars.LATEST_MAJOR_VERSION }}
           RELEASE_TYPE: ${{ inputs.release_type }}
         run: |
           # These are sensible starting defaults, not a policy decision - the
@@ -231,16 +231,16 @@ jobs:
           esac
 
           # tagAsLatest: only ever true for a `patch` on a real release branch
-          # whose major matches `vars.LATEST_VERSION` (the major of the most
+          # whose major matches `vars.LATEST_MAJOR_VERSION` (the major of the most
           # recent gold release) - the one signal this workflow has for "is this
           # the current latest major". The release-branch check is a second,
           # independent guard: nothing published from master or a one-off branch
           # can take the npm `latest` tag, whatever else goes wrong.
-          # `vars.LATEST_VERSION` can be unset (forks, local testing) - an empty
+          # `vars.LATEST_MAJOR_VERSION` can be unset (forks, local testing) - an empty
           # value is treated as "no match", not an error.
           case "$RELEASE_TYPE" in
             patch)
-              if [[ "$BRANCH" == release-x.* ]] && [ -n "$LATEST_VERSION" ] && [ "$MAJOR_VERSION" = "$LATEST_VERSION" ]; then
+              if [[ "$BRANCH" == release-x.* ]] && [ -n "$LATEST_MAJOR_VERSION" ] && [ "$MAJOR_VERSION" = "$LATEST_MAJOR_VERSION" ]; then
                 TAG_AS_LATEST=true
               else
                 TAG_AS_LATEST=false
@@ -261,7 +261,7 @@ jobs:
           # defaults" step above computed (true or false) - it's never
           # forced back to false here. That step already ignores any
           # previous sdkRelease.tagAsLatest value (it derives the default
-          # fresh from vars.LATEST_VERSION every run), so a stale `true`
+          # fresh from vars.LATEST_MAJOR_VERSION every run), so a stale `true`
           # from an earlier release can't leak forward either way; the
           # reviewer can still override the written value on the PR.
           jq --arg distTag "${{ steps.sdk-release.outputs.dist_tag }}" \
@@ -285,7 +285,7 @@ jobs:
           - \`previous_version\`: ${{ steps.current.outputs.version }}
           - \`new_version\`: ${{ steps.bump.outputs.new_version }}
           - \`distTag\` (default, review before merging): ${{ steps.sdk-release.outputs.dist_tag }}
-          - \`tagAsLatest\` (auto-computed from \`vars.LATEST_VERSION\`, review before merging): ${{ steps.write-metadata.outputs.tag_as_latest }}
+          - \`tagAsLatest\` (auto-computed from \`vars.LATEST_MAJOR_VERSION\`, review before merging): ${{ steps.write-metadata.outputs.tag_as_latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
@@ -325,7 +325,7 @@ jobs:
 
           **Review before merging:**
           - `sdkRelease.distTag` currently defaults to `${{ steps.sdk-release.outputs.dist_tag }}` - override it here if this release should publish under a different npm dist-tag.
-          - `sdkRelease.tagAsLatest` is auto-computed as `${{ steps.write-metadata.outputs.tag_as_latest }}` (`true` when this bump's major version matches `vars.LATEST_VERSION`, the current npm `latest` major - `false` otherwise) - still worth a second look here before merging, override it if this release should (or shouldn't) become the `latest` tag on npm.
+          - `sdkRelease.tagAsLatest` is auto-computed as `${{ steps.write-metadata.outputs.tag_as_latest }}` (`true` when this bump's major version matches `vars.LATEST_MAJOR_VERSION`, the current npm `latest` major - `false` otherwise) - still worth a second look here before merging, override it if this release should (or shouldn't) become the `latest` tag on npm.
           ${{ inputs.release_type == 'preminor' && format('- This is a `preminor` bump (master -> next major''s alpha). Merging this PR (with the `sdk-release-trigger` label) publishes `{0}` to npm and tags the release exactly like any other bump - remove the label first if you want to bump the version without triggering a release.', steps.bump.outputs.new_version) || '' }}
 
           Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
