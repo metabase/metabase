@@ -85,6 +85,14 @@
       [(cond-> {:product-type product-type}
          quantity (assoc :prepaid-units quantity))]))
 
+(defn- add-ons-for-removal
+  "Add-ons to remove for a given `product-type`. Bundled product types (see `add-on-bundles`) expand
+  into all their members; everything else is a single add-on."
+  [product-type]
+  (if-let [bundle (add-on-bundles product-type)]
+    (mapv #(select-keys % [:product-type]) bundle)
+    [{:product-type product-type}]))
+
 (defn- handle-store-api-error
   "Handle exceptions from Store API calls and return appropriate error response."
   [exception & [extra-status-mappings]]
@@ -211,9 +219,12 @@
     (not (premium-features/is-hosted?))
     response-not-hosted
 
+    (bundle-only-product-types product-type)
+    response-bundle-only
+
     :else
     (try
-      (hm.client/call :change-add-ons :remove-add-ons [{:product-type product-type}])
+      (hm.client/call :change-add-ons :remove-add-ons (add-ons-for-removal product-type))
       (premium-features/clear-cache!)
       response-success-empty
       (catch Exception e

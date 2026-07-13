@@ -17,7 +17,9 @@ export const StoragePurchaseButton = ({ location }: { location: string }) => {
   const storeUrl = useStoreUrl("account/storage");
 
   useMount(() => {
-    trackUpsellViewed({ location, campaign: CAMPAIGN });
+    if (canSetUpStorage) {
+      trackUpsellViewed({ location, campaign: CAMPAIGN });
+    }
   });
 
   if (!canSetUpStorage) {

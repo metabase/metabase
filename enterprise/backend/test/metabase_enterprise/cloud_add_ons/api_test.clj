@@ -178,6 +178,48 @@
               (is (not-empty @clear-token-cache-calls)
                   "Token cache was cleared"))))))))
 
+(deftest ^:sequential delete-dwh-rent-test
+  (testing "DELETE /api/ee/cloud-add-ons/dwh-rent"
+    (testing "requires superuser"
+      (mt/with-premium-features #{}
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :delete 403 "ee/cloud-add-ons/dwh-rent")))))
+    (testing "requires token feature 'hosting'"
+      (mt/with-premium-features #{}
+        (is (=? "Can only access Store API for Metabase Cloud instances."
+                (mt/user-http-request :crowberto :delete 400 "ee/cloud-add-ons/dwh-rent")))))
+    (testing "succeeds, removing dwh-rent and etl-connections together"
+      (mt/with-premium-features #{:hosting}
+        (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
+              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
+          (with-redefs [hm.client/call                store-api-proxy
+                        premium-features/clear-cache! clear-token-cache-proxy]
+            (is (=? {}
+                    (mt/user-http-request :crowberto :delete 200 "ee/cloud-add-ons/dwh-rent")))
+            (is (= [{:args [:change-add-ons
+                            :remove-add-ons
+                            [{:product-type "dwh-rent"}
+                             {:product-type "etl-connections"}]]
+                     :ret  nil}]
+                   @store-api-calls))
+            (is (not-empty @clear-token-cache-calls)
+                "Token cache was cleared")))))))
+
+(deftest ^:sequential delete-etl-connections-test
+  (testing "DELETE /api/ee/cloud-add-ons/etl-connections"
+    (testing "requires superuser"
+      (mt/with-premium-features #{}
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :delete 403 "ee/cloud-add-ons/etl-connections")))))
+    (testing "is rejected as a bundle-only product type without calling the Store"
+      (mt/with-premium-features #{:hosting}
+        (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))]
+          (with-redefs [hm.client/call store-api-proxy]
+            (is (=? "This add-on can only be purchased as part of a bundle."
+                    (mt/user-http-request :crowberto :delete 400 "ee/cloud-add-ons/etl-connections")))
+            (is (empty? @store-api-calls)
+                "Store API was not called")))))))
+
 (deftest ^:sequential get-plans-test
   (testing "GET /api/ee/cloud-add-ons/plans"
     (testing "requires superuser"
