@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [hickory.select :as hik.s]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.table :as table]
    [metabase.formatter.core :as formatter]
    [metabase.pulse.render.test-util :as render.tu]
@@ -81,11 +80,13 @@
             "7"       "rgba(255, 0, 0, 0.65)"
             "8"       "rgba(255, 0, 0, 0.2)"
             "9"       "rgba(0, 0, 255, 0.75)"
-            "1.001,5" "rgba(0, 0, 255, 0.75)"
-            "1,001.5" "rgba(0, 0, 255, 0.75)"}
-           (-> (js.color/make-color-selector query-results (:visualization_settings render.tu/test-card))
+            "1.001,5" "rgba(255, 0, 0, 0.2)"
+            "1,001.5" "rgba(255, 0, 0, 0.2)"}
+           (-> (select-keys query-results [:cols :rows])
                (#'table/render-table {:col-names             ["a" "b" "c"]
-                                      :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results) columns nil nil)
+                                      :cols-for-color-lookup ["a" "b" "c"]}
+                                     (query-results->header+rows query-results) columns
+                                     (:visualization_settings render.tu/test-card) nil)
                find-table-body
                cell-value->background-color)))))
 
