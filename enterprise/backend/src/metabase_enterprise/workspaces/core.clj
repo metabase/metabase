@@ -32,6 +32,7 @@
          └──────────────────────────────────────── provisioned"
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -214,9 +215,13 @@
    Git binding: the export branch (`:target_branch`) is named `ws-<slug>-<id>` here
    at create — the id suffix keeps branches distinct when two workspace names
    slugify to the same string (names are not unique). `:base_branch` (what the
-   child's initial import reads from) is taken from the params and left nil for
-   \"the repo's default branch\"."
-  [{:keys [name creator_id database_ids base_branch]}]
+   child's initial import will read from, once wired — GHY-4121) records the
+   parent's `remote-sync-branch` at create; deliberately not caller-supplied, so a
+   workspace can never be based on another workspace's target branch (no stacked
+   PRs — GHY-4121 has the reasoning). Snapshot semantics: changing the parent
+   setting later never affects existing workspaces. Nil when the parent has no
+   git remote configured."
+  [{:keys [name creator_id database_ids]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
@@ -227,7 +232,7 @@
       (let [ws (workspace/create-workspace! {:name        name
                                              :creator_id  creator_id
                                              :databases   databases
-                                             :base_branch base_branch})]
+                                             :base_branch (remote-sync/remote-sync-branch)})]
         (t2/update! :model/Workspace :id (:id ws)
                     {:target_branch (str "ws-" (u/slugify name) "-" (:id ws))})
         (doseq [{wsd-id :id} (:databases ws)]

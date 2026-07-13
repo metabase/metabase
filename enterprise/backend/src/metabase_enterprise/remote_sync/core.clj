@@ -22,7 +22,8 @@
   ->ingestable]
  [settings
   remote-sync-url
-  remote-sync-token])
+  remote-sync-token
+  remote-sync-branch])
 
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.

@@ -301,21 +301,26 @@
                      [:config :api-keys]))))))
 
 (deftest create-workspace-names-target-branch-test
-  (testing "ws.core/create-workspace! names target_branch ws-<slug>-<id> and records base_branch"
+  (testing "ws.core/create-workspace! names target_branch ws-<slug>-<id> and snapshots base_branch"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws.core/create-workspace! {:name         "My Cool Workspace"
-                                           :creator_id   (mt/user->id :crowberto)
-                                           :database_ids []})]
-        (is (= (str "ws-my_cool_workspace-" (:id ws)) (:target_branch ws)))
-        (is (nil? (:base_branch ws))))
+      (testing "no parent git remote -> base_branch nil"
+        (let [ws (ws.core/create-workspace! {:name         "My Cool Workspace"
+                                             :creator_id   (mt/user->id :crowberto)
+                                             :database_ids []})]
+          (is (= (str "ws-my_cool_workspace-" (:id ws)) (:target_branch ws)))
+          (is (nil? (:base_branch ws)))))
+      (testing "base_branch snapshots the parent's remote-sync-branch at create"
+        (mt/with-temporary-setting-values [remote-sync-branch "develop"]
+          (let [ws (ws.core/create-workspace! {:name         "branchy"
+                                               :creator_id   (mt/user->id :crowberto)
+                                               :database_ids []})]
+            (is (= "develop" (:base_branch ws))))))
       (testing "id suffix keeps branches distinct for slug-equal names"
         (let [ws1 (ws.core/create-workspace! {:name         "branchy"
                                               :creator_id   (mt/user->id :crowberto)
-                                              :database_ids []
-                                              :base_branch  "develop"})
+                                              :database_ids []})
               ws2 (ws.core/create-workspace! {:name         "Branchy"
                                               :creator_id   (mt/user->id :crowberto)
                                               :database_ids []})]
           (is (= (str "ws-branchy-" (:id ws1)) (:target_branch ws1)))
-          (is (= "develop" (:base_branch ws1)))
           (is (not= (:target_branch ws1) (:target_branch ws2))))))))
