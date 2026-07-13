@@ -213,18 +213,13 @@ jobs:
           # vars.LATEST_MAJOR_VERSION is its major; unset means no match, not an error.
           # The release-branch check is a second guard, so nothing published from
           # master or a one-off branch can ever take `latest`.
-          case "$RELEASE_TYPE" in
-            patch)
-              if [[ "$BRANCH" == release-x.* ]] && [ -n "$LATEST_MAJOR_VERSION" ] && [ "$MAJOR_VERSION" = "$LATEST_MAJOR_VERSION" ]; then
-                TAG_AS_LATEST=true
-              else
-                TAG_AS_LATEST=false
-              fi
-              ;;
-            *)
-              TAG_AS_LATEST=false
-              ;;
-          esac
+          TAG_AS_LATEST=false
+          if [ "$RELEASE_TYPE" = "patch" ] &&
+             [[ "$BRANCH" == release-x.* ]] &&
+             [ -n "$LATEST_MAJOR_VERSION" ] &&
+             [ "$MAJOR_VERSION" = "$LATEST_MAJOR_VERSION" ]; then
+            TAG_AS_LATEST=true
+          fi
 
           echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
           echo "tag_as_latest=$TAG_AS_LATEST" >> "$GITHUB_OUTPUT"
