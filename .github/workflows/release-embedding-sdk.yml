@@ -38,22 +38,35 @@ on:
       - enterprise/frontend/src/embedding-sdk-package/package.template.json
 
 concurrency:
-  # We want to ensure only one job is running at a time per branch to avoid
-  # two releases racing (e.g. both publishing to npm, or one clobbering the
-  # other's git tag). The group is only ever a real release-branch group for
-  # the two triggers that actually run a release (workflow_dispatch, or a
-  # merged sdk-release-trigger PR) -
-  # any other pull_request event gets its own unique, harmless group keyed by
-  # run id, since `prepare-release`'s `if:` already no-ops the rest of the
-  # jobs for it. This also stops a stray PR-closed event from cancelling an
-  # in-flight release: cancel-in-progress is disabled, so two real releases
-  # queued back-to-back on the same branch run one after another instead of
-  # the first being killed mid-publish.
+  # The expression below tries three cases, in order (comments can't go inside
+  # it - a `#` there would be literal text):
+  #
+  #   1. a manual dispatch          -> sdk-release-<branch picked in the ref picker>
+  #   2. a merged bump PR           -> sdk-release-<branch that PR targeted>
+  #   3. any other closed PR        -> sdk-release-noop-<run id>
+  #
+  # (Concurrency groups are repo-wide, so the names are prefixed rather than
+  # bare - same reason embedding-sdk-tag-latest.yml uses `npm-dist-tag-latest`.)
+  #
+  # 1 and 2 land in the same group for a given branch, so two releases of that
+  # branch queue instead of racing (both would npm publish and push the same
+  # git tag).
+  #
+  # 3 exists because concurrency is evaluated before any job's `if:` runs, so a
+  # closed PR that this workflow ignores (unmerged, or merged without the label)
+  # still enters a group even though `prepare-release` skips everything. Giving
+  # it a throwaway group keeps it out of the release group entirely.
+  #
+  # cancel-in-progress is false: a release must never be interrupted mid-publish.
+  # A second release queues behind the first, and if it turns out to be stale it
+  # fails loudly at check-git-tag rather than half-publishing.
   group: >-
     ${{
-      github.event_name == 'workflow_dispatch' && format('{0}-{1}', github.workflow, github.ref_name) ||
-      (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger')) && format('{0}-{1}', github.workflow, github.event.pull_request.base.ref) ||
-      format('{0}-{1}', github.workflow, github.run_id)
+      github.event_name == 'workflow_dispatch'
+        && format('sdk-release-{0}', github.ref_name)
+      || github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'sdk-release-trigger')
+        && format('sdk-release-{0}', github.event.pull_request.base.ref)
+      || format('sdk-release-noop-{0}', github.run_id)
     }}
   cancel-in-progress: false
 
