@@ -1,7 +1,8 @@
 import { Group } from "@visx/group";
-import { init } from "echarts";
+import { init } from "echarts/core";
 
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { registerEChartsModules } from "metabase/visualizations/echarts";
 import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
@@ -11,6 +12,8 @@ import Watermark from "../../watermark.svg?component";
 import type { StaticChartProps } from "../StaticVisualization";
 
 import { getPieChartLegend } from "./legend";
+
+registerEChartsModules();
 
 export function PieChart({
   rawSeries,
@@ -50,6 +53,7 @@ export function PieChart({
     chart.renderToSVGString(),
     isStorybook ?? false,
   );
+  chart.dispose();
 
   const height =
     DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend + legendHeight;

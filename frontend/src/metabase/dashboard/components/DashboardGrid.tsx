@@ -521,14 +521,16 @@ class DashboardGridInner extends Component<
     );
   }
 
-  onVisualizerModalSave = (visualization: VisualizerVizDefinition) => {
+  onVisualizerModalSave = async (visualization: VisualizerVizDefinition) => {
     const { visualizerModalStatus } = this.state;
 
     if (!visualizerModalStatus) {
       return;
     }
 
-    this.props.replaceCardWithVisualization({
+    // Await the commit before closing — closing early lets a dashboard save
+    // run against the not-yet-updated dashcard and drop the change.
+    await this.props.replaceCardWithVisualization({
       dashcardId: visualizerModalStatus.dashcardId,
       visualization,
     });
