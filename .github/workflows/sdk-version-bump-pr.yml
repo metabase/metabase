@@ -108,13 +108,6 @@ jobs:
           # just a wrapper around `semver` - so we call semver directly.
           CURRENT_VERSION=$(jq -r .version "$package_template")
 
-          # Older release branches carry a `0.N.x` placeholder version, which
-          # `semver -i` rejects with no output. Fail clearly instead.
-          if ! npx --yes semver "$CURRENT_VERSION" >/dev/null 2>&1; then
-            echo "::error::'$CURRENT_VERSION' is not a valid semver version - old release branches use a '0.N.x' placeholder (pre-EMB-1518 convention); set a concrete version in $package_template first."
-            exit 1
-          fi
-
           case "$RELEASE_TYPE" in
             alpha|beta)
               NEW_VERSION=$(npx --yes semver -i prerelease --preid="$RELEASE_TYPE" "$CURRENT_VERSION")
