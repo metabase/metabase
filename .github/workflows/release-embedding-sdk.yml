@@ -115,13 +115,15 @@ jobs:
           triggered by: @${{ github.event.sender.login }}
           EOF
 
-  send-slack-notification-start:
-    name: "Send Slack notification: SDK release started"
-    needs: read-sdk-release-metadata
+  # Builds release/dist/index.cjs once, for every Slack job to download. It hangs
+  # off prepare-release only - not off the metadata read or anything downstream -
+  # so the artifact exists even when the release fails at its very first step,
+  # which is exactly when send-slack-notification-failure needs it.
+  build-release-scripts:
+    name: Build release scripts
+    needs: prepare-release
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
-    outputs:
-      slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -132,11 +134,25 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
-      - name: Cache build scripts
+      - name: Upload release scripts
         uses: actions/upload-artifact@v7
         with:
           name: build-scripts
           path: release/dist/index.cjs
+
+  send-slack-notification-start:
+    name: "Send Slack notification: SDK release started"
+    needs: [build-release-scripts, read-sdk-release-metadata]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
+    steps:
+      - name: Retrieve release scripts
+        uses: actions/download-artifact@v8
+        with:
+          name: build-scripts
+          path: release/dist/
 
       - name: Send build start message
         id: send-slack-message-start
@@ -169,6 +185,7 @@ jobs:
     name: "Send Slack notification: SDK release failed"
     needs:
       [
+        "build-release-scripts",
         "read-sdk-release-metadata",
         "send-slack-notification-start",
         "check-git-tag",
@@ -184,20 +201,11 @@ jobs:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
-      # Built fresh here (rather than downloading the `build-scripts` artifact
-      # like the start/successful jobs do) because this job also has to fire
-      # when read-sdk-release-metadata itself fails - e.g. a release branch
-      # that predates the sdkRelease metadata block - in which case
-      # send-slack-notification-start (the job that uploads that artifact)
-      # never ran, so the artifact would never exist to download.
-      - uses: actions/checkout@v6
+      - name: Retrieve release scripts
+        uses: actions/download-artifact@v8
         with:
-          sparse-checkout: |
-            release
-            .github
-
-      - name: Prepare release scripts
-        uses: ./.github/actions/prepare-release-scripts
+          name: build-scripts
+          path: release/dist/
 
       - name: Send build failure message
         uses: actions/github-script@v9
@@ -239,13 +247,18 @@ jobs:
   send-slack-notification-successful:
     name: "Send Slack notification: SDK release successful"
     needs:
-      ["read-sdk-release-metadata", "send-slack-notification-start", "publish-npm"]
+      [
+        "build-release-scripts",
+        "read-sdk-release-metadata",
+        "send-slack-notification-start",
+        "publish-npm",
+      ]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
     steps:
-      - name: Retrieve build scripts
+      - name: Retrieve release scripts
         uses: actions/download-artifact@v8
         with:
           name: build-scripts
