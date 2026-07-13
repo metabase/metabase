@@ -71,9 +71,10 @@
     @sccs))
 
 (defn largest-scc
-  "The largest SCC of `graph` (ties broken arbitrarily). With two args, picks from precomputed `sccs`."
+  "The largest SCC of `graph` (ties broken arbitrarily), or `#{}` when the graph has no nodes. With two
+  args, picks from precomputed `sccs`."
   ([graph] (largest-scc graph (strongly-connected-components graph)))
-  ([_graph sccs] (apply max-key count sccs)))
+  ([_graph sccs] (if (seq sccs) (apply max-key count sccs) #{})))
 
 (defn condensation
   "Condense `graph` by its SCCs. Returns `{:node->scc {node scc-index}, :graph {scc-index #{scc-index}}}`
@@ -96,7 +97,7 @@
     {:node->scc node->scc
      :graph     cgraph}))
 
-(defn- sum-squared-scc-sizes
+(defn sum-squared-scc-sizes
   "Σ|C|² over SCCs — the continuous fragmentation score. The number of ordered pairs (u, v) that are
   mutually reachable; unlike largest-SCC size it moves even when a cut only shaves a few members off the
   giant component. Lower is better."
@@ -125,7 +126,7 @@
   giant members that fell out of the new largest SCC."
   [graph' giant]
   (let [sccs'    (strongly-connected-components graph')
-        largest' (apply max-key count sccs')]
+        largest' (largest-scc graph' sccs')]
     {:new-largest-size (count largest')
      :num-freed        (count (remove largest' giant))
      :fragmentation    (sum-squared-scc-sizes sccs')}))

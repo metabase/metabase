@@ -60,6 +60,22 @@
       :any
       (into (sorted-set) uses))))
 
+(defn- api-namespace-count
+  "Count of a module's public API namespaces: its full namespace count when `:api` is `:any`, else the
+  number of declared `:api` entries."
+  [config module->nses m]
+  (let [a (get-in config [m :api])]
+    (if (= a :any)
+      (count (get module->nses m))
+      (count a))))
+
+(defn- non-api-namespace-count
+  "Internal (non-`:api`) namespace count for a module. Clamped at 0: a module whose declared `:api` lists
+  more namespaces than were scanned (stale config, synthetic test namespaces) would otherwise go negative."
+  [config module->nses m]
+  (max 0 (- (count (get module->nses m))
+            (api-namespace-count config module->nses m))))
+
 (defn- safe-ratio [numerator denominator]
   (if (zero? denominator)
     0.0
@@ -164,7 +180,7 @@
                        direct-dependents-graph transitive-dependents circular-deps-graph
                        module->nses module->sources all-source-files all-test-files
                        module->relevant-test-files sccs module->scc]}]
-  (let [largest-scc (apply max-key count sccs)]
+  (let [largest-scc (module-scc/largest-scc direct-deps-graph sccs)]
     (into []
           (map (fn [module]
                  (let [direct-deps               (get direct-deps-graph module)
@@ -188,12 +204,10 @@
                                                    (set/difference derived-api-namespaces declared-api))
                        declared-friends          (into (sorted-set) (get-in config [module :friends]))
                        declared-uses             (declared-direct-uses config module)
-                       num-nses                  (count (get module->nses module))
                        ;; `:any` api means the whole module is public, so its internal (non-api)
                        ;; surface is empty; otherwise non-api = namespaces minus the declared api.
-                       api-ns-count              (if (= declared-api :any) num-nses (count declared-api))
                        num-friend-exposed        (if (seq declared-friends)
-                                                   (- num-nses api-ns-count)
+                                                   (non-api-namespace-count config module->nses module)
                                                    0)
                        num-lines                 (reduce + 0 (map file-loc source-files))
                        ;; Namespaces in every module this one can transitively reach through its declared
@@ -272,11 +286,8 @@
          num-modules                 (count (:modules ctx))
          num-direct-edges            (reduce + 0 (map count (vals (:direct-deps-graph ctx))))
          module->nses                (:module->nses ctx)
-         api-ns-count                (fn [m]
-                                       (let [a (get-in config [m :api])]
-                                         (if (= a :any) (count (get module->nses m)) (count a))))
          total-namespaces            (reduce + 0 (map count (vals module->nses)))
-         total-declared-api          (reduce + 0 (map api-ns-count (:modules ctx)))
+         total-declared-api          (reduce + 0 (map #(api-namespace-count config module->nses %) (:modules ctx)))
          friend-holding-modules      (filter #(seq (get-in config [% :friends])) (:modules ctx))
          in-degrees                  (sort > (map :num-direct-dependents module-metrics))
          top-decile-n                (long (Math/ceil (/ num-modules 10.0)))
@@ -287,13 +298,13 @@
          ;; real carve pulls namespaces out of the blob. This is the honest coupling number.
          cyclic-modules              (into #{} (mapcat identity) (filter #(> (count %) 1) (:sccs ctx)))
          namespaces-in-cyclic        (reduce + 0 (map #(count (get module->nses %)) cyclic-modules))
-         non-api-ns                  (fn [m] (- (count (get module->nses m)) (api-ns-count m)))
          ;; Internal namespaces reachable past a module's public API through a friend grant.
-         friend-exposed              (reduce + 0 (map non-api-ns friend-holding-modules))
+         friend-exposed              (reduce + 0 (map #(non-api-namespace-count config module->nses %)
+                                                      friend-holding-modules))
          ;; Every distinct (outside module, private namespace) access a friend grant opens up: the
          ;; grant count times the internal surface it exposes. This is the encapsulation-leak headline.
          friend-access-paths         (reduce + 0 (map (fn [m] (* (count (get-in config [m :friends]))
-                                                                 (non-api-ns m)))
+                                                                 (non-api-namespace-count config module->nses m)))
                                                       friend-holding-modules))]
      (ordered-map/ordered-map
       ;; ---- graph structure ----
@@ -315,10 +326,10 @@
       :num-2cycle-edges (quot (reduce + 0 (map count (vals (:circular-deps-graph ctx)))) 2)
       :num-nontrivial-sccs (count (filter #(> (count %) 1) (:sccs ctx)))
       :num-modules-in-any-scc (reduce + 0 (map count (filter #(> (count %) 1) (:sccs ctx))))
-      :largest-scc-size (count (apply max-key count (:sccs ctx)))
+      :largest-scc-size (count (module-scc/largest-scc (:direct-deps-graph ctx) (:sccs ctx)))
       ;; Σ|C|² over SCCs — the continuous fragmentation score. Unlike largest-scc-size or the pegged
       ;; tests-rerun median, this moves every time a cut shaves members off the giant component.
-      :sum-squared-scc-sizes (reduce + (map #(let [n (count %)] (* n n)) (:sccs ctx)))
+      :sum-squared-scc-sizes (module-scc/sum-squared-scc-sizes (:sccs ctx))
       ;; Namespace-weighted cycle mass — node-split-invariant; the coupling metric that only real carves move.
       :namespaces-in-cyclic-modules namespaces-in-cyclic
       :frac-namespaces-in-cyclic-modules (safe-ratio namespaces-in-cyclic total-namespaces)

@@ -429,12 +429,14 @@
   "Calculate information about all the modules dependencies for all *SOURCE*
   files in the Metabase project by parsing the files.
 
-  With `prefix->module` (a pre-computed `{ns-prefix-string module-symbol}`
-  map), uses longest-prefix matching at segment boundaries for
-  namespace→module resolution. Without it, uses the flat single-segment
-  extraction — the pre-nested-modules behavior."
+  The no-arg form resolves namespaces against the current module config, so
+  nested modules map to themselves rather than collapsing into their
+  top-level parent. Pass an explicit `prefix->module` (a pre-computed
+  `{ns-prefix-string module-symbol}` map) to reuse a map you already built;
+  pass `nil` for the flat single-segment extraction (pre-nested-modules
+  behavior), used only by the consistency tests."
   ([]
-   (dependencies nil))
+   (dependencies (build-prefix->module (kondo-config))))
   ([prefix->module]
    (let [fd (partial file-dependencies prefix->module)]
      (pmap fd (find-source-files)))))
@@ -1074,11 +1076,19 @@
 (defn- module->test-path-prefix [modules-config module]
   (let [ns-prefix   (module-ns-prefix modules-config module)
         [parent-dir ns-fragment]
-        (if (str/starts-with? ns-prefix "metabase-enterprise.")
+        (cond
+          (str/starts-with? ns-prefix "metabase-enterprise.")
           ["enterprise/backend/test/metabase_enterprise/"
            (subs ns-prefix (count "metabase-enterprise."))]
+
+          (str/starts-with? ns-prefix "metabase.")
           ["test/metabase/"
-           (subs ns-prefix (count "metabase."))])]
+           (subs ns-prefix (count "metabase."))]
+
+          :else
+          (throw (ex-info (str "Cannot derive a test path for module " module ": its :ns-prefix "
+                               (pr-str ns-prefix) " is not under metabase. or metabase-enterprise.")
+                          {:module module, :ns-prefix ns-prefix})))]
     (str parent-dir
          (ns-prefix->test-path-fragment ns-fragment))))
 
@@ -1091,21 +1101,26 @@
         test-source-file-extensions))
 
 (mu/defn- module->test-files :- [:set :string]
-  "Return the set of test filenames associated with a `module`."
-  [modules-config :- [:map-of :any :any]
-   module-sym :- :symbol]
-  (let [prefix->module (build-prefix->module modules-config)
-        path-prefix    (module->test-path-prefix modules-config module-sym)
-        test-dir       (io/file path-prefix)
-        nested-tests   (when (.isDirectory test-dir)
-                         (into
-                          (sorted-set)
-                          (comp (filter #(= module-sym
-                                            (module prefix->module (file->namespace %))))
-                                (map file->path-relative-to-project-root))
-                          (ns.find/find-sources-in-dir test-dir)))]
-    (into (existing-test-file-paths path-prefix)
-          nested-tests)))
+  "Return the set of test filenames associated with a `module`. The 2-arity form rebuilds the
+  `prefix->module` lookup on every call; pass a shared one to the 3-arity form when resolving many
+  modules (as [[source-filenames->relevant-test-filenames]] does over a module's transitive dependents)."
+  ([modules-config :- [:map-of :any :any]
+    module-sym :- :symbol]
+   (module->test-files modules-config (build-prefix->module modules-config) module-sym))
+  ([modules-config :- [:map-of :any :any]
+    prefix->module :- [:maybe [:map-of :string symbol?]]
+    module-sym :- :symbol]
+   (let [path-prefix  (module->test-path-prefix modules-config module-sym)
+         test-dir     (io/file path-prefix)
+         nested-tests (when (.isDirectory test-dir)
+                        (into
+                         (sorted-set)
+                         (comp (filter #(= module-sym
+                                           (module prefix->module (file->namespace %))))
+                               (map file->path-relative-to-project-root))
+                         (ns.find/find-sources-in-dir test-dir)))]
+     (into (existing-test-file-paths path-prefix)
+           nested-tests))))
 
 (defn source-filenames->relevant-test-filenames
   "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
@@ -1122,7 +1137,7 @@
           (remove nil?)
           (distinct)
           (mapcat #(module->dependents deps %))
-          (mapcat #(module->test-files modules-config %)))
+          (mapcat #(module->test-files modules-config prefix->mod %)))
     source-filenames)))
 
 (comment

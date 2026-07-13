@@ -30,6 +30,17 @@
 (deftest largest-scc-test
   (is (= '#{a b c} (module-scc/largest-scc cyclic-graph))))
 
+(deftest empty-graph-scc-test
+  (testing "a graph with no nodes has no SCC — largest-scc is empty rather than throwing"
+    (is (= #{} (module-scc/largest-scc {})))
+    (is (= #{} (module-scc/largest-scc {} []))))
+  (testing "SCC summary and cut analyses handle degenerate graphs without throwing"
+    ;; a node-cut of the sole node leaves an empty graph, so the internal `(apply max-key count sccs)`
+    ;; must tolerate an empty SCC list rather than blowing up mid-analysis
+    (is (= 0 (:largest-scc-size (module-scc/scc-summary {}))))
+    (is (= [] (module-scc/edge-cut-impacts {})))
+    (is (seq (module-scc/node-cut-impacts '{a #{}})))))
+
 (deftest condensation-test
   (let [sccs (module-scc/strongly-connected-components cyclic-graph)
         {:keys [node->scc graph]} (module-scc/condensation cyclic-graph sccs)]
