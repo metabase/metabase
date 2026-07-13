@@ -1064,6 +1064,42 @@
               (is (= 1 (count (remove :deleted_at (filter #(= :user (:role %)) rows)))))
               (is (= 2 (count (filter :deleted_at rows)))))))))))
 
+(deftest agent-streaming-rejects-non-user-retry-id-test
+  (testing "retry_message_id pointing at an assistant (non-user) message 409s"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"))
+              assistant-ext   (streamed-message-id first-response)]
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                (agent-request conversation-id "hello"
+                                               :retry_message_id assistant-ext)))))))
+
+(deftest agent-streaming-serializes-concurrent-retries-test
+  (testing "two concurrent retries of the same prompt leave exactly one live reply"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              user-ext-id     (streamed-user-message-id
+                               (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     (agent-request conversation-id "hello")))
+              start           (java.util.concurrent.CountDownLatch. 1)
+              retry!          (fn []
+                                (.await start)
+                                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      (agent-request conversation-id "hello"
+                                                                     :retry_message_id user-ext-id)))
+              f1              (future (retry!))
+              f2              (future (retry!))]
+          (.countDown start)
+          @f1
+          @f2
+          (is (= 1 (->> (conversation-rows conversation-id)
+                        (filter #(and (= :assistant (:role %)) (nil? (:deleted_at %))))
+                        count))
+              "the conversation lock serializes the retries, so exactly one live reply survives"))))))
+
 (defn- input-messages
   "The `[role text]` of each message-shaped part in an LLM request's `:input`,
   in order — skips tool and preload parts. Lets a test assert the exact

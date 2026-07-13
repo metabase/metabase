@@ -124,7 +124,9 @@ export const getLastMessage = createSelector(getMessages, (messages) =>
 export const getLastAgentMessageExternalId = createSelector(
   getMessages,
   (messages) => {
-    const lastAgentMessage = messages.findLast((m) => m.role === "agent");
+    const lastAgentMessage = messages.findLast(
+      (m) => m.role === "agent" && "externalId" in m,
+    );
     return lastAgentMessage && "externalId" in lastAgentMessage
       ? lastAgentMessage.externalId
       : undefined;

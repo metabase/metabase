@@ -77,32 +77,34 @@
                  (u/full-exception-chain e))))
 
 (defn- check-retry!
-  [conversation-id retry-message-id out-of-sync!]
-  (let [retry-msg (metabot.persistence/live-message retry-message-id)]
+  [messages retry-message-id out-of-sync!]
+  (let [retry-msg (u/seek #(= retry-message-id (:external_id %)) (rseq messages))
+        last-user (u/seek #(= :user (:role %)) (rseq messages))]
     (cond
-      (nil? retry-msg)                                    (out-of-sync! :retry-message-not-found)
-      (not= (:conversation_id retry-msg) conversation-id) (out-of-sync! :retry-message-different-conversation)
-      (not= (:role retry-msg) :user)                      (out-of-sync! :retry-message-not-user-role)
-      (not= (:id retry-msg)
-            (->> (metabot.persistence/live-messages conversation-id)
-                 (filter #(= :user (:role %)))
-                 last
-                 :id))                                    (out-of-sync! :retry-message-not-last)
-      :else                                               {:action :retry})))
+      (nil? retry-msg)                       (out-of-sync! :retry-message-not-found)
+      (not= (:role retry-msg) :user)         (out-of-sync! :retry-message-not-user-role)
+      (not= (:id retry-msg) (:id last-user)) (out-of-sync! :retry-message-not-last)
+      :else
+      (let [delete-ids (->> messages
+                            (m/drop-upto #(= (:id %) (:id retry-msg)))
+                            (filter #(= :assistant (:role %)))
+                            (mapv :id))]
+        (when (> (count delete-ids) 1)
+          (log/warn "Retry found multiple live assistant rows for one prompt"
+                    {:conversation-id (:conversation_id retry-msg) :message-ids delete-ids}))
+        {:action :retry :message-ids delete-ids}))))
 
 (defn- check-parent-msg!
-  [conversation-id parent-message-id out-of-sync!]
+  [messages parent-message-id out-of-sync!]
   (let [parent-msg (when parent-message-id
-                     (metabot.persistence/live-message parent-message-id))]
+                     (u/seek #(= parent-message-id (:external_id %)) (rseq messages)))]
     (cond
-      (and parent-message-id (nil? parent-msg))                             (out-of-sync! :parent-message-not-found)
-      (and parent-msg (not= (:conversation_id parent-msg) conversation-id)) (out-of-sync! :parent-message-different-conversation)
-      (and parent-msg (not= (:role parent-msg) :assistant))                 (out-of-sync! :parent-message-not-agent-role)
+      (and parent-message-id (nil? parent-msg))             (out-of-sync! :parent-message-not-found)
+      (and parent-msg (not= (:role parent-msg) :assistant)) (out-of-sync! :parent-message-not-agent-role)
       :else
-      (let [msgs       (metabot.persistence/live-messages conversation-id)
-            tail       (if parent-msg
-                         (m/drop-upto #(= (:id %) (:id parent-msg)) msgs)
-                         msgs)
+      (let [tail       (if parent-msg
+                         (m/drop-upto #(= (:id %) (:id parent-msg)) messages)
+                         messages)
             assistants (filter #(= :assistant (:role %)) tail)]
         (cond
           (and (seq assistants) (every? #(some? (:error %)) assistants))
@@ -112,27 +114,29 @@
           :else                    (out-of-sync! :parent-message-stale))))))
 
 (defn- check-turn!
-  "Decides how the incoming request continues the conversation:
+  "Decides how the incoming request continues the conversation, reading only from the
+  conversation's live `messages` (reader order, from [[metabot.persistence/live-messages]]):
     {:action :start}                                    — append a new turn
-    {:action :retry}                                    — regenerate the response for `retry-message-id`
+    {:action :retry :message-ids [pk...]}               — regenerate `retry-message-id`'s response,
+                                                          soft-deleting the trailing live replies
     {:action :replace-failed-turn :message-ids [pk...]} — soft-delete trailing failed turns, then start
-  Throws a 409 when the request does not line up with the stored conversation.
+  Calls `out-of-sync!` (which throws 409) when the request does not line up with `messages`.
 
   A retry must target the last live user message. A plain request must either point
   `parent-message-id` at the leaf, or at the assistant message right before trailing
   turns that all failed (assistant rows with a recorded error) — the failed rows are
   then handed back for replacement."
-  [conversation-id parent-message-id retry-message-id]
-  (let [out-of-sync! (make-out-of-sync-fn conversation-id parent-message-id retry-message-id)]
+  [messages parent-message-id retry-message-id out-of-sync!]
+  (let [leaf-id (:external_id (u/seek #(= :assistant (:role %)) (rseq messages)))]
     (cond
       (some? retry-message-id)
-      (check-retry! conversation-id retry-message-id out-of-sync!)
+      (check-retry! messages retry-message-id out-of-sync!)
 
-      (= parent-message-id (metabot.persistence/leaf-external-id conversation-id))
+      (= parent-message-id leaf-id)
       {:action :start}
 
       :else
-      (check-parent-msg! conversation-id parent-message-id out-of-sync!))))
+      (check-parent-msg! messages parent-message-id out-of-sync!))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -285,26 +289,32 @@
         hostname   (analytics.core/extract-hostname (:origin request-info))
         pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
-    (let [{:keys [action message-ids]} (check-turn! conversation_id parent_message_id retry_message_id)
-          out-of-sync! (make-out-of-sync-fn conversation_id parent_message_id retry_message_id)
-          {:keys [assistant-msg-id assistant-external-id user-external-id]}
-          (try
-            (if (= action :retry)
-              (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
-                                               :assistant-external-id assistant_message_id)
-              (metabot.persistence/start-turn! conversation_id profile-id message
-                                               :hostname hostname
-                                               :pii-info pii-info
-                                               :delete-message-ids message-ids
-                                               :user-external-id user_message_id
-                                               :assistant-external-id assistant_message_id))
-            (catch Exception e
-              (if (external-id-conflict? e)
-                (out-of-sync! :external-id-taken e)
-                (throw e))))
-          messages  (metabot.persistence/live-messages conversation_id)
-          history   (metabot.persistence/history messages)
-          state     (metabot.persistence/conversation-state messages)]
+    (let [out-of-sync! (make-out-of-sync-fn conversation_id parent_message_id retry_message_id)
+          {:keys [messages message-ids turn]}
+          (metabot.persistence/with-conversation-lock conversation_id
+            (let [messages (metabot.persistence/live-messages conversation_id)
+                  {:keys [action message-ids]} (check-turn! messages parent_message_id retry_message_id out-of-sync!)
+                  turn     (try
+                             (if (= action :retry)
+                               (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
+                                                                :assistant-external-id assistant_message_id
+                                                                :delete-message-ids message-ids)
+                               (metabot.persistence/start-turn! conversation_id profile-id message
+                                                                :hostname hostname
+                                                                :pii-info pii-info
+                                                                :delete-message-ids message-ids
+                                                                :user-external-id user_message_id
+                                                                :assistant-external-id assistant_message_id))
+                             (catch Exception e
+                               (if (external-id-conflict? e)
+                                 (out-of-sync! :external-id-taken e)
+                                 (throw e))))]
+              {:messages messages :message-ids message-ids :turn turn}))
+          {:keys [assistant-msg-id assistant-external-id user-external-id]} turn
+          deleted?  (set message-ids)
+          live      (remove #(deleted? (:id %)) messages)
+          history   (metabot.persistence/history live)
+          state     (metabot.persistence/conversation-state live)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id

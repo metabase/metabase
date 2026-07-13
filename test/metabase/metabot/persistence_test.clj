@@ -628,7 +628,8 @@
                 user-ext (t2/select-one-fn :external_id :model/MetabotMessage
                                            :conversation_id conversation-id :role "user")
                 {:keys [assistant-msg-id assistant-external-id user-external-id]}
-                (metabot-persistence/retry-turn! conversation-id "internal" user-ext)]
+                (metabot-persistence/retry-turn! conversation-id "internal" user-ext
+                                                 :delete-message-ids [a-pk])]
             (is (pos-int? assistant-msg-id))
             (is (string? assistant-external-id))
             (is (= user-ext user-external-id))
@@ -672,7 +673,8 @@
                            :created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
                 user-ext (t2/select-one-fn :external_id :model/MetabotMessage
                                            :conversation_id conversation-id :role "user")]
-            (metabot-persistence/retry-turn! conversation-id "internal" user-ext)
+            (metabot-persistence/retry-turn! conversation-id "internal" user-ext
+                                             :delete-message-ids [a-pk extra-pk])
             (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage a-pk)))
             (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage extra-pk)))))))))
 
@@ -699,17 +701,6 @@
               (is (= "replacement" (-> live first :data first :text)))
               (is (= [(mt/user->id :rasta) (mt/user->id :rasta)]
                      (map :deleted_by_user_id (filter :deleted_at rows)))))))))))
-
-(deftest retry-turn-rejects-non-user-message-test
-  (testing "retry-turn! throws 409 when the external-id is not a live user message"
-    (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [conversation-id (str (random-uuid))]
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [{a-ext :assistant-external-id} (metabot-persistence/start-turn!
-                                                conversation-id "internal"
-                                                {:role "user" :content "hi"})]
-            (is (thrown-with-msg? Exception #"changed"
-                                  (metabot-persistence/retry-turn! conversation-id "internal" a-ext)))))))))
 
 (deftest retry-turn-without-live-response-test
   (testing "retry-turn! with no live trailing assistant only inserts a fresh placeholder"
@@ -1336,15 +1327,16 @@
             cstate #(metabot-persistence/conversation-state
                      (metabot-persistence/live-messages conversation-id))]
         (seed-turn! conversation-id "one" [] :turn-state {:todos [{:id "a"}]})
-        (seed-turn! conversation-id "two" [] :turn-state {:todos [{:id "b"}]})
-        (is (= {:todos [{:id "b"}]} (cstate)))
-        (let [user-ext (t2/select-one-fn :external_id :model/MetabotMessage
-                                         :conversation_id conversation-id
-                                         :role "user"
-                                         {:order-by [[:created_at :desc] [:id :desc]]})]
-          (metabot-persistence/retry-turn! conversation-id "internal" user-ext)
-          (is (= {:todos [{:id "a"}]} (cstate))
-              "the in-flight retry placeholder contributes nothing and the superseded turn is gone"))))))
+        (let [two-pk (seed-turn! conversation-id "two" [] :turn-state {:todos [{:id "b"}]})]
+          (is (= {:todos [{:id "b"}]} (cstate)))
+          (let [user-ext (t2/select-one-fn :external_id :model/MetabotMessage
+                                           :conversation_id conversation-id
+                                           :role "user"
+                                           {:order-by [[:created_at :desc] [:id :desc]]})]
+            (metabot-persistence/retry-turn! conversation-id "internal" user-ext
+                                             :delete-message-ids [two-pk])
+            (is (= {:todos [{:id "a"}]} (cstate))
+                "the in-flight retry placeholder contributes nothing and the superseded turn is gone")))))))
 
 (deftest conversation-detail-includes-state-test
   (testing "conversation-detail returns the reconstructed state"
