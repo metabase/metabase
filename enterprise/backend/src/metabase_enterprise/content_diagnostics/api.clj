@@ -63,7 +63,9 @@
      [:threshold_days {:optional true} :int]]]])
 
 (def ^:private SlowEntity
-  "A hydrated `slow` roll-up culprit (currently always a card): `{id, name, entity_type, card_type?}`."
+  "A hydrated culprit of a container roll-up: an embedded slow **card** of a dashboard/document finding.
+  Always a card - containers embed cards (dashcards / prose-mirror card embeds), never transforms; a slow
+  transform is its own leaf finding, not a member of another entity. `{id, name, entity_type, card_type?}`."
   [:map
    [:id          :int]
    [:name        [:maybe :string]]
