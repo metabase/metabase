@@ -1,7 +1,7 @@
 (ns build
   (:require
    [build.licenses :as license]
-   [build.python :as build.python]
+   [build.polyglot-ffi :as build.polyglot-ffi]
    [build.uberjar :as uberjar]
    [build.version-properties :as version-properties]
    [clojure.edn :as edn]
@@ -91,8 +91,8 @@
                    (build-licenses! edition))
    #_#_:drivers      (fn [{:keys [edition]}]
                        (build-drivers/build-drivers! edition))
-   :python       (fn [{:keys [edition]}]
-                   (build.python/build-python-deps! edition))
+   :polyglot-ffi (fn [{:keys [edition]}]
+                   (build.polyglot-ffi/download-polyglot-ffi! edition))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 

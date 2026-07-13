@@ -654,15 +654,6 @@
    (prometheus/counter :metabase-db-connection/type-resolved
                        {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback or workspace swap."
                         :labels [:connection-type]})
-   ;; SQL parsing metrics
-   (prometheus/counter :metabase-sql-parsing/context-timeouts
-                       {:description "Number of Python/GraalVM SQL parsing execution timeouts."})
-   (prometheus/counter :metabase-sql-parsing/context-acquisitions
-                       {:description "Number of Python contexts acquired from the pool."})
-   (prometheus/counter :metabase-sql-parsing/context-creations
-                       {:description "Number of new Python contexts created."})
-   (prometheus/counter :metabase-sql-parsing/context-disposals-expired
-                       {:description "Number of Python contexts disposed due to TTL expiry."})
    ;; SQL tools operation metrics
    (prometheus/counter :metabase-sql-tools/operations-total
                        {:description "Total number of sql-tools operations started."

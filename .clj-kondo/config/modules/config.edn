@@ -2171,8 +2171,7 @@
   sql-parsing
   {:team "DevEx"
    :api #{metabase.sql-parsing.core}
-   :uses #{analytics-interface
-           util}}
+   :uses #{util}}
 
   sql-tools
   {:team "DevEx"

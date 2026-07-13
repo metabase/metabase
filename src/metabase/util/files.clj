@@ -124,7 +124,7 @@
   ;; for the URI-based pattern). NIO maintains a global cache of zip filesystems keyed by URI; the URI-based overload
   ;; registers in that cache, so other code (e.g. with-open-path-to-resource, find-in-current-jar) can obtain the
   ;; cached instance via FileSystems/getFileSystem and close it inside a with-open block, killing the original
-  ;; filesystem and breaking any long-lived consumer (e.g. GraalPy contexts pinned to that filesystem). The Path-based
+  ;; filesystem and breaking any long-lived consumer still holding paths into it. The Path-based
   ;; overload bypasses the cache, giving an independent instance whose lifecycle the caller fully controls.
   (-> (Path/of path (u/varargs String))
       (FileSystems/newFileSystem Collections/EMPTY_MAP)))
