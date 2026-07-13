@@ -67,6 +67,7 @@ import {
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
+  getExplorationSidebarTree,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -225,12 +226,16 @@ export function ExplorationSidebar({
     ],
   );
 
-  const isEmptyDueToHidden = useMemo(() => {
-    if (showHidden || (tree[0]?.children?.length || 0) > 0) {
-      return false;
-    }
-    return (tree[0]?.children?.length || 0) === 0;
-  }, [showHidden, tree]);
+  const tabTreeItemFilter =
+    explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
+  // The rendered `tree` excludes hidden pages; rebuilding it with them included
+  // tells apart "everything is hidden" from "genuinely nothing to show".
+  const treeWithHidden = useMemo(
+    () => getExplorationSidebarTree(exploration, tabTreeItemFilter),
+    [exploration, tabTreeItemFilter],
+  );
+  const isEmptyDueToHidden =
+    !showHidden && tree.length === 0 && treeWithHidden.length > 0;
 
   if (!isOpen) {
     // we still want keyboard shortcuts to work, so the component should still be mounted
@@ -239,6 +244,33 @@ export function ExplorationSidebar({
 
   const emptyTreeMessage =
     explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
+
+  let treeContent;
+  if (tree.length > 0) {
+    treeContent = (
+      <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
+        <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
+      </Box>
+    );
+  } else if (isEmptyDueToHidden) {
+    treeContent = (
+      <Text
+        flex={1}
+        px="1rem"
+        c="text-secondary"
+        fs="italic"
+        data-testid="exploration-all-hidden"
+      >
+        {t`All items have been hidden.`}
+      </Text>
+    );
+  } else {
+    treeContent = (
+      <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+        <Text fz="lg">{emptyTreeMessage}</Text>
+      </Center>
+    );
+  }
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="1rem">
@@ -279,20 +311,7 @@ export function ExplorationSidebar({
           </ActionIcon>
         </Tooltip>
       </Group>
-      {tree.length > 0 ? (
-        <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
-          <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
-          {isEmptyDueToHidden && (
-            <Text c="text-secondary" fs="italic" px="0.5rem" pl="1.75rem">
-              {t`All items have been hidden.`}
-            </Text>
-          )}
-        </Box>
-      ) : (
-        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
-          <Text fz="lg">{emptyTreeMessage}</Text>
-        </Center>
-      )}
+      {treeContent}
     </Stack>
   );
 }

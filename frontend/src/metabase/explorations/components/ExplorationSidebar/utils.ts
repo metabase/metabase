@@ -94,7 +94,6 @@ export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
-  const initialThreadId = exploration.threads?.[0]?.id;
   const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
     .map((thread, index) => {
       const children = getExplorationQueryTree(thread, treeItemFilter);
@@ -124,10 +123,7 @@ export function getExplorationSidebarTree(
         children,
       };
     })
-    .filter((heading) => {
-      const isInitialThread = initialThreadId && heading.id === initialThreadId;
-      return isInitialThread || (heading.children ?? []).length > 0;
-    });
+    .filter((heading) => (heading.children ?? []).length > 0);
   return tree;
 }
 
