@@ -7,14 +7,6 @@ import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppActionsMenu } from "./DataAppActionsMenu";
 
-// The data-app mutations are real; only the HTTP boundary is stubbed with
-// fetch-mock (the endpoints are injected into the main `Api` that
-// `renderWithProviders` already wires up). The global jest setup resets
-// fetch-mock between tests.
-//
-// The happy paths (disable / re-enable / remove, and hiding Remove while a repo
-// is connected) are covered end-to-end in `data-apps/admin.cy.spec.ts`, so this
-// spec only covers the failure and loading branches the e2e doesn't reach.
 const setup = ({ enabled = true, canRemove = false } = {}) => {
   const app = createMockDataApp({
     name: "sales",
@@ -71,8 +63,6 @@ describe("DataAppActionsMenu", () => {
   });
 
   it("should show a loading state on the trigger while a delete is in flight", async () => {
-    // Hold the DELETE in flight (a controllable promise, resolved at the end so
-    // the global fetch-mock flush doesn't hang) to observe the loading state.
     let finishDelete = () => {};
     fetchMock.delete(
       "path:/api/apps/sales",
