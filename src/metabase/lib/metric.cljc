@@ -147,7 +147,11 @@
   `:metric` ref; a cycle in the metric reference graph would recurse unboundedly and overflow the stack (#74954)."
   [])
 
+;; Read-time backstop for cycles that slip past the card API's `check-card-overwrite`: serdes import, remote sync,
+;; direct writes, data predating the check. find-cycle can't help -- a cycle is only visible mid-expansion -- so we
+;; watch the in-flight path instead.
 (defn- check-metric-cycle!
+  "Throw if `metric-id` is already being expanded on this thread, i.e. its `:metric` refs form a cycle."
   [metric-id]
   (when (some #(= % metric-id) *metric-expansion-path*)
     (throw (ex-info (i18n/tru "Metric cycle detected: {0}"
