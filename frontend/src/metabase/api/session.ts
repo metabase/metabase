@@ -19,6 +19,31 @@ export interface SessionResponse {
   id: string;
 }
 
+export interface MfaChallengeResponse {
+  mfa_required: true;
+  method: string;
+  enroll_required: boolean;
+  mfa_token: string;
+}
+
+export type CreateSessionResponse = SessionResponse | MfaChallengeResponse;
+
+export const isMfaChallenge = (
+  response: CreateSessionResponse,
+): response is MfaChallengeResponse => "mfa_required" in response;
+
+export interface MfaStatus {
+  enabled: boolean;
+  required: boolean;
+  enrolled: boolean;
+  method: string | null;
+}
+
+export interface MfaEnrollResponse {
+  secret: string;
+  otpauth_uri: string;
+}
+
 export interface GoogleAuthData {
   token: string;
   remember?: boolean;
@@ -35,12 +60,66 @@ export interface SsoLogoutResponse {
 
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    createSession: builder.mutation<SessionResponse, LoginData>({
+    createSession: builder.mutation<CreateSessionResponse, LoginData>({
       query: (body) => ({
         method: "POST",
         url: "/api/session",
         body,
       }),
+    }),
+    verifyMfa: builder.mutation<
+      SessionResponse,
+      { mfa_token: string; code: string }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa",
+        body,
+      }),
+    }),
+    getMfaStatus: builder.query<MfaStatus, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/session/mfa",
+      }),
+      providesTags: ["session-properties"],
+    }),
+    enrollMfa: builder.mutation<MfaEnrollResponse, { password: string }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa/enroll",
+        body,
+      }),
+    }),
+    confirmMfaEnrollment: builder.mutation<
+      { success: boolean },
+      { code: string }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa/enroll/confirm",
+        body,
+      }),
+      invalidatesTags: ["session-properties"],
+    }),
+    disableMfa: builder.mutation<void, { password: string }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa/disable",
+        body,
+      }),
+      invalidatesTags: ["session-properties"],
+    }),
+    updateMfaAdminSettings: builder.mutation<
+      void,
+      { enabled?: boolean; required?: boolean }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa/admin-settings",
+        body,
+      }),
+      invalidatesTags: ["session-properties"],
     }),
     createSessionWithGoogleAuth: builder.mutation<
       SessionResponse,
@@ -129,6 +208,12 @@ export const {
   useForgotPasswordMutation,
   useCheckPasswordMutation,
   useGetSessionPropertiesQuery,
+  useVerifyMfaMutation,
+  useGetMfaStatusQuery,
+  useEnrollMfaMutation,
+  useConfirmMfaEnrollmentMutation,
+  useDisableMfaMutation,
+  useUpdateMfaAdminSettingsMutation,
 } = sessionApi;
 
 // alias for easier use

@@ -52,6 +52,7 @@
   - metabase-enterprise.sso.providers.saml (Enterprise)"
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.mfa :as mfa]
    [metabase.auth-identity.session :as auth-session]
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
@@ -296,9 +297,13 @@
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
     (next-method provider $)
+    ;; Native MFA: when a second factor is required this flips :success? to :mfa-required /
+    ;; :enrollment-required and attaches a challenge token; otherwise it's a no-op.
+    (mfa/apply-mfa-gate provider $)
     (cond-> $
-      (:user $) (create-session! provider))
-    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key])))
+      (and (:user $) (not (mfa/mfa-pending? $))) (create-session! provider))
+    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key
+                    :mfa-required :mfa-method :mfa-token :mfa-enroll-required])))
 
 (defenterprise sso-user-fields
   "Return the list of User model fields that should be populated from SSO user data.

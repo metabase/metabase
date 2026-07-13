@@ -404,6 +404,7 @@
            notification
            premium-features
            request
+           settings
            util}
    :model-exports #{:model/AuthIdentity}
    :model-imports #{:model/Session :model/User}}

@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { MfaChallengeResponse } from "metabase/api/session";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { LoginData } from "metabase/redux/auth";
 import { login } from "metabase/redux/auth";
@@ -12,6 +13,7 @@ import {
 } from "../../selectors";
 import { AuthButton } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
+import { MfaChallengeForm } from "../MfaChallengeForm";
 
 import { ActionList, ActionListItem } from "./PasswordPanel.styled";
 
@@ -24,13 +26,25 @@ export const PasswordPanel = ({ redirectUrl }: PasswordPanelProps) => {
   const isLdapEnabled = useSelector(getIsLdapEnabled);
   const hasSessionCookies = useSelector(getHasSessionCookies);
   const dispatch = useDispatch();
+  const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeResponse | null>(
+    null,
+  );
 
   const handleSubmit = useCallback(
     async (data: LoginData) => {
-      await dispatch(login({ data, redirectUrl })).unwrap();
+      const { mfaChallenge } = await dispatch(
+        login({ data, redirectUrl }),
+      ).unwrap();
+      if (mfaChallenge) {
+        setMfaChallenge(mfaChallenge);
+      }
     },
     [dispatch, redirectUrl],
   );
+
+  if (mfaChallenge) {
+    return <MfaChallengeForm mfaToken={mfaChallenge.mfa_token} />;
+  }
 
   return (
     <div>

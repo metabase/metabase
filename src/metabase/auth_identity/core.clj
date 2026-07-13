@@ -2,9 +2,12 @@
   "Public API for the auth_identity module. This namespace provides the interface for managing
   authentication identities for users."
   (:require
+   [metabase.auth-identity.mfa :as mfa]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.auth-identity.providers.emailed-secret :as emailed-secret]
+   ;; loaded for side effects: registers the :provider/totp authenticate multimethod
+   [metabase.auth-identity.providers.totp]
    [metabase.auth-identity.session :as auth-session]
    [potemkin :as p]))
 
@@ -55,6 +58,18 @@
 (p/import-vars
  [auth-session
   create-session-with-auth-tracking!])
+
+;; Import native MFA (TOTP) functions
+(p/import-vars
+ [mfa
+  mfa-pending?
+  verify-challenge-token
+  mfa-status
+  mfa-enroll!
+  mfa-confirm-enrollment!
+  mfa-disable!
+  mfa-admin-reset!
+  set-mfa-admin-settings!])
 
 ;; Import emailed-secret provider functions
 (p/import-vars
