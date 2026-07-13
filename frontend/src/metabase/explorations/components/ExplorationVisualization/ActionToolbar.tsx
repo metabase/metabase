@@ -124,7 +124,7 @@ export function ActionToolbar({
     if (succeeded && nextHidden) {
       sendToast({
         icon: "eye_crossed_out",
-        message: t`Hidden "${page.name}"`,
+        message: t`"${page.name}" hidden`,
         actionLabel: t`Undo`,
         actions: [() => setHidden(false)],
       });

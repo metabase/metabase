@@ -492,7 +492,7 @@ describe("ActionToolbar", () => {
       await userEvent.click(screen.getByRole("button", { name: "Hide" }));
 
       expect(
-        await screen.findByText('Hidden "Orders chart"'),
+        await screen.findByText('"Orders chart" hidden'),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
     });
