@@ -117,15 +117,15 @@ jobs:
               # are the normal ids for master/release branches, not one-off ids -
               # a one-off branch cut from master sits on 0.63.0-alpha.5, and that
               # is still a first cut.
-              EXISTING_PREID=$(echo "$CURRENT_VERSION" | sed -n 's/^[0-9.]*-\([a-z][a-z0-9-]*\)\(\.[0-9]*\)\{0,1\}$/\1/p')
-              case "$EXISTING_PREID" in alpha|beta) EXISTING_PREID="" ;; esac
+              EXISTING_PRERELEASE_ID=$(echo "$CURRENT_VERSION" | sed -n 's/^[0-9.]*-\([a-z][a-z0-9-]*\)\(\.[0-9]*\)\{0,1\}$/\1/p')
+              case "$EXISTING_PRERELEASE_ID" in alpha|beta) EXISTING_PRERELEASE_ID="" ;; esac
 
               # prerelease_id is set if and only if this is the first cut.
-              if [ -n "$EXISTING_PREID" ] && [ -n "$PRERELEASE_ID" ]; then
-                echo "::error::This branch already uses the prerelease id '$EXISTING_PREID' - leave prerelease_id empty to bump it. To change the id, reset the version in $package_template by hand."
+              if [ -n "$EXISTING_PRERELEASE_ID" ] && [ -n "$PRERELEASE_ID" ]; then
+                echo "::error::This branch already uses the prerelease id '$EXISTING_PRERELEASE_ID' - leave prerelease_id empty to bump it. To change the id, reset the version in $package_template by hand."
                 exit 1
               fi
-              if [ -z "$EXISTING_PREID" ] && [ -z "$PRERELEASE_ID" ]; then
+              if [ -z "$EXISTING_PRERELEASE_ID" ] && [ -z "$PRERELEASE_ID" ]; then
                 echo "::error::prerelease_id is required when cutting a new one-off branch - it becomes the prerelease id in the version (0.62.5-<id>.0) and the npm dist-tag (<major>-<id>)."
                 exit 1
               fi
@@ -192,12 +192,12 @@ jobs:
             custom)
               # The id comes from the version just computed, so it is identical on
               # the first cut and every later bump: 0.62.5-data-apps.0 -> 62-data-apps.
-              PREID=$(echo "$NEW_VERSION" | sed -n 's/^[0-9.]*-\([a-z][a-z0-9-]*\)\.[0-9]*$/\1/p')
-              if [ -z "$PREID" ]; then
+              PRERELEASE_ID=$(echo "$NEW_VERSION" | sed -n 's/^[0-9.]*-\([a-z][a-z0-9-]*\)\.[0-9]*$/\1/p')
+              if [ -z "$PRERELEASE_ID" ]; then
                 echo "::error::Could not read a prerelease id back from '$NEW_VERSION'."
                 exit 1
               fi
-              DIST_TAG="${MAJOR_VERSION}-${PREID}"
+              DIST_TAG="${MAJOR_VERSION}-${PRERELEASE_ID}"
               ;;
           esac
 
