@@ -108,4 +108,5 @@
       (log/infof "Content Diagnostics scan %s: %d findings in %.0f ms" scan-id (count findings) duration-ms)
       {:scan_id       scan-id
        :finding_count (count findings)
-       :duration_ms   (Math/round duration-ms)})))
+       ;; coerce to a primitive double so Math/round resolves without reflection (u/since-ms is un-hinted)
+       :duration_ms   (Math/round (double duration-ms))})))
