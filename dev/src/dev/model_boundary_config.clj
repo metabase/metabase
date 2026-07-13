@@ -9,13 +9,9 @@
 
   To update config.edn with computed model boundaries:
 
-    (dev.model-boundary-config/update-config!)"
+    (dev.modules-config/update-config!)"
   (:require
-   [clojure.string :as str]
-   [dev.deps-graph :as deps-graph]
-   [rewrite-clj.node :as r.node]
-   [rewrite-clj.parser :as r.parser]
-   [rewrite-clj.zip :as z]))
+   [dev.deps-graph :as deps-graph]))
 
 (set! *warn-on-reflection* true)
 
@@ -77,89 +73,3 @@
                                          model))]
                   :when (seq imported)]
               [mod imported]))})))
-
-(def ^:private config-path ".clj-kondo/config/modules/config.edn")
-
-(def ^:private set-indent
-  "Indentation for multi-line model sets — aligns with existing config.edn style."
-  (apply str (repeat 20 \space)))
-
-(defn- model-set-str
-  "Build a string representation of a sorted set of model keywords.
-  Short sets (<=3 items) stay on one line; longer sets get one item per line."
-  [models]
-  (let [sorted (sort models)]
-    (if (<= (count sorted) 3)
-      (str "#{" (str/join " " sorted) "}")
-      (str "#{" (str/join (str "\n" set-indent) sorted) "}"))))
-
-(defn- find-module-config
-  "Navigate from `root` to the config map for `module-sym`. Returns a zipper or nil."
-  [root module-sym]
-  (let [mods-zloc (-> (z/of-node root)
-                      (z/find-value z/next :metabase/modules)
-                      z/right)]
-    (z/find-value (z/down mods-zloc) z/right module-sym)))
-
-(defn- find-key-value
-  "Find the value zipper for keyword `k` inside a map zipper, or nil."
-  [map-zloc k]
-  (some-> (z/find-value (z/down map-zloc) z/right k)
-          z/right))
-
-(defn update-config!
-  "Compute model boundaries and update config.edn with `:model-exports` and `:model-imports` for all modules.
-
-  Only updates keys that already exist in the config — does not add new keys.
-  Uses rewrite-clj to manipulate the AST directly, preserving formatting."
-  []
-  (let [boundaries    (compute-model-boundaries)
-        root-zloc     (z/of-node (r.parser/parse-file-all config-path))
-        modules-zloc  (-> root-zloc
-                          (z/find-value z/next :metabase/modules)
-                          z/right)
-        module-syms   (loop [zloc (z/down modules-zloc), acc []]
-                        (if-not zloc
-                          acc
-                          (recur (some-> zloc z/right z/right)
-                                 (conj acc (z/sexpr zloc)))))
-        updated-root
-        (reduce
-         (fn [root module-sym]
-           (reduce
-            (fn [root config-key]
-              (let [mod-cfg  (some-> (find-module-config root module-sym) z/right)
-                    val-zloc (when mod-cfg (find-key-value mod-cfg config-key))
-                    computed (get-in boundaries [config-key module-sym] #{})]
-                (cond
-                  ;; Key exists with a non-set value (e.g. :bypass, :any) — leave it alone.
-                  (and val-zloc (not (set? (z/sexpr val-zloc))))
-                  root
-
-                  ;; Key exists with a set value — replace or remove.
-                  val-zloc
-                  (if (seq computed)
-                    (z/root (z/replace val-zloc (r.parser/parse-string (model-set-str computed))))
-                    (-> val-zloc z/remove z/remove z/root))
-
-                  ;; Key missing and nothing to add.
-                  (empty? computed)
-                  root
-
-                  ;; Key missing — append `<newline><indent>:key <set>` to the module config map,
-                  ;; splicing new children directly to avoid the separator spaces `append-child` inserts.
-                  :else
-                  (let [m-node       (z/node mod-cfg)
-                        new-children (concat (r.node/children m-node)
-                                             [(r.node/newlines 1)
-                                              (r.node/spaces 3)
-                                              (r.node/keyword-node config-key)
-                                              (r.node/spaces 1)
-                                              (r.parser/parse-string (model-set-str computed))])]
-                    (z/root (z/replace mod-cfg (r.node/replace-children m-node new-children)))))))
-            root
-            [:model-exports :model-imports]))
-         (z/root root-zloc)
-         module-syms)]
-    (spit config-path (z/root-string (z/of-node updated-root)))
-    (println "Updated" config-path "with :model-exports and :model-imports.")))
