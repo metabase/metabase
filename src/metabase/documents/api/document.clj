@@ -153,15 +153,18 @@
                                                           [:= :archived false]]})
                       :creator :can_write :is_remote_synced)})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
-  "Create a new `Document`."
-  [_route-params
-   _query-params
-   {:keys [name document collection_id collection_position cards]} :- DocumentCreateOptions]
+(defn create-document!
+  "Create a new `Document` and return it hydrated.
+
+  `document` is the ProseMirror AST stored on the document. Runs the collection `create-check`,
+  clones any existing cards embedded in the AST so they belong to the new document, creates any
+  inline `cards` (a negative-id -> card map), rewrites embed ids in the AST to point at the
+  resulting cards, and publishes `:event/document-create`.
+
+  This is the single create path shared by the REST endpoint (`POST /api/document`) and the Agent
+  API `create_document` tool, so both get identical permission and lifecycle behaviour. The
+  current user (`api/*current-user*` / `api/*current-user-id*`) must be bound."
+  [{:keys [name document collection_id collection_position cards]}]
   (api/create-check :model/Document {:collection_id collection_id})
   (let [created-document (t2/with-transaction [_conn]
                            (when collection_position
@@ -193,6 +196,17 @@
                            {:object created-document
                             :user-id api/*current-user-id*})
     created-document))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/"
+  "Create a new `Document`."
+  [_route-params
+   _query-params
+   body :- DocumentCreateOptions]
+  (create-document! body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
