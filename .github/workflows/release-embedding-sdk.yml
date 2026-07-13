@@ -85,16 +85,11 @@ jobs:
     outputs:
       branch: ${{ steps.resolve.outputs.branch }}
     steps:
+      # base.ref is only set on a pull_request event; on a dispatch it is empty,
+      # so this falls through to the branch picked in the ref picker.
       - name: Resolve target branch
         id: resolve
-        env:
-          BRANCH: ${{ github.ref_name }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          else
-            echo "branch=${{ github.event.pull_request.base.ref }}" >> "$GITHUB_OUTPUT"
-          fi
+        run: echo "branch=${{ github.event.pull_request.base.ref || github.ref_name }}" >> "$GITHUB_OUTPUT"
 
   workflow-summary:
     name: Log inputs
