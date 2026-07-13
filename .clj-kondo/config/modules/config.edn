@@ -1435,6 +1435,17 @@
                     :model/Table
                     :model/User}}
 
+  mq
+  {:team "UX West"
+   :api  #{metabase.mq.init}
+   :uses #{analytics-interface
+           app-db
+           classloader
+           settings
+           startup
+           task
+           util}}
+
   native-query-snippets
   {:team "Graphy"
    :api  #{metabase.native-query-snippets.api
