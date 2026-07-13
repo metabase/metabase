@@ -1,33 +1,15 @@
-import fs from "node:fs";
-import path from "node:path";
-
-import { load as parseYaml } from "js-yaml";
+import { readManifest } from "./read-manifest";
 
 /** Read `allowed_hosts` from the app's `data_app.yml`/`.yaml`; `[]` when absent. */
 export function readAllowedHosts(appRoot: string): string[] {
-  const manifestPath = [
-    path.join(appRoot, "data_app.yaml"),
-    path.join(appRoot, "data_app.yml"),
-  ].find((candidate) => fs.existsSync(candidate));
-  if (!manifestPath) {
+  const read = readManifest(appRoot);
+
+  if (!read) {
     return [];
   }
 
-  let parsed: unknown;
-  try {
-    parsed = parseYaml(fs.readFileSync(manifestPath, "utf8"));
-  } catch (error) {
-    throw new Error(
-      `Could not parse ${manifestPath}: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-  }
-
-  const hosts =
-    typeof parsed === "object" && parsed !== null && "allowed_hosts" in parsed
-      ? parsed.allowed_hosts
-      : undefined;
+  const { manifestPath, manifest } = read;
+  const hosts = manifest.allowed_hosts;
 
   if (hosts == null) {
     return [];

@@ -11,6 +11,7 @@ import { getDataAppDefine } from "./config/define";
 import { buildDevCsp, readAllowedHosts } from "./config/dev-connect-src";
 import { dataAppEnvPrefix } from "./config/env-prefix";
 import { findEnvRoot } from "./config/find-env-root";
+import { readAppSlug } from "./config/read-manifest";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 
 /**
@@ -27,11 +28,12 @@ function dataAppVitePlugin(): PluginOption[] {
   const appRoot = process.cwd();
   const envDir = findEnvRoot(appRoot);
   const allowedHosts = readAllowedHosts(appRoot);
+  const appSlug = readAppSlug(appRoot);
 
   return [
     react(),
     ...dataAppBuildPlugins(),
-    dataAppSandboxDevPlugin(allowedHosts),
+    dataAppSandboxDevPlugin(appSlug, allowedHosts),
     {
       name: "metabase-data-app",
       // Merged over the user's config (`mergeConfig(userConfig, this)`), so these

@@ -17,6 +17,7 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { type RequestClientInfo, api } from "metabase/api/client";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import { setIsDataApp } from "metabase/embedding/config";
 import { setEmbedPreviewHeader } from "metabase/embedding/lib/auth/set-embed-preview-header";
 import { setReactSdkEmbedReferrerHeader } from "metabase/embedding/lib/auth/set-react-sdk-embed-referrer-header";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
@@ -82,6 +83,15 @@ export const useInitData = () => {
   }
 
   const isGuestEmbed = !!props.authConfig.isGuest;
+
+  // Set by the data-app dev entry, which runs in a different module realm and
+  // can't call `setIsDataApp` against this bundle's config itself.
+  // Must be called before `useInitDataInternal` to avoid any possible requests made before `setIsDataApp` call
+  if (internalProps.dataApp) {
+    setIsDataApp(internalProps.dataApp.name, {
+      isDev: internalProps.dataApp.isDev,
+    });
+  }
 
   useInitDataInternal({
     reduxStore,

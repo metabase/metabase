@@ -13,10 +13,13 @@ import {
 } from "@metabase/embedding-sdk-react/data-app-dev";
 import {
   allowedHosts,
+  appSlug,
   bundleUrl,
   rebuiltEvent,
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
+
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
@@ -54,6 +57,10 @@ if (!root) {
   throw new Error("#root not found");
 }
 const appRoot = createRoot(root);
+
+ensureMetabaseProviderPropsStore().updateInternalProps({
+  dataApp: { name: appSlug, isDev: true },
+});
 
 const sandbox = createDataAppSandbox({
   label: "dev",

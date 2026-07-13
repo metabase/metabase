@@ -65,7 +65,10 @@ const RESOLVED_PREFIX = "\0";
  * live sandbox and re-renders in place — preserving the loaded SDK + auth (a
  * soft reload; component state still resets, since the app is an opaque bundle).
  */
-export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
+export function dataAppSandboxDevPlugin(
+  appSlug: string,
+  allowedHosts: string[],
+): Plugin {
   let bundleCode = "";
 
   const rebuild = async (root: string, mode: string) => {
@@ -113,6 +116,7 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
       if (id === RESOLVED_PREFIX + DATA_APP_DEV_CONFIG_VIRTUAL_ID) {
         return [
           `export const allowedHosts = ${JSON.stringify(allowedHosts)};`,
+          `export const appSlug = ${JSON.stringify(appSlug)};`,
           `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
           `export const rebuiltEvent = ${JSON.stringify(DATA_APP_REBUILT_EVENT)};`,
         ].join("\n");
