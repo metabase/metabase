@@ -1,8 +1,9 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
+import { t } from "ttag";
 
 import type { IconProps, MantineStyleProps } from "metabase/ui";
-import { Flex, Icon, Title } from "metabase/ui";
+import { Flex, Icon, Title, UnstyledButton } from "metabase/ui";
 
 import S from "./ModalHeader.module.css";
 import type { CommonModalProps } from "./types";
@@ -51,7 +52,19 @@ export const ModalHeader = ({
         onClick={onBack}
       >
         {onBack && (
-          <Icon name="chevronleft" flex="0 0 auto" className={S.backIcon} />
+          <UnstyledButton
+            display="flex"
+            flex="0 0 auto"
+            className={S.backButton}
+            aria-label={t`Back`}
+            onClick={(event) => {
+              // the container's onClick also calls onBack; don't fire it twice
+              event.stopPropagation();
+              onBack();
+            }}
+          >
+            <Icon name="chevronleft" />
+          </UnstyledButton>
         )}
 
         <Title

@@ -33,9 +33,8 @@
   }
 }
 
-.backIcon {
+.backButton {
   color: var(--mb-color-text-disabled);
-  cursor: pointer;
 
   &:hover {
     color: var(--mb-color-core-brand);
