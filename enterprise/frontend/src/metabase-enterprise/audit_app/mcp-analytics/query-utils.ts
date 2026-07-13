@@ -6,7 +6,7 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { LegacyDatasetQuery, SortDirection } from "metabase-types/api";
+import type { SortDirection } from "metabase-types/api";
 
 import {
   applyDateFilter,
@@ -305,7 +305,7 @@ type EventsQueryOpts = McpFilters &
  * primary key as a tiebreaker. The tiebreaker makes the sort a total order — without it,
  * pagination can skip or duplicate rows across page boundaries when the sort column has ties (the
  * DB is free to order ties differently between requests). Pagination is applied separately via
- * {@link withEventsPage} because metabase-lib has no offset/page API.
+ * {@link paginateEventsQuery}.
  */
 export function buildEventsQuery({
   provider,
@@ -335,20 +335,13 @@ export function buildEventsQuery({
 }
 
 /**
- * Add an MBQL `:page` clause to a structured events query so the backend returns a single page
- * of rows. metabase-lib exposes no offset/page builder, so we set the clause on the (legacy) MBQL
- * directly. `page` is 0-indexed here; the MBQL clause is 1-indexed. No-op for native queries.
+ * Restrict the events query to a single page via the MBQL `:page` clause. `page` is 0-indexed
+ * here; metabase-lib's `:page` is 1-indexed, so we add 1.
  */
-export function withEventsPage(
-  jsQuery: LegacyDatasetQuery,
+export function paginateEventsQuery(
+  query: Query,
   page: number,
   pageSize: number,
-): LegacyDatasetQuery {
-  if (jsQuery.type !== "query") {
-    return jsQuery;
-  }
-  return {
-    ...jsQuery,
-    query: { ...jsQuery.query, page: { page: page + 1, items: pageSize } },
-  };
+): Query {
+  return Lib.withPage(query, 0, { page: page + 1, items: pageSize });
 }

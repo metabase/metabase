@@ -441,6 +441,22 @@
   [a-query stage-number orderable direction]
   (lib.core/order-by a-query stage-number orderable (keyword direction)))
 
+(defn ^:export with-page
+  "Set (or, with a nil `a-page`, remove) the `:page` clause on `a-query` at `stage-number`. Returns
+  the updated query. `a-page` is a JS object `{page, items}` (`page` is 1-indexed). Drops `:limit`
+  if present, since it conflicts with `:page`.
+
+  > **Code health:** Healthy"
+  [a-query stage-number a-page]
+  (lib.core/with-page a-query stage-number (when a-page (js->clj a-page :keywordize-keys true))))
+
+(defn ^:export current-page
+  "Return the `:page` clause on `a-query` at `stage-number` as a JS object, or nil if there is none.
+
+  > **Code health:** Healthy"
+  [a-query stage-number]
+  (clj->js (lib.core/current-page a-query stage-number)))
+
 (defn ^:export order-bys
   "Get the `ORDER BY` clauses in `a-query` at `stage-number`, as a JS array of opaque values.
 

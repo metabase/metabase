@@ -166,7 +166,6 @@ export type StructuredQuery = {
   joins?: JoinClause;
   "order-by"?: OrderByClause;
   limit?: LimitClause;
-  page?: PageClause;
   expressions?: ExpressionClause;
   fields?: FieldsClause;
 };
@@ -331,13 +330,6 @@ export type Join = {
 };
 
 type LimitClause = number;
-
-// MBQL `:page` clause. `page` is 1-indexed: {page: 1, items: 10} = rows 1-10.
-// Mutually exclusive with `limit` at a given stage.
-type PageClause = {
-  page: number;
-  items: number;
-};
 
 export type FieldReference = ConcreteFieldReference | AggregateFieldReference;
 
