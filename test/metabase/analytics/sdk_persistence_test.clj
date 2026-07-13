@@ -6,8 +6,15 @@
   this namespace covers the request -> `query_execution` row contract."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(defn- venues-query [limit]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/limit limit))))
 
 (defn- latest-query-execution [embedding-client]
   (t2/select-one :model/QueryExecution
@@ -21,7 +28,7 @@
                             {:request-options
                              {:headers {"x-metabase-client"            "data-app"
                                         "x-metabase-client-identifier" "sales"}}}
-                            (mt/mbql-query venues {:limit 1}))
+                            (venues-query 1))
       (is (=? {:embedding_client            "data-app"
                :embedding_client_identifier "sales"}
               (latest-query-execution "data-app"))))
@@ -31,7 +38,7 @@
                              {:headers {"x-metabase-client"            "data-app"
                                         "x-metabase-client-identifier" "sales"
                                         "x-metabase-embedded-preview"  "true"}}}
-                            (mt/mbql-query venues {:limit 2}))
+                            (venues-query 2))
       (is (=? {:embedding_client            "data-app-preview"
                :embedding_client_identifier "sales"}
               (latest-query-execution "data-app-preview"))))))
