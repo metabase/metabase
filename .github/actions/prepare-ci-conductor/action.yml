@@ -1,0 +1,52 @@
+name: Prepare CI Conductor
+description: >-
+  Make the ci-conductor sources runnable in the workspace.
+  Unless the checkout is headed for master, they are overlaid from master, so every
+  branch runs the latest scripts while its workflow wiring stays branch-historical.
+
+runs:
+  using: composite
+  steps:
+    - name: Detect bun
+      id: bun
+      shell: bash
+      run: |
+        if command -v bun >/dev/null; then
+          echo "present=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "present=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Install bun
+      if: steps.bun.outputs.present != 'true'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      with:
+        bun-version-file: "package.json"
+        token: ${{ github.token }}
+
+    # Anything headed for master runs master's own sources, so a PR can test its own changes.
+    - name: Fetch ci-conductor sources from master
+      if: ${{ github.base_ref != 'master' && github.ref_name != 'master' }}
+      uses: actions/checkout@v6
+      with:
+        repository: metabase/metabase
+        ref: master
+        path: .ci-conductor-master
+        persist-credentials: false
+        sparse-checkout-cone-mode: false
+        sparse-checkout: |
+          release/ci-conductor
+          e2e/support/ci_conductor.ts
+
+    # e2e/support/config.js and e2e/support/ci_conductor.ts resolve these by relative
+    # path at bundle time, so the sources have to land where the branch expects them.
+    - name: Overlay ci-conductor sources from master
+      if: ${{ github.base_ref != 'master' && github.ref_name != 'master' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        rm -rf release/ci-conductor
+        mv .ci-conductor-master/release/ci-conductor release/ci-conductor
+        mv .ci-conductor-master/e2e/support/ci_conductor.ts e2e/support/ci_conductor.ts
+        rm -rf .ci-conductor-master
+        echo "Overlaid ci-conductor sources from master."
