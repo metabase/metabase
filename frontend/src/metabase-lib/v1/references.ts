@@ -36,6 +36,7 @@ export const isTemplateTagReference = (
 
 export const createFieldReference = (
   columnNameOrFieldId: string | FieldId,
+  // Unjustified type cast. FIXME
 ): FieldReference => ["field", columnNameOrFieldId, null] as FieldReference;
 
 export const isValidDimensionReference = (
@@ -83,6 +84,7 @@ export const getNormalizedDimensionReference = (
     isExpressionReference(mbql) ||
     isAggregationReference(mbql)
   ) {
+    // Unjustified type cast. FIXME
     const normalizedReference = [...mbql] as DimensionReference;
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
@@ -97,6 +99,7 @@ const getDimensionReferenceWithoutOptions = (
   mbql: DimensionReferenceWithOptions,
   optionsKeysToOmit: string[],
 ): DimensionReferenceWithOptions => {
+  // Unjustified type cast. FIXME
   const newReference = mbql.slice() as DimensionReferenceWithOptions;
   const options = newReference[2];
 

@@ -39,6 +39,7 @@ describe("Remote Sync", () => {
           query: {
             "source-table": PRODUCTS_ID,
           },
+          // Unjustified type cast. FIXME
           collection_id: (syncedCollection as unknown as Collection).id,
         });
       });

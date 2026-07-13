@@ -196,6 +196,7 @@ const UploadTableRow = ({
         <Link
           to={
             Urls.modelToUrl({
+              // Unjustified type cast. FIXME
               id: item.id as number,
               name: item.name,
               model: "table",

@@ -856,7 +856,7 @@
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (concat
         ;; Extract field dependencies from dimension template tags
-        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
+        (for [{tag-type :type, [dim-tag _opts id] :dimension} (:template-tags base-stage)
               :when                                           (and (= tag-type :dimension)
                                                                    (= dim-tag :field)
                                                                    (integer? id))]
@@ -872,7 +872,7 @@
                (query-dependents-snippets metadata-providerable snippet-id #{})
                ;; If we don't have a real metadata provider, just return the direct dependency
                [{:type :native-query-snippet, :id snippet-id}])))
-         (vals (:template-tags base-stage)))))
+         (:template-tags base-stage))))
      (when-let [card-id (:source-card base-stage)]
        (let [card       (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]

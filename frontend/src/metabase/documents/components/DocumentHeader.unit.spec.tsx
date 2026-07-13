@@ -33,6 +33,7 @@ const setup = ({
   onToggleBookmark = jest.fn(),
   onArchive = jest.fn(),
   onShowHistory = jest.fn(),
+  // Unjustified type cast. FIXME
   printContext = undefined as PrintContextValue | undefined,
 } = {}) => {
   const props = {
@@ -68,6 +69,7 @@ const setup = ({
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: {
+        // Unjustified type cast. FIXME
         values: {
           "enable-public-sharing": isPublicSharingEnabled,
         } as any,

@@ -12,6 +12,10 @@ import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { FormProvider } from "metabase/forms";
+import {
+  trackTransformIndexCreated,
+  trackTransformIndexUpdated,
+} from "metabase/transforms/analytics";
 import { type ComboboxItem, Modal, Text } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type {
@@ -93,16 +97,30 @@ export function IndexEditorModal({
     try {
       if (isEditing) {
         await updateTableIndex({ id: request.id, structured }).unwrap();
+        trackTransformIndexUpdated({
+          transformId: transform.id,
+          kind,
+          result: "success",
+        });
         sendToast({ message: t`Index updated` });
       } else {
         await createTableIndex({
           transform_id: transform.id,
           structured,
         }).unwrap();
+        trackTransformIndexCreated({
+          transformId: transform.id,
+          kind,
+          result: "success",
+        });
         sendToast({ message: t`Index created` });
       }
       onClose();
     } catch (submitError) {
+      const trackFailure = isEditing
+        ? trackTransformIndexUpdated
+        : trackTransformIndexCreated;
+      trackFailure({ transformId: transform.id, kind, result: "failure" });
       sendToast({
         message: getErrorMessage(submitError, t`Failed to save index`),
         icon: "warning",

@@ -134,6 +134,7 @@ describe("column settings", () => {
         NUMBER_COLUMN_SETTINGS.currency_in_header?.getProps,
       );
 
+      // Unjustified type cast. FIXME
       const { options, onChange } = getProps(
         createMockColumn(),
         {},

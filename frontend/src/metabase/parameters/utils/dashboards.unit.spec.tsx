@@ -325,6 +325,7 @@ describe("metabase/parameters/utils/dashboards", () => {
   });
 
   describe("getFilteringParameterValuesMap", () => {
+    // Unjustified type cast. FIXME
     const undefinedFilteringParameters = {} as UiParameter;
     const emptyFilteringParameters = createMockUiParameter({
       filteringParameters: [],

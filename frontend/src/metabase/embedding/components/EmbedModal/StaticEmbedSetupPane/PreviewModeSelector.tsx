@@ -22,11 +22,13 @@ const CODE_PREVIEW_CONTROL_OPTIONS = [
   {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: <ControlOptionItem label={t`Code`} iconName="embed" />,
+    // Unjustified type cast. FIXME
     value: "code" as ActivePreviewPane,
   },
   {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: <ControlOptionItem label={t`Preview`} iconName="eye_filled" />,
+    // Unjustified type cast. FIXME
     value: "preview" as ActivePreviewPane,
   },
 ];

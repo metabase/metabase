@@ -112,6 +112,7 @@ describe("MetabotAppBarButton", () => {
   it("should toggle metabot visibility when clicked", async () => {
     const { store } = setup({ isMetabotEnabled: true });
 
+    // Unjustified type cast. FIXME
     const initialState = store.getState() as any;
     expect(initialState.metabot.conversations.omnibot.visible).toBe(false);
 
@@ -119,6 +120,7 @@ describe("MetabotAppBarButton", () => {
       await screen.findByRole("button", { name: /Chat with Metabot/ }),
     );
 
+    // Unjustified type cast. FIXME
     const newState = store.getState() as any;
     expect(newState.metabot.conversations.omnibot.visible).toBe(true);
   });

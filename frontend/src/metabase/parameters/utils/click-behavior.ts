@@ -204,6 +204,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
 }
 
 function getTargetsForNativeQuestion(question: Question): Target[] {
+  // Unjustified type cast. FIXME
   const legacyNativeQuery = question.legacyNativeQuery() as NativeQuery;
 
   return [
@@ -529,6 +530,7 @@ function getParameter(
     (clickBehavior.linkType === "dashboard" ||
       clickBehavior.linkType === "question")
   ) {
+    // Unjustified type cast. FIXME
     const dashboardId = clickBehavior.targetId as DashboardId;
     const parameters =
       extraData.dashboard?.id === dashboardId

@@ -97,5 +97,6 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
+    // Unjustified type cast. FIXME
   )(FieldListContainer as unknown as React.ComponentType<InjectedRouteProps>),
 );

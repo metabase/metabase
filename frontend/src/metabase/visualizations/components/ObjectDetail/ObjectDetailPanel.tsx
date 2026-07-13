@@ -163,6 +163,7 @@ export function ObjectDetailPanel({
       _.isEmpty(table.fks) &&
       !isVirtualCardId(table.id)
     ) {
+      // Unjustified type cast. FIXME
       fetchTableFks?.(table.id as ConcreteTableId);
     }
   });

@@ -120,10 +120,12 @@ describe("metabot > ui", () => {
 
       await assertVisible();
       act(() => {
+        // Unjustified type cast. FIXME
         store.dispatch(logout(undefined) as any);
       });
       await assertNotVisible();
     } finally {
+      // Unjustified type cast. FIXME
       (domModule.reload as any).mockRestore();
     }
   });

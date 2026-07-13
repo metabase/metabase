@@ -61,6 +61,7 @@ export interface FilterColumnPickerProps {
 }
 
 export const isSegmentListItem = (item: Item): item is SegmentListItem => {
+  // Unjustified type cast. FIXME
   return (item as SegmentListItem).segment != null;
 };
 

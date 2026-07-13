@@ -30,6 +30,7 @@ const defaultProps = {
   onSubmit: jest.fn(),
   onStop: jest.fn(),
   suggestionConfig: {
+    // Unjustified type cast. FIXME
     suggestionModels: [
       "table",
       "database",
@@ -42,6 +43,7 @@ const defaultProps = {
 
 // "fetch-mock" can accept an array, the types are incorrect
 const asFetchMockModelParams = (models: string[]) =>
+  // Unjustified type cast. FIXME
   models as unknown as string;
 
 const setup = (

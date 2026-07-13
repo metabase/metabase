@@ -101,6 +101,7 @@ describe("remapParameterValuesToTemplateTags", () => {
       "dashboard-parameter-4": "ddd",
     };
 
+    // Unjustified type cast. FIXME
     const dashboardParameters = [
       {
         id: "dashboard-parameter-1",
@@ -123,6 +124,7 @@ describe("remapParameterValuesToTemplateTags", () => {
       },
     ] as any;
 
+    // Unjustified type cast. FIXME
     const templateTags = [
       { name: "template-tag-1" },
       { name: "template-tag-2" },
