@@ -15,16 +15,14 @@
                                                {:scan_id      "round-trip"
                                                 :entity_type  :card
                                                 :entity_id    1
-                                                :finding_type :slow
-                                                :duration_ms  25000
-                                                :details      {:threshold_ms 15000}}))
+                                                :finding_type :stale
+                                                :details      {:threshold_days 90}}))
           row (t2/select-one :model/ContentDiagnosticsFinding :id fid)]
-      (testing "keyword + JSON transforms round-trip; duration_ms persists; detected_at defaults; rows start active"
+      (testing "keyword + JSON transforms round-trip; detected_at defaults; rows start active"
         (is (=? {:scan_id        "round-trip"
                  :entity_type    :card
-                 :finding_type   :slow
-                 :duration_ms    25000
-                 :details        {:threshold_ms 15000}
+                 :finding_type   :stale
+                 :details        {:threshold_days 90}
                  :detected_at    some?
                  :invalidated_at nil}
                 row)))
@@ -35,3 +33,9 @@
 (deftest stale-threshold-setting-default-test
   (testing "the staleness window defaults to 90 days"
     (is (= 90 (cd.settings/content-diagnostics-stale-threshold-days)))))
+
+(deftest slow-threshold-setting-defaults-test
+  (testing "the slow-card query-time threshold defaults to 15 seconds"
+    (is (= 15 (cd.settings/content-diagnostics-slow-card-threshold-seconds))))
+  (testing "the slow-transform run-time threshold defaults to 60 seconds"
+    (is (= 60 (cd.settings/content-diagnostics-slow-transform-threshold-seconds)))))
