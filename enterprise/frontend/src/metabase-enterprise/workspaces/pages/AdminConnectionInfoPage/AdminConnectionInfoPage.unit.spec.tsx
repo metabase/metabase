@@ -19,6 +19,7 @@ function setup({ database }: { database: Database }) {
       component={() => (
         <AdminConnectionInfoPage
           params={{ databaseId: String(database.id) }}
+          // Unjustified type cast. FIXME
           route={{ path: "/" } as unknown as Route}
         />
       )}

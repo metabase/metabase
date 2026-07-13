@@ -124,6 +124,7 @@ function SeparatorInput({
         onBlur={handleBlur}
         styles={{
           input: {
+            // Unjustified type cast. FIXME
             fontFamily: fontFamilyMonospace as string,
           },
         }}

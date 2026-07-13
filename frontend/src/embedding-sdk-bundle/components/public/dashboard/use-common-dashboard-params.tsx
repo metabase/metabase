@@ -68,6 +68,7 @@ export const useCommonDashboardParams = ({
           parameterValues,
           nextCard,
           previousCard,
+          // Unjustified type cast. FIXME
           dashcard: dashcard as QuestionDashboardCard,
           objectId,
         });

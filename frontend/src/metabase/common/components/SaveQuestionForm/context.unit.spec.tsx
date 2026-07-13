@@ -390,6 +390,7 @@ describe("SaveQuestionContext", () => {
 describe("FormValuesPatcher", () => {
   const setValuesSpy = jest.fn();
   const setup = (initialValue: unknown) => {
+    // Unjustified type cast. FIXME
     jest.spyOn(formik, "useFormikContext").mockReturnValue({
       values: initialValue,
       setValues: setValuesSpy,

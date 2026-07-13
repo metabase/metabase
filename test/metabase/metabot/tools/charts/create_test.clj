@@ -30,7 +30,7 @@
     (let [queries-state {"q-456" {:query-id "q-456"
                                   :sql "SELECT COUNT(*) FROM users"
                                   :database 1}}]
-      (doseq [chart-type [:line :pie :table :scatter :area]]
+      (doseq [chart-type [:line :pie :table :scatter :area :treemap]]
         (let [result (create-chart/create-chart
                       {:query-id "q-456"
                        :chart-type chart-type

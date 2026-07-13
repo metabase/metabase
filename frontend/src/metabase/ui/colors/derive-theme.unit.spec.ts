@@ -106,9 +106,11 @@ describe("deriveFullMetabaseTheme", () => {
     //accent 1 should be default
     expect(derived.colors["accent1"]).toBe(METABASE_LIGHT_THEME.chartColors[1]);
     expect(derived.colors["accent1-light"]).toBe(
+      // Unjustified type cast. FIXME
       deriveChartTintColor(METABASE_LIGHT_THEME.chartColors[1] as string),
     );
     expect(derived.colors["accent1-dark"]).toBe(
+      // Unjustified type cast. FIXME
       deriveChartShadeColor(METABASE_LIGHT_THEME.chartColors[1] as string),
     );
 

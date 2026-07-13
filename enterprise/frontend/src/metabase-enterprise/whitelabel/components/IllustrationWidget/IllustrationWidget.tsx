@@ -90,6 +90,7 @@ export function IllustrationWidget({
   const type = getIllustrationType(name);
   const options = SELECT_OPTIONS[type];
   const customIllustrationSettingName =
+    // Unjustified type cast. FIXME
     `${name}-custom` as EnterpriseSettingKey;
   const {
     value: settingValue,
@@ -138,6 +139,7 @@ export function IllustrationWidget({
 
       const reader = new FileReader();
       reader.onload = async (readerEvent) => {
+        // Unjustified type cast. FIXME
         const dataUri = readerEvent.target?.result as string;
         if (!(await isFileIntact(dataUri))) {
           setErrorMessage(
@@ -198,6 +200,7 @@ export function IllustrationWidget({
           >
             {getPreviewImage({
               value: localValue,
+              // Unjustified type cast. FIXME
               customSource: customIllustrationSource as string,
               defaultPreviewType: type,
             })}
@@ -212,6 +215,7 @@ export function IllustrationWidget({
                 value={settingValue}
                 options={options}
                 onChange={(newValue) =>
+                  // Unjustified type cast. FIXME
                   handleChange(newValue as IllustrationSettingValue)
                 }
               />

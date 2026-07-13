@@ -139,6 +139,7 @@ const setup = ({
   renderWithProviders(
     <TestWrapper
       command={command}
+      // Unjustified type cast. FIXME
       editor={editor as unknown as Editor}
       query={query}
       items={[]}
@@ -370,6 +371,7 @@ describe("CommandSuggestion", () => {
     renderWithProviders(
       <TestWrapper
         command={command}
+        // Unjustified type cast. FIXME
         editor={editor as unknown as Editor}
         query=""
         items={[]}
@@ -411,6 +413,7 @@ describe("CommandSuggestion", () => {
     renderWithProviders(
       <TestWrapper
         command={command}
+        // Unjustified type cast. FIXME
         editor={editor as unknown as Editor}
         query=""
         items={[]}

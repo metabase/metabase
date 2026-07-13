@@ -98,6 +98,7 @@ export function getEmbeddingColorPalette(
     Object.entries(sdkColors)
       .flatMap(([key, value]) => {
         const themeColorNames =
+          // Unjustified type cast. FIXME
           SDK_TO_MAIN_APP_COLORS_MAPPING[key as MappableSdkColor];
         if (themeColorNames) {
           return themeColorNames.map((mappedColor) => [mappedColor, value]);
@@ -134,6 +135,7 @@ export function setGlobalEmbeddingColors(
   const combinedThemeColors = getEmbeddingColorPalette(sdkColors, appPalette);
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
+    // Unjustified type cast. FIXME
     colors[key as ColorName] = value;
   });
 
@@ -143,7 +145,9 @@ export function setGlobalEmbeddingColors(
    * Otherwise, previously modified colors will persist, and won't be reset to default values.
    */
   Object.keys(colors).forEach((key) => {
+    // Unjustified type cast. FIXME
     if (!combinedThemeColors[key as ColorName]) {
+      // Unjustified type cast. FIXME
       delete colors[key as ColorName];
     }
   });

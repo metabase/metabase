@@ -3,7 +3,6 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import {
   skipToken,
   useListPermissionsGroupsQuery,
@@ -15,6 +14,7 @@ import {
 } from "metabase/common/components/Breadcrumbs";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {

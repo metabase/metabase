@@ -179,6 +179,7 @@ describe("FontWidget", () => {
     });
 
     it("should remove a font file", async () => {
+      // Unjustified type cast. FIXME
       const customFonts = [
         {
           src: "https://myfonts.com/abc.png",

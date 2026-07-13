@@ -1,15 +1,12 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
-   [clojure.string :as str]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util.log :as log])
-  (:import
-   (org.graalvm.polyglot PolyglotException)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,9 +64,9 @@
                       driver {:table table
                               :schema (or table-schema default-schema)}))))
             query-tables))
-    (catch PolyglotException e
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         #{}
         (throw e)))))
 
@@ -152,9 +149,9 @@
       (mapv (fn [[_catalog schema table]]
               {:schema schema :table table})
             table-tuples))
-    (catch PolyglotException e
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         []
         (throw e)))))
 

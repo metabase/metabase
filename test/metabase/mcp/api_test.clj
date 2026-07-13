@@ -749,9 +749,12 @@
                     _              (reset! dash-id (:id dash-data))
                     _              (is (= (format "https://stats.metabase.test/dashboard/%d" @dash-id)
                                           (:url dash-data)))
-                    _              (call-tool session-id "update_dashboard"
+                    dash-update    (call-tool session-id "update_dashboard"
                                               {:id          (:id dash-data)
-                                               :description "Smoke updated dashboard"})
+                                               :description "Smoke updated dashboard"
+                                               :dashcards   [{:action "add_heading" :text "Smoke Section"}
+                                                             {:action "add_text" :text "Smoke *narrative*"}]})
+                    _              (is (= 2 (count (:dashcard_ids dash-update))))
                     coll-data      (call-tool session-id "create_collection"
                                               {:name "Smoke Collection"})]
                 (reset! coll-id (:id coll-data)))

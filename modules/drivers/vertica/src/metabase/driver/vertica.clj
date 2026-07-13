@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :vertica, :parent #{:sql-jdbc
+(driver/register! :vertica, :parent #{:sql-mbql5 :sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 

@@ -276,6 +276,7 @@ export class Scalar extends Component<
                 gridSize={gridSize}
                 height={Math.max(height - PADDING * 2, 0)}
                 totalNumGridCols={totalNumGridCols}
+                // Unjustified type cast. FIXME
                 value={displayValue as string}
                 width={Math.max(width - PADDING, 0)}
               />

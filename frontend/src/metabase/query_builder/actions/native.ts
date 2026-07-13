@@ -122,6 +122,7 @@ export const insertSnippet =
     if (!question) {
       return;
     }
+    // Unjustified type cast. FIXME
     const query = question.legacyNativeQuery() as NativeQuery;
     const queryText = query.queryText();
     const nativeEditorCursorOffset =
@@ -147,6 +148,7 @@ export const setTemplateTag = createThunkAction(
       if (!question) {
         return;
       }
+      // Unjustified type cast. FIXME
       const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTag(tag.name, tag).question();
       dispatch(updateQuestion(newQuestion));
@@ -163,6 +165,7 @@ export const setTemplateTagConfig = createThunkAction(
       if (!question) {
         return;
       }
+      // Unjustified type cast. FIXME
       const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query
         .setTemplateTagConfig(tag, parameterConfig)

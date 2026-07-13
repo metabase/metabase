@@ -121,11 +121,13 @@ export const CommentEditor = ({
         const doc = editor.getText();
         setContent(doc);
         if (onChange) {
+          // Unjustified type cast. FIXME
           onChange(editor.getJSON() as DocumentContent);
         }
       },
       onBlur: ({ editor }) => {
         if (onBlur) {
+          // Unjustified type cast. FIXME
           onBlur(editor.getJSON() as DocumentContent, editor);
         }
       },
@@ -144,6 +146,7 @@ export const CommentEditor = ({
   }
 
   const submitDoc = () => {
+    // Unjustified type cast. FIXME
     const content = editor.getJSON() as DocumentContent;
     const isEmpty = editor.isEmpty;
 

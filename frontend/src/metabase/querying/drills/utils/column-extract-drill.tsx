@@ -39,6 +39,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
     );
 
     function handleClick(action: RegularClickAction) {
+      // Unjustified type cast. FIXME
       const { extraction } = action.extra?.() as {
         extraction: Lib.ColumnExtraction;
       };

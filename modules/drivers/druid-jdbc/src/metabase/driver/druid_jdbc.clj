@@ -165,7 +165,7 @@
   [driver [_ opts id-or-name :as clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
         identifier    (parent-method driver clause)]
     (if-not (driver-api/json-field? stored-field)
       identifier

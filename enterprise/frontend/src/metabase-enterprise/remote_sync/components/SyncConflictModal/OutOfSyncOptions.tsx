@@ -98,6 +98,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     <Box mt="xl">
       <Text fw="bold" mb="sm" pb="xs">{t`Choose how to proceed:`}</Text>
       <Radio.Group
+        // Unjustified type cast. FIXME
         onChange={(value) => handleOptionChange(value as OptionValue)}
         value={optionValue}
       >

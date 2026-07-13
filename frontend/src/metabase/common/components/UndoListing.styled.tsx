@@ -22,12 +22,14 @@ export const CardContent = styled.div`
   justify-content: space-between;
 `;
 
+// Unjustified type cast. FIXME
 export const CardContentSide = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   overflow: hidden;
 ` as unknown as typeof Box;
 
+// Unjustified type cast. FIXME
 export const ControlsCardContent = styled(CardContentSide)`
   flex-shrink: 0;
 ` as unknown as typeof Box;

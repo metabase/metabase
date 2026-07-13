@@ -53,6 +53,7 @@ describe("useMcpFeedback", () => {
       { method: "POST" },
     );
 
+    // Unjustified type cast. FIXME
     expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
       feedback: {
         positive: false,

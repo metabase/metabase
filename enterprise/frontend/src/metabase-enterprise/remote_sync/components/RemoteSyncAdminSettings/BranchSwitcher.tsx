@@ -81,6 +81,7 @@ export const BranchSwitcher = ({
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
     } catch (error) {
       const { hasBranchMismatch, errorMessage } = parseSyncError(
+        // Unjustified type cast. FIXME
         error as SyncError,
       );
       if (hasBranchMismatch) {

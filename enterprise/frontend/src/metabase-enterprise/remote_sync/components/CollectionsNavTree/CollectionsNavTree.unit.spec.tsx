@@ -41,6 +41,7 @@ const setupEndpoints = ({
 const setup = ({
   collections = [createMockCollectionTreeItem()],
   collectionsList = [createMockCollectionTreeItem()],
+  // Unjustified type cast. FIXME
   dirtyCollectionIds = [] as number[],
 }: {
   collections?: Collection[];
@@ -60,6 +61,7 @@ const setup = ({
       path="/"
       component={() => (
         <CollectionsNavTree
+          // Unjustified type cast. FIXME
           collections={collections as any}
           selectedId={undefined}
           onSelect={jest.fn()}

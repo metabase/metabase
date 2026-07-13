@@ -186,7 +186,9 @@ export const addDataSource = createAsyncThunk(
         fetchCardQuery({ cardId: sourceId }),
       );
 
+      // Unjustified type cast. FIXME
       const card = cardAction.payload as Card;
+      // Unjustified type cast. FIXME
       dataset = cardQueryAction.payload as Dataset;
       vizSettings = card.visualization_settings || null;
 
@@ -416,12 +418,14 @@ const visualizerSlice = createSlice({
             state,
             columnRef,
             originalColumn,
+            // Unjustified type cast. FIXME
             dataset as Dataset,
             dataSource,
           );
         }
 
         if (isDimension && column.id) {
+          // Unjustified type cast. FIXME
           const datasetMap = _.omit(state.datasets, dataSource.id) as Record<
             string,
             Dataset
@@ -606,8 +610,10 @@ const visualizerSlice = createSlice({
 
         // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
+          // Unjustified type cast. FIXME
           state.cards[index] = card as any;
         } else {
+          // Unjustified type cast. FIXME
           state.cards.push(card as any);
         }
 
