@@ -40,7 +40,7 @@ export const metabotApi = Api.injectEndpoints({
         url: "/api/metabot/settings",
         params: { provider },
       }),
-      providesTags: () => [listTag("llm-models"), "session-properties"],
+      providesTags: () => [listTag("llm-models")],
     }),
     updateMetabotSettings: builder.mutation<
       MetabotSettingsResponse,
@@ -52,7 +52,7 @@ export const metabotApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("llm-models"), "session-properties"]),
+        invalidateTags(error, ["session-properties"]),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
