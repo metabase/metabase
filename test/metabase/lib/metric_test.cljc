@@ -303,3 +303,94 @@
       (let [query (lib/query metadata-provider-with-cards (card-key (lib.tu/mock-cards)))]
         (is (not (lib/uses-metric? query metric-id)))
         (is (nil? (lib.metric/available-metrics (lib/append-stage query))))))))
+
+(defn- referencing-metric-card
+  "A mock metric card whose definition has `aggregation` as its single aggregation."
+  [id card-name aggregation]
+  {:id            id
+   :name          card-name
+   :type          :metric
+   :database-id   (meta/id)
+   :table-id      (meta/id :venues)
+   :dataset-query {:database (meta/id)
+                   :type     :query
+                   :query    {:source-table (meta/id :venues)
+                              :aggregation  [aggregation]}}})
+
+(defn- query-aggregating-metric
+  "A query on `VENUES` aggregating `[:metric id]`, with `cards` served by the metadata provider."
+  [cards id]
+  (-> (lib/query (lib.tu/mock-metadata-provider meta/metadata-provider {:cards cards})
+                 (meta/table-metadata :venues))
+      (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} id])))
+
+(defn- returned-columns-error
+  "The error thrown by [[lib/returned-columns]] on `query`, or nil if it computed successfully."
+  [query]
+  (try
+    (lib/returned-columns query)
+    nil
+    (catch #?(:clj Exception :cljs js/Error) e
+      e)))
+
+(deftest ^:parallel metric-metadata-mutual-reference-cycle-test
+  (testing "computing metadata for a metric whose references form a mutual cycle throws a cycle error (#74954)"
+    (let [query (query-aggregating-metric
+                 [(referencing-metric-card 1 "Metric A" [:metric 2])
+                  (referencing-metric-card 2 "Metric B" [:metric 1])]
+                 1)
+          e     (returned-columns-error query)]
+      (is (some? e))
+      (is (re-find #"Metric cycle detected" (ex-message e)))
+      (is (= [1 2 1]
+             (:cycle-path (ex-data e)))))))
+
+(deftest ^:parallel metric-metadata-self-reference-cycle-test
+  (testing "computing metadata for a metric that references itself throws a cycle error (#74954)"
+    (let [query (query-aggregating-metric
+                 [(referencing-metric-card 1 "Metric A" [:metric 1])]
+                 1)
+          e     (returned-columns-error query)]
+      (is (some? e))
+      (is (re-find #"Metric cycle detected" (ex-message e)))
+      (is (= [1 1]
+             (:cycle-path (ex-data e)))))))
+
+(deftest ^:parallel metric-metadata-reference-chain-test
+  (testing "an acyclic metric reference chain computes metadata, named for the outermost metric"
+    (let [query (query-aggregating-metric
+                 [(referencing-metric-card 1 "Metric A" [:metric 2])
+                  (referencing-metric-card 2 "Metric B" [:count])]
+                 1)]
+      (is (=? [{:name         "count"
+                :display-name "Metric A"}]
+              (lib/returned-columns query))))))
+
+(deftest ^:parallel metric-metadata-reference-diamond-test
+  (testing "two sibling metrics referencing the same base metric both compute metadata"
+    (let [cards [(referencing-metric-card 3 "Base Metric" [:count])
+                 (referencing-metric-card 1 "Left Metric" [:metric 3])
+                 (referencing-metric-card 2 "Right Metric" [:metric 3])]
+          query (-> (query-aggregating-metric cards 1)
+                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 2]))]
+      (is (=? [{:name         "count"
+                :display-name "Left Metric"}
+               {:name         "count_2"
+                :display-name "Right Metric"}]
+              (lib/returned-columns query))))))
+
+#?(:clj
+   (deftest ^:parallel check-card-overwrite-rejects-metric-cycle-test
+     (testing "saving a metric whose :metric refs would close a cycle is rejected up front (#74954)"
+       ;; the write-time counterpart to the read-time `check-metric-cycle!` guard: the card API rejects cyclic saves,
+       ;; so the read-time guard only has to backstop non-API paths (serdes, remote sync, direct writes).
+       (let [mp        (lib.tu/mock-metadata-provider
+                        meta/metadata-provider
+                        {:cards [(referencing-metric-card 1 "Metric A" [:metric 2])
+                                 (referencing-metric-card 2 "Metric B" [:metric 1])]})
+             new-query (lib/query mp {:database (meta/id)
+                                      :type     :query
+                                      :query    {:source-table (meta/id :venues)
+                                                 :aggregation  [[:metric 2]]}})]
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot save card with cycles"
+                               (lib/check-card-overwrite 1 new-query)))))))
