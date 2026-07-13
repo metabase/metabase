@@ -1,8 +1,8 @@
 name: Schedule Release - Auto Minor
 
 on:
-  # schedule:
-  #   - cron: "0 13 * * 2" # every Tuesday at 13:00 UTC (8 am EST / 9 am EDT)
+  schedule:
+    - cron: "0 13 * * 2" # every Tuesday at 13:00 UTC (8 am EST / 9 am EDT)
 
 permissions:
   actions: write
