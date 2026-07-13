@@ -266,6 +266,15 @@ The implementation lives in these files:
 - **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
   `::unrestricted` sentinel for session-based auth.
 
+- **[`../documents/prose_mirror_markdown.clj`](../documents/prose_mirror_markdown.clj)** - The Markdown
+  documents are read and written as. Documents store ProseMirror JSON, and agents are fluent in Markdown
+  and terrible at hand-writing ProseMirror trees, so the conversion runs server-side, in the documents
+  module rather than this one. It also owns the splice `document_write` edits go through: serialize the
+  AST with a source map, locate the `old_str`, and re-parse *only* the blocks the match overlaps. Every
+  other block keeps its node, its `_id`, and the attrs the Markdown doesn't express — which is what keeps
+  the comment threads anchored to those blocks (`child_target_id`, a plain string with no FK) from
+  silently orphaning. The threads the edit *did* orphan are named back to the caller.
+
 ### Request flow
 
 ```

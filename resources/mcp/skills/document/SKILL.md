@@ -21,17 +21,37 @@ your edits anchor against.
  "content_markdown": "## What happened\n\nRevenue grew 12% quarter over quarter, driven by the\nenterprise segment.\n\n{% card id=118 name=\"Revenue by month\" %}\n\nSee also {% entity id=42 model=\"dashboard\" %} for the weekly view.\n"}
 ```
 
-The dialect is CommonMark — headings, lists, tables, code fences, links — plus two tokens:
+The dialect is CommonMark — headings, lists, code fences, quotes, links, images, and the `**bold**`
+`*italic*` `~~strike~~` `` `code` `` marks — plus two tokens:
 
 - `{% card id=118 name="Revenue by month" %}` — a **block** embed of a saved question. It renders the
-  live chart, so it re-runs whenever someone opens the document.
+  live chart, so it re-runs whenever someone opens the document. It owns its whole line.
 - `{% entity id=42 model="dashboard" %}` — an **inline** smart link to another entity (`question`,
-  `model`, `metric`, `dashboard`, `document`, `collection`).
+  `model`, `metric`, `dashboard`, `document`, `collection`). Add `label="…"` to choose the text it
+  renders as.
 
 Both reference content that already exists. A chart the document needs but the instance doesn't have is
-a `question_write` first, then an embed of the id it returns. Layout containers (side-by-side columns,
-resized blocks) round-trip through their own tokens; write plain Markdown unless you're editing a
-document that already has them.
+a `question_write` first, then an embed of the id it returns.
+
+Documents have no tables. A Markdown table degrades to a paragraph of pipes — make the tabular thing a
+question and embed it.
+
+Side-by-side layout has its own tokens. Write plain Markdown unless the user asks for columns, or you're
+editing a document that already has them:
+
+```markdown
+{% columns widths=[50,50] %}
+{% column %}
+Revenue held up through the quarter.
+{% /column %}
+{% column %}
+{% card id=118 name="Revenue by month" %}
+{% /column %}
+{% /columns %}
+```
+
+A column holds either prose or a single card embed, and there are at most three of them. `height=442` on
+a `{% card %}` or `{% columns %}` sets the rendered height in pixels.
 
 ## Editing
 

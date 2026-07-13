@@ -59,6 +59,22 @@
                               (:id entity)
                               (:id comment)))))
 
+(defn threads-anchored-to
+  "The comment threads on a document that are anchored to one of `block-ids`.
+
+  A thread anchors to a block through `child_target_id`, which holds the block's `_id` as a plain string —
+  there is no FK and nothing cleans it up, so a block that gets re-created takes its threads' anchor with
+  it. An edit that touches those blocks orphans these threads."
+  [document-id block-ids]
+  (when (seq block-ids)
+    (t2/select [:model/Comment :id :child_target_id :is_resolved]
+               :target_type      "document"
+               :target_id        document-id
+               :child_target_id  [:in block-ids]
+               :parent_comment_id nil
+               :deleted_at       nil
+               {:order-by [[:id :asc]]})))
+
 (defn mentions
   "Find mentioned users inside of a comment content"
   [content]
