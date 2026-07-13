@@ -42,6 +42,7 @@ export const TreemapChart = ({
   settings,
   fontFamily,
   onVisualizationClick,
+  onRender,
   clicked,
   isDashboard,
   isDocument,
@@ -50,6 +51,11 @@ export const TreemapChart = ({
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
+  );
+
+  const showWarning = useCallback(
+    (warning: string) => onRender({ warnings: [warning] }),
+    [onRender],
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,10 +78,11 @@ export const TreemapChart = ({
       treemapColumns,
       treemapRows,
       settings,
+      showWarning,
     );
     const colors = getTreemapColors(tree, treemapRows);
     return { tree, colors, treemapColumns };
-  }, [rawSeriesWithRemappings, settings]);
+  }, [rawSeriesWithRemappings, settings, showWarning]);
 
   const { viewRootId, viewRootIdRef, setViewRoot } = useTreemapNavigation(
     chartData?.tree ?? null,
