@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupCardEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
@@ -66,10 +66,28 @@ describe("ChartSettingGoalInput", () => {
     expect(onChange).toHaveBeenCalledWith("goal");
   });
 
+  it("opens on the self submenu with the selected column checked when editing a column reference", async () => {
+    setup({ value: "goal", columns: COLUMNS });
+
+    await openMenu();
+
+    // starts on the submenu (Back is present, root items are not)
+    expect(screen.getByRole("menuitem", { name: /Back/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Custom value" }),
+    ).not.toBeInTheDocument();
+
+    const selected = screen.getByRole("menuitem", { name: /Goal/ });
+    expect(
+      within(selected).getByRole("img", { name: /check/ }),
+    ).toBeInTheDocument();
+  });
+
   it("lets you switch back to a custom value", async () => {
     const { onChange } = setup({ value: "goal", columns: COLUMNS });
 
     await openMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: /Back/ }));
     await userEvent.click(
       screen.getByRole("menuitem", { name: "Custom value" }),
     );
@@ -139,10 +157,17 @@ describe("ChartSettingGoalInput", () => {
       await screen.findByRole("img", { name: /gauge/ }),
     ).toBeInTheDocument();
 
-    await openMenu();
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: /another question/ }),
+    await userEvent.hover(screen.getByDisplayValue("Total sum"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Orders · Total sum",
     );
+
+    await openMenu();
+    const selected = await screen.findByRole("menuitem", { name: /Total sum/ });
+    expect(
+      within(selected).getByRole("img", { name: /check/ }),
+    ).toBeInTheDocument();
+
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Average" }),
     );

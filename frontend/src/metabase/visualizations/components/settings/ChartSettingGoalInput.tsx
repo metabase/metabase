@@ -140,6 +140,12 @@ export const ChartSettingGoalInput = ({
       : foreignColumnLabel
     : "";
 
+  const initialMenuLevel: MenuLevel = foreignRef
+    ? "foreign"
+    : isSelfColumnReference
+      ? "self"
+      : "root";
+
   const closeMenu = () => {
     menu.close();
     setMenuLevel("root");
@@ -190,6 +196,7 @@ export const ChartSettingGoalInput = ({
       opened={isMenuOpen}
       onChange={(opened) => {
         if (opened) {
+          setMenuLevel(initialMenuLevel);
           menu.open();
         } else {
           closeMenu();
@@ -242,6 +249,10 @@ export const ChartSettingGoalInput = ({
             {selfColumns.map((column) => (
               <Menu.Item
                 key={column.value}
+                pl={value === column.value ? undefined : "xl"}
+                leftSection={
+                  value === column.value ? <Icon name="check" /> : undefined
+                }
                 onClick={() => selectSelfColumn(column.value)}
               >
                 {column.label}
@@ -272,7 +283,14 @@ export const ChartSettingGoalInput = ({
                   foreignColumns.map((column) => (
                     <Menu.Item
                       key={column.value}
-                      pl="xl"
+                      pl={
+                        foreignRef?.column === column.value ? undefined : "xl"
+                      }
+                      leftSection={
+                        foreignRef?.column === column.value ? (
+                          <Icon name="check" />
+                        ) : undefined
+                      }
                       onClick={() => selectForeignColumn(column.value)}
                     >
                       {column.label}
