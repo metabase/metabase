@@ -215,12 +215,6 @@ jobs:
           script: | # js
             const { githubRunLink, sendSlackReply, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
             const sdkVersion = "${{ needs.read-sdk-release-metadata.outputs.sdk_version }}";
-            // Quoted (not interpolated bare) because this is empty when
-            // read-sdk-release-metadata itself failed - send-slack-notification-start
-            // (which sets this) never ran in that case, so there's no thread
-            // to reply to. An unquoted `messageId: ${{ env.slackMessageId }}`
-            // would render as `messageId: ,` here - a JS syntax error - which
-            // is exactly the scenario this failure job exists to alert on.
             const messageId = "${{ env.slackMessageId }}";
 
             const runLink = githubRunLink(
@@ -282,7 +276,7 @@ jobs:
             sendSlackReply({
               channelName: 'team-embedding-releases',
               message: runLink,
-              messageId: ${{ env.slackMessageId}},
+              messageId: "${{ env.slackMessageId }}",
               broadcast: true
             });
 
