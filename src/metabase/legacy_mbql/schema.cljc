@@ -1692,7 +1692,10 @@
 
   Map of template tag name -> template tag definition"
   [:and
-   [:map-of ::lib.schema.common/non-blank-string [:ref ::TemplateTag]]
+   [:map-of
+    {:decode/normalize #'lib.schema.template-tag/normalize-template-tag-map}
+    ::lib.schema.common/non-blank-string
+    [:ref ::TemplateTag]]
    [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
 
 (defn- remove-empty-keys [m {:keys [non-empty-keys non-nil-keys]}]
