@@ -494,14 +494,14 @@ Call-level, not per-item: one list applied to every item the section means
 something for. A section that does not fit an item's type is skipped for that
 item and named in its `skipped_includes`, rather than erroring the batch.
 
-| Section | Types | Returns |
+| Section | Types | Adds to the element |
 | --- | --- | --- |
-| `definition` | question, model, metric, measure, segment, transform | the query, in the portable dialect the write tools take |
-| `fields` | question, model, metric | the columns the saved question returns |
-| `parameters` | question, model, metric, dashboard | the full filter widgets; a native question's `template_tags` come with them |
-| `layout` | dashboard | the raw dashcards, with visualization settings and parameter mappings |
-| `dimensions` | metric | the columns the metric can be grouped and filtered by |
-| `revisions` | question, model, metric, dashboard, document, measure, segment, transform | the change history; each row's `id` is what `revert_content` takes |
+| `definition` | question, model, metric, measure, segment, transform | `definition` — the query, in the portable dialect the write tools take |
+| `fields` | question, model, metric | `fields` — the columns the saved question returns |
+| `parameters` | question, model, metric, dashboard | `parameters`, and `template_tags` when the question is native |
+| `layout` | dashboard | `layout` — the raw dashcards, with visualization settings and parameter mappings |
+| `dimensions` | metric | `dimensions` — the columns the metric can be grouped and filtered by |
+| `revisions` | question, model, metric, dashboard, document, measure, segment, transform | `revisions` — the change history; each row's `id` is what `revert_content` takes |
 
 `definition` is the one that closes the loop. The stored `dataset_query` speaks
 numeric field refs; `execute_query` and `question_write` speak portable ones. The

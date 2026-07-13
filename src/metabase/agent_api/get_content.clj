@@ -41,8 +41,8 @@
    [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.measures.api :as measures.api]
-   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.content-store :as content-store]
    [metabase.metrics.api :as metrics.api]
    [metabase.native-query-snippets.core :as snippets]
@@ -52,6 +52,7 @@
    [metabase.segments.api :as segments.api]
    [metabase.timeline.core :as timeline]
    [metabase.transforms.core :as transforms]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -90,10 +91,11 @@
   (tools/publish-read-event! :model/Dashboard (dashboards.read/get-dashboard id)))
 
 (defn- read-collection
+  "The collection `id` names. No read event: `GET /api/collection/:id` publishes none — a collection is
+   marked viewed by opening it, which is the item listing `browse_collection` serves, not by reading its
+   name off a batch."
   [id]
-  (let [collection (api/read-check :model/Collection id)]
-    (tools/publish-read-event! :model/Collection collection)
-    (collections/get-collection collection)))
+  (collections/get-collection (api/read-check :model/Collection id)))
 
 (defn- read-timeline
   "A timeline with its events. The events ride the read rather than an include because their ids are the
@@ -116,18 +118,17 @@
   "One dashcard, summarized to what `dashboard_write`'s ops take: which card, where, on which tab, with what
    series and inline parameters. Everything the summary drops — the nested card, its query, its
    visualization settings — is what `include: [\"layout\"]` is for."
-  [{:keys [id card_id dashboard_tab_id row col size_x size_y series] :as dashcard}]
-  (let [inline (get-in dashcard [:visualization_settings :inline_parameters])]
-    (cond-> {:id               id
-             :kind             (dashcard-kind dashcard)
-             :dashboard_tab_id dashboard_tab_id
-             :row              row
-             :col              col
-             :size_x           size_x
-             :size_y           size_y}
-      card_id      (assoc :card_id card_id :card_name (get-in dashcard [:card :name]))
-      (seq series) (assoc :series_card_ids (mapv :id series))
-      (seq inline) (assoc :inline_parameter_ids (vec inline)))))
+  [{:keys [id card_id dashboard_tab_id row col size_x size_y series inline_parameters] :as dashcard}]
+  (cond-> {:id               id
+           :kind             (dashcard-kind dashcard)
+           :dashboard_tab_id dashboard_tab_id
+           :row              row
+           :col              col
+           :size_x           size_x
+           :size_y           size_y}
+    card_id                 (assoc :card_id card_id :card_name (get-in dashcard [:card :name]))
+    (seq series)            (assoc :series_card_ids (mapv :id series))
+    (seq inline_parameters) (assoc :inline_parameter_ids (vec inline_parameters))))
 
 (defn- parameter-row
   "One dashboard parameter, and the dashcards it filters. A parameter wired to nothing is a widget that does
@@ -277,11 +278,11 @@
 
 (defn- definition-section
   [type record]
-  (case type
-    ("question" "model" "metric") (portable-query (:dataset_query record))
-    "measure"                     (portable-clauses (:definition record) "aggregation")
-    "segment"                     (portable-clauses (:definition record) "filters")
-    "transform"                   (portable-query (get-in record [:source :query]))))
+  {:definition (case type
+                 ("question" "model" "metric") (portable-query (:dataset_query record))
+                 "measure"                     (portable-clauses (:definition record) "aggregation")
+                 "segment"                     (portable-clauses (:definition record) "filters")
+                 "transform"                   (portable-query (get-in record [:source :query])))})
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The other include sections
@@ -291,14 +292,14 @@
   "The columns a saved question returns. Not the source table's columns: an aggregation renames them and an
    expression invents them, and it is these names a follow-up query has to reference."
   [record]
-  (tools/project-all "concise" (projections/spec :result-column) (:result_metadata record)))
+  {:fields (tools/project-all "concise" (projections/spec :result-column) (:result_metadata record))})
 
 (defn- parameters-section
   "A question's or dashboard's parameters in full — the widget configuration a concise read summarizes away.
-   A native question's template tags come with them: they are the same filters seen from the SQL side, and
-   an agent editing the SQL needs both to stay in step."
+   A native question's template tags come with them: they are the same filters seen from the SQL side, and an
+   agent editing the SQL needs both to stay in step. A card with no query saved yet has no tags to read."
   [record]
-  (let [template-tags (get-in record [:dataset_query :native :template-tags])]
+  (let [template-tags (some-> record :dataset_query not-empty lib/all-template-tags-map)]
     (cond-> {:parameters (vec (:parameters record))}
       (seq template-tags) (assoc :template_tags template-tags))))
 
@@ -307,14 +308,31 @@
    what `patch_dashcard` edits, and the payload the concise skeleton exists to keep out of every read that
    only wanted the dashboard's name."
   [record]
-  {:dashcards (vec (:dashcards record))
-   :tabs      (vec (:tabs record))})
+  {:layout {:dashcards (vec (:dashcards record))
+            :tabs      (vec (:tabs record))}})
+
+(defn- dimension-row
+  "One queryable dimension, in the property names a REST field record uses. Lib spells its column metadata in
+   kebab-case and calls a field's id `:id`; the tool's vocabulary is the API's, so the names cross back here
+   rather than travelling as a second dialect the agent would have to learn."
+  [column]
+  {:id                 (:id column)
+   :name               (:name column)
+   :display_name       (:display-name column)
+   :description        (:description column)
+   :base_type          (some-> (:base-type column) u/qualified-name)
+   :semantic_type      (some-> (:semantic-type column) u/qualified-name)
+   :table_id           (:table-id column)
+   :fk_target_field_id (:fk-target-field-id column)})
 
 (defn- dimensions-section
-  "The columns a metric can be grouped and filtered by — what a query *using* the metric may break out on.
-   Not the metric's own `dimensions` field, which is its semantic-layer definition and rides the record."
-  [id]
-  (:queryable-dimensions (entity-details/get-metric-details id)))
+  "The columns a metric can be grouped and filtered by — what a query *using* the metric may break out on,
+   its own breakouts removed so the answer is what is reachable rather than what is already chosen. Not the
+   metric's `dimensions` field, which is its semantic-layer definition and rides the record."
+  [record]
+  (let [mp    (lib-be/application-database-metadata-provider (:database_id record))
+        query (lib/query mp (lib.metadata/card mp (:id record)))]
+    {:dimensions (mapv dimension-row (lib/filterable-columns (lib/remove-all-breakouts query)))}))
 
 (def ^:private revision-entities
   "Type → the name the revision system knows it by. A card's three flavors all revise as one entity, which is
@@ -331,13 +349,17 @@
 (defn- revisions-section
   "Who changed this, when, and to what — each row carrying the `id` that `revert_content` takes."
   [type id]
-  (tools/project-all "concise" (projections/spec :revision)
-                     (revisions/revisions+details (revisions/entity->model (revision-entities type)) id)))
+  {:revisions (tools/project-all
+               "concise" (projections/spec :revision)
+               (revisions/revisions+details (revisions/entity->model (revision-entities type)) id))})
 
 (def ^:private sections
-  "Include → the types it means something for, and how to build it. A section asked for on a type it does not
-   fit is skipped for that item and named in its result: one `include` list covers a mixed batch, and
-   erroring the whole batch over a section that fits eight of its ten items would make the mixing pointless."
+  "Include → the types it means something for, and how to build it. A `:build` returns the keys it contributes
+   to the element, which is why `parameters` can hand back a native question's template tags alongside them.
+
+   A section asked for on a type it does not fit is skipped for that item and named in its result: one
+   `include` list covers a mixed batch, and erroring the whole batch over a section that fits eight of its ten
+   items would make the mixing pointless."
   {"definition" {:types #{"question" "model" "metric" "measure" "segment" "transform"}
                  :build (fn [type _id record] (definition-section type record))}
    "fields"     {:types card-types
@@ -347,7 +369,7 @@
    "layout"     {:types #{"dashboard"}
                  :build (fn [_type _id record] (layout-section record))}
    "dimensions" {:types #{"metric"}
-                 :build (fn [_type id _record] (dimensions-section id))}
+                 :build (fn [_type _id record] (dimensions-section record))}
    "revisions"  {:types (set (keys revision-entities))
                  :build (fn [type id _record] (revisions-section type id))}})
 
@@ -367,7 +389,7 @@
   (reduce (fn [element include]
             (let [{:keys [types build]} (sections include)]
               (if (types type)
-                (assoc element (keyword include) (build type id record))
+                (merge element (build type id record))
                 (update element :skipped_includes (fnil conj [])
                         {:include include
                          :message (tru "`{0}` applies to {1}, not to a {2}."

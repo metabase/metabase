@@ -4,6 +4,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.agent-api.get-content :as get-content]
+   [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -159,6 +163,17 @@
         (is (not-any? #(contains? % :visualization_settings) (:dashcards concise)))
         (is (not-any? #(contains? % :card) (:dashcards concise)))))))
 
+(deftest dashboard-skeleton-carries-inline-parameters-test
+  (testing "a parameter placed on a card is wiring the skeleton has to show, or an agent reads it as unattached"
+    (mt/with-temp [:model/Card          card {:name "AgentV2 Card"}
+                   :model/Dashboard     dash {:name "AgentV2 Inline"}
+                   :model/DashboardCard _    {:dashboard_id      (:id dash)
+                                              :card_id           (:id card)
+                                              :row 0 :col 0 :size_x 8 :size_y 6
+                                              :inline_parameters ["ip1"]}]
+      (let [concise (element! {:items [{:type "dashboard" :id (:id dash)}]})]
+        (is (= [["ip1"]] (mapv :inline_parameter_ids (:dashcards concise))))))))
+
 (deftest dashboard-virtual-cards-are-named-by-kind-test
   (mt/with-temp [:model/Dashboard     dash {:name "AgentV2 Text"}
                  :model/DashboardCard _    {:dashboard_id (:id dash)
@@ -224,6 +239,80 @@
         (is (= ["count"] (mapv :name fields)))
         (is (= ["Count"] (mapv :display_name fields)))))))
 
+(deftest parameters-include-carries-a-native-question-s-template-tags-test
+  (testing "the tags are the same filters seen from the SQL side, so they ride with the parameters"
+    (mt/with-temp [:model/Card card {:name          "AgentV2 Native"
+                                     :database_id   (mt/id)
+                                     :dataset_query (mt/native-query
+                                                     {:query "SELECT * FROM ORDERS WHERE ID = {{oid}}"
+                                                      :template-tags
+                                                      {"oid" {:id           "t1"
+                                                              :name         "oid"
+                                                              :display-name "Oid"
+                                                              :type         :number}}})}]
+      (let [item (element! {:items [{:type "question" :id (:id card)}] :include ["parameters"]})]
+        (testing "and the section's keys sit on the element, not nested under a second `parameters`"
+          (is (= [] (:parameters item)))
+          (is (= ["oid"] (mapv name (keys (:template_tags item)))))
+          (is (= "Oid" (get-in item [:template_tags :oid :display-name]))))))))
+
+(deftest parameters-include-on-a-dashboard-test
+  (testing "a dashboard has parameters and no template tags"
+    (mt/with-temp [:model/Dashboard dash {:name       "AgentV2 Params"
+                                          :parameters [{:id "abc12345" :name "Category"
+                                                        :slug "category" :type "string/="}]}]
+      (let [item (element! {:items [{:type "dashboard" :id (:id dash)}] :include ["parameters"]})]
+        (is (= ["Category"] (mapv :name (:parameters item))))
+        (is (not (contains? item :template_tags)))))))
+
+(deftest dimensions-include-test
+  (testing "`dimensions` returns the columns a query using the metric may break out on"
+    (mt/with-temp [:model/Card metric (mbql-card {:name "AgentV2 Metric" :type :metric})]
+      (let [dimensions (:dimensions (element! {:items   [{:type "metric" :id (:id metric)}]
+                                               :include ["dimensions"]}))]
+        (is (seq dimensions) "a metric over ORDERS has columns to group by")
+        (testing "in REST property names, never lib's kebab-case dialect"
+          (is (= #{:id :name :display_name :description :base_type :semantic_type :table_id
+                   :fk_target_field_id}
+                 (set (keys (first dimensions))))))
+        (testing "and they reach through the foreign keys, as a breakout may"
+          (is (contains? (set (map :table_id dimensions)) (mt/id :products))))))))
+
+(defn- orders-subtotal-query
+  "A lib query over ORDERS, and its SUBTOTAL column — the raw material for a measure's or segment's
+   definition, which the models store as MBQL 5."
+  []
+  (let [mp    (lib-be/application-database-metadata-provider (mt/id))
+        query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+    [query (lib.metadata/field mp (mt/id :orders :subtotal))]))
+
+(defn- subtotal-ref
+  "The portable field reference inside a clause: `[\"field\", {opts}, [db, schema, table, column]]`."
+  [field-clause]
+  (vec (last field-clause)))
+
+(deftest measure-and-segment-definitions-are-portable-test
+  (testing "a measure's `definition` is its aggregation clause, a segment's its filters — both portable"
+    (let [[query subtotal] (orders-subtotal-query)]
+      (mt/with-temp [:model/Segment segment {:name       "AgentV2 Segment"
+                                             :table_id   (mt/id :orders)
+                                             :definition (lib/filter query (lib/> subtotal 100))}
+                     :model/Measure measure {:name       "AgentV2 Measure"
+                                             :table_id   (mt/id :orders)
+                                             :definition (lib/aggregate query (lib/sum subtotal))}]
+        (let [seg-def  (:definition (element! {:items   [{:type "segment" :id (:id segment)}]
+                                               :include ["definition"]}))
+              meas-def (:definition (element! {:items   [{:type "measure" :id (:id measure)}]
+                                               :include ["definition"]}))]
+          (testing "the segment's filter, with a name-array field ref rather than a numeric id"
+            (is (= [">"] (mapv first seg-def)))
+            (is (= ["test-data (h2)" "PUBLIC" "ORDERS" "SUBTOTAL"]
+                   (subtotal-ref (nth (first seg-def) 2)))))
+          (testing "the measure's aggregation, likewise"
+            (is (= ["sum"] (mapv first meas-def)))
+            (is (= ["test-data (h2)" "PUBLIC" "ORDERS" "SUBTOTAL"]
+                   (subtotal-ref (nth (first meas-def) 2))))))))))
+
 (deftest include-that-does-not-fit-is-skipped-and-named-test
   (testing "`layout` on a collection is skipped for that item and named in its result, not an error"
     (mt/with-temp [:model/Collection coll {:name "AgentV2 Coll"}
@@ -279,6 +368,39 @@
         (let [detailed (element! {:items [{:type "document" :id (:id doc)}] :response_format "detailed"})]
           (is (= "Revenue grew." (:content_markdown detailed)))
           (is (not (contains? detailed :document))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Read events — the same trail the app's own read leaves
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- read-events!
+  "The `:event/*-read` topics `get_content` publishes for `items`, as `[topic object-id]` pairs."
+  [items]
+  (let [published (atom [])]
+    (mt/with-test-user :rasta
+      (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
+        (get-content/get-content {:items items})))
+    (for [[topic {:keys [object object-id]}] @published]
+      [topic (or object-id (:id object))])))
+
+(deftest read-events-match-the-rest-endpoints-test
+  (testing "a tool read leaves the trail the app's read leaves — the same topics, and no others"
+    (mt/with-temp [:model/Dashboard  dash {:name "AgentV2 Trail"}
+                   :model/Document   doc  {:name "AgentV2 Doc"}
+                   :model/Collection coll {:name "AgentV2 Coll"}
+                   :model/Card       card (mbql-card {})]
+      (testing "reading a dashboard marks it viewed, as GET /api/dashboard/:id does"
+        (is (= [[:event/dashboard-read (:id dash)]]
+               (read-events! [{:type "dashboard" :id (:id dash)}]))))
+      (testing "and a document, as GET /api/document/:id does"
+        (is (= [[:event/document-read (:id doc)]]
+               (read-events! [{:type "document" :id (:id doc)}]))))
+      (testing "a collection does not: GET /api/collection/:id publishes nothing, and a collection is
+                marked viewed by opening it — which is browse_collection's listing, not this read"
+        (is (= [] (read-events! [{:type "collection" :id (:id coll)}]))))
+      (testing "nor a card: its REST read publishes nothing either — :event/card-read comes from the
+                query processor when a card is run"
+        (is (= [] (read-events! [{:type "question" :id (:id card)}])))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Every type round-trips
