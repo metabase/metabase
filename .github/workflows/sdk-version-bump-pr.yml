@@ -227,13 +227,8 @@ jobs:
       - name: Write sdkRelease metadata block
         id: write-metadata
         run: |
-          # Writes whatever tagAsLatest the "Compute sensible sdkRelease
-          # defaults" step above computed (true or false) - it's never
-          # forced back to false here. That step already ignores any
-          # previous sdkRelease.tagAsLatest value (it derives the default
-          # fresh from vars.LATEST_MAJOR_VERSION every run), so a stale `true`
-          # from an earlier release can't leak forward either way; the
-          # reviewer can still override the written value on the PR.
+          # Overwrites sdkRelease.distTag and sdkRelease.tagAsLatest with the
+          # values computed above, creating the block if it isn't there yet.
           jq --arg distTag "${{ steps.sdk-release.outputs.dist_tag }}" \
              --argjson tagAsLatest ${{ steps.sdk-release.outputs.tag_as_latest }} \
              '.sdkRelease.distTag = $distTag | .sdkRelease.tagAsLatest = $tagAsLatest' \
