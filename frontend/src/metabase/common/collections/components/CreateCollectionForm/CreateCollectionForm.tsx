@@ -7,7 +7,6 @@ import FormCollectionPicker from "metabase/common/collections/containers/FormCol
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { FormInput } from "metabase/common/components/FormInput";
 import type {
   EntityPickerOptions,
   FilterItemsInPersonalCollection,
@@ -17,6 +16,7 @@ import {
   Form,
   FormProvider,
   FormSubmitButton,
+  FormTextInput,
   FormTextarea,
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
@@ -129,11 +129,12 @@ function CreateCollectionForm({
 
         return (
           <Form>
-            <FormInput
+            <FormTextInput
               name="name"
-              title={t`Name`}
+              label={t`Name`}
               placeholder={t`My new fantastic collection`}
               data-autofocus
+              mb="md"
             />
             <FormTextarea
               name="description"
