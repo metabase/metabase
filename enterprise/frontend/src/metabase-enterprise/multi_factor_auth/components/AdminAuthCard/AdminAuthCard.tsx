@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { c, msgid, ngettext, t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { Alert, Collapse, Switch, Text, UnstyledButton } from "metabase/ui";
+import { Alert, Group, Switch, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
 import type { MfaAdminOverview } from "metabase-types/api";
 
@@ -62,47 +61,26 @@ type EnrollmentCountsProps = {
 };
 
 function EnrollmentCounts({ overview }: EnrollmentCountsProps) {
-  const [showUnenrolled, setShowUnenrolled] = useState(false);
   const enrolledCount = overview.enrolled_count;
   const unenrolledCount = overview.unenrolled_count;
-  const unenrolledUsers = overview.unenrolled_users;
-  const remainingCount = unenrolledCount - unenrolledUsers.length;
 
   return (
-    <>
-      <Text c="text-secondary" lh="xl" maw="38rem">
+    <Group gap="sm">
+      <Text c="text-secondary">
         {ngettext(
-          msgid`${enrolledCount} user enrolled, ${unenrolledCount} without two-factor authentication.`,
-          `${enrolledCount} users enrolled, ${unenrolledCount} without two-factor authentication.`,
+          msgid`${enrolledCount} enrolled user`,
+          `${enrolledCount} enrolled users`,
           enrolledCount,
         )}
       </Text>
-      {unenrolledUsers.length > 0 && (
-        <>
-          <UnstyledButton
-            c="brand"
-            fz="sm"
-            onClick={() => setShowUnenrolled(!showUnenrolled)}
-          >
-            {showUnenrolled
-              ? t`Hide users without two-factor authentication`
-              : t`Show users without two-factor authentication`}
-          </UnstyledButton>
-          <Collapse in={showUnenrolled}>
-            <Text component="ul" c="text-secondary" fz="sm" lh="lg" m={0}>
-              {unenrolledUsers.map((user) => (
-                <li key={user.id}>{user.email}</li>
-              ))}
-              {remainingCount > 0 && (
-                <li>
-                  {c("{0} is a number of additional users not shown")
-                    .t`…and ${remainingCount} more`}
-                </li>
-              )}
-            </Text>
-          </Collapse>
-        </>
-      )}
-    </>
+      <Text c="text-secondary">•</Text>
+      <Text c="text-secondary">
+        {ngettext(
+          msgid`${unenrolledCount} user without 2FA`,
+          `${unenrolledCount} users without 2FA`,
+          unenrolledCount,
+        )}
+      </Text>
+    </Group>
   );
 }

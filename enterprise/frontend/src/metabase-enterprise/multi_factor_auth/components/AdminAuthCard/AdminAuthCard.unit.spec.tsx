@@ -1,5 +1,3 @@
-import userEvent from "@testing-library/user-event";
-
 import {
   setupMfaAdminOverviewEndpoint,
   setupPropertiesEndpoints,
@@ -59,11 +57,8 @@ describe("AdminAuthCard", () => {
       }),
     });
 
-    expect(
-      await screen.findByText(
-        "1 user enrolled, 3 without two-factor authentication.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("1 enrolled user")).toBeInTheDocument();
+    expect(screen.getByText("3 users without 2FA")).toBeInTheDocument();
   });
 
   it("should warn when the encryption key is not set", async () => {
@@ -74,28 +69,5 @@ describe("AdminAuthCard", () => {
     expect(
       await screen.findByText(/MB_ENCRYPTION_SECRET_KEY/),
     ).toBeInTheDocument();
-  });
-
-  it("should list the users without 2FA behind a toggle, noting overflow", async () => {
-    setup({
-      overview: createMockMfaAdminOverview({
-        enrolled_count: 1,
-        unenrolled_count: 3,
-        unenrolled_users: [
-          { id: 1, email: "a@example.com" },
-          { id: 2, email: "b@example.com" },
-        ],
-        limit: 2,
-        offset: 0,
-      }),
-    });
-
-    await userEvent.click(
-      await screen.findByText("Show users without two-factor authentication"),
-    );
-
-    expect(screen.getByText("a@example.com")).toBeInTheDocument();
-    expect(screen.getByText("b@example.com")).toBeInTheDocument();
-    expect(screen.getByText("…and 1 more")).toBeInTheDocument();
   });
 });

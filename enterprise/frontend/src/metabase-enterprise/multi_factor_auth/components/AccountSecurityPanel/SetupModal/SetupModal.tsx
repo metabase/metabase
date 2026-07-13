@@ -1,6 +1,6 @@
 import { useState } from "react";
 import QRCode from "react-qr-code";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import * as Yup from "yup";
 
 import {
@@ -10,17 +10,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import {
-  Box,
-  Button,
-  Center,
-  Code,
-  Group,
-  Input,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Center, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useConfirmMfaEnrollmentMutation,
@@ -30,6 +20,7 @@ import type { MfaEnrollResponse } from "metabase-types/api";
 
 import { TOTP_CODE_LENGTH } from "../../../constants";
 import { withTotpCodeRules } from "../../../schemas";
+import { CopyableCodeBlock } from "../CopyableCodeBlock";
 import { RecoveryCodesForm } from "../RecoveryCodesForm";
 
 const QR_CODE_SIZE = 180;
@@ -65,7 +56,14 @@ function SetupModalBody({ onSuccess, onCancel }: SetupModalBodyProps) {
     return (
       <RecoveryCodesForm
         recoveryCodes={recoveryCodes}
-        message={t`Each code signs you in once if you lose your authenticator. Save them somewhere safe — this is the only time they will be shown.`}
+        message={jt`Each code signs you in once if you lose your authenticator. Save them somewhere safe — ${(
+          <Box
+            component="span"
+            key="warning"
+            c="text-primary"
+            fw="bold"
+          >{t`this is the only time they'll be shown.`}</Box>
+        )}`}
         onDone={onSuccess}
       />
     );
@@ -172,21 +170,21 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
     >
       <Form>
         <Stack gap="md">
-          <Input.Wrapper label={t`Scan this with an authenticator app`}>
-            <Center mt="xs">
+          <Stack gap="sm">
+            <Box>{t`Scan this QR code with an authenticator app:`}</Box>
+            <Center>
               <Box bg="white" p="md">
                 <QRCode value={enrollment.otpauth_uri} size={QR_CODE_SIZE} />
               </Box>
             </Center>
-          </Input.Wrapper>
-          <Input.Wrapper label={t`Or enter this key manually`}>
-            <Box mt="xs">
-              <Code>{enrollment.secret}</Code>
-            </Box>
-          </Input.Wrapper>
+          </Stack>
+          <Stack gap="sm">
+            <Box>{t`Or enter this key in the app manually:`}</Box>
+            <CopyableCodeBlock codes={[enrollment.secret]} />
+          </Stack>
           <FormTextInput
             name="code"
-            label={t`Enter the 6-digit code it shows`}
+            label={t`Enter the 6-digit code from the authenticator app`}
             placeholder="123456"
             maxLength={TOTP_CODE_LENGTH}
             inputMode="numeric"

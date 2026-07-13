@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
-import { Modal } from "metabase/ui";
+import { Box, Modal } from "metabase/ui";
 import { useRegenerateRecoveryCodesMutation } from "metabase-enterprise/api";
 
 import { ConfirmCodeForm } from "../ConfirmCodeForm";
@@ -20,7 +20,7 @@ export function RecoveryCodesModal({
 }: RecoveryCodesModalProps) {
   return (
     <Modal
-      title={t`Generate new recovery codes`}
+      title={t`Generate recovery codes`}
       opened={opened}
       onClose={onCancel}
     >
@@ -52,7 +52,14 @@ function RecoveryCodesModalBody({
     return (
       <RecoveryCodesForm
         recoveryCodes={recoveryCodes}
-        message={t`Your old recovery codes no longer work. Each new code signs you in once if you lose your authenticator — this is the only time they will be shown.`}
+        message={jt`Your old recovery codes no longer work. Each new code signs you in once if you lose your authenticator — ${(
+          <Box
+            component="span"
+            key="warning"
+            c="text-primary"
+            fw="bold"
+          >{t`this is the only time they'll be shown.`}</Box>
+        )}`}
         onDone={onSuccess}
       />
     );

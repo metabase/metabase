@@ -52,7 +52,7 @@ describe("SetupModal", () => {
     await submitPassword();
 
     expect(
-      await screen.findByText("Scan this with an authenticator app"),
+      await screen.findByText("Scan this QR code with an authenticator app:"),
     ).toBeInTheDocument();
     expect(screen.getByText(SECRET)).toBeInTheDocument();
   });

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { Box, Button, Group, Input } from "metabase/ui";
+import { push } from "metabase/router";
+import { Box, Button, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useGetMfaStatusQuery } from "metabase-enterprise/api";
 import type { MfaStatus } from "metabase-types/api";
@@ -69,26 +69,21 @@ type MfaSectionProps = {
 
 function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
   return (
-    <Input.Wrapper
-      label={t`Two-factor authentication`}
-      description={
-        status.enrolled
-          ? t`Your account is protected with a code from an authenticator app.`
-          : t`Protect your account with a code from an authenticator app.`
-      }
-    >
-      <Box mt="sm">
+    <Group justify="space-between" align="flex-start" wrap="nowrap">
+      <Stack gap="xs">
+        <Box fw="bold" lh="1.25rem">{t`Two-factor authentication`}</Box>
+        <Box c="text-secondary" lh="1.25rem">
+          {status.enrolled
+            ? t`Authenticator apps are enabled.`
+            : t`Protect your account with a code from an authenticator app.`}
+        </Box>
+      </Stack>
+      <Box>
         {status.enrolled ? (
-          <Group gap="sm">
+          <Group gap="sm" wrap="nowrap">
+            <Button onClick={() => onOpenModal("disable")}>{t`Disable`}</Button>
             <Button onClick={() => onOpenModal("recovery-codes")}>
-              {t`Generate new recovery codes`}
-            </Button>
-            <Button
-              variant="filled"
-              color="error"
-              onClick={() => onOpenModal("disable")}
-            >
-              {t`Disable two-factor authentication`}
+              {t`Generate recovery codes`}
             </Button>
           </Group>
         ) : (
@@ -100,6 +95,6 @@ function MfaSection({ status, hasFeature, onOpenModal }: MfaSectionProps) {
           </Button>
         )}
       </Box>
-    </Input.Wrapper>
+    </Group>
   );
 }

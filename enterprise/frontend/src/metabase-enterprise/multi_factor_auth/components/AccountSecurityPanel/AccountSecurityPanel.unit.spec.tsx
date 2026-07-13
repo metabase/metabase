@@ -77,9 +77,7 @@ describe("AccountSecurityPanel", () => {
     setup({ status: createMockMfaStatus({ enrolled: true }) });
 
     await userEvent.click(
-      await screen.findByRole("button", {
-        name: "Disable two-factor authentication",
-      }),
+      await screen.findByRole("button", { name: "Disable" }),
     );
 
     expect(
@@ -94,13 +92,13 @@ describe("AccountSecurityPanel", () => {
 
     await userEvent.click(
       await screen.findByRole("button", {
-        name: "Generate new recovery codes",
+        name: "Generate recovery codes",
       }),
     );
 
     expect(
       await screen.findByRole("dialog", {
-        name: "Generate new recovery codes",
+        name: "Generate recovery codes",
       }),
     ).toBeInTheDocument();
   });
