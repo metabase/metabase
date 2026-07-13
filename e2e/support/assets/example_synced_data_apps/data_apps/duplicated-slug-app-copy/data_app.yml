@@ -1,0 +1,6 @@
+# The mistake this fixture exists for: this app was copy-pasted from
+# `duplicated-slug-app` and its slug was never changed, so two directories now
+# claim `duplicated-slug`.
+name: Duplicated Slug App Copy
+slug: duplicated-slug
+path: index.js

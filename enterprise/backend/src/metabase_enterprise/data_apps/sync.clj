@@ -131,6 +131,47 @@
       ;; a failing app counts as a change unless it was already failing identically
       (or (nil? existing) (not= (:sync_error existing) (ex-message e))))))
 
+;;; ----------------------------------------------------- Validation -----------------------------------------------------
+
+(defn- duplicate-slug-errors
+  "One message per slug that more than one app directory declares, naming the
+   directories that collide so the author knows which to rename."
+  [cfgs]
+  (for [[slug claimants] (sort-by key (group-by :slug cfgs))
+        :when (< 1 (count claimants))]
+    (tru "The slug \"{0}\" is declared by more than one data app ({1}). Give each app a unique slug."
+         slug (str/join ", " (sort (map :bundle claimants))))))
+
+(defn validate-snapshot!
+  "Throw if the repo's data apps can't be materialized as a set. Called by the
+   remote-sync import *before* it writes anything (see the remote-sync `impl`
+   namespace), so an invalid repo fails the whole pull instead of being
+   half-applied.
+
+   Today the only such problem is a duplicate slug. The slug *is* an app's
+   identity — rows are upserted by it and `/apps/<slug>` is served from it — so
+   when two directories declare the same one there's no non-arbitrary way to say
+   which directory the app is. Any winner we picked would be chosen by something
+   the author never wrote (path order, or which app happened to sync first, which
+   would make the same commit produce different state on different instances), and
+   the loser's app would silently vanish. A repo like that doesn't describe a valid
+   set of apps, so we refuse to import it and say why.
+
+   Per-app problems are *not* validated here: a bundle that's missing or too big
+   breaks only its own app and leaves the rest of the repo perfectly valid, so it
+   stays isolated on that app's row as a `sync_error` (see [[sync-app!]]) rather
+   than blocking everyone else's pull. Same for a `data_app.yml` too malformed to
+   even name an app ([[import-from-snapshot!]]'s `:config-errors`)."
+  [{:keys [read-file list-files]}]
+  (let [cfgs (filter :slug (discover-app-configs list-files read-file))]
+    (when-let [errors (seq (duplicate-slug-errors cfgs))]
+      ;; `:data-app-errors` is what remote-sync matches on to surface these verbatim,
+      ;; rather than pattern-matching the message text (see `source-error-message`).
+      (throw (ex-info (str/join " " errors)
+                      {:status-code 400, :data-app-errors (vec errors)})))))
+
+;;; ----------------------------------------------------- Import -----------------------------------------------------
+
 (defn import-from-snapshot!
   "Materialize data apps from a synced repo `snapshot`:
 
@@ -146,21 +187,22 @@
    (a `last_synced_sha` bump on an unchanged app does not count). A malformed
    `data_app.yml` is isolated (collected into `:config-errors`, that app skipped)
    rather than aborting the others; per-app bundle failures are recorded on the
-   row. Throws only on duplicate slugs, which make app identity ambiguous."
-  [{:keys [read-file list-files sha]}]
+   row. Throws on a repo that isn't valid at all — see [[validate-snapshot!]],
+   which the import pipeline runs up front so this can't happen mid-write."
+  [{:keys [read-file list-files sha] :as snapshot}]
   ;; realize discovery once (it calls read-file/parse per config); `results` is
   ;; then walked several times below
   (let [results  (vec (discover-app-configs list-files read-file))
         good     (filter :slug results)
         errors   (vec (keep :config-error results))
-        slugs    (map :slug good)
         ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
         existing (into {} (map (juxt :name identity))
                        (t2/select [:model/DataApp :name :display_name :allowed_hosts
                                    :bundle_path :bundle_hash :sync_error]))]
-    (when (not= (count slugs) (count (distinct slugs)))
-      (throw (ex-info (tru "Two data apps in the repository share a slug.")
-                      {:status-code 400})))
+    ;; belt-and-braces: the pull already rejected an invalid repo before committing
+    ;; anything, but a direct caller hasn't, and materializing one is destructive
+    ;; (one app would overwrite another's row).
+    (validate-snapshot! snapshot)
     (let [changed
           ;; Upsert-only: a sync never deletes. Apps materialized from a previous
           ;; repo are kept (they survive unlinking, and switching repos), and an
@@ -180,10 +222,16 @@
 (defn sync-from-snapshot!
   "Entry point for the remote-sync import pipeline. Materializes data apps from
    the just-imported `snapshot` (see [[import-from-snapshot!]] for its shape).
-   Never throws, so it can't break the surrounding remote-sync import: a thrown
-   failure is logged and swallowed, and a malformed `data_app.yml` is logged and
-   its app simply doesn't appear. Returns the [[import-from-snapshot!]] result, or
-   nil if the sync threw."
+
+   Never throws, and by this point that no longer hides anything: a repo the apps
+   can't be materialized from was already rejected by [[validate-snapshot!]] before
+   the pull committed, and the problems that remain are per-app by construction —
+   a bundle that won't load is recorded on its own row, a `data_app.yml` that can't
+   name an app is logged. What the `catch` covers is the genuinely unexpected, and
+   there it's the only sane behavior: the serdes half of this pull is already
+   committed and can't be rolled back, so throwing here would fail a task whose
+   content import actually succeeded. Returns the [[import-from-snapshot!]] result,
+   or nil if the sync threw."
   [snapshot]
   (try
     (let [{:keys [config-errors] :as result} (import-from-snapshot! snapshot)]

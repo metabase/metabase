@@ -3,6 +3,7 @@ import * as Urls from "metabase/urls/data-apps";
 import type { DataApp } from "metabase-types/api";
 
 import { getIframeBody } from "./e2e-embedding-helpers";
+import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
 
 /**
  * The e2e data-app fixture that `mockDataApp` builds and serves — its directory
@@ -100,6 +101,23 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
     return cy.wrap({ slug, displayName }, { log: false });
   });
 };
+
+export const SYNCED_DATA_APPS_FIXTURE_PATH =
+  Cypress.config("projectRoot") +
+  "/e2e/support/assets/example_synced_data_apps";
+
+/**
+ * Copy the example data-app repo into the working directory of the local git repo
+ * `setupGitSync` created, so a `commitToRepo` + a real pull materialize its apps.
+ * It holds three apps under `data_apps/`, two of which declare the same slug (see
+ * `data_apps/duplicated-slug-app-copy/data_app.yml`) — which makes the repo invalid
+ * and is what the sync spec drives.
+ */
+export const copySyncedDataAppsFixture = () =>
+  cy.task("copyDirectory", {
+    source: SYNCED_DATA_APPS_FIXTURE_PATH,
+    destination: LOCAL_GIT_PATH,
+  });
 
 export function openDataApp(slug: string) {
   return cy.visit(Urls.dataApp(slug));

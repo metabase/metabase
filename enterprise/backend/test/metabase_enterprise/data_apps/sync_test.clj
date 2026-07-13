@@ -139,14 +139,48 @@
       (is (= ["https://api.example.com"]
              (:allowed_hosts (t2/select-one :model/DataApp :name "a")))))))
 
-(deftest sync-from-snapshot!-swallows-a-thrown-import-test
-  (testing "a duplicate-slug snapshot makes import throw; sync-from-snapshot! swallows it and returns nil"
+(deftest validate-snapshot!-rejects-a-duplicate-slug-test
+  (testing "two directories declaring one slug make the repo invalid: validation throws, naming the slug and both directories"
+    (let [duped (snapshot (merge (app-files "one"  {:name "One"  :slug "dup"  :path "a.js" :bundle "A"})
+                                 (app-files "two"  {:name "Two"  :slug "dup"  :path "b.js" :bundle "B"})
+                                 (app-files "solo" {:name "Solo" :slug "solo" :path "i.js" :bundle "S"})))
+          e     (is (thrown? clojure.lang.ExceptionInfo (data-app.sync/validate-snapshot! duped)))]
+      (testing "the message tells the author exactly what to rename"
+        (is (str/includes? (ex-message e) "\"dup\""))
+        (is (str/includes? (ex-message e) "data_apps/one/a.js"))
+        (is (str/includes? (ex-message e) "data_apps/two/b.js")))
+      (testing "and it's matchable as a data-app failure without parsing the text"
+        (is (= 1 (count (:data-app-errors (ex-data e))))))))
+  (testing "a repo whose slugs are all unique validates"
+    (is (nil? (data-app.sync/validate-snapshot!
+               (snapshot (merge (app-files "one" {:name "One" :slug "one" :path "a.js" :bundle "A"})
+                                (app-files "two" {:name "Two" :slug "two" :path "b.js" :bundle "B"}))))))))
+
+(deftest duplicate-slug-materializes-nothing-test
+  (testing "the import refuses an invalid repo outright — no app is written, not even the unambiguous one"
     (mt/with-model-cleanup [:model/DataApp]
-      (is (nil? (data-app.sync/sync-from-snapshot!
-                 (snapshot (merge (app-files "one" {:name "One" :slug "dup" :path "a.js" :bundle "A"})
-                                  (app-files "two" {:name "Two" :slug "dup" :path "b.js" :bundle "B"}))))))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (data-app.sync/import-from-snapshot!
+                    (snapshot (merge (app-files "one"  {:name "One"  :slug "dup"  :path "a.js" :bundle "A"})
+                                     (app-files "two"  {:name "Two"  :slug "dup"  :path "b.js" :bundle "B"})
+                                     (app-files "solo" {:name "Solo" :slug "solo" :path "i.js" :bundle "S"}))))))
       (is (empty? (t2/select-fn-set :name :model/DataApp))
-          "the throwing sync materialized nothing"))))
+          "nothing is half-applied: an app that can't be identified must not overwrite another's row"))))
+
+(deftest duplicate-slug-leaves-already-synced-apps-untouched-test
+  (testing "a pull that goes bad can't damage what's already there: the previously synced app keeps its bundle"
+    (mt/with-model-cleanup [:model/DataApp]
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "one" {:name "One" :slug "dup" :path "a.js" :bundle "GOOD"})))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (data-app.sync/import-from-snapshot!
+                    (snapshot (merge (app-files "one" {:name "One" :slug "dup" :path "a.js" :bundle "GOOD"})
+                                     (app-files "two" {:name "Two" :slug "dup" :path "b.js" :bundle "OTHER"}))))))
+      (let [app (t2/select-one :model/DataApp :name "dup")]
+        (is (nil? (:sync_error app))
+            "the app synced fine and still is: the repo is what's broken, not this app")
+        (is (= "GOOD" (String. ^bytes (:bundle app) "UTF-8"))
+            "and it keeps serving the bundle it last synced")))))
 
 (deftest unreadable-config-becomes-a-config-error-test
   (testing "a listed config path that can't be read is isolated as a config-error, not a crash"

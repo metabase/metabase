@@ -119,6 +119,11 @@
   repository not found, branch, or generic) based on the exception type and message content."
   [e]
   (cond
+    ;; Matched by ex-data, and first, so an app's own words (a slug, a directory
+    ;; name) can't be mistaken for one of the message patterns tested below.
+    (seq (:data-app-errors (ex-data e)))
+    (str/join " " (:data-app-errors (ex-data e)))
+
     (or (instance? java.net.UnknownHostException e)
         (instance? java.net.UnknownHostException (ex-cause e)))
     "Network error: Unable to reach git repository host"
@@ -276,18 +281,30 @@
   (and (some? pre-task-branch)
        (not= pre-task-branch (settings/remote-sync-branch))))
 
-(defn- materialize-data-apps!
-  "After a successful content import, materialize data apps from the same
-   snapshot. Data apps live under `data_apps/` in the repo (outside the serdes
-   paths), so they ride this import rather than having their own sync. Adapts the
-   snapshot to plain reader fns; `data-apps.sync/sync-from-snapshot!` never throws."
+(defn- data-app-snapshot
+  "Adapt a `SourceSnapshot` to the plain reader fns `data-apps.sync` takes, keeping
+   all Java interop out of that namespace. `read-file` returns file text (a string)
+   or nil; data-apps.sync converts to bytes on its side."
   [^SourceSnapshot snapshot]
-  ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
-  ;; bytes on its side, keeping all Java interop out of this namespace.
-  (data-apps.sync/sync-from-snapshot!
-   {:read-file  (fn [path] (source.p/read-file snapshot path))
-    :list-files (fn [] (source.p/list-files snapshot))
-    :sha        (source.p/version snapshot)}))
+  {:read-file  (fn [path] (source.p/read-file snapshot path))
+   :list-files (fn [] (source.p/list-files snapshot))
+   :sha        (source.p/version snapshot)})
+
+(defn- validate-data-apps!
+  "Throw if the snapshot's data apps make the repo un-importable (see
+   `data-apps.sync/validate-snapshot!`). Called before the import writes anything,
+   so such a repo fails the pull whole rather than half-applying. Reads only the
+   `data_app.yml` files, not the bundles."
+  [^SourceSnapshot snapshot]
+  (data-apps.sync/validate-snapshot! (data-app-snapshot snapshot)))
+
+(defn- materialize-data-apps!
+  "After a successful content import, materialize data apps from the same snapshot.
+   They live under `data_apps/` — outside the serdes paths — so they ride this
+   import rather than having their own sync. Never throws: what would justify
+   failing the pull was already caught by [[validate-data-apps!]]."
+  [^SourceSnapshot snapshot]
+  (data-apps.sync/sync-from-snapshot! (data-app-snapshot snapshot)))
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
@@ -537,6 +554,10 @@
   (let [sync-timestamp (t/instant)]
     (try
       (let [snapshot-version      (source.p/version snapshot)
+            ;; Before any branch of the `cond` below loads or deletes anything: a repo
+            ;; whose data apps can't be materialized isn't importable at all, and the
+            ;; `catch` below turns this into a failed task carrying the reason.
+            _                     (validate-data-apps! snapshot)
             last-imported-version (remote-sync.task/last-version)
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.

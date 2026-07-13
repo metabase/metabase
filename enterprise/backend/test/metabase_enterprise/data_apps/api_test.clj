@@ -204,14 +204,6 @@
         (is (nil? (:bundle bad)))
         (is (str/includes? (:sync_error bad) "missing.js"))))))
 
-(deftest import-duplicate-slugs-test
-  (mt/with-model-cleanup [:model/DataApp]
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo #"share a slug"
-         (data-app.sync/import-from-snapshot!
-          (snapshot (merge (app-files "one" {:name "One" :slug "dup" :path "a.js" :bundle "A"})
-                           (app-files "two" {:name "Two" :slug "dup" :path "b.js" :bundle "B"}))))))))
-
 (deftest import-isolates-bad-config-test
   (testing "a malformed data_app.yml is isolated: other apps still sync, the bad one is reported, nothing is pruned"
     (mt/with-model-cleanup [:model/DataApp]
