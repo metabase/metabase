@@ -13,6 +13,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -536,12 +537,12 @@
   [database-id                                  :- ::lib.schema.id/database
    {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [query (metadata-spec->honey-sql database-id metadata-spec)]
-    (try
-      (t2/select metadata-type query)
-      (catch Throwable e
-        (throw (ex-info "Error fetching metadata with spec"
-                        {:metadata-spec metadata-spec, :query query}
-                        e))))))
+    (lib.util/recover
+     (fn [] (t2/select metadata-type query))
+     (fn [e]
+       (throw (ex-info "Error fetching metadata with spec"
+                       {:metadata-spec metadata-spec, :query query}
+                       e))))))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
