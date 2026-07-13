@@ -1223,6 +1223,22 @@
            :feature    :test-feature
            :encryption :when-encryption-key-set)))))
 
+(deftest validate-settable!-ex-data-test
+  (testing "Settings that can't be written report a status code, so the API doesn't surface them as a 500"
+    (testing "premium feature not available"
+      (mt/with-premium-features #{}
+        (is (= {:status-code 402
+                :status      "error-premium-feature-not-available"
+                :setting     "test-feature-setting"
+                :feature     :test-feature}
+               (try (test-feature-setting! "custom")
+                    (catch ExceptionInfo e (ex-data e)))))))
+    (testing ":enabled? returns false"
+      (is (= {:status-code 400
+              :setting     "test-enabled-setting-default"}
+             (try (test-enabled-setting-default! "custom")
+                  (catch ExceptionInfo e (ex-data e))))))))
+
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 
 (defsetting ^:private test-no-default-setting
