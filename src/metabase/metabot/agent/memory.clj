@@ -8,21 +8,14 @@
   persisted to `metabot_message.state`; readers never touch it. Writers record
   into both."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [metabase.metabot.schema :as metabot.schema]))
 
 (defn merge-states
   "Merge two partial states. Map entries (e.g. :queries) merge entry-wise;
   scalar/vector entries (e.g. :todos) take the later value."
   [a b]
   (merge-with (fn [x y] (if (every? map? [x y]) (merge x y) y)) a b))
-
-(defn- normalize-link-registry
-  "Stringify link-registry keys, which JSON round-tripping may have keywordized.
-  `name` is avoided in case a key is a relative url fragment like `:question/123`."
-  [state]
-  (cond-> state
-    (:link-registry state)
-    (update :link-registry update-keys #(if (keyword? %) (subs (str %) 1) %))))
 
 (defn initialize
   "Initialize memory from input messages and the incoming baseline `state` (prior
@@ -33,7 +26,7 @@
    {:input-messages messages
     :steps-taken    []
     :context        context
-    :state          (normalize-link-registry
+    :state          (metabot.schema/normalize-state
                      (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}))
     :turn-state     {}}))
 
@@ -147,4 +140,6 @@
 (defn set-link-registry
   "Set the link registry (url → stable id mappings)."
   [memory link-registry]
-  (record memory [:link-registry] link-registry))
+  (if (= (get-in memory [:state :link-registry] {}) link-registry)
+    memory
+    (record memory [:link-registry] link-registry)))

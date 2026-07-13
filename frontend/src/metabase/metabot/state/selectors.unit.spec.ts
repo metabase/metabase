@@ -6,7 +6,11 @@ import { createMockState } from "metabase/redux/store/mocks";
 
 import { getMetabotInitialState } from "./reducer-utils";
 
-import { type MetabotChatMessage, getUserPromptForMessageId } from "./index";
+import {
+  type MetabotChatMessage,
+  getLastAgentMessageExternalId,
+  getUserPromptForMessageId,
+} from "./index";
 
 function setup(messages: MetabotChatMessage[]): State {
   setupEnterprisePlugins();
@@ -63,6 +67,29 @@ describe("metabot selectors", () => {
         type: "text",
         message: "bleh bleh",
       });
+    });
+  });
+
+  describe("getLastAgentMessageExternalId", () => {
+    it("skips a trailing tool_call and returns the last agent message that carries an externalId", () => {
+      const state = setup([
+        { id: "1", role: "user", type: "text", message: "hi" },
+        {
+          id: "2",
+          role: "agent",
+          type: "text",
+          message: "working on it",
+          externalId: "ext-2",
+        },
+        {
+          id: "3",
+          role: "agent",
+          type: "tool_call",
+          name: "search",
+          status: "ended",
+        },
+      ]);
+      expect(getLastAgentMessageExternalId(state, "omnibot")).toBe("ext-2");
     });
   });
 });

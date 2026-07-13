@@ -1,7 +1,10 @@
 (ns metabase.metabot.agent.memory-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.memory :as memory]))
+   [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.tools.shared :as shared]))
 
 (deftest ^:parallel initialize-test
   (testing "seeds the working state and starts an empty turn-state"
@@ -16,6 +19,46 @@
     (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
       (is (= {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}
              (memory/get-state mem))))))
+
+(deftest ^:parallel initialize-normalizes-state-registry-keys-test
+  (let [query          {:database 1 :nested/value "preserved"}
+        chart          {:chart_id              "c1"
+                        :queries               [query]
+                        :visualization_settings {:chart_type :bar}}
+        transform      {:name "Transform"}
+        chart-config   {:display_type "bar"}
+        current-query  {:database 2}
+        mem            (memory/initialize
+                        []
+                        {:queries       {:q1 query, :current current-query, "current" {:database 3}}
+                         :charts        {:c1 chart}
+                         :transforms    {:t1 transform}
+                         :chart-configs {:cc1 chart-config}
+                         :link-registry {(keyword "question/123") "metabase://question/123"}})
+        state          (memory/get-state mem)]
+    (testing "keywordized entity IDs are restored to strings without changing nested payload keys"
+      (is (= query (memory/find-query mem "q1")))
+      (is (= chart (memory/find-chart mem "c1")))
+      (is (= transform (memory/find-transform mem "t1")))
+      (is (= {"cc1" chart-config} (:chart-configs state)))
+      (is (= "preserved" (get-in state [:queries "q1" :nested/value]))))
+    (testing "the string-keyed current-context entry wins if both key representations are present"
+      (is (= {:database 3} (memory/find-query mem "current"))))
+    (testing "link-registry path components retain their namespace"
+      (is (= {"question/123" "metabase://question/123"}
+             (:link-registry state))))
+    (testing "shared tool state and link resolution use the normalized string keys"
+      (binding [shared/*memory-atom* (atom mem)]
+        (is (= query (get (shared/current-queries-state) "q1")))
+        (is (= chart (get (shared/current-charts-state) "c1"))))
+      (is (str/starts-with? (links/resolve-metabase-uri "metabase://query/q1"
+                                                        (:queries state)
+                                                        (:charts state))
+                            "/question#"))
+      (is (str/starts-with? (links/resolve-metabase-uri "metabase://chart/c1"
+                                                        (:queries state)
+                                                        (:charts state))
+                            "/question#")))))
 
 (deftest ^:parallel add-step-test
   (testing "adds step to memory"
@@ -51,6 +94,25 @@
   (testing "turn-state is nil until this turn writes something"
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
       (is (nil? (memory/turn-state mem))))))
+
+(deftest ^:parallel set-link-registry-test
+  (testing "an empty or unchanged registry is not written into the turn delta"
+    (let [without-registry (memory/initialize [] {})
+          registry        {"/model/1" "metabase://model/1"}
+          with-registry    (memory/initialize [] {:link-registry registry})]
+      (is (= without-registry (memory/set-link-registry without-registry {})))
+      (is (= with-registry (memory/set-link-registry with-registry registry)))
+      (is (nil? (memory/turn-state (memory/set-link-registry without-registry {}))))
+      (is (nil? (memory/turn-state (memory/set-link-registry with-registry registry))))))
+  (testing "a newly resolved link updates live state and the turn delta"
+    (let [mem      (memory/initialize [] {})
+          registry (atom {})
+          _        (links/resolve-links "[Model](metabase://model/1)" {} {} registry)
+          mem'     (memory/set-link-registry mem @registry)]
+      (is (= {"/model/1" "metabase://model/1"}
+             (get-in mem' [:state :link-registry])))
+      (is (= {:link-registry {"/model/1" "metabase://model/1"}}
+             (memory/turn-state mem'))))))
 
 (deftest ^:parallel merge-states-test
   (testing "map entries merge; scalar/vector entries take the later value"

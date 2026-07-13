@@ -14,7 +14,6 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -23,6 +22,16 @@
    (java.time Instant LocalDateTime OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
+
+(defn user-row?
+  "Is `row` a user message?"
+  [row]
+  (= :user (:role row)))
+
+(defn assistant-row?
+  "Is `row` an assistant message?"
+  [row]
+  (= :assistant (:role row)))
 
 (def persisted-structured-output-keys
   "Subset of `:structured-output` that must survive persistence so
@@ -176,10 +185,12 @@
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
-(defn live-message
-  "The non-deleted message with `external-id`, or nil."
-  [external-id]
-  (t2/select-one :model/MetabotMessage :external_id external-id :deleted_at nil))
+(defmacro with-conversation-lock
+  "Run `body` in a transaction holding a `FOR UPDATE` lock on the conversation row."
+  [conversation-id & body]
+  `(t2/with-transaction [_conn#]
+     (t2/select-one :model/MetabotConversation :id ~conversation-id {:for :update})
+     ~@body))
 
 (defn soft-delete-messages!
   "Soft-delete the messages matching Toucan `conditions` in one statement,
@@ -188,7 +199,7 @@
   [conditions deleted-by-user-id]
   {:pre [(seq conditions)]}
   (t2/update! :model/MetabotMessage conditions
-              {:deleted_at         (OffsetDateTime/now)
+              {:deleted_at         [:now]
                :deleted_by_user_id deleted-by-user-id}))
 
 (defn- insert-assistant-placeholder!
@@ -307,49 +318,34 @@
          :user-external-id      user-external-id}))))
 
 (defn retry-turn!
-  "Regenerate the response for `retry-message-external-id`, the conversation's last
-  live user message (validated by the caller): soft-deletes the live assistant rows
-  after it and inserts a fresh placeholder. The prompt row is reused — no new user
-  row is inserted, so each prompt keeps a single live response.
+  "Regenerate the response for `retry-message-external-id`, the conversation's last live
+  user message (validated by the caller): soft-deletes the caller-supplied
+  `:delete-message-ids` — the live assistant rows trailing the prompt — and inserts a
+  fresh placeholder. The prompt row is reused — no new user row is inserted, so each
+  prompt keeps a single live response.
 
   `:assistant-external-id` is the client-minted `external_id` for the fresh
   placeholder; minted server-side when omitted.
 
-  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`;
-  throws a 409 when the prompt row is no longer live."
-  [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id]}]
+  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
+  [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id delete-message-ids]}]
   (let [ai-proxy?             (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
         assistant-external-id (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
     (t2/with-transaction [_conn]
-      (let [rows     (live-messages conversation-id)
-            user-row (u/seek #(= retry-message-external-id (:external_id %)) rows)]
-        (when-not (and user-row (= :user (:role user-row)))
-          (throw (ex-info (tru "This conversation has changed. Reload to see the latest messages.")
-                          {:status-code 409})))
-        (let [delete-ids (->> rows
-                              (drop-while #(not= (:id %) (:id user-row)))
-                              rest
-                              (filter #(= :assistant (:role %)))
-                              (map :id))]
-          ;; a raced concurrent retry can leave an extra live response behind;
-          ;; the sweep heals it, but more than one row here is worth a look
-          (when (> (count delete-ids) 1)
-            (log/warn "Retry found multiple live assistant rows for one prompt"
-                      {:conversation-id conversation-id :message-ids delete-ids}))
-          (when (seq delete-ids)
-            (soft-delete-messages! {:id [:in delete-ids]} api/*current-user-id*)))
-        (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?)]
-          {:assistant-msg-id      pk
-           :assistant-external-id assistant-external-id
-           :user-external-id      retry-message-external-id})))))
+      (when (seq delete-message-ids)
+        (soft-delete-messages! {:id [:in delete-message-ids]} api/*current-user-id*))
+      (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?)]
+        {:assistant-msg-id      pk
+         :assistant-external-id assistant-external-id
+         :user-external-id      retry-message-external-id}))))
 
 ;;; ---------------------------------------- Conversation state ----------------------------------------
 
 (defn- replayable-assistant-row?
-  [{:keys [role error finished]}]
-  (and (= :assistant role)
+  [{:keys [error finished] :as row}]
+  (and (assistant-row? row)
        (nil? error)
        (some? finished)))
 
@@ -482,7 +478,7 @@
 (defn- rows->turns
   [rows]
   (reduce (fn [turns row]
-            (if (or (= :user (:role row)) (empty? turns))
+            (if (or (user-row? row) (empty? turns))
               (conj turns [row])
               (update turns (dec (count turns)) conj row)))
           []
@@ -490,8 +486,8 @@
 
 (defn- turn->llm-messages
   [turn-rows]
-  (let [user-row (first (filter #(= :user (:role %)) turn-rows))
-        reply    (last (filter #(= :assistant (:role %)) turn-rows))]
+  (let [user-row (first (filter user-row? turn-rows))
+        reply    (last (filter assistant-row? turn-rows))]
     (when (and reply (replayable-assistant-row? reply))
       (concat (when user-row [(user-row->llm-message user-row)])
               (when reply (assistant-row->llm-messages reply))))))
@@ -520,14 +516,15 @@
 
    `row-role` decides whether text parts render as user or agent messages — v2
    text parts carry no role of their own. `external-id` (the parent row's
-   `metabot_message.external_id`) is attached to agent text and data part chat
-   messages as `:externalId` — the stable key for feedback; the per-block `:id`
-   stays unique."
+   `metabot_message.external_id`) is attached to text and data part chat
+   messages as `:externalId` — the stable key for feedback and retry; the
+   per-block `:id` stays unique."
   [row-role external-id part]
   (cond
     (schema.v2/text-part? part)
     (if (= :user row-role)
-      {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
+      (cond-> {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
+        external-id (assoc :externalId external-id))
       (cond-> {:id      (str (random-uuid))
                :role    "agent"
                :type    "text"

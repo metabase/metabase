@@ -184,13 +184,14 @@
         ;; `:user-id` stamps the author on both rows so participation-based
         ;; conversation read permissions work for multi-user Slack threads.
         {:keys [assistant-msg-id assistant-external-id]}
-        (metabot.persistence/start-turn! conversation-id "slackbot" message
-                                         :channel-id      channel-id
-                                         :slack-team-id   team-id
-                                         :slack-thread-ts thread-ts
-                                         :slack-msg-id    req-slack-msg-id
-                                         :user-id         api/*current-user-id*
-                                         :ai-proxy?       ai-proxy?)
+        (metabot.persistence/with-conversation-lock conversation-id
+          (metabot.persistence/start-turn! conversation-id "slackbot" message
+                                           :channel-id      channel-id
+                                           :slack-team-id   team-id
+                                           :slack-thread-ts thread-ts
+                                           :slack-msg-id    req-slack-msg-id
+                                           :user-id         api/*current-user-id*
+                                           :ai-proxy?       ai-proxy?))
         data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
