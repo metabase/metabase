@@ -209,14 +209,10 @@ jobs:
               ;;
           esac
 
-          # tagAsLatest: only ever true for a `patch` on a real release branch
-          # whose major matches `vars.LATEST_MAJOR_VERSION` (the major of the most
-          # recent gold release) - the one signal this workflow has for "is this
-          # the current latest major". The release-branch check is a second,
-          # independent guard: nothing published from master or a one-off branch
-          # can take the npm `latest` tag, whatever else goes wrong.
-          # `vars.LATEST_MAJOR_VERSION` can be unset (forks, local testing) - an empty
-          # value is treated as "no match", not an error.
+          # Take npm's `latest` tag only when patching the current gold release.
+          # vars.LATEST_MAJOR_VERSION is its major; unset means no match, not an error.
+          # The release-branch check is a second guard, so nothing published from
+          # master or a one-off branch can ever take `latest`.
           case "$RELEASE_TYPE" in
             patch)
               if [[ "$BRANCH" == release-x.* ]] && [ -n "$LATEST_MAJOR_VERSION" ] && [ "$MAJOR_VERSION" = "$LATEST_MAJOR_VERSION" ]; then
