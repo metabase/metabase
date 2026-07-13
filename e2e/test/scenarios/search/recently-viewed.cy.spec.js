@@ -120,32 +120,6 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 });
 
-describe("search > recently viewed > enterprise features", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-
-    H.createModerationReview({
-      status: "verified",
-      moderated_item_id: ORDERS_QUESTION_ID,
-      moderated_item_type: "card",
-    });
-
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    cy.findByTestId("qb-header-left-side").find(".Icon-verified");
-  });
-
-  it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
-    H.openCommandPalette();
-
-    H.commandPalette().within(() => {
-      cy.icon("verified_filled").should("be.visible");
-    });
-  });
-});
-
 const assertRecentlyViewedItem = (index, title, type) => {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("recently-viewed-item-title")

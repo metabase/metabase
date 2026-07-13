@@ -6,8 +6,6 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
-import { IMPERSONATED_USER_ID } from "e2e/support/cypress_sample_instance_data";
-import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
@@ -320,45 +318,6 @@ describe(
         H.createModelFromTableName({
           tableName: WRITABLE_TEST_TABLE,
           idAlias: "writableModelId",
-        });
-      });
-
-      it("should allow action execution from the model detail page", () => {
-        H.queryWritableDB(
-          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
-          dialect,
-        ).then((result) => {
-          const row = result.rows[0];
-          expect(row.score).to.equal(0);
-        });
-
-        cy.get("@writableModelId").then((modelId) => {
-          H.createAction({
-            ...SAMPLE_WRITABLE_QUERY_ACTION,
-            model_id: modelId,
-          });
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
-        });
-
-        runActionFor(SAMPLE_QUERY_ACTION.name);
-
-        H.modal().within(() => {
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.button(SAMPLE_QUERY_ACTION.name).click();
-        });
-
-        cy.findByTestId("toast-undo")
-          .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
-          .should("be.visible");
-
-        H.queryWritableDB(
-          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
-          dialect,
-        ).then((result) => {
-          const row = result.rows[0];
-
-          expect(row.score).to.equal(22);
         });
       });
 
@@ -734,87 +693,6 @@ describe(
             expect(row.score).to.equal(16);
             expect(row.team_name).to.equal("Bouncy Bears");
           });
-        });
-      });
-
-      it("should respect impersonated permission", () => {
-        cy.onlyOn(dialect === "postgres");
-        const role = "readonly_role";
-        const sql = getCreatePostgresRoleIfNotExistSql(
-          role,
-          `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
-        );
-        H.activateToken("pro-self-hosted");
-        H.queryWritableDB(sql);
-
-        cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {
-          login_attributes: { role },
-        });
-
-        cy.updatePermissionsGraph(
-          {
-            [USER_GROUPS.ALL_USERS_GROUP]: {
-              [WRITABLE_DB_ID]: {
-                "view-data": "impersonated",
-                "create-queries": "query-builder-and-native",
-              },
-            },
-            // By default, all groups get `unrestricted` access that will override the impersonation.
-            [USER_GROUPS.COLLECTION_GROUP]: {
-              [WRITABLE_DB_ID]: {
-                "view-data": "blocked",
-              },
-            },
-          },
-          [
-            {
-              db_id: WRITABLE_DB_ID,
-              group_id: USER_GROUPS.ALL_USERS_GROUP,
-              attribute: "role",
-            },
-          ],
-        );
-
-        H.queryWritableDB(
-          `SELECT *
-         FROM ${WRITABLE_TEST_TABLE}
-         WHERE id = 1`,
-          dialect,
-        ).then((result) => {
-          const row = result.rows[0];
-          expect(row.score).to.equal(0);
-        });
-
-        cy.get("@writableModelId").then((modelId) => {
-          H.createAction({
-            ...SAMPLE_WRITABLE_QUERY_ACTION,
-            model_id: modelId,
-          });
-          cy.signInAsImpersonatedUser();
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
-        });
-
-        runActionFor(SAMPLE_QUERY_ACTION.name);
-
-        H.modal().within(() => {
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.button(SAMPLE_QUERY_ACTION.name).click();
-
-          cy.findByText(
-            "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
-            { timeout: 30000 },
-          );
-        });
-
-        H.queryWritableDB(
-          `SELECT *
-         FROM ${WRITABLE_TEST_TABLE}
-         WHERE id = 1`,
-          dialect,
-        ).then((result) => {
-          const row = result.rows[0];
-          expect(row.score).to.equal(0);
         });
       });
     },

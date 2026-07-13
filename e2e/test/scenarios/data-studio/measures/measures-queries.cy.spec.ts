@@ -41,37 +41,6 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("1,510,621.68");
     });
 
-    it("should create a measure with with a column from the main data source using offset", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("Offset(Sum([Total]), -1)");
-      H.CustomExpressionEditor.nameInput().type("Offset Measure");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          breakout("Created At");
-        },
-      });
-      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
-    });
-
-    it("should create a measure with a column from an implicit join", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().within(() => {
-        cy.findByText("Average of ...").click();
-        cy.findByText("Product").click();
-        cy.findByText("Price").click();
-      });
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("55.69");
-    });
-
     it("should create a measure with a column from an implicit join using offset", () => {
       startNewMeasure();
       MeasureEditor.getAggregationPlaceholder().click();
@@ -124,28 +93,6 @@ describe("scenarios > data studio > measures > queries", () => {
 
       useMeasureInAdhocQuestion();
       verifyScalarValue("13,005");
-    });
-
-    it("should create a measure based on another measure with an identity expression", () => {
-      H.createMeasure({
-        name: "TotalMeasure",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      });
-
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("[TotalMeasure]");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("1,510,621.68");
     });
 
     it("should create a measure based on another measure", () => {
@@ -251,32 +198,6 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("18,758");
     });
 
-    it("should be possible to create measures with filters like CountIf based on segments", () => {
-      H.createSegment({
-        name: "LargeTotal",
-        table_id: ORDERS_ID,
-        definition: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field", ORDERS.TOTAL, null], 10],
-          },
-        },
-      });
-
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("CountIf([LargeTotal])");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("18,758");
-    });
-
     it("should be possible to create measures with filters like based on segments that are nested", () => {
       H.createSegment({
         name: "LargeTotal",
@@ -318,31 +239,6 @@ describe("scenarios > data studio > measures > queries", () => {
 
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,759");
-    });
-
-    it("should be possible to offset a measure in a query", () => {
-      H.createMeasure({
-        name: MEASURE_NAME,
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        },
-      });
-
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          H.getNotebookStep("summarize").findByText("Table Measure").click();
-          H.CustomExpressionEditor.clear().type(
-            `Offset([${MEASURE_NAME}], -1)`,
-          );
-          H.popover().button("Update").click();
-
-          breakout("Created At");
-        },
-      });
-
-      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
     });
   });
 

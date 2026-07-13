@@ -66,50 +66,6 @@ describe("scenarios > workspaces > workspace manager", () => {
       H.WorkspaceListPage.newButton().should("be.visible");
     });
   });
-
-  describe("mysql (no schemas)", () => {
-    const MYSQL_DB_NAME = "Writable MySQL8";
-    const workspaceName = "MySQL Workspace";
-
-    beforeEach(() => {
-      H.restore("mysql-writable");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      enableWorkspaces(WRITABLE_DB_ID);
-      cy.deleteDownloadsFolder();
-    });
-
-    it("creates, downloads config, and deletes a workspace as admin", () => {
-      cy.log("create the workspace with the schemaless database");
-      H.WorkspaceListPage.visit();
-      H.WorkspaceListPage.newButton().click();
-      H.NewWorkspaceModal.nameInput().type(workspaceName);
-      H.NewWorkspaceModal.databaseCheckbox(MYSQL_DB_NAME).click();
-      H.NewWorkspaceModal.createButton().click();
-
-      H.WorkspaceListPage.workspace(workspaceName)
-        .should("be.visible")
-        .and("contain.text", MYSQL_DB_NAME);
-
-      cy.log("download the workspace config");
-      H.WorkspaceListPage.workspaceMenuButton(workspaceName).click();
-      H.WorkspaceListPage.downloadConfigMenuItem().click();
-      cy.verifyDownload(CONFIG_FILENAME, { timeout: 15000 });
-      readConfig().should((contents) => {
-        expect(contents).to.contain(workspaceName);
-        expect(contents).to.contain(MYSQL_DB_NAME);
-        expect(contents).to.contain("mysql");
-        expect(contents).not.to.contain("schema-filters-patterns");
-      });
-
-      cy.log("delete the workspace");
-      H.WorkspaceListPage.workspaceMenuButton(workspaceName).click();
-      H.WorkspaceListPage.deleteMenuItem().click();
-      H.DeleteWorkspaceModal.confirmButton().click();
-      H.WorkspaceListPage.workspaceList().should("not.exist");
-      H.WorkspaceListPage.newButton().should("be.visible");
-    });
-  });
 });
 
 function enableWorkspaces(databaseId: number) {

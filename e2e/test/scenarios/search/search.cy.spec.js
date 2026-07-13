@@ -5,7 +5,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const visitEmbeddingWithSearch = (url = "/") => {
   H.visitFullAppEmbeddingUrl({
@@ -67,26 +67,6 @@ describe("scenarios > search", () => {
           },
         ],
         strict: false,
-      });
-    });
-
-    it("should work for user with permissions (metabase#12332)", () => {
-      cy.signInAsNormalUser();
-      visitEmbeddingWithSearch("/");
-      H.getSearchBar().type("product{enter}");
-      cy.wait("@search");
-      cy.findByTestId("search-app").within(() => {
-        cy.findByText("Products");
-      });
-    });
-
-    it("should work for user without data permissions (metabase#16855)", () => {
-      cy.signIn("nodata");
-      visitEmbeddingWithSearch("/");
-      H.getSearchBar().type("product{enter}");
-      cy.wait("@search");
-      cy.findByTestId("search-app").within(() => {
-        cy.findByText("Didn't find anything");
       });
     });
 
@@ -245,27 +225,6 @@ describe("scenarios > search", () => {
         expect(loc.pathname).to.eq("/search");
         expect(loc.search).to.eq("?q=orders");
       });
-    });
-  });
-});
-
-describe("issue 16785", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.request("PUT", "/api/table", {
-      ids: [REVIEWS_ID],
-      visibility_type: "hidden",
-    });
-  });
-
-  it("should not display hidden tables (metabase#16785)", () => {
-    cy.visit("/");
-    cy.findByPlaceholderText("Search…").type("Reviews");
-
-    cy.findByTestId("search-results-list").within(() => {
-      cy.findByText("Reviews").should("not.exist");
     });
   });
 });

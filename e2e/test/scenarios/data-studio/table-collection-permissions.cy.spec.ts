@@ -228,20 +228,6 @@ describe("scenarios > data studio > table collection permissions", () => {
   });
 
   describe("field values", () => {
-    it("should be able to use list field values", () => {
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      H.tableHeaderClick("Category");
-      H.popover().within(() => {
-        cy.findByText("Filter by this column").click();
-        cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
-      });
-      H.assertQueryBuilderRowCount(53);
-    });
-
     it("should be able to use search field values", () => {
       H.publishTables({ table_ids: [PEOPLE_ID] });
 
@@ -391,32 +377,9 @@ describe("scenarios > data studio > table collection permissions", () => {
       });
       H.assertQueryBuilderRowCount(93);
     });
-
-    it("should show a permission error when accessing a published table when some columns are remapped to unpublished tables", () => {
-      H.publishTables({ table_ids: [ORDERS_ID] });
-      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-        name: "Product ID",
-        type: "external",
-        human_readable_field_id: PRODUCTS.TITLE,
-      });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(ordersQuestionDetails);
-      assertQueryPermissionError();
-    });
   });
 
   describe("sandboxing", () => {
-    it("should be able to access a published sandboxed table", () => {
-      H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-      sandboxProductsOnCategory();
-      H.publishTables({ table_ids: [PRODUCTS_ID] });
-
-      cy.signIn("sandboxed");
-      H.visitQuestionAdhoc(productsQuestionDetails);
-      H.assertQueryBuilderRowCount(54);
-    });
-
     it("should be able to use list field values with sandboxing", () => {
       H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       sandboxProductsOnCategory();

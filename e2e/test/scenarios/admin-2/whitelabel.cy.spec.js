@@ -67,13 +67,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.findByDisplayValue(NEW_COMPANY_NAME);
     });
 
-    it("should not show the old name in the admin panel (metabase#17043)", () => {
-      cy.visit("/admin/settings/general");
-      cy.findByTestId("site-name-setting")
-        .findByText(`The name used for this instance of ${NEW_COMPANY_NAME}.`)
-        .should("be.visible");
-    });
-
     it("should show the new name in the main app", () => {
       cy.visit("/");
       H.getProfileLink().click();

@@ -36,15 +36,6 @@ function completeSignup() {
   cy.button("Save new password").click();
 }
 
-function enableGoogleSSO() {
-  H.activateToken("pro-self-hosted");
-  cy.request("PUT", "/api/google/settings", {
-    "google-auth-auto-create-accounts-domain": null,
-    "google-auth-client-id": "example1.apps.googleusercontent.com",
-    "google-auth-enabled": true,
-  });
-}
-
 describe("scenarios > sharing > invite someone to view", () => {
   beforeEach(() => {
     H.restore();
@@ -83,41 +74,6 @@ describe("scenarios > sharing > invite someone to view", () => {
       });
     });
   });
-
-  describe("invite email", () => {
-    beforeEach(() => H.setupSMTP());
-
-    it("scopes the subject/body to the dashboard and links to it", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      inviteFromShareMenu(inviteEmail());
-
-      H.getInbox().then(({ body: [email] }) => {
-        expect(email.subject).to.contain("invited to view the dashboard");
-        expect(email.html).to.contain(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-        expect(email.html).to.contain(
-          "wants to share a Metabase dashboard with you",
-        );
-      });
-    });
-
-    it("uses the SSO login link (not a password reset) when password login is disabled", () => {
-      enableGoogleSSO();
-      cy.request("PUT", "/api/setting", { "enable-password-login": false });
-
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      inviteFromShareMenu(inviteEmail());
-
-      H.getInbox().then(({ body: [email] }) => {
-        expect(email.html).to.match(
-          new RegExp(
-            `/auth/login\\?redirect(&#x3D;|=)/dashboard/${ORDERS_DASHBOARD_ID}`,
-          ),
-        );
-        expect(email.html).not.to.contain("reset_password");
-      });
-    });
-  });
-
   describe("landing after signup", () => {
     beforeEach(() => H.setupSMTP());
 

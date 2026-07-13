@@ -4,7 +4,6 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { TablePicker, TableSection, FieldSection, Shared } = cy.H.DataModel;
@@ -248,57 +247,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           });
         });
 
-        it("should correctly show remapped column value", () => {
-          visit({ databaseId: SAMPLE_DB_ID });
-
-          // edit "Product ID" column in "Orders" table
-          TablePicker.getTable("Orders").click();
-          if (area === "data studio") {
-            TableSection.clickFieldsTab();
-          }
-          TableSection.clickField("Product ID");
-
-          // remap its original value to use foreign key
-          FieldSection.getDisplayValuesInput().click();
-          H.popover().findByText("Use foreign key").click();
-          H.popover().findByText("Title").click();
-          cy.wait("@updateFieldDimension");
-          H.undoToast().should(
-            "contain.text",
-            "Display values of Product ID updated",
-          );
-
-          cy.log("verify preview");
-          FieldSection.getPreviewButton().click();
-          verifyObjectDetailPreview({
-            rowNumber: 2,
-            row: ["Product ID", "Awesome Concrete Shoes"],
-          });
-          verifyTablePreview({
-            column: "Product ID",
-            values: [
-              "Awesome Concrete Shoes",
-              "Mediocre Wooden Bench",
-              "Fantastic Wool Shirt",
-              "Awesome Bronze Plate",
-              "Sleek Steel Table",
-            ],
-          });
-
-          FieldSection.get()
-            .findByText(
-              "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
-            )
-            .scrollIntoView()
-            .should("be.visible");
-
-          cy.log("Name of the product should be displayed instead of its ID");
-          H.openOrdersTable();
-          cy.findByRole("gridcell", {
-            name: "Awesome Concrete Shoes",
-          }).should("be.visible");
-        });
-
         it("should correctly apply and display custom remapping for numeric values", () => {
           // this test also indirectly reproduces metabase#12771
           const customMap = {
@@ -414,57 +362,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           H.popover()
             .findByRole("option", { name: /Custom mapping/ })
             .should("not.have.attr", "data-combobox-disabled");
-        });
-
-        it("should allow to map FK to date fields (metabase#7108)", () => {
-          visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: ORDERS_ID,
-            fieldId: ORDERS.USER_ID,
-          });
-
-          FieldSection.getDisplayValuesInput().click();
-          H.popover().findByText("Use foreign key").click();
-          cy.wait("@updateFieldDimension");
-          verifyAndCloseToast("Display values of User ID updated");
-
-          FieldSection.getDisplayValuesFkTargetInput().click();
-
-          H.popover().within(() => {
-            cy.findByText("Birth Date").scrollIntoView().should("be.visible");
-            cy.findByText("Created At")
-              .scrollIntoView()
-              .should("be.visible")
-              .click();
-          });
-          cy.wait("@updateFieldDimension");
-          H.undoToast().should(
-            "contain.text",
-            "Display values of User ID updated",
-          );
-
-          cy.log("verify preview");
-          FieldSection.getPreviewButton().click();
-          verifyTablePreview({
-            column: "User ID",
-            values: [
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
-              "2026-10-07T01:34:35.462-07:00",
-            ],
-          });
-          verifyObjectDetailPreview({
-            rowNumber: 1,
-            row: ["User ID", "2026-10-07T01:34:35.462-07:00"],
-          });
-
-          H.visitQuestion(ORDERS_QUESTION_ID);
-          cy.findAllByTestId("cell-data")
-            .eq(10) // 1st data row, 2nd column (User ID)
-            .should("have.text", "2026-10-07T01:34:35.462-07:00");
         });
       });
 

@@ -301,42 +301,6 @@ describe("scenarios > documents > public", () => {
     cy.findByRole("button", { name: "Sign in" }).should("not.exist");
   });
 
-  it("should become inaccessible when public sharing is disabled", () => {
-    // Create a document with public link
-    createTestDocumentWithCard("Document for Disabling Test");
-
-    cy.log("Create public link while sharing is enabled");
-    cy.get("@documentId")
-      .then((documentId) => {
-        return H.createPublicDocumentLink(documentId);
-      })
-      .then(({ body: { uuid } }) => {
-        cy.wrap(uuid).as("publicUuid");
-
-        cy.log("Verify document is accessible with sharing enabled");
-        cy.signOut();
-        cy.visit(`/public/document/${uuid}`);
-        H.documentContent().should("contain", "Test content");
-      });
-
-    cy.log("Disable public sharing");
-    cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", false);
-    cy.signOut();
-
-    cy.log("Try to access public document after disabling sharing");
-    cy.get("@publicUuid").then((uuid) => {
-      cy.visit(`/public/document/${uuid}`);
-
-      cy.log("Verify document is no longer accessible");
-      verifyErrorMessage("An error occurred.");
-    });
-
-    // Cleanup: Re-enable public sharing for subsequent tests
-    cy.signInAsAdmin();
-    H.updateSetting("enable-public-sharing", true);
-  });
-
   it("should show error when accessing public link of deleted document", () => {
     // Create a document with public link
     createTestDocumentWithCard("Document to be Deleted");

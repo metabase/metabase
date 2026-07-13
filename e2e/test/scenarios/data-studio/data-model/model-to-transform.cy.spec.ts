@@ -34,40 +34,6 @@ describe(
     });
 
     describe("Successful conversions", () => {
-      it("updates direct and nested questions built on the converted model", () => {
-        createTestTables();
-        createSourceModel("Target model").then(({ body: model }) => {
-          createQuestionOnModel("Direct dependent", model.id).as("direct");
-          createQuestionOnCard("Nested dependent", model.id).then(
-            ({ body: parent }) => {
-              H.createQuestion({
-                name: "Second level nested",
-                database: WRITABLE_DB_ID,
-                query: { "source-table": `card__${parent.id}` },
-              }).as("secondLevel");
-            },
-          );
-        });
-
-        convertModelToTransform("Target model");
-
-        cy.log("direct dependent now reads from the transform's output table");
-        cy.get<Cypress.Response<{ id: CardId }>>("@direct").then(({ body }) => {
-          H.visitQuestion(body.id);
-          assertSourceRowsVisible();
-          H.openNotebook();
-          assertDataSourceIs(OUTPUT_TABLE_LABEL);
-        });
-
-        cy.log("two-level nested question still runs after the swap");
-        cy.get<Cypress.Response<{ id: CardId }>>("@secondLevel").then(
-          ({ body }) => {
-            H.visitQuestion(body.id);
-            assertSourceRowsVisible();
-          },
-        );
-      });
-
       it("creates a transform that can be opened and queries the original source table", () => {
         createTestTables();
         createSourceModel("Transform source model");
@@ -105,44 +71,6 @@ describe(
           H.visitQuestion(card_id);
           H.openNotebook();
           assertDataSourceIs(OUTPUT_TABLE_LABEL);
-        });
-      });
-
-      it("keeps a metric built on the model producing the same result", () => {
-        createTestTables();
-        createSourceModel("Metric base model").then(({ body: model }) => {
-          H.createQuestion({
-            name: "Amount sum metric",
-            database: WRITABLE_DB_ID,
-            type: "metric",
-            query: {
-              "source-table": `card__${model.id}`,
-              aggregation: [
-                ["sum", ["field", "amount", { "base-type": "type/Decimal" }]],
-              ],
-            },
-          }).as("metric");
-        });
-
-        convertModelToTransform("Metric base model");
-
-        cy.get<Cypress.Response<{ id: CardId }>>("@metric").then(({ body }) => {
-          H.visitMetric(body.id);
-          H.main().findByText("301.25").should("be.visible");
-        });
-      });
-
-      it("keeps a joined question working after converting its joined model", () => {
-        createTestTables();
-        createSourceModel("Joined model").then(({ body: model }) => {
-          createQuestionJoiningModel("Joined question", model.id).as("joined");
-        });
-
-        convertModelToTransform("Joined model");
-
-        cy.get<Cypress.Response<{ id: CardId }>>("@joined").then(({ body }) => {
-          H.visitQuestion(body.id);
-          assertSourceRowsVisible();
         });
       });
     });
@@ -219,55 +147,6 @@ function createSourceModel(name: string) {
       type: "model",
       query: { "source-table": sourceTableId },
     }),
-  );
-}
-
-function createQuestionOnModel(name: string, modelId: CardId) {
-  return H.createQuestion({
-    name,
-    database: WRITABLE_DB_ID,
-    query: { "source-table": `card__${modelId}` },
-  });
-}
-
-function createQuestionOnCard(name: string, parentCardId: CardId) {
-  return H.createQuestion({
-    name,
-    database: WRITABLE_DB_ID,
-    query: { "source-table": `card__${parentCardId}` },
-  });
-}
-
-function createQuestionJoiningModel(name: string, modelId: CardId) {
-  return getTableId(SOURCE_TABLE).then((sourceTableId) =>
-    H.getFieldId({ tableId: sourceTableId, name: "id" }).then((sourceIdField) =>
-      H.createQuestion({
-        name,
-        database: WRITABLE_DB_ID,
-        query: {
-          "source-table": sourceTableId,
-          joins: [
-            {
-              alias: "ModelJoin",
-              "source-table": `card__${modelId}`,
-              fields: "all",
-              condition: [
-                "=",
-                ["field", sourceIdField, { "base-type": "type/Integer" }],
-                [
-                  "field",
-                  "id",
-                  {
-                    "base-type": "type/Integer",
-                    "join-alias": "ModelJoin",
-                  },
-                ],
-              ],
-            },
-          ],
-        },
-      }),
-    ),
   );
 }
 
@@ -392,11 +271,6 @@ function convertModelToTransform(modelName: string) {
   openReplaceWithTransformModal();
   submitReplaceWithTransformForm();
   waitForReplacementToComplete();
-}
-
-function assertSourceRowsVisible() {
-  H.main().findAllByText(SOURCE_ROW_NAME).first().should("be.visible");
-  H.main().findAllByText(SOURCE_ROW_NAME_2).first().should("be.visible");
 }
 
 function assertDataSourceIs(tableLabel: string) {

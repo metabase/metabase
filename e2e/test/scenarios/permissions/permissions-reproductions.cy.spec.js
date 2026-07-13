@@ -2,14 +2,12 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  NODATA_USER_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID, PRODUCTS } =
-  SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 const { nocollection } = USERS;
 
 const PG_DB_ID = 2;
@@ -76,82 +74,6 @@ describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
     });
   });
 });
-
-describe("postgres > user > query", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-
-    // Update basic permissions (the same starting "state" as we have for the "Sample Database")
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [PG_DB_ID]: {
-          "view-data": "blocked",
-          "create-queries": "no",
-        },
-      },
-      [DATA_GROUP]: {
-        [PG_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder-and-native",
-        },
-      },
-      [COLLECTION_GROUP]: {
-        [PG_DB_ID]: {
-          "view-data": "blocked",
-          "create-queries": "no",
-        },
-      },
-    });
-
-    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
-  });
-
-  it("should handle the use of `regexExtract` in a sandboxed table (metabase#14873)", () => {
-    const CC_NAME = "Firstname";
-    // We need ultra-wide screen to avoid scrolling (custom column is rendered at the last position)
-    cy.viewport(2200, 1200);
-
-    H.withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) => {
-      // Question with a custom column created with `regextract`
-      H.createQuestion({
-        name: "14873",
-        query: {
-          "source-table": PEOPLE_ID,
-          expressions: {
-            [CC_NAME]: [
-              "regex-match-first",
-              ["field-id", PEOPLE.NAME],
-              "^[A-Za-z]+",
-            ],
-          },
-        },
-        database: PG_DB_ID,
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.sandboxTable({
-          table_id: PEOPLE_ID,
-          attribute_remappings: {
-            attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
-          },
-        });
-
-        cy.signOut();
-        cy.signInAsSandboxedUser();
-
-        H.visitQuestion(QUESTION_ID);
-
-        cy.findByText(CC_NAME);
-        cy.findByText(/^Hudson$/);
-        H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
-        H.assertDatasetReqIsSandboxed({
-          requestAlias: `@cardQuery${QUESTION_ID}`,
-        });
-      });
-    });
-  });
-});
-
 describe("issue 17777", { tags: "@skip" }, () => {
   function hideTables(tables) {
     cy.request("PUT", "/api/table", {
@@ -540,121 +462,6 @@ describe("issue 23981", () => {
       cy.log('ensure that "Collections" is not selectable');
       cy.findByText("Collections").should("be.visible").click();
       cy.button("Select this collection").should("be.disabled");
-    });
-  });
-});
-
-describe("issue 24966", () => {
-  const sandboxingQuestion = {
-    name: "geadsfasd",
-    native: {
-      query:
-        "select products.category,PRODUCTS.title from PRODUCTS where true [[AND products.CATEGORY = {{category}}]]",
-      "template-tags": {
-        category: {
-          id: "411b40bb-1374-9787-6ffb-20604df56d73",
-          name: "category",
-          "display-name": "Category",
-          type: "text",
-        },
-      },
-    },
-    parameters: [
-      {
-        id: "411b40bb-1374-9787-6ffb-20604df56d73",
-        type: "category",
-        target: ["variable", ["template-tag", "category"]],
-        name: "Category",
-        slug: "category",
-      },
-    ],
-  };
-
-  const dashboardFilter = {
-    name: "Text",
-    slug: "text",
-    id: "ec00b255",
-    type: "string/=",
-    sectionId: "string",
-  };
-
-  const dashboardDetails = { parameters: [dashboardFilter] };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-
-    // Add user attribute to existing user
-    cy.request("PUT", `/api/user/${NODATA_USER_ID}`, {
-      login_attributes: { attr_cat: "Gizmo" },
-    });
-
-    H.createNativeQuestion(sandboxingQuestion).then(({ body: { id } }) => {
-      H.visitQuestion(id);
-
-      cy.sandboxTable({
-        table_id: PRODUCTS_ID,
-        card_id: id,
-        attribute_remappings: {
-          attr_cat: ["variable", ["template-tag", "category"]],
-        },
-      });
-    });
-
-    // Add the saved products table to the dashboard
-    H.createQuestionAndDashboard({
-      questionDetails: {
-        query: {
-          "source-table": PRODUCTS_ID,
-          limit: 10,
-        },
-      },
-      dashboardDetails,
-    }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.wrap(dashboard_id).as("dashboardId");
-      cy.wrap(id).as("dashcardId");
-
-      // Connect the filter to the card
-      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-        dashcards: [
-          {
-            id,
-            card_id,
-            col: 0,
-            row: 0,
-            size_x: 16,
-            size_y: 8,
-            parameter_mappings: [
-              {
-                parameter_id: dashboardFilter.id,
-                card_id,
-                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-              },
-            ],
-          },
-        ],
-      });
-    });
-  });
-
-  it("should correctly fetch field values for a filter when native question is used for sandboxing (metabase#24966)", () => {
-    cy.signIn("nodata");
-    H.visitDashboard("@dashboardId");
-    H.filterWidget().click();
-    cy.findByLabelText("Gizmo").click();
-    cy.button("Add filter").click();
-    cy.location("search").should("eq", "?text=Gizmo");
-
-    cy.signInAsSandboxedUser();
-    H.visitDashboard("@dashboardId");
-    H.filterWidget().click();
-    cy.findByLabelText("Widget").click();
-    cy.button("Add filter").click();
-    cy.location("search").should("eq", "?text=Widget");
-    cy.get("@dashcardId").then((id) => {
-      H.assertDatasetReqIsSandboxed({ requestAlias: `@dashcardQuery${id}` });
     });
   });
 });

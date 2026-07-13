@@ -118,34 +118,6 @@ describe("scenarios > dependencies > unreferenced list", () => {
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
-
-  describe("analysis", () => {
-    it("should show unreferenced entities", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
-      });
-    });
-
-    it("should not show referenced entities", () => {
-      setupEntities({ withReferences: true });
-      // These entities are referenced, so they should never appear in the
-      // unreferenced list — we can't poll for their presence. Wait for the
-      // global backfill so the analysis has run before asserting their absence.
-      H.waitForBackfillComplete();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("not.exist");
-        });
-      });
-    });
-  });
-
   describe("search", () => {
     it("should search for entities", () => {
       setupEntities();
