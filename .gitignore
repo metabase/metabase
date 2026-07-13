@@ -201,6 +201,8 @@ __pycache__/
 .claude/scheduled_tasks.lock
 .playwright-mcp
 .ci_reports/
+# roborev snapshots
+/.roborev/
 
 # dependency-cruiser output
 dependency-graph.json

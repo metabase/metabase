@@ -5,58 +5,23 @@
   token-efficient references to resources that can be fetched on-demand at the
   appropriate level of detail.
 
-  URI dispatch uses [[metabase.util.match/match-one]] — every supported URI shape lives
-  in the [[dispatch]] match table, and each fetch-* handler takes only the IDs/names it
-  needs. Adding a new URI = adding one match clause + one focused fn.
+  Output bodies are JSON in the Metabase Representation (MBR) format per core-spec v1
+  (https://github.com/metabase/representations/blob/main/core-spec/v1/spec.md). Each
+  entity carries `serdes/meta` (an identity path) and is built by reusing the same
+  `serdes/extract-all` pipeline used for portable serialization — so MBR-shape FK refs,
+  `dataset_query` portability, nested entities, etc. come for free.
 
-  Supported URI patterns:
+  URI dispatch uses [[metabase.util.match/match-one]]. Two identifier tiers:
 
-  Navigation (top-level lists, no id):
-  - metabase://databases - list databases
-  - metabase://collections - list root collections
-  - metabase://collections?tree=true - flat list of all collections (hierarchy via :location)
-  - metabase://user/recent-items - current user's recent items
+  - User content: `metabase://{type}/{entity_id}`. Numeric ids accepted for backcompat
+    via [[metabase.metabot.tools.shared.mbr/resolve-user-entity]].
+  - Sync metadata: `metabase://database/{db_name}[/schema/{schema}/table/{table_name}[/field/{field_name}]]`,
+    via [[metabase.metabot.tools.shared.mbr/resolve-database]] and
+    [[metabase.metabot.tools.shared.mbr/resolve-table]]. The legacy
+    `metabase://table/{id}` form still routes through
+    [[metabase.metabot.tools.shared.mbr/resolve-table-legacy]].
 
-  Pagination:
-  List responses are capped at page-size items per page. When :truncated is true, use ?page=N to
-  fetch subsequent pages, e.g. metabase://database/1/tables?page=2. The response includes
-  :page (current, 1-indexed) and :pages (total).
-
-  Database drill-down:
-  - metabase://database/{id} - one database
-  - metabase://database/{id}/tables - tables in the database
-  - metabase://database/{id}/models - models targeting the database
-  - metabase://database/{id}/schemas - schemas in the database
-  - metabase://database/{id}/schemas/{schemaName}/tables - tables in a schema
-
-  Collection drill-down:
-  - metabase://collection/{id} - one collection
-  - metabase://collection/{id}/items - direct children (subcollections + leaves)
-  - metabase://collection/{id}/subcollections - just subcollections
-
-  Entity drill-down:
-  - metabase://table/{id} - basic table info
-  - metabase://table/{id}/fields - table with fields
-  - metabase://table/{id}/fields/{field_id} - specific field details
-  - metabase://table/{id}/derived - cards/transforms derived from this table
-  - metabase://model/{id} - basic model info
-  - metabase://model/{id}/fields - model with fields
-  - metabase://model/{id}/fields/{field_id} - specific field details
-  - metabase://model/{id}/sources - tables/models this model is derived from
-  - metabase://question/{id} - basic question info
-  - metabase://question/{id}/fields - question with fields
-  - metabase://question/{id}/fields/{field_id} - specific field details
-  - metabase://question/{id}/sources - tables/models this question references
-  - metabase://metric/{id} - basic metric info
-  - metabase://metric/{id}/dimensions - metric with dimensions
-  - metabase://metric/{id}/dimensions/{dimension_id} - specific dimension details
-  - metabase://measure/{id} - measure detail (definition + parent table)
-  - metabase://segment/{id} - segment detail (definition + parent table)
-  - metabase://transform/{id} - transform details
-  - metabase://transform/{id}/sources - tables/databases this transform reads from
-  - metabase://transform/{id}/target - table this transform writes to
-  - metabase://dashboard/{id} - dashboard details
-  - metabase://dashboard/{id}/items - cards on the dashboard"
+  Supported URI patterns are exhaustively listed in [[read-resource-tool]]'s docstring."
   (:require
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
@@ -66,8 +31,12 @@
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.shared.mbr :as mbr]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.transforms.core :as transforms]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
@@ -79,49 +48,6 @@
 (def ^:private max-concurrent-uris
   "Maximum number of URIs that can be fetched in a single call."
   5)
-
-(def ^:private page-size
-  "Page size for list responses."
-  25)
-
-(defn- paginate-list
-  "Return one page of items. `page-str` is a 1-indexed string (from a URI query param), defaults to 1.
-   Page size is always `page-size`. Throws if `page-str` parses to a page number outside [1, pages]
-   rather than silently clamping, so a caller (the agent) finds out it passed a bad value."
-  [items page-str]
-  (let [items (vec items)
-        total (count items)
-        pages (max 1 (int (Math/ceil (/ (double total) page-size))))
-        page  (or (some-> page-str parse-long) 1)
-        _     (when (or (< page 1) (> page pages))
-                (throw (ex-info (str "Invalid page " page ". This list has " pages
-                                     (if (= pages 1) " page." " pages."))
-                                {:page page :pages pages})))
-        start (* (dec page) page-size)]
-    {:items (vec (take page-size (drop start items)))
-     :total total
-     :page  page
-     :pages pages}))
-
-(defn- list-result
-  "Build a structured-output map for a list of items.
-   `list-type` is a keyword like :databases, :collection-items, :recents, etc.
-   `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string)."
-  ([list-type items] (list-result list-type items nil))
-  ([list-type items query-params]
-   (let [{:keys [items total page pages]} (paginate-list items (:page query-params))]
-     {:structured-output
-      {:result-type :metabot-list
-       :list-type   list-type
-       :items       items
-       :total       total
-       :page        page
-       :pages       pages}})))
-
-(defn- entity-result
-  "Build a structured-output map for a single entity (databases, collections, etc.)."
-  [item]
-  {:structured-output (assoc item :result-type :metabot-entity)})
 
 (defn- parse-query-string
   "Parse a URI query string like \"tree=true&foo=bar\" into a keyword-keyed map.
@@ -143,120 +69,60 @@
    from `metabase-uri` back into the matched pattern.
 
    Returns:
-   - :segments     - vector of non-empty path segments (e.g. [\"database\" \"1\" \"tables\"])
-   - :query-params - {keyword string} map (e.g. {:tree \"true\"}), or nil if no query string"
+   - :segments     - vector of path segments (e.g. [\"database\" \"1\" \"tables\"])
+   - :query-params - {keyword string} map (e.g. {:tree \"true\"}), or nil if no query string
+
+   INTERIOR empty segments are preserved: a schemaless database yields the path-form
+   `database/{db}/schema//table/{t}`, whose empty `schema` slot must survive so the table
+   dispatch clause (6 segments) still matches. Only leading/trailing empties (from a stray
+   `/`) are trimmed."
   [uri]
   (when-not (str/starts-with? uri "metabase://")
     (throw (ex-info (str "Invalid URI scheme. Expected 'metabase://' but got: " uri)
                     {:uri uri})))
-  (let [stripped (subs uri 11)
+  (let [stripped  (subs uri 11)
         [path qs] (str/split stripped #"\?" 2)
-        segments  (->> (str/split path #"/")
-                       (remove str/blank?)
+        ;; Trim leading/trailing '/' so those don't produce empty edge segments, then split
+        ;; WITHOUT removing blanks so an interior empty (e.g. the schema slot of a schemaless
+        ;; table) is kept. `split … -1` retains trailing empties from the pre-trim path.
+        segments  (->> (str/replace path #"^/+|/+$" "")
+                       (#(str/split % #"/" -1))
                        (mapv codec/url-decode))]
-    (when (zero? (count segments))
+    (when (or (zero? (count segments))
+              (= segments [""]))
       (throw (ex-info (str "Invalid URI: " uri " — empty path")
                       {:uri uri})))
     {:segments     segments
      :query-params (parse-query-string qs)}))
 
-;; ----- Item presenters (list-row shapes) -----
+;; ----- Pagination helper -----
 
-(defn- present-database
-  "Trim a database row to a token-frugal item map for list responses."
-  [{:keys [id name engine description]}]
-  {:type        "database"
-   :id          id
-   :name        name
-   :engine      (some-> engine clojure.core/name)
-   :description description
-   :uri         (llm-shape/metabase-uri :database id)})
+(defn- paginate-items
+  "Paginate an already-built/hydrated item vector the same way
+   [[metabase.metabot.tools.shared.mbr/extract-readable]] paginates instances.
 
-(defn- present-collection
-  "Trim a collection row to an item map. `path-name` may be supplied if the caller pre-computed it."
-  ([coll] (present-collection coll nil))
-  ([{:keys [id name location authority_level description personal_owner_id]} path-name]
-   {:type              "collection"
-    :id                id
-    :name              name
-    :path              (or path-name name)
-    :location          location
-    :authority_level   authority_level
-    :is_personal       (boolean personal_owner_id)
-    :description       description
-    :uri               (llm-shape/metabase-uri :collection id)}))
-
-(defn- present-table
-  [{:keys [id name display_name schema db_id description]}]
-  {:type         "table"
-   :id           id
-   :name         name
-   :display_name display_name
-   :schema       schema
-   :database_id  db_id
-   :description  description
-   :uri          (llm-shape/metabase-uri :table id)})
-
-(defn- present-card
-  "Cards (questions or models) — :type on a Card is :question / :model / :metric."
-  [{:keys [id name type collection_id description database_id table_id]}]
-  (let [model-type (case type
-                     :model    "model"
-                     :metric   "metric"
-                     :question "question"
-                     "question")]
-    {:type          model-type
-     :id            id
-     :name          name
-     :collection_id collection_id
-     :database_id   database_id
-     :table_id      table_id
-     :description   description
-     :uri           (llm-shape/metabase-uri (keyword model-type) id)}))
-
-(defn- present-dashboard
-  [{:keys [id name collection_id description]}]
-  {:type          "dashboard"
-   :id            id
-   :name          name
-   :collection_id collection_id
-   :description   description
-   :uri           (llm-shape/metabase-uri :dashboard id)})
-
-(defn- present-transform
-  [{:keys [id name description source_database_id]}]
-  {:type        "transform"
-   :id          id
-   :name        name
-   :database_id source_database_id
-   :description description
-   :uri         (llm-shape/metabase-uri :transform id)})
-
-(defn- present-source-card
-  "Resolve a source-card id to a typed item map (model / metric / question)."
-  [source-card-id]
-  (let [src-card (t2/select-one [:model/Card :id :type :card_schema] :id source-card-id)
-        src-type (case (:type src-card)
-                   :model  "model"
-                   :metric "metric"
-                   "question")]
-    {:type src-type
-     :id   source-card-id
-     :uri  (llm-shape/metabase-uri (keyword src-type) source-card-id)}))
+   Used by the concat sites (which mix models and so can't page through a single
+   `extract-readable` call) and by the hand-built schema list. `page-str` is the
+   raw `:page` query-param (string or nil); page size is
+   [[metabase.metabot.tools.shared.mbr/max-list-items]]. Returns
+   `{:items <≤page-size> :total <full count> :page n :pages <total pages>}` and
+   throws on a page outside [1, pages] — matching extract-readable's contract and
+   error message so the agent gets a consistent signal."
+  [items page-str]
+  (let [items (vec items)
+        total (count items)
+        pages (max 1 (long (Math/ceil (/ (double total) mbr/max-list-items))))
+        page  (or (some-> page-str parse-long) 1)]
+    (when (or (< page 1) (> page pages))
+      (throw (ex-info (str "Invalid page " page ". This list has " pages
+                           (if (= pages 1) " page." " pages."))
+                      {:page page :pages pages})))
+    {:items (->> items (drop (* (dec page) mbr/max-list-items)) (take mbr/max-list-items) vec)
+     :total total
+     :page  page
+     :pages pages}))
 
 ;; ----- Lineage helpers -----
-
-(defn- card-sources-items
-  "Build URI list for the entities a card references, FK-only (database_id, table_id, source_card_id)."
-  [{:keys [database_id table_id source_card_id]}]
-  (cond-> []
-    database_id    (conj {:type "database"
-                          :id   database_id
-                          :uri  (llm-shape/metabase-uri :database database_id)})
-    table_id       (conj {:type "table"
-                          :id   table_id
-                          :uri  (llm-shape/metabase-uri :table table_id)})
-    source_card_id (conj (present-source-card source_card_id))))
 
 (defn- transform-source-table-ids
   "FK-only source tables for a transform: walks (:source :source-tables) entries when present."
@@ -267,164 +133,171 @@
 ;; ----- Fetch handlers (one per URI shape) -----
 
 (defn- fetch-databases-list [query-params]
-  (let [dbs (->> (t2/select [:model/Database :id :name :engine :description :is_audit]
-                            :is_audit false
-                            {:order-by [[:%lower.name :asc]]})
-                 (filter mi/can-read?)
-                 (mapv present-database))]
-    (list-result :databases dbs query-params)))
+  ;; Exclude router-child (destination) databases: they'd pass can-read? and count
+  ;; into :total, but the Database serdes extract drops them — a silent omission.
+  (let [dbs (t2/select :model/Database
+                       :is_audit false
+                       :router_database_id nil
+                       {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :databases (mbr/extract-readable "Database" dbs {:page (:page query-params)}))))
 
 (defn- fetch-collections-list
-  "metabase://collections (root only) and metabase://collections?tree=true (flat list of all)."
-  [{:keys [tree] :as query-params}]
-  (let [tree?    (= "true" tree)
-        where    (cond-> [:and
-                          [:= :archived false]
-                          [:= :namespace nil]
-                          ;; Exclude the system Trash collection from navigation listings.
-                          [:or [:= :type nil] [:!= :type "trash"]]]
-                   (not tree?) (conj [:= :location "/"]))
-        colls    (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                  :description :personal_owner_id]
-                                 {:where    where
-                                  :order-by [[:location :asc] [:%lower.name :asc]]})
-                      (filter mi/can-read?))
-        ;; For tree mode, compute path names by chaining ancestor names.
-        id->name (when tree? (into {} (map (juxt :id :name)) colls))
-        ancestors (fn [{:keys [location]}]
-                    (when (and location (not= "/" location))
-                      (->> (str/split location #"/")
-                           (remove str/blank?)
-                           (keep parse-long))))
-        path-of  (fn [coll]
-                   (str/join "/" (concat (keep id->name (ancestors coll))
-                                         [(:name coll)])))
-        ;; Build items and, for tree mode, re-sort by computed path name.
-        ;; The DB ORDER BY location ASC sorts path strings lexicographically — "/10/" sorts
-        ;; before "/2/", interleaving children of high-ID parents incorrectly. Sorting by
-        ;; the human-readable path ("Analytics/Reports") is stable and groups children
-        ;; directly under their parents.
-        items    (cond-> (mapv (fn [c] (present-collection c (when tree? (path-of c)))) colls)
-                   tree? (->> (sort-by :path) vec))]
-    (list-result (if tree? :collections-tree :collections-root) items query-params)))
+  "metabase://collections (root only) and metabase://collections?tree=true (flat list of all).
 
-(defn- fetch-user-recents []
+   In MBR, hierarchy is encoded by each Collection's `parent_id` (entity_id of
+   parent). For tree mode we return the flat list across the namespace; the
+   caller assembles the tree by chaining `parent_id`."
+  [{:keys [tree page] :as _query-params}]
+  (let [tree?  (= "true" tree)
+        where  (cond-> [:and
+                        [:= :archived false]
+                        [:= :namespace nil]
+                        ;; Exclude the system Trash collection from navigation listings.
+                        [:or [:= :type nil] [:!= :type "trash"]]]
+                 (not tree?) (conj [:= :location "/"]))
+        colls  (t2/select :model/Collection
+                          {:where    where
+                           :order-by [[:location :asc] [:%lower.name :asc]]})]
+    (mbr/list-result (if tree? :collections-tree :collections-root)
+                     (mbr/extract-readable "Collection" colls {:page page}))))
+
+;; `activity-feed/get-recents` sets each item's `:model` to a KEYWORD (see the
+;; `fill-recent-view-info` methods, which emit `:model :card` / `:collection` /
+;; …), so these maps key on keywords. Keying on strings (as an earlier version
+;; did) matched nothing and dropped *every* recent.
+(defn- recent-model->mbr-model
+  "Activity-feed recent `:model` keyword -> MBR model name."
+  [model]
+  (case model
+    (:card :dataset :metric :model) "Card"
+    :dashboard                      "Dashboard"
+    :table                          "Table"
+    :collection                     "Collection"
+    :document                       "Document"
+    nil))
+
+(defn- recent-model->toucan
+  "Activity-feed recent `:model` keyword -> Toucan model. Derived from
+   [[recent-model->mbr-model]] (MBR model names equal Toucan model names by
+   construction) so the two mappings can't drift out of sync."
+  [model]
+  (some->> (recent-model->mbr-model model) (keyword "model")))
+
+(defn- fetch-user-recents [query-params]
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
                         :recents)
                     [])
-        items   (mapv (fn [{:keys [id name model timestamp]}]
-                        (let [type (case model
-                                     "card"    "question"
-                                     "dataset" "model"
-                                     (or model "item"))]
-                          {:type      type
-                           :id        id
-                           :name      name
-                           :timestamp timestamp
-                           :uri       (llm-shape/metabase-uri (keyword type) id)}))
-                      recents)]
-    (list-result :recent-items items)))
+        ;; Extract each recent as MBR. An entry whose `:model` we can't map
+        ;; (e.g. a snippet) is dropped by `keep` — the mapped set is exhaustive
+        ;; for the MBR entity types, so only genuinely-unsupported models vanish.
+        items   (u/keepv (fn [{:keys [id model timestamp]}]
+                           (when-let [tm (recent-model->toucan model)]
+                             (when-let [inst (t2/select-one tm id)]
+                               (when (mi/can-read? inst)
+                                 ;; `->mbr` can return nil (an extract-query policy may exclude the
+                                 ;; instance); guard so we never assoc onto nil and emit a junk item.
+                                 (when-some [mbr (mbr/->mbr (recent-model->mbr-model model) inst)]
+                                   (assoc mbr :_recently_viewed_at timestamp))))))
+                         recents)]
+    (mbr/list-result :recent-items (paginate-items items (:page query-params)))))
 
 ;; ----- Database drill-down -----
 
 (defn- fetch-database [id-str]
-  (let [db (api/read-check :model/Database (parse-long id-str))]
-    (entity-result (present-database db))))
+  (if-let [db (mbr/resolve-database id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Database" db))
+    {:status-code 404 :output (str "Database " id-str " not found")}))
 
 (defn- fetch-database-tables [id-str query-params]
-  (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
-        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                               :db_id  db-id
-                               :active true
-                               {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
-                    (filter mi/can-read?)
-                    (mapv present-table))]
-    (list-result :database-tables tables query-params)))
+  (let [db     (mbr/resolve-database id-str)
+        _      (api/read-check db)
+        tables (t2/select :model/Table
+                          :db_id  (:id db)
+                          :active true
+                          {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})]
+    (mbr/list-result :database-tables (mbr/extract-readable "Table" tables {:page (:page query-params)}))))
 
 (defn- fetch-database-models [id-str query-params]
-  (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
-        models (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                :collection_id :database_id :table_id]
-                               :type        :model
-                               :database_id db-id
-                               :archived    false
-                               {:order-by [[:%lower.name :asc]]})
-                    (filter mi/can-read?)
-                    (mapv present-card))]
-    (list-result :database-models models query-params)))
+  (let [db     (mbr/resolve-database id-str)
+        _      (api/read-check db)
+        models (t2/select :model/Card
+                          :type        :model
+                          :database_id (:id db)
+                          :archived    false
+                          {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :database-models (mbr/extract-readable "Card" models {:page (:page query-params)}))))
 
 (defn- fetch-database-schemas [id-str query-params]
-  (let [db-id   (parse-long id-str)
-        _       (api/read-check :model/Database db-id)
+  (let [db      (mbr/resolve-database id-str)
+        _       (api/read-check db)
         rows    (t2/query
                  {:select-distinct [:schema]
                   :from            [:metabase_table]
-                  :where           [:and [:= :db_id db-id] [:= :active true]]
+                  :where           [:and [:= :db_id (:id db)] [:= :active true]]
                   :order-by        [[:schema :asc]]})
-        schemas (->> rows
-                     (keep :schema)
-                     (mapv (fn [s]
-                             {:type        "schema"
-                              :name        s
-                              :database_id db-id
-                              :uri         (llm-shape/metabase-uri :database db-id "schemas" s "tables")})))]
-    (list-result :database-schemas schemas query-params)))
+        schemas (mapv (fn [{:keys [schema]}]
+                        ;; Schema is not a Toucan-modeled entity — return a
+                        ;; minimal MBR-flavored shape that matches the FK
+                        ;; tuple form so the agent can drill in. A schemaless
+                        ;; DB (Mongo & friends) stores NULL — surface it as ""
+                        ;; so the `schema//tables` drill-down is discoverable.
+                        {:type     "schema"
+                         :name     (or schema "")
+                         :database (:name db)})
+                      rows)]
+    (mbr/list-result :database-schemas (paginate-items schemas (:page query-params)))))
 
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
-  (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
-        tables (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                               :db_id  db-id
-                               :schema schema-name
-                               :active true
-                               {:order-by [[:%lower.name :asc]]})
-                    (filter mi/can-read?)
-                    (mapv present-table))]
-    (list-result :database-schema-tables tables query-params)))
+  (let [db     (mbr/resolve-database id-str)
+        _      (api/read-check db)
+        tables (t2/select :model/Table
+                          :db_id  (:id db)
+                          ;; Schemaless tables are stored with :schema NULL; the empty URI
+                          ;; segment (`schema//tables`) must match them, not the literal "".
+                          :schema (u/non-blank schema-name)
+                          :active true
+                          {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :database-schema-tables (mbr/extract-readable "Table" tables {:page (:page query-params)}))))
 
 ;; ----- Collection drill-down -----
 
 (defn- fetch-collection [id-str]
-  (let [coll (api/read-check :model/Collection (parse-long id-str))]
-    (entity-result (present-collection coll))))
+  (if-let [coll (mbr/resolve-user-entity :model/Collection id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Collection" coll))
+    {:status-code 404 :output (str "Collection " id-str " not found")}))
 
 (defn- fetch-collection-items [id-str query-params]
-  (let [coll-id        (parse-long id-str)
-        coll           (api/read-check :model/Collection coll-id)
-        cards          (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                        :collection_id :database_id :table_id]
-                                       {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
-                                        :order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        dashboards     (->> (t2/select [:model/Dashboard :id :name :description :collection_id]
-                                       :collection_id coll-id
-                                       :archived      false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        subcollections (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                        :description :personal_owner_id]
-                                       :location (str (:location coll) coll-id "/")
-                                       :archived false
-                                       {:order-by [[:%lower.name :asc]]})
-                            (filter mi/can-read?))
-        items          (concat (map present-collection subcollections)
-                               (map present-card cards)
-                               (map present-dashboard dashboards))]
-    (list-result :collection-items items query-params)))
+  (let [coll           (mbr/resolve-user-entity :model/Collection id-str)
+        _              (api/read-check coll)
+        coll-id        (:id coll)
+        cards          (t2/select :model/Card
+                                  {:where    [:and [:= :collection_id coll-id] [:= :archived false]]
+                                   :order-by [[:%lower.name :asc]]})
+        dashboards     (t2/select :model/Dashboard
+                                  :collection_id coll-id
+                                  :archived      false
+                                  {:order-by [[:%lower.name :asc]]})
+        subcollections (t2/select :model/Collection
+                                  :location (str (:location coll) coll-id "/")
+                                  :archived false
+                                  {:order-by [[:%lower.name :asc]]})
+        ;; This list mixes three models. Tag each instance with its model, concat
+        ;; in display order, then slice the page BEFORE hydrating — so a 500-item
+        ;; collection extracts 25 rows, not 500. `:total` stays honest across all three.
+        pairs          (concat (map #(vector "Collection" %) subcollections)
+                               (map #(vector "Card" %) cards)
+                               (map #(vector "Dashboard" %) dashboards))]
+    (mbr/list-result :collection-items (mbr/extract-tagged-page pairs (:page query-params)))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
-  (let [coll-id (parse-long id-str)
-        coll    (api/read-check :model/Collection coll-id)
-        subs    (->> (t2/select [:model/Collection :id :name :location :authority_level
-                                 :description :personal_owner_id]
-                                :location (str (:location coll) coll-id "/")
-                                :archived false
-                                {:order-by [[:%lower.name :asc]]})
-                     (filter mi/can-read?)
-                     (mapv present-collection))]
-    (list-result :collection-subcollections subs query-params)))
+  (let [coll    (mbr/resolve-user-entity :model/Collection id-str)
+        _       (api/read-check coll)
+        coll-id (:id coll)
+        subs    (t2/select :model/Collection
+                           :location (str (:location coll) coll-id "/")
+                           :archived false
+                           {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :collection-subcollections (mbr/extract-readable "Collection" subs {:page (:page query-params)}))))
 
 ;; ----- Table -----
 
@@ -440,8 +313,20 @@
                                      :with-measures?       true
                                      :with-segments?       true}))
 
+(defn- fetch-table*
+  "Shared body for the legacy `metabase://table/{id}` and the MBR-style
+   `metabase://database/{db}/schema/{s}/table/{t}` routes — both resolve to a
+   Toucan instance and hand off to MBR extract."
+  [table]
+  (if table
+    (mbr/entity-result (mbr/extract-as-user "Table" table))
+    {:status-code 404 :output "Table not found"}))
+
 (defn- fetch-table [id-str]
-  (table-details :table (parse-long id-str) false))
+  (fetch-table* (mbr/resolve-table-legacy id-str)))
+
+(defn- fetch-table-by-path [db-name schema table-name]
+  (fetch-table* (mbr/resolve-table db-name schema table-name)))
 
 (defn- fetch-table-fields [id-str]
   (table-details :table (parse-long id-str) true))
@@ -452,139 +337,287 @@
                              :field-id    field-id
                              :limit       30}))
 
-(defn- fetch-table-derived [id-str query-params]
-  (let [table-id   (parse-long id-str)
-        table      (api/read-check :model/Table table-id)
+(defn- fetch-table-derived* [table query-params]
+  (let [table-id   (:id table)
+        _          (api/read-check table)
         db-id      (:db_id table)
-        cards      (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                    :collection_id :database_id :table_id]
-                                   :table_id table-id
-                                   :archived false
-                                   {:order-by [[:%lower.name :asc]]})
-                        (filter mi/can-read?)
-                        (mapv present-card))
+        cards      (t2/select :model/Card
+                              :table_id table-id
+                              :archived false
+                              {:order-by [[:%lower.name :asc]]})
         ;; SQL-narrow transforms by source_database_id (a transform can only reference
         ;; tables in its source DB). Pull `:source` in the same select to extract source
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
         ;; on the already-narrowed candidate set.
         transforms (when db-id
-                     (->> (t2/select [:model/Transform :id :name :description
-                                      :source_database_id :source]
+                     (->> (t2/select :model/Transform
                                      :source_database_id db-id
                                      {:order-by [[:%lower.name :asc]]})
-                          (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
-                          (filter mi/can-read?)
-                          (mapv present-transform)))]
-    (list-result :table-derived (concat cards transforms) query-params)))
+                          (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))))
+        ;; Mixes Card + Transform. Tag, concat, then slice the page before hydrating.
+        pairs      (concat (map #(vector "Card" %) cards)
+                           (map #(vector "Transform" %) (or transforms [])))]
+    (mbr/list-result :table-derived (mbr/extract-tagged-page pairs (:page query-params)))))
+
+(defn- fetch-table-derived [id-str query-params]
+  (fetch-table-derived* (mbr/resolve-table-legacy id-str) query-params))
+
+(defn- fetch-table-derived-by-path [db-name schema table-name query-params]
+  (fetch-table-derived* (mbr/resolve-table db-name schema table-name) query-params))
+
+(defn- fetch-table-fields-by-path [db-name schema table-name]
+  (if-let [t (mbr/resolve-table db-name schema table-name)]
+    (table-details :table (:id t) true)
+    {:status-code 404 :output "Table not found"}))
+
+(defn- fetch-field-by-path [db-name schema table-name field-name]
+  (if-let [f (mbr/resolve-field db-name schema table-name field-name)]
+    (mbr/entity-result (mbr/extract-as-user "Field" f))
+    {:status-code 404 :output "Field not found"}))
 
 ;; ----- Card (model / question) -----
 
+;; Forward decl: a `:metric` card routed to `/card/{id}/fields` funnels through
+;; the same metric-details path as `/metric/{id}/dimensions` (defined below).
+(declare metric-dimensions)
+
 (defn- fetch-card
-  "type-str is \"model\" or \"question\"."
-  [type-str id-str]
-  (table-details (keyword type-str) (parse-long id-str) false))
+  "type-str is \"model\" / \"question\" / \"card\". The MBR Card includes
+   :dataset_query in portable form, so query shape, joins, expressions, and
+   result_metadata are already part of the entity — no separate /fields call
+   is required to see what columns the card produces. The /fields and
+   /field/{id} endpoints stay on the field-stats path because they layer
+   field-values on top of the schema."
+  [_type-str id-str]
+  (if-let [card (mbr/resolve-user-entity :model/Card id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Card" card))
+    {:status-code 404 :output (str "Card " id-str " not found")}))
 
-(defn- fetch-card-fields [type-str id-str]
-  (table-details (keyword type-str) (parse-long id-str) true))
+(defn- resolve-card-or-404
+  "Resolve a Card by URI segment (entity_id NanoID *or* legacy numeric id) via
+   [[mbr/resolve-user-entity]]. The `card`/`model`/`question` URI types all land
+   here; the downstream entity-type is taken from the card's real `:type`, not
+   the URI segment — so the canonical `card` type works and a mislabeled
+   `model/{id}` of a question still resolves. Returns the Toucan instance or a
+   404 map (caller threads it with `if-let`-style handling)."
+  [id-str]
+  (or (mbr/resolve-user-entity :model/Card id-str)
+      {:status-code 404 :output (str "Card " id-str " not found")}))
 
-(defn- fetch-card-field [type-str id-str field-id]
-  (field-stats/field-values {:entity-type type-str
-                             :entity-id   (parse-long id-str)
-                             :field-id    field-id
-                             :limit       30}))
+(defn- fetch-card-fields [_type-str id-str]
+  (let [card (resolve-card-or-404 id-str)]
+    (if (:status-code card)
+      card
+      ;; A metric card's "fields" are its queryable dimensions, a different column
+      ;; set than table fields — get-table-details only handles :question/:model
+      ;; (a :metric hits :else -> 400). Route metrics through the same
+      ;; metric-details path as /metric/{id}/dimensions so `card` stays canonical.
+      (if (= :metric (:type card))
+        (metric-dimensions (:id card))
+        ;; entity-type from the resolved card's :type (:question/:model), not the
+        ;; URI segment — get-table-details only knows :question/:model, so passing
+        ;; the canonical "card" segment through verbatim would throw.
+        ;;
+        ;; NOTE (pre-existing, separate from this PR): unlike the card *body* (whose
+        ;; :dataset_query/:result_metadata go through redact-mbr), the /fields
+        ;; path emits column names via get-table-details' user-aware metadata
+        ;; provider. Whether that provider sandbox-filters the field list for a
+        ;; column-sandboxed user is unverified here; if it doesn't, /fields could
+        ;; enumerate hidden column names. Tracked as a follow-up — not changed in
+        ;; this PR to keep the diff scoped to the MBR migration.
+        (table-details (:type card) (:id card) true)))))
+
+(defn- fetch-card-field [_type-str id-str field-id]
+  (let [card (resolve-card-or-404 id-str)]
+    (if (:status-code card)
+      card
+      (field-stats/field-values {:entity-type (name (:type card))
+                                 :entity-id   (:id card)
+                                 :field-id    field-id
+                                 :limit       30}))))
 
 (defn- fetch-card-sources [id-str]
-  (let [card (api/read-check :model/Card (parse-long id-str))]
-    (list-result :card-sources (card-sources-items card))))
+  (let [card    (mbr/resolve-user-entity :model/Card id-str)
+        _       (api/read-check card)
+        {:keys [database_id table_id source_card_id]} card
+        db      (when database_id    (t2/select-one :model/Database database_id))
+        table   (when table_id       (t2/select-one :model/Table table_id))
+        src     (when source_card_id (t2/select-one :model/Card source_card_id))
+        ;; Gate each source on read perms before extracting — the read-check
+        ;; above only covers the *parent* card. Without this, a source Card the
+        ;; user can't read, or Table metadata they're sandboxed out of, would be
+        ;; fully serialized into the response. `extract-readable` filters by
+        ;; `mi/can-read?` then runs ->mbr, matching fetch-transform-sources.
+        items   (vec (concat (when db    (mbr/extract-readable "Database" [db]))
+                             (when table (mbr/extract-readable "Table" [table]))
+                             (when src   (mbr/extract-readable "Card" [src]))))]
+    (mbr/list-result :card-sources (paginate-items items nil))))
 
 ;; ----- Metric -----
 
 (defn- fetch-metric [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions false
-                                      :with-field-values         false}))
+  (let [card (mbr/resolve-user-entity :model/Card id-str)]
+    (if (and card (= :metric (:type card)))
+      (mbr/entity-result (mbr/extract-as-user "Card" card))
+      {:status-code 404 :output (str "Metric " id-str " not found")})))
+
+(defn- resolve-metric-or-404
+  "Resolve a metric Card by URI segment (entity_id NanoID *or* legacy numeric id)
+   via [[mbr/resolve-user-entity]], then verify it is actually a `:metric` card.
+   Mirrors [[resolve-card-or-404]]. Returns the Toucan instance or a 404 map."
+  [id-str]
+  (let [card (mbr/resolve-user-entity :model/Card id-str)]
+    (if (and card (= :metric (:type card)))
+      card
+      {:status-code 404 :output (str "Metric " id-str " not found")})))
+
+(defn- metric-dimensions
+  "Shared body for `/metric/{id}/dimensions` and the `:metric` branch of
+   `/card/{id}/fields`. `metric-id` is the numeric Card id. `get-metric-details`
+   expects `?`-suffixed option keys; `:with-field-values? false` swaps the
+   field-values fetch for `identity`, so it must be spelled exactly."
+  [metric-id]
+  (entity-details/get-metric-details {:metric-id                  metric-id
+                                      :with-queryable-dimensions? true
+                                      :with-field-values?         false}))
 
 (defn- fetch-metric-dimensions [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions true
-                                      :with-field-values         false}))
+  (let [card (resolve-metric-or-404 id-str)]
+    (if (:status-code card)
+      card
+      (metric-dimensions (:id card)))))
 
 (defn- fetch-metric-dimension [id-str dim-id]
-  (field-stats/field-values {:entity-type "metric"
-                             :entity-id   (parse-long id-str)
-                             :field-id    dim-id
-                             :limit       30}))
+  (let [card (resolve-metric-or-404 id-str)]
+    (if (:status-code card)
+      card
+      (field-stats/field-values {:entity-type "metric"
+                                 :entity-id   (:id card)
+                                 :field-id    dim-id
+                                 :limit       30}))))
 
 ;; ----- Measure / Segment -----
 
+(defn- resolve-entity-id-or-404
+  "Resolve a URI segment to the numeric id a downstream `get-*-details` fn consumes,
+   for an entity_id-bearing `model` (derives `:hook/entity-id`). A NanoID segment
+   resolves via [[mbr/resolve-user-entity]]; a numeric segment passes through verbatim,
+   leaving the existence/perm decision downstream. `label` names the model in the 404.
+   Mirrors [[resolve-transform-id-or-404]]. Returns the numeric id or a 404 map."
+  [model label id-str]
+  (if (some-> id-str parse-long)
+    (parse-long id-str)
+    (if-let [instance (mbr/resolve-user-entity model id-str)]
+      (:id instance)
+      {:status-code 404 :output (str label " " id-str " not found")})))
+
 (defn- fetch-measure [id-str]
-  (entity-details/get-measure-details {:measure-id (parse-long id-str)}))
+  (let [id (resolve-entity-id-or-404 :model/Measure "Measure" id-str)]
+    (if (map? id)
+      id
+      (entity-details/get-measure-details {:measure-id id}))))
 
 (defn- fetch-segment [id-str]
-  (entity-details/get-segment-details {:segment-id (parse-long id-str)}))
+  (let [id (resolve-entity-id-or-404 :model/Segment "Segment" id-str)]
+    (if (map? id)
+      id
+      (entity-details/get-segment-details {:segment-id id}))))
 
 ;; ----- Transform -----
 
-(defn- fetch-transform [id-str]
-  {:structured-output (-> (transforms/get-transform (parse-long id-str))
-                          (assoc :result-type :entity :type :transform))})
+(defn- resolve-transform-id-or-404
+  "Resolve a Transform URI segment to the numeric id `transforms/get-transform`
+   consumes. Transform is an entity_id-bearing model (`:hook/entity-id`), so MBR
+   advertises `metabase://transform/{entity_id}`.
 
-(defn- fetch-transform-sources [id-str]
-  (let [transform        (transforms/get-transform (parse-long id-str))
-        source-table-ids (transform-source-table-ids transform)
-        source-tables    (when (seq source-table-ids)
-                           (->> (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-                                           :id [:in (set source-table-ids)])
-                                (filter mi/can-read?)
-                                (mapv present-table)))
-        db-id            (:source_database_id transform)
-        items            (cond-> []
-                           db-id         (conj {:type "database"
-                                                :id   db-id
-                                                :uri  (llm-shape/metabase-uri :database db-id)})
-                           source-tables (into source-tables))]
-    (list-result :transform-sources items)))
+   A NanoID segment resolves via [[mbr/resolve-user-entity]] to its numeric id
+   (404 if no such transform). A numeric segment is passed through verbatim — we
+   leave the existence/perm decision to `transforms/get-transform` downstream
+   (404 missing / 403 denied), matching the legacy `parse-long` behavior. No perm
+   check here. Returns the numeric id or a 404 map."
+  [id-str]
+  (if (some-> id-str parse-long)
+    (parse-long id-str)
+    (if-let [instance (mbr/resolve-user-entity :model/Transform id-str)]
+      (:id instance)
+      {:status-code 404 :output (str "Transform " id-str " not found")})))
+
+(defn- fetch-transform [id-str]
+  ;; transforms/get-transform runs the read-check (404 if missing, 403 if denied)
+  ;; and returns a Transform Toucan instance enriched with hydrated keys. ->mbr
+  ;; re-selects by (:id instance) via serdes, so those extra keys are inert — no
+  ;; need for a second t2/select-one. Use ->mbr (not extract-as-user) since the
+  ;; read-check already happened inside get-transform.
+  (let [id (resolve-transform-id-or-404 id-str)]
+    (if (map? id)
+      id
+      (mbr/entity-result (mbr/->mbr "Transform" (transforms/get-transform id))))))
+
+(defn- fetch-transform-sources [id-str query-params]
+  (let [id (resolve-transform-id-or-404 id-str)]
+    (if (map? id)
+      id
+      (let [transform        (transforms/get-transform id)
+            source-table-ids (transform-source-table-ids transform)
+            ;; Mixes the source Database with its source Tables, so build the full
+            ;; combined item vector (tables hydrated fully, no paging) and paginate it.
+            tables           (when (seq source-table-ids)
+                               (mbr/extract-readable "Table"
+                                                     (t2/select :model/Table
+                                                                :id [:in (set source-table-ids)])))
+            db-id            (:source_database_id transform)
+            ;; Gate the source Database like the tables: reading the transform must not expand
+            ;; an unreadable database's metadata (name/engine/...) from what was an opaque id.
+            db               (when db-id (t2/select-one :model/Database db-id))
+            db-mbr           (when (and db (mi/can-read? db)) (mbr/->mbr "Database" db))
+            items            (cond-> []
+                               db-mbr (conj db-mbr)
+                               tables (into tables))]
+        (mbr/list-result :transform-sources (paginate-items items (:page query-params)))))))
 
 (defn- fetch-transform-target [id-str]
-  (let [transform    (transforms/get-transform (parse-long id-str))
-        ;; The target table is hydrated by `transforms/get-transform` without a per-table
-        ;; permission check (the read-check on the Transform itself only verifies *source*
-        ;; tables are readable). Gate it here so users who can read the transform definition
-        ;; but lack perms on the target database don't see the target's name/schema.
-        target-table (when-let [tt (:table transform)]
-                       (when (mi/can-read? tt) tt))
-        db-id        (:target_db_id transform)
-        items        (cond-> []
-                       db-id        (conj {:type "database"
-                                           :id   db-id
-                                           :uri  (llm-shape/metabase-uri :database db-id)})
-                       target-table (conj (present-table target-table)))]
-    (list-result :transform-target items)))
+  (let [id (resolve-transform-id-or-404 id-str)]
+    (if (map? id)
+      id
+      (let [transform    (transforms/get-transform id)
+            ;; The target table is hydrated by `transforms/get-transform` without a per-table
+            ;; permission check (the read-check on the Transform itself only verifies *source*
+            ;; tables are readable). Gate it here so users who can read the transform definition
+            ;; but lack perms on the target database don't see the target's name/schema.
+            target-table (when-let [tt (:table transform)]
+                           (when (mi/can-read? tt)
+                             (t2/select-one :model/Table (:id tt))))
+            db-id        (:target_db_id transform)
+            ;; Gate the target Database the same way as the target table above.
+            db           (when db-id (t2/select-one :model/Database db-id))
+            db-mbr       (when (and db (mi/can-read? db)) (mbr/->mbr "Database" db))
+            table-mbr    (when target-table (mbr/->mbr "Table" target-table))
+            items        (cond-> []
+                           db-mbr    (conj db-mbr)
+                           table-mbr (conj table-mbr))]
+        (mbr/list-result :transform-target (paginate-items items nil))))))
 
 ;; ----- Dashboard -----
 
 (defn- fetch-dashboard [id-str]
-  (let [result (entity-details/get-dashboard-details {:dashboard-id (parse-long id-str)})]
-    (if-let [dashboard (:structured-output result)]
-      {:structured-output (assoc dashboard :result-type :entity)}
-      {:status-code 404 :output (:output result)})))
+  (if-let [dashboard (mbr/resolve-user-entity :model/Dashboard id-str)]
+    (mbr/entity-result (mbr/extract-as-user "Dashboard" dashboard))
+    {:status-code 404 :output (str "Dashboard " id-str " not found")}))
 
 (defn- fetch-dashboard-items [id-str query-params]
-  (let [dashboard-id (parse-long id-str)
-        _            (api/read-check :model/Dashboard dashboard-id)
-        cards        (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                      :collection_id :database_id :table_id]
-                                     {:where    [:and
-                                                 [:= :archived false]
-                                                 [:exists {:select 1
-                                                           :from   [[:report_dashboardcard :dc]]
-                                                           :where  [:and
-                                                                    [:= :dc.card_id :report_card.id]
-                                                                    [:= :dc.dashboard_id dashboard-id]]}]]
-                                      :order-by [[:%lower.name :asc]]})
-                          (filter mi/can-read?)
-                          (mapv present-card))]
-    (list-result :dashboard-items cards query-params)))
+  (let [dashboard    (mbr/resolve-user-entity :model/Dashboard id-str)
+        _            (api/read-check dashboard)
+        dashboard-id (:id dashboard)
+        cards        (t2/select :model/Card
+                                {:where    [:and
+                                            [:= :archived false]
+                                            [:exists {:select 1
+                                                      :from   [[:report_dashboardcard :dc]]
+                                                      :where  [:and
+                                                               [:= :dc.card_id :report_card.id]
+                                                               [:= :dc.dashboard_id dashboard-id]]}]]
+                                 :order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :dashboard-items (mbr/extract-readable "Card" cards {:page (:page query-params)}))))
 
 ;; ----- Dispatch -----
 
@@ -600,14 +633,26 @@
       ;; Navigation
       ["databases"]                                    (fetch-databases-list query-params)
       ["collections"]                                  (fetch-collections-list query-params)
-      ["user" "recent-items"]                          (fetch-user-recents)
+      ["user" "recent-items"]                          (fetch-user-recents query-params)
 
-      ;; Database drill-down
+      ;; Database drill-down. `:id` accepts either a numeric DB id (legacy) or a
+      ;; database name (MBR-style). `resolve-database` discriminates.
       ["database" id]                                  (fetch-database id)
       ["database" id "tables"]                         (fetch-database-tables id query-params)
       ["database" id "models"]                         (fetch-database-models id query-params)
       ["database" id "schemas"]                        (fetch-database-schemas id query-params)
+      ;; Legacy: schemas/{name}/tables. New form uses `schema/{name}/tables`
+      ;; (singular `schema`) below to align with the MBR FK path-form.
       ["database" id "schemas" schema "tables"]        (fetch-database-schema-tables id schema query-params)
+      ["database" id "schema" schema "tables"]         (fetch-database-schema-tables id schema query-params)
+
+      ;; Sync metadata (Table / Field) — MBR path-form. `database` segment must
+      ;; be a DB name (path-form is invalid with a numeric id; that maps to the
+      ;; legacy `["table" id]` route below).
+      ["database" db-name "schema" schema "table" t-name]                       (fetch-table-by-path db-name schema t-name)
+      ["database" db-name "schema" schema "table" t-name "fields"]              (fetch-table-fields-by-path db-name schema t-name)
+      ["database" db-name "schema" schema "table" t-name "derived"]             (fetch-table-derived-by-path db-name schema t-name query-params)
+      ["database" db-name "schema" schema "table" t-name "field" field-name]    (fetch-field-by-path db-name schema t-name field-name)
 
       ;; Collection drill-down
       ["collection" id]                                (fetch-collection id)
@@ -620,11 +665,13 @@
       ["table" id "fields" & rst]                      (fetch-table-field id (str/join "/" rst))
       ["table" id "derived"]                           (fetch-table-derived id query-params)
 
-      ;; Card (model / question — share handlers, dispatch on the type segment)
-      [(t :guard #{"model" "question"}) id]            (fetch-card t id)
-      [(t :guard #{"model" "question"}) id "fields"]   (fetch-card-fields t id)
-      [(t :guard #{"model" "question"}) id "fields" & rst] (fetch-card-field t id (str/join "/" rst))
-      [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources id)
+      ;; Card (model / question / card — share handlers, dispatch on the type segment.
+      ;; `card` is the canonical MBR type; `model` and `question` remain for backcompat
+      ;; with prompts/transcripts that already use them.)
+      [(t :guard #{"card" "model" "question"}) id]            (fetch-card t id)
+      [(t :guard #{"card" "model" "question"}) id "fields"]   (fetch-card-fields t id)
+      [(t :guard #{"card" "model" "question"}) id "fields" & rst] (fetch-card-field t id (str/join "/" rst))
+      [(t :guard #{"card" "model" "question"}) id "sources"]  (fetch-card-sources id)
 
       ;; Metric
       ["metric" id]                                    (fetch-metric id)
@@ -637,7 +684,7 @@
 
       ;; Transform
       ["transform" id]                                 (fetch-transform id)
-      ["transform" id "sources"]                       (fetch-transform-sources id)
+      ["transform" id "sources"]                       (fetch-transform-sources id query-params)
       ["transform" id "target"]                        (fetch-transform-target id)
 
       ;; Dashboard
@@ -674,8 +721,13 @@
 
 (defn- format-content
   "Format a tool result as an LLM-ready string.
-   Dispatches to the right llm-shape formatter based on :result-type.
-   Returns the :output string directly for error results (404s etc.)."
+
+   MBR-shaped results (`:mbr-entity`, `:mbr-list`) JSON-encode to a string.
+   Two legacy XML branches remain pinned to field-stats drill-downs:
+   `:field-metadata` (per-field values + instructions) and `:entity` (the
+   table-details rollup used by `/fields` endpoints). Both layer non-MBR
+   field-value samples on top of schema; migrating them to MBR is tracked
+   separately."
   [content]
   (if-let [structured (:structured-output content)]
     (case (:result-type structured)
@@ -683,11 +735,9 @@
       :field-metadata (format-with-instructions
                        (llm-shape/field-metadata->xml structured)
                        instructions/field-metadata-instructions)
-      :entity         (llm-shape/entity->xml structured)
-      :metabot-list   (llm-shape/metabot-list->xml structured)
-      :metabot-entity (llm-shape/metabot-entity->xml structured)
-      ;; fallback — should not happen, but better than EDN
-      (llm-shape/entity->xml structured))
+      :mbr-entity     (json/encode (:entity structured))
+      :mbr-list       (json/encode (select-keys structured [:list-type :items :total :page :pages :truncated]))
+      :entity         (llm-shape/entity->xml structured))
     ;; error case — :output is already a string
     (:formatted content)))
 
@@ -714,7 +764,13 @@
   [{:keys [uris]}]
   (log/info "Reading resources" {:uri-count (count uris)})
 
-  ;; Validate URI count
+  ;; Validate URI count. An empty call is always a caller bug (mangled array, empty
+  ;; tool args); a silent empty success would read to the agent as "nothing exists",
+  ;; so error with a corrective example instead.
+  (when (empty? uris)
+    (throw (ex-info
+            "No URIs provided. Pass at least one metabase:// URI, e.g. metabase://databases."
+            {:uri-count 0})))
   (when (> (count uris) max-concurrent-uris)
     (throw (ex-info
             (str "Too many URIs provided (" (count uris) "). "
@@ -722,8 +778,17 @@
                  "Be more selective and focus on the most relevant items for the current task or fetch them in batches.")
             {:uri-count (count uris) :max max-concurrent-uris})))
 
-  ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
-  (let [resources (mapv fetch-single-uri uris)
+  ;; Fetch all URIs (sequentially for now, could parallelize with pmap).
+  ;; One serdes/with-cache spans the whole call so FK/table/database resolution is memoized
+  ;; across every handler and every URI (a dashboard + its cards reuse the same lookups),
+  ;; instead of the hundreds of uncached point-selects a bare extract-all issues per page.
+  ;; with-cache does NOT memoize the per-field-ref field-hierarchy query (deliberately
+  ;; unbounded for full exports), so also memoize *export-field-fk* request-scoped — a page
+  ;; is ≤5 URIs, so the map is tiny and a card reuses the same field id across
+  ;; dataset_query / result_metadata / viz settings.
+  (let [resources (serdes/with-cache
+                    (binding [serdes/*export-field-fk* (memoize serdes/*export-field-fk*)]
+                      (mapv fetch-single-uri uris)))
         formatted (format-resources resources)]
     (log/info "Fetched resources" {:total      (count resources)
                                    :successful (count (filter :content resources))
@@ -735,40 +800,62 @@
            :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns. Use this to navigate
-  the instance and drill into specific entities. URIs returned by `search` and other
-  read_resource calls can be fed directly back here.
+  the instance and drill into specific entities. Output is JSON in the Metabase Representation
+  (MBR) format — the same shape Metabase uses for portable serialization
+  (https://github.com/metabase/representations/blob/main/core-spec/v1/spec.md). URIs returned
+  by `search` and other read_resource calls can be fed directly back here.
 
-  Up to 5 URIs may be requested in one call. List responses are capped at 25 items per page.
-  When :truncated is true, append ?page=N to fetch the next page (e.g. metabase://database/1/tables?page=2).
-  The response includes :page (current, 1-indexed) and :pages (total page count).
+  Up to 5 URIs may be requested in one call. List responses are capped at 25 items; if
+  truncated, drill into individual items via their URIs or refine via `search`.
+
+  URI vocabulary (two-tier identifier scheme):
+
+  - User content (Card, Dashboard, Collection, Metric, Transform): identified by
+    `entity_id` (NanoID), the same id that appears in each MBR's `serdes/meta`. Use
+    `metabase://{type}/{entity_id}`. Numeric ids work too for backcompat but the canonical
+    form is entity_id.
+  - Sync metadata (Database, Table, Field): no entity_id — addressed by natural-key path,
+    matching MBR FK tuples. `metabase://database/{db_name}`,
+    `metabase://database/{db_name}/schema/{schema}/table/{table_name}`, and
+    `.../field/{field_name}`. URL-encode each segment.
 
   NAVIGATION (top-level lists):
   - metabase://databases - all databases
   - metabase://collections - root collections
-  - metabase://collections?tree=true - flat list of all collections (use :location for hierarchy)
+  - metabase://collections?tree=true - all collections (hierarchy via each collection's parent_id)
   - metabase://user/recent-items - your recently-viewed items
 
   DATABASE DRILL-DOWN:
-  - metabase://database/{id}
-  - metabase://database/{id}/tables
-  - metabase://database/{id}/models
-  - metabase://database/{id}/schemas
-  - metabase://database/{id}/schemas/{schemaName}/tables
+  - metabase://database/{db_name}                                — single database
+  - metabase://database/{db_name}/tables                         — all tables
+  - metabase://database/{db_name}/models                         — models targeting this DB
+  - metabase://database/{db_name}/schemas                        — list schemas
+  - metabase://database/{db_name}/schema/{schema}/tables         — tables in one schema
 
-  COLLECTION DRILL-DOWN:
-  - metabase://collection/{id}
-  - metabase://collection/{id}/items - subcollections + leaves
-  - metabase://collection/{id}/subcollections
+  COLLECTION DRILL-DOWN (entity_id from serdes/meta):
+  - metabase://collection/{entity_id}
+  - metabase://collection/{entity_id}/items                      — subcollections + leaves
+  - metabase://collection/{entity_id}/subcollections
 
-  ENTITY DRILL-DOWN:
-  - metabase://table/{id}[/fields[/{field_id}]] [/derived]
-  - metabase://model/{id}[/fields[/{field_id}]] [/sources]
-  - metabase://question/{id}[/fields[/{field_id}]] [/sources]
-  - metabase://metric/{id}[/dimensions[/{dim_id}]]
-  - metabase://measure/{id}
-  - metabase://segment/{id}
-  - metabase://transform/{id}[/sources|/target]
-  - metabase://dashboard/{id}[/items]"
+  ENTITY DRILL-DOWN (entity_id from serdes/meta):
+  - metabase://card/{entity_id}                                  — canonical for cards (model/question/metric)
+  - metabase://model/{entity_id} | metabase://question/{entity_id}  — backcompat aliases for card
+  - metabase://card/{entity_id}/fields[/{field_id}]              — schema + field samples
+  - metabase://card/{entity_id}/sources                          — referenced database/table/source-card
+  - metabase://metric/{entity_id}                                — single metric
+  - metabase://metric/{entity_id}/dimensions[/{dim_id}]          — dimensions + samples
+  - metabase://measure/{entity_id}                               — measure detail (definition + parent table)
+  - metabase://segment/{entity_id}                              — segment detail (definition + parent table)
+  - metabase://transform/{entity_id}                             — single transform
+  - metabase://transform/{entity_id}/sources|/target             — input tables / output table
+  - metabase://dashboard/{entity_id}                             — full MBR with tabs + dashcards
+  - metabase://dashboard/{entity_id}/items                       — cards on the dashboard
+
+  TABLE / FIELD (path-form):
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}                — single table
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}/fields         — schema + field samples
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}/derived        — cards + transforms built on this table
+  - metabase://database/{db_name}/schema/{schema}/table/{table_name}/field/{field_name} — single field"
   [{:keys [uris]} :- [:map {:closed true}
                       [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try

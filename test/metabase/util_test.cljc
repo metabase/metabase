@@ -25,6 +25,19 @@
   (is (= "   "
          (u/add-period "   "))))
 
+(deftest ^:parallel non-blank-test
+  (testing "returns the string when non-blank"
+    (is (= "x"   (u/non-blank "x")))
+    (is (= "  x" (u/non-blank "  x"))))
+  (testing "returns nil for nil, empty, or whitespace-only"
+    (is (nil? (u/non-blank nil)))
+    (is (nil? (u/non-blank "")))
+    (is (nil? (u/non-blank "   ")))
+    (is (nil? (u/non-blank "\t\n"))))
+  (testing "returns nil for non-strings"
+    (is (nil? (u/non-blank 42)))
+    (is (nil? (u/non-blank :kw)))))
+
 (deftest ^:parallel url?-test
   #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected] (= expected

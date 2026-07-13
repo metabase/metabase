@@ -305,6 +305,21 @@
         (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
         (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
 
+(deftest read-resource-is-read-only-test
+  (testing "read_resource declares readOnlyHint=true so MCP clients don't bucket it under Write/delete tools"
+    ;; read_resource is a GET, so MCP clients infer readOnlyHint=true from the
+    ;; method (POST would default to false and bucket it under "Write/delete",
+    ;; which is how this surfaced in the Claude UI). No explicit annotation needed.
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])
+          rr             (some #(when (= "read_resource" (:name %)) %) tools)]
+      (is (some? rr) "read_resource must be listed")
+      (is (true? (get-in rr [:annotations :readOnlyHint]))
+          "read_resource is read-only")
+      (is (false? (get-in rr [:annotations :destructiveHint]))
+          "read_resource is not destructive"))))
+
 (deftest tools-list-omits-ui-tools-without-ui-capability-test
   (testing "clients that do not advertise MCP Apps UI support do not see UI-only tools"
     (let [[session-id _] (initialize-without-ui!)
@@ -366,6 +381,22 @@
           "structuredContent should be the parsed response object, not a string")
       (is (sequential? (-> result :structuredContent :resources))
           "structuredContent should mirror the endpoint response shape"))))
+
+(deftest read-resource-multiple-uris-test
+  (testing "read_resource via MCP tools/call returns one resource per URI — pins the multi-URI
+           contract through the synthetic-GET query-param path (a vector :uris must fan out)"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "read_resource"
+                                                        :arguments {:uris ["metabase://databases"
+                                                                           "metabase://collections"]}})
+                                      {"mcp-session-id" session-id})
+          result         (get-in response [:body :result])]
+      (is (= 200 (:status response)))
+      (is (not (:isError result))
+          (str "read_resource should succeed: " (some-> result :content first :text)))
+      (is (= 2 (count (-> result :structuredContent :resources)))
+          "two URIs in → two resources out"))))
 
 (deftest tools-list-strict-shape-test
   (testing "no tool's inputSchema uses JSON-Schema constructs that ChatGPT's strict MCP validator rejects"

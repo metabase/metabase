@@ -721,11 +721,6 @@
 
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
-(mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map
-   [:uris [:sequential ms/NonBlankString]]])
-
 (mr/def ::read-resource-item
   "One fetched resource. Either `:content` (success) or `:error` (failure) is present."
   [:map
@@ -740,12 +735,18 @@
    [:resources [:sequential ::read-resource-item]]
    [:output    :string]])
 
-(api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
+(api.macros/defendpoint :get "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.
 
   Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,
   which validates URIs, fetches entities with per-URI permission checks, and
-  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call."
+  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call.
+
+  GET (not POST): this is a pure read, so the verb is GET — that also makes MCP
+  clients infer `readOnlyHint=true` from the method, instead of bucketing the
+  tool under \"Write/delete\". `:uris` rides as a repeated query param; some MCP
+  clients serialize array args through a string layer, so `coerce-query-list`
+  accepts both a real array and a JSON-array-in-a-string (same as `search`)."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
@@ -754,10 +755,12 @@
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
                              "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
   [_route-params
-   _query-params
-   body :- ::read-resource-request]
+   {uris :uris}
+   :- [:map
+       [:uris {:tool/description "metabase:// URIs as an array of strings, e.g. [\"metabase://databases\"]. Up to 5."}
+        [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]
   (try
-    (metabot-resources/read-resource body)
+    (metabot-resources/read-resource {:uris (or (coerce-query-list uris) [])})
     (catch clojure.lang.ExceptionInfo e
       ;; The Metabot dispatcher's "too many URIs" guard throws ex-info without a
       ;; :status-code. Surface it as a 400 to the HTTP boundary rather than the

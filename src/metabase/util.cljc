@@ -201,6 +201,13 @@
       (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
       :else (str text "."))))
 
+(defn non-blank
+  "Returns `s` if it is a non-blank string, otherwise nil. The string cousin of `not-empty`: use it to coalesce
+  nil/empty/whitespace-only strings to nil in one step, e.g. `(or (non-blank x) default)`."
+  [s]
+  (when (and (string? s) (not (str/blank? s)))
+    s))
+
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."

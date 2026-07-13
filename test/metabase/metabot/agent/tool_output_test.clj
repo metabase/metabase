@@ -86,10 +86,12 @@
   [["read_resource: table (no fields)"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://table/" (mt/id :orders))]})
-    #"<table\b"]
+    ;; Table is now MBR — carries serdes/meta with model="Table"
+    #"\"model\":\"Table\""]
    ["read_resource: table with fields"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
+    ;; /fields still flows through the entity-details + XML path (field-stats).
     #"<table\b"]
    ["read_resource: table field values"
     #(let [table-id (mt/id :orders)
@@ -103,21 +105,24 @@
   [["read_resource: metric (no dimensions)"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://metric/" metric-id)]})
-    #"<metric\b"]
+    ;; Metric is now MBR — Card extracted with type=metric.
+    #"\"type\":\"metric\""]
    ["read_resource: metric with dimensions"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://metric/" metric-id "/dimensions")]})
+    ;; /dimensions still flows through entity-details (field-stats path).
     #"<metric\b"]])
 
 (defn- read-resource-model-invocations [model-id]
   [["read_resource: model (no fields)"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://model/" model-id)]})
-    ;; model->xml outputs <metabase-model> tag
-    #"<metabase-model\b"]
+    ;; Card is now MBR — carries serdes/meta with model="Card" and type=model.
+    #"\"type\":\"model\""]
    ["read_resource: model with fields"
     #(resource-tools/read-resource-tool
       {:uris [(str "metabase://model/" model-id "/fields")]})
+    ;; /fields still flows through entity-details (field-stats path).
     #"<metabase-model\b"]])
 
 ;; ---------------------------------------------------------------------------
