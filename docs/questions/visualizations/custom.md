@@ -55,6 +55,10 @@ Custom visualizations behave like built-in charts in most places:
 - **Dark mode.** Plugins that use Metabase's colors adapt to [dark mode](../../people-and-groups/account-settings.md#theme) automatically.
 - **Icons.** A custom visualization shows its own icon in the visualization picker, and questions that use it show that icon in collections and bookmarks.
 
+### Custom visualizations don't render in embeds
+
+Custom visualizations only render in your Metabase. In [embeds](../../embedding/start.md) and [public links](../../embedding/public-links.md) (public questions, dashboards, and documents), any card that uses a custom visualization falls back to the default visualization (a table).
+
 ## Managing custom visualizations
 
 _Admin > Settings > Custom visualizations > Manage visualizations_

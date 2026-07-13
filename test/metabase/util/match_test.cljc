@@ -1,4 +1,5 @@
 (ns metabase.util.match-test
+  {:clj-kondo/config '{:linters {:unused-binding {:level :off}}}}
   (:require
    [clojure.test :as t]
    [metabase.util.match :as match]))

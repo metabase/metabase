@@ -69,7 +69,7 @@ export const ChartTypeOption = ({
             name={iconName ?? "unknown"}
             iconUrl={visualization?.iconUrl}
             alt={displayName}
-            color={isSelected ? "white" : "core-brand"}
+            color={isSelected ? "core-white" : "core-brand"}
             size={20}
             style={
               hasCustomIcon && isSelected
@@ -85,7 +85,7 @@ export const ChartTypeOption = ({
             top="-0.5rem"
             right="-0.6rem"
             radius="xl"
-            color="text-tertiary"
+            color="text-disabled"
             variant="viewHeader"
             bg="background_page-primary"
             className={cx(
@@ -114,9 +114,11 @@ export const ChartTypeOption = ({
             label={t`This is a development version of the visualization`}
           >
             <Badge
+              color="brand"
+              size="sm"
               variant="outline"
               aria-label={t`This is a development version of the visualization`}
-            >{t`dev`}</Badge>
+            >{t`Dev`}</Badge>
           </Tooltip>
         )}
       </Stack>

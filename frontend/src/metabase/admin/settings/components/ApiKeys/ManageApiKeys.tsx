@@ -48,7 +48,7 @@ function EmptyState() {
           <ApiKeysEmptyIllustration aria-hidden />
         </Box>
         <Text
-          c="text-tertiary"
+          c="text-disabled"
           size="sm"
           ta="center"
         >{t`No API keys yet`}</Text>
@@ -127,7 +127,7 @@ function useApiKeyColumns({
         enableSorting: false,
         accessorFn: (apiKey) => apiKey.masked_key,
         cell: ({ row }) => (
-          <Text ff={fontFamilyMonospace as string}>
+          <Text ff={fontFamilyMonospace}>
             {formatMaskedKey(row.original.masked_key)}
           </Text>
         ),

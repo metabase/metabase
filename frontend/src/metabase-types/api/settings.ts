@@ -376,6 +376,7 @@ export const tokenFeatures = [
   "transforms-python",
   "transforms-basic",
   "library",
+  "library_retrieval",
   "support-users",
   "tenants",
   "writable_connection",
@@ -650,6 +651,7 @@ interface PublicSettings {
   "token-features": TokenFeatures;
   "tracing-enabled": boolean;
   "transforms-enabled": boolean;
+  "transforms-setup-complete": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;

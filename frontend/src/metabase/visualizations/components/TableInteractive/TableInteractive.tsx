@@ -24,6 +24,7 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/common/hooks/use-memoized-callback";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
@@ -43,7 +44,6 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -317,6 +317,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       );
       const clicked = getCellClickedObject(columnIndex, rowIndex);
 
+      // Unjustified type cast. FIXME
       const isLink = (formattedValue as any)?.type === ExternalLink;
       if (getIsCellClickable(clicked) && !isLink) {
         onVisualizationClick?.({

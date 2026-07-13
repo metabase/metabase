@@ -1,7 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
-import { IndexRedirect, Route, type RouteComponent } from "react-router";
 
 import type { State } from "metabase/redux/store";
+import { IndexRedirect, Route, type RouteComponent } from "metabase/router";
 
 import AccountApp from "./app/containers/AccountApp";
 import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
@@ -7,6 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -64,7 +64,7 @@ export const TaskRunsTable = ({
               <tr>
                 <td colSpan={6}>
                   <Flex
-                    c="text-tertiary"
+                    c="text-disabled"
                     justify="center"
                   >{t`No results`}</Flex>
                 </td>

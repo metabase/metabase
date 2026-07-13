@@ -33,7 +33,6 @@
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
     :model/ContentTranslation                metabase.content-translation.models
-    :model/CuratedSearchEntry                metabase.curated-search.models.curated-search-entry
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
@@ -58,7 +57,10 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
+    :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
+    :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
     :model/Measure                           metabase.measures.models.measure
+    :model/TableIndex                        metabase.indexes.models.table-index
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
@@ -81,6 +83,7 @@
     :model/OAuthClient                       metabase.oauth-server.models.oauth-client
     :model/OAuthClientEvent                  metabase.oauth-server.models.oauth-client-event
     :model/OAuthRefreshToken                 metabase.oauth-server.models.oauth-refresh-token
+    :model/OsiAiContext                      metabase.osi.models.osi-ai-context
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models

@@ -33,11 +33,11 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["CuratedSearchEntry"
-           "CustomVizPlugin"
+          ["CustomVizPlugin"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
+           "OsiAiContext"
            "PythonLibrary"
            "Setting"
            "Transform"
@@ -54,6 +54,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "TableIndex"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
@@ -89,6 +90,8 @@
    "ImplicitAction"
    "LoginHistory"
    "McpQueryHandle"
+   "McpSessionLog"
+   "McpToolCallLog"
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotGroupLimit"

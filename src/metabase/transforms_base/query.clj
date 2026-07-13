@@ -41,7 +41,10 @@
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
    [:conn-spec :any]
    [:query ::qp.compile/compiled]
-   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
+   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]
+   ;; Declared target indexes. `compile-transform` inlines the ones it can into the CTAS (e.g. Redshift SORTKEY,
+   ;; ClickHouse ORDER BY); the rest are created standalone.
+   [:indexes {:optional true} [:sequential :map]]])
 
 (mr/def ::transform-opts
   [:map
@@ -49,11 +52,16 @@
 
 ;;; ------------------------------------------------- Helpers -------------------------------------------------
 
-(defn- transform-opts [{:keys [transform-type]}]
+(defn- transform-opts [transform-type transform]
   (case transform-type
     :table {:overwrite? true}
-    ;; once we have more than just append, dispatch on :target-incremental-strategy
-    :table-incremental {}))
+    :table-incremental
+    (if (transforms-base.u/merge-target? transform)
+      (let [unique-key (transforms-base.u/merge-target-unique-key transform)
+            columns    (transforms-base.u/target-column-names transform)]
+        (transforms-base.u/validate-merge-unique-key! unique-key columns)
+        {:merge {:unique-key unique-key, :columns columns}})
+      {})))
 
 ;;; ------------------------------------------------- Base Execution -------------------------------------------------
 
@@ -123,8 +131,9 @@
                              ;; the CTAS table name. See
                              ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
                              :output-db (:db target)
-                             :output-table (transforms-base.u/qualified-table-name driver target)}
-          opts (transform-opts transform-details)
+                             :output-table (transforms-base.u/qualified-table-name driver target)
+                             :indexes (:indexes target)}
+          opts (transform-opts effective-transform-type transform)
           features (transforms-base.u/required-database-features transform)]
       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
         (throw (ex-info "The database does not support the requested transform target type."

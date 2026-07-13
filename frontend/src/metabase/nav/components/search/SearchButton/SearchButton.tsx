@@ -1,11 +1,11 @@
 import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { getSearchTextFromLocation } from "metabase/common/search";
 import type { SearchAwareLocation } from "metabase/common/search/types";
+import { withRouter } from "metabase/router";
 import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
@@ -43,7 +43,7 @@ const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
     <Button
       h="36px"
       w="240px"
-      c={searchText ? "text-primary" : "text-tertiary"}
+      c={searchText ? "text-primary" : "text-disabled"}
       leftSection={<Icon name="search" c="text-primary" />}
       onClick={handleClick}
       styles={{

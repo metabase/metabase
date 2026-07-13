@@ -217,10 +217,8 @@ describe(
 
         cy.wait("@executeAction");
 
-        cy.findByLabelText("Team Name").should("not.exist");
-        cy.findByLabelText(
-          "Team Name: This Team_name value already exists.",
-        ).should("exist");
+        cy.findByLabelText("Team Name").should("exist");
+        cy.findByText("This Team_name value already exists.").should("exist");
 
         cy.findByText("Team_name already exists.").should("exist");
       });
@@ -311,7 +309,7 @@ function assertSuccessfullUpdateToast() {
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "success")
+    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully updated");
 }
 
@@ -321,7 +319,7 @@ function assertSuccessfullDeleteToast() {
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "success")
+    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully deleted");
 }
 

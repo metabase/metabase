@@ -162,7 +162,7 @@
 
   Prometheus + Snowplow:
     - `:profile-id` — the profile id (e.g. `:internal`)
-    - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4-5`)
+    - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4.5`)
     - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
 
    Snowplow only:
@@ -269,7 +269,7 @@
   "Call an LLM and stream processed parts.
 
   `provider-and-model` is a string like `anthropic/claude-haiku-4-5` or
-  `openrouter/anthropic/claude-haiku-4-5`.  The first segment selects the
+  `openrouter/anthropic/claude-haiku-4.5`.  The first segment selects the
   provider adapter; the rest is the model name passed to the API.
 
   `parts` is a sequence of AISDK parts (`:text`, `:tool-input`, `:tool-output`)
@@ -328,7 +328,7 @@
   Includes the same retry logic as [[call-llm]] for transient errors.
 
   Args:
-    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4-5\")
+    model         - Model identifier (e.g. \"openrouter/anthropic/claude-haiku-4.5\")
     messages      - Sequence of Chat Completions message maps
                     (e.g. [{:role \"user\" :content \"...\"}])
     json-schema   - JSON Schema map for the expected response shape

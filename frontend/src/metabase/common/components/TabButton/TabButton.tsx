@@ -22,7 +22,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
@@ -94,8 +94,10 @@ const _TabButton = forwardRef(function TabButton(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (
         disabled ||
+        // Unjustified type cast. FIXME
         menuButtonRef.current?.contains(event.target as Node) ||
         (typeof inputRef === "object" &&
+          // Unjustified type cast. FIXME
           inputRef?.current?.contains(event.target as Node))
       ) {
         return;
@@ -288,9 +290,7 @@ export function RenameableTabButton({
       onRename={(e) => setLabel(e.target.value)}
       onFinishRenaming={onFinishEditing}
       onInputDoubleClick={() => setIsRenaming(canRename)}
-      menuItems={
-        menuItems as TabButtonMenuItem[] /* workaround for styled component swallowing generic type */
-      }
+      menuItems={menuItems}
       ref={inputRef}
       {...props}
     />

@@ -36,7 +36,7 @@ function mapColumnSettings(
 
   const entries = Object.entries(columnSettings);
   const hasInternal = entries.some(([, settings]) =>
-    isInternalLinkClickBehavior(settings.click_behavior),
+    isInternalLinkClickBehavior(settings?.click_behavior),
   );
 
   if (!hasInternal) {
@@ -45,7 +45,7 @@ function mapColumnSettings(
 
   return Object.fromEntries(
     entries.map(([key, settings]) => {
-      if (!isInternalLinkClickBehavior(settings.click_behavior)) {
+      if (!isInternalLinkClickBehavior(settings?.click_behavior)) {
         return [key, settings];
       }
 

@@ -234,8 +234,8 @@ describe("scenarios > embedding > modular embedding", () => {
 
     cy.log("1. call embed.setAttribute to update the question id");
     frame.window().then((win) => {
-      win
-        .document!.querySelector("metabase-question")!
+      win.document
+        .querySelector("metabase-question")!
         .setAttribute("question-id", ORDERS_COUNT_QUESTION_ID.toString());
     });
 
@@ -318,7 +318,7 @@ describe("scenarios > embedding > modular embedding", () => {
 
     cy.log("2. call setAttribute to show the title");
     frame.window().then((win) => {
-      const element = win.document!.querySelector("metabase-dashboard")!;
+      const element = win.document.querySelector("metabase-dashboard")!;
       element.setAttribute("with-title", "true");
     });
 

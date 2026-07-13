@@ -143,7 +143,7 @@ export const cronToScheduleSettings_unmemoized = (
         );
       }
       const day = parseInt(dayStr);
-      schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
+      schedule_day = weekdays[day - 1]?.value;
       if (dayOfMonth === Cron.AllValues) {
         // Match the part after the '#' in a string like '6#1' or the letter in '6L'
         const frameInCronFormat = weekday
@@ -161,7 +161,7 @@ export const cronToScheduleSettings_unmemoized = (
     }
   } else {
     if (weekday !== Cron.AllValues) {
-      schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
+      schedule_day = weekdays[parseInt(weekday) - 1]?.value;
     }
   }
 

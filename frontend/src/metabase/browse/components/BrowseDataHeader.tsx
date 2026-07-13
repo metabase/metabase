@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { trackDataReferenceClicked } from "metabase/common/collections/analytics";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import { Link } from "metabase/router";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
 import S from "./BrowseContainer.module.css";

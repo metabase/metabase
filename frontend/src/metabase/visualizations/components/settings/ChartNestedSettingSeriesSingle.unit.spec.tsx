@@ -13,6 +13,7 @@ import type { Series } from "metabase-types/api";
 registerVisualizations();
 
 function getSeries(): Series {
+  // Unjustified type cast. FIXME
   return [
     {
       card: {
@@ -76,6 +77,7 @@ function getSeries(): Series {
 }
 
 function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
+  // Unjustified type cast. FIXME
   return [
     {
       card: {

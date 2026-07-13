@@ -1,5 +1,4 @@
 import type { ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
 
 import { getDataStudioSegmentRoutes } from "metabase/data-studio/segments/routes";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";

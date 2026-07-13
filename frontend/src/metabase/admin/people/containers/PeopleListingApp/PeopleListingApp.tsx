@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -8,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -16,8 +16,6 @@ import { PeopleList } from "../../components/PeopleList";
 import { SearchFilter } from "../../components/SearchFilter";
 import { ACTIVE_STATUS, type ActiveStatus } from "../../constants";
 import { usePeopleQuery } from "../../hooks/use-people-query";
-
-import S from "./PeopleListingApp.module.css";
 
 const PAGE_SIZE = 25;
 
@@ -78,6 +76,7 @@ export function PeopleListingApp({
 
   const handleTabChange = (tab: string | null) => {
     if (tab) {
+      // Unjustified type cast. FIXME
       updateStatus(tab as ActiveStatus);
     }
   };
@@ -110,8 +109,13 @@ export function PeopleListingApp({
       </Group>
 
       {isAdmin && hasDeactivatedUsers && (
-        <Tabs value={status} onChange={handleTabChange} pl="md">
-          <Tabs.List className={S.tabs}>
+        <Tabs
+          value={status}
+          onChange={handleTabChange}
+          pl="md"
+          listBorder={false}
+        >
+          <Tabs.List>
             <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
             <Tabs.Tab
               value={ACTIVE_STATUS.deactivated}

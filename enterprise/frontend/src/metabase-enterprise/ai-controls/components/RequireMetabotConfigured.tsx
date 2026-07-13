@@ -1,8 +1,8 @@
 import { useLayoutEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 
 const FALLBACK_PATH = "/admin/metabot/";
 

@@ -1,7 +1,6 @@
 import type { FieldInputProps } from "formik";
 import { useFormik } from "formik";
 import { useEffect } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
@@ -12,6 +11,7 @@ import {
   getSegmentQueryDefinition,
 } from "metabase/querying/segments/utils";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Alert, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";

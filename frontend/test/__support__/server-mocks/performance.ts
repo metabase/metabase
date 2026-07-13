@@ -9,6 +9,7 @@ export function setupPerformanceEndpoints(cacheConfigs: CacheConfig[]) {
   });
 
   fetchMock.put("path:/api/cache", ({ options }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(options.body as string);
     configs = [
       ...configs.filter((config) => config.model_id !== body.model_id),
@@ -18,6 +19,7 @@ export function setupPerformanceEndpoints(cacheConfigs: CacheConfig[]) {
   });
 
   fetchMock.delete("path:/api/cache", ({ options }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(options.body as string);
     configs = configs.filter((config) => config.model_id !== body.model_id);
     return {};

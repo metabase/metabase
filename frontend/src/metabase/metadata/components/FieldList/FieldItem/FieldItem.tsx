@@ -1,11 +1,11 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { Link } from "metabase/router";
 import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
@@ -110,7 +110,7 @@ const FieldItemBase = ({
       >
         <Group
           align="center"
-          c="text-tertiary"
+          c="text-disabled"
           flex="0 0 auto"
           gap={0}
           maw="100%"

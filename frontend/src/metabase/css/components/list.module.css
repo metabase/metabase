@@ -8,7 +8,7 @@
 }
 
 .ListItem :global(.Icon) {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .ListSectionHeader {
@@ -20,7 +20,7 @@
 
 .ListSectionHeaderCursor {
   border-radius: 8px;
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
   outline-offset: -4px;
 }
 
@@ -50,7 +50,7 @@
 }
 
 .ListItemCursor {
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
 }
 
 .ListItemCursor:not(.ListItemDisabled),
@@ -67,7 +67,7 @@
 }
 
 .ListItemDisabled .ListItemTitle {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .ListItemCursor:not(.ListItemDisabled) .ListItemTitle,

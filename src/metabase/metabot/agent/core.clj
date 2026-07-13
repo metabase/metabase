@@ -420,10 +420,12 @@
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts]}]
   (let [context      (assign-context-ids context)
+        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
+        ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/get-tools-for-profile profile-id capabilities)
+        base-tools   (profiles/profile->tools profile capabilities)
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)
@@ -474,7 +476,7 @@
   than the raw model name returned by the API.
 
   The `metabase/` routing prefix is stripped so usage keys reflect the actual
-  provider/model (e.g. `openrouter/anthropic/claude-haiku-4-5`) regardless of
+  provider/model (e.g. `openrouter/anthropic/claude-haiku-4.5`) regardless of
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
@@ -507,7 +509,7 @@
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
-          ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
+          ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
           result'            (reduce (xf rf) result llm-call)

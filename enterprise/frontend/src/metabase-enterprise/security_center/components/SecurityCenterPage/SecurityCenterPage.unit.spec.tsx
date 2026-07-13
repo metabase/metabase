@@ -357,6 +357,7 @@ describe("SecurityCenterPage", () => {
   describe("notification settings modal", () => {
     it("opens the modal when the 'open=notifications' query param is set", async () => {
       setup([], {
+        // Unjustified type cast. FIXME
         location: {
           query: { open: "notifications" },
         } as Location<{ open?: string }>,

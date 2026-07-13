@@ -1,5 +1,4 @@
-import { Link, type LinkProps } from "react-router";
-
+import { Link, type LinkProps } from "metabase/router";
 import { Box, Flex, Text, Title } from "metabase/ui";
 
 import S from "./NewModelOption.module.css";

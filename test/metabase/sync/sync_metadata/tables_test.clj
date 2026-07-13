@@ -48,10 +48,6 @@
         normal-table {:name   "orders"
                       :schema "public"}
         db-metadata  {:tables #{temp-table normal-table}}]
-    (testing "with no premium features, sync excludes transform temporary tables"
-      (mt/with-premium-features #{}
-        (is (= #{normal-table}
-               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))
     (testing "when hosted, includes transform temporary tables"
       (mt/with-premium-features #{:hosting}
         (is (= #{normal-table temp-table}

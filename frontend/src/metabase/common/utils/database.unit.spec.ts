@@ -47,7 +47,9 @@ describe("database routing utility functions", () => {
         "with cards using non-routing databases",
         {
           dashcards: [
+            // Unjustified type cast. FIXME
             {
+              // Unjustified type cast. FIXME
               card: { database_id: 1 } as Card,
             } as any,
           ],
@@ -57,6 +59,7 @@ describe("database routing utility functions", () => {
       [
         "with main card using routing-enabled database",
         {
+          // Unjustified type cast. FIXME
           dashcards: [{ card: { database_id: 2 } as Card }],
         },
         true,
@@ -65,8 +68,11 @@ describe("database routing utility functions", () => {
         "with series card using routing-enabled database",
         {
           dashcards: [
+            // Unjustified type cast. FIXME
             {
+              // Unjustified type cast. FIXME
               card: { database_id: 1 } as Card,
+              // Unjustified type cast. FIXME
               series: [{ database_id: 2 } as Card],
             } as any,
           ],
@@ -77,7 +83,9 @@ describe("database routing utility functions", () => {
         "with mixed cards where some use routing",
         {
           dashcards: [
+            // Unjustified type cast. FIXME
             { card: { database_id: 1 } as Card },
+            // Unjustified type cast. FIXME
             { card: { database_id: 2 } as Card },
           ],
         },
@@ -86,6 +94,7 @@ describe("database routing utility functions", () => {
     ])("returns %s for dashboard %s", (_, dashboard, expected) => {
       expect(
         dashboardUsesRoutingEnabledDatabases(
+          // Unjustified type cast. FIXME
           dashboard as Pick<Dashboard, "dashcards">,
           mockDatabases,
         ),

@@ -212,6 +212,7 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
+            // Unjustified type cast. FIXME
             handleUpdateCollectionId(item as Pick<MetabotInfo, "id" | "name">)
           }
           onClose={close}
@@ -237,11 +238,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-tertiary" mb="sm">
+    <Flex align="center" gap="sm" c="text-disabled" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-tertiary" fw="bold">
+          <Text c="text-disabled" fw="bold">
             /
           </Text>
         </>

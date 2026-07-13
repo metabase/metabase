@@ -230,6 +230,7 @@ describe("getIsCompatible", () => {
             "2": createMockDataset({
               data: {
                 cols: [
+                  // Unjustified type cast. FIXME
                   createMockDatetimeColumn({ id: dateField.id as number }),
                 ],
               },
@@ -265,6 +266,7 @@ describe("getIsCompatible", () => {
             "2": createMockDataset({
               data: {
                 cols: [
+                  // Unjustified type cast. FIXME
                   createMockDatetimeColumn({ id: dateField.id as number }),
                 ],
               },
@@ -294,6 +296,7 @@ describe("getIsCompatible", () => {
               data: {
                 cols: [
                   createMockCategoryColumn({
+                    // Unjustified type cast. FIXME
                     id: sameCategoryDimensionField.id as number,
                   }),
                 ],
