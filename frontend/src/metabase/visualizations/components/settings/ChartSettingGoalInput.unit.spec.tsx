@@ -132,20 +132,17 @@ describe("ChartSettingGoalInput", () => {
       allowQuestionReference: true,
     });
 
+    // the column name is shown as the value (card name is in the tooltip)
+    expect(await screen.findByDisplayValue("Total sum")).toBeInTheDocument();
+    // with an icon based on the referenced card's viz type
     expect(
-      await screen.findByDisplayValue("Orders · Total sum"),
+      await screen.findByRole("img", { name: /gauge/ }),
     ).toBeInTheDocument();
 
     await openMenu();
     await userEvent.click(
       screen.getByRole("menuitem", { name: /another question/ }),
     );
-
-    // the referenced-question item shows an icon based on the card's viz type
-    expect(
-      await screen.findByRole("img", { name: /gauge/ }),
-    ).toBeInTheDocument();
-
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Average" }),
     );

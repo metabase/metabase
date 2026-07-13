@@ -15,6 +15,7 @@ import {
   Menu,
   NumberInput,
   TextInput,
+  Tooltip,
 } from "metabase/ui";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -43,6 +44,14 @@ const inputStyles = {
   section: {
     backgroundColor: "unset",
     zIndex: "initial",
+  },
+};
+
+const columnRefInputStyles = {
+  ...inputStyles,
+  input: {
+    ...inputStyles.input,
+    textOverflow: "ellipsis",
   },
 };
 
@@ -251,7 +260,7 @@ export const ChartSettingGoalInput = ({
             </Menu.Item>
             <Menu.Divider />
             <Menu.Item
-              leftSection={<Icon name={foreignCardIcon} />}
+              leftSection={<Icon color="brand" name={foreignCardIcon} />}
               onClick={openQuestionPicker}
             >
               {foreignCardName ? foreignCardName : t`Pick a question…`}
@@ -283,24 +292,27 @@ export const ChartSettingGoalInput = ({
   return (
     <>
       {foreignRef ? (
-        <Group
-          className={S.root}
-          bg="background_page-primary"
-          align="center"
-          w="100%"
-        >
-          <TextInput
-            id={id}
-            value={foreignRefLabel}
-            readOnly
-            placeholder={foreignRefLabel}
-            rightSection={rightSection}
-            rightSectionPointerEvents="all"
-            rightSectionWidth={RIGHT_SECTION_WIDTH}
-            styles={inputStyles}
+        <Tooltip label={foreignRefLabel}>
+          <Group
+            className={S.root}
+            bg="background_page-primary"
+            align="center"
             w="100%"
-          />
-        </Group>
+          >
+            <TextInput
+              id={id}
+              value={foreignColumnLabel}
+              readOnly
+              placeholder={foreignColumnLabel}
+              leftSection={<Icon name={foreignCardIcon} c="brand" />}
+              rightSection={rightSection}
+              rightSectionPointerEvents="all"
+              rightSectionWidth={RIGHT_SECTION_WIDTH}
+              styles={columnRefInputStyles}
+              w="100%"
+            />
+          </Group>
+        </Tooltip>
       ) : isSelfColumnReference ? (
         <Group
           className={S.root}
@@ -316,7 +328,7 @@ export const ChartSettingGoalInput = ({
             rightSection={rightSection}
             rightSectionPointerEvents="all"
             rightSectionWidth={RIGHT_SECTION_WIDTH}
-            styles={inputStyles}
+            styles={columnRefInputStyles}
             w="100%"
           />
         </Group>
