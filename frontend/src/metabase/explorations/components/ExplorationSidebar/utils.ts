@@ -13,6 +13,7 @@ import type {
   ExplorationQueryId,
   ExplorationQueryStatus,
   ExplorationThread,
+  IconName,
 } from "metabase-types/api";
 import {
   getExplorationPages,
@@ -385,6 +386,7 @@ export type ExplorationSidebarTabsInfo = Record<
   {
     value: ExplorationSidebarTab;
     label: string;
+    icon?: IconName;
     treeItemFilter: TreeItemFilter;
     emptyTreeMessage: string;
   }
@@ -413,6 +415,7 @@ export function getExplorationSidebarTabsInfo(
     stars: {
       value: "stars",
       label: t`Stars`,
+      icon: "star_filled",
       treeItemFilter: (node) =>
         isExplorationTreePage(node) &&
         node.data?.page_id != null &&
@@ -422,6 +425,7 @@ export function getExplorationSidebarTabsInfo(
     discussions: {
       value: "discussions",
       label: t`Discussions`,
+      icon: "comment",
       treeItemFilter: (node) =>
         isExplorationTreePage(node) &&
         node.data?.page_id != null &&

@@ -52,6 +52,7 @@ import type {
   ExplorationId,
   ExplorationQueryStatus,
   ExplorationThreadId,
+  IconName,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
@@ -254,9 +255,9 @@ export function ExplorationSidebar({
               }
             }}
             data={Object.values(explorationSidebarTabsInfo).map(
-              ({ value, label }) => ({
+              ({ value, label, icon }) => ({
                 value,
-                label: <SidebarTabLabel tab={value} label={label} />,
+                label: <SidebarTabLabel icon={icon} label={label} />,
               }),
             )}
           />
@@ -296,32 +297,17 @@ export function ExplorationSidebar({
   );
 }
 
-function SidebarTabLabel({
-  tab,
-  label,
-}: {
-  tab: ExplorationSidebarTab;
-  label: string;
-}) {
-  if (tab === "stars") {
-    return (
-      <Tooltip label={label}>
-        <Center component="span" role="img" aria-label={label}>
-          <Icon name="star_filled" aria-hidden />
-        </Center>
-      </Tooltip>
-    );
+function SidebarTabLabel({ icon, label }: { icon?: IconName; label: string }) {
+  if (icon == null) {
+    return label;
   }
-  if (tab === "discussions") {
-    return (
-      <Tooltip label={label}>
-        <Center component="span" role="img" aria-label={label}>
-          <Icon name="comment" aria-hidden />
-        </Center>
-      </Tooltip>
-    );
-  }
-  return label;
+  return (
+    <Tooltip label={label}>
+      <Center component="span" role="img" aria-label={label}>
+        <Icon name={icon} aria-hidden />
+      </Center>
+    </Tooltip>
+  );
 }
 
 interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
