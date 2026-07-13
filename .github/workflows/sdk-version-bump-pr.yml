@@ -113,14 +113,25 @@ jobs:
         run: |
           # `npm version` only works on a file named package.json, and it is
           # just a wrapper around `semver` - so we call semver directly.
+          #
+          # This job installs no dependencies, so npx would otherwise fetch
+          # whatever the registry calls latest. Take the range the repo already
+          # pins instead, so there is no second version to keep in step.
+          SEMVER="semver@$(jq -r '.devDependencies.semver' package.json)"
+          if [ "$SEMVER" = "semver@null" ]; then
+            echo "::error::package.json has no devDependencies.semver to pin against."
+            exit 1
+          fi
+          echo "Using $SEMVER"
+
           CURRENT_VERSION=$(jq -r .version "$package_template")
 
           case "$RELEASE_TYPE" in
             alpha)
-              NEW_VERSION=$(npx --yes semver@7 -i prerelease --preid=alpha "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease --preid=alpha "$CURRENT_VERSION")
               ;;
             beta)
-              NEW_VERSION=$(npx --yes semver@7 -i prerelease --preid=beta "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease --preid=beta "$CURRENT_VERSION")
               ;;
             custom)
               # The prerelease id this branch already carries, if any. alpha/beta
@@ -151,19 +162,19 @@ jobs:
               # semver reuses the id already in the version and bumps its counter
               # (0.62.5-data-apps.0 -> 0.62.5-data-apps.1).
               if [ -n "$PRERELEASE_ID" ]; then
-                NEW_VERSION=$(npx --yes semver@7 -i prerelease --preid="$PRERELEASE_ID" "$CURRENT_VERSION")
+                NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease --preid="$PRERELEASE_ID" "$CURRENT_VERSION")
               else
-                NEW_VERSION=$(npx --yes semver@7 -i prerelease "$CURRENT_VERSION")
+                NEW_VERSION=$(npx --yes "$SEMVER" -i prerelease "$CURRENT_VERSION")
               fi
               ;;
             preminor)
               # master -> next major's alpha (0.63.0-alpha.5 -> 0.64.0-alpha.0).
               # `alpha` above only ever increments the existing prerelease
               # counter, so it can never bump the minor version.
-              NEW_VERSION=$(npx --yes semver@7 -i preminor --preid=alpha "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes "$SEMVER" -i preminor --preid=alpha "$CURRENT_VERSION")
               ;;
             patch)
-              NEW_VERSION=$(npx --yes semver@7 -i patch "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes "$SEMVER" -i patch "$CURRENT_VERSION")
               ;;
             *)
               echo "::error::Unsupported release_type: $RELEASE_TYPE"
