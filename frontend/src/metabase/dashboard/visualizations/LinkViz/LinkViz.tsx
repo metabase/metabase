@@ -166,6 +166,7 @@ function LinkVizInner({
               onBlur={_.debounce(onBlurInput, 100)}
               // the dashcard really wants to turn all mouse events into drag events
               onMouseDown={(e) => e.stopPropagation()}
+              size="sm"
               styles={{
                 root: { pointerEvents: "all" },
                 input: { pointerEvents: "all" },
