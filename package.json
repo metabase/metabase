@@ -454,6 +454,7 @@
     "prosemirror-view": "^1.40.1",
     "js-cookie": "^3.0.7",
     "qs": "6.15.2",
+    "redux": "5.0.1",
     "webpack-dev-middleware": "^5.3.4",
     "webpack-dev-server": "^5.2.1",
     "webpack": "5.105.0"
