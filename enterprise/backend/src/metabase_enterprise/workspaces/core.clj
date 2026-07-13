@@ -106,6 +106,16 @@
   (ws.settings/instance-workspace! nil)
   nil)
 
+(defn initial-import-if-needed!
+  "Blocking first import of this child instance's remote-sync branch (GHY-4121):
+   runs only when remote sync is enabled and nothing has ever synced; skips when
+   the branch doesn't exist on the remote. Called by the config.yml `:workspace`
+   section loader so a 2xx config apply means content is live. Thin delegate —
+   lives here because the advanced-config module depends on workspaces, not on
+   remote-sync."
+  []
+  (remote-sync/initial-import-if-needed!))
+
 ;;; ------------------------------- Instance-workspace lock -------------------------------
 
 (defonce ^:private locked-by-config?* (atom false))
@@ -193,6 +203,21 @@
     (throw (ex-info "Another workspace already exports to this branch"
                     {:status-code 409 :target_branch target-branch}))))
 
+(defn- cut-target-branch!
+  "Cut the workspace's `target_branch` from the base on the git remote (GHY-4121),
+   so the child's first import finds it populated. Runs after the create
+   transaction commits — a remote git call must not hold the transaction open.
+   Best-effort: on failure the child boots empty and its first export creates the
+   branch, so we log rather than fail the (already committed) create."
+  [{:keys [target_branch] :as _ws}]
+  (when (not-empty (remote-sync/remote-sync-url))
+    (try
+      (when-let [base (remote-sync/create-workspace-branch! target_branch)]
+        (log/infof "Cut workspace branch %s from %s" (pr-str target_branch) (pr-str base)))
+      (catch Exception e
+        (log/warnf e "Could not create workspace branch %s on the git remote; the child will boot empty"
+                   (pr-str target_branch))))))
+
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
 (defn get-workspace
@@ -237,18 +262,20 @@
                         database_ids)]
     (when target_branch
       (assert-target-branch-available target_branch))
-    (t2/with-transaction [_conn]
-      (let [ws (workspace/create-workspace! {:name          name
-                                             :creator_id    creator_id
-                                             :databases     databases
-                                             :base_branch   (remote-sync/remote-sync-branch)
-                                             :target_branch target_branch})]
-        (when-not target_branch
-          (t2/update! :model/Workspace :id (:id ws)
-                      {:target_branch (str "ws-" (u/slugify name) "-" (:id ws))}))
-        (doseq [{wsd-id :id} (:databases ws)]
-          (provisioning/provision-single! wsd-id))
-        (workspace/get-workspace (:id ws))))))
+    (let [ws (t2/with-transaction [_conn]
+               (let [ws (workspace/create-workspace! {:name          name
+                                                      :creator_id    creator_id
+                                                      :databases     databases
+                                                      :base_branch   (remote-sync/remote-sync-branch)
+                                                      :target_branch target_branch})]
+                 (when-not target_branch
+                   (t2/update! :model/Workspace :id (:id ws)
+                               {:target_branch (str "ws-" (u/slugify name) "-" (:id ws))}))
+                 (doseq [{wsd-id :id} (:databases ws)]
+                   (provisioning/provision-single! wsd-id))
+                 (workspace/get-workspace (:id ws))))]
+      (cut-target-branch! ws)
+      ws)))
 
 (defn- orphaned-resources-message
   [workspace-id failures]

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.config-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.core :as ws.core]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
@@ -324,3 +325,23 @@
                                               :database_ids []})]
           (is (= (str "ws-branchy-" (:id ws1)) (:target_branch ws1)))
           (is (not= (:target_branch ws1) (:target_branch ws2))))))))
+
+(deftest create-workspace-cuts-target-branch-test
+  (testing "create cuts the target branch on the git remote when one is configured (GHY-4121)"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [cut (atom [])]
+        (with-redefs [remote-sync/create-workspace-branch! (fn [branch] (swap! cut conj branch) "main")]
+          (testing "no git remote -> no cut attempted"
+            (mt/with-temporary-setting-values [remote-sync-url nil]
+              (ws.core/create-workspace! {:name "no git" :creator_id (mt/user->id :crowberto) :database_ids []})
+              (is (= [] @cut))))
+          (testing "git remote configured -> branch cut after create"
+            (mt/with-temporary-setting-values [remote-sync-url "https://git.example.com/repo.git"]
+              (let [ws (ws.core/create-workspace! {:name "gitty cut" :creator_id (mt/user->id :crowberto) :database_ids []})]
+                (is (= [(:target_branch ws)] @cut))))))
+        (testing "a failing cut is best-effort: create still succeeds"
+          (mt/with-temporary-setting-values [remote-sync-url "https://git.example.com/repo.git"]
+            (with-redefs [remote-sync/create-workspace-branch! (fn [_] (throw (ex-info "remote unreachable" {})))]
+              (is (some? (ws.core/create-workspace! {:name         "flaky remote"
+                                                     :creator_id   (mt/user->id :crowberto)
+                                                     :database_ids []}))))))))))

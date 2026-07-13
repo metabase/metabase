@@ -111,6 +111,17 @@
                                  :databases resolved-databases})
     (log/infof "Loaded workspace %s from config.yml with %d database(s)"
                (pr-str name) (count resolved-databases))
+    ;; First boot of a workspace child: pull the target branch's content before
+    ;; reporting the section applied (GHY-4121). Blocking is deliberate — the HM
+    ;; create call and the config-apply endpoint both treat 2xx as "instance
+    ;; ready", so content must be live by then. The `:settings` section always
+    ;; initializes first, so the remote-sync settings are in place here. An
+    ;; import failure leaves a working-but-empty child; recoverable via a manual
+    ;; import, so log rather than fail the whole config apply.
+    (try
+      (ws/initial-import-if-needed!)
+      (catch Exception e
+        (log/error e "Initial workspace import failed; the child starts empty")))
     {:workspace-name name
      :database-count (count resolved-databases)}))
 
