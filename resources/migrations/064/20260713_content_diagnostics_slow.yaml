@@ -1,4 +1,4 @@
-## Content Diagnostics — `slow` finding type (GDGT-2688).
+## Content Diagnostics - `slow` finding type.
 ## Adds the per-type verdict magnitude column + composite index the `slow` checker/serve path needs.
 ## Append-only, on the `content_diagnostics_finding` table created in 064/20260708_content_diagnostics.yaml.
 
