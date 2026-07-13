@@ -233,6 +233,58 @@
       :tool-denied? get-fields-denied?
       :rest         [:get (str "table/" (mt/id :venues) "/query_metadata")]})))
 
+;;; ------------------------------------- browse_collection · get_parameter_values ---------------------------------
+
+(deftest browse-collection-baseline-parity-test
+  (testing "the positive control: with full permissions both surfaces list the collection's items"
+    (mt/with-temp [:model/Collection coll {}]
+      (check-parity!
+       {:scenario :full-permissions
+        :user     :rasta
+        :expect   :allowed
+        :tool     ["browse_collection" {:id (:id coll)}]
+        :rest     [:get (str "collection/" (:id coll) "/items")]}))))
+
+(deftest browse-collection-no-collection-access-parity-test
+  (mt/with-temp [:model/Collection coll {}]
+    (mt/with-non-admin-groups-no-collection-perms coll
+      (check-parity!
+       {:scenario :no-collection-access
+        :user     :rasta
+        :expect   :denied
+        :tool     ["browse_collection" {:id (:id coll)}]
+        :rest     [:get (str "collection/" (:id coll) "/items")]}))))
+
+(deftest browse-collection-archived-target-parity-test
+  (testing "archiving is not a permission: a readable archived collection is still browsable, on both surfaces"
+    (mt/with-temp [:model/Collection coll {:archived true}]
+      (check-parity!
+       {:scenario :archived-target
+        :user     :rasta
+        :expect   :allowed
+        :tool     ["browse_collection" {:id (:id coll)}]
+        :rest     [:get (str "collection/" (:id coll) "/items")]}))))
+
+(deftest get-parameter-values-no-collection-access-parity-test
+  (testing "a dashboard the caller cannot read gives up no filter values, on either surface"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       card {:dataset_query (mt/mbql-query venues)}
+                   :model/Dashboard  dash {:collection_id (:id coll)
+                                           :parameters    [{:name "Category" :slug "category"
+                                                            :id   "cat" :type "string/="}]}
+                   :model/DashboardCard _ {:dashboard_id       (:id dash)
+                                           :card_id            (:id card)
+                                           :parameter_mappings [{:parameter_id "cat"
+                                                                 :card_id      (:id card)
+                                                                 :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (check-parity!
+         {:scenario :no-collection-access
+          :user     :rasta
+          :expect   :denied
+          :tool     ["get_parameter_values" {:target "dashboard" :id (:id dash) :parameter_id "cat"}]
+          :rest     [:get (str "dashboard/" (:id dash) "/params/cat/values")]})))))
+
 ;;; ------------------------------------------------- search -------------------------------------------------------
 ;;
 ;; `search` never refuses a call, so there is no denial to hold against REST's — it answers with what

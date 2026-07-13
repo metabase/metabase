@@ -25,7 +25,13 @@
   {:card             {:concise [:id :name :type :display :description :database_id :collection_id :archived]}
    :collection       {:concise [:id :name :description :location :parent_id :type :authority_level
                                 :is_personal :is_remote_synced :archived]}
-   :collection-item  {:concise [:id :name :model :description :collection_id :archived]}
+   ;; `type` is the one vocabulary the tools speak to each other in: `search` filters on it and
+   ;; `browse_collection` filters on it, so a hit from discovery is an argument a read takes without a
+   ;; translation table in between. `collection_position` (the pin marker) and `last-edit-info` are what
+   ;; the collection page puts on the row, so "which of these is pinned, and which did someone touch last
+   ;; week" is answered from the listing rather than from a read per item.
+   :collection-item  {:concise [:id :name :type :description :collection_id :collection_position
+                                :last-edit-info :archived]}
    :dashboard        {:concise [:id :name :description :collection_id :archived]}
    :dashcard         {:concise [:id :card_id :dashboard_id :dashboard_tab_id :row :col :size_x :size_y]}
    ;; A database's `tables` and a table's `fields` stay out of the parent: `browse_data`'s `get_fields` is

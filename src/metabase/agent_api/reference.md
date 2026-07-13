@@ -363,6 +363,112 @@ sample `values` to list-valued fields (via the same sandbox-aware path the
 field-values endpoints read), and adds each table's `derived` questions,
 models, and transforms.
 
+### POST /v2/browse-collection
+
+The `browse_collection` tool: the collection hierarchy — what a collection
+holds, or the collections below it.
+
+| Mode | Arguments | Returns |
+| --- | --- | --- |
+| `items` (default) | `type?`, `sort_column?`, `sort_direction?`, `limit?`, `offset?`, `fields?` | the collection's contents, pinned first |
+| `tree` | `depth?` | the sub-collections below it, without their contents |
+
+`id` takes a numeric id, a 21-character `entity_id`, `"root"` (the top level),
+or `"trash"` (archived content). `type` is `question`, `model`, `metric`,
+`dashboard`, `collection`, `document`, or `timeline` — the same vocabulary
+`search` returns and `get_content` takes, so an item forwards into a read
+without a translation table. Collection *namespaces* (snippet folders,
+transform folders) are not addressable: snippets and transforms are discovered
+through `search` and read through `get_content`.
+
+Request:
+
+```json
+{
+  "id": 12,
+  "type": ["dashboard", "question"],
+  "sort_column": "last_edited_at",
+  "sort_direction": "desc",
+  "limit": 50,
+  "offset": 0
+}
+```
+
+`items` responses are the bounded list envelope, and the listing is the app's
+own — same permission filter, same pinned-first order:
+
+```json
+{
+  "data": [
+    {"id": 31, "name": "Weekly Signups", "type": "question", "description": null,
+     "collection_id": 12, "collection_position": 1,
+     "last-edit-info": {"id": 2, "email": "ana@example.com", "first_name": "Ana",
+                        "last_name": "Diaz", "timestamp": "2026-07-02T10:04:00Z"}}
+  ],
+  "returned": 1,
+  "total": 14,
+  "truncated": true,
+  "truncation_message": "14 items in \"Marketing\" — showing 1. narrow with `type` or page with `offset: 1`."
+}
+```
+
+`fields` (items mode) picks dot-paths out of an item's full record — `["id",
+"name"]` — and overrides `response_format`. An unknown path is a 400 listing the
+paths that exist.
+
+`tree` mode carries collection nodes with their `children`. A tree does not page:
+a branch cut by the per-node cap, the node budget, or `depth` carries a
+`truncation_message` naming the call that re-roots on it ("14 more under
+\"Finance\" — browse_collection(id: 45, mode: \"tree\")").
+
+```json
+{
+  "data": [
+    {"id": 45, "name": "Finance", "description": null,
+     "children": [{"id": 46, "name": "KPIs", "description": null, "children": []}]}
+  ],
+  "returned": 1,
+  "total": 1
+}
+```
+
+### POST /v2/parameter-values
+
+The `get_parameter_values` tool: the values a dashboard or question filter
+accepts, from the same chain-filter engine the app's filter widget reads.
+
+Request:
+
+```json
+{
+  "target": "dashboard",
+  "id": 7,
+  "parameter_id": "abc12345",
+  "query": "ca",
+  "constraints": {"def67890": "CA"}
+}
+```
+
+- `target` — `dashboard` or `question`.
+- `parameter_id` — the parameter's id; `get_content` with
+  `include: ["parameters"]` lists them. An id the target does not carry is a 400
+  that says so.
+- `query` — search the values instead of listing the first page of them.
+- `constraints` — the values already chosen for the *other* parameters, so a
+  dependent filter returns only what is reachable under them. Dashboards only;
+  sending it with `target: "question"` is a 400.
+
+Response — the REST shape verbatim. A value is `[value]`, or
+`[value, label]` when the column is remapped; pass the value, show the label.
+`has_more_values` marks a list the backend capped (narrow it with `query`):
+
+```json
+{
+  "values": [["CA", "California"], ["NY", "New York"]],
+  "has_more_values": false
+}
+```
+
 ### POST /v2/construct-query
 
 Construct an MBQL query from a representations JSON payload. Returns a
@@ -719,8 +825,9 @@ Response:
 
 1. **Search** - POST /v1/search to find relevant tables, metrics, cards, or dashboards
 2. **Navigate** - POST /v2/browse-data to walk databases → schemas → tables →
-   fields; POST /v1/read-resource with `metabase://` URIs to drill into
-   collections, dashboards, and other saved content
+   fields; POST /v2/browse-collection to walk the collection hierarchy; POST
+   /v2/parameter-values for the values a filter accepts; POST /v1/read-resource
+   with `metabase://` URIs to drill into dashboards and other saved content
 3. **Build query** - POST /v2/construct-query with a representations JSON
    payload (`{"query": <external-query-object>}`); see the
    `construct_notebook_query` tool prompt for the format reference

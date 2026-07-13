@@ -390,7 +390,8 @@
 ;;; ----------------------------------------------- Tools listing ---------------------------------------------------
 
 (def ^:private all-tool-names
-  #{"browse_data"
+  #{"browse_collection"
+    "browse_data"
     "construct_query"
     "construct_native_query"
     "create_collection"
@@ -400,6 +401,7 @@
     "execute_query"
     "execute_question"
     "execute_sql"
+    "get_parameter_values"
     "query"
     "read_resource"
     "render_drill_through"
@@ -694,8 +696,8 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"search" "browse_data" "construct_query" "construct_native_query" "query" "execute_query"
-    "execute_sql" "read_resource"
+  #{"search" "browse_data" "browse_collection" "get_parameter_values" "construct_query"
+    "construct_native_query" "query" "execute_query" "execute_sql" "read_resource"
     "create_question" "execute_question" "create_metric" "create_dashboard"
     "update_question" "update_metric" "update_dashboard" "create_collection"})
 
@@ -712,7 +714,19 @@
         (mt/with-temp [:model/Card _metric {:name          "Smoke Metric"
                                             :type          :metric
                                             :database_id   (mt/id)
-                                            :dataset_query (orders-count-query)}]
+                                            :dataset_query (orders-count-query)}
+                       :model/Card param-card {:name          "Smoke Filter Card"
+                                               :dataset_query (mt/mbql-query products)}
+                       :model/Dashboard param-dash {:name       "Smoke Filter Dashboard"
+                                                    :parameters [{:name "Category"
+                                                                  :slug "category"
+                                                                  :id   "cat"
+                                                                  :type "string/="}]}
+                       :model/DashboardCard _ {:dashboard_id       (:id param-dash)
+                                               :card_id            (:id param-card)
+                                               :parameter_mappings [{:parameter_id "cat"
+                                                                     :card_id      (:id param-card)
+                                                                     :target       [:dimension (mt/$ids products $category)]}]}]
           (let [db-name      (t2/select-one-fn :name :model/Database (mt/id))
                 orders-query {:lib/type "mbql/query"
                               :stages   [{:lib/type     "mbql.stage/mbql"
@@ -734,6 +748,10 @@
                     _              (call-tool "browse_data" {:action "list_tables"
                                                              :database_id (mt/id)
                                                              :search "orders"})
+                    _              (call-tool "browse_collection" {:id "root"})
+                    _              (call-tool "get_parameter_values" {:target       "dashboard"
+                                                                      :id           (:id param-dash)
+                                                                      :parameter_id "cat"})
                     construct-data (call-tool "construct_query" {:query orders-query})
                     native-data    (call-tool "construct_native_query"
                                               {:database_id (mt/id)

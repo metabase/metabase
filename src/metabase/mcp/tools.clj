@@ -141,15 +141,23 @@
    [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset and the parameters that narrow the set."} [:maybe :string]]
    [:omitted            {:optional true :tool/description "`get_fields` only: requested tables not in this response, each with the reason."} [:maybe [:sequential :map]]]])
 
+(def ^:private parameter-values-mcp-output-malli
+  "MCP-visible output of `get_parameter_values`. The values themselves travel in the text block; the structured
+   channel carries the one field a next call acts on — whether the list was capped, and so whether to narrow it."
+  [:map
+   [:has_more_values {:tool/description "Whether the backend capped the list — narrow it with `query`."} :boolean]])
+
 (def ^:private mcp-output-overrides
   "tool-name → Malli schema. Replaces the manifest's derived `:outputSchema`.
    Both construct tools emit `{:query_handle}` via the body transform (see
-   [[tools-storing-query-handle]]), so they share the same output schema. A v2 list read declares the
+   [[tools-storing-query-handle]]), so they share the same output schema. A v2 read declares the
    structured channel, not the body: the body is in the text block."
   {"construct_query"        construct-query-mcp-output-malli
    "construct_native_query" construct-query-mcp-output-malli
    "search"                 list-envelope-mcp-output-malli
-   "browse_data"            browse-data-mcp-output-malli})
+   "browse_data"            browse-data-mcp-output-malli
+   "browse_collection"      list-envelope-mcp-output-malli
+   "get_parameter_values"   parameter-values-mcp-output-malli})
 
 (defn- override->input-json-schema [malli tool-name]
   (tools-manifest/assert-optional-fields-nullable! malli tool-name)
@@ -401,6 +409,12 @@
    (cond-> {:content [{:type "text" :text (if (string? text) text (json/encode text))}]}
      (some? structured) (assoc :structuredContent structured))))
 
+(def ^:private v2-payload-keys
+  "The keys a v2 body carries its payload under: a list envelope's `:data`, and `get_parameter_values`' `:values` —
+   the one v2 read whose body is the REST shape verbatim rather than an envelope. What is left after they are removed
+   is the machine channel."
+  [:data :values])
+
 (defn- v2-content
   "MCP result for a v2 tool: the body once in the text block, and in `structuredContent` only the fields
    a next call consumes. For a list envelope those are its counts and its truncation steer — never a
@@ -408,8 +422,8 @@
    afford twice."
   [body]
   (two-channel-content body
-                       (when (and (map? body) (contains? body :data))
-                         (not-empty (dissoc body :data)))))
+                       (when (and (map? body) (some #(contains? body %) v2-payload-keys))
+                         (not-empty (apply dissoc body v2-payload-keys)))))
 
 ;; JSON-RPC error codes recorded as `mcp_tool_call_log.error_code` for failed tool calls.
 ;; Kept in sync with the `error_code` -> `error_type` CASE in the v_mcp_tool_calls view SQL. The

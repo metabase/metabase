@@ -163,6 +163,7 @@
               api
               auth-identity
               channel
+              collection-items
               collections
               dashboards
               eid-translation
@@ -580,6 +581,34 @@
            util}
    :model-imports :bypass}
 
+  collection-items
+  {:team "UX West"
+   :api  #{metabase.collection-items.core
+           metabase.collection-items.init}
+   :uses #{api
+           app-db
+           collections
+           lib-be
+           permissions
+           premium-features
+           queries
+           request
+           revisions
+           settings
+           tracing
+           transforms
+           upload
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document
+                    :model/NativeQuerySnippet
+                    :model/Pulse
+                    :model/Table
+                    :model/Timeline
+                    :model/Transform}}
+
   collections
   {:team "UX West"
    :api  #{metabase.collections.core
@@ -617,35 +646,20 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api
-           metabase.collections-rest.init}
+   :api  #{metabase.collections-rest.api}
    :uses #{api
-           app-db
+           collection-items
            collections
            eid-translation
            events
-           lib-be
            models
            notification
            permissions
            premium-features
            queries
            request
-           revisions
-           settings
-           tracing
-           transforms
-           upload
            util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/Document
-                    :model/NativeQuerySnippet
-                    :model/Pulse
-                    :model/Table
-                    :model/Timeline
-                    :model/Transform}}
+   :model-imports #{:model/Card :model/Collection}}
 
   comments
   {:team "UX West"
@@ -748,8 +762,8 @@
            api
            app-db
            channel
+           collection-items
            collections
-           collections-rest
            dashboards
            eid-translation
            embedding

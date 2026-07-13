@@ -4,7 +4,9 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.agent-api.browse-collection :as agent-api.browse-collection]
    [metabase.agent-api.browse-data :as agent-api.browse-data]
+   [metabase.agent-api.parameter-values :as agent-api.parameter-values]
    [metabase.agent-api.search :as agent-api.search]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.tools :as agent-api.tools]
@@ -379,6 +381,160 @@
    _query-params
    body :- ::browse-data-request]
   (agent-api.browse-data/browse-data body))
+
+;;; ----------------------------------------------- Browse Collection ------------------------------------------------
+
+(mr/def ::browse-collection-request
+  "Arguments to the `browse_collection` tool. Only `id` is schema-required; the per-mode argument rules are
+  runtime-enforced with teaching errors in [[metabase.agent-api.browse-collection/browse-collection]]."
+  [:map
+   [:id
+    {:tool/description (str "The collection to browse: a numeric id, a 21-character entity_id, \"root\" for the top "
+                            "level (\"Our analytics\"), or \"trash\" for archived content.")}
+    agent-api.tools/CollectionLocator]
+   [:mode
+    {:optional true
+     :tool/description (str "\"items\" (default) lists what the collection holds. \"tree\" walks the sub-collections "
+                            "below it, without their contents.")}
+    [:maybe (into [:enum] agent-api.browse-collection/modes)]]
+   [:type
+    {:optional true
+     :tool/description "Restrict the items to these types — `items` mode only."}
+    [:maybe [:sequential (into [:enum] agent-api.browse-collection/types)]]]
+   [:sort_column
+    {:optional true
+     :tool/description "Order the items by name (default), last edit, or type — `items` mode only."}
+    [:maybe (into [:enum] agent-api.browse-collection/sort-columns)]]
+   [:sort_direction
+    {:optional true
+     :tool/description "\"asc\" (default) or \"desc\" — `items` mode only."}
+    [:maybe [:enum "asc" "desc"]]]
+   [:limit
+    {:optional true
+     :tool/description "Items per page (default 50, max 200) — `items` mode only."}
+    [:maybe [:int {:min 1 :max agent-api.browse-collection/max-limit}]]]
+   [:offset
+    {:optional true
+     :tool/description (str "Items to skip — page with the offset the truncation message names. `items` mode only; a "
+                            "tree re-roots instead of paging.")}
+    [:maybe [:int {:min 0}]]]
+   [:depth
+    {:optional true
+     :tool/description (str "Levels of sub-collections to walk (default 2, max 5) — `tree` mode only. Walk deeper by "
+                            "re-rooting on the branch you want.")}
+    [:maybe [:int {:min 1 :max agent-api.browse-collection/max-depth}]]]
+   [:fields
+    {:optional true
+     :tool/description (str "Return only these fields of each item, as dot-paths into its full record (for example "
+                            "[\"id\", \"name\"]). Overrides `response_format`. `items` mode only.")}
+    agent-api.tools/FieldsField]
+   [:response_format
+    {:optional true
+     :tool/description (str "\"concise\" (default) returns id, name, type, description, pin position, and last-edit "
+                            "info per item; \"detailed\" returns each item's whole record.")}
+    agent-api.tools/ResponseFormatField]])
+
+(mr/def ::browse-collection-response
+  "The bounded list envelope. In `tree` mode a node carries its own `truncation_message` when its children were cut —
+  a tree re-roots rather than pages, so the message names the call that expands that branch."
+  [:map
+   [:data               [:sequential :map]]
+   [:returned           :int]
+   [:total              {:optional true} :int]
+   [:truncated          {:optional true} :boolean]
+   [:truncation_message {:optional true} :string]])
+
+(api.macros/defendpoint :post "/v2/browse-collection" :- ::browse-collection-response
+  "Browse the collection hierarchy — what a collection holds, or the collections below it.
+
+  `mode: \"items\"` lists a collection's contents, pinned items first, exactly as the app's collection page does.
+  `mode: \"tree\"` walks the sub-collections below it. `\"trash\"` is a locator like any other id, so archived content
+  is discoverable."
+  {:scope "agent:discover:read"
+   :tool  {:name  "browse_collection"
+           :title "Browse Collections"
+           :description
+           (str "Browse the collection hierarchy — Metabase's folders. Two modes:\n"
+                "- `items` (default) — what the collection holds: questions, models, metrics, dashboards, documents, "
+                "timelines, and sub-collections. Pinned items come first. Filter with `type`, order with "
+                "`sort_column`, page with `limit` (default 50, max 200) and `offset`.\n"
+                "- `tree` — the sub-collections below it, without their contents, to `depth` levels (default 2). A "
+                "tree does not page: a branch that was cut names the call that re-roots on it.\n"
+                "\n"
+                "`id` takes a collection id, an entity_id, `\"root\"` (the top level, \"Our analytics\"), or "
+                "`\"trash\"` (archived content — read it to offer a restore). Every item carries `type` and `id`: "
+                "hand them to `get_content` to read one.")
+           :annotations {:read-only? true :idempotent? true}
+           :input-examples [{:id "root"}
+                            {:id 12 :type ["dashboard"] :sort_column "last_edited_at" :sort_direction "desc"}
+                            {:id "root" :mode "tree" :depth 3}]}}
+  [_route-params
+   _query-params
+   body :- ::browse-collection-request]
+  (agent-api.browse-collection/browse-collection body))
+
+;;; ----------------------------------------------- Parameter Values -------------------------------------------------
+
+(mr/def ::parameter-values-request
+  "Arguments to the `get_parameter_values` tool."
+  [:map
+   [:target
+    {:tool/description "Whether the parameter belongs to a dashboard or to a question."}
+    (into [:enum] agent-api.parameter-values/targets)]
+   [:id
+    {:tool/description "The dashboard or question that carries the parameter. Numeric id or 21-character entity_id."}
+    agent-api.tools/IdRef]
+   [:parameter_id
+    {:tool/description (str "The parameter's id — `get_content(include: [\"parameters\"])` on the dashboard or "
+                            "question lists them.")}
+    ms/NonBlankString]
+   [:query
+    {:optional true
+     :tool/description "Return only the values matching this search text, instead of the first page of all of them."}
+    [:maybe ms/NonBlankString]]
+   [:constraints
+    {:optional true
+     :tool/description (str "The values already chosen for the dashboard's other parameters, as "
+                            "{parameter_id: value} — the remaining values are filtered to what is reachable under "
+                            "them (\"which cities are in the state I picked\"). Dashboards only.")}
+    [:maybe [:map-of ms/NonBlankString :any]]]])
+
+(mr/def ::parameter-values-response
+  "The REST parameter-values shape, verbatim: each value is `[value]`, or `[value, label]` when the field is remapped.
+  `has_more_values` marks a list the backend capped — narrow it with `query`."
+  [:map
+   [:values          [:sequential [:sequential :any]]]
+   [:has_more_values :boolean]])
+
+(api.macros/defendpoint :post "/v2/parameter-values" :- ::parameter-values-response
+  "The values a dashboard or question parameter accepts.
+
+  Backed by the same chain-filter engine the app's filter widget reads, so `constraints` narrows a dashboard's
+  parameter to the values reachable under the ones already chosen."
+  {:scope "agent:discover:read"
+   :tool  {:name  "get_parameter_values"
+           :title "Get Filter Values"
+           :description
+           (str "List the values a dashboard or question filter accepts. Read them before running anything with a "
+                "parameter: a value the warehouse does not spell that way matches no rows, and an empty result looks "
+                "like an answer.\n"
+                "\n"
+                "`target` is \"dashboard\" or \"question\", `id` names it, and `parameter_id` is the parameter's id "
+                "(`get_content` with `include: [\"parameters\"]` lists them). `query` searches the values by prefix. "
+                "`constraints` — dashboards only — passes the values already chosen for the other parameters, so a "
+                "dependent filter returns only what is reachable under them.\n"
+                "\n"
+                "Values come back as `[value]`, or `[value, label]` when the column is remapped: pass the *value*, "
+                "show the label. `has_more_values: true` means the list was capped — narrow it with `query`.")
+           :annotations {:read-only? true :idempotent? true}
+           :input-examples [{:target "dashboard" :id 7 :parameter_id "abc12345"}
+                            {:target "dashboard" :id 7 :parameter_id "abc12345"
+                             :constraints {"def67890" "CA"}}
+                            {:target "question" :id 42 :parameter_id "abc12345" :query "wid"}]}}
+  [_route-params
+   _query-params
+   body :- ::parameter-values-request]
+  (agent-api.parameter-values/get-parameter-values body))
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 

@@ -13,6 +13,7 @@
    [[metabase.api.macros.defendpoint.tools-manifest]]. Handlers produce projected, enveloped bodies;
    the MCP layer serializes them."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
@@ -262,6 +263,67 @@
   "Project a sequence of `records` — see [[project]]."
   [response-format spec records]
   (mapv #(project response-format spec %) records))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; `fields` — dot-path picks from the detailed record
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; The escape hatch between the two fixed projections: "just `id` and `collection_id` for these ten items" costs those
+;; fields, not the detailed bundle. Paths are REST property names, dot-separated for nesting, and item-relative on a
+;; list — one `fields` list applies to every row. A path the records do not carry is a teaching error naming the ones
+;; they do, because a silently-dropped field reads as a null value in the data.
+
+(def FieldsField
+  "Malli entry for the shared, optional `fields` param of a record read."
+  [:maybe [:sequential ms/NonBlankString]])
+
+(defn- path->keys
+  [path]
+  (mapv keyword (str/split path #"\.")))
+
+(defn- record-paths
+  "Every dot-path `record` offers: each key, and the paths inside each nested map."
+  [record]
+  (into #{}
+        (mapcat (fn [[k v]]
+                  (let [path (name k)]
+                    (cons path (when (map? v)
+                                 (map #(str path "." %) (record-paths v)))))))
+        record))
+
+(defn- pick
+  "`record` narrowed to `fields`, keeping the nesting a dot-path names. A path the record does not carry is absent from
+   the result rather than nulled — the caller has already been told which paths exist."
+  [fields record]
+  (reduce (fn [picked path]
+            (let [ks (path->keys path)
+                  v  (get-in record ks ::missing)]
+              (cond-> picked
+                (not= ::missing v) (assoc-in ks v))))
+          {}
+          fields))
+
+(defn pick-fields
+  "Narrow each of `records` to the dot-paths in `fields`, overriding the concise/detailed projection. An unknown path
+   raises a teaching error listing the paths the records do carry."
+  [fields records]
+  (if (empty? records)
+    []
+    (let [valid (into (sorted-set) (mapcat record-paths) records)]
+      (doseq [path fields
+              :when (not (contains? valid path))]
+        (teaching-error
+         (tru "Unknown field {0}. `fields` takes these paths: {1}."
+              (pr-str path) (str/join ", " valid))))
+      (mapv #(pick fields %) records))))
+
+(defn project-rows
+  "Shape the `records` a read returns: `fields` picks dot-paths from the detailed record and overrides
+   `response-format`; without it the entity's concise or detailed projection applies."
+  [{:keys [response-format fields spec]} records]
+  (if (seq fields)
+    (pick-fields fields records)
+    (project-all response-format spec records)))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Bounded list envelope + steering truncation

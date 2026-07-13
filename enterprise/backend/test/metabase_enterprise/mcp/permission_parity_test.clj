@@ -33,6 +33,26 @@
           :tool     ["browse_data" {:action "get_fields" :table_ids [(mt/id :venues)]}]
           :rest     [:get (str "table/" (mt/id :venues) "/query_metadata")]})))))
 
+(deftest get-parameter-values-sandboxed-user-parity-test
+  (testing "a sandboxed user reads a dashboard filter's values through both surfaces — the sandbox narrows the values
+            it returns, it does not deny the read"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {}}}
+        (mt/with-temp [:model/Card      card {:dataset_query (mt/mbql-query venues)}
+                       :model/Dashboard dash {:parameters [{:name "Category" :slug "category"
+                                                            :id   "cat" :type "string/="}]}
+                       :model/DashboardCard _ {:dashboard_id       (:id dash)
+                                               :card_id            (:id card)
+                                               :parameter_mappings [{:parameter_id "cat"
+                                                                     :card_id      (:id card)
+                                                                     :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]
+          (parity/check-parity!
+           {:scenario :sandboxed-user
+            :user     :rasta
+            :expect   :allowed
+            :tool     ["get_parameter_values" {:target "dashboard" :id (:id dash) :parameter_id "cat"}]
+            :rest     [:get (str "dashboard/" (:id dash) "/params/cat/values")]}))))))
+
 (deftest execute-question-sandboxed-user-parity-test
   (testing "a sandboxed user may still run a saved question — the sandbox filters rows, it does not deny"
     (mt/with-premium-features #{:sandboxes}

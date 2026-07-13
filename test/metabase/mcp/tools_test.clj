@@ -152,3 +152,41 @@
       (is (true? (get-in tool [:annotations :readOnlyHint])))
       (is (= #{:returned :total :truncated :truncation_message :omitted}
              (set (keys (get-in tool [:outputSchema :properties]))))))))
+
+(deftest browse-collection-is-granted-by-its-toolset-test
+  (testing "browse_collection rides the discover grant, and its outputSchema describes the structured channel"
+    (let [tool (some #(when (= "browse_collection" (:name %)) %)
+                     (mcp.tools/list-tools #{(mcp.toolsets/toolset-scope :discover)}))]
+      (is (some? tool))
+      (is (true? (get-in tool [:annotations :readOnlyHint])))
+      (is (= #{:returned :total :truncated :truncation_message}
+             (set (keys (get-in tool [:outputSchema :properties]))))))))
+
+(deftest browse-collection-carries-its-items-once-test
+  (mt/with-temp [:model/Collection coll {:name "TwoChannel Collection"}
+                 :model/Card       _    {:name "TwoChannel Item" :collection_id (:id coll)}]
+    (mt/with-test-user :rasta
+      (let [result (mcp.tools/call-tool nil "browse_collection" {:id (:id coll)})
+            text   (json/decode+kw (-> result :content first :text))]
+        (testing "the items travel once, in the text block"
+          (is (= ["TwoChannel Item"] (map :name (:data text)))))
+        (testing "and structuredContent carries only the counts — never a second copy"
+          (is (= {:returned 1 :total 1} (:structuredContent result))))))))
+
+(deftest get-parameter-values-carries-its-values-once-test
+  (testing "the one v2 read whose body is the REST shape rather than an envelope still splits into two channels"
+    (mt/with-temp [:model/Card      card {:dataset_query (mt/mbql-query products)}
+                   :model/Dashboard dash {:parameters [{:name "Category" :slug "category"
+                                                        :id   "cat" :type "string/="}]}
+                   :model/DashboardCard _ {:dashboard_id       (:id dash)
+                                           :card_id            (:id card)
+                                           :parameter_mappings [{:parameter_id "cat"
+                                                                 :card_id      (:id card)
+                                                                 :target       [:dimension (mt/$ids products $category)]}]}]
+      (mt/with-test-user :rasta
+        (let [result (mcp.tools/call-tool nil "get_parameter_values"
+                                          {:target "dashboard" :id (:id dash) :parameter_id "cat"})
+              text   (json/decode+kw (-> result :content first :text))]
+          (is (contains? (set (map first (:values text))) "Doohickey"))
+          (testing "and the structured channel carries only the steer: whether the list was capped"
+            (is (= {:has_more_values false} (:structuredContent result)))))))))

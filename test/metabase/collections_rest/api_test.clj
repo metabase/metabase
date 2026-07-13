@@ -5,8 +5,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.collection-items.settings :as collection-items.settings]
    [metabase.collections-rest.api :as api.collection]
-   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
@@ -1253,7 +1253,7 @@
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 2]
+            (mt/with-temporary-setting-values [collection-items.settings/can-run-adhoc-query-check-threshold 2]
               (let [items (:data (mt/user-http-request :rasta :get 200
                                                        (str "collection/" collection-id "/items")
                                                        :include_can_run_adhoc_query true))]
@@ -1272,7 +1272,7 @@
           (mt/with-temp [:model/Collection {collection-id :id} {}
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 5]
+            (mt/with-temporary-setting-values [collection-items.settings/can-run-adhoc-query-check-threshold 5]
               (let [items (:data (mt/user-http-request :rasta :get 200
                                                        (str "collection/" collection-id "/items")
                                                        :include_can_run_adhoc_query true))]
@@ -1292,7 +1292,7 @@
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}
                          :model/Card _ {:collection_id collection-id :dataset_query card-query}]
-            (mt/with-temporary-setting-values [collections-rest.settings/can-run-adhoc-query-check-threshold 0]
+            (mt/with-temporary-setting-values [collection-items.settings/can-run-adhoc-query-check-threshold 0]
               (let [items (:data (mt/user-http-request :rasta :get 200
                                                        (str "collection/" collection-id "/items")
                                                        :include_can_run_adhoc_query true))]
@@ -1368,111 +1368,6 @@
                (->> (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
                     :data
                     (map #(select-keys % [:here :id])))))))))
-
-(deftest ^:parallel children-sort-clause-test
-  ;; we always place "special" collection types (i.e. "Metabase Analytics") last
-  (testing "Default sort"
-    (doseq [app-db [:mysql :h2 :postgres]]
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
-              [:%lower.name :asc]
-              [:id :asc]]
-             (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
-
-(deftest ^:parallel children-sort-clause-test-2
-  (testing "Sorting by last-edited-at"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
-            [:%isnull.last_edit_timestamp]
-            [:last_edit_timestamp :asc]
-            [:%lower.name :asc]
-            [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
-
-(deftest ^:parallel children-sort-clause-test-2b
-  (testing "Sorting by last-edited-at"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
-            [:last_edit_timestamp :nulls-last]
-            [:last_edit_timestamp :asc]
-            [:%lower.name :asc]
-            [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
-
-(deftest ^:parallel children-sort-clause-test-2c
-  (testing "Sorting by last-edited-by"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
-            [:last_edit_last_name :nulls-last]
-            [:last_edit_last_name :asc]
-            [:last_edit_first_name :nulls-last]
-            [:last_edit_first_name :asc]
-            [:%lower.name :asc]
-            [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
-
-(deftest ^:parallel children-sort-clause-test-2d
-  (testing "Sorting by last-edited-by"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
-            [:%isnull.last_edit_last_name]
-            [:last_edit_last_name :asc]
-            [:%isnull.last_edit_first_name]
-            [:last_edit_first_name :asc]
-            [:%lower.name :asc]
-            [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
-
-(deftest ^:parallel children-sort-clause-test-3
-  (testing "Sorting by model"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
-            [:model_ranking :asc]
-            [:%lower.name :asc]
-            [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :model
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
-
-(deftest ^:parallel children-sort-clause-test-3b
-  (testing "Sorting by model"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
-            [:model_ranking :desc]
-            [:%lower.name :asc]
-            [:id :asc]]
-           (api.collection/children-sort-clause {:sort-column :model
-                                                 :sort-direction :desc
-                                                 :official-collections-first? true} :mysql)))))
-
-(deftest ^:parallel children-sort-clause-description-test
-  (testing "Sorting by description"
-    (testing "ascending"
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
-              [:%lower.description :asc :nulls-last]
-              [:%lower.name :asc]
-              [:id :asc]]
-             (api.collection/children-sort-clause {:sort-column :description
-                                                   :sort-direction :asc
-                                                   :official-collections-first? true} :postgres))))
-    (testing "descending"
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
-              [:%lower.description :desc :nulls-last]
-              [:%lower.name :asc]
-              [:id :asc]]
-             (api.collection/children-sort-clause {:sort-column :description
-                                                   :sort-direction :desc
-                                                   :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
