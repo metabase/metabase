@@ -23,7 +23,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { IndexRedirect, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -222,7 +222,7 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <IndexRedirect to="actions" />
+        <Route index component={redirect("actions")} />
         <Route path="actions" component={ModelActions}>
           <ModalRoute
             path="new"
