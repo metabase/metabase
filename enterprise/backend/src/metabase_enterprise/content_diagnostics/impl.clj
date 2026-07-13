@@ -1,0 +1,222 @@
+(ns metabase-enterprise.content-diagnostics.impl
+  "Read-path implementation the thin `api` endpoints compose: the read-time WHERE fragments
+  (validity, per-caller collection visibility, personal-collection exclusion, name search), the batched
+  display hydration, and the schema/sort fragments every per-finding-type endpoint composes.
+
+  All per-caller concerns resolve **live at read time** against each finding's *current* collection (never
+  the scan-time `scope_collection_id`). Display attrs (name/created_at/creator) are denormalized at scan
+  time; description, the collection breadcrumb, the transform owner, and slow roll-up culprits hydrate live."
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase-enterprise.content-diagnostics.common :as common]
+   [metabase.collections.models.collection :as collection]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(def covered-entity-types
+  "Entity types the Content Diagnostics finding types cover — every covered type can emit today (see
+  `common/entity-type->model`). Shared by every per-finding-type endpoint's `entity-types` param."
+  #{:card :dashboard :document :transform})
+
+(defn valid-clause
+  "Result set for one `finding-type`: its latest finding per entity, excluding entities whose latest row
+  is invalidated (an older valid row does not resurface)."
+  [finding-type]
+  [:and
+   [:= :invalidated_at nil]
+   [:= :finding_type finding-type]
+   ;; latest finding per entity = MAX(id) per (entity_type, entity_id, finding_type). id is the recency
+   ;; key (monotonic; scan_id is a random UUID). Latest-per-entity, not newest-scan-only, so an entity a
+   ;; partial scan hasn't re-written yet still shows its last finding.
+   [:in :id {:select   [[[:max :id] :id]]
+             :from     [(t2/table-name :model/ContentDiagnosticsFinding)]
+             :group-by [:entity_type :entity_id :finding_type]}]])
+
+;;; ------------------------------ per-caller read-time filters (shared) --------------------------------
+;;; Resolved live at read time against each entity's *current* collection (not scan-time
+;;; `scope_collection_id`): visibility (always) + personal-collection exclusion (param-gated).
+
+(defn entity-collection-clauses
+  "Per entity-type, a clause keeping findings whose entity's current `collection_id` satisfies `coll-pred`.
+  Resolved live against the entity's own table (`common/entity-type->model`); entity-types with no model
+  contribute nothing. Callers combine the seq with `:or`/`:and`."
+  [coll-pred]
+  (for [[etype model] common/entity-type->model]
+    [:and
+     [:= :entity_type (name etype)]
+     [:in :entity_id {:select [:id]
+                      :from   [(t2/table-name model)]
+                      :where  coll-pred}]]))
+
+(defn visible-findings-clause
+  "Keep only findings whose entity is in a collection the current user can read - always applied.
+  Fail-closed: an entity-type with no collection model is dropped."
+  []
+  (into [:or] (entity-collection-clauses (collection/visible-collection-filter-clause :collection_id))))
+
+(defn- personal-collection-ids
+  "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
+  root plus any `location` descendant. Empty when there are none."
+  []
+  (if-let [roots (not-empty (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil]))]
+    (t2/select-pks-set :model/Collection
+                       {:where (into [:or [:in :id roots]]
+                                     (map (fn [pid] [:like :location (str "/" pid "/%")]))
+                                     roots)})
+    #{}))
+
+(defn name-search-clause
+  "Case-insensitive substring match on the denormalized `entity_name`. Nil for a blank/absent query.
+  `%`/`_` are not escaped - they act as LIKE wildcards, matching the app's fuzzy name search."
+  [query]
+  (when-let [q (some-> query str/trim not-empty u/lower-case-en)]
+    [:like [:lower :entity_name] (str "%" q "%")]))
+
+(defn exclude-personal-collections-clause
+  "WHERE fragment dropping findings whose entity currently lives in a personal collection (root and
+  regular-collection entities are kept). Nil when there is nothing to exclude."
+  []
+  (when-let [pids (seq (personal-collection-ids))]
+    (into [:and]
+          (map (fn [clause] [:not clause]))
+          (entity-collection-clauses [:in :collection_id pids]))))
+
+;;; ----------------------------------- display hydration (shared layer) --------------------------------
+;;; name/created_at/creator are denormalized (frozen at scan time); description, the collection
+;;; breadcrumb, the transform owner, and slow roll-up culprits are live-hydrated, batched per entity-type.
+
+(defn- entity-context
+  "For one entity-type's id set → `{entity-id → row}`. Live-hydrates only the non-denormalized display
+  fields: `description`, `collection_id`, and (transform only) the owner. `document` has no description."
+  [entity-type ids]
+  (when-let [model (common/entity-type->model entity-type)]
+    (let [cols (cond-> [:id :collection_id]
+                 (not= entity-type :document) (conj :description)
+                 (= entity-type :transform)   (conj :owner_user_id :owner_email))
+          rows (cond-> (t2/select (into [model] cols) :id [:in (set ids)])
+                 ;; reuse the transform model's batched :owner hydrate (user row, or {:email …} external)
+                 (= entity-type :transform) (t2/hydrate :owner))]
+      (m/index-by :id rows))))
+
+(defn- collection-breadcrumbs
+  "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
+  Hydrates the permission-filtered `:effective_ancestors` breadcrumb. Selects the full row (the hydrate
+  needs `:location`). No entry for root/nil collections."
+  [coll-ids]
+  (when (seq coll-ids)
+    (let [colls (t2/hydrate (t2/select :model/Collection :id [:in (set coll-ids)])
+                            :effective_ancestors)]
+      (into {}
+            (map (fn [c]
+                   [(:id c)
+                    {:id                  (:id c)
+                     :name                (:name c)
+                     :effective_ancestors (mapv #(select-keys % [:id :name]) (:effective_ancestors c))}]))
+            colls))))
+
+(defn- hydrate-slow-entities
+  "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw>}}`. The read-time hydration of
+  a `slow` roll-up's stored culprit ids (`slow_entity_ids`) into objects. `card_type` is the
+  `report_card.type` enum (question/model/metric) that drives the FE per-member link/icon. Batched."
+  [card-ids]
+  (when (seq card-ids)
+    ;; `:card_schema` is required on any Card select — its after-select schema-upgrade hook reads it.
+    (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)})
+                      [:model/Card :id :name :type :card_schema]
+                      :id [:in (set card-ids)])))
+
+(defn- normalized-owner
+  "Normalized `owner` from the transform `:owner` hydrate: `{id,name,email,type:user}` or, for an external
+  email-only owner, `{email,type:external}`. Nil for entity types with no owner (card/dashboard/document)."
+  [{:keys [owner]}]
+  (when owner
+    (let [{:keys [id common_name email]} owner]
+      (if id
+        {:id id :name common_name :email email :type :user}
+        {:email email :type :external}))))
+
+(defn hydrate-findings
+  "Project stored findings into the response shape: flat identity + denormalized display fields, plus a
+  nested `details` = stored verdict + {collection, description, owner, creator}. Batched, page-size-independent.
+
+  Options let each endpoint add its per-finding-type extras without changing the shared base:
+  `:top-level-cols` — extra native finding columns hoisted to the top level (e.g. `:last_active_at` for
+  stale, `:duration_ms` for slow); `:hydrate-culprits?` — replace `details.slow_entity_ids` with hydrated
+  `details.slow_entities` objects (slow roll-ups)."
+  [findings & [{:keys [top-level-cols hydrate-culprits?]
+                :or   {top-level-cols []}}]]
+  (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
+                               [etype (entity-context etype (map :entity_id rows))]))
+        coll-ids    (into #{} (keep (fn [{:keys [entity_type entity_id]}]
+                                      (get-in ctx-by-type [entity_type entity_id :collection_id])))
+                          findings)
+        breadcrumbs (collection-breadcrumbs coll-ids)
+        culprits    (when hydrate-culprits?
+                      (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)))]
+    (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
+                       entity_name entity_creator_id entity_creator_name details] :as row}]
+            (let [entity  (get-in ctx-by-type [entity_type entity_id])
+                  base    (merge details
+                                 {:collection  (get breadcrumbs (:collection_id entity))
+                                  :description (:description entity)
+                                  ;; only transforms have owner columns; null for the rest.
+                                  :owner       (normalized-owner entity)
+                                  ;; creator denormalized (id + common_name) - no live :creator hydrate.
+                                  :creator     (when entity_creator_id
+                                                 {:id entity_creator_id :name entity_creator_name :type :user})})
+                  details* (if (and hydrate-culprits? (contains? details :slow_entity_ids))
+                             (-> base
+                                 (dissoc :slow_entity_ids)
+                                 (assoc :slow_entities (into [] (keep culprits) (:slow_entity_ids details))))
+                             base)]
+              (merge {:id                  id
+                      :finding_type        finding_type
+                      :entity_type         entity_type
+                      :entity_id           entity_id
+                      :detected_at         detected_at
+                      :entity_display_name entity_name
+                      :created_at          entity_created_at
+                      :details             details*}
+                     (select-keys row top-level-cols))))
+          findings)))
+
+(defn last-scan-at
+  "`detected_at` of the most recent finding overall (≈ the latest scan's time), or nil if none."
+  []
+  (t2/select-one-fn :detected_at :model/ContentDiagnosticsFinding {:order-by [[:detected_at :desc]]}))
+
+;;; -------------------------------------- shared schema + sort fragments -------------------------------
+
+(def NormalizedUser
+  "A finding's `owner`: a Metabase user `{id,name,email,type:user}`, or - for an external transform owner -
+  `{email,type:external}`, or nil. Keys optional to admit both variants."
+  [:maybe [:map
+           [:id    {:optional true} [:maybe :int]]
+           [:name  {:optional true} [:maybe :string]]
+           [:email {:optional true} [:maybe :string]]
+           [:type  :keyword]]])
+
+(def Creator
+  "A finding's `creator`: a Metabase user `{id,name,type:user}` (denormalized from
+  `entity_creator_id`/`entity_creator_name`), or nil. No `email` (not denormalized); `type` is always `:user`."
+  [:maybe [:map {:closed true}
+           [:id   :int]
+           [:name [:maybe :string]]
+           [:type [:= :user]]]])
+
+(def sort-directions
+  "Valid sort directions for the finding lists."
+  #{:asc :desc})
+
+(def base-sort-column->field
+  "Sortable params common to every finding list → their native `content_diagnostics_finding` column.
+  Entity attributes are denormalized at scan time, so sorting is a plain `ORDER BY` with no join. Each
+  endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`)."
+  {:detected-at :detected_at
+   :entity-type :entity_type
+   :name        :entity_name
+   :created-at  :entity_created_at
+   :created-by  :entity_creator_name})
