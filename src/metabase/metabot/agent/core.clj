@@ -17,6 +17,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.mcp-external :as mcp-external]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -437,7 +438,9 @@
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
+        tools        (merge (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+                            ;; POC: external MCP server tools (e.g. Notion). No-op if unconfigured.
+                            (mcp-external/external-mcp-tools))]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
