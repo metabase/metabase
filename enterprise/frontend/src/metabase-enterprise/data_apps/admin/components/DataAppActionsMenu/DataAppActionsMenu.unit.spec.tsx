@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppActionsMenu } from "./DataAppActionsMenu";
@@ -10,16 +11,23 @@ import { DataAppActionsMenu } from "./DataAppActionsMenu";
 // fetch-mock (the endpoints are injected into the main `Api` that
 // `renderWithProviders` already wires up). The global jest setup resets
 // fetch-mock between tests.
+//
+// The happy paths (disable / re-enable / remove, and hiding Remove while a repo
+// is connected) are covered end-to-end in `data-apps/admin.cy.spec.ts`, so this
+// spec only covers the failure and loading branches the e2e doesn't reach.
 const setup = ({ enabled = true, canRemove = false } = {}) => {
   const app = createMockDataApp({
     name: "sales",
     display_name: "Sales",
     enabled,
   });
-  const { store } = renderWithProviders(
-    <DataAppActionsMenu app={app} canRemove={canRemove} />,
+  renderWithProviders(
+    <>
+      <DataAppActionsMenu app={app} canRemove={canRemove} />
+      {/* Mounts the toaster so failure toasts are assertable in the DOM. */}
+      <UndoListing />
+    </>,
   );
-  return { store };
 };
 
 const openMenu = () =>
@@ -32,57 +40,23 @@ const confirmRemove = async () =>
     }),
   );
 
-const undoMessages = (store: ReturnType<typeof setup>["store"]) =>
-  store.getState().undo.map((undo) => String(undo.message));
-
 describe("DataAppActionsMenu", () => {
-  it.each([
-    { enabled: true, action: "Disable", nextEnabled: false },
-    { enabled: false, action: "Reenable", nextEnabled: true },
-  ])(
-    "$action-s the app, PUTting enabled=$nextEnabled",
-    async ({ enabled, action, nextEnabled }) => {
-      fetchMock.put(
-        "path:/api/apps/sales",
-        createMockDataApp({ enabled: nextEnabled }),
-      );
-      setup({ enabled });
-
-      await openMenu();
-      await userEvent.click(
-        await screen.findByRole("menuitem", { name: action }),
-      );
-
-      await waitFor(() =>
-        expect(
-          fetchMock.callHistory.calls("path:/api/apps/sales", {
-            method: "PUT",
-          }),
-        ).toHaveLength(1),
-      );
-      const body = await fetchMock.callHistory
-        .lastCall("path:/api/apps/sales", { method: "PUT" })
-        ?.request?.json();
-      expect(body).toEqual({ enabled: nextEnabled });
-    },
-  );
-
-  it("should show toast when toggling enabled fails", async () => {
+  it("should show a toast when toggling enabled fails", async () => {
     fetchMock.put("path:/api/apps/sales", 500);
-    const { store } = setup({ enabled: true });
+    setup({ enabled: true });
 
     await openMenu();
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Disable" }),
     );
 
-    await waitFor(() =>
-      expect(undoMessages(store)).toContain("Failed to update this app"),
-    );
+    expect(
+      await screen.findByText("Failed to update this app"),
+    ).toBeInTheDocument();
   });
 
-  it("should remove an app after confirmation when it can be removed", async () => {
-    fetchMock.delete("path:/api/apps/sales", 204);
+  it("should show a toast when removal fails", async () => {
+    fetchMock.delete("path:/api/apps/sales", 500);
     setup({ canRemove: true });
 
     await openMenu();
@@ -91,40 +65,9 @@ describe("DataAppActionsMenu", () => {
     );
     await confirmRemove();
 
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("path:/api/apps/sales", {
-          method: "DELETE",
-        }),
-      ).toHaveLength(1),
-    );
-  });
-
-  it("should show toast when removal fails", async () => {
-    fetchMock.delete("path:/api/apps/sales", 500);
-    const { store } = setup({ canRemove: true });
-
-    await openMenu();
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Remove" }),
-    );
-    await confirmRemove();
-
-    await waitFor(() =>
-      expect(undoMessages(store)).toContain("Failed to remove this data app"),
-    );
-  });
-
-  it("should hide Remove when the app can't be removed", async () => {
-    setup({ canRemove: false });
-
-    await openMenu();
     expect(
-      await screen.findByRole("menuitem", { name: "Disable" }),
+      await screen.findByText("Failed to remove this data app"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitem", { name: "Remove" }),
-    ).not.toBeInTheDocument();
   });
 
   it("should show a loading state on the trigger while a delete is in flight", async () => {

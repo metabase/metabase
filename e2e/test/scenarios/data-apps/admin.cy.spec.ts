@@ -120,7 +120,7 @@ describe("scenarios > data apps > admin management", () => {
       .should("deep.equal", { enabled: false });
   });
 
-  it("shows a disabled app as plain text with a Disabled badge and a Reenable action", () => {
+  it("shows a disabled app as plain text with a Disabled badge and a Re-enable action", () => {
     cy.intercept("GET", "/api/apps/repo-status", {
       configured: true,
     });
@@ -136,11 +136,11 @@ describe("scenarios > data apps > admin management", () => {
       cy.findByText("Disabled").should("be.visible");
     });
 
-    // The menu offers Reenable — and no Remove, since a repo is connected.
+    // The menu offers Re-enable — and no Remove, since a repo is connected.
     cy.findByRole("button", {
       name: `Actions for ${APP_DISPLAY_NAME}`,
     }).click();
-    cy.findByRole("menuitem", { name: "Reenable" }).should("be.visible");
+    cy.findByRole("menuitem", { name: "Re-enable" }).should("be.visible");
     cy.findByRole("menuitem", { name: "Remove" }).should("not.exist");
   });
 
@@ -232,7 +232,7 @@ describe("scenarios > data apps > admin management", () => {
     cy.findByRole("button", {
       name: `Actions for ${APP_DISPLAY_NAME}`,
     }).click();
-    cy.findByRole("menuitem", { name: "Reenable" }).click();
+    cy.findByRole("menuitem", { name: "Re-enable" }).click();
 
     cy.wait("@setEnabled")
       .its("request.body")
