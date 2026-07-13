@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { ActionIcon, Icon, Text, TextInput, Tooltip } from "metabase/ui";
+import { Icon, Input, Text, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type {
@@ -91,14 +91,14 @@ export function PermissionsEditorContent({
           onChange={handleFilterChange}
           value={filter}
           leftSection={<Icon name="search" />}
+          rightSectionPointerEvents="all"
           rightSection={
-            filter.length > 0 && (
-              <Tooltip label={t`Clear`}>
-                <ActionIcon aria-label={t`Clear`} onClick={() => setFilter("")}>
-                  <Icon name="close" />
-                </ActionIcon>
-              </Tooltip>
-            )
+            filter.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={() => setFilter("")}
+              />
+            ) : null
           }
         />
       </EditorFilterContainer>
