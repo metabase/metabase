@@ -8,7 +8,7 @@ import type { OnBeforeRequestHandler } from "metabase/api/client";
  *  - `setApiKeyHeader` / `setSessionTokenHeader` onto `setEmbeddingRequestAuthHeaders`
  *    for static auth (an API key, or a session token that never refreshes — e.g.
  *    MCP). A refreshing SSO session instead emits its header from
- *    `getOrRefreshSessionHandler` via `sessionTokenHeaders`, so the refreshed
+ *    `getOrRefreshSessionHandler` via `getSessionTokenHeaders`, so the refreshed
  *    token applies to the request that triggered the refresh.
  *  - `setRequestClientHeaders` onto its own slot
  *  - `setEmbedPreviewHeader` onto its own slot (public + SDK flows only)
