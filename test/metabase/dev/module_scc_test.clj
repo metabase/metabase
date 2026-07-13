@@ -16,7 +16,7 @@
     e #{a}
     f #{d}})
 
-(deftest strongly-connected-components-test
+(deftest ^:parallel strongly-connected-components-test
   (testing "decomposes into the 3-cycle plus singletons"
     (is (= #{'#{a b c} '#{d} '#{e} '#{f}}
            (set (module-scc/strongly-connected-components cyclic-graph)))))
@@ -27,10 +27,10 @@
     (is (every? #(= 1 (count %))
                 (module-scc/strongly-connected-components '{a #{b}, b #{c}, c #{}})))))
 
-(deftest largest-scc-test
+(deftest ^:parallel largest-scc-test
   (is (= '#{a b c} (module-scc/largest-scc cyclic-graph))))
 
-(deftest empty-graph-scc-test
+(deftest ^:parallel empty-graph-scc-test
   (testing "a graph with no nodes has no SCC — largest-scc is empty rather than throwing"
     (is (= #{} (module-scc/largest-scc {})))
     (is (= #{} (module-scc/largest-scc {} []))))
@@ -41,7 +41,7 @@
     (is (= [] (module-scc/edge-cut-impacts {})))
     (is (seq (module-scc/node-cut-impacts '{a #{}})))))
 
-(deftest condensation-test
+(deftest ^:parallel condensation-test
   (let [sccs (module-scc/strongly-connected-components cyclic-graph)
         {:keys [node->scc graph]} (module-scc/condensation cyclic-graph sccs)]
     (testing "cycle members share an SCC id; the condensed graph has no self-edges"
@@ -51,7 +51,7 @@
       (is (contains? (get graph (node->scc 'c)) (node->scc 'd)))
       (is (contains? (get graph (node->scc 'e)) (node->scc 'a))))))
 
-(deftest upstream-cut-impacts-test
+(deftest ^:parallel upstream-cut-impacts-test
   (testing "severing the cycle member's only back-edge dissolves the SCC"
     (let [impacts (module-scc/upstream-cut-impacts cyclic-graph)
           for-c   (first (filter #(= 'c (:module %)) impacts))]
@@ -61,14 +61,14 @@
       ;; former member, so freed is 2 or 3
       (is (<= 2 (:num-freed for-c) 3)))))
 
-(deftest leaf-cut-impacts-test
+(deftest ^:parallel leaf-cut-impacts-test
   (testing "severing in-SCC in-edges leaves out-of-SCC dependents (e) untouched"
     (let [impacts (module-scc/leaf-cut-impacts cyclic-graph)
           for-a   (first (filter #(= 'a (:module %)) impacts))]
       (is (= [['c 'a]] (:severed-edges for-a)))
       (is (= 1 (:new-largest-size for-a))))))
 
-(deftest predicted-test-blast-radius-test
+(deftest ^:parallel predicted-test-blast-radius-test
   (let [m->tests '{a #{"a1" "a2"}, b #{"b1"}, c #{"c1"}, d #{"d1"}, e #{"e1"}, f #{"f1"}}
         {:keys [per-module]} (module-scc/predicted-test-blast-radius cyclic-graph m->tests)]
     (testing "cycle members invalidate each other's tests plus dependents'"
@@ -80,7 +80,7 @@
     (testing "leaf-like e only invalidates its own tests"
       (is (= 1 (per-module 'e))))))
 
-(deftest expected-tests-per-commit-test
+(deftest ^:parallel expected-tests-per-commit-test
   (let [m->tests     '{a #{"a1"}, d #{"d1"}, e #{"e1"}}
         file->module '{"src/a.clj" a, "src/e.clj" e}
         commits      [["src/a.clj"]                ; a => a's tests + dependents (b c e have only e tests) => a1 e1
@@ -92,7 +92,7 @@
     ;; nearest-rank p50 of [1 2] is the lower-middle value, matching dev.module-metrics
     (is (= 1 (:median result)))))
 
-(deftest honest-test-selection-test
+(deftest ^:parallel honest-test-selection-test
   (let [deps      [{:namespace 'x, :filename "src/x.clj", :deps [{:namespace 'y, :module 'm}]}
                    {:namespace 'y, :filename "src/y.clj", :deps []}]
         ;; z-test reaches y only through the shared helper, mimicking the metabase.test pattern;
@@ -114,7 +114,7 @@
         (is (= #{"test/x_test.clj" "test/y_test.clj" "enterprise/backend/test/y_test.clj"}
                (selection 'y)))))))
 
-(deftest test-ns-info-merges-duplicate-namespaces-test
+(deftest ^:parallel test-ns-info-merges-duplicate-namespaces-test
   (let [tmp-root (fn [label content]
                    (let [dir (.toFile (java.nio.file.Files/createTempDirectory
                                        (str "module-scc-" label)
@@ -132,7 +132,7 @@
               :requires '#{x y}}
              (info 'dup-test))))))
 
-(deftest expected-tests-per-commit-at-ns-test
+(deftest ^:parallel expected-tests-per-commit-at-ns-test
   (let [selection '{x #{"t1" "t2"}, y #{"t2"}}
         file->ns  '{"src/x.clj" x, "src/y.clj" y}
         commits   [["src/x.clj" "src/y.clj"]            ; union of x and y selections => 2
@@ -144,7 +144,7 @@
     (is (= 1 (:median result)))
     (is (= 2 (:p90 result)))))
 
-(deftest expected-tests-per-commit-percentile-test
+(deftest ^:parallel expected-tests-per-commit-percentile-test
   (testing "p90 uses nearest-rank semantics: rank ⌈0.9·10⌉ = 9 of 10, not the maximum"
     (let [m->tests     '{a #{"a1"}, e #{"e1"}}
           file->module '{"src/a.clj" a, "src/e.clj" e}
