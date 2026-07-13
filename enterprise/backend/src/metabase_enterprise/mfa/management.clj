@@ -166,11 +166,23 @@
   "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost
   authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
   lockouts permanent). The affected user is notified by email. They re-enroll from scratch —
-  there is nothing to \"reset\", the secret lives on their device."
+  there is nothing to \"reset\", the secret lives on their device.
+
+  Removing *someone else's* enrollment takes no second factor — the whole point is that the
+  target can no longer produce one. But removing your *own* enrollment while you still hold a
+  factor must present it (`code`), exactly like `/disable`: otherwise a hijacked admin session
+  could strip its own 2FA with only a cookie, turning transient access into a permanent bypass."
   [_route-params
    _query-params
-   {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
+   {user-id :user_id
+    code    :code} :- [:map
+                       [:user_id ms/PositiveInt]
+                       [:code {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
+  (when (and (= user-id api/*current-user-id*)
+             (enrollment/enrolled-method user-id))
+    (when-not (and code (verification/verify-attempt! user-id code nil))
+      (throw (invalid-code-ex))))
   (when (enrollment/disable! user-id)
     (let [user (t2/select-one :model/User :id user-id)]
       (messages/send-mfa-removed-by-admin-email! (:email user))
