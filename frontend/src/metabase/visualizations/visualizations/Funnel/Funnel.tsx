@@ -7,7 +7,6 @@ import CS from "metabase/css/core/index.css";
 import { formatNullable } from "metabase/utils/formatting/nullable";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { groupRawSeriesMetrics } from "metabase/visualizations/lib/dataset";
 import {
@@ -103,7 +102,7 @@ const FunnelViz: VisualizationDefinition = {
     },
     "funnel.rows": {
       getSection: () => t`Data`,
-      widget: ChartSettingOrderedSimple,
+      widget: "orderedSimple",
       getValue: (
         rawSeries: RawSeries,
         settings: ComputedVisualizationSettings,

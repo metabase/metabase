@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,6 +17,7 @@ import type { Visualization } from "./types/visualization";
 
 const visualizations = new Map<VisualizationDisplay, Visualization>();
 const aliases = new Map<string, Visualization>();
+const settingWidgets = new Map<string, ComponentType<any>>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -70,6 +72,18 @@ export function registerVisualization(visualization: Visualization) {
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
+}
+
+export function registerSettingWidgets(
+  widgets: Record<string, ComponentType<any>>,
+) {
+  for (const [key, widget] of Object.entries(widgets)) {
+    settingWidgets.set(key, widget);
+  }
+}
+
+export function getSettingWidgetComponent(key: string) {
+  return settingWidgets.get(key);
 }
 
 type SeriesLike = Array<{ card: { display: VisualizationDisplay } }>;

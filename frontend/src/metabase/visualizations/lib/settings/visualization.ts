@@ -20,7 +20,6 @@ import type {
 import {
   getComputedSettings,
   getPersistableDefaultSettings,
-  getSettingsWidgets,
 } from "../settings";
 
 const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
@@ -61,7 +60,7 @@ const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
-function getSettingDefinitionsForSeries(
+export function getSettingDefinitionsForSeries(
   series: Series | null | undefined,
 ): VisualizationSettingsDefinitions {
   if (!series) {
@@ -131,27 +130,4 @@ export function getPersistableDefaultSettingsForSeries(
   const settingsDefs = getSettingDefinitionsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
   return getPersistableDefaultSettings(settingsDefs, computedSettings);
-}
-
-export function getSettingsWidgetsForSeries(
-  series: Series | null | undefined,
-  onChangeSettings: (newSettings: Partial<VisualizationSettings>) => void,
-  isDashboard = false,
-  extra: SettingsExtra = {},
-) {
-  const settingsDefs = getSettingDefinitionsForSeries(series);
-  const storedSettings = getStoredSettingsForSeries(series);
-  const computedSettings = getComputedSettingsForSeries(series);
-
-  return getSettingsWidgets(
-    settingsDefs,
-    storedSettings,
-    computedSettings,
-    series ?? [],
-    onChangeSettings,
-    { isDashboard, ...extra },
-  ).filter(
-    (widget) =>
-      widget.dashboard === undefined || widget.dashboard === isDashboard,
-  );
 }

@@ -9,7 +9,6 @@ import {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import {
   compactifyValue,
   getColor,
@@ -90,7 +89,7 @@ export class Scalar extends Component<
       getDefault() {
         return [];
       },
-      widget: ChartSettingSegmentsEditor,
+      widget: "segmentsEditor",
       persistDefault: true,
       getWrapperStyle: () => ({
         marginLeft: 0,

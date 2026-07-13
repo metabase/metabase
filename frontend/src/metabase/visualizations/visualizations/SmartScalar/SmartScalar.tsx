@@ -30,7 +30,6 @@ import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
 import { PreviousValueComparison } from "./PreviousValueComparison";
 import { ScalarPeriod } from "./ScalarPeriod";
-import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 import { computeTrend } from "./compute";
 import {
   DASHCARD_HEADER_HEIGHT,
@@ -176,7 +175,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     getSection: () => t`Data`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Comparisons`,
-    widget: SmartScalarComparisonWidget,
+    widget: "smartScalarComparison",
     getValue: (series, vizSettings) => getComparisons(series, vizSettings),
     isValid: (series, vizSettings) => validateComparisons(series, vizSettings),
     getDefault: (series, vizSettings) =>

@@ -1,4 +1,4 @@
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
 import {
   createMockCategoryColumn,
