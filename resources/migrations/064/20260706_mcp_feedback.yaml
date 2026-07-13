@@ -7,7 +7,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.d7cqgl
+      id: v64.d7cqgl
       author: tplude
       comment: Create mcp_feedback table for MCP Apps visualization feedback
       changes:
