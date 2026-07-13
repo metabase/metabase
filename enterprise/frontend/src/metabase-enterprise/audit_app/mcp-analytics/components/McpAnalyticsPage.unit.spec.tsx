@@ -118,6 +118,32 @@ const datasetResponse: Dataset = createMockDataset({
   running_time: 1,
 });
 
+// A count/breakout dataset whose scalar count (rows[0][0]) exceeds one page, so the events
+// table's pagination controls appear (total > EVENTS_PAGE_SIZE of 25).
+const multiPageDatasetResponse: Dataset = createMockDataset({
+  data: createMockDatasetData({
+    rows: [
+      [60, "search_data"],
+      [7, "run_query"],
+    ],
+    cols: [
+      createMockColumn({
+        source: "aggregation",
+        name: "count",
+        display_name: "Count",
+      }),
+      createMockColumn({
+        source: "breakout",
+        name: "tool_name",
+        display_name: "Tool name",
+      }),
+    ],
+  }),
+  database_id: AUDIT_DB_ID,
+  row_count: 2,
+  running_time: 1,
+});
+
 // A zero-count aggregation result — what the page's "has any data?" probe gets when the
 // filtered view is empty.
 const emptyDatasetResponse: Dataset = createMockDataset({
@@ -200,9 +226,92 @@ describe("McpAnalyticsPage", () => {
     );
 
     const eventsPanel = screen.getByRole("tabpanel");
+    expect(await within(eventsPanel).findByRole("table")).toBeInTheDocument();
+    // curated column header + a cell value from the mocked dataset row
+    expect(within(eventsPanel).getByText("Tool")).toBeInTheDocument();
     expect(
-      await within(eventsPanel).findByTestId("table-root"),
+      await within(eventsPanel).findByText("search_data"),
     ).toBeInTheDocument();
+  });
+
+  it("sorts the events table server-side when a column header is clicked", async () => {
+    setup();
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    // The Tool header is sortable; clicking it re-sorts ascending (it wasn't the active column).
+    await userEvent.click(await screen.findByRole("button", { name: "Tool" }));
+
+    await waitFor(() => {
+      const sortedAscending = fetchMock.callHistory
+        .calls("dataset")
+        .some((call) => {
+          const body = call.options?.body;
+          if (typeof body !== "string") {
+            return false;
+          }
+          const query = JSON.parse(body).query;
+          return query?.page != null && query["order-by"]?.[0]?.[0] === "asc";
+        });
+      expect(sortedAscending).toBe(true);
+    });
+  });
+
+  it("paginates the events table when there are more matching rows than one page", async () => {
+    setup({ dataset: multiPageDatasetResponse });
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    const pagination = await screen.findByRole("navigation", {
+      name: "pagination",
+    });
+    // First page: previous disabled, next enabled (total 60 spans multiple pages of 25).
+    expect(within(pagination).getByLabelText("Previous page")).toBeDisabled();
+    const nextButton = within(pagination).getByLabelText("Next page");
+    expect(nextButton).toBeEnabled();
+
+    await userEvent.click(nextButton);
+
+    // Advancing issues an adhoc dataset query for the second MBQL page (1-indexed).
+    await waitFor(() => {
+      const requestedPage2 = fetchMock.callHistory
+        .calls("dataset")
+        .some((call) => {
+          const body = call.options?.body;
+          if (typeof body !== "string") {
+            return false;
+          }
+          return JSON.parse(body)?.query?.page?.page === 2;
+        });
+      expect(requestedPage2).toBe(true);
+    });
+  });
+
+  it("orders the events query by a total order (created_at + tool_call_id) for stable paging", async () => {
+    setup();
+
+    await screen.findByRole("heading", { name: "MCP analytics" });
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Tool calls" }),
+    );
+
+    // The events request is the paginated one (carries a `page` clause); its order-by must have a
+    // tiebreaker beyond created_at so pages can't skip/duplicate rows on tied timestamps.
+    await waitFor(() => {
+      const eventsQuery = fetchMock.callHistory
+        .calls("dataset")
+        .map((call) => call.options?.body)
+        .filter((body): body is string => typeof body === "string")
+        .map((body) => JSON.parse(body).query)
+        .find((query) => query?.page != null);
+      expect(eventsQuery?.["order-by"]).toHaveLength(2);
+    });
   });
 
   it("shows a single empty state (no tabs, no charts) when there is no activity", async () => {

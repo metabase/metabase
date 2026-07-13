@@ -6,6 +6,7 @@ import type {
   TableMetadata,
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
+import type { LegacyDatasetQuery, SortDirection } from "metabase-types/api";
 
 import {
   applyDateFilter,
@@ -270,14 +271,41 @@ export function buildTotalCountQuery({
   return query;
 }
 
+/** View columns the events table can sort by (server-side). Others render but aren't sortable. */
+export const MCP_EVENT_SORT_COLUMNS = [
+  "created_at",
+  "tool_name",
+  "client_display_name",
+  "user_display_name",
+  "status",
+  "duration_ms",
+] as const;
+
+export type McpEventSortColumn = (typeof MCP_EVENT_SORT_COLUMNS)[number];
+
+/** Append an order-by on `columnName` in `direction` if it's orderable. No-op if absent. */
+function orderByColumn(
+  query: Query,
+  columnName: string,
+  direction: "asc" | "desc",
+): Query {
+  const col = findColumn(query, columnName, Lib.orderableColumns);
+  return col ? Lib.orderBy(query, 0, col, direction) : query;
+}
+
 type EventsQueryOpts = McpFilters &
   McpDataSources & {
-    limit: number;
+    sortColumn?: McpEventSortColumn;
+    sortDirection?: SortDirection;
   };
 
 /**
  * Build the row-level events query for the Events tab: the filtered view with no aggregation,
- * ordered by `created_at` descending and capped at `limit` rows.
+ * ordered by the chosen sort column (default `created_at` descending), then by the `tool_call_id`
+ * primary key as a tiebreaker. The tiebreaker makes the sort a total order — without it,
+ * pagination can skip or duplicate rows across page boundaries when the sort column has ties (the
+ * DB is free to order ties differently between requests). Pagination is applied separately via
+ * {@link withEventsPage} because metabase-lib has no offset/page API.
  */
 export function buildEventsQuery({
   provider,
@@ -287,7 +315,8 @@ export function buildEventsQuery({
   userId,
   groupId,
   tenantId,
-  limit,
+  sortColumn = "created_at",
+  sortDirection = "desc",
 }: EventsQueryOpts): Query {
   let query = buildBaseQuery({
     provider,
@@ -299,11 +328,27 @@ export function buildEventsQuery({
     tenantId,
   });
 
-  const createdAt = findColumn(query, "created_at", Lib.orderableColumns);
-  if (createdAt) {
-    query = Lib.orderBy(query, 0, createdAt, "desc");
-  }
+  query = orderByColumn(query, sortColumn, sortDirection);
+  query = orderByColumn(query, "tool_call_id", "desc");
 
-  query = Lib.limit(query, 0, limit);
   return query;
+}
+
+/**
+ * Add an MBQL `:page` clause to a structured events query so the backend returns a single page
+ * of rows. metabase-lib exposes no offset/page builder, so we set the clause on the (legacy) MBQL
+ * directly. `page` is 0-indexed here; the MBQL clause is 1-indexed. No-op for native queries.
+ */
+export function withEventsPage(
+  jsQuery: LegacyDatasetQuery,
+  page: number,
+  pageSize: number,
+): LegacyDatasetQuery {
+  if (jsQuery.type !== "query") {
+    return jsQuery;
+  }
+  return {
+    ...jsQuery,
+    query: { ...jsQuery.query, page: { page: page + 1, items: pageSize } },
+  };
 }

@@ -1,0 +1,27 @@
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+}
+
+.table thead th,
+.table thead th * {
+  color: var(--mb-color-core-brand);
+  white-space: nowrap;
+}
+
+.table td,
+.table th {
+  padding-block: 0.75em;
+  white-space: nowrap;
+}
+
+.table td:first-child {
+  font-weight: normal;
+}
+
+.table tbody tr:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
