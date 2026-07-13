@@ -256,11 +256,17 @@ jobs:
           EOF
 
       - name: Commit version bump
+        env:
+          BUMP_BRANCH: sdk-version-bump-${{ steps.bump.outputs.new_version }}
         run: |
-          # The run id is appended so a retry after a failed/abandoned attempt
-          # never collides with a still-existing branch of the same name on
-          # origin (which would otherwise fail this push as non-fast-forward).
-          git checkout -b sdk-version-bump-${{ steps.bump.outputs.new_version }}-${{ github.run_id }}
+          # A leftover branch means an earlier bump to this same version was
+          # abandoned. Say so, rather than pushing a near-duplicate alongside it.
+          if git ls-remote --exit-code --heads origin "$BUMP_BRANCH" >/dev/null 2>&1; then
+            echo "::error::'$BUMP_BRANCH' already exists on origin - an earlier bump to this version was never merged. Close its PR, delete the branch, then re-run."
+            exit 1
+          fi
+
+          git checkout -b "$BUMP_BRANCH"
           git add "$package_template"
           git commit -m "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }} (${{ inputs.release_type }})"
           git push origin HEAD
