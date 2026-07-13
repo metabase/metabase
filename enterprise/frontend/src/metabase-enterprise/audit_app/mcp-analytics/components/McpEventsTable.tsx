@@ -24,9 +24,6 @@ import S from "./McpEventsTable.module.css";
 
 export const EVENTS_PAGE_SIZE = 25;
 
-/** Card min-height while there are no rows, so the loader / empty state has room. */
-const EMPTY_CARD_HEIGHT = 320;
-
 type EventColumn = {
   /** View column name, matched case-insensitively against the result columns. */
   key: string;
@@ -222,13 +219,7 @@ function McpEventsTableInner({
 
   return (
     <>
-      <Card
-        withBorder
-        shadow="none"
-        p={0}
-        pos="relative"
-        mih={rows.length === 0 ? EMPTY_CARD_HEIGHT : undefined}
-      >
+      <Card withBorder shadow="none" p={0} pos="relative">
         <LoadingOverlay visible={isFetching} />
         <Box className={S.scroll}>
           <table className={cx(AdminS.ContentTable, S.table)}>
