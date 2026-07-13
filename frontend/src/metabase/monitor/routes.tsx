@@ -34,6 +34,7 @@ export function getMonitorRoutes(
   CanAccessMonitor: RouteComponent,
   CanAccessMonitorDiagnostics: RouteComponent,
   CanAccessMonitoringTools: RouteComponent,
+  CanAccessAlertsManagement: RouteComponent,
 ) {
   return (
     <Route component={CanAccessMonitor}>
@@ -62,7 +63,6 @@ export function getMonitorRoutes(
 
         <Route component={CanAccessMonitoringTools}>
           <Route path="tasks">{getTasksRoutes()}</Route>
-          <Route path="notifications">{getNotificationsRoutes()}</Route>
           <Route path="jobs" component={JobInfoApp}>
             <Route path=":jobKey" />
           </Route>
@@ -76,6 +76,10 @@ export function getMonitorRoutes(
           <Route path="model-caching" component={ModelCachePage}>
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
           </Route>
+        </Route>
+
+        <Route component={CanAccessAlertsManagement}>
+          <Route path="notifications">{getNotificationsRoutes()}</Route>
         </Route>
 
         <Route path="*" component={NotFound} />

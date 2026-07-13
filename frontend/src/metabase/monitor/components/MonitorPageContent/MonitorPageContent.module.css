@@ -1,0 +1,12 @@
+.MonitorPageWrapper {
+  overflow: hidden;
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+}
+
+.MonitorPageContent {
+  padding: var(--mantine-spacing-xl);
+  overflow: auto;
+  height: 100%;
+}

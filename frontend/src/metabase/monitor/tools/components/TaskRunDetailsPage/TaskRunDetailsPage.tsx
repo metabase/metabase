@@ -2,7 +2,6 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetTaskRunQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
@@ -10,18 +9,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { MonitorPageContent } from "metabase/monitor/components/MonitorPageContent";
 import { useDispatch } from "metabase/redux";
 import { Link } from "metabase/router";
-import {
-  Anchor,
-  Box,
-  Flex,
-  Grid,
-  Icon,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Anchor, Box, Flex, Grid, Stack, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { Task } from "metabase-types/api";
@@ -32,8 +23,11 @@ import {
   getEntityUrl,
   renderTaskRunCounters,
 } from "../../utils";
+import { MonitorBackLink } from "../MonitorBackLink";
 import { TaskRunStatusBadge } from "../TaskRunStatusBadge";
 import { TaskStatusBadge } from "../TaskStatusBadge";
+
+import S from "./TaskRunDetailsPage.module.css";
 
 type TaskRunDetailsPageProps = {
   params: { runId: number };
@@ -52,124 +46,121 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   }
 
   return (
-    <SettingsSection>
-      <Flex align="center" gap="sm">
-        <Link to={Urls.monitorTasksRuns()}>
-          <Flex align="center" gap="xs" c="text-secondary">
-            <Icon name="chevronleft" />
-            {t`Back to Runs`}
-          </Flex>
-        </Link>
-      </Flex>
+    <Flex h="100%" wrap="nowrap">
+      <Stack className={S.main} flex={1} gap="md">
+        <MonitorBackLink to={Urls.monitorTasksRuns()} label={t`Back to Runs`} />
 
-      <Grid>
-        <Grid.Col span={{ base: 12, lg: "content" }} maw="50%">
-          <MonitorHeaderTitle mb="md">{t`Run details`}</MonitorHeaderTitle>
-          <Stack gap="sm">
-            <Flex gap="md">
-              <Text fw="bold" w={120}>{t`ID`}</Text>
-              <Text>{taskRun.id}</Text>
-            </Flex>
-            <Flex gap="md">
-              <Text fw="bold" w={120}>{t`Run type`}</Text>
-              <Text>{formatTaskRunType(taskRun.run_type)}</Text>
-            </Flex>
-            <Flex gap="md">
-              <Text fw="bold" w={120}>{t`Entity type`}</Text>
-              <Text>{formatTaskRunEntityType(taskRun.entity_type)}</Text>
-            </Flex>
-            <Flex gap="md" align="baseline">
-              <Text fw="bold" w={120}>{t`Entity`}</Text>
-              <Anchor
-                component={Link}
-                to={getEntityUrl(
-                  taskRun.entity_type,
-                  taskRun.entity_id,
-                  taskRun.entity_name ?? undefined,
-                )}
-              >
-                {taskRun.entity_name ?? taskRun.entity_id}
-              </Anchor>
-            </Flex>
-            <Flex gap="md" align="center">
-              <Text fw="bold" w={120}>{t`Status`}</Text>
-              <TaskRunStatusBadge taskRun={taskRun} />
-            </Flex>
-            <Flex gap="md">
-              <Text fw="bold" w={120}>{t`Started at`}</Text>
-              <Tooltip label={taskRun.started_at}>
-                <DateTime
-                  value={taskRun.started_at}
-                  unit="minute"
-                  data-testid="started-at"
-                />
-              </Tooltip>
-              <CopyButton value={taskRun.started_at} />
-            </Flex>
-            <Flex gap="md">
-              <Text fw="bold" w={120}>{t`Ended at`}</Text>
-              {taskRun.ended_at ? (
-                <>
-                  <Tooltip label={taskRun.ended_at}>
+        <MonitorPageContent className={S.content}>
+          <Grid>
+            <Grid.Col span={{ base: 12, lg: "content" }} maw="50%">
+              <MonitorHeaderTitle mb="md">{t`Run details`}</MonitorHeaderTitle>
+              <Stack gap="sm">
+                <Flex gap="md">
+                  <Text fw="bold" w={120}>{t`ID`}</Text>
+                  <Text>{taskRun.id}</Text>
+                </Flex>
+                <Flex gap="md">
+                  <Text fw="bold" w={120}>{t`Run type`}</Text>
+                  <Text>{formatTaskRunType(taskRun.run_type)}</Text>
+                </Flex>
+                <Flex gap="md">
+                  <Text fw="bold" w={120}>{t`Entity type`}</Text>
+                  <Text>{formatTaskRunEntityType(taskRun.entity_type)}</Text>
+                </Flex>
+                <Flex gap="md" align="baseline">
+                  <Text fw="bold" w={120}>{t`Entity`}</Text>
+                  <Anchor
+                    component={Link}
+                    to={getEntityUrl(
+                      taskRun.entity_type,
+                      taskRun.entity_id,
+                      taskRun.entity_name ?? undefined,
+                    )}
+                  >
+                    {taskRun.entity_name ?? taskRun.entity_id}
+                  </Anchor>
+                </Flex>
+                <Flex gap="md" align="center">
+                  <Text fw="bold" w={120}>{t`Status`}</Text>
+                  <TaskRunStatusBadge taskRun={taskRun} />
+                </Flex>
+                <Flex gap="md">
+                  <Text fw="bold" w={120}>{t`Started at`}</Text>
+                  <Tooltip label={taskRun.started_at}>
                     <DateTime
-                      value={taskRun.ended_at}
+                      value={taskRun.started_at}
                       unit="minute"
-                      data-testid="ended-at"
+                      data-testid="started-at"
                     />
                   </Tooltip>
-                  <CopyButton value={taskRun.ended_at} />
-                </>
-              ) : (
-                EMPTY_CELL_PLACEHOLDER
-              )}
-            </Flex>
-            <Flex gap="md">
-              <Text fw="bold" w={120}>{t`Task count`}</Text>
-              <Text>{renderTaskRunCounters(taskRun)}</Text>
-            </Flex>
-          </Stack>
-        </Grid.Col>
+                  <CopyButton value={taskRun.started_at} />
+                </Flex>
+                <Flex gap="md">
+                  <Text fw="bold" w={120}>{t`Ended at`}</Text>
+                  {taskRun.ended_at ? (
+                    <>
+                      <Tooltip label={taskRun.ended_at}>
+                        <DateTime
+                          value={taskRun.ended_at}
+                          unit="minute"
+                          data-testid="ended-at"
+                        />
+                      </Tooltip>
+                      <CopyButton value={taskRun.ended_at} />
+                    </>
+                  ) : (
+                    EMPTY_CELL_PLACEHOLDER
+                  )}
+                </Flex>
+                <Flex gap="md">
+                  <Text fw="bold" w={120}>{t`Task count`}</Text>
+                  <Text>{renderTaskRunCounters(taskRun)}</Text>
+                </Flex>
+              </Stack>
+            </Grid.Col>
 
-        <Grid.Col span={{ base: 12, lg: "auto" }}>
-          <MonitorHeaderTitle mb="md">{t`Associated tasks`}</MonitorHeaderTitle>
-          <table
-            className={cx(AdminS.ContentTable)}
-            data-testid="task-run-tasks-table"
-          >
-            <thead>
-              <tr>
-                <Box component="th" w={200}>{t`Task`}</Box>
-                <th>{t`Status`}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {taskRun.tasks.length === 0 && (
-                <tr>
-                  <td colSpan={2}>
-                    <Flex
-                      c="text-disabled"
-                      justify="center"
-                    >{t`No tasks`}</Flex>
-                  </td>
-                </tr>
-              )}
-              {taskRun.tasks.map((task) => (
-                <tr
-                  key={task.id}
-                  className={CS.cursorPointer}
-                  data-testid="task-run-task"
-                  onClick={() => onClickTask(task)}
-                >
-                  <td className={CS.textBold}>{task.task}</td>
-                  <td>
-                    <TaskStatusBadge task={task} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Grid.Col>
-      </Grid>
-    </SettingsSection>
+            <Grid.Col span={{ base: 12, lg: "auto" }}>
+              <MonitorHeaderTitle mb="md">{t`Associated tasks`}</MonitorHeaderTitle>
+              <table
+                className={cx(AdminS.ContentTable)}
+                data-testid="task-run-tasks-table"
+              >
+                <thead>
+                  <tr>
+                    <Box component="th" w={200}>{t`Task`}</Box>
+                    <th>{t`Status`}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taskRun.tasks.length === 0 && (
+                    <tr>
+                      <td colSpan={2}>
+                        <Flex
+                          c="text-disabled"
+                          justify="center"
+                        >{t`No tasks`}</Flex>
+                      </td>
+                    </tr>
+                  )}
+                  {taskRun.tasks.map((task) => (
+                    <tr
+                      key={task.id}
+                      className={CS.cursorPointer}
+                      data-testid="task-run-task"
+                      onClick={() => onClickTask(task)}
+                    >
+                      <td className={CS.textBold}>{task.task}</td>
+                      <td>
+                        <TaskStatusBadge task={task} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Grid.Col>
+          </Grid>
+        </MonitorPageContent>
+      </Stack>
+    </Flex>
   );
 };

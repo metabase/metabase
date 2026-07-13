@@ -158,7 +158,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user", async () => {
+  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -174,11 +174,30 @@ describe("MonitorLayout", () => {
     expect(
       screen.queryByRole("link", { name: "Dependency diagnostics" }),
     ).not.toBeInTheDocument();
-    ["Tasks", "Jobs", "Logs", "Model cache log", "Alerts management"].forEach(
-      (name) => {
-        expect(screen.getByRole("link", { name })).toBeInTheDocument();
-      },
-    );
+    ["Tasks", "Jobs", "Logs", "Model cache log"].forEach((name) => {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("link", { name: "Alerts management" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides Alerts management for an analyst even with the monitoring permission", async () => {
+    setup({
+      user: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("link", { name: "Alerts management" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the content area", async () => {

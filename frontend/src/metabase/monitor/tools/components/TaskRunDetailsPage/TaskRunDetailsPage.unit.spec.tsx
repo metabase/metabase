@@ -50,6 +50,17 @@ describe("TaskRunDetailsPage", () => {
     });
   });
 
+  it("should show a link back to the runs list", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByRole("link", { name: /Back to Runs/ })).toHaveAttribute(
+      "href",
+      Urls.monitorTasksRuns(),
+    );
+  });
+
   it("should display formatted datetime for started_at and ended_at", async () => {
     const taskRun = createMockTaskRunExtended({
       started_at: "2023-03-04T01:45:26.005475-08:00",

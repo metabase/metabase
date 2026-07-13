@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
+  canAccessAlertsManagement,
   canAccessMonitorDiagnostics,
   canAccessMonitoringTools,
 } from "metabase/common/monitor/selectors";
@@ -35,6 +36,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
+  const canAccessAlerts = useSelector(canAccessAlertsManagement);
 
   const upperNav = (
     <>
@@ -86,14 +88,16 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
             isSelected={pathname.startsWith(Urls.monitorModelCaching())}
             showLabel={isNavbarOpened}
           />
-          <AreaTab
-            label={t`Alerts management`}
-            icon="bell"
-            to={Urls.monitorNotifications()}
-            isSelected={pathname.startsWith(Urls.monitorNotifications())}
-            showLabel={isNavbarOpened}
-          />
         </>
+      )}
+      {canAccessAlerts && (
+        <AreaTab
+          label={t`Alerts management`}
+          icon="bell"
+          to={Urls.monitorNotifications()}
+          isSelected={pathname.startsWith(Urls.monitorNotifications())}
+          showLabel={isNavbarOpened}
+        />
       )}
     </>
   );
