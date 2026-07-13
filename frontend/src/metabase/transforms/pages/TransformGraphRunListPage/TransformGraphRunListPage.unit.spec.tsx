@@ -82,14 +82,12 @@ describe("TransformGraphRunListPage", () => {
   it("renders job, DAG, and standalone runs with a Run name and Type", async () => {
     setup({ runs: [JOB_RUN, DAG_RUN, TRANSFORM_RUN] });
 
-    // Run column: job/transform names as plain text, DAG runs as name + arrow.
     expect(await screen.findByText("Hourly refresh")).toBeInTheDocument();
     expect(
       screen.getByText("Upstream → Customers deduped"),
     ).toBeInTheDocument();
     expect(screen.getByText("Products normalized")).toBeInTheDocument();
 
-    // Type column: "Job" for the job, "Transformation" for the DAG + standalone.
     const table = screen.getByRole("treegrid", { name: "Runs" });
     expect(within(table).getByText("Job")).toBeInTheDocument();
     expect(within(table).getAllByText("Transformation")).toHaveLength(2);
@@ -172,11 +170,11 @@ describe("TransformGraphRunListPage", () => {
     expect(
       await within(sidebar).findByText("Orders cleaned"),
     ).toBeInTheDocument();
-    // The failed member surfaces its error message.
+
     expect(
       within(sidebar).getByRole("region", { name: "Error" }),
     ).toBeInTheDocument();
-    // Header links to the seed transform (entity id 12).
+
     expect(
       within(sidebar).getByRole("link", { name: "View this transform" }),
     ).toHaveAttribute("href", "/data-studio/transforms/12");
@@ -210,7 +208,6 @@ describe("TransformGraphRunListPage", () => {
     await userEvent.click(await screen.findByText("Nightly rollups"));
 
     const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
-    // Header links to the job details page (job id 2).
     expect(
       within(sidebar).getByRole("link", { name: "View this job" }),
     ).toHaveAttribute("href", "/data-studio/transforms/jobs/2");
@@ -219,7 +216,6 @@ describe("TransformGraphRunListPage", () => {
       within(sidebar).getByRole("button", { name: "Cancel run" }),
     );
 
-    // Confirm in the dialog (its confirm button is also labelled "Cancel run").
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Cancel run" }),

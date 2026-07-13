@@ -40,16 +40,13 @@ import type {
 } from "metabase-types/api";
 
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
-import { getRunName, isDeletedRun } from "../TransformGraphRunTable";
+import { formatRunName, isDeletedRun } from "../TransformGraphRunTable";
 
 import { TransformGraphRunInfoSection } from "./TransformGraphRunInfoSection";
 import S from "./TransformGraphRunSidebar.module.css";
 
 const EMPTY_TRANSFORM_RUNS: TransformRunForJobRun[] = [];
 
-// Cancellation is offered for any in-progress run. The cancel call differs by type:
-// DAG uses the dag-run `id`; a standalone run uses its transform `entity_id`; a job
-// run uses its job `entity_id` (jobId) plus the run `id` (runId).
 function canCancelRun(run: TransformGraphRun): boolean {
   if (run.status !== "started") {
     return false;
@@ -75,10 +72,6 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
   const [isPolling, setIsPolling] = useState(false);
   const pollingInterval = isPolling ? POLLING_INTERVAL : undefined;
 
-  // DAG and standalone runs keep their member runs after the underlying
-  // transform is deleted (fetched by dag-run id / synthesized from the run
-  // itself). A deleted job's members can't be fetched though — the endpoint is
-  // keyed by the now-null job id — so we hide the section for that case only.
   const areMembersUnavailable = run.run_type === "job" && isDeletedRun(run);
 
   const dagResult = useListDagRunTransformRunsQuery(
@@ -285,7 +278,7 @@ function TransformGraphRunSidebarHeader({
       gap="sm"
       data-testid="transform-graph-run-sidebar-header"
     >
-      <Title order={3}>{getRunName(run)}</Title>
+      <Title order={3}>{formatRunName(run)}</Title>
       <Group gap="xs" wrap="nowrap">
         <HeaderEntityActions run={run} />
         <ActionIcon aria-label={t`Close`} onClick={onClose}>

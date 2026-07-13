@@ -18,8 +18,6 @@ import type {
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
-// `/runs` shows the higher-level transform-graph runs (default tab); the
-// low-level per-transform runs live under `/runs/individual`.
 const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
 const INDIVIDUAL_RUNS_ROOT_URL = `${RUNS_ROOT_URL}/individual`;
 const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;

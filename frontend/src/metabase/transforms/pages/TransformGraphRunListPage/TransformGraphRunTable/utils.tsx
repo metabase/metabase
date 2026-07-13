@@ -28,20 +28,15 @@ import {
 
 import type { TransformGraphRunSortOptions } from "../types";
 
-// A graph-run id is only unique within its run_type, so combine both for a stable key.
 export function getRowKey(run: TransformGraphRun): string {
   return `${run.run_type}-${run.id}`;
 }
 
-// A deleted job/transform keeps its name but loses its entity id; such runs have
-// no entity to link to or drill into.
 export function isDeletedRun(run: TransformGraphRun): boolean {
   return run.entity_id == null;
 }
 
-// The "Run" identity — also used as the sidebar title. For DAG runs it reads as
-// "Upstream → name" / "name → Downstream". Wording is provisional (design TBD).
-export function getRunName(run: TransformGraphRun): string {
+export function formatRunName(run: TransformGraphRun): string {
   const name = run.name ?? t`Deleted`;
   if (run.run_type === "dag") {
     return run.direction === "upstream"
@@ -53,8 +48,7 @@ export function getRunName(run: TransformGraphRun): string {
   return name;
 }
 
-export function getRunTypeLabel(run: TransformGraphRun): string {
-  // DAG runs are surfaced as plain "Transformation" for now (design TBD).
+export function formatRunType(run: TransformGraphRun): string {
   return run.run_type === "job" ? t`Job` : t`Transformation`;
 }
 
@@ -63,7 +57,7 @@ function getRunColumn(): TreeTableColumnDef<TransformGraphRun> {
     id: "run",
     header: t`Run`,
     width: 320,
-    accessorFn: (run) => getRunName(run),
+    accessorFn: (run) => formatRunName(run),
     cell: ({ row, getValue }) => {
       const value = String(getValue());
       if (!isDeletedRun(row.original)) {
@@ -92,7 +86,7 @@ function getTypeColumn(): TreeTableColumnDef<TransformGraphRun> {
     id: "type",
     header: t`Type`,
     width: 140,
-    accessorFn: (run) => getRunTypeLabel(run),
+    accessorFn: (run) => formatRunType(run),
     cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
 }

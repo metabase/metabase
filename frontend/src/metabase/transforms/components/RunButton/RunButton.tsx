@@ -36,8 +36,6 @@ type RunButtonProps = {
   size?: ButtonProps["size"];
   onRun: () => void;
   onCancel?: () => void;
-  // When provided, a caret toggle is appended to the run button that opens these
-  // items as a dropdown — e.g. additional run scopes (upstream / downstream).
   menuItems?: ReactNode;
 };
 

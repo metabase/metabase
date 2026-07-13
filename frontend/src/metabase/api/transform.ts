@@ -162,8 +162,6 @@ export const transformApi = Api.injectEndpoints({
         url: `/api/transform/${id}/run-dag`,
         body,
       }),
-      // A DAG run touches many transforms, so invalidate all transform/run state
-      // rather than only the seed transform.
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
           idTag("transform", id),
@@ -201,8 +199,6 @@ export const transformApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/transform-dag-run/${runId}/cancel`,
       }),
-      // A DAG cancel changes the last_run status of every member transform, so
-      // invalidate transform state too (matching runTransformDag).
       invalidatesTags: (_, error, runId) =>
         invalidateTags(error, [
           idTag("transform-dag-run", runId),
@@ -216,8 +212,6 @@ export const transformApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/transform-job/${jobId}/runs/${runId}/cancel`,
       }),
-      // A job cancel changes the last_run status of its member transforms, so
-      // invalidate transform state too (matching runTransformJob).
       invalidatesTags: (_, error, { jobId }) =>
         invalidateTags(error, [
           idTag("transform-job", jobId),
@@ -235,8 +229,6 @@ export const transformApi = Api.injectEndpoints({
         url: "/api/transform/runs",
         params,
       }),
-      // A row can be a job / dag / standalone transform run, so invalidate on any
-      // of those lists (e.g. after a cancel).
       providesTags: [
         listTag("transform-run"),
         listTag("transform-dag-run"),

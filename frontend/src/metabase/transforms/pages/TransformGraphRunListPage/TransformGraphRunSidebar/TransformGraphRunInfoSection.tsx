@@ -13,7 +13,7 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting/time";
 import type { TransformGraphRun } from "metabase-types/api";
 
-import { getRunTypeLabel } from "../TransformGraphRunTable";
+import { formatRunType } from "../TransformGraphRunTable";
 
 type TransformGraphRunInfoSectionProps = {
   run: TransformGraphRun;
@@ -26,7 +26,7 @@ export function TransformGraphRunInfoSection({
 
   return (
     <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
-      <SidebarInfoRow label={t`Type`}>{getRunTypeLabel(run)}</SidebarInfoRow>
+      <SidebarInfoRow label={t`Type`}>{formatRunType(run)}</SidebarInfoRow>
       <SidebarInfoRow label={t`Status`}>
         <Box c={isErrorStatus(run.status) ? "feedback-negative" : undefined}>
           {formatStatus(run.status)}

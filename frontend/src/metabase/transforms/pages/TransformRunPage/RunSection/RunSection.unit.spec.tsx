@@ -82,7 +82,6 @@ describe("RunSection DAG run flow", () => {
       await screen.findByText("Run this and all upstream transforms"),
     );
 
-    // The modal shows the ordered plan fetched from /dag-transforms
     expect(
       await screen.findByText("Run this and all upstream transforms?"),
     ).toBeInTheDocument();

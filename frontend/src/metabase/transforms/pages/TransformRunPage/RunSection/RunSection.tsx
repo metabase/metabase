@@ -73,8 +73,6 @@ function useScheduledDagRun(transform: Transform) {
       (run) => run.status === "started" || run.status === "canceling",
     );
 
-  // Give up if the member-runs request fails; otherwise the banner would stay
-  // "Scheduled" and keep polling forever on a fetch error.
   const dagUnavailable = error != null;
 
   useEffect(() => {

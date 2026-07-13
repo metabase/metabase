@@ -90,15 +90,12 @@ export function TransformGraphRunListPage({
 
   const runs = data?.data ?? EMPTY_RUNS;
 
-  // Keep the selected run in sync with the latest page data so its status stays
-  // live while polling, but retain the previous value if the row isn't on the
-  // current page (e.g. pushed off by newly-added runs) so the sidebar the user
-  // opened doesn't close on its own.
   useEffect(() => {
     setSelectedRun((current) =>
       current == null
         ? current
-        : (runs.find((run) => getRowKey(run) === getRowKey(current)) ??
+        : // Do not close sidebar on its own if selected run goes to next page
+          (runs.find((run) => getRowKey(run) === getRowKey(current)) ??
           current),
     );
   }, [runs]);
