@@ -104,17 +104,12 @@ jobs:
           RELEASE_TYPE: ${{ inputs.release_type }}
           PRERELEASE_ID: ${{ inputs.prerelease_id }}
         run: |
-          # `npm version` only operates on a file literally named package.json
-          # in the current directory, and its bump logic is just a thin
-          # wrapper around the `semver` package (already a dependency - see
-          # package.json) - so we call `semver` directly and write the result
-          # into the template with jq, no rename dance needed.
+          # `npm version` only works on a file named package.json, and it is
+          # just a wrapper around `semver` - so we call semver directly.
           CURRENT_VERSION=$(jq -r .version "$package_template")
 
-          # Branches that went gold under the pre-EMB-1518 after-gold
-          # checklist have a `0.N.x` placeholder version instead of a
-          # concrete semver string - `semver -i` exits 1 with no output on
-          # that, which is a cryptic failure. Fail clearly instead.
+          # Older release branches carry a `0.N.x` placeholder version, which
+          # `semver -i` rejects with no output. Fail clearly instead.
           if ! npx --yes semver "$CURRENT_VERSION" >/dev/null 2>&1; then
             echo "::error::'$CURRENT_VERSION' is not a valid semver version - old release branches use a '0.N.x' placeholder (pre-EMB-1518 convention); set a concrete version in $package_template first."
             exit 1
