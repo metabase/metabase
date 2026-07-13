@@ -116,7 +116,7 @@ module.exports = (env) => {
     },
 
     entry: {
-      "app-static-viz": {
+      "lib-static-viz": {
         import: "./app-static-viz.ts",
         library: {
           name: "MetabaseStaticViz",
@@ -179,46 +179,11 @@ module.exports = (env) => {
               )
               .map((module) =>
                 module.nameForCondition.replace(`${__dirname}/`, ""),
-              )
-              .concat(["frontend/src/metabase/app-static-viz-cli.ts"]),
+              ),
           }),
       }),
     ],
   };
 
-  const nodeCliConfig = {
-    name: "node-cli",
-    mode: "production",
-    context: SRC_PATH,
-    target: "node",
-
-    performance: {
-      hints: false,
-    },
-
-    entry: {
-      "app-static-viz-cli": "./app-static-viz-cli.ts",
-    },
-
-    output: {
-      path: BUILD_PATH + "/app/dist",
-      filename: "[name].bundle.js",
-    },
-
-    module: moduleConfig,
-    resolve: {
-      extensions: resolveExtensions,
-      alias: resolveAlias,
-    },
-    optimization: {
-      minimize: true,
-    },
-    plugins: [
-      new rspack.EnvironmentPlugin({
-        IS_EMBEDDING_SDK_BUILD: false,
-      }),
-    ],
-  };
-
-  return [graalConfig, nodeCliConfig];
+  return [graalConfig];
 };
