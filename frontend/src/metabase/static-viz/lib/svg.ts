@@ -31,7 +31,8 @@ const transformSvgForOutline = (svgString: string) => {
 export function patchDominantBaseline(svgString: string) {
   return svgString.replace(
     /<text\b[^>]*\bdominant-baseline="central"[^>]*>/g,
-    (tag) => (/\bdy=/.test(tag) ? tag : tag.replace(/>$/, ' dy="0.5em">')),
+    (tag) =>
+      /\bdy=/.test(tag) ? tag : tag.replace(/(\/?)>$/, ' dy="0.5em"$1>'),
   );
 }
 
