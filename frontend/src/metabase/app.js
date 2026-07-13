@@ -48,6 +48,7 @@ import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
+import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 
 import { HistoryProvider } from "./history";
@@ -107,6 +108,7 @@ function _init(reducers, getRoutes, callback) {
     </MetabaseReduxProvider>,
   );
 
+  registerJsxFormatting();
   registerVisualizations();
   registerDashboardVisualizations();
 
