@@ -105,7 +105,7 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
-      await screen.findByText('Search documentation for "Bar"'),
+      await screen.findByText('Search Metabase\'s docs for "Bar"'),
     ).toBeInTheDocument();
   });
 
@@ -141,7 +141,7 @@ describe("PaletteResults", () => {
   it("should not provide links to settings pages for non-admins", async () => {
     setup({ query: "setu", isAdmin: false });
     expect(
-      await screen.findByText(`Search documentation for "setu"`),
+      await screen.findByText(`Search Metabase's docs for "setu"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Settings - Setup")).not.toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("PaletteResults", () => {
   it("should not provide links to admin pages for non-admins", async () => {
     setup({ query: "permi", isAdmin: false });
     expect(
-      await screen.findByText(`Search documentation for "permi"`),
+      await screen.findByText(`Search Metabase's docs for "permi"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
@@ -174,9 +174,21 @@ describe("PaletteResults", () => {
 
   it("should provide a link to docs with the proper url param", async () => {
     setup({ query: "model" });
-    expect(
-      await screen.findByRole("link", { name: /Search documentation/ }),
-    ).toHaveAttribute("href", expect.stringContaining("?query=model"));
+    const docsLink = await screen.findByRole("link", {
+      name: /Search Metabase's docs/,
+    });
+    expect(docsLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("query=model"),
+    );
+    expect(docsLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("utm_medium=command-palette"),
+    );
+    expect(docsLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("utm_campaign=docs-search"),
+    );
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
     expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
@@ -189,7 +201,7 @@ describe("PaletteResults", () => {
       "true",
     );
     expect(
-      await screen.findByLabelText(/Search documentation/),
+      await screen.findByLabelText(/Search Metabase's docs/),
     ).toHaveAttribute("aria-disabled", "false");
   });
 });
