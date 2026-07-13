@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-bundle :as image-bundle]
-   [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
@@ -229,7 +228,7 @@
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
-                                      (js.color/make-color-selector unordered-data viz-settings)
+                                      (select-keys unordered-data [:cols :rows])
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
                                        :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)

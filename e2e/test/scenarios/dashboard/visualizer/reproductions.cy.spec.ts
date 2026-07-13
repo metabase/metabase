@@ -3,6 +3,11 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import {
+  ORDERS_COUNT_BY_CREATED_AT,
+  PRODUCTS_COUNT_BY_CREATED_AT,
+  createVisualizerDashcardWithTimeseriesBreakout,
+} from "e2e/support/test-visualizer-data";
 import type { DashboardCard, Parameter } from "metabase-types/api";
 
 const { H } = cy;
@@ -286,6 +291,74 @@ describe("issue 65908 (UXW-2293)", () => {
       cy.findByRole("main").should(($main) => {
         // 4 cards take about 2000px in height, so only 1 card should definitely take less than 1000px
         expect($main[0].scrollHeight).to.be.lessThan(1000);
+      });
+    });
+  });
+});
+
+describe("issue 76819 (UXW-4679)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("saves a visualizer dashcard's axis edit even when the source-card refetch is slow (metabase#76819)", () => {
+    // Build a renderable combo visualizer dashcard directly via the API.
+    H.createQuestion(ORDERS_COUNT_BY_CREATED_AT).then(
+      ({ body: { id: ordersCardId } }) => {
+        H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT).then(
+          ({ body: { id: productsCardId } }) => {
+            H.createDashboard().then(({ body: { id: dashboardId } }) => {
+              cy.wrap(dashboardId).as("dashboardId");
+              cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+                dashcards: [
+                  createVisualizerDashcardWithTimeseriesBreakout(
+                    ordersCardId,
+                    productsCardId,
+                    { id: -1, col: 0, row: 0, size_x: 12, size_y: 8 },
+                  ),
+                ],
+              });
+              H.visitDashboard(dashboardId);
+            });
+          },
+        );
+      },
+    );
+
+    H.editDashboard();
+    H.showDashcardVisualizerModalSettings(0, { isVisualizerCard: true });
+    H.modal().within(() => {
+      cy.findByRole("radio", { name: /axes/i }).click({ force: true });
+      cy.findByText("Auto y-axis range").click();
+    });
+
+    // Slow the source-card refetch that replaceCardWithVisualization awaits before
+    // committing the edit, so the async-commit window is wide and deterministic.
+    cy.intercept("GET", "/api/card/*", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(1000);
+      });
+    }).as("slowGetCard");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardPut");
+
+    // Save the modal edit and save the dashboard immediately. With the fix the Save button shows a loading state and
+    // the modal stays open until the commit lands; without it it closes early.
+    H.saveDashcardVisualizerModal({ mode: "update" });
+    H.dashboardSaveButton().click();
+
+    //Ensure that dashboard actually updated
+    cy.wait("@saveDashboardPut");
+    cy.findByTestId("edit-bar").should("not.exist");
+    cy.get<number>("@dashboardId").then((id) => {
+      cy.request("GET", `/api/dashboard/${id}`).then(({ body }) => {
+        const settings =
+          body.dashcards[0]?.visualization_settings?.visualization?.settings ??
+          {};
+        expect(
+          settings["graph.y_axis.auto_range"],
+          "axis edit should persist on the visualizer dashcard",
+        ).to.equal(false);
       });
     });
   });
