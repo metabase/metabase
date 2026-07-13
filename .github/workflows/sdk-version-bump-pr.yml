@@ -17,11 +17,18 @@ on:
           - Pick the branch in "Use workflow from" above
       release_type:
         description: |
-          Which bump to make:
-          • alpha — master: bump the current development version
-          • preminor — master: move to the next major, right after cutting a release branch
+          Before gold:
           • beta — release branch: publish a beta
-          • patch — release branch: graduate to gold, or ship a patch
+
+          At gold:
+          • patch — release branch: graduate the beta to 0.N.0
+          • preminor — master: move master to the next major
+
+          After gold:
+          • patch — release branch: ship a patch (0.N.1, 0.N.2, ...)
+
+          Any time:
+          • alpha — master: bump the development version
           • custom — one-off branch (esbuild, data-apps): publish under its own prerelease id
         type: choice
         required: true
@@ -109,8 +116,11 @@ jobs:
           CURRENT_VERSION=$(jq -r .version "$package_template")
 
           case "$RELEASE_TYPE" in
-            alpha|beta)
-              NEW_VERSION=$(npx --yes semver -i prerelease --preid="$RELEASE_TYPE" "$CURRENT_VERSION")
+            alpha)
+              NEW_VERSION=$(npx --yes semver -i prerelease --preid=alpha "$CURRENT_VERSION")
+              ;;
+            beta)
+              NEW_VERSION=$(npx --yes semver -i prerelease --preid=beta "$CURRENT_VERSION")
               ;;
             custom)
               # The prerelease id this branch already carries, if any. alpha/beta
@@ -140,13 +150,13 @@ jobs:
               fi
               ;;
             preminor)
-              # master -> next major's alpha (e.g. 0.63.0-alpha.5 -> 0.64.0-alpha.0);
-              # `alpha|beta` above can only ever increment the existing
-              # prerelease counter, never bump the minor version.
+              # master -> next major's alpha (0.63.0-alpha.5 -> 0.64.0-alpha.0).
+              # `alpha` above only ever increments the existing prerelease
+              # counter, so it can never bump the minor version.
               NEW_VERSION=$(npx --yes semver -i preminor --preid=alpha "$CURRENT_VERSION")
               ;;
             patch)
-              NEW_VERSION=$(npx --yes semver -i "$RELEASE_TYPE" "$CURRENT_VERSION")
+              NEW_VERSION=$(npx --yes semver -i patch "$CURRENT_VERSION")
               ;;
             *)
               echo "::error::Unsupported release_type: $RELEASE_TYPE"
