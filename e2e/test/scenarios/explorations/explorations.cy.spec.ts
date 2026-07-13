@@ -518,34 +518,6 @@ describe("scenarios > explorations > detail page", () => {
             cy.findByText(`By ${dim.display_name}`).should("be.visible");
           }
         });
-
-        cy.request("GET", `/api/exploration/${id}`).then(({ body }) => {
-          const QUERY_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
-          type Group = {
-            parent_group_id: number | null;
-            interestingness_score: number | null;
-          };
-          const interestingLeafGroups = (
-            (body.threads ?? []).flatMap(
-              (t: { groups?: Group[] }) => t.groups ?? [],
-            ) as Group[]
-          ).filter(
-            (g) =>
-              g.parent_group_id != null &&
-              (g.interestingness_score ?? 0) >
-                QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
-          );
-          if (interestingLeafGroups.length > 0) {
-            cy.findAllByTestId("potentially-interesting-marker").should(
-              "have.length",
-              interestingLeafGroups.length,
-            );
-          } else {
-            cy.findAllByTestId("potentially-interesting-marker").should(
-              "not.exist",
-            );
-          }
-        });
       });
     });
   });

@@ -52,10 +52,7 @@ import {
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
 import type { CommentDrafts } from "../components/ExplorationVisualization/ActionToolbar";
-import {
-  getInterestingTimelineIds,
-  getMostInterestingTimelineId,
-} from "../components/ExplorationVisualization/utils";
+import { getMostInterestingTimelineId } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
 import { type ExplorationSidebarTab, isExplorationSidebarTab } from "../types";
 const QUERY_POLL_INTERVAL_MS = 2000;
@@ -369,11 +366,6 @@ export function ExplorationPage({
     [availableTimelines],
   );
 
-  const interestingTimelineIds: ReadonlySet<TimelineId> = useMemo(
-    () => getInterestingTimelineIds(selectedQueries),
-    [selectedQueries],
-  );
-
   const selectedTimelineId: TimelineId | null = useMemo(() => {
     if (!selectedPage) {
       return null;
@@ -491,7 +483,6 @@ export function ExplorationPage({
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}
-              interestingTimelineIds={interestingTimelineIds}
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}

@@ -17,7 +17,6 @@ import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
-import { PotentiallyInterestingMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
@@ -45,7 +44,6 @@ interface ActionToolbarProps {
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
-  interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
 export function ActionToolbar({
@@ -57,7 +55,6 @@ export function ActionToolbar({
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
-  interestingTimelineIds,
 }: ActionToolbarProps) {
   const [setPageStarred] = useSetPageStarredMutation();
   const [setPagesHidden] = useSetPagesHiddenMutation();
@@ -258,11 +255,6 @@ export function ActionToolbar({
                 onClick={() => {
                   handleSelectTimelineId(timeline.id, "click");
                 }}
-                rightSection={
-                  interestingTimelineIds?.has(timeline.id) ? (
-                    <PotentiallyInterestingMarker />
-                  ) : null
-                }
               >
                 {timeline.name}
               </Menu.Item>
