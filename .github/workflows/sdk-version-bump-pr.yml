@@ -255,15 +255,6 @@ jobs:
           triggered by: @${{ github.event.sender.login }}
           EOF
 
-      - name: Ensure sdk-release-trigger label exists
-        run: |
-          gh label create sdk-release-trigger \
-            --color 5319e7 \
-            --description "Merging this PR triggers an Embedding SDK release (see release-embedding-sdk.yml)" \
-            || true
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-
       - name: Commit version bump
         run: |
           # The run id is appended so a retry after a failed/abandoned attempt
