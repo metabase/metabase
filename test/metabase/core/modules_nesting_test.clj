@@ -378,10 +378,9 @@
     ;; lib.schema's own :api declares those namespaces. This is strict
     ;; encapsulation: :module-exports is the only way to expose a nested child.
     ;;
-    ;; Note: the hook currently treats `(empty? api-set)` as "allow
-    ;; anything" (matching the :any case), so to get real encapsulation
-    ;; behavior in a fixture you must provide a non-empty :api that
-    ;; excludes the namespace being tested.
+    ;; An explicit empty `:api` exports nothing; only `:api :any` is
+    ;; unrestricted. This fixture uses a non-empty API so it can verify both
+    ;; access to lib's public namespace and denial of its private child.
     (let [config {:metabase/modules {'lib             {:module-exports #{}
                                                        :api  #{'metabase.lib.core}
                                                        :uses #{}}
