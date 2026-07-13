@@ -163,7 +163,7 @@
   (let [long-name (page-long-name page queries card-name-by-id)]
     (if (str/blank? filter-value)
       long-name
-      (tru "{0} {1}" filter-value long-name))))
+      (str filter-value " " long-name))))
 
 (defn- page-node
   [block page queries card-name-by-id filter-value]

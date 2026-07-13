@@ -1175,7 +1175,8 @@
             (is (nil? (:contextual_interestingness_score q)))))
         (testing "after a result row is inserted, both scores surface via hydration"
           (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
-                                                       {:result_data (byte-array [0])}))]
+                                                       {:result_data (byte-array [0])
+                                                        :creator_id  (:id u)}))]
             (t2/insert! :model/ExplorationQueryResult
                         {:exploration_query_id             qid
                          :stored_result_id                 sr-id

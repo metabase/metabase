@@ -13,6 +13,7 @@
    [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
+   [metabase.explorations.derived-perms :as derived-perms]
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
@@ -178,11 +179,28 @@
               (attach-thread-read-data thread blocks pages card-name-by-id card-dim-by-id)))
           threads)))
 
+(defn- gate-threads-derived-data
+  "Drop every thread's derived read-data — its queries, the block/page tree built from them, and the
+  thread name — when the current user's data-access lens isn't compatible with the creator's lens
+  that produced it. All three embed verbatim values from the creator's results (discovered top-N
+  dimension values in query names and `dataset_query`s; the clicked segment an \"Explore further\"
+  thread is named for), and those results are themselves gated where they're streamed. Threads the
+  viewer *can* see are enriched as usual. See [[metabase.explorations.derived-perms]]."
+  [threads]
+  (let [visible-ids (derived-perms/thread-ids-with-visible-derived-data (map :id threads))
+        enriched    (u/index-by :id
+                                (attach-threads-read-data
+                                 (filterv #(contains? visible-ids (:id %)) threads)))]
+    (mapv (fn [thread]
+            (or (get enriched (:id thread))
+                (assoc thread :queries [] :blocks [] :name nil)))
+          threads)))
+
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator :can_write :collection
                   [:threads :queries :documents :timelines])
-      (update :threads #(some->> % attach-threads-read-data))))
+      (update :threads #(some->> % gate-threads-derived-data))))
 
 (defn- insert-thread-default-documents!
   "Insert the default Scratchpad doc, plus an AI-summary placeholder when configured."

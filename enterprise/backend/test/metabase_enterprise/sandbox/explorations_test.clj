@@ -5,6 +5,7 @@
   `metabase.permissions.data-access-token`). Metadata access (collection perms) stays open
   regardless."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
@@ -37,9 +38,15 @@
      (in {:data {:cols [{:name "count"}] :rows [[1]]} :row_count 1 :status :completed})
      (result-fn))))
 
+(def ^:private discovered-value
+  "Stands in for a dimension value the *creator's* lens discovered and baked into the query name —
+  the kind of derived metadata an incompatible viewer must not be handed back."
+  "Bird Sanctuary")
+
 (defn- with-done-exploration!
   "Create a shared-collection exploration whose single venues-count query is `done`, backed by a
-  StoredResult carrying `creator-id` and `data-access-token`. Calls `f` with the created rows."
+  StoredResult carrying `creator-id` and `data-access-token`. The query's `:name` embeds
+  [[discovered-value]], as the top-N variants' names do. Calls `f` with the created rows."
   [{:keys [creator-id data-access-token]} f]
   (mt/with-temp [:model/Collection coll {}
                  :model/Card        metric {:name          "metric"
@@ -56,6 +63,7 @@
                                             :page_id               (:id p)
                                             :card_id               (:id metric)
                                             :dimension_id          "d1"
+                                            :name                  (str "Count for " discovered-value)
                                             :status                "done"
                                             :dataset_query         (venues-count-query)}
                  :model/StoredResult sr {:result_data       (fake-result-bytes)
@@ -95,6 +103,66 @@
                 (mt/user-http-request :rasta :get 200 (format "exploration/%d" (:id exploration))))
               (testing "but the cached result is blocked"
                 (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query)))))))))))
+
+(defn- exploration-derived-data
+  "The bits of `GET /api/exploration/:id` that are derived from the creator's query results."
+  [body]
+  (let [thread (first (:threads body))]
+    {:queries (:queries thread)
+     :blocks  (:blocks thread)
+     :leaks?  (str/includes? (pr-str body) discovered-value)}))
+
+(deftest different-sandbox-viewer-is-denied-derived-metadata-test
+  (testing "a viewer whose lens differs from the creator's gets the exploration shell but none of the
+            metadata derived from the creator's results — query names and dataset_queries bake in
+            values discovered under the creator's lens, so handing them over would leak around the
+            403 on the result blob itself"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      ;; snapshot stored under price=1 ...
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :lucky) :data-access-token token}
+          (fn [{:keys [exploration]}]
+            ;; ... but rasta now resolves to price=2 -> a different lens
+            (sandbox.tu/with-user-attributes! :rasta {"price" "2"}
+              (let [body (mt/user-http-request :rasta :get 200
+                                               (format "exploration/%d" (:id exploration)))
+                    {:keys [queries blocks leaks?]} (exploration-derived-data body)]
+                (testing "the shell is still readable via collection perms"
+                  (is (= "shared" (:name body))))
+                (is (= [] queries)
+                    "no query rows — their :name and :dataset_query carry creator-discovered values")
+                (is (= [] blocks)
+                    "no block/page tree — its titles are built from those same query names")
+                (is (not leaks?)
+                    (str "the discovered value " (pr-str discovered-value)
+                         " must not appear anywhere in the response"))))))))))
+
+(deftest same-sandbox-viewer-sees-derived-metadata-test
+  (testing "a viewer whose lens matches the creator's still gets the full derived metadata —
+            the gate must not lock out legitimate collaborators"
+    (met/with-gtaps-for-user! :rasta (price-sandbox)
+      (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
+        (with-done-exploration!
+          {:creator-id (mt/user->id :lucky) :data-access-token token}
+          (fn [{:keys [exploration]}]
+            (let [body (mt/user-http-request :rasta :get 200
+                                             (format "exploration/%d" (:id exploration)))
+                  {:keys [queries leaks?]} (exploration-derived-data body)]
+              (is (= 1 (count queries)) "the query row is returned")
+              (is leaks? "and its creator-derived name is visible to a same-lens viewer"))))))))
+
+(deftest creator-sees-own-derived-metadata-test
+  (testing "the creator always sees their own derived metadata, even against an incompatible stored token"
+    (with-done-exploration!
+      {:creator-id        (mt/user->id :rasta)
+       :data-access-token {:sandbox {(mt/id :venues) [1 "x" {"price" "999"}]}}}
+      (fn [{:keys [exploration]}]
+        (let [body (mt/user-http-request :rasta :get 200
+                                         (format "exploration/%d" (:id exploration)))
+              {:keys [queries leaks?]} (exploration-derived-data body)]
+          (is (= 1 (count queries)))
+          (is leaks? "the creator reads back the values their own lens produced"))))))
 
 (deftest unsandboxed-viewer-with-perms-sees-cached-result-test
   (testing "an unsandboxed viewer with data perms may stream a sandboxed creator's result (superset)"
