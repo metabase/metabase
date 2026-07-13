@@ -142,10 +142,6 @@ export function ExplicitSize<T>({
       }
 
       _getRefreshMode = () => {
-        if (this._printMediaQuery?.matches) {
-          return "none"; // disable flushSync when printing, it can cause layout issues (issue#74181)
-        }
-
         if (this.context) {
           // Unjustified type cast. FIXME
           return this.context as RefreshMode;
