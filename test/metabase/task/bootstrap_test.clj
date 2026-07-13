@@ -13,6 +13,7 @@
   []
   (let [calls (atom [])
         mock  (reify Connection
+                (unwrap [this _iface] this)
                 (close [_] (swap! calls conj :close))
                 (commit [_] (swap! calls conj :commit))
                 (rollback [_] (swap! calls conj :rollback))
@@ -50,6 +51,17 @@
           (.prepareStatement proxy "SELECT 1")
           (is (= [:getAutoCommit :isClosed :prepareStatement] @calls)
               "Non-suppressed methods should be forwarded to the underlying connection"))))))
+
+(deftest getConnection-reuses-current-connectable-test
+  (testing "When *current-connectable* is already a Connection, getConnection reuses it rather than opening another"
+    ;; the reused connection is wrapped in a non-closeable proxy, so we can't compare the returned value directly;
+    ;; instead we `unwrap` it (which the proxy delegates) and check the underlying connection is `identical?`
+    (let [{:keys [connection]} (mock-connection)
+          provider             (task.bootstrap/->ConnectionProvider)]
+      (binding [t2.conn/*current-connectable* connection]
+        (let [^Connection conn (.getConnection provider)]
+          (is (identical? connection (.unwrap conn Connection))
+              "getConnection should reuse the Connection bound to the current thread, not check out a new one"))))))
 
 (deftest getConnection-uses-pool-when-no-current-connectable-test
   (testing "When *current-connectable* is not a Connection, getConnection gets a fresh connection from the pool"

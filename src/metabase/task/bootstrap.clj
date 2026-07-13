@@ -47,8 +47,7 @@
    (into-array Class [Connection])
    (reify InvocationHandler
      (invoke [_ _ method args]
-       (if (suppressed-methods (.getName ^Method method))
-         nil
+       (when-not (suppressed-methods (.getName ^Method method))
          (invoke-or-unwrap method conn args))))))
 
 (defrecord ^:private ConnectionProvider []
