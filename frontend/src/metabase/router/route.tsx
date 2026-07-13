@@ -1,9 +1,10 @@
-import type { ComponentClass, ReactElement } from "react";
+import { type ComponentClass, type ReactElement, createElement } from "react";
 
 import {
   type PlainRoute,
+  ReactRouterRoute,
   type RouteProps,
-  createRouteFromReactElement,
+  createRoutes,
 } from "./react-router";
 
 /**
@@ -46,13 +47,18 @@ export const Route: RouteConfigElement = Object.assign(
       element: ReactElement<RouteElementProps>,
       parentRoute?: PlainRoute,
     ): PlainRoute | undefined {
-      if (element.props.index) {
-        if (parentRoute) {
-          parentRoute.indexRoute = createRouteFromReactElement(element);
+      // Rebuild the element as a raw v3 `<Route>` so v3's own builder turns it (and
+      // its children) into a route object without dispatching back into this static.
+      const { index, ...props } = element.props;
+      const [route] = createRoutes(createElement(ReactRouterRoute, props));
+
+      if (index) {
+        if (parentRoute && route) {
+          parentRoute.indexRoute = route;
         }
         return undefined;
       }
-      return createRouteFromReactElement(element);
+      return route;
     },
   },
 );

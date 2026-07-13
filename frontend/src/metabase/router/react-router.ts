@@ -8,30 +8,20 @@
 // builders the `Route`/`redirect` shims are built on) plus the raw Link/LinkProps
 // under `Router`-prefixed names for the few call sites that need the unstyled
 // primitive.
-import type { ReactElement } from "react";
-import type { PlainRoute, RouteProps as BaseRouteProps } from "react-router";
+import type { RouteProps as BaseRouteProps } from "react-router";
 
 export {
   Link as RouterLink,
+  // The raw v3 `<Route>`, used by the `Route` shim to run v3's route builder over
+  // a `<Route index>` element without recursing back into the shim's own builder.
+  Route as ReactRouterRoute,
   Router,
   createMemoryHistory,
+  createRoutes,
   formatPattern,
   useRouterHistory,
   withRouter,
 } from "react-router";
-
-// v3's route-config builder, used by the `Route` shim to turn a `<Route>` element
-// (and its children) into a plain route object. `@types/react-router` only types
-// the `createRoutes` wrapper, so declare the leaf we actually need. Goes away with
-// the engine swap.
-export { createRouteFromReactElement } from "react-router/lib/RouteUtils";
-
-declare module "react-router/lib/RouteUtils" {
-  export function createRouteFromReactElement(
-    element: ReactElement,
-    parentRoute?: PlainRoute,
-  ): PlainRoute;
-}
 
 export type {
   InjectedRouter,
