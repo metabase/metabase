@@ -1,5 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
-import type { Row, SortingState } from "@tanstack/react-table";
+import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -22,13 +22,9 @@ import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { WithRouterProps } from "metabase/router";
-import { Flex, type SelectionState, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  AdminNotification,
-  NotificationId,
-  UserId,
-} from "metabase-types/api";
+import type { NotificationId, UserId } from "metabase-types/api";
 
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
@@ -62,15 +58,8 @@ export const NotificationsAdminPage = ({
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const dispatch = useDispatch();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
-  const [selectedIds, setSelectedIds] = useState<Set<NotificationId>>(
-    new Set(),
-  );
-  const clearSelected = useCallback(() => setSelectedIds(new Set()), []);
-  const getSelectionState = useCallback(
-    (row: Row<AdminNotification>): SelectionState =>
-      selectedIds.has(row.original.id) ? "all" : "none",
-    [selectedIds],
-  );
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const clearSelected = useCallback(() => setRowSelection({}), []);
   const [isChangeOwnerOpened, setIsChangeOwnerOpened] = useState(false);
 
   const { modalContent: confirmContent, show: showConfirm } = useConfirmation();
@@ -80,11 +69,11 @@ export const NotificationsAdminPage = ({
   );
   const notifications = useMemo(() => data?.data ?? [], [data?.data]);
   const total = data?.total ?? 0;
-  const selectedCount = selectedIds.size;
   const selectedNotifications = useMemo(
-    () => notifications.filter((n) => selectedIds.has(n.id)),
-    [notifications, selectedIds],
+    () => notifications.filter((n) => rowSelection[String(n.id)]),
+    [notifications, rowSelection],
   );
+  const selectedCount = selectedNotifications.length;
 
   const { data: failingData, isLoading: isFailingLoading } =
     useAdminListNotificationsQuery({
@@ -168,26 +157,6 @@ export const NotificationsAdminPage = ({
     },
     [patchUrlState],
   );
-
-  const handleToggleRow = useCallback((id: NotificationId) => {
-    setSelectedIds((prev) =>
-      prev.has(id)
-        ? new Set([...prev].filter((x) => x !== id))
-        : new Set([...prev, id]),
-    );
-  }, []);
-
-  const handleToggleAll = useCallback(() => {
-    setSelectedIds((prev) => {
-      const allIds = notifications.map((n) => n.id);
-      const allSelected =
-        allIds.length > 0 && allIds.every((id) => prev.has(id));
-      if (allSelected) {
-        return new Set();
-      }
-      return new Set([...prev, ...allIds]);
-    });
-  }, [notifications]);
 
   const handleRowClick = (id: NotificationId) => {
     trackAlertsManagementAlertOpened(id, "table_row");
@@ -365,12 +334,11 @@ export const NotificationsAdminPage = ({
             notifications={notifications}
             error={error}
             isLoading={isLoading}
-            getSelectionState={getSelectionState}
+            rowSelection={rowSelection}
             selectedDetailId={notificationId}
             sorting={sorting}
             onSortingChange={handleSortingChange}
-            onToggleRow={handleToggleRow}
-            onToggleAll={handleToggleAll}
+            onRowSelectionChange={setRowSelection}
             onRowClick={handleRowClick}
           />
 

@@ -439,6 +439,19 @@ describe("NotificationsAdminPage", () => {
       ).toBeInTheDocument();
     });
 
+    it("selects the keyboard-highlighted row via space", async () => {
+      setup({ notifications: [notification1, notification2] });
+      await waitForLoaderToBeRemoved();
+
+      screen.getByRole("treegrid", { name: "Notifications" }).focus();
+      await userEvent.keyboard("{ArrowDown} ");
+
+      const bar = await screen.findByTestId("toast-card");
+      expect(within(bar).getByText("1 alert selected")).toBeInTheDocument();
+      const row1 = screen.getByTestId("notification-row-1");
+      expect(within(row1).getByRole("checkbox")).toBeChecked();
+    });
+
     it("clears the selection with the Clear button", async () => {
       setup({ notifications: [notification1, notification2] });
       await waitForLoaderToBeRemoved();
