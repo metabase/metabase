@@ -25,8 +25,14 @@
       "import": "./dist/data-app.js"
     },
     "./data-app-dev": {
-      "types": "./dist/data-app-dev.d.ts",
-      "import": "./dist/data-app-dev.js"
+      "node": {
+        "types": "./dist/data-app-dev.config.d.ts",
+        "default": "./dist/data-app-dev.config.js"
+      },
+      "default": {
+        "types": "./dist/data-app-dev.d.ts",
+        "default": "./dist/data-app-dev.js"
+      }
     },
     "./package.json": "./package.json"
   },

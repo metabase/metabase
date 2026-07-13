@@ -78,7 +78,7 @@ const cliConfig = {
 /** @type {import('@rspack/cli').Configuration} */
 const dataAppDevConfig = {
   mode: "production",
-  entry: `${SDK_PACKAGE_SRC_PATH}/data-app-dev.ts`,
+  entry: `${SDK_PACKAGE_SRC_PATH}/data-app-dev.config.ts`,
   target: "node",
   context: SDK_PACKAGE_SRC_PATH,
   // The consumer's app provides the Vite toolchain (the same Vite instance runs
@@ -94,7 +94,7 @@ const dataAppDevConfig = {
   externalsType: "module",
   output: {
     path: SDK_DIST_PATH,
-    filename: "data-app-dev.js",
+    filename: "data-app-dev.config.js",
     library: { type: "module" },
   },
   experiments: { outputModule: true },
