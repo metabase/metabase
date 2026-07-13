@@ -24,7 +24,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { IndexRedirect, IndexRoute, Route } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
@@ -118,7 +118,7 @@ export function initializePlugin() {
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
-        <IndexRoute component={TenantsListingApp} />
+        <Route index component={TenantsListingApp} />
         <Route path="" component={TenantsListingApp}>
           <ModalRoute path="new" modal={NewTenantModal} noWrap />
           <ModalRoute
@@ -128,7 +128,7 @@ export function initializePlugin() {
           />
         </Route>
         <Route path="groups">
-          <IndexRoute component={ExternalGroupsListingApp} />
+          <Route index component={ExternalGroupsListingApp} />
           <Route path=":groupId" component={ExternalGroupDetailApp} />
         </Route>
         <Route path="people" component={ExternalPeopleListingApp}>
@@ -138,7 +138,7 @@ export function initializePlugin() {
             noWrap
           />
           <Route path=":userId">
-            <IndexRedirect to="/admin/people/tenants/people" />
+            <Route index component={redirect("/admin/people/tenants/people")} />
             <ModalRoute
               path="edit"
               modal={(props) => <EditUserModal {...props} external />}

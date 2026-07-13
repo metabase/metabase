@@ -3,7 +3,7 @@ import {
   PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
@@ -27,10 +27,10 @@ import { TransformsNotDisabled } from "./route-guards";
 export function getDataStudioTransformRoutes() {
   return (
     <Route component={TransformsNotDisabled}>
-      <IndexRoute component={TransformListPage} />
+      <Route index component={TransformListPage} />
       <Route path="runs" component={RunListPage} />
       <Route path="jobs" component={JobSectionLayout}>
-        <IndexRoute component={JobListPage} />
+        <Route index component={JobListPage} />
         <Route path="new" component={NewJobPage} />
         <Route path=":jobId" component={JobPage} />
         <Route path=":jobId/runs" component={JobRunListPage} />
@@ -50,7 +50,7 @@ export function getDataStudioTransformRoutes() {
           path=":transformId/dependencies"
           component={TransformDependenciesPage}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
       {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}

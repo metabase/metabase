@@ -1,5 +1,5 @@
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { IndexRoute, Route } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { ArchivedSnippetsPage } from "./pages/ArchivedSnippetsPage";
 import { EditSnippetPage } from "./pages/EditSnippetPage";
@@ -17,7 +17,7 @@ export function getDataStudioSnippetRoutes() {
           path="snippets/:snippetId/dependencies"
           component={SnippetDependenciesPage}
         >
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+          <Route index component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
     </>
