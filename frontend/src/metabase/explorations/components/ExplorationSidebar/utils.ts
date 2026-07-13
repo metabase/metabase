@@ -26,8 +26,19 @@ import {
   type ExplorationSortOrder,
 } from "../../sidebar-preferences";
 
+// Distinguishes the kinds of heading rows in the sidebar so each can carry its
+// own icon and reinforce where the user is in the investigation:
+//   - "root": the initial investigation thread (the origin of everything)
+//   - "sub-exploration": a follow-up research thread
+//   - "metric-group": a block of pages for one metric within a thread
+export type ExplorationHeadingKind =
+  | "root"
+  | "sub-exploration"
+  | "metric-group";
+
 export interface ExplorationTreeHeading {
   type: "heading";
+  headingKind: ExplorationHeadingKind;
   explorationId?: ExplorationId;
   thread?: ExplorationThread;
   status?: ExplorationQueryStatus;
@@ -119,6 +130,8 @@ export function getExplorationSidebarTree(
         icon: "empty" as const,
         data: {
           type: "heading" as const,
+          headingKind:
+            index === 0 ? ("root" as const) : ("sub-exploration" as const),
           explorationId: exploration.id,
           thread,
           status: getExplorationQueryGroupStatus(thread.queries ?? []),
@@ -234,6 +247,7 @@ function getExplorationQueryTree(
       icon: "empty",
       data: {
         type: "heading",
+        headingKind: "metric-group",
         status: getExplorationQueryGroupStatus(
           children.flatMap((child) =>
             isExplorationTreePage(child) ? (child.data?.queries ?? []) : [],

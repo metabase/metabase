@@ -16,6 +16,8 @@ export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
   TreeNode?: any;
   tree?: TreeController<TData>;
+  /** See TreeNodeList: wrap each node + subtree in an <li>. */
+  wrapNodes?: boolean;
 }
 
 function BaseTree<TData = unknown>({
@@ -28,6 +30,7 @@ function BaseTree<TData = unknown>({
   TreeNode = DefaultTreeNode,
   rightSection,
   tree,
+  wrapNodes,
   ...boxProps
 }: TreeProps<TData>) {
   const defaultController = useTree({
@@ -55,6 +58,7 @@ function BaseTree<TData = unknown>({
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
       rightSection={rightSection}
+      wrapNodes={wrapNodes}
       {...boxProps}
     />
   );

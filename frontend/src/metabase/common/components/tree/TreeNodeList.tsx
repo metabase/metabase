@@ -19,6 +19,13 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
+  /**
+   * Wrap each node and its (expanded) subtree in an <li>, so CSS can treat
+   * them as one block — e.g. a `position: sticky` group heading is then
+   * contained by (and pushed out at the end of) its own group instead of
+   * sticking for the lifetime of the whole list.
+   */
+  wrapNodes?: boolean;
 }
 
 function BaseTreeNodeList<TData = unknown>({
@@ -31,6 +38,7 @@ function BaseTreeNodeList<TData = unknown>({
   TreeNode,
   rightSection,
   role,
+  wrapNodes,
   ...boxProps
 }: TreeNodeListProps<TData>) {
   const selectedRef = useScrollOnMount<HTMLLIElement>();
@@ -46,8 +54,8 @@ function BaseTreeNodeList<TData = unknown>({
           typeof onSelect === "function" ? () => onSelect(item) : undefined;
         const onItemToggle = () => onToggleExpand(item.id);
 
-        return (
-          <Fragment key={item.id}>
+        const node = (
+          <>
             <TreeNode
               ref={isSelected ? selectedRef : null}
               item={item}
@@ -69,9 +77,19 @@ function BaseTreeNodeList<TData = unknown>({
                 onToggleExpand={onToggleExpand}
                 TreeNode={TreeNode}
                 rightSection={rightSection}
+                wrapNodes={wrapNodes}
               />
             )}
-          </Fragment>
+          </>
+        );
+
+        return wrapNodes ? (
+          // Presentation-only wrapper: the semantic roles live on the node rows.
+          <Box component="li" role="none" key={item.id}>
+            {node}
+          </Box>
+        ) : (
+          <Fragment key={item.id}>{node}</Fragment>
         );
       })}
     </Box>
