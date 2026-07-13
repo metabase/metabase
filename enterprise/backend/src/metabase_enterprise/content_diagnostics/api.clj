@@ -22,7 +22,7 @@
 
 ;;; -------------------------------------------- response schema ----------------------------------------
 ;;; The HTTP response contract. Distinct from a checker's internal finding map (kebab keys, pre-hydration)
-;;; — these describe the hydrated snake_case shape `api.common/hydrate-findings` produces.
+;;; - these describe the hydrated snake_case shape `api.common/hydrate-findings` produces.
 
 (def ^:private NormalizedUser
   "A finding's `owner`: a Metabase user `{id,name,email,type:user}`, or - for an external transform owner -
@@ -127,7 +127,7 @@
 
 (defn- slow-where-clause
   "WHERE for the slow list: the valid + permission-visible base, narrowed by the optional per-request
-  filters. `min-duration-ms` is a native `duration_ms` floor — containers filter naturally, since they
+  filters. `min-duration-ms` is a native `duration_ms` floor - containers filter naturally, since they
   stamp a representative duration. Same precompute-then-`cond->` shape as `stale-where-clause`."
   [{:keys [include-personal-collections entity-types min-duration-ms query]}]
   (let [personal-filter    (when-not include-personal-collections (api.common/exclude-personal-collections-clause))
@@ -148,7 +148,7 @@
       [:scan_id       :string]
       [:finding_count :int]
       [:duration_ms   :int]]
-  "Run a scan **synchronously** and return its topline. Demo/dev-only — the production trigger is the
+  "Run a scan **synchronously** and return its topline. Demo/dev-only - the production trigger is the
   scheduled Quartz job. Synchronous (calls `scan/scan!` directly, not `trigger-now!`) so it works with
   the scheduler disabled (`MB_DISABLE_SCHEDULER=true`)."
   []

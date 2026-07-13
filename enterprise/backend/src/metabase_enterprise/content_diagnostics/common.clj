@@ -17,13 +17,13 @@
    :transform :model/Transform})
 
 (def model->entity-type
-  "Inverse of [[entity-type->model]] — some candidate sources (e.g. `find-candidates`) return `:model`
+  "Inverse of [[entity-type->model]] - some candidate sources (e.g. `find-candidates`) return `:model`
   keywords like `:model/Card`."
   (set/map-invert entity-type->model))
 
 (defn attach-entity-attrs
-  "Stamp each finding with the denormalized display/sort columns — `:entity-name`, `:entity-created-at`,
-  `:entity-creator-id`, `:entity-creator-name` — batch-resolved from each entity's own model (F ≪ N: one
+  "Stamp each finding with the denormalized display/sort columns - `:entity-name`, `:entity-created-at`,
+  `:entity-creator-id`, `:entity-creator-name` - batch-resolved from each entity's own model (F ≪ N: one
   query per entity-type over just the flagged ids, plus one `creator_id → common_name` lookup over the
   distinct creators). Values a checker has already set win (e.g. the stale checker's `:entity-name` from
   its own query), so this only fills what the checker left unset. All four covered models expose

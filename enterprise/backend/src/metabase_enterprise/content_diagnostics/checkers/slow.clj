@@ -1,10 +1,10 @@
 (ns metabase-enterprise.content-diagnostics.checkers.slow
-  "The `slow` Content Diagnostics checker — flags content whose execution time exceeds a configurable
-  threshold by reading the precomputed signals the product already caches (no re-execution — D14):
+  "The `slow` Content Diagnostics checker - flags content whose execution time exceeds a configurable
+  threshold by reading the precomputed signals the product already caches (no re-execution - D14):
 
-  - **Card** (leaf): mean `query_execution.running_time` with cache hits excluded — the same aggregate
-    the `:average_query_time` hydrate computes — over `slow-card-threshold-seconds`.
-  - **Dashboard / Document** (container): a *roll-up* — flagged when they embed ≥1 slow card. The
+  - **Card** (leaf): mean `query_execution.running_time` with cache hits excluded - the same aggregate
+    the `:average_query_time` hydrate computes - over `slow-card-threshold-seconds`.
+  - **Dashboard / Document** (container): a *roll-up* - flagged when they embed ≥1 slow card. The
     culprit card ids are frozen in `details` (`slow_entity_ids`) and hydrated to objects at read time;
     the container's own `:duration-ms` is the slowest culprit's mean, a representative magnitude so
     containers sort/filter by duration alongside leaves.
@@ -31,11 +31,11 @@
 (defn- slow-card-id->avg-ms
   "`{card-id → mean running_time (ms, rounded)}` for every **non-archived** card whose mean exceeds
   `threshold-ms`. Reads `query_execution` directly with the same aggregate as the `:average_query_time`
-  hydrate — `AVG(running_time)` excluding cache hits — so the verdict reuses the cache the product
+  hydrate - `AVG(running_time)` excluding cache hits - so the verdict reuses the cache the product
   already maintains instead of re-running anything (D14). One grouped query, no per-card loop."
   [threshold-ms]
   (into {}
-        ;; H2 returns AVG as BigDecimal — round to a Long for the native bigint column.
+        ;; H2 returns AVG as BigDecimal - round to a Long for the native bigint column.
         (map (juxt :card_id #(Math/round (double (:avg_ms %)))))
         (t2/query {:select   [[:qe.card_id :card_id] [[:avg :qe.running_time] :avg_ms]]
                    :from     [[:query_execution :qe]]
@@ -48,7 +48,7 @@
                    :having   [:> [:avg :qe.running_time] threshold-ms]})))
 
 (defn- card-findings
-  "Leaf card findings — one per slow card, carrying the measured mean (`:duration-ms`) and freezing the
+  "Leaf card findings - one per slow card, carrying the measured mean (`:duration-ms`) and freezing the
   threshold."
   [card->avg-ms threshold-ms]
   (for [[card-id avg-ms] card->avg-ms]
@@ -64,7 +64,7 @@
 ;;; `:duration-ms` is the slowest culprit's mean, so it sorts/filters by duration like a leaf.
 
 (defn- representative-duration-ms
-  "A container's stand-in magnitude — the slowest culprit card's mean."
+  "A container's stand-in magnitude - the slowest culprit card's mean."
   [card->avg-ms culprit-ids]
   (apply max (map card->avg-ms culprit-ids)))
 
@@ -113,7 +113,7 @@
   (.toMillis ^java.time.Duration (t/duration start end)))
 
 (defn- transform-findings
-  "Leaf transform findings — a transform is slow when the wall-clock duration of its **latest succeeded
+  "Leaf transform findings - a transform is slow when the wall-clock duration of its **latest succeeded
   run** exceeds `threshold-ms`. Transforms are low-cardinality and have no `archived` tier, so we pull
   succeeded runs newest-first and keep the first per transform (= its latest) via `distinct-by`."
   [threshold-ms]

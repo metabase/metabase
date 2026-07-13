@@ -9,14 +9,13 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(def ^:private prose-mirror-content-type "application/json+vnd.prose-mirror")
-
 (defn- scope-prefix
-  "Unique per-test entity-name prefix, passed as `:query` so assertions only see rows the test seeded —
+  "Unique per-test entity-name prefix, passed as `:query` so assertions only see rows the test seeded -
   the findings table is shared across tests."
   []
   (str "cd-" (mt/random-name)))
@@ -48,11 +47,11 @@
              ;; a cache hit at a huge time must NOT count toward the mean
              :model/QueryExecution _ {:card_id slow-card :started_at (t/offset-date-time)
                                       :cache_hit true :running_time 99999}
-             ;; fast card: 500ms < 10s — never flagged, and never a culprit
+             ;; fast card: 500ms < 10s - never flagged, and never a culprit
              :model/Card           {fast-card :id} {:collection_id coll-id :name "Quick Lookup"}
              :model/QueryExecution _ {:card_id fast-card :started_at (t/offset-date-time)
                                       :cache_hit false :running_time 500}
-             ;; archived card whose mean IS slow — must be excluded (not flagged, not a culprit)
+             ;; archived card whose mean IS slow - must be excluded (not flagged, not a culprit)
              :model/Card           {archived-card :id} {:collection_id coll-id :archived true}
              :model/QueryExecution _ {:card_id archived-card :started_at (t/offset-date-time)
                                       :cache_hit false :running_time 40000}
@@ -64,7 +63,7 @@
              :model/DashboardCard  _ {:dashboard_id dash-id :card_id fast-card}
              :model/Document       {doc-id :id}   {:collection_id coll-id
                                                    :creator_id    (mt/user->id :rasta)
-                                                   :content_type  prose-mirror-content-type
+                                                   :content_type  prose-mirror/prose-mirror-content-type
                                                    :document      {:type "doc"
                                                                    :content [{:type "cardEmbed"
                                                                               :attrs {:id slow-card}}]}}
@@ -118,7 +117,7 @@
                   (is (= 30000 (:duration_ms f))))))))))))
 
 (deftest slow-checker-threshold-boundary-test
-  (testing "a card's mean must strictly EXCEED the threshold (HAVING avg > threshold)"
+  (testing "a card's mean must strictly exceed the threshold (boundary is exclusive)"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-slow-card-threshold-seconds 10]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -287,7 +286,7 @@
               (testing "entity-types (single + multi)"
                 (is (= #{card-fid} (ids :entity-types "card")))
                 (is (= #{card-fid dash-fid} (ids :entity-types ["card" "dashboard"]))))
-              (testing "min-duration-ms floor — a container passes/fails on its representative duration"
+              (testing "min-duration-ms floor - a container passes/fails on its representative duration"
                 (is (= #{dash-fid xform-fid} (ids :min-duration-ms "50000")))  ; dash (50000) passes, card dropped
                 (is (= #{xform-fid} (ids :min-duration-ms "80000"))))          ; dash now fails, leaf-only
               (testing "sort by duration-ms, both directions"

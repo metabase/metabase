@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 (def covered-entity-types
-  "Entity types the Content Diagnostics finding types cover — every covered type can emit today (see
+  "Entity types the Content Diagnostics finding types cover - every covered type can emit today (see
   `common/entity-type->model`). Shared by every per-finding-type endpoint's `entity-types` param."
   #{:card :dashboard :document :transform})
 
@@ -123,7 +123,7 @@
   `report_card.type` enum (question/model/metric) that drives the FE per-member link/icon. Batched."
   [card-ids]
   (when (seq card-ids)
-    ;; `:card_schema` is required on any Card select — its after-select schema-upgrade hook reads it.
+    ;; `:card_schema` is required on any Card select - its after-select schema-upgrade hook reads it.
     (t2/select-pk->fn (fn [c] {:id (:id c) :name (:name c) :entity_type :card :card_type (:type c)})
                       [:model/Card :id :name :type :card_schema]
                       :id [:in (set card-ids)])))
@@ -143,8 +143,8 @@
   nested `details` = stored verdict + {collection, description, owner, creator}. Batched, page-size-independent.
 
   Options let each endpoint add its per-finding-type extras without changing the shared base:
-  `:top-level-cols` — extra native finding columns hoisted to the top level (e.g. `:last_active_at` for
-  stale, `:duration_ms` for slow); `:hydrate-culprits?` — replace `details.slow_entity_ids` with hydrated
+  `:top-level-cols` - extra native finding columns hoisted to the top level (e.g. `:last_active_at` for
+  stale, `:duration_ms` for slow); `:hydrate-culprits?` - replace `details.slow_entity_ids` with hydrated
   `details.slow_entities` objects (slow roll-ups)."
   [findings & [{:keys [top-level-cols hydrate-culprits?]
                 :or   {top-level-cols []}}]]

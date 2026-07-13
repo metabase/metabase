@@ -1,5 +1,5 @@
 (ns metabase-enterprise.content-diagnostics.checkers.stale
-  "The `stale` Content Diagnostics checker — instance-wide inactive content across every covered entity
+  "The `stale` Content Diagnostics checker - instance-wide inactive content across every covered entity
   type, sourced from the stale module's staleness-rule entry point. Freezes the staleness threshold and
   the per-entity activity anchor at scan time (drift between scans is acceptable)."
   (:require
@@ -22,7 +22,7 @@
         {:keys [rows]} (stale.impl/find-candidates
                         {:collection-ids  :all
                          :models          (set (vals common/entity-type->model))
-                         ;; name + recency come from the stale query — the per-model recency source
+                         ;; name + recency come from the stale query - the per-model recency source
                          ;; stays single-sourced in the `find-stale-query` arms.
                          :include-columns #{:name :last_used_at}
                          :cutoff-date     cutoff
@@ -40,6 +40,6 @@
         ;; scan-time activity anchor (the stale query aliases each model's recency column to
         ;; `last_used_at`); nil ⇒ never used/ran
         :last-active-at last_used_at
-        ;; denormalized at scan time — the sort/display name; drift between scans is acceptable
+        ;; denormalized at scan time - the sort/display name; drift between scans is acceptable
         :entity-name    entity-name
         :details        {:threshold_days threshold}}))))
