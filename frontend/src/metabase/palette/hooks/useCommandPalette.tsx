@@ -10,8 +10,8 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
-import { useGetIcon } from "metabase/hooks/use-icon";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -40,7 +40,6 @@ export const useCommandPalette = ({
   locationQuery: Query;
 }) => {
   const dispatch = useDispatch();
-  const getIcon = useGetIcon();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const { isVisible } = useKBar((s) => ({
     isVisible: s.visualState !== VisualState.hidden,
@@ -242,7 +241,6 @@ export const useCommandPalette = ({
     locationQuery,
     isSearchTypeaheadEnabled,
     searchRequestId,
-    getIcon,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -272,7 +270,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [disabled, recentItems, getIcon]);
+  }, [disabled, recentItems]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,
