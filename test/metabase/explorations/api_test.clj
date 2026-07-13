@@ -1559,7 +1559,10 @@
                      :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)] :value 1}]}]
         (mt/user-http-request other :post 403 (format "exploration/%d/explore-further" expl-id) body)
         (mt/user-http-request owner :post 404 (format "exploration/%d/explore-further" expl-id)
-                              (assoc body :page_id 9999999))))))
+                              (assoc body :page_id 9999999))
+        (testing "an empty explore_filters is rejected — it would just clone the source thread unscoped"
+          (mt/user-http-request owner :post 400 (format "exploration/%d/explore-further" expl-id)
+                                (assoc body :explore_filters [])))))))
 
 (deftest exploration-create-auto-creates-scratchpad-document-test
   (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"

@@ -273,17 +273,17 @@
 
 (defn- apply-single-explore-filter
   "Apply one `{:field_ref ... :value ...}` filter spec to `card`'s `dataset_query`."
-  [mp card {:keys [field_ref value] :as filter}]
-  (let [field_ref (or field_ref
-                      (throw (ex-info "Explore filter missing :field_ref" filter)))
-        base       (lib/query mp (:dataset_query card))
+  [mp card {:keys [field_ref value] :as filter-spec}]
+  (when-not field_ref
+    (throw (ex-info "Explore filter missing :field_ref" {:filter-spec filter-spec})))
+  (let [base       (lib/query mp (:dataset_query card))
         ref-clause (qp.mbql/normalize-target-ref field_ref)
         col        (or (lib/find-matching-column base -1 ref-clause
                                                  (lib/breakoutable-columns base))
                        (throw (ex-info "Could not resolve explore filter field ref on metric query"
-                                       {:field_ref field_ref})))
-        fref     (filter-ref-from-click ref-clause col)
-        filtered (lib/filter base (lib/= fref value))]
+                                       {:field-ref field_ref})))
+        fref       (filter-ref-from-click ref-clause col)
+        filtered   (lib/filter base (lib/= fref value))]
     (assoc card :dataset_query filtered)))
 
 (defn- apply-explore-filters

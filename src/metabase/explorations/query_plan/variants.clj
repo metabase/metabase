@@ -153,7 +153,7 @@
         k         (:k params)
         ;; Include the "Explore further" filter chain in the key: two threads sharing a
         ;; (card, dim, k) but scoped to different segments must not share top-N discovery results.
-        cache-key [card-id dim-id k (hash explore-filters)]]
+        cache-key [card-id dim-id k explore-filters]]
     (cache.wrapped/lookup-or-miss
      discovery-cache cache-key
      (fn [_] (or (run-top-k-discovery mp card target dim k) [])))))

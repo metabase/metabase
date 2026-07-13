@@ -191,6 +191,37 @@
         (is (= :month (lib/raw-temporal-bucket lhs))
             "click ref's :month bucket is applied to the explore filter target")))))
 
+(deftest build-row-context-applies-temporal-pattern-bucket-filter-test
+  (testing "the temporal-pattern variants (day-of-week / hour-of-day) bucket the filter target too —"
+    ;; These two are the cases the old `explore-filter-ref` special-cased off the page's
+    ;; `query_type`. The bucket now rides on the click's own `:field_ref`, so a click on an
+    ;; "Hour of day" bar must filter `hour(created_at) = 19`, not `created_at = 19` (which would
+    ;; match nothing and silently render an empty chart).
+    (doseq [[unit value] [[:day-of-week 3] [:hour-of-day 19]]]
+      (testing (str "unit " unit)
+        (mt/with-temp [:model/Card metric {:type :metric :dataset_query (orders-count-metric-query)}
+                       :model/Exploration e {:name "x"}
+                       :model/ExplorationThread t {:exploration_id (:id e)}]
+          (let [cid        (:id metric)
+                created-at (mt/id :orders :created_at)
+                mappings   [{:dimension_id "d1" :table_id (mt/id :orders)
+                             :target ["field" {} created-at]}]
+                page-id    (insert-block-page-row!
+                            (:id t) cid
+                            {:metrics    [{:card_id cid
+                                           :dimension_mappings mappings
+                                           :explore_filters    [{:field_ref ["field" {:temporal-unit unit} created-at]
+                                                                 :value     value}]}]
+                             :dimensions [{:dimension_id "d1" :display_name "Created At"
+                                           :effective_type "type/DateTimeWithLocalTZ"}]}
+                            "d1")
+                ctx        (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                          :page_id page-id :params {}})
+                q          (lib/query (mt/metadata-provider) (:dataset_query (:card ctx)))
+                lhs        (get (first (lib/filters q)) 2)]
+            (is (= unit (lib/raw-temporal-bucket lhs))
+                "the clicked bar's extraction unit is applied to the explore filter target")))))))
+
 (deftest build-row-context-applies-binning-filter-test
   (testing "build-row-context applies the click ref's numeric binning to the explore filter target"
     (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}

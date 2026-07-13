@@ -487,7 +487,7 @@
   `:explore_filters`."
   [:map
    [:page_id         ms/PositiveInt]
-   [:explore_filters [:sequential ExploreFilterSpec]]])
+   [:explore_filters [:sequential {:min 1} ExploreFilterSpec]]])
 
 (def ^:private UpdateExploration
   "Body schema for `PUT /api/exploration/:id`. All fields are optional; only the keys the client

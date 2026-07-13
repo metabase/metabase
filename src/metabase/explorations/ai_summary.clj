@@ -166,6 +166,13 @@
                  :name                  auto-doc-name
                  :archived              false))
 
+(defn- explore-further-thread?
+  [thread-id]
+  (->> (t2/select :model/ExplorationBlock :exploration_thread_id thread-id)
+       (mapcat :metrics)
+       (some (comp seq :explore_filters))
+       boolean))
+
 ;;; ----- Error document — used when a phase fatally fails validation -----
 
 (defn error-doc
@@ -414,13 +421,14 @@
   `with-current-user creator-id` binding so the LLM calls see the creator's
   metabot permissions / usage limits. The mid-run `ExceptionInfo` safety net routes a
   perms/usage change to a skip via [[mid-run-skip!]]."
-  [{:keys [thread-id thread creator-id done-queries prepped
+  [{:keys [thread-id thread creator-id collection-id done-queries prepped
            selections timelines]}]
   (request/with-current-user creator-id
     (try
       (b/cond
-        :when-let [placeholder-doc (find-placeholder-doc thread-id)]
-        :let [breakouts        (common/group-breakouts prepped)
+        :let [placeholder-doc  (or (find-placeholder-doc thread-id)
+                                   (create-placeholder-doc! thread-id creator-id collection-id))
+              breakouts        (common/group-breakouts prepped)
               breakouts-by-rep (u/index-by :rep-id breakouts)
               p1               (run-curation-phase! {:thread-id        thread-id
                                                      :thread           thread
@@ -491,6 +499,11 @@
   (log/infof "No usable chart blocks for thread %d; skipping AI Summary" thread-id)
   :skip-no-charts)
 
+(defn- skip-explore-further!
+  [thread-id]
+  (log/infof "Thread %d came from an \"Explore further\" drill; skipping AI Summary" thread-id)
+  :skip-explore-further)
+
 (defn- handle-uncaught-error!
   "Best-effort cleanup after an uncaught throwable in [[generate-ai-summary!]]:
   swap the placeholder doc for an error body so the user doesn't stare at a
@@ -530,8 +543,9 @@
 
   Returns `:ok` on success, a keyword reason on graceful skip
   (`:skip-metabot-disabled`, `:skip-no-llm`, `:skip-usage-limit`, `:skip-no-permission`,
-  `:skip-no-charts`), `:phase-1-failed` / `:phase-2-failed` when the corresponding phase
-  couldn't be repaired, or `nil` on an uncaught throwable (logged but never thrown)."
+  `:skip-no-charts`, `:skip-explore-further`), `:phase-1-failed` / `:phase-2-failed` when the
+  corresponding phase couldn't be repaired, or `nil` on an uncaught throwable (logged but never
+  thrown)."
   [thread-id]
   (try
     (b/cond
@@ -540,6 +554,9 @@
 
       (nil? thread)
       (do (log/warnf "Thread %d not found" thread-id) nil)
+
+      (explore-further-thread? thread-id)
+      (skip-explore-further! thread-id)
 
       :let [exploration (t2/select-one [:model/Exploration :creator_id :collection_id]
                                        :id (:exploration_id thread))
@@ -556,15 +573,15 @@
       (empty? prepped)
       (skip-no-charts! thread-id)
 
-      ;; The placeholder doc was created up-front by the exploration POST endpoint so the FE
-      ;; sidebar shows it the moment the exploration is created. Every branch in `run-phases!`
+      ;; The placeholder doc is created up-front by the exploration POST endpoint so the FE sidebar
+      ;; shows it the moment the exploration is created. Every branch in `run-phases!`
       ;; (phase-1-failed, phase-2-failed, ok) swaps this doc's body in place — we never insert a
-      ;; second doc. For threads created before the endpoint started pre-creating it,
-      ;; `run-phases!` falls back to creating one.
+      ;; second doc. When it's missing, `run-phases!` re-creates it.
       :else
       (run-phases! {:thread-id     thread-id
                     :thread        thread
                     :creator-id    creator-id
+                    :collection-id (:collection_id exploration)
                     :done-queries  done-queries
                     :prepped       prepped
                     :selections    selections
