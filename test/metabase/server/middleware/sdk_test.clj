@@ -16,10 +16,11 @@
                 (f char)))))
 
 (defn- mock-request
-  [{:keys [client version]}]
+  [{:keys [client version identifier]}]
   (cond-> (ring.mock/request :get "api/health")
-    client  (ring.mock/header (keyword (wonk-case "x-metabase-client")) client)
-    version (ring.mock/header (keyword (wonk-case "x-metabase-client-version")) version)))
+    client     (ring.mock/header (keyword (wonk-case "x-metabase-client")) client)
+    version    (ring.mock/header (keyword (wonk-case "x-metabase-client-version")) version)
+    identifier (ring.mock/header (keyword (wonk-case "x-metabase-client-identifier")) identifier)))
 
 (deftest bind-client-test
   (are [client]
@@ -42,6 +43,30 @@
                 (:body response "no-body"))))
     nil
     "1.1.1"))
+
+(deftest bind-client-identifier-test
+  (are [identifier]
+       (let [request (mock-request {:client "data-app" :identifier identifier})
+             handler (analytics.core/embedding-mw
+                      (fn [_ respond _] (respond {:status 200 :body (sdk/get-client-identifier)})))
+             response (handler request identity identity)]
+         (is (= identifier (:body response))))
+    nil
+    "my-data-app")
+  (testing "oversized identifiers are truncated to fit the varchar(254) column"
+    (let [request (mock-request {:client "data-app" :identifier (apply str (repeat 300 "a"))})
+          handler (analytics.core/embedding-mw
+                   (fn [_ respond _] (respond {:status 200 :body (sdk/get-client-identifier)})))
+          response (handler request identity identity)]
+      (is (= 254 (count (:body response)))))))
+
+(deftest include-sdk-info-client-identifier-test
+  (binding [sdk/*client-identifier* "my-data-app"]
+    (is (=? {:embedding_client_identifier "my-data-app"}
+            (analytics.core/include-sdk-info {}))))
+  (testing "an existing value is kept when the var is unset"
+    (is (=? {:embedding_client_identifier "my-data-app"}
+            (analytics.core/include-sdk-info {:embedding_client_identifier "my-data-app"})))))
 
 (deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
   (mt/with-prometheus-system! [_ system]

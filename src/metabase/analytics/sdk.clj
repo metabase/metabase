@@ -40,6 +40,12 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+(def ^:dynamic *client-identifier*
+  "Used to track the identifier of the concrete embedding client, e.g. the data-app name."
+  nil)
+
+(defn get-client-identifier "Returns [[*client-identifier*]]." [] *client-identifier*)
+
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
 (defn get-route "Returns [[*route*]]." [] *route*)
@@ -119,6 +125,7 @@
   [m :- :map]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
+      (update :embedding_client_identifier (fn [identifier] (or *client-identifier* identifier)))
       (update :embedding_route (fn [route] (or *route* route)))
       (update :embedding_sdk_version (fn [version] (or *version* version)))
       (update :auth_method (fn [method] (or *auth-method* method)))
@@ -175,14 +182,18 @@
     [request respond raise]
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])
+          ;; column is varchar(254); truncate rather than fail the row insert on an oversized header
+          identifier (some-> (get-in request [:headers "x-metabase-client-identifier"])
+                             (as-> s (subs s 0 (min (count s) 254))))
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
           route (embedding-route (:uri request))
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
           client (cond-> metabase-client-header
                    preview? (some-> (str "-preview")))]
-      (binding [*client*  client
-                *route*   route
-                *version* version]
+      (binding [*client*            client
+                *client-identifier* identifier
+                *route*             route
+                *version*           version]
         (handler request
                  (fn responder [response]
                    ;; Only track prometheus when NO route match AND header is an embedding context

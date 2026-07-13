@@ -1,10 +1,8 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
-import { setIsDataApp } from "metabase/embedding/config";
 
 import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
-import { readNameFromUrl } from "./lib/read-name-from-url";
 
 /**
  * Entry point loaded by `data-app.html` and served from `/embed/apps/:name`.
@@ -14,8 +12,6 @@ import { readNameFromUrl } from "./lib/read-name-from-url";
  * bundle, instantiates it inside a Near Membrane sandbox bound to *this*
  * window, and renders the resulting component.
  */
-
-setIsDataApp(readNameFromUrl() ?? "");
 
 // Register the full SDK bundle surface in-process (no separately-loaded
 // `main.bundle.js` request) so everything the data-app sandbox endows resolves

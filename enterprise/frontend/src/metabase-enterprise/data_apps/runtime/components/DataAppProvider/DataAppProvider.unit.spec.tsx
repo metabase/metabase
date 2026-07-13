@@ -31,7 +31,7 @@ const setup = (providerProps?: Record<string, unknown>) => {
   } as unknown as ReturnType<typeof useHostSdkStore>);
 
   render(
-    <DataAppProvider providerProps={providerProps}>
+    <DataAppProvider appName="test-app" providerProps={providerProps}>
       <div>app content</div>
     </DataAppProvider>,
   );

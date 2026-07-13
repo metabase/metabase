@@ -1,0 +1,35 @@
+## Adds the embedding_client_identifier column that stores the value of the
+## X-Metabase-Client-Identifier request header (e.g. the data-app name), so
+## query executions and views can be attributed to a concrete embedding client,
+## not just a client type.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-13T00:00:00
+      author: timofei
+      comment: Add embedding_client_identifier column to query_execution for embedding analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_client_identifier
+                  remarks: Identifier of the concrete embedding client (e.g. the data-app name) from the X-Metabase-Client-Identifier header
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-07-13T00:00:01
+      author: timofei
+      comment: Add embedding_client_identifier column to view_log for embedding analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_client_identifier
+                  remarks: Identifier of the concrete embedding client (e.g. the data-app name) from the X-Metabase-Client-Identifier header
+                  type: varchar(254)
+                  constraints:
+                    nullable: true

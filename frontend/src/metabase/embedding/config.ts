@@ -42,9 +42,13 @@ export function setIsStaticEmbedding() {
   EMBEDDING_CONFIG.isStaticEmbedding = true;
 }
 
-export function setIsDataApp(dataAppName: string) {
+export function setIsDataApp(
+  dataAppName: string,
+  { isDev = false }: { isDev?: boolean } = {},
+) {
   EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
   EMBEDDING_SDK_CONFIG.isDataApp = true;
+  EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
   EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
   EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppName;
 
@@ -53,6 +57,9 @@ export function setIsDataApp(dataAppName: string) {
       name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
       identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
     });
+
+  PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
+    setEmbedPreviewHeader;
 
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer =
     setReactSdkEmbedReferrerHeader;
@@ -76,4 +83,11 @@ export function isEmbedding() {
  */
 export function isEmbedPreview() {
   return IFRAMED_IN_SELF && !EMBEDDING_SDK_CONFIG.isDataApp;
+}
+
+/**
+ * Detect if a data app is run in dev env (Vite dev app)
+ */
+export function isDataAppDev() {
+  return EMBEDDING_SDK_CONFIG.isDataAppDev;
 }

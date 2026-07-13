@@ -6,6 +6,7 @@ type InternalSdkConfig = {
   isEmbeddingSdk: boolean;
   isMcpApp: boolean;
   isDataApp: boolean;
+  isDataAppDev: boolean;
   metabaseClientRequestHeader:
     | "embedding-sdk-react"
     | "embedding-simple"
@@ -32,6 +33,13 @@ export const EMBEDDING_SDK_CONFIG: InternalSdkConfig = {
    * Whether we are in the Data App context.
    **/
   isDataApp: false,
+
+  /**
+   * Whether the data app runs in the local development flow. Reported to the
+   * backend via the X-Metabase-Embedded-Preview header, so its traffic is
+   * recorded as the "data-app-preview" embedding client.
+   **/
+  isDataAppDev: false,
 
   /**
    * Which X-Metabase-Client header to use for requests to the Metabase instance?
