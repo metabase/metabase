@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -46,9 +47,14 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_" (config/current-major-version) "_"
+             (tx/hash-dataset db-def) "_" database-name)
+        :else
+        (str "sha_58_" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
@@ -144,6 +150,7 @@
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- delete-old-datasets-if-needed!
   "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
@@ -164,8 +171,10 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old datasets that should be deleted
-    (delete-old-datasets-if-needed!)
+    ;; disabling this like on release-x.59.x and up (see #74663): it deletes tracked datasets not
+    ;; accessed in the last 2 days, including datasets other branches' CI runs may be relying on.
+    ;; If datasets change, old versions will need to be manually GCed.
+    ;; (delete-old-datasets-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
@@ -222,19 +231,6 @@
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
     nil))
 
-(defn- dataset-tracked?!
-  [conn driver db-def]
-  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                       driver
-                                       conn
-                                       "SELECT true as tracked FROM metabase_test_tracking.PUBLIC.datasets WHERE hash = ? and name = ?"
-                                       [(tx/hash-dataset db-def) (qualified-db-name db-def)])
-              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-    (some-> rs
-            resultset-seq
-            first
-            :tracked)))
-
 (defn- database-exists?!
   [conn driver db-def]
   (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
@@ -253,10 +249,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (setup-tracking-db! conn driver)
-     (and
-      (dataset-tracked?! conn driver db-def)
-      (database-exists?! conn driver db-def)))))
+     (database-exists?! conn driver db-def))))
 
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
@@ -265,6 +258,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
+     (setup-tracking-db! conn driver)
      (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                           driver
                                           conn
