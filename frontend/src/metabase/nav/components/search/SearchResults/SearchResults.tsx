@@ -188,11 +188,7 @@ export const SearchResults = ({
         })}
       </Box>
       {showFooter && (
-        <Box
-          component="li"
-          className={S.resultsFooter}
-          ref={getRef(footerComponent)}
-        >
+        <Box>
           {footerComponent({
             metadata,
             isSelected: cursorIndex === dropdownItemList.length - 1,

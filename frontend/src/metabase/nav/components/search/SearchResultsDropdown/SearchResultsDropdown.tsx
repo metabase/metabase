@@ -34,6 +34,7 @@ export const SearchResultsDropdown = ({
         className={cx(S.dropdownFooter, {
           [S.dropdownFooterSelected]: isSelected,
         })}
+        role="button"
         data-testid="search-dropdown-footer"
         justify="space-between"
         align="center"

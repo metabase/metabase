@@ -228,6 +228,7 @@ function SearchBarView({
             display="flex"
             w={rem(48)}
             h="100%"
+            aria-label={t`Close search`}
             onClick={handleClickOnClose}
           >
             <Icon name="close" />
