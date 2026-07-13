@@ -57,6 +57,7 @@ function computeTrendData(
   }
 
   const latestValue = rows[latestRowIndex][metricColumnIndex];
+  // Unjustified type cast. FIXME
   const latestDate = rows[latestRowIndex][dateColumnIndex] as string;
 
   const formattedValue = formatValue(latestValue, { column: metricColumn });

@@ -4,6 +4,7 @@
                                  :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -2424,3 +2425,74 @@
             (when (map? result)
               (is (re-find #"(?i)permission" (str (:message result) (:error result) (:error_type result)))
                   "Join to an unauthorized table via pivot download is blocked"))))))))
+
+(deftest query-runs-when-fk-target-table-blocked-test
+  (testing "a query on ORDERS succeeds and resolves the Product ID FK column even though the FK target PRODUCTS is blocked (#76710)"
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :products) :perms/view-data :blocked)
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/order-by (lib.metadata/field mp (mt/id :orders :id)) :asc)
+                        (lib/limit 5))]
+          (mt/with-test-user :rasta
+            (is (seq (mt/rows (qp/process-query query))))))))))
+
+(deftest e2e-model-based-metric-blocked-table-passthrough-test
+  (testing "a user who cannot build ad-hoc queries can still run a metric card sourced from a model, via card-perms passthrough"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (let [mp          (mt/metadata-provider)
+                  model-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+              (mt/with-temp [:model/Card {model-id :id} {:collection_id (u/the-id collection)
+                                                         :type          :model
+                                                         :dataset_query model-query}]
+                (let [mp2          (mt/metadata-provider)
+                      metric-query (-> (lib/query mp2 (lib.metadata/card mp2 model-id))
+                                       (lib/aggregate (lib/count)))]
+                  (mt/with-temp [:model/Card metric {:collection_id (u/the-id collection)
+                                                     :type          :metric
+                                                     :dataset_query metric-query}]
+                    (mt/with-test-user :rasta
+                      (binding [qp.perms/*card-id* (u/the-id metric)]
+                        (is (= [[18760]]
+                               (mt/rows (qp/process-query (:dataset_query metric)))))))))))))))))
+
+(deftest post-agg-filter-over-native-model-nosql-user-test
+  (testing "a GUI/nosql user can run a multi-stage query over a native-SQL model with a post-aggregation filter (#48771)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          ;; query-builder (not query-builder-and-native): the user has no native access
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (let [mp     (mt/metadata-provider)
+                  native (lib/native-query mp "SELECT * FROM orders")]
+              (mt/with-temp [:model/Card {model-id :id} {:collection_id   (u/the-id collection)
+                                                         :type            :model
+                                                         :dataset_query   native
+                                                         ;; native models need stored result metadata for the
+                                                         ;; downstream GUI query to reference their columns
+                                                         :result_metadata (mt/cols (qp/process-query native))}]
+                (let [mp2    (mt/metadata-provider)
+                      base   (lib/query mp2 (lib.metadata/card mp2 model-id))
+                      uid    (m/find-first #(= "user_id" (u/lower-case-en (:name %)))
+                                           (lib/returned-columns base))
+                      stage1 (-> base
+                                 (lib/aggregate (lib/count))
+                                 (lib/breakout uid)
+                                 lib/append-stage)
+                      cnt    (m/find-first #(= "count" (u/lower-case-en (:name %)))
+                                           (lib/filterable-columns stage1))
+                      query  (lib/filter stage1 (lib/> cnt 5))]
+                  (mt/with-test-user :rasta
+                    (is (seq (mt/rows (qp/process-query query))))))))))))))

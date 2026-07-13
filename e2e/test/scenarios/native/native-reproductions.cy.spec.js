@@ -63,7 +63,6 @@ describe("issue 12439", () => {
     H.sidebar().contains("Y-axis");
   });
 });
-
 describe("issue 55966", () => {
   const nativeQuery = `
     SELECT '2025-03-30 00:00:00' AS created_at, 10 AS data_value
@@ -132,7 +131,6 @@ describe("issue 15029", () => {
     cy.findAllByText("Variable name").parent().findByText("number.of.stars");
   });
 });
-
 describe("issue 16886", () => {
   const ORIGINAL_QUERY = "select 1 from orders";
   const SELECTED_TEXT = "select 1";

@@ -34,6 +34,7 @@ export function LandingPageUrlField() {
 
     if (result.error) {
       const message =
+        // Unjustified type cast. FIXME
         (result.error as { data: GenericErrorResponse })?.data?.message ||
         t`Something went wrong`;
       setError(message);

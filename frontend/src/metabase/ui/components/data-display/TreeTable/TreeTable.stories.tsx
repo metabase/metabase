@@ -247,6 +247,7 @@ export const LargeDataset = {
 export const EmptyState = {
   render: function EmptyStateStory() {
     const instance = useTreeTableInstance({
+      // Unjustified type cast. FIXME
       data: [] as CollectionItem[],
       columns: detailedColumns,
       getSubRows: (node) => node.children,

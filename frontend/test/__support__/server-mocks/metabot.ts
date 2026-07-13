@@ -36,6 +36,7 @@ export function setupMetabotsEndpoints(
   );
   metabots.forEach((metabot) => {
     fetchMock.put(`path:/api/metabot/metabot/${metabot.id}`, (call) => {
+      // Unjustified type cast. FIXME
       return { ...metabot, ...JSON.parse(call.options?.body as string) };
     });
   });

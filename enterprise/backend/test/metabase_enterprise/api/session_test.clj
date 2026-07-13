@@ -30,6 +30,7 @@
                               :disable-password-login
                               :database-auth-providers
                               :library
+                              :library-retrieval
                               :development-mode
                               :email-allow-list
                               :email-restrict-recipients
@@ -40,6 +41,7 @@
                               :hosting
                               :metabase-ai-managed
                               :metabot-v3
+                              :multi-factor-auth
                               :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
@@ -82,6 +84,7 @@
             :disable_password_login         true
             :database_auth_providers        true
             :library                        true
+            :library_retrieval              true
             :development_mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
@@ -91,6 +94,7 @@
             :hosting                        true
             :metabase-ai-managed            true
             :metabot-v3                     true
+            :multi-factor-auth              true
             :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true

@@ -8,13 +8,13 @@ export const DATA_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`Can view`,
     value: DataPermissionValue.UNRESTRICTED,
     icon: "eye",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
   controlled: {
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
   noSelfServiceDeprecated: {
     label: t`No self-service (Deprecated)`,
@@ -26,18 +26,18 @@ export const DATA_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`No`,
     value: DataPermissionValue.NO,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   queryBuilder: {
     label: t`Query builder only`,
     value: DataPermissionValue.QUERY_BUILDER,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
   queryBuilderAndNative: {
     label: t`Query builder and native`,
     value: DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
 };

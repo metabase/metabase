@@ -37,6 +37,7 @@ export const TableRowForCacheableItem = ({
     : null;
 
   const url = useMemo(
+    // Unjustified type cast. FIXME
     () => getItemUrl(model, item as { id: number; name: string }) || undefined,
     [model, item],
   );

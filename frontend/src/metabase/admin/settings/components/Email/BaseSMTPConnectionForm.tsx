@@ -124,7 +124,7 @@ export const BaseSMTPConnectionForm = ({
     if (result.error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: isErrorWithMessage(result.error)
           ? result.error.data.message
           : t`Error clearing email settings`,
@@ -151,7 +151,7 @@ export const BaseSMTPConnectionForm = ({
       } catch (error) {
         sendToast({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message: getErrorMessage(error, t`Error updating email settings`),
         });
 
@@ -169,6 +169,7 @@ export const BaseSMTPConnectionForm = ({
         .map((formKey) => getFullFormKey(formKey))
         .every(
           (field) =>
+            // Unjustified type cast. FIXME
             settingsDetails[field as keyof typeof settingsDetails]
               ?.is_env_setting,
         )

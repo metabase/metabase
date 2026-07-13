@@ -43,7 +43,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
 
   &:focus {
     border-color: var(--mb-color-core-brand);
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:not(:focus-visible) {

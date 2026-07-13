@@ -1,9 +1,9 @@
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { setInitialUrlOptions } from "metabase/redux/embed";
 import type { Dispatch } from "metabase/redux/store";
+import { push } from "metabase/router";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 export type FrameSpec = {

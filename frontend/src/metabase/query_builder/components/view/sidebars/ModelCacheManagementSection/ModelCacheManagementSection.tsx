@@ -85,7 +85,7 @@ export function ModelCacheManagementSection({ model }: Props) {
           <Box>
             <Flex align="center" fw="bold" gap="sm">
               {statusMessage}
-              {isError && <Icon name="warning" c="error" ml="sm" />}
+              {isError && <Icon name="warning" c="feedback-negative" ml="sm" />}
             </Flex>
             {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
           </Box>

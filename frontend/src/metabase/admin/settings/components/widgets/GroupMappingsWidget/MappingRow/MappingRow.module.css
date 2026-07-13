@@ -3,5 +3,5 @@
 }
 
 .deleteButton:hover {
-  color: var(--mb-color-danger);
+  color: var(--mb-color-feedback-negative);
 }

@@ -129,6 +129,7 @@ const RowChartVisualization = ({
 
   const data = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       extractRemappedColumns(chartSeries.data) as RemappingHydratedChartData,
     [chartSeries.data],
   );

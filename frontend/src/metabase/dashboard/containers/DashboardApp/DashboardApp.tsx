@@ -1,8 +1,6 @@
 import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import type { Route, WithRouterProps } from "react-router";
-import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -34,6 +32,8 @@ import {
 } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { Route, WithRouterProps } from "metabase/router";
+import { replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
@@ -104,6 +104,7 @@ export const DashboardApp = ({
 
   const parameterQueryParams = location.query;
   const dashboardId =
+    // Unjustified type cast. FIXME
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
   useRegisterDashboardMetabotContext();
@@ -155,6 +156,7 @@ export const DashboardApp = ({
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
+        // Unjustified type cast. FIXME
         setError(error as string);
       }
     }

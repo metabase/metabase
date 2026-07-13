@@ -21,6 +21,7 @@ export const getCollectionFromCollectionsTree = (
         continue;
       }
 
+      // Unjustified type cast. FIXME
       const collectionsTree = queryState.data as Collection[];
       const foundCollection = findCollectionById(collectionsTree, collectionId);
 

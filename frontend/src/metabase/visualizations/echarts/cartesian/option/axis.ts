@@ -288,9 +288,9 @@ export const buildTimeSeriesDimensionAxis = (
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "time",
     axisLabel: {
-      margin:
-        CHART_STYLE.axisTicksMarginX +
-        (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0),
+      margin: hasTimelineEvents
+        ? CHART_STYLE.timelineEvents.height
+        : CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
         const axisCoordinateValue = dayjs.utc(rawValue);

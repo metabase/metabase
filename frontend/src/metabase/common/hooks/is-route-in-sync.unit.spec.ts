@@ -8,15 +8,18 @@ describe("isRouteInSync", () => {
   });
 
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     delete (window as any).overrideIsWithinIframe;
   });
 
   afterAll(() => {
+    // Unjustified type cast. FIXME
     MetabaseSettings.set("site-url", undefined as any);
   });
 
   describe("in an iframe", () => {
     beforeEach(() => {
+      // Unjustified type cast. FIXME
       (window as any).overrideIsWithinIframe = true;
     });
 

@@ -1461,7 +1461,7 @@
     [:aggregation-options ag {:name name}]
     (->honeysql driver (h2x/identifier :field-alias name))
 
-    [:aggregation-options ag options]
+    [:aggregation-options ag _]
     (&recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the

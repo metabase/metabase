@@ -11,7 +11,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
@@ -25,6 +24,7 @@ import {
   MAX_GROUP_SIZE,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
@@ -126,7 +126,7 @@ export const CardEmbed: Node<{
         },
         this.options.HTMLAttributes,
       ),
-      formatCardEmbed(node.attrs as CardEmbedAttributes),
+      formatCardEmbed(node.attrs),
     ];
   },
 
@@ -135,7 +135,7 @@ export const CardEmbed: Node<{
   },
 
   renderText({ node }) {
-    return formatCardEmbed(node.attrs as CardEmbedAttributes);
+    return formatCardEmbed(node.attrs);
   },
 
   addNodeView() {
@@ -669,6 +669,7 @@ export const CardEmbedComponent = memo(
             ) : (
               <Box className={styles.questionResults}>
                 <ChartSkeleton
+                  // Unjustified type cast. FIXME
                   display={(card?.display as CardDisplayType) || "table"}
                 />
               </Box>

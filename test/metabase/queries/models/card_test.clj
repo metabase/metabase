@@ -1,7 +1,6 @@
 (ns metabase.queries.models.card-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.queries.models.card-test]}}}}}}
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -14,6 +13,8 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -806,7 +807,10 @@
               "user-set :display_name survives"))))))
 
 (deftest ^:parallel extract-result-metadata-native-model-test
-  (testing "native model Card extraction also preserves :id (as a field FK)"
+  (testing "native model Card extraction preserves :id (as a field FK) and structural column types"
+    ;; Native model columns can't be re-derived from the query at import time without executing the
+    ;; SQL, so their :base_type/:effective_type must survive extract (GHY-4043). Unlike MBQL models,
+    ;; native models serialize through the native-card whitelist, not model-preserved-keys.
     (mt/with-temp [:model/Card {card-id :id}
                    {:type            :model
                     :dataset_query   (mt/native-query {:query "SELECT ID FROM VENUES"})
@@ -817,18 +821,14 @@
                                        :base_type     :type/BigInteger}]}]
       (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
             col      (first (:result_metadata extracted))]
-        (is (= #{:name :id :display_name :semantic_type}
+        (is (= #{:name :id :display_name :semantic_type :base_type}
                (set (keys col)))
             "exact set of keys preserved for this fixture (one col with these inputs)")
         (is (= "Venue ID" (:display_name col)))
+        (is (= :type/BigInteger (:base_type col))
+            "native model keeps structural type info the target can't re-derive")
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
-        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))
-        ;; cross-reference: nothing outside the snake-cased model-preserved-keys for native models.
-        ;; If `model-preserved-keys` ever changes, the exact-set assertion above stops matching;
-        ;; this guard catches unexpected drift (a new key sneaking in) on the way.
-        (let [allowed (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys true))
-              leaked  (set/difference (set (keys col)) allowed)]
-          (is (= #{} leaked) "no key outside the native-model preserved set"))))))
+        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
@@ -989,6 +989,23 @@
                 (t2/hydrate card :can_run_adhoc_query)))
         (is (=? {:can_run_adhoc_query false}
                 (t2/hydrate no-query :can_run_adhoc_query)))))))
+
+(deftest can-run-adhoc-query-respects-create-queries-perm-test
+  (testing "can_run_adhoc_query reflects a non-admin's create-queries permission on the card's table (#13347)"
+    (let [mp     (mt/metadata-provider)
+          venues (lib.metadata/table mp (mt/id :venues))
+          query  (lib/query mp venues)]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query false}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query))))
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query true}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query)))))))))
 
 (deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"

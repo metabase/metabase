@@ -1,8 +1,8 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { push } from "metabase/router";
 import {
   ActionIcon,
   Flex,
@@ -100,7 +100,7 @@ export const SidebarHeader = ({
               </Menu.Item>
               {notification?.active && (
                 <Menu.Item
-                  c="danger"
+                  c="feedback-negative"
                   leftSection={<Icon name="trash" />}
                   onClick={() => onDelete(notification)}
                 >

@@ -109,7 +109,7 @@ function transformSeries(rawSeries: RawSeries): RawSeries {
   const remappedSeries = extractRemappings(rawSeries);
   return rawSeries[0]?.card.display === "row"
     ? transformCartesianSeries(remappedSeries)
-    : (getVisualizationTransformed(remappedSeries).series as RawSeries);
+    : getVisualizationTransformed(remappedSeries).series;
 }
 
 export function processSeriesData(
@@ -161,6 +161,7 @@ export function processSeriesData(
           },
         });
       },
+      // Unjustified type cast. FIXME
       {} as Record<string, MetabotSeriesConfig>,
     );
 }
@@ -181,6 +182,7 @@ function getVisualizationDataUri(question: Question) {
   const display = question.card().display;
 
   const format =
+    // Unjustified type cast. FIXME
     (CHART_ANALYSIS_RENDER_FORMATS as Record<string, "png" | "svg" | "none">)[
       display
     ] ?? ("none" as const);

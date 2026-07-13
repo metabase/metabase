@@ -4,13 +4,13 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import S from "metabase/reference/components/List/List.module.css";
 import { getShallowTables as getTables } from "metabase/selectors/metadata";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type {
@@ -117,6 +117,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
                             currentUser={user || {}}
                             userColor={
                               userColorAssignments[
+                                // Unjustified type cast. FIXME
                                 getIn(revision, ["user", "id"]) as string
                               ]
                             }
@@ -143,4 +144,5 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(SegmentRevisions as unknown as React.ComponentType);

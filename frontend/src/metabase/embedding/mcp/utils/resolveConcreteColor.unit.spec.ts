@@ -21,11 +21,11 @@ describe("resolveConcreteColor", () => {
     beforeEach(() => {
       appendSpy = jest
         .spyOn(document.body, "appendChild")
-        .mockImplementation((el) => el as any);
+        .mockImplementation((el) => el);
 
       removeSpy = jest
         .spyOn(document.body, "removeChild")
-        .mockImplementation((el) => el as any);
+        .mockImplementation((el) => el);
     });
 
     afterEach(() => {
@@ -37,6 +37,7 @@ describe("resolveConcreteColor", () => {
     it("resolves a var() reference via computed style", () => {
       getComputedStyleSpy = jest
         .spyOn(window, "getComputedStyle")
+        // Unjustified type cast. FIXME
         .mockReturnValue({ color: "rgb(30, 30, 30)" } as CSSStyleDeclaration);
 
       expect(
@@ -47,6 +48,7 @@ describe("resolveConcreteColor", () => {
     it("falls back to original value when computed style returns empty", () => {
       getComputedStyleSpy = jest
         .spyOn(window, "getComputedStyle")
+        // Unjustified type cast. FIXME
         .mockReturnValue({ color: "" } as CSSStyleDeclaration);
 
       expect(resolveConcreteColor("var(--unknown-variable)", "light")).toBe(
