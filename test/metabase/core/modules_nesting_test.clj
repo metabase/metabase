@@ -469,6 +469,20 @@
       (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))
           "with both lib and lib.schema in :uses, the access works"))))
 
+(deftest ^:parallel usage-error-explicit-empty-api-denies-external-access-test
+  (let [config {:metabase/modules {'private-module {:api #{}}
+                                   'caller         {:uses #{'private-module}}}}]
+    (testing "an explicit empty API exports no namespaces"
+      (is (some? (usage-error config 'caller 'metabase.private-module.api))))
+    (testing "`:api :any` remains the unrestricted API sentinel"
+      (is (nil? (usage-error (assoc-in config [:metabase/modules 'private-module :api] :any)
+                             'caller
+                             'metabase.private-module.internal))))
+    (testing "friends may still bypass an explicitly empty API"
+      (is (nil? (usage-error (assoc-in config [:metabase/modules 'private-module :friends] #{'caller})
+                             'caller
+                             'metabase.private-module.internal))))))
+
 (deftest ^:parallel usage-error-uses-any-namability-test
   (testing "`:uses :any` allows any *namable* module reference (subject to :api); namability is enforced
             at require time for `:any` callers since the config-level test only covers set-valued `:uses`"
