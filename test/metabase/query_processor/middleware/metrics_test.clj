@@ -2,7 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.metrics-test]}}}}}}
   (:require
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
@@ -22,10 +22,13 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
 ;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private counter (atom 2000))
 
