@@ -19,6 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -450,13 +451,16 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
-(defn- template-tag-stages
-  [template-tags]
-  (for [{:keys [card-id snippet-id] tag-type :type} (vals template-tags)
-        :when (#{:card :snippet} tag-type)]
-    (case tag-type
-      :card {:source-card card-id}
-      :snippet {:source-snippet-id snippet-id})))
+(mu/defn- template-tag-stages
+  ;; works with either map or sequence of template tags because Native Query Snippets still store them as a map at the
+  ;; time of this writing
+  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map-or-sequence]]
+  (let [template-tags (lib.normalize/normalize ::lib.schema.template-tag/template-tags template-tags)]
+    (for [{:keys [card-id snippet-id] tag-type :type} template-tags
+          :when                                       (#{:card :snippet} tag-type)]
+      (case tag-type
+        :card    {:source-card card-id}
+        :snippet {:source-snippet-id snippet-id}))))
 
 (defn- stage-seq* [query-fragment]
   (cond
