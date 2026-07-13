@@ -10,7 +10,14 @@ import {
   parseTimestampWithTimezone,
 } from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Box, Ellipsified, Group, SortableHeaderPill } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Group,
+  SortableHeaderPill,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting/time";
 import {
@@ -24,6 +31,12 @@ import type { TransformGraphRunSortOptions } from "../types";
 // A graph-run id is only unique within its run_type, so combine both for a stable key.
 export function getRowKey(run: TransformGraphRun): string {
   return `${run.run_type}-${run.id}`;
+}
+
+// A deleted job/transform keeps its name but loses its entity id; such runs have
+// no entity to link to or drill into.
+export function isDeletedRun(run: TransformGraphRun): boolean {
+  return run.entity_id == null;
 }
 
 // The "Run" identity — also used as the sidebar title. For DAG runs it reads as
@@ -51,7 +64,26 @@ function getRunColumn(): TreeTableColumnDef<TransformGraphRun> {
     header: t`Run`,
     width: 320,
     accessorFn: (run) => getRunName(run),
-    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
+    cell: ({ row, getValue }) => {
+      const value = String(getValue());
+      if (!isDeletedRun(row.original)) {
+        return <Ellipsified>{value}</Ellipsified>;
+      }
+      return (
+        <Ellipsified>
+          <Tooltip label={t`${value} has been deleted`}>
+            <Text
+              c="text-disabled"
+              component="span"
+              display="inline"
+              fs="italic"
+            >
+              {value}
+            </Text>
+          </Tooltip>
+        </Ellipsified>
+      );
+    },
   };
 }
 

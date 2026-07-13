@@ -379,7 +379,6 @@ export type ListJobRunTransformRunsRequest = {
   runId: TransformJobRunId;
 };
 
-// POST /api/transform-job/:jobId/runs/:runId/cancel
 export type CancelJobRunRequest = {
   jobId: TransformJobId;
   runId: TransformJobRunId;
@@ -406,25 +405,12 @@ export type ListDagTransformsRequest = {
   direction: TransformDagDirection;
 };
 
-// The ordered transforms a DAG reprocess would run, used to preview the plan
-// before confirming.
 export type DagTransform = Pick<Transform, "id" | "name">;
 
-// GET /api/transform-dag-run/:run-id/transform-runs — the member transform runs of
-// a DAG run. Reuses TransformRunForJobRun since the child-row rendering only needs
-// the fields shared by both run kinds.
 export type ListDagRunTransformRunsRequest = {
   dagRunId: TransformDagRunId;
 };
 
-// "Transform graph runs" are the higher-level, root runs shown as the default tab
-// on the Runs page: job runs, DAG-reprocess runs, and standalone single-transform
-// runs. They are unified so a user can browse every triggered run in one place and
-// drill into the member transform runs of each. This mirrors the backend
-// `RunSummaryResponse` from `GET /api/transform/runs`; a row is identified by the
-// `(run_type, id)` pair and `entity_id` points at the associated job/transform.
-// NOTE: the FE still resolves this against a mock (see api/transform.ts) until the
-// backend listing endpoint is finalized — only the shape is aligned here.
 export const TRANSFORM_GRAPH_RUN_TYPES = ["job", "dag", "transform"] as const;
 export type TransformGraphRunType = (typeof TRANSFORM_GRAPH_RUN_TYPES)[number];
 
@@ -437,15 +423,9 @@ export type TransformGraphRunSortColumn =
 
 export type TransformGraphRun = {
   run_type: TransformGraphRunType;
-  // the underlying run id (job-run / dag-run / transform-run id). Unique only
-  // within a run_type — combine with run_type for a stable row key.
   id: number;
-  // the associated job (for job runs) or transform (for dag/transform runs) id,
-  // used to build drill-down URLs. Null when the entity was deleted.
   entity_id: number | null;
-  // the job or transform name; null when the entity was deleted.
   name: string | null;
-  // set only for DAG runs.
   direction: TransformDagDirection | null;
   run_method: TransformRunMethod | null;
   status: TransformRunStatus | null;

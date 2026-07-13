@@ -40,7 +40,7 @@ import type {
 } from "metabase-types/api";
 
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
-import { getRunName } from "../TransformGraphRunTable";
+import { getRunName, isDeletedRun } from "../TransformGraphRunTable";
 
 import { TransformGraphRunInfoSection } from "./TransformGraphRunInfoSection";
 import S from "./TransformGraphRunSidebar.module.css";
@@ -74,6 +74,12 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
 }: TransformGraphRunSidebarProps) {
   const [isPolling, setIsPolling] = useState(false);
   const pollingInterval = isPolling ? POLLING_INTERVAL : undefined;
+
+  // DAG and standalone runs keep their member runs after the underlying
+  // transform is deleted (fetched by dag-run id / synthesized from the run
+  // itself). A deleted job's members can't be fetched though — the endpoint is
+  // keyed by the now-null job id — so we hide the section for that case only.
+  const areMembersUnavailable = run.run_type === "job" && isDeletedRun(run);
 
   const dagResult = useListDagRunTransformRunsQuery(
     run.run_type === "dag" ? { dagRunId: run.id } : skipToken,
@@ -157,19 +163,21 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
               <TransformGraphRunInfoSection run={run} />
               {canCancelRun(run) && <CancelationSection run={run} />}
             </Stack>
-            <Stack gap="md">
-              <Group gap="sm" wrap="nowrap">
-                <Badge variant="filled" bg="core-brand">
-                  {transformRuns.length}
-                </Badge>
-                <Title order={5}>{t`Transforms`}</Title>
-              </Group>
-              <TransformRunList
-                transformRuns={transformRuns}
-                isLoading={isLoading}
-                error={error}
-              />
-            </Stack>
+            {!areMembersUnavailable && (
+              <Stack gap="md">
+                <Group gap="sm" wrap="nowrap">
+                  <Badge variant="filled" bg="core-brand">
+                    {transformRuns.length}
+                  </Badge>
+                  <Title order={5}>{t`Transforms`}</Title>
+                </Group>
+                <TransformRunList
+                  transformRuns={transformRuns}
+                  isLoading={isLoading}
+                  error={error}
+                />
+              </Stack>
+            )}
           </Stack>
         </Box>
       </Flex>

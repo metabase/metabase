@@ -95,6 +95,59 @@ describe("TransformGraphRunListPage", () => {
     expect(within(table).getAllByText("Transformation")).toHaveLength(2);
   });
 
+  it("greys a deleted-entity run and hides the Transforms section for a deleted job", async () => {
+    const deletedJobRun = createMockTransformGraphRun({
+      run_type: "job",
+      id: 103,
+      entity_id: null,
+      name: "Removed job",
+      run_method: "cron",
+    });
+    setup({ runs: [deletedJobRun] });
+
+    const name = await screen.findByText("Removed job");
+    await userEvent.hover(name);
+    expect(
+      await screen.findByText("Removed job has been deleted"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(name);
+    const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
+
+    expect(within(sidebar).queryByText("Transforms")).not.toBeInTheDocument();
+    expect(
+      within(sidebar).queryByRole("link", { name: "View this job" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still shows member transforms for a DAG run whose seed transform was deleted", async () => {
+    const deletedDagRun = createMockTransformGraphRun({
+      run_type: "dag",
+      id: 205,
+      entity_id: null,
+      name: "Removed seed",
+      direction: "upstream",
+      status: "succeeded",
+    });
+    setupListDagRunTransformRunsEndpoint(205, [
+      createMockTransformRunForJobRun({
+        id: 1,
+        transform_name: "Orders cleaned",
+        status: "succeeded",
+      }),
+    ]);
+    setup({ runs: [deletedDagRun] });
+
+    await userEvent.click(await screen.findByText("Upstream → Removed seed"));
+
+    const sidebar = await screen.findByTestId("transform-graph-run-sidebar");
+
+    expect(within(sidebar).getByText("Transforms")).toBeInTheDocument();
+    expect(
+      await within(sidebar).findByText("Orders cleaned"),
+    ).toBeInTheDocument();
+  });
+
   it("drills into a DAG run's member transforms via the dag-run endpoint", async () => {
     setupListDagRunTransformRunsEndpoint(202, [
       createMockTransformRunForJobRun({
