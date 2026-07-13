@@ -16,7 +16,7 @@ import { Center, Flex, Stack } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
 import S from "./ErrorOverview.module.css";
-import { ErroringQuestionsFilterBar } from "./ErroringQuestionsFilterBar";
+import { ErroringQuestionsSearch } from "./ErroringQuestionsSearch";
 import { ErroringQuestionsTable } from "./ErroringQuestionsTable";
 import { useAbortableAdhocQuery } from "./hooks";
 import type {
@@ -66,6 +66,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     newFilters: Partial<ErroringQuestionsFilters>,
   ) => {
     setFilters((filters) => ({ ...filters, ...newFilters }));
+    setRowSelection({});
     patchUrlState({ page: 0 });
   };
 
@@ -121,7 +122,7 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
             </Center>
           ) : (
             <>
-              <ErroringQuestionsFilterBar
+              <ErroringQuestionsSearch
                 hasLoader={isFetching && !isLoading}
                 onFiltersChange={handleFiltersChange}
               />

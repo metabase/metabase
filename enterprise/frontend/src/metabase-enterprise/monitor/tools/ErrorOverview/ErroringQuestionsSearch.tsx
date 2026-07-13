@@ -7,15 +7,15 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type { ErroringQuestionsFilters } from "./types";
 
-type ErroringQuestionsFilterBarProps = {
+type ErroringQuestionsSearchProps = {
   hasLoader: boolean;
   onFiltersChange: (filters: Partial<ErroringQuestionsFilters>) => void;
 };
 
-export function ErroringQuestionsFilterBar({
+export function ErroringQuestionsSearch({
   hasLoader,
   onFiltersChange,
-}: ErroringQuestionsFilterBarProps) {
+}: ErroringQuestionsSearchProps) {
   const [value, setValue] = useState("");
   const handleChangeDebounced = useDebouncedCallback(
     (search: string) => onFiltersChange({ search }),

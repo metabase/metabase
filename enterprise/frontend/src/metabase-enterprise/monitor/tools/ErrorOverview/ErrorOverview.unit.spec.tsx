@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -190,6 +191,10 @@ describe("ErrorOverview", () => {
       expect(query.offset).toBe(PAGE_SIZE * 2);
     });
 
+    const rows = await screen.findAllByTestId("erroring-question");
+    await userEvent.click(within(rows[0]).getByLabelText("Select row"));
+    expect(await screen.findByText("1 question selected")).toBeInTheDocument();
+
     await userEvent.type(
       await screen.findByPlaceholderText(SEARCH_PLACEHOLDER),
       "timeout",
@@ -206,6 +211,7 @@ describe("ErrorOverview", () => {
     await waitFor(() => {
       expect(history?.getCurrentLocation().search).toBe("");
     });
+    expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
   });
 
   it("sorts by column with asc/desc toggle", async () => {
@@ -487,32 +493,68 @@ describe("ErrorOverview", () => {
     });
   });
 
-  it("links each row to the question, opening in a new tab", async () => {
+  it("links each row to the question and navigates there on click", async () => {
     const { history } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/question/42");
-    expect(link).toHaveAttribute("target", "_blank");
 
-    // clicking stays on the Erroring questions page - the link opens
-    // a new tab rather than navigating the current one
     await userEvent.click(link);
-    expect(history?.getCurrentLocation().pathname).not.toBe("/question/42");
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().pathname).toBe("/question/42");
+    });
   });
 
-  it("opens the question in a new tab when activated from the keyboard", async () => {
-    const windowOpen = jest.spyOn(window, "open").mockImplementation();
-    await setup({ cards: [{ id: 42 }] });
+  it("does not navigate in the current tab on cmd/shift-click, leaving it to the native link", async () => {
+    const { history } = await setup({ cards: [{ id: 42 }] });
+
+    await screen.findByTestId("erroring-question");
+    const link = screen.getByRole("link");
+    const startingPathname = history?.getCurrentLocation().pathname;
+
+    fireEvent.click(link, { metaKey: true });
+    fireEvent.click(link, { shiftKey: true });
+
+    expect(history?.getCurrentLocation().pathname).toBe(startingPathname);
+  });
+
+  it("navigates to the question when activated from the keyboard", async () => {
+    const { history } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     screen.getByRole("treegrid", { name: "Erroring questions" }).focus();
     await userEvent.keyboard("{ArrowDown}{Enter}");
 
-    expect(windowOpen).toHaveBeenCalledWith(
-      "/question/42",
-      "_blank",
-      "noopener",
-    );
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().pathname).toBe("/question/42");
+    });
+  });
+
+  it("selects the focused checkbox's row via space, even when a different row is keyboard-highlighted", async () => {
+    await setup({ cards: [{ id: 1 }, { id: 2 }] });
+    const rows = await screen.findAllByTestId("erroring-question");
+
+    // highlight the first row via arrow-key
+    screen.getByRole("treegrid", { name: "Erroring questions" }).focus();
+    await userEvent.keyboard("{ArrowDown}");
+
+    //focus the second row's checkbox directly
+    within(rows[1]).getByLabelText("Select row").focus();
+    await userEvent.keyboard(" ");
+
+    expect(await screen.findByText("1 question selected")).toBeInTheDocument();
+    expect(within(rows[1]).getByLabelText("Deselect row")).toBeChecked();
+  });
+
+  it("selects the keyboard-highlighted row via space when no checkbox is focused", async () => {
+    await setup({ cards: [{ id: 42 }] });
+    const row = await screen.findByTestId("erroring-question");
+
+    screen.getByRole("treegrid", { name: "Erroring questions" }).focus();
+    await userEvent.keyboard("{ArrowDown} ");
+
+    expect(await screen.findByText("1 question selected")).toBeInTheDocument();
+    expect(within(row).getByLabelText("Deselect row")).toBeChecked();
   });
 });

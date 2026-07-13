@@ -5,10 +5,12 @@ import type {
   SortingState,
   Updater,
 } from "@tanstack/react-table";
-import { useCallback, useMemo } from "react";
+import { type MouseEvent, useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { useDispatch } from "metabase/redux";
 import {
   Card,
   Ellipsified,
@@ -53,6 +55,8 @@ export const ErroringQuestionsTable = ({
   onSortingChange,
   onRowSelectionChange,
 }: ErroringQuestionsTableProps) => {
+  const dispatch = useDispatch();
+
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(() => getSortingState(sorting), [sorting]);
 
@@ -67,10 +71,22 @@ export const ErroringQuestionsTable = ({
     [],
   );
 
-  // Keyboard (Enter/Space) row activation.
-  const handleRowActivate = useCallback((row: Row<ErroringCard>) => {
-    window.open(Urls.card({ id: row.original.id }), "_blank", "noopener");
-  }, []);
+  const handleRowActivate = useCallback(
+    (row: Row<ErroringCard>) => {
+      dispatch(push(Urls.card({ id: row.original.id })));
+    },
+    [dispatch],
+  );
+
+  const handleRowClick = useCallback(
+    (row: Row<ErroringCard>, event: MouseEvent) => {
+      const isModifiedClick = event.metaKey || event.shiftKey;
+      if (!isModifiedClick) {
+        handleRowActivate(row);
+      }
+    },
+    [handleRowActivate],
+  );
 
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
@@ -122,7 +138,7 @@ export const ErroringQuestionsTable = ({
           }
           getRowProps={() => ({ "data-testid": "erroring-question" })}
           getRowHref={getRowHref}
-          rowLinkTarget="_blank"
+          onRowClick={handleRowClick}
         />
       )}
     </Card>

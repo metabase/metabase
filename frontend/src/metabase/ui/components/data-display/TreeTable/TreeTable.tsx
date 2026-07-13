@@ -40,7 +40,6 @@ export function TreeTable<TData extends TreeNodeData>({
   isRowLoading,
   getRowProps,
   getRowHref,
-  rowLinkTarget,
   renderSubRow,
   hierarchical = true,
   classNames,
@@ -71,6 +70,16 @@ export function TreeTable<TData extends TreeNodeData>({
 
   const handleKeyDownWithFocus = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
+      const isCheckboxFocused =
+        event.target instanceof HTMLInputElement &&
+        event.target.type === "checkbox";
+
+      // Flat tables let the focused checkbox handle its own space activation
+      // instead of toggling the keyboard-highlighted row.
+      if (!hierarchical && event.key === " " && isCheckboxFocused) {
+        return;
+      }
+
       handleKeyDown(event);
       // Ensure focus stays on root after keyboard navigation
       if (
@@ -82,7 +91,7 @@ export function TreeTable<TData extends TreeNodeData>({
         rootRef.current?.focus();
       }
     },
-    [handleKeyDown],
+    [handleKeyDown, hierarchical],
   );
 
   useEffect(() => {
@@ -168,7 +177,6 @@ export function TreeTable<TData extends TreeNodeData>({
       styles={styles}
       getRowProps={getRowProps}
       href={getRowHref?.(row)}
-      linkTarget={rowLinkTarget}
       renderSubRow={renderSubRow}
       hierarchical={hierarchical}
     />

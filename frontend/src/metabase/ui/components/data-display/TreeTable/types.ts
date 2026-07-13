@@ -275,11 +275,6 @@ export interface TreeTableProps<
    */
   getRowHref?: (row: Row<TData>) => string | null;
 
-  /**
-   * `target` attribute for row link produced by `getRowHref`.
-   */
-  rowLinkTarget?: string;
-
   renderSubRow?: RenderSubRow<TData>;
 
   /** When false, renders as a flat table without expand buttons or indentation. Defaults to true. */
@@ -320,7 +315,6 @@ export interface TreeTableRowProps<
   getRowProps?: (row: Row<TData>) => Record<string, unknown>;
   /** When provided, renders the row as a link for Cmd+Click support */
   href?: string | null;
-  linkTarget?: string;
   renderSubRow?: RenderSubRow<TData>;
   hierarchical?: boolean;
 }

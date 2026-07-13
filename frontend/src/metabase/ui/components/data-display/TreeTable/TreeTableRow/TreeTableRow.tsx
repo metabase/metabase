@@ -248,7 +248,6 @@ export function TreeTableRow<TData extends TreeNodeData>({
   styles,
   getRowProps,
   href,
-  linkTarget,
   renderSubRow,
   hierarchical = true,
 }: TreeTableRowProps<TData>) {
@@ -284,7 +283,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   const renderContent = () => {
     const subRowContent = renderSubRow?.(row) ?? null;
     return href ? (
-      <Link to={href} target={linkTarget} className={S.link}>
+      <Link to={href} className={S.link}>
         {content}
         {subRowContent}
       </Link>
