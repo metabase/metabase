@@ -1,5 +1,5 @@
-(ns metabase-enterprise.content-diagnostics.impl
-  "Read-path implementation the thin `api` endpoints compose: the read-time WHERE fragments
+(ns metabase-enterprise.content-diagnostics.api.common
+  "Shared read-path helpers the thin `api` endpoints compose: the read-time WHERE fragments
   (validity, per-caller collection visibility, personal-collection exclusion, name search), the batched
   display hydration, and the schema/sort fragments every per-finding-type endpoint composes.
 
@@ -188,24 +188,7 @@
   []
   (t2/select-one-fn :detected_at :model/ContentDiagnosticsFinding {:order-by [[:detected_at :desc]]}))
 
-;;; -------------------------------------- shared schema + sort fragments -------------------------------
-
-(def NormalizedUser
-  "A finding's `owner`: a Metabase user `{id,name,email,type:user}`, or - for an external transform owner -
-  `{email,type:external}`, or nil. Keys optional to admit both variants."
-  [:maybe [:map
-           [:id    {:optional true} [:maybe :int]]
-           [:name  {:optional true} [:maybe :string]]
-           [:email {:optional true} [:maybe :string]]
-           [:type  :keyword]]])
-
-(def Creator
-  "A finding's `creator`: a Metabase user `{id,name,type:user}` (denormalized from
-  `entity_creator_id`/`entity_creator_name`), or nil. No `email` (not denormalized); `type` is always `:user`."
-  [:maybe [:map {:closed true}
-           [:id   :int]
-           [:name [:maybe :string]]
-           [:type [:= :user]]]])
+;;; ---------------------------------------------- sort config -----------------------------------------
 
 (def sort-directions
   "Valid sort directions for the finding lists."
