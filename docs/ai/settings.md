@@ -54,7 +54,13 @@ To disable Metabase AI provider and stop charges:
 
 ### Bring your own API key
 
-You can specify your own API key and model for Metabot from one of the supported providers. Currently, Metabase only supports models from Anthropic.
+You can specify your own API key and model for Metabot from one of the supported providers:
+
+- **Amazon Bedrock**
+- **Anthropic**
+- **Microsoft Azure**
+- **OpenAI**
+- **OpenRouter**
 
 If you're interested in Metabase supporting more AI providers, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
 
