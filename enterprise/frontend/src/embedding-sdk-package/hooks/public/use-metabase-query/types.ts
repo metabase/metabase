@@ -101,7 +101,14 @@ export type MetricReference<TTable = unknown> = Omit<
       }
   );
 
-type LocalFieldReference<TTable = unknown> = Omit<
+/**
+ * A dimension on the query's own source table — what `filter`, `breakout`, and
+ * `orderBy` take. Apps with a generated `metabase.data.ts` schema get these from
+ * it; an app building one by hand (from a field id and table id) names this type.
+ * `FieldReference` is deliberately not the type to reach for: it also admits
+ * FK-joined dimensions, which a local source table can't accept.
+ */
+export type LocalFieldReference<TTable = unknown> = Omit<
   FieldSchema,
   "sourceFieldId" | "tableId"
 > & {

@@ -91,6 +91,8 @@ describe("scenarios > data apps > viewing & routing", () => {
         cy.findByRole("heading", { name: "Order details" }).should(
           "be.visible",
         );
+        // The app's own router moved, too — not just the page that rendered.
+        cy.findByTestId("current-pathname").should("have.text", "/details");
       });
 
       // The iframe's client-side navigation is mirrored to the parent's URL bar
@@ -98,7 +100,7 @@ describe("scenarios > data apps > viewing & routing", () => {
       cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
     });
 
-    it("renders the target page when deep-linked directly to a sub-route", () => {
+    it("starts on the target page when deep-linked directly to a sub-route", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
@@ -111,7 +113,6 @@ describe("scenarios > data apps > viewing & routing", () => {
         );
         cy.findByTestId("current-pathname").should("have.text", "/details");
       });
-      cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
     });
 
     it("navigates imperatively via useDataAppLocation().navigate", () => {

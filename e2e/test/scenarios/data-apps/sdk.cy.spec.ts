@@ -23,7 +23,7 @@ describe("scenarios > data apps > SDK runtime", () => {
   });
 
   describe("query hooks & question components", () => {
-    it("surfaces the useMetabaseQuery error state and lets the app refetch", () => {
+    const setupQueryStatesApp = () =>
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: {
@@ -33,15 +33,41 @@ describe("scenarios > data apps > SDK runtime", () => {
         },
       });
 
+    it("surfaces the useMetabaseQuery error state", () => {
+      setupQueryStatesApp();
+
       visitAppRoute("query-states");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByTestId("query-error", { timeout: 30000 }).should(
           "have.text",
           "error",
         );
-        // refetch is exposed and callable (stays in the error state here).
-        cy.findByTestId("query-refetch").click();
-        cy.findByTestId("query-error").should("have.text", "error");
+      });
+    });
+
+    it("re-runs the query when the app calls refetch", () => {
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
+      setupQueryStatesApp();
+
+      visitAppRoute("query-states");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        // The query has to have resolved before refetching means anything.
+        cy.findByTestId("query-value", { timeout: 30000 })
+          .invoke("text")
+          .should("match", /^\d+$/);
+      });
+
+      // A refetch of a query that already succeeded renders the same value, so the
+      // request going out again is the only thing that proves refetch did anything.
+      cy.get("@datasetQuery.all").then((queriesBefore) => {
+        H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+          cy.findByTestId("query-refetch").click();
+        });
+
+        cy.get("@datasetQuery.all").should(
+          "have.length",
+          queriesBefore.length + 1,
+        );
       });
     });
 
@@ -53,7 +79,28 @@ describe("scenarios > data apps > SDK runtime", () => {
 
       visitAppRoute("static-question");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByText("Subtotal", { timeout: 30000 }).should("be.visible");
+        // Not just the column header: the query object the hook produced has to
+        // have actually run, so the first Subtotal cell holds a real amount.
+        cy.findAllByTestId("header-cell", { timeout: 30000 }).then(
+          ($headers) => {
+            const subtotalIndex = [...$headers].findIndex(
+              (header) => header.textContent?.trim() === "Subtotal",
+            );
+            expect(subtotalIndex, "Subtotal column").to.be.at.least(0);
+
+            // Cells are row-major, so the first row's Subtotal sits at the
+            // column's own index.
+            cy.findByTestId("table-body")
+              .findAllByTestId("cell-data")
+              .should("have.length.greaterThan", subtotalIndex)
+              .then(($cells) => {
+                const subtotal = $cells.eq(subtotalIndex).text();
+                expect(parseFloat(subtotal.replace(/[^\d.]/g, ""))).to.be.above(
+                  0,
+                );
+              });
+          },
+        );
       });
     });
 
@@ -84,59 +131,6 @@ describe("scenarios > data apps > SDK runtime", () => {
             expect(Number($el.text())).to.be.greaterThan(0);
           },
         );
-      });
-    });
-  });
-
-  describe("actions (useAction)", () => {
-    const setupActionsApp = (actionId: number | undefined) =>
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: { ...TEST_ENV, actionId },
-      });
-
-    it("executes an action and exposes isExecuting + result, then resets", () => {
-      cy.intercept("POST", "/api/action/*/execute", (req) =>
-        req.reply({
-          statusCode: 200,
-          body: { "rows-affected": 1 },
-          delay: 300,
-        }),
-      ).as("execute");
-      setupActionsApp(99);
-
-      visitAppRoute("actions");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("action-execute").click();
-        cy.findByTestId("action-executing").should("have.text", "executing");
-        cy.findByTestId("action-result", { timeout: 30000 }).should(
-          "have.text",
-          "has-result",
-        );
-        cy.findByTestId("action-output").should("have.text", "returned-result");
-
-        // reset() clears result and error.
-        cy.findByTestId("action-reset").click();
-        cy.findByTestId("action-result").should("have.text", "no-result");
-        cy.findByTestId("action-error").should("have.text", "no-error");
-      });
-    });
-
-    it("surfaces a validation error from a failed execute", () => {
-      cy.intercept("POST", "/api/action/*/execute", {
-        statusCode: 400,
-        body: { message: "Invalid", errors: { name: "required" } },
-      });
-      setupActionsApp(99);
-
-      visitAppRoute("actions");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("action-execute").click();
-        cy.findByTestId("action-error", { timeout: 30000 }).should(
-          "have.text",
-          "has-error",
-        );
-        cy.findByTestId("action-result").should("have.text", "no-result");
       });
     });
   });

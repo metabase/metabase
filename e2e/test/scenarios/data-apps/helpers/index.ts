@@ -1,5 +1,7 @@
-import type { DataAppTestEnv } from "e2e/support/assets/data-apps/renders-interactive-question/src/test-env";
+import type { LocalFieldReference } from "@metabase/embedding-sdk-react/data-app";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { DataAppTestEnv } from "e2e/support/helpers";
 
 // These live here (co-located with the specs) rather than in
 // `e2e/support/helpers/e2e-data-app-helpers.ts`: that file is part of the
@@ -10,15 +12,18 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /**
- * A raw numeric field dimension for the query-builder combinators, shaped like a
- * generated `metabase.data.ts` schema entry.
+ * A numeric field dimension for the query-builder combinators, hand-built the way
+ * an app without a generated `metabase.data.ts` schema would build one.
  */
-export const dataAppNumericField = (fieldId: number, name: string) => ({
-  type: "column" as const,
+export const dataAppNumericField = (
+  fieldId: number,
+  name: string,
+): LocalFieldReference => ({
+  type: "column",
   fieldId,
   tableId: ORDERS_ID,
   name,
-  jsType: "number" as const,
+  jsType: "number",
 });
 
 const source = { type: "table" as const, id: ORDERS_ID };

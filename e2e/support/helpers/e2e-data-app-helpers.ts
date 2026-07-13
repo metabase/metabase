@@ -1,16 +1,18 @@
-import type { DataAppTestEnv } from "e2e/support/assets/data-apps/renders-interactive-question/src/test-env";
 import * as Urls from "metabase/urls/data-apps";
 import type { DataApp } from "metabase-types/api";
 
+import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
 
 /**
  * The e2e data-app fixture that `mockDataApp` builds and serves — its directory
- * name and its `/apps/<slug>` URL segment.
+ * name and its `/apps/<slug>` URL segment. One bundle with a page per surface it
+ * exercises (questions, query hooks, actions, clipboard, sandbox, isolation), so
+ * the specs share a single build.
  */
-export const DATA_APP_NAME = "renders-interactive-question";
-export const DATA_APP_DISPLAY_NAME = "Renders Interactive Question";
+export const DATA_APP_NAME = "kitchen-sink";
+export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
 
 /**
  * Visit a nested route inside the fixture data app. `openDataApp` encodes the
@@ -50,8 +52,8 @@ type MockDataAppOptions<TestEnv> = {
    * the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized and prepended
    * to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`; since the
    * bundle is evaluated as one script in the sandbox realm, the app reads it as a
-   * plain global. Typed by the fixture's `test-env.ts` (`DataAppTestEnv` by
-   * default); pass another fixture's type as `TestEnv` if it differs.
+   * plain global. Typed by `DataAppTestEnv` by default; pass another fixture's
+   * type as `TestEnv` if it differs.
    */
   testEnv?: TestEnv;
 };

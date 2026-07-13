@@ -87,24 +87,32 @@ function Details() {
   );
 }
 
-// `useMetabaseQuery` states: a deliberately invalid query resolves to an error;
-// `refetch` re-runs it (used to assert the hook exposes loading/error/refetch).
+// `useMetabaseQuery` states. Two queries, because they show different things: an
+// invalid one resolves to `error`, and a valid one is what `refetch` can actually
+// be seen re-running (refetching the broken query would land in `error` either
+// way, proving nothing).
 function QueryStates() {
-  const { errorQuery } = getTestEnv();
-  const q = useMetabaseQuery(
-    errorQuery ?? { source: { type: "table", id: -1 } },
-  );
+  const { scalarQuery, errorQuery } = getTestEnv();
+  // The spec that routes here always injects `errorQuery`.
+  const broken = useMetabaseQuery(errorQuery!);
+  const working = useMetabaseQuery(scalarQuery);
+  const count = working.data?.rawRows?.[0]?.[0];
 
   return (
     <div data-testid="data-app-query-states" style={{ padding: 24 }}>
       <h1>Query states</h1>
-      <div data-testid="query-loading">{q.isLoading ? "loading" : "done"}</div>
-      <div data-testid="query-error">{q.error ? "error" : "no-error"}</div>
+      <div data-testid="query-error">{broken.error ? "error" : "no-error"}</div>
+      <div data-testid="query-loading">
+        {working.isLoading ? "loading" : "done"}
+      </div>
+      <div data-testid="query-value">
+        {working.isLoading ? "…" : String(count ?? "—")}
+      </div>
       <button
         type="button"
         data-testid="query-refetch"
         onClick={() => {
-          void q.refetch();
+          working.refetch();
         }}
       >
         refetch
@@ -135,22 +143,17 @@ function StaticQuestionPage() {
 // Exercises the query-builder helpers `filter` / `breakout` / `orderBy` /
 // `aggregations` and renders the resulting row count.
 function Combinators() {
-  const { combinators } = getTestEnv();
+  // The spec that routes here always injects `combinators`.
+  const combinators = getTestEnv().combinators!;
   const countAgg = aggregations.count();
 
-  const q = useMetabaseQuery(
-    combinators
-      ? {
-          source: combinators.source,
-          filters: [
-            filter(combinators.filterField, ">", combinators.filterValue),
-          ],
-          aggregations: [countAgg],
-          breakouts: [breakout(combinators.breakoutField)],
-          orderBys: [orderBy(countAgg, "desc")],
-        }
-      : { source: { type: "table", id: -1 }, enabled: false },
-  );
+  const q = useMetabaseQuery({
+    source: combinators.source,
+    filters: [filter(combinators.filterField, ">", combinators.filterValue)],
+    aggregations: [countAgg],
+    breakouts: [breakout(combinators.breakoutField)],
+    orderBys: [orderBy(countAgg, "desc")],
+  });
 
   return (
     <div data-testid="data-app-combinators" style={{ padding: 24 }}>
@@ -168,16 +171,16 @@ function Combinators() {
   );
 }
 
-// `useAction`: execute / isExecuting / result / error / reset. The execute
-// endpoint is stubbed by the spec.
+// `useAction`: execute / isExecuting / result / error / reset. The spec creates a
+// real action and passes its id and parameters.
 function Actions() {
-  const { actionId } = getTestEnv();
+  const { actionId, actionParams } = getTestEnv();
   const action = useAction(actionId ?? null);
   const [output, setOutput] = useState("idle");
 
   const onExecute = async () => {
     try {
-      const res = await action.execute({ name: "e2e" });
+      const res = await action.execute(actionParams ?? {});
       setOutput(res ? "returned-result" : "returned-null");
     } catch {
       setOutput("threw");
@@ -262,18 +265,18 @@ type Probe = { id: string; run: () => void };
 // `window.localStorage`) returns a non-function value and is not intercepted, so
 // only method/constructor calls reliably throw. These are all such calls.
 const BLOCKED_PROBES: Probe[] = [
-  { id: "script", run: () => void document.createElement("script") },
-  { id: "window-open", run: () => void window.open("https://blocked.test") },
+  { id: "script", run: () => document.createElement("script") },
+  { id: "window-open", run: () => window.open("https://blocked.test") },
   { id: "alert", run: () => window.alert("x") },
   { id: "history", run: () => window.history.pushState({}, "", "/x") },
   {
     id: "keydown-listener",
     run: () => document.addEventListener("keydown", () => {}),
   },
-  { id: "websocket", run: () => void new WebSocket("wss://blocked.test") },
+  { id: "websocket", run: () => new WebSocket("wss://blocked.test") },
   {
     id: "sendbeacon",
-    run: () => void navigator.sendBeacon("https://blocked.test"),
+    run: () => navigator.sendBeacon("https://blocked.test"),
   },
 ];
 
@@ -283,7 +286,7 @@ const BLOCKED_PROBES: Probe[] = [
 // rendered so a test can assert it.
 function Sandbox() {
   const { sandbox } = getTestEnv();
-  const [blocked, setBlocked] = useState<Record<string, string>>({});
+  const [probeResults, setProbeResults] = useState<Record<string, string>>({});
   const [innerHtml, setInnerHtml] = useState("pending");
   const [blockedFetch, setBlockedFetch] = useState("pending");
   const [allowedFetch, setAllowedFetch] = useState("pending");
@@ -300,7 +303,7 @@ function Sandbox() {
         results[probe.id] = "blocked";
       }
     }
-    setBlocked(results);
+    setProbeResults(results);
 
     // `innerHTML` is distorted through DOMPurify, which strips <script>.
     try {
@@ -349,13 +352,13 @@ function Sandbox() {
       <h1 style={{ margin: "0 0 16px" }}>Sandbox</h1>
       {BLOCKED_PROBES.map((probe) => (
         <div key={probe.id} data-testid={`probe-${probe.id}`}>
-          {blocked[probe.id] ?? "pending"}
+          {probeResults[probe.id] ?? "pending"}
         </div>
       ))}
       <div data-testid="probe-innerhtml">{innerHtml}</div>
       {/* Retained for the existing test's assertions. */}
       <div data-testid="blocked-api-result">
-        {blocked.script === "blocked"
+        {probeResults.script === "blocked"
           ? "blocked createElement: script"
           : "ok: created"}
       </div>
