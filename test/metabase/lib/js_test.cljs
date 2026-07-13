@@ -194,7 +194,7 @@
 
 (deftest ^:parallel template-tags-js->cljs-test
   (testing "Should use map key as :name"
-    (is (= {:name "tag", :display-name "Tag", :type :number}
+    (is (= [{:name "tag", :display-name "Tag", :type :number}]
            (#'lib.js/template-tags-js->cljs
             #js {"tag" #js {"display-name" "Tag", "type" "number"}})))))
 
