@@ -163,26 +163,23 @@
 ;;; -------------------------------------------------- Admin --------------------------------------------------
 
 (api.macros/defendpoint :post "/admin/remove" :- nil
-  "Admin: remove a user's two-factor enrollment entirely — the lockout escape hatch for a lost
-  authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
-  lockouts permanent). The affected user is notified by email. They re-enroll from scratch —
-  there is nothing to \"reset\", the secret lives on their device.
+  "Admin: remove *another* user's two-factor enrollment entirely — the lockout escape hatch for a
+  lost authenticator with no recovery codes. Never feature-gated (a lapsed license must not make
+  lockouts permanent). The affected user is notified by email. They re-enroll from scratch — there
+  is nothing to \"reset\", the secret lives on their device.
 
-  Removing *someone else's* enrollment takes no second factor — the whole point is that the
-  target can no longer produce one. But removing your *own* enrollment while you still hold a
-  factor must present it (`code`), exactly like `/disable`: otherwise a hijacked admin session
-  could strip its own 2FA with only a cookie, turning transient access into a permanent bypass."
+  Removing your *own* enrollment is deliberately refused here: this is a user-management endpoint
+  that takes no second factor (the target can't produce one — that's why an admin is removing it),
+  and the admin UI never collects a code. Self-removal goes through the normal Security page, which
+  re-auths with a fresh factor via `/disable`. Without this guard a hijacked admin session could
+  strip its own 2FA with only a cookie, turning transient access into a permanent password bypass."
   [_route-params
    _query-params
-   {user-id :user_id
-    code    :code} :- [:map
-                       [:user_id ms/PositiveInt]
-                       [:code {:optional true} [:maybe ms/NonBlankString]]]]
+   {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
   (api/check-superuser)
-  (when (and (= user-id api/*current-user-id*)
-             (enrollment/enrolled-method user-id))
-    (when-not (and code (verification/verify-attempt! user-id code nil))
-      (throw (invalid-code-ex))))
+  (when (= user-id api/*current-user-id*)
+    (throw (ex-info (tru "You cannot administratively remove your own two-factor authentication. Please use the normal removal method in your account settings.")
+                    {:status-code 400})))
   (when (enrollment/disable! user-id)
     (let [user (t2/select-one :model/User :id user-id)]
       (messages/send-mfa-removed-by-admin-email! (:email user))
