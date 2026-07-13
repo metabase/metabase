@@ -97,9 +97,9 @@
                                                       nil)]
                                     (rf result (merge {:type end-type} @payload))
                                     result)
-                                  (vreset! current-type nil)
-                                  (vreset! current-id nil)
-                                  (vreset! payload {})))]
+                           (vreset! current-type nil)
+                           (vreset! current-id nil)
+                           (vreset! payload {})))]
       (fn
         ([result]
          (cond-> result
@@ -119,20 +119,20 @@
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
                                              (u/prog1
-                                              (vreset! message-id (:id message))
-                                              (vreset! model-name (:model message))
-                                              (vreset! last-usage (:usage message))))
+                                               (vreset! message-id (:id message))
+                                               (vreset! model-name (:model message))
+                                               (vreset! last-usage (:usage message))))
              ;; start of new content block
              (= t "content_block_start") (-> (u/prog1
-                                              (vreset! current-type block-type)
-                                              (vreset! current-id chunk-id)
-                                              (vreset! payload
-                                                       (case block-type
-                                                         :text     {:id chunk-id}
-                                                         :thinking {:id chunk-id}
-                                                         :tool_use {:toolCallId chunk-id
-                                                                    :toolName   (:name content_block)}
-                                                         nil)))
+                                               (vreset! current-type block-type)
+                                               (vreset! current-id chunk-id)
+                                               (vreset! payload
+                                                        (case block-type
+                                                          :text     {:id chunk-id}
+                                                          :thinking {:id chunk-id}
+                                                          :tool_use {:toolCallId chunk-id
+                                                                     :toolName   (:name content_block)}
+                                                          nil)))
                                              (cond->
                                               (translated-chunk-type? block-type)
                                                (rf (merge (case block-type
@@ -165,7 +165,7 @@
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
              ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
-                                         (vreset! last-usage (:usage chunk)))
+                                          (vreset! last-usage (:usage chunk)))
              ;; end of message
              (= t "message_stop")       identity
              ;; catch errors if any

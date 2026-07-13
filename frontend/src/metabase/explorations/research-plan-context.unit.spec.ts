@@ -10,6 +10,7 @@ import { selectionToResearchPlanContext } from "./research-plan-context";
 import { mockDimensionBlock, mockMetricBlock } from "./test-utils";
 
 function metric(id: number, name: string): ExplorationMetric {
+  // Unjustified type cast. FIXME
   return createMockMetric({ id, name }) as ExplorationMetric;
 }
 

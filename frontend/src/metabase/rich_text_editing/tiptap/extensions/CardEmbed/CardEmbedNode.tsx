@@ -77,8 +77,7 @@ const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
 ];
 
 const isStaticCardSort = (value: unknown): value is StoredResultSort =>
-  typeof value === "string" &&
-  (STATIC_CARD_SORTS as ReadonlyArray<string>).includes(value);
+  typeof value === "string" && STATIC_CARD_SORTS.some((sort) => sort === value);
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -198,7 +197,7 @@ export const CardEmbedComponent = memo(
     deleteNode,
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
-    const storedResultId = node.attrs.stored_result_id as number | null;
+    const storedResultId = node.attrs.stored_result_id;
     const isStatic = storedResultId != null;
     const staticSort = isStaticCardSort(node.attrs.sort)
       ? node.attrs.sort
@@ -422,7 +421,7 @@ export const CardEmbedComponent = memo(
     };
 
     const handleTitleClick = () => {
-      const chartHref = node.attrs.chart_href as string | null | undefined;
+      const chartHref = node.attrs.chart_href;
       if (chartHref) {
         dispatch(host.navigateToCard(chartHref, document));
         return;

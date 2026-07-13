@@ -102,6 +102,7 @@ export function beginResearch(): Cypress.Chainable<number> {
   cy.intercept("POST", "/api/exploration").as("createExploration");
   cy.findByRole("button", { name: /Start research/i }).click();
   return cy.wait("@createExploration").then(({ response }) => {
+    // Unjustified type cast. FIXME
     const id = response?.body?.id as number;
     expect(id, "exploration id from POST /api/exploration response").to.be.a(
       "number",

@@ -114,6 +114,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         for (const message of messages) {
+          // Unjustified type cast. FIXME
           const { metrics, dimension_groups, groups } = JSON.parse(
             message.result,
           ) as AddResearchGroupsResponse;
@@ -208,6 +209,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         for (const message of messages) {
+          // Unjustified type cast. FIXME
           const { block_ids, members, timeline_ids } = JSON.parse(
             message.result,
           ) as RemoveFromResearchPlanResponse;
@@ -265,6 +267,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
       try {
+        // Unjustified type cast. FIXME
         const parsed = JSON.parse(messages[0].result) as { name: string };
         setName(parsed.name);
       } catch (error) {
@@ -283,6 +286,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
       try {
         const timelineIds = messages.flatMap((message) => {
+          // Unjustified type cast. FIXME
           const parsed = JSON.parse(message.result) as {
             timeline_ids: number[];
           };

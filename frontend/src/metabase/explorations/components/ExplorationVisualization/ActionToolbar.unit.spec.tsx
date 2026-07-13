@@ -340,6 +340,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           starred: true,
         });
@@ -361,6 +362,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           starred: false,
         });
@@ -426,6 +428,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [PAGE_ID],
           hidden: true,
@@ -446,6 +449,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [PAGE_ID],
           hidden: false,

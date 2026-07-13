@@ -3,10 +3,10 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListTimelinesQuery } from "metabase/api";
+import NewEventModal from "metabase/query_builder/components/timelines/containers/NewEventModal";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch } from "metabase/redux";
 import { TimelineSidebar } from "metabase/timelines/questions/components/TimelineSidebar";
-import NewEventModal from "metabase/timelines/questions/containers/NewEventModal/NewEventModal";
 import { Box, Loader, Modal, Stack, Text } from "metabase/ui";
 import { getTimelineEventSettings } from "metabase/visualizations/lib/settings/timelineEvents";
 import type {

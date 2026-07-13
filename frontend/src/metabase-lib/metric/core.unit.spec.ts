@@ -195,7 +195,7 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.filterableDimensions(definition);
 
       // The metric has 2 dimensions defined
-      expect(dimensions.length).toBe(SAMPLE_METRIC.dimensions.length);
+      expect(dimensions.length).toBe(SAMPLE_METRIC.dimensions?.length);
     });
 
     it("should include filter-positions in dimension display info", () => {

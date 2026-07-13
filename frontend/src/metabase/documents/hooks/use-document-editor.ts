@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { replace } from "react-router-redux";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 import _ from "underscore";
@@ -27,6 +26,7 @@ import {
 } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
+import { replace } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   Card,

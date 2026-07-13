@@ -1,11 +1,10 @@
 import type { Location, LocationDescriptor } from "history";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { push, useRouter } from "metabase/router";
 import { Group, Indicator, Text } from "metabase/ui";
 import type { ExplorationId, ExplorationPageNodeId } from "metabase-types/api";
 

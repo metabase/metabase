@@ -43,11 +43,13 @@ const dimPlan = createMockMetricDimension({
   sources: [{ type: "field", "field-id": 2 }],
 });
 
+// Unjustified type cast. FIXME
 const revenueMetric = createMockMetric({
   id: 1,
   name: "Revenue",
   dimension_ids: [dimCreatedAt.id, dimPlan.id],
 }) as ExplorationMetric;
+// Unjustified type cast. FIXME
 const churnMetric = createMockMetric({
   id: 2,
   name: "Churn",
@@ -58,6 +60,7 @@ function setup({
   blocks = [],
   timelines = [],
 }: { blocks?: ExplorationBlock[]; timelines?: Timeline[] } = {}) {
+  // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     messages: [],
   } as any);

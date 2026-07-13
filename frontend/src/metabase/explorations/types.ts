@@ -18,7 +18,5 @@ export type ExplorationSidebarTab = (typeof EXPLORATION_SIDEBAR_TABS)[number];
 export function isExplorationSidebarTab(
   tab: string | undefined,
 ): tab is ExplorationSidebarTab {
-  return Boolean(
-    tab && EXPLORATION_SIDEBAR_TABS.includes(tab as ExplorationSidebarTab),
-  );
+  return Boolean(tab && EXPLORATION_SIDEBAR_TABS.some((t) => t === tab));
 }

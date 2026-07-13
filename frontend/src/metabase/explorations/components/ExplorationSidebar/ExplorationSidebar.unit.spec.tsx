@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
+
 
 import {
   fireEvent,
@@ -18,6 +18,7 @@ import {
   createQuery,
 } from "metabase/explorations/test-utils";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   ExplorationBlockNode,
@@ -193,6 +194,7 @@ const errorQuery = createQuery({
 });
 
 function getRow(name: string): HTMLElement {
+  // Unjustified type cast. FIXME
   return screen
     .getAllByRole("treeitem")
     .find((el) =>
@@ -275,6 +277,7 @@ describe("ExplorationSidebar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [700],
           hidden: true,
@@ -333,6 +336,7 @@ describe("ExplorationSidebar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [800],
           hidden: false,

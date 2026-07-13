@@ -252,6 +252,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
               marketingId,
               releasesId,
             ]);
+            // Unjustified type cast. FIXME
             const id = response?.body?.id as number;
             H.expectUnstructuredSnowplowEvent({
               event: "exploration_plan_edited",
@@ -296,6 +297,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
 
   it("auto-populates metrics + dimensions + name from agent tool calls, then Start research succeeds", () => {
     cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+      // Unjustified type cast. FIXME
       const data = body as {
         metrics: Array<{ id: number; name: string; dimension_ids: string[] }>;
         dimension_groups: Array<{
@@ -362,6 +364,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
       cy.findByRole("button", { name: /Start research/i }).click();
       cy.wait("@createExploration").then(({ request, response }) => {
         expect(request.body.name).to.eq(agentName);
+        // Unjustified type cast. FIXME
         const id = response?.body?.id as number;
         H.expectUnstructuredSnowplowEvent({
           event: "exploration_agent_message_sent",
@@ -453,6 +456,7 @@ describe("scenarios > explorations > detail page", () => {
 
   it("groups sidebar rows as `<metric> → By <dimension>`, makes the headings collapsible, and marks interesting groups", () => {
     cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+      // Unjustified type cast. FIXME
       const data = body as {
         metrics: Array<{ id: number; name: string; dimension_ids: string[] }>;
         dimension_groups: Array<{
@@ -548,6 +552,7 @@ describe("scenarios > explorations > detail page", () => {
       icon: "star",
       default: false,
     }).then(({ body: timeline }) => {
+      // Unjustified type cast. FIXME
       const timelineId = timeline.id as number;
       H.createExplorationViaApi({
         name: "Timeline persistence fixture",
@@ -578,6 +583,7 @@ describe("scenarios > explorations > detail page", () => {
       // asynchronously once the summary task runs, so it is not
       // asserted here — see the AI-summary completion test below.)
       cy.request("GET", `/api/exploration/${id}`).then(({ body }) => {
+        // Unjustified type cast. FIXME
         const docs = (body.threads ?? []).flatMap(
           (t: { documents?: Array<{ id: number; name: string }> }) =>
             t.documents ?? [],
@@ -642,6 +648,7 @@ describe("scenarios > explorations > detail page", () => {
       // non-null transition we're trying to observe.
       cy.intercept("GET", `/api/exploration/${id}`, (req) => {
         req.continue((res) => {
+          // Unjustified type cast. FIXME
           const body = res.body as {
             threads?: Array<{
               ai_summary_document_id: number | null;
@@ -704,6 +711,7 @@ describe("scenarios > explorations > detail page", () => {
             if (!state.completed) {
               return;
             }
+            // Unjustified type cast. FIXME
             const body = res.body as { document?: unknown };
             body.document = completedDoc;
           });
@@ -779,6 +787,7 @@ describe("scenarios > explorations > collection placement + archive", () => {
     H.createExplorationViaApi({ name: explorationName }).then(
       (explorationId) => {
         cy.request("GET", "/api/user/current").then(({ body: user }) => {
+          // Unjustified type cast. FIXME
           const personalCollectionId = user.personal_collection_id as number;
           expect(
             personalCollectionId,

@@ -1,7 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
-import { Link, type Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
@@ -32,6 +30,7 @@ import {
 } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { EditorCapabilities } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { Link, type Route, push } from "metabase/router";
 import {
   ActionIcon,
   Box,
