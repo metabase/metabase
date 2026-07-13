@@ -97,7 +97,7 @@
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
         (testing "Returns search results for term queries"
           (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
@@ -108,7 +108,7 @@
 (deftest search-content-types-test
   (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
     (binding [search.ingestion/*force-sync* true]
-      (search.tu/with-new-search-if-available-otherwise-legacy
+      (search.tu/with-appdb-search-if-available-otherwise-legacy
         (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
                        :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
                        :model/Collection _ {:name "AgentSearchAcmeCollection"}]
@@ -556,7 +556,7 @@
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
                                           :type          :metric
                                           :database_id   (mt/id)
@@ -569,7 +569,7 @@
 
 (deftest search-finds-models-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
                                          :type          :model
                                          :database_id   (mt/id)
