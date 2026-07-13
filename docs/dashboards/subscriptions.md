@@ -79,8 +79,6 @@ This is helpful for dashboards that are displaying time-limited results (for exa
 
 When configuring an email subscription, you can tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
 
-Currently, you can only send attachments with question results.
-
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
 ### File format
