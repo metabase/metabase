@@ -10,9 +10,11 @@
 
 (p/import-vars
  [metabase.revisions.models.revision
+  entity->model
   serialize-instance
   revert-to-revision!
-  revisions]
+  revisions
+  revisions+details]
  [metabase.revisions.models.revision.last-edit
   MaybeAnnotated
   edit-information-for-user

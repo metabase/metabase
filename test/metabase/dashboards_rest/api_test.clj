@@ -18,6 +18,7 @@
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.dashboards.read :as dashboards.read]
    [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -380,7 +381,7 @@
                                                         {:parameter_id "d", :card_id card-id, :target [:dimension [:template-tag "user_id"]]}]
                                    :card_id            card-id
                                    :dashboard_id       dashboard-id}]
-          (is (#'api.dashboard/get-dashboard dashboard-id)))))))
+          (is (dashboards.read/get-dashboard dashboard-id)))))))
 
 (deftest get-dashboard-param-fields-has-target-test
   (testing "param-fields for fk has target (#44231)"
@@ -400,7 +401,7 @@
                           :target             {:id (mt/id :people :id)
                                                :name_field {:id (mt/id :people :name)}}}]}
               (:param_fields (mt/with-test-user :crowberto
-                               (#'api.dashboard/get-dashboard dash-id))))))))
+                               (dashboards.read/get-dashboard dash-id))))))))
 
 (deftest last-used-parameter-value-test
   (mt/test-helpers-set-global-values!
@@ -2780,7 +2781,7 @@
              "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]]]]
     (testing (pr-str dashcard)
       (is (= expected
-             (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
+             (base-64-encode-byte-arrays (#'dashboards.read/dashcard->query-hashes dashcard)))))))
 
 (deftest ^:parallel dashcards->query-hashes-test
   (is (= ["S7xKRDQIVA4k/rzNGAc6PyMCvMiYs2MTkAJK5gwBGHU="
@@ -2792,7 +2793,7 @@
           "SIMWVAbMGgvozr1bSIWol6uCKKUDEqCL469OsN4dlsI="
           "thIvyA4Q/suKFAQiq0xJJLtSML2i5UHgw9WoTOdRGs4="]
          (base-64-encode-byte-arrays
-          (#'api.dashboard/dashcards->query-hashes
+          (#'dashboards.read/dashcards->query-hashes
            [{:card {:dataset_query (fake-query 1)}}
             {:card   {:dataset_query (fake-query 2)}
              :series [{:dataset_query (fake-query 3)}
@@ -2804,7 +2805,7 @@
           {:card   {:dataset_query (fake-query 2), :query_average_duration 333}
            :series [{:dataset_query (fake-query 3), :query_average_duration 555}
                     {:dataset_query (fake-query 4), :query_average_duration 777}]}]
-         (#'api.dashboard/add-query-average-duration-to-dashcards
+         (#'dashboards.read/add-query-average-duration-to-dashcards
           [{:card {:dataset_query (fake-query 1)}}
            {:card   {:dataset_query (fake-query 2)}
             :series [{:dataset_query (fake-query 3)}
@@ -5597,7 +5598,7 @@
                  "_CATEGORY_"     [{:name      (:name category)
                                     :base_type :type/Text}]}
                 (:param_fields (mt/with-test-user :crowberto
-                                 (#'api.dashboard/get-dashboard (:id dashboard))))))))))
+                                 (dashboards.read/get-dashboard (:id dashboard))))))))))
 
 (deftest post-update-test
   (mt/with-temp [:model/Collection    {collection-id-1 :id} {}

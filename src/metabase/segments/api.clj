@@ -37,7 +37,9 @@
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 
-(mu/defn- hydrated-segment [id :- ms/PositiveInt]
+(mu/defn get-segment
+  "Fetch the Segment with `id`, read-checked, with `:creator` hydrated."
+  [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/Segment :id id))
       (t2/hydrate :creator)))
 
@@ -49,7 +51,7 @@
   "Fetch `Segment` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (hydrated-segment id))
+  (get-segment id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -77,7 +79,7 @@
                      new-body)]
     (when changes
       (t2/update! :model/Segment id changes))
-    (u/prog1 (hydrated-segment id)
+    (u/prog1 (get-segment id)
       (events/publish-event! :event/segment-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 

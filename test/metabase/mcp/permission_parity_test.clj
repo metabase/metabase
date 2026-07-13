@@ -58,10 +58,12 @@
                (query-failed? (tool-body result)))))
 
 (defn any-item-denied?
-  "Classifier for a batch read (`read_resource`, `get_content`): the call itself succeeds and reports
-   the refusal per requested item, so a denial is an item that came back with an error."
+  "Classifier for a batch read (`read_resource`, `get_content`): the call itself succeeds and reports the
+   refusal per requested item, so a denial is an item that came back with an error. The two tools name
+   their item list differently — v1's `resources`, v2's envelope `data` — and either is read here."
   [result]
-  (boolean (some :error (:resources (tool-body result)))))
+  (let [body (tool-body result)]
+    (boolean (some :error (concat (:resources body) (:data body))))))
 
 (defn- rest-denied?
   [{:keys [status body]}]
@@ -264,6 +266,56 @@
         :expect   :allowed
         :tool     ["browse_collection" {:id (:id coll)}]
         :rest     [:get (str "collection/" (:id coll) "/items")]}))))
+
+;;; ------------------------------------------------- get_content --------------------------------------------------
+
+(deftest get-content-baseline-parity-test
+  (testing "the positive control: with full permissions both surfaces return the card"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+      (check-parity!
+       {:scenario     :full-permissions
+        :user         :rasta
+        :expect       :allowed
+        :tool         ["get_content" {:items [{:type "question" :id (:id card)}]}]
+        :tool-denied? any-item-denied?
+        :rest         [:get (str "card/" (:id card))]}))))
+
+(deftest get-content-no-collection-access-parity-test
+  (testing "a card the caller cannot read is refused by both surfaces"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       card {:collection_id (:id coll)}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (check-parity!
+         {:scenario     :no-collection-access
+          :user         :rasta
+          :expect       :denied
+          :tool         ["get_content" {:items [{:type "question" :id (:id card)}]}]
+          :tool-denied? any-item-denied?
+          :rest         [:get (str "card/" (:id card))]})))))
+
+(deftest get-content-dashboard-no-collection-access-parity-test
+  (testing "and a dashboard the caller cannot read, likewise — every type reads through the app's own check"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Dashboard  dash {:collection_id (:id coll)}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (check-parity!
+         {:scenario     :no-collection-access
+          :user         :rasta
+          :expect       :denied
+          :tool         ["get_content" {:items [{:type "dashboard" :id (:id dash)}]}]
+          :tool-denied? any-item-denied?
+          :rest         [:get (str "dashboard/" (:id dash))]})))))
+
+(deftest get-content-archived-target-parity-test
+  (testing "archiving is not a permission: a readable archived card still reads, on both surfaces"
+    (mt/with-temp [:model/Card card {:archived true :dataset_query (mt/mbql-query venues)}]
+      (check-parity!
+       {:scenario     :archived-target
+        :user         :rasta
+        :expect       :allowed
+        :tool         ["get_content" {:items [{:type "question" :id (:id card)}]}]
+        :tool-denied? any-item-denied?
+        :rest         [:get (str "card/" (:id card))]}))))
 
 (deftest get-parameter-values-no-collection-access-parity-test
   (testing "a dashboard the caller cannot read gives up no filter values, on either surface"

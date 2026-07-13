@@ -81,18 +81,10 @@
                                             [:archived {:default :false} ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
                                             [:end      {:optional true}  ms/TemporalString]]]
-  (let [archived? archived
-        timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
-    (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
-      ;; `collection_id` `nil` means we need to assoc 'root' collection
-      ;; because hydrate `:collection` needs a proper `:id` to work.
-      (nil? (:collection_id timeline))
-      collection.root/hydrate-root-collection
-
-      (= include :events)
-      (timeline-event/include-events-singular {:events/all?  archived?
-                                               :events/start (when start (u.date/parse start))
-                                               :events/end   (when end (u.date/parse end))}))))
+  (timeline/get-timeline id {:include-events? (= include :events)
+                             :archived?       archived
+                             :start           (when start (u.date/parse start))
+                             :end             (when end (u.date/parse end))}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

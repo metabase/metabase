@@ -335,6 +335,63 @@
           hydrate-notification
           notification->alert))
 
+(defn maybe-filter-pulses-recipients
+  "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
+  themselves. Recipients that are plain email addresses are preserved.
+
+  If the current user is not a superuser, also filters the list of recipients to remove users from a different
+  tenant."
+  [pulses]
+  (cond->> pulses
+    (perms/sandboxed-or-impersonated-user?)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:id recipient) api/*current-user-id*)))
+                                   (:recipients channel)))))))
+
+    (not api/*is-superuser?*)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
+                                   (:recipients channel)))))))))
+
+(defn maybe-filter-pulse-recipients
+  "Single-Pulse convenience wrapper around [[maybe-filter-pulses-recipients]]."
+  [pulse]
+  (first (maybe-filter-pulses-recipients [pulse])))
+
+(defn maybe-strip-sensitive-metadata
+  "If the current user does not have collection read permissions for `pulse`, but can still read it due to being the
+  creator or a recipient, return it with some metadata removed."
+  [pulse]
+  (if (mi/current-user-has-full-permissions? :read pulse)
+    pulse
+    (-> (dissoc pulse :cards)
+        (update :channels
+                (fn [channels]
+                  (map #(dissoc % :recipients) channels))))))
+
+(defn get-pulse
+  "Fetch the Pulse (dashboard subscription) with `id`, applying the current user's read-permission check.
+
+  If the user is a recipient of the Pulse but does not have read permissions for its collection, the Pulse is still
+  returned, with some sensitive metadata (`:cards` and channel `:recipients`) removed."
+  [id]
+  (api/let-404 [pulse (retrieve-pulse id)]
+    (api/check-403 (mi/can-read? pulse))
+    (-> pulse
+        maybe-filter-pulse-recipients
+        maybe-strip-sensitive-metadata
+        (t2/hydrate :can_write))))
+
 (defn- query-as [model query]
   (t2/select model query))
 

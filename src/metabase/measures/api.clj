@@ -78,12 +78,18 @@
   (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
       metrics/filter-dimensions-for-user))
 
+(mu/defn get-measure :- ::measure
+  "Fetch the Measure with `id`, read-checked, with dimensions synced and filtered for the current user, and
+  `:result_column_name` assoc'd."
+  [id :- ms/PositiveInt]
+  (let [measure (hydrated-measure id)]
+    (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
+
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [measure (hydrated-measure id)]
-    (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
+  (get-measure id))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."

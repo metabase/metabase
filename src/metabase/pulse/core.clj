@@ -14,7 +14,9 @@
 (p/import-vars
  [metabase.pulse.models.pulse
   card->ref
+  get-pulse
   retrieve-alerts-for-cards
   update-pulse!]
  [metabase.pulse.update-alerts
-  delete-alerts-if-needed!])
+  delete-alerts-if-needed!
+  get-alert])

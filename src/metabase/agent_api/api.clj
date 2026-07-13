@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.agent-api.browse-collection :as agent-api.browse-collection]
    [metabase.agent-api.browse-data :as agent-api.browse-data]
+   [metabase.agent-api.get-content :as agent-api.get-content]
    [metabase.agent-api.parameter-values :as agent-api.parameter-values]
    [metabase.agent-api.search :as agent-api.search]
    [metabase.agent-api.settings :as agent-api.settings]
@@ -472,6 +473,107 @@
    _query-params
    body :- ::browse-collection-request]
   (agent-api.browse-collection/browse-collection body))
+
+;;; -------------------------------------------------- Get Content ---------------------------------------------------
+
+(mr/def ::content-item
+  "One entity to read: the type, and an id in it."
+  [:map
+   [:type
+    {:tool/description "What kind of thing to read."}
+    (into [:enum] agent-api.get-content/types)]
+   [:id
+    {:tool/description (str "Which one. A numeric id, or a 21-character entity_id — except an alert, which "
+                            "has no entity_id and takes a number.")}
+    agent-api.tools/IdRef]])
+
+(mr/def ::content-request
+  "Arguments to the `get_content` tool."
+  [:map
+   [:items
+    {:tool/description (str "The entities to read — up to " agent-api.get-content/max-items
+                            " per call, and they may be of different types. `search` and "
+                            "`browse_collection` return the type and id of every hit.")}
+    [:sequential ::content-item]]
+   [:include
+    {:optional true
+     :tool/description (str "Extra sections, applied to every item they mean something for. A section that "
+                            "does not fit an item's type is skipped for that item and named in its result. "
+                            "`definition` — the query, in the portable dialect the write tools take "
+                            "(questions, models, metrics, measures, segments, transforms). `fields` — the "
+                            "columns a saved question returns. `parameters` — the full filter widgets "
+                            "(questions and dashboards; a native question's template tags come with them). "
+                            "`layout` — a dashboard's raw dashcards, with their visualization settings and "
+                            "parameter mappings. `dimensions` — the columns a metric can be grouped and "
+                            "filtered by. `revisions` — the change history, whose ids `revert_content` "
+                            "takes.")}
+    [:maybe [:sequential (into [:enum] agent-api.get-content/includes)]]]
+   [:fields
+    {:optional true
+     :tool/description (str "Return only these fields of each item, as dot-paths into its full record (for "
+                            "example [\"id\", \"collection_id\"]). Overrides `response_format`. Applied to "
+                            "every item, so a path a type does not carry is simply absent from it.")}
+    agent-api.tools/FieldsField]
+   [:response_format
+    {:optional true
+     :tool/description (str "\"concise\" (default) returns the essentials per type — for a dashboard, the "
+                            "editing skeleton: its tabs, its parameters and what they filter, and one "
+                            "summary row per card. \"detailed\" returns each item's whole record.")}
+    agent-api.tools/ResponseFormatField]])
+
+(mr/def ::content-response
+  "The bounded envelope over a heterogeneous array: each element echoes `type` and `id` and carries its own
+  type's fields, or an `error` when that one item could not be read. `total` counts the requested items, and
+  `omitted` names the ones the response budget cut."
+  [:map
+   [:data               [:sequential :map]]
+   [:returned           :int]
+   [:total              :int]
+   [:truncated          {:optional true} :boolean]
+   [:truncation_message {:optional true} :string]
+   [:omitted            {:optional true} [:sequential :map]]])
+
+(api.macros/defendpoint :post "/v2/content" :- ::content-response
+  "Read entities by type and id — the generic typed fetch.
+
+  Reads up to 10 entities of any mix of types in one call, each through the domain function its REST
+  endpoint calls. An id that names nothing, or something the caller may not read, comes back as an error in
+  its own element rather than sinking the batch."
+  {:scope "agent:discover:read"
+   :tool  {:name  "get_content"
+           :title "Read Metabase Content"
+           :description
+           (str "Read Metabase entities you already have the type and id of — from `search`, from "
+                "`browse_collection`, or from a write tool's response.\n"
+                "\n"
+                "`items` takes up to 10 `{type, id}` pairs, and they can be of different types: a "
+                "dashboard and the questions on it come back in one call. Types: question, model, metric, "
+                "measure, segment, dashboard, document, collection, snippet, alert, subscription, "
+                "timeline, transform.\n"
+                "\n"
+                "Each item comes back with its own type's fields. A dashboard's concise read is its "
+                "editing skeleton — tabs, parameters and the dashcards each one filters, and one summary "
+                "row per card — which is every input `dashboard_write`'s ops take. A document's body comes "
+                "back as Markdown, which is what `document_write` takes. A question says what it is built "
+                "on: `database_id`, `table_id`, `source_card_id`.\n"
+                "\n"
+                "`include` adds sections: `definition` (the query, in the portable dialect `execute_query` "
+                "and `question_write` accept — so read, modify, and write round-trips), `fields` (the "
+                "columns a question returns), `parameters`, `layout` (a dashboard's raw dashcards), "
+                "`dimensions` (what a metric can be grouped by), `revisions` (the undo history, whose ids "
+                "`revert_content` takes). Ask for a section on a type it does not fit and that item says "
+                "so; the rest of the batch is unaffected.\n"
+                "\n"
+                "One bad id does not sink the call — it comes back as an `error` on its own element.")
+           :annotations {:read-only? true :idempotent? true}
+           :input-examples [{:items [{:type "dashboard" :id 7}]}
+                            {:items [{:type "question" :id 42}] :include ["definition" "fields"]}
+                            {:items [{:type "question" :id 42} {:type "dashboard" :id 7}]
+                             :fields ["id" "name" "collection_id"]}]}}
+  [_route-params
+   _query-params
+   body :- ::content-request]
+  (agent-api.get-content/get-content body))
 
 ;;; ----------------------------------------------- Parameter Values -------------------------------------------------
 

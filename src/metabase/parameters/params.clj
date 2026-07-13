@@ -243,7 +243,7 @@
 
 (def ^:dynamic *field-id-context*
   "Context for effective computation of field ids for parameters. Bound in
-  the [[metabase.dashboards-rest.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
+  the [[metabase.dashboards.read/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
   re-use values of previous `filterable-columns` computations (during the reduction itself and hydration of
   `:param_fields` and `:param_values` at the time of writing)."
   nil)

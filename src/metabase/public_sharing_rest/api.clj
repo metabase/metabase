@@ -7,7 +7,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.dashboards-rest.api :as api.dashboard]
+   [metabase.dashboards.read :as dashboards.read]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.lib.schema.info :as lib.schema.info]
@@ -250,7 +250,7 @@
             params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (apply t2/select-one [:model/Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
-        api.dashboard/add-query-average-durations
+        dashboards.read/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
                                (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id

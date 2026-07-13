@@ -432,6 +432,93 @@ a branch cut by the per-node cap, the node budget, or `depth` carries a
 }
 ```
 
+### POST /v2/content
+
+The `get_content` tool: the generic typed fetch. The agent already holds
+`{type, id}` — `search` handed it one, `browse_collection` listed one — and this
+is where it cashes it in.
+
+`items` takes up to 10 `{type, id}` pairs, and they may be of different types: a
+dashboard and the questions on it come back in one call. `type` is `question`,
+`model`, `metric`, `measure`, `segment`, `dashboard`, `document`, `collection`,
+`snippet`, `alert`, `subscription`, `timeline`, or `transform` — transforms are
+read-only. `id` is a numeric id or a 21-character `entity_id` (an alert has no
+`entity_id` and takes a number).
+
+Request:
+
+```json
+{
+  "items": [{"type": "dashboard", "id": 7}, {"type": "question", "id": 42}],
+  "include": ["definition", "revisions"],
+  "response_format": "concise"
+}
+```
+
+Each element of `data` echoes the `type` and `id` it was addressed by and
+carries its own type's fields — a heterogeneous array, with no unified output
+schema. An id that names nothing, or something the caller may not read, comes
+back as an `error` on its own element; the rest of the batch is unaffected.
+`omitted` names the items the response budget cut, whole items only.
+
+```json
+{
+  "data": [
+    {"type": "question", "id": 42, "name": "Weekly signups", "display": "line",
+     "description": null, "database_id": 1, "table_id": 9, "source_card_id": null,
+     "collection_id": 12, "archived": false},
+    {"type": "question", "id": 99, "error": "Not found."}
+  ],
+  "returned": 2,
+  "total": 2
+}
+```
+
+Two projections are more than a subset of the REST record.
+
+A **dashboard**'s concise read is the *editing skeleton*: its tabs, its
+parameters with the dashcards each one filters, and one summary row per dashcard
+— dashcard id, kind (`card`, `text`, `heading`, `link`, `iframe`, `action`), card
+id and name, tab, `{row, col, size_x, size_y}`, series, inline parameters. That
+is every input `dashboard_write`'s op grammar takes, and never the raw REST
+`dashcards` array, whose every element nests the card's whole `dataset_query` and
+visualization settings. Those ride `include: ["layout"]`, which is what
+`patch_dashcard` edits against.
+
+A **document**'s body comes back as `content_markdown`, the dialect
+`document_write` takes; the stored ProseMirror tree is not in the response.
+
+#### `include`
+
+Call-level, not per-item: one list applied to every item the section means
+something for. A section that does not fit an item's type is skipped for that
+item and named in its `skipped_includes`, rather than erroring the batch.
+
+| Section | Types | Returns |
+| --- | --- | --- |
+| `definition` | question, model, metric, measure, segment, transform | the query, in the portable dialect the write tools take |
+| `fields` | question, model, metric | the columns the saved question returns |
+| `parameters` | question, model, metric, dashboard | the full filter widgets; a native question's `template_tags` come with them |
+| `layout` | dashboard | the raw dashcards, with visualization settings and parameter mappings |
+| `dimensions` | metric | the columns the metric can be grouped and filtered by |
+| `revisions` | question, model, metric, dashboard, document, measure, segment, transform | the change history; each row's `id` is what `revert_content` takes |
+
+`definition` is the one that closes the loop. The stored `dataset_query` speaks
+numeric field refs; `execute_query` and `question_write` speak portable ones. The
+server converts, so a read hands back exactly what a write will accept:
+
+```json
+{"lib/type": "mbql/query",
+ "stages": [{"lib/type": "mbql.stage/mbql",
+             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "aggregation": [["count", {}]]}]}
+```
+
+`fields` (the parameter, not the section) picks dot-paths out of each item's full
+record — `["id", "collection_id"]` — and overrides `response_format`. It applies
+to every item, so a path a type does not carry is simply absent from it; a path
+no type carries is an error listing the ones that exist.
+
 ### POST /v2/parameter-values
 
 The `get_parameter_values` tool: the values a dashboard or question filter

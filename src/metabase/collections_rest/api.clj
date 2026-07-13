@@ -168,16 +168,6 @@
          collection/personal-collections-with-ui-details
          collection/maybe-localize-tenant-collection-names)))
 
-(defn- prep-collection-for-export
-  "Given a collection, tweaks it to be ready for returning to the FE.
-
-  These same functions were called in several places in this namespace, so they're combined here to keep it DRY."
-  [coll]
-  (-> coll
-      collection/personal-collection-with-ui-details
-      collection/maybe-localize-tenant-collection-name
-      collection/maybe-mark-collection-as-library-root))
-
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
 
@@ -194,7 +184,7 @@
   ```"
   [colls]
   (->> colls
-       (map prep-collection-for-export)
+       (map collections/prep-collection-for-export)
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
@@ -281,22 +271,8 @@
                                                                          [:= :archived_at nil]]})
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map prep-collection-for-export collections)]
+            collections-with-details (map collections/prep-collection-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
-
-(mu/defn- collection-detail
-  "Add a standard set of details to `collection`, including things like `effective_location`.
-  Works for either a normal Collection or the Root Collection."
-  [collection :- collection/CollectionWithLocationAndIDOrRoot]
-  (-> collection
-      prep-collection-for-export
-      (t2/hydrate :parent_id
-                  :effective_location
-                  [:effective_ancestors :can_write]
-                  :can_write
-                  :is_personal
-                  :can_restore
-                  :can_delete)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -305,7 +281,7 @@
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
-  (collection-detail (api/read-check (collection/trash-collection))))
+  (collections/get-collection (api/read-check (collection/trash-collection))))
 
 (mr/def ::DashboardQuestionCandidate
   [:map
@@ -417,7 +393,7 @@
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (defn- root-collection [collection-namespace]
-  (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
+  (collections/get-collection (collection/root-collection-with-ui-details collection-namespace)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -695,7 +671,7 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
-    (collection-detail (api/read-check :model/Collection resolved-id))))
+    (collections/get-collection (api/read-check :model/Collection resolved-id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -734,7 +710,7 @@
       (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
-  (collection-detail (t2/select-one :model/Collection :id id)))
+  (collections/get-collection (t2/select-one :model/Collection :id id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

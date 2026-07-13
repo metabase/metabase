@@ -18,6 +18,16 @@
   [model]
   (isa? model :metabase/model))
 
+(def entity->model
+  "Map of revisionable entity name (as used in the `GET /api/revision` and `POST /api/revision/revert` `entity`
+  parameter) to the Toucan model it refers to."
+  {"card"      :model/Card
+   "dashboard" :model/Dashboard
+   "document"  :model/Document
+   "measure"   :model/Measure
+   "segment"   :model/Segment
+   "transform" :model/Transform})
+
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
   will be deleted."

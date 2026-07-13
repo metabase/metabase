@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.models.collection.root :as collection.root]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
@@ -37,7 +36,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -192,58 +190,10 @@
                    card)))
           cards)))
 
-(defn- hydrate-card-details
-  "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
-  returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
-  it currently has with returned one -- See #4283"
-  [{card-id :id :as card}]
-  (span/with-span!
-    {:name       "hydrate-card-details"
-     :attributes {:queries/id card-id}}
-    (-> card
-        (t2/hydrate :based_on_upload
-                    :creator
-                    :can_write
-                    :can_run_adhoc_query
-                    :dashboard_count
-                    [:dashboard :moderation_status]
-                    :average_query_time
-                    :last_query_start
-                    :parameter_usage_count
-                    :can_restore
-                    :can_delete
-                    :can_manage_db
-                    [:collection :is_personal]
-                    [:moderation_reviews :moderator_details]
-                    :param_fields
-                    :is_remote_synced)
-        (update :param_fields (fn [param-fields]
-                                (let [viewable? (memoize (fn [table-id]
-                                                           (perms/user-has-permission-for-table?
-                                                            api/*current-user-id*
-                                                            :perms/view-data :unrestricted
-                                                            (:database_id card) table-id)))]
-                                  (update-vals param-fields
-                                               (fn [fields]
-                                                 (filterv #(viewable? (:table_id %)) fields))))))
-        (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
-        (cond->
-         (queries/model? card) (t2/hydrate :persisted
-                                           ;; can_manage_db determines whether we should enable model persistence settings
-                                           :can_manage_db)))))
-
-(defn- get-card
-  "Get `Card` with ID."
+(defn- get-card-with-last-edit-info
+  "Get `Card` with ID, annotated with `:last-edit-info`."
   [id]
-  (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
-        raw-card (t2/select-one :model/Card :id id)]
-    (-> raw-card
-        api/read-check
-        hydrate-card-details
-        ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
-        with-last-edit-info
-        collection.root/hydrate-root-collection
-        (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
+  (first (revisions/with-last-edit-info [(queries/get-card id)] :card)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -259,7 +209,7 @@
    {legacy-mbql? :legacy-mbql
     :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
+        card (get-card-with-last-edit-info resolved-id)]
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]
@@ -281,7 +231,7 @@
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [card (get-card id)
+  (let [card (get-card-with-last-edit-info id)
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))
@@ -583,7 +533,7 @@
                                {:card-id (:id created-card)
                                 :user-id api/*current-user-id*}))
       (-> created-card
-          hydrate-card-details
+          queries/hydrate-card-details
           (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -598,7 +548,7 @@
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (queries/create-card! new-card @api/*current-user*)
-        hydrate-card-details
+        queries/hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -730,7 +680,7 @@
                                                                           :card-updates          card-updates
                                                                           :actor                 @api/*current-user*
                                                                           :delete-old-dashcards? delete-old-dashcards?})
-                                                   hydrate-card-details
+                                                   queries/hydrate-card-details
                                                    (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
         ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
         ;; The grid is then refreshed synchronously with the latest search results, so we need this change to be
@@ -777,7 +727,7 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
+    (queries/batch-fetch-card-metadata [(get-card-with-last-edit-info resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 

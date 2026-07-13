@@ -91,13 +91,19 @@
   (-> (t2/select-one :model/Card :id id :type "metric")
       metrics.perms/filter-dimensions-for-user))
 
+(mu/defn get-metric :- ::MetricWithDimensions
+  "Fetch the metric Card with `id`, read-checked, with dimensions synced and filtered for the current user, and
+  `:result_column_name` assoc'd."
+  [id :- ms/PositiveInt]
+  (let [metric (hydrated-metric id)]
+    (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
+
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
   Returns the metric with hydrated dimensions and dimension mappings."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [metric (hydrated-metric id)]
-    (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
+  (get-metric id))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |

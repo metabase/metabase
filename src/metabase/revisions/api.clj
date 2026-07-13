@@ -9,22 +9,14 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
-(def ^:private entity->model
-  {"card"      :model/Card
-   "dashboard" :model/Dashboard
-   "document"  :model/Document
-   "measure"   :model/Measure
-   "segment"   :model/Segment
-   "transform" :model/Transform})
-
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
   (into
-   [:enum {:api/regex (u.regex/re-or (keys entity->model))}]
-   (keys entity->model)))
+   [:enum {:api/regex (u.regex/re-or (keys revision/entity->model))}]
+   (keys revision/entity->model)))
 
 (defn- model-and-instance [entity-name id]
-  (let [model (entity->model entity-name)]
+  (let [model (revision/entity->model entity-name)]
     (assert (keyword? model))
     ;; Ensure the model namespace is loaded before using it
     (t2.model/resolve-model model)
@@ -80,7 +72,7 @@
   [{:keys [id entity]} :- [:map
                            [:entity Entity]
                            [:id     ms/PositiveInt]]]
-  (let [model (entity->model entity)]
+  (let [model (revision/entity->model entity)]
     (assert (keyword? model))
     ;; Ensure the model namespace is loaded before using it
     (t2.model/resolve-model model)

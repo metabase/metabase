@@ -160,28 +160,37 @@
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
    :uses    #{activity-feed
+              agent-lib
               api
               auth-identity
               channel
               collection-items
               collections
               dashboards
+              documents
               eid-translation
               events
               lib
               lib-be
               llm
+              measures
               metabot
+              metrics
               native-query-snippets
               parameters
               permissions
+              pulse
               queries
               query-permissions
               query-processor
               request
+              revisions
               search
+              segments
               server
               settings
+              timeline
+              transforms
               util
               warehouse-schema
               warehouses}
@@ -191,7 +200,13 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Document
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Pulse
+                    :model/Segment
                     :model/Table
+                    :model/Timeline
+                    :model/Transform
                     :model/User}}
 
   agent-lib
@@ -719,8 +734,8 @@
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
-           metabase.dashboards.schema
-           metabase.dashboards.settings}
+           metabase.dashboards.read
+           metabase.dashboards.schema}
    :uses #{api
            app-db
            audit-app
@@ -729,6 +744,7 @@
            embedding
            events
            lib
+           lib-be
            models
            parameters
            permissions
@@ -751,6 +767,7 @@
                     :model/ModerationReview
                     :model/Pulse
                     :model/PulseCard
+                    :model/Query
                     :model/Revision
                     :model/User}}
 
@@ -769,7 +786,6 @@
            embedding
            events
            lib
-           lib-be
            models
            parameters
            permissions
@@ -791,7 +807,6 @@
                     :model/Pulse
                     :model/PulseChannel
                     :model/PulseChannelRecipient
-                    :model/Query
                     :model/Table
                     :model/User}}
 
@@ -1695,7 +1710,6 @@
            analytics
            api
            dashboards
-           dashboards-rest
            events
            lib
            models

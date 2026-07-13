@@ -1,9 +1,12 @@
 (ns metabase.pulse.update-alerts
   ;; TODO this should be moved to notification
   (:require
+   [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.notification.models :as models.notification]
+   [metabase.util.cron :as u.cron]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -79,3 +82,70 @@
     ;; The change doesn't invalidate the alert, do nothing
     :else
     nil))
+
+(defn notification->pulse
+  "Convert a notification to the legacy pulse structure `GET /api/alert` and `GET /api/alert/:id` return."
+  [notification]
+  (let [subscription      (-> notification :subscriptions first)
+        notification-card (-> notification :payload)
+        card              (->> notification :payload :card_id (t2/select-one :model/Card))]
+    (merge
+     (select-keys notification [:id :creator_id :creator :created_at :updated_at])
+     {:name                nil
+      :alert_condition     (if (-> notification-card :send_condition (= :has_result)) "rows" "goal")
+      :alert_above_goal    (if (-> notification-card :send_condition (= :goal_above)) true nil)
+      :alert_first_only    (-> notification :payload :send_once)
+      :archived            (not (:active notification))
+      :collection_position nil
+      :collection_id       nil
+      :skip_if_empty       true
+      :parameters          []
+      :dashboard_id        nil
+      :card                (merge
+                            (select-keys card [:name :description :collection_id :display])
+                            {:format_rows       true
+                             :include_xls       false
+                             :include_csv       true
+                             :pivot_results     false
+                             :dashboard_id      nil
+                             :dashboard_card_id nil
+                             :parameter_mappings nil})
+      :channels            (map (fn [handler]
+                                  (let [user-recipients  (->> handler
+                                                              :recipients
+                                                              (filter #(= :notification-recipient/user (:type %)))
+                                                              (map :user)
+                                                              (map #(select-keys % [:email :last_name :first_name :id :common_name])))
+                                        ;; for external emails and slack channel
+                                        value-recipients (->> handler
+                                                              :recipients
+                                                              (filter #(= :notification-recipient/raw-value (:type %)))
+                                                              (map :details))]
+                                    (merge
+                                     (when subscription
+                                       (select-keys (u.cron/cron-string->schedule-map (:cron_schedule subscription))
+                                                    [:schedule_type :schedule_hour :schedule_day :schedule_frame]))
+                                     {:id           (:id handler)
+                                      :recipients   (if (= :channel/email (:channel_type handler))
+                                                      (concat (map #(set/rename-keys % {:value :email}) value-recipients) user-recipients)
+                                                      [])
+                                      :channel_type (name (:channel_type handler))
+                                      :channel_id   (:channel_id handler)
+                                      :enabled      (:active handler)
+                                      :details      (case (:channel_type handler)
+                                                      :channel/slack
+                                                      {:channel (-> value-recipients first :value)}
+                                                      :channel/email
+                                                      {:emails (map :value value-recipients)}
+                                                      {})})))
+                                (:handlers notification))})))
+
+(defn get-alert
+  "Fetch the alert (Notification) with `id`, read-checked, in the legacy Pulse-shaped structure returned by
+  `GET /api/alert/:id`."
+  [id]
+  (-> (t2/select-one :model/Notification id)
+      api/check-404
+      models.notification/hydrate-notification
+      api/read-check
+      notification->pulse))

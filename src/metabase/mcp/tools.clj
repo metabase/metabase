@@ -141,6 +141,16 @@
    [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset and the parameters that narrow the set."} [:maybe :string]]
    [:omitted            {:optional true :tool/description "`get_fields` only: requested tables not in this response, each with the reason."} [:maybe [:sequential :map]]]])
 
+(def ^:private get-content-mcp-output-malli
+  "MCP-visible output of `get_content` — the envelope's structured channel plus `omitted`, the items the
+   response budget cut, which a next call works through."
+  [:map
+   [:returned           {:tool/description "Items in this response."} :int]
+   [:total              {:tool/description "Items requested."} :int]
+   [:truncated          {:optional true :tool/description "Whether the response budget cut items."} [:maybe :boolean]]
+   [:truncation_message {:optional true :tool/description "How to reach the rest."} [:maybe :string]]
+   [:omitted            {:optional true :tool/description "Requested items not in this response, by type and id."} [:maybe [:sequential :map]]]])
+
 (def ^:private parameter-values-mcp-output-malli
   "MCP-visible output of `get_parameter_values`. The values themselves travel in the text block; the structured
    channel carries the one field a next call acts on — whether the list was capped, and so whether to narrow it."
@@ -157,6 +167,7 @@
    "search"                 list-envelope-mcp-output-malli
    "browse_data"            browse-data-mcp-output-malli
    "browse_collection"      list-envelope-mcp-output-malli
+   "get_content"            get-content-mcp-output-malli
    "get_parameter_values"   parameter-values-mcp-output-malli})
 
 (defn- override->input-json-schema [malli tool-name]

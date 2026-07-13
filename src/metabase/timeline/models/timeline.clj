@@ -1,9 +1,12 @@
 (ns metabase.timeline.models.timeline
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -45,6 +48,30 @@
                       [:collection :can_write])
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
+
+(mu/defn get-timeline
+  "Fetch the Timeline with `id`, read-checked, with `:creator`, `[:collection :can_write]`, and `:is_remote_synced`
+  hydrated. A timeline in the root collection gets the virtual root collection hydrated onto `:collection`.
+
+  When `:include-events?` is true, also hydrates `:events`: unarchived events by default, or all events
+  (archived and unarchived) when `:archived?` is true, optionally windowed by `:start`/`:end`."
+  [id :- ms/PositiveInt
+   {:keys [include-events? archived? start end]} :- [:map {:closed true}
+                                                     [:include-events? {:optional true} [:maybe :boolean]]
+                                                     [:archived?       {:optional true} [:maybe :boolean]]
+                                                     [:start           {:optional true} [:maybe :any]]
+                                                     [:end             {:optional true} [:maybe :any]]]]
+  (let [timeline (api/read-check (t2/select-one :model/Timeline :id id))]
+    (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
+      ;; `collection_id` `nil` means we need to assoc 'root' collection
+      ;; because hydrate `:collection` needs a proper `:id` to work.
+      (nil? (:collection_id timeline))
+      collection.root/hydrate-root-collection
+
+      include-events?
+      (timeline-event/include-events-singular {:events/all?  archived?
+                                               :events/start start
+                                               :events/end   end}))))
 
 ;;;; serialization
 

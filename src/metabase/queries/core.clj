@@ -18,7 +18,9 @@
 (p/import-vars
  [metabase.queries.card
   card-param-values
-  card-param-remapped-value]
+  card-param-remapped-value
+  get-card
+  hydrate-card-details]
  [metabase.queries.models.card
   create-card!]
  [metabase.queries.metadata

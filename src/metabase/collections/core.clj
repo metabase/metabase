@@ -2,18 +2,23 @@
   "Main namespace for interacting with collections"
   (:require
    [metabase.collections.create]
+   [metabase.collections.detail]
    [metabase.collections.models.collection]
    [metabase.collections.util]
    [potemkin :as p]))
 
 (comment
   metabase.collections.create/keep-me
+  metabase.collections.detail/keep-me
   metabase.collections.models.collection/keep-me
   metabase.collections.util/keep-me)
 
 (p/import-vars
  [metabase.collections.create
   create-collection!]
+ [metabase.collections.detail
+  get-collection
+  prep-collection-for-export]
  [metabase.collections.models.collection
   has-remote-synced-collection?
   check-for-remote-sync-update
