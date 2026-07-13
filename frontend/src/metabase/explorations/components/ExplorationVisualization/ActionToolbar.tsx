@@ -32,7 +32,6 @@ import type {
 } from "metabase-types/api";
 
 import S from "./ActionToolbar.module.css";
-import { PotentiallyInterestingMarker } from "./PotentiallyInterestingMarker";
 
 export type CommentDrafts = Record<ExplorationPageNodeId, DocumentContent>;
 
@@ -45,7 +44,6 @@ interface ActionToolbarProps {
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
-  interestingTimelineIds?: ReadonlySet<TimelineId>;
 }
 
 export function ActionToolbar({
@@ -57,7 +55,6 @@ export function ActionToolbar({
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
-  interestingTimelineIds,
 }: ActionToolbarProps) {
   const [setPageStarred] = useSetPageStarredMutation();
   const [setPagesHidden] = useSetPagesHiddenMutation();
@@ -258,11 +255,6 @@ export function ActionToolbar({
                 onClick={() => {
                   handleSelectTimelineId(timeline.id, "click");
                 }}
-                rightSection={
-                  interestingTimelineIds?.has(timeline.id) ? (
-                    <PotentiallyInterestingMarker />
-                  ) : null
-                }
               >
                 {timeline.name}
               </Menu.Item>
