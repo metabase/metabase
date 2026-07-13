@@ -1957,11 +1957,10 @@
             (case (count candidates)
               0 (let [src-name (display-source-table mp source-table-id)
                       tbl-name (nth fk 2)]
-                  (throw (ex-info (tru "Field {0} is on table {1} but there is no foreign key from the source table {2} to {3}. Either add an explicit joins: entry, or use a field from the source table."
+                  (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. If you are aggregating a metric that relates to that table (metrics can join tables that have no foreign key), read that metric dimensions resource `metabase://metric/<metric_id>/dimensions` which lists the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a field from the source table."
                                        (display-portable fk)
                                        (pr-str tbl-name)
-                                       (pr-str src-name)
-                                       (pr-str tbl-name))
+                                       (pr-str src-name))
                                   {:status-code  400
                                    :error        :no-fk-path
                                    :agent-error? true

@@ -2,8 +2,11 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.entity-details-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -710,3 +713,118 @@
             (is (=? #{{:id products :related_by {:id (mt/id :orders :product_id) :name "PRODUCT_ID"}}
                       {:id products :related_by {:id (mt/id :reviews :product_id) :name "PRODUCT_ID"}}}
                     (into #{} (map #(select-keys % [:id :related_by])) product-rows)))))))))
+
+;;; ============================================================
+;;; Explicit-join dimensions on metric-details (BOT-1612)
+;;;
+;;; A metric whose definition reaches a dimension through an EXPLICIT join with no foreign key.
+;;; The consumer-framed `queryable-dimensions` drop that column; `metric-details` must instead
+;;; surface it under `:join-required-dimensions`, carrying the exact portable join clause to paste.
+;;; ============================================================
+
+(def ^:private no-fk-join-mp-base
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
+               {:id 102 :name "CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
+               {:id 300 :name "ID"          :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
+
+(defn- explicit-join-metric-mp
+  "A mock provider whose metric card (id 700) counts ORDERS with an explicit no-FK join to CAMPAIGNS."
+  []
+  (let [defq (-> (lib/query no-fk-join-mp-base (lib.metadata/table no-fk-join-mp-base 10))
+                 (lib/join (lib/join-clause (lib.metadata/table no-fk-join-mp-base 30)
+                                            [(lib/= (lib.metadata/field no-fk-join-mp-base 102)
+                                                    (lib.metadata/field no-fk-join-mp-base 300))]))
+                 (lib/aggregate (lib/count))
+                 lib.convert/->legacy-MBQL)]
+    (lib.tu/mock-metadata-provider
+     no-fk-join-mp-base
+     {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id 1 :table-id 10
+               :entity-id "Metric123_456DefGhI78" :dataset-query defq}]})))
+
+(deftest metric-details-surfaces-explicit-join-dimensions-test
+  (testing (str "metric-details surfaces FK-less join dimensions the consumer-framed dimension list "
+                "drops, each with the portable join clause to paste into `joins:` (BOT-1612)")
+    (let [mp      (explicit-join-metric-mp)
+          details (entity-details/metric-details (lib.metadata/card mp 700) mp {:field-values-fn identity})
+          jrd     (:join-required-dimensions details)]
+      (testing "the base queryable-dimensions do NOT advertise the joined column"
+        (is (not (some #(= 301 (:field_id %)) (:queryable-dimensions details)))))
+      (testing "join-required-dimensions surfaces CAMPAIGNS.NAME under the CAMPAIGNS join"
+        (is (= 1 (count jrd)))
+        (let [{:keys [target_table join dimensions]} (first jrd)]
+          (is (= "CAMPAIGNS" target_table))
+          (is (some #(= 301 (:field_id %)) dimensions))
+          (testing "the join clause is a pasteable portable mbql/join targeting CAMPAIGNS"
+            (is (= "mbql/join" (get join "lib/type")))
+            (is (= "left-join" (get join "strategy")))
+            (is (= ["Sample" "PUBLIC" "CAMPAIGNS"] (get-in join ["stages" 0 "source-table"])))
+            (testing "volatile lib/uuid keys are stripped so the clause can be pasted repeatedly"
+              (is (nil? (get join "lib/uuid"))))))))))
+
+(deftest metric-details-omits-join-required-dimensions-when-no-explicit-join-test
+  (testing "a metric with only FK-reachable (or no) joins has no :join-required-dimensions"
+    (let [defq (-> (lib/query no-fk-join-mp-base (lib.metadata/table no-fk-join-mp-base 10))
+                   (lib/aggregate (lib/count))
+                   lib.convert/->legacy-MBQL)
+          mp   (lib.tu/mock-metadata-provider
+                no-fk-join-mp-base
+                {:cards [{:id 701 :name "Order Count" :type :metric :database-id 1 :table-id 10
+                          :entity-id "Metric987_456DefGhI78" :dataset-query defq}]})
+          details (entity-details/metric-details (lib.metadata/card mp 701) mp {:field-values-fn identity})]
+      (is (nil? (:join-required-dimensions details))))))
+
+(deftest metric-details-omits-join-required-dimensions-when-export-fails-test
+  (testing (str "fail closed: when the portable join clause cannot be exported, the entry is DROPPED "
+                "rather than surfaced with a nil join - instructing the LLM to paste `null` into "
+                "`joins:` would be strictly worse than the :no-fk-path dead-end (BOT-1612)")
+    (let [mp (explicit-join-metric-mp)]
+      (mt/with-dynamic-fn-redefs [repr.resolve/try-export-query (constantly nil)]
+        (let [details (entity-details/metric-details (lib.metadata/card mp 700) mp {:field-values-fn identity})]
+          (is (nil? (:join-required-dimensions details))
+              "no join-required-dimensions when the join clause failed to export"))))))
+
+(deftest get-metric-details-surfaces-join-required-dims-through-resource-path-test
+  (testing (str "the REAL resource entry point (get-metric-details, as resources.clj calls it) "
+                "surfaces join-required dimensions for a metric with an explicit no-FK join, with "
+                "alias-qualified references - and omits them when queryable-dimensions are off. Guards "
+                "the get-metric-details wiring + option keys the mock-provider tests bypass (BOT-1612).")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp           (mt/metadata-provider)
+              ;; ORDERS explicitly joins REVIEWS on PRODUCT_ID (there is NO FK from ORDERS to REVIEWS)
+              ;; to reach REVIEWS.RATING.
+              metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               (lib/join (lib/join-clause
+                                          (lib.metadata/table mp (mt/id :reviews))
+                                          [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                  (lib.metadata/field mp (mt/id :reviews :product_id)))]))
+                               (lib/aggregate (lib/count)))]
+          (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                      :database_id   (mt/id)
+                                                      :name          "Orders w/ no-FK Reviews join"
+                                                      :type          :metric}]
+            (testing "/dimensions path (with-queryable-dimensions? default true): join-required dims present"
+              (let [out (:structured-output (entity-details/get-metric-details
+                                             {:metric-id metric-id :with-field-values? false}))
+                    jrd (:join-required-dimensions out)]
+                (is (seq jrd) "join-required-dimensions surfaced through the real resource path")
+                (let [{:keys [target_table dimensions]} (first jrd)
+                      rating (first (filter #(= (mt/id :reviews :rating) (:field_id %)) dimensions))]
+                  (is (= (t2/select-one-fn :name [:model/Table :name] :id (mt/id :reviews)) target_table))
+                  (is (some? rating) "REVIEWS.RATING is surfaced")
+                  (is (= "field" (first (:reference rating))))
+                  (is (contains? (second (:reference rating)) "join-alias")
+                      "the reference is alias-qualified, not a bare FK"))))
+            (testing "plain metric resource (with-queryable-dimensions? false): dims omitted"
+              (let [out (:structured-output (entity-details/get-metric-details
+                                             {:metric-id metric-id
+                                              :with-queryable-dimensions? false
+                                              :with-field-values?         false}))]
+                (is (nil? (:queryable-dimensions out)))
+                (is (nil? (:join-required-dimensions out)))))))))))
