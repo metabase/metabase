@@ -514,7 +514,7 @@
                 "an EE namespace would at best fail to build against the OSS classpath and "
                 "at worst leak EE code into the OSS jar.")
     (doseq [root oss-classpath-roots
-            file (source-files-under root)
+            ^java.io.File file (source-files-under root)
             :let [ns-symb (file->namespace-symbol file)]
             :when ns-symb]
       (testing (format "\n%s" (.getPath file))
@@ -535,7 +535,7 @@
                 "module is being built as part of the EE jar, or (b) the naming "
                 "convention has drifted.")
     (doseq [root ee-classpath-roots
-            file (source-files-under root)
+            ^java.io.File file (source-files-under root)
             :let [ns-symb (file->namespace-symbol file)]
             :when ns-symb]
       (testing (format "\n%s" (.getPath file))
