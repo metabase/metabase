@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -16,6 +17,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -106,6 +108,18 @@
                        (map #(update % :last_run transforms-base.u/present-run))
                        (map transforms.u/add-source-readable)))))))
 
+(defn- requestable-indexes
+  "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
+  [transform]
+  (when-let [db-id (transforms-base.i/target-db-id transform)]
+    (when-let [database (t2/select-one :model/Database db-id)]
+      (let [methods (try
+                      (driver/supported-index-methods (:engine database) database)
+                      (catch Throwable e
+                        (log/warn e "Failed to fetch supported index methods for transform" (:id transform))
+                        nil))]
+        (not-empty methods)))))
+
 (defn get-transform
   "Get a specific transform."
   [id]
@@ -115,6 +129,7 @@
         (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
         (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
+        (assoc :requestable_indexes (requestable-indexes transform))
         transforms.u/add-source-readable)))
 
 (defn create-transform!

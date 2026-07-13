@@ -97,7 +97,7 @@
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
         (testing "Returns search results for term queries"
           (is (=? {:data        [{:type "table" :name "AgentSearchTestTable"}]
@@ -108,7 +108,7 @@
 (deftest search-content-types-test
   (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
     (binding [search.ingestion/*force-sync* true]
-      (search.tu/with-new-search-if-available-otherwise-legacy
+      (search.tu/with-appdb-search-if-available-otherwise-legacy
         (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
                        :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
                        :model/Collection _ {:name "AgentSearchAcmeCollection"}]
@@ -556,7 +556,7 @@
 
 (deftest search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
                                           :type          :metric
                                           :database_id   (mt/id)
@@ -569,7 +569,7 @@
 
 (deftest search-finds-models-test
   (binding [search.ingestion/*force-sync* true]
-    (search.tu/with-new-search-if-available-otherwise-legacy
+    (search.tu/with-appdb-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
                                          :type          :model
                                          :database_id   (mt/id)
@@ -728,7 +728,15 @@
                     :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
       (is (re-find #"takes parameters"
                    (str (mt/user-http-request :crowberto :post 400
-                                              (format "agent/v1/question/%d/query" card-id))))))))
+                                              (format "agent/v1/question/%d/query" card-id)))))))
+  (testing "Read-check runs before the parameterized rejection, so an unreadable parameterized card is 403 — it does not leak that the card exists or is parameterized"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "No-Read Coll"}
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :dataset_query (orders-limit-query 5)
+                                                      :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
+        (mt/user-http-request :rasta :post 403
+                              (format "agent/v1/question/%d/query" card-id))))))
 
 (deftest create-question-explicit-null-collection-test
   (testing "An explicit null collection_id saves to the root collection, not the personal default"
@@ -912,7 +920,13 @@
                                        {:archived true})]
         (is (true? (:archived resp))))
       (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))
-      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id))))))
+      (is (true? (t2/select-one-fn :archived_directly :model/Card :id card-id)))
+      (testing "archival is a soft delete: archived: false reverses it"
+        (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/metric/" card-id)
+                                         {:archived false})]
+          (is (false? (:archived resp))))
+        (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
+        (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
 
 (deftest update-metric-replace-query-test
   (testing "Replacing the underlying query via :query keeps a valid metric"

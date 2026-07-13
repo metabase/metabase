@@ -497,10 +497,9 @@ const getTicksDimensions = (
 
     ticksDimensions.xTicksHeight =
       getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting, renderingContext) +
-      CHART_STYLE.axisTicksMarginX +
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
-        : 0);
+        : CHART_STYLE.axisTicksMarginX);
 
     ticksDimensions.getXTickWidth = (text: string) => {
       if (axisEnabledSetting === "rotate-90") {

@@ -414,6 +414,7 @@ export const createMockSettings = (
   "token-status": null,
   "tracing-enabled": false,
   "transforms-enabled": false,
+  "transforms-setup-complete": false,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,

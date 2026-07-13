@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { Route } from "metabase/router";
 import { NewPythonTransformPage } from "metabase/transforms/pages/NewTransformPage";
 import { TransformListPage } from "metabase/transforms/pages/TransformListPage";
 

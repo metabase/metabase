@@ -1,6 +1,4 @@
 import { useRef } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 
 import { useDeleteThemeFlow } from "metabase/admin/embedding/hooks";
 import { useEmbeddingThemeEditor } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
@@ -8,6 +6,8 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal/LeaveRouteConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useDispatch } from "metabase/redux";
+import type { Route } from "metabase/router";
+import { push } from "metabase/router";
 import { Flex, Loader, Stack } from "metabase/ui";
 
 import { EditorPanel } from "./EditorPanel";

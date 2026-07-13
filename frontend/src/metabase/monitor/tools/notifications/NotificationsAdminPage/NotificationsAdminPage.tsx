@@ -1,7 +1,5 @@
 import type { Row, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
@@ -20,6 +18,8 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import type { WithRouterProps } from "metabase/router";
+import { push } from "metabase/router";
 import { Flex, type SelectionState, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {

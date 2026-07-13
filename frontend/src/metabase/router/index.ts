@@ -1,6 +1,11 @@
 export * from "./Link";
+export * from "./middleware";
+export * from "./navigation";
 export * from "./Navigate";
+export * from "./react-router";
 export * from "./Outlet";
+export * from "./routing-reducer";
+export * from "./sync";
 export * from "./RouterProvider";
 export * from "./types";
 export * from "./use-location";
@@ -8,3 +13,4 @@ export * from "./use-navigate";
 export * from "./use-params";
 export * from "./use-router";
 export * from "./use-search-params";
+export * from "./with-route-props";

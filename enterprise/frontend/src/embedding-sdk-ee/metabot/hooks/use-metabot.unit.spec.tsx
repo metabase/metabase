@@ -251,9 +251,8 @@ describe("useMetabot", () => {
             agentId: "omnibot",
             type: "data_part",
             part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
+              type: "data-navigate_to",
+              data: "/question#base64",
             },
           } as any),
         );
@@ -352,14 +351,14 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#1a" },
+            part: { type: "data-navigate_to", data: "/question#1a" },
           } as any),
         );
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#1b" },
+            part: { type: "data-navigate_to", data: "/question#1b" },
           } as any),
         );
         store.dispatch(
@@ -374,7 +373,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#2" },
+            part: { type: "data-navigate_to", data: "/question#2" },
           } as any),
         );
       });
@@ -407,7 +406,7 @@ describe("useMetabot", () => {
 
     it("forwards the message to the underlying agent request", async () => {
       const agentSpy = mockAgentEndpoint({
-        textChunks: whoIsYourFavoriteResponse,
+        events: whoIsYourFavoriteResponse,
       });
       setup({ ui: <TestSubmit /> });
 
@@ -418,7 +417,7 @@ describe("useMetabot", () => {
     });
 
     it("does not open the metabot sidebar (preventOpenSidebar)", async () => {
-      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
       // default setup() forces omnibot.visible = true; override so we can
       // observe whether submitMessage would flip it back on.
       const { store } = setup({
@@ -447,7 +446,7 @@ describe("useMetabot", () => {
     });
 
     it("resolves to undefined even though agent.submitInput returns an action", async () => {
-      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
       const onResolved = jest.fn();
       setup({ ui: <TestSubmit onResolved={onResolved} /> });
 
@@ -478,9 +477,8 @@ describe("useMetabot", () => {
             agentId: "omnibot",
             type: "data_part",
             part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
+              type: "data-navigate_to",
+              data: "/question#base64",
             },
           } as any),
         );
@@ -498,9 +496,8 @@ describe("useMetabot", () => {
             agentId: "omnibot",
             type: "data_part",
             part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
+              type: "data-navigate_to",
+              data: "/question#base64",
             },
           } as any),
         );
@@ -540,7 +537,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#abc" },
+            part: { type: "data-navigate_to", data: "/question#abc" },
           } as any),
         );
       });
@@ -565,7 +562,7 @@ describe("useMetabot", () => {
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#xyz" },
+            part: { type: "data-navigate_to", data: "/question#xyz" },
           } as any),
         );
       });

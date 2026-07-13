@@ -21,12 +21,15 @@ export const DatabaseReplicationStatusInfo = memo(
         t`Replicating to Metabase Cloud Storage`
       : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
         t`Not replicating to Metabase Cloud Storage`;
-    const color = hasConnection ? "success" : "text-disabled";
 
     return (
       <Flex align="center" gap="sm" {...flexProps}>
         <Tooltip label={message}>
-          <Badge size="12" circle bg={color} style={{ flexShrink: 0 }} />
+          <Badge
+            color={hasConnection ? "positive" : "neutral"}
+            flex="0 0 auto"
+            indicator
+          />
         </Tooltip>
         <Text lh="1.25rem">{message}</Text>
       </Flex>

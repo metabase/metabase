@@ -1,17 +1,16 @@
-import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { routerActions } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getCanAccessOnboardingPage } from "metabase/selectors/onboarding";
 import { getSetting } from "metabase/selectors/settings";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
 import { getIsEmbeddingIframe } from "./selectors/embed";
-import { canAccessTransforms } from "./transforms/selectors";
 
 type Props = { children: React.ReactElement };
 
@@ -127,15 +126,6 @@ const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
   context: metabaseReduxContext,
 });
 
-const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessTransforms",
-  redirectPath: "/unauthorized",
-  allowRedirectBack: false,
-  authenticatedSelector: (state) => canAccessTransforms(state),
-  redirectAction: routerActions.replace,
-  context: metabaseReduxContext,
-});
-
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -163,9 +153,5 @@ export const CanAccessDataStudio = MetabaseIsSetup(
 );
 
 export const CanAccessDataModel = UserCanAccessDataModel(
-  ({ children }) => children,
-);
-
-export const CanAccessTransforms = UserCanAccessTransforms(
   ({ children }) => children,
 );
