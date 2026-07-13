@@ -88,7 +88,7 @@
   []
   (some? (force babashka-executable)))
 
-(deftest ^:parallel babashka-executable-falls-back-to-path-test
+(deftest babashka-executable-falls-back-to-path-test
   (with-redefs [working-executable? #(= % "bb")]
     (is (= "bb" (find-babashka-executable)))))
 
