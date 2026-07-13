@@ -2,7 +2,7 @@
   "Content Diagnostics API - paginated, batch-hydrated latest-per-entity finding lists, mounted behind
   `premium-handler … :content-diagnostics` (`+auth` + feature gate). Endpoints only: each composes the
   shared read/hydration layer in `api.common` and pins its own param + response schema. The scan runs on a
-  Quartz job; a demo/dev-only `POST /scan` also triggers it synchronously.
+  Quartz job.
 
   Response shape: a flat identity (`id, finding_type, entity_type, entity_id, detected_at,
   entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.content-diagnostics.checkers.slow
   "The `slow` Content Diagnostics checker - flags content whose execution time exceeds a configurable
-  threshold by reading the precomputed signals the product already caches (no re-execution - D14):
+  threshold by reading the precomputed signals the product already caches (no re-execution):
 
   - **Card** (leaf): mean `query_execution.running_time` with cache hits excluded - the same aggregate
     the `:average_query_time` hydrate computes - over `slow-card-threshold-seconds`.
@@ -11,7 +11,7 @@
   - **Transform** (leaf): wall-clock duration (`end_time - start_time`) of its latest **succeeded** run
     over `slow-transform-threshold-seconds`.
 
-  Leaves freeze their `threshold_ms` in `details` at scan time (D17); every finding carries its measured
+  Leaves freeze their `threshold_ms` in `details` at scan time; every finding carries its measured
   magnitude in the top-level `:duration-ms` (→ the native `duration_ms` column). Every detector is
   **set-based** (one grouped/seq query per entity-type) and reads only the app-db, never the warehouse.
   The denormalized display attrs are stamped by `common/attach-entity-attrs`; `:last-active-at` is left
@@ -32,7 +32,7 @@
   "`{card-id → mean running_time (ms, rounded)}` for every **non-archived** card whose mean exceeds
   `threshold-ms`. Reads `query_execution` directly with the same aggregate as the `:average_query_time`
   hydrate - `AVG(running_time)` excluding cache hits - so the verdict reuses the cache the product
-  already maintains instead of re-running anything (D14). One grouped query, no per-card loop."
+  already maintains instead of re-running anything. One grouped query, no per-card loop."
   [threshold-ms]
   (into {}
         ;; H2 returns AVG as BigDecimal - round to a Long for the native bigint column.
@@ -68,6 +68,17 @@
   [card->avg-ms culprit-ids]
   (apply max (map card->avg-ms culprit-ids)))
 
+(defn- container-finding
+  "The shared roll-up finding for a container (dashboard/document): its culprit slow cards frozen in
+  `slow_entity_ids`, and its own `:duration-ms` set to the slowest culprit's mean so it sorts/filters by
+  duration like a leaf. The two containers differ only in how they derive `culprit-ids`."
+  [entity-type entity-id card->avg-ms culprit-ids]
+  {:entity-type  entity-type
+   :entity-id    entity-id
+   :finding-type :slow
+   :duration-ms  (representative-duration-ms card->avg-ms culprit-ids)
+   :details      {:slow_entity_ids culprit-ids}})
+
 (defn- dashboard-findings
   "Container findings for **non-archived** dashboards embedding ≥1 of `slow-card-ids`. `slow_entity_ids`
   is the de-duplicated set of slow cards on the dashboard (a card can appear on several tabs)."
@@ -81,11 +92,7 @@
                                                        [:= :d.archived false]
                                                        [:in :dc.card_id slow-card-ids]]}))
           :let [culprit-ids (vec (distinct (map :card_id rows)))]]
-      {:entity-type  :dashboard
-       :entity-id    dash-id
-       :finding-type :slow
-       :duration-ms  (representative-duration-ms card->avg-ms culprit-ids)
-       :details      {:slow_entity_ids culprit-ids}})))
+      (container-finding :dashboard dash-id card->avg-ms culprit-ids))))
 
 (defn- document-findings
   "Container findings for **non-archived** prose-mirror documents embedding ≥1 of `slow-card-ids`.
@@ -99,11 +106,7 @@
                              :content_type prose-mirror/prose-mirror-content-type)
             :let  [culprits (filterv slow? (distinct (prose-mirror/card-ids doc)))]
             :when (seq culprits)]
-        {:entity-type  :document
-         :entity-id    (:id doc)
-         :finding-type :slow
-         :duration-ms  (representative-duration-ms card->avg-ms culprits)
-         :details      {:slow_entity_ids culprits}}))))
+        (container-finding :document (:id doc) card->avg-ms culprits)))))
 
 ;;; ------------------------------------------------ transforms -----------------------------------------------
 
