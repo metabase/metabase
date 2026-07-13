@@ -7,12 +7,17 @@
 // have not been given a v7 shape yet (route-tree components, withRouter, history
 // helpers) plus the raw Link/LinkProps under `Router`-prefixed names for the few
 // call sites that need the unstyled primitive.
+import type { ComponentClass } from "react";
+import type {
+  IndexRouteProps as BaseIndexRouteProps,
+  RouteProps as BaseRouteProps,
+} from "react-router";
+import { IndexRoute as BaseIndexRoute, Route as BaseRoute } from "react-router";
+
 export {
   IndexRedirect,
-  IndexRoute,
   Link as RouterLink,
   Redirect,
-  Route,
   Router,
   createMemoryHistory,
   useRouterHistory,
@@ -24,6 +29,22 @@ export type {
   LinkProps as RouterLinkProps,
   PlainRoute,
   RouteComponent,
-  RouteProps,
   WithRouterProps,
 } from "react-router";
+
+/**
+ * v3's route lifecycle hooks. They have no v7 equivalent, and the app now does
+ * this work in components and effects instead, so they are dropped from the route
+ * props to keep them from coming back.
+ */
+type LifecycleHook = "onEnter" | "onChange" | "onLeave";
+
+export type RouteProps = Omit<BaseRouteProps, LifecycleHook>;
+export type IndexRouteProps = Omit<BaseIndexRouteProps, LifecycleHook>;
+
+// `react-router` exports each of these as both a value and a type, so mirror that.
+export type Route = ComponentClass<RouteProps>;
+export const Route = BaseRoute as Route;
+
+export type IndexRoute = ComponentClass<IndexRouteProps>;
+export const IndexRoute = BaseIndexRoute as IndexRoute;
