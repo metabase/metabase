@@ -9,7 +9,7 @@ import {
 } from "./override-requests-for-embeds";
 
 jest.mock("metabase/embedding/config", () => ({
-  isEmbedPreview: jest.fn(),
+  isSelfEmbedInIframe: jest.fn(),
 }));
 
 const mockIsEmbedPreview = jest.mocked(isSelfEmbedInIframe);

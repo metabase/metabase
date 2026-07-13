@@ -322,7 +322,18 @@
     (let [request (-> (ring.mock/request :get "/api/embed/dashboard/42")
                       (assoc :uri "/api/embed/dashboard/42")
                       (ring.mock/header "x-metabase-client" "embedding-sdk-react"))]
-      (is (= "embedding-sdk-react" (client-from-mw request))))))
+      (is (= "embedding-sdk-react" (client-from-mw request)))))
+  (testing "a dev data app (preview header) is recorded as data-app-preview"
+    (let [request (-> (ring.mock/request :get "/api/card/1")
+                      (ring.mock/header "x-metabase-client" "data-app")
+                      (ring.mock/header "x-metabase-embedded-preview" "true"))]
+      (is (= "data-app-preview" (client-from-mw request))))))
+
+(deftest embedding-context?-test
+  (testing "data-app requests are an embedding context (comments gating + response tracking apply)"
+    (is (analytics.core/embedding-context? "data-app")))
+  (testing "arbitrary client values are not"
+    (is (not (analytics.core/embedding-context? "my-app")))))
 
 (deftest include-analytics-is-idempotent
   (let [m (atom {})]
