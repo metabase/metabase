@@ -53,6 +53,7 @@ export function PieChart({
     chart.renderToSVGString(),
     isStorybook ?? false,
   );
+  chart.dispose();
 
   const height =
     DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend + legendHeight;
