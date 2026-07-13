@@ -1,49 +1,55 @@
-// these tests use QuestionChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
+// these tests use QuestionChartSettings directly, but logic we're testing lives in ChartSettingFieldPicker
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import { createMockCard } from "metabase-types/api/mocks";
+import type { DatasetColumn, Series } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 registerVisualizations();
 
-function getSeries(metricColumnProps) {
+function getSeries(metricColumnProps?: Partial<DatasetColumn>): Series {
   return [
-    {
-      card: createMockCard({
+    createMockSingleSeries(
+      {
+        id: 1,
+        name: "Card",
         display: "line",
         visualization_settings: {
           "graph.dimensions": ["FOO"],
           "graph.metrics": ["BAR"],
         },
-      }),
-      data: {
-        rows: [
-          ["a", 1],
-          ["b", 2],
-        ],
-        cols: [
-          {
-            name: "FOO",
-            display_name: "FOO",
-            source: "native",
-            base_type: "type/Text",
-            field_ref: ["field", "FOO", {}],
-          },
-          {
-            name: "BAR",
-            display_name: "BAR",
-            source: "native",
-            base_type: "type/Integer",
-            field_ref: ["field", "BAR", {}],
-            ...metricColumnProps,
-          },
-        ],
       },
-    },
+      {
+        data: {
+          rows: [
+            ["a", 1],
+            ["b", 2],
+          ],
+          cols: [
+            createMockColumn({
+              name: "FOO",
+              display_name: "FOO",
+              source: "native",
+              base_type: "type/Text",
+            }),
+            createMockColumn({
+              name: "BAR",
+              display_name: "BAR",
+              source: "native",
+              base_type: "type/Integer",
+              ...metricColumnProps,
+            }),
+          ],
+        },
+      },
+    ),
   ];
 }
 
-const setup = (seriesDisplay) => {
+const setup = (seriesDisplay?: Partial<DatasetColumn>) => {
   const series = getSeries(seriesDisplay);
   return renderWithProviders(
     <QuestionChartSettings series={series} initial={{ section: "Data" }} />,

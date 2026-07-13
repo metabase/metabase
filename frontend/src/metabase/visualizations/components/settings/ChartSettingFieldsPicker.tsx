@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
@@ -15,7 +14,24 @@ import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
 export const UNDEFINED_ITEM_KEY = "$$UNDEFINED_ITEM_KEY$$";
 export const NULL_ITEM_KEY = "$$NULL_ITEM_KEY$$";
 
-const convertField = (field) => {
+type Field = string | null | undefined;
+type SortableField = string;
+
+type Option = { name: string; value: string };
+
+type ChartSettingFieldsPickerProps = {
+  value?: Field[];
+  options: Option[];
+  onChange: (fields: Field[]) => void;
+  addAnother?: string;
+  showColumnSetting?: boolean;
+  showColumnSettingForIndicies?: number[];
+  fieldSettingWidgets?: Array<string | null | undefined>;
+  // additional props are forwarded to ChartSettingFieldPicker
+  [key: string]: unknown;
+};
+
+const convertField = (field: Field | SortableField): Field | SortableField => {
   return match(field)
     .with(undefined, () => UNDEFINED_ITEM_KEY)
     .with(null, () => NULL_ITEM_KEY)
@@ -24,7 +40,18 @@ const convertField = (field) => {
     .otherwise((x) => x);
 };
 
-const convertFieldsToSortableFields = (fields) => fields.map(convertField);
+const convertFieldsToSortableFields = (fields: Field[]): SortableField[] =>
+  fields.map((field) => {
+    if (field === undefined) {
+      return UNDEFINED_ITEM_KEY;
+    }
+
+    if (field === null) {
+      return NULL_ITEM_KEY;
+    }
+
+    return field;
+  });
 
 export const ChartSettingFieldsPicker = ({
   value: fields = [],
@@ -35,24 +62,30 @@ export const ChartSettingFieldsPicker = ({
   showColumnSettingForIndicies,
   fieldSettingWidgets = [],
   ...props
-}) => {
+}: ChartSettingFieldsPickerProps) => {
   const sortableFields = useMemo(
     () => convertFieldsToSortableFields(fields),
     [fields],
   );
-  const getId = useCallback((field) => field, []);
+  const getId = useCallback((field: SortableField) => field, []);
 
   const sensors = useDndSensors({ distance: 15 });
 
-  const handleDragEnd = ({ id: sortableField, newIndex }) => {
-    const field = convertField(sortableField);
+  const handleDragEnd = ({
+    id: sortableField,
+    newIndex,
+  }: {
+    id: SortableField | number;
+    newIndex: number;
+  }) => {
+    const field = convertField(String(sortableField));
     const oldIndex = fields.indexOf(field);
 
     onChange(moveElement(fields, oldIndex, newIndex));
   };
 
   const calculateOptions = useCallback(
-    (field) =>
+    (field: Field) =>
       options.filter(
         (option) =>
           fields.findIndex((v) => v === option.value) < 0 ||
@@ -64,7 +97,15 @@ export const ChartSettingFieldsPicker = ({
   const isDragDisabled = fields?.length <= 1;
 
   const renderItem = useCallback(
-    ({ item: sortableField, id, index: fieldIndex }) => {
+    ({
+      item: sortableField,
+      id,
+      index: fieldIndex,
+    }: {
+      item: SortableField;
+      id: SortableField | number;
+      index: number;
+    }) => {
       const field = convertField(sortableField);
 
       return (
@@ -85,7 +126,7 @@ export const ChartSettingFieldsPicker = ({
               key={id}
               value={field}
               options={calculateOptions(field)}
-              onChange={(updatedField) => {
+              onChange={(updatedField: Field) => {
                 const fieldsCopy = [...fields];
                 // this swaps the position of the existing value
                 const existingIndex = fields.indexOf(updatedField);
