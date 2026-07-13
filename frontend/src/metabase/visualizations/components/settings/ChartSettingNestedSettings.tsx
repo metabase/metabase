@@ -3,14 +3,10 @@ import { Component, type ComponentType } from "react";
 import _ from "underscore";
 
 import { updateSettings } from "metabase/visualizations/lib/settings";
+import type { CompleteVisualizationSettingDefinition } from "metabase/visualizations/types";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";
-
-type AnySettingsWidget = {
-  id: string;
-  [key: string]: unknown;
-};
 
 type ChartSettingNestedSettingsConfig<T> = {
   getObjectKey: (object: T) => string;
@@ -24,7 +20,7 @@ type ChartSettingNestedSettingsConfig<T> = {
     storedSettings: VisualizationSettings,
     onChangeSettings: (newSettings: Partial<VisualizationSettings>) => void,
     extra: any,
-  ) => AnySettingsWidget[];
+  ) => CompleteVisualizationSettingDefinition<T>[];
 };
 
 type ChartSettingNestedSettingsProps<T> = {
