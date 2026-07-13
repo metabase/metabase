@@ -17,7 +17,11 @@ import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
@@ -247,6 +251,8 @@ export function MainNavbarView({
             selectedId={collectionItem?.id}
             onItemSelect={onItemSelect}
           />
+
+          <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
 
           <SidebarSection>
             <ErrorBoundary>

@@ -45,7 +45,7 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest non-superuser-can-view-but-not-manage-test
+(deftest non-superuser-can-list-and-view-but-not-manage-test
   ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
@@ -53,6 +53,15 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp]
         (create-app!)
+        (t2/insert! :model/DataApp
+                    :name         "disabled"
+                    :display_name "Disabled"
+                    :bundle_path  "data_apps/disabled/index.js"
+                    :enabled      false)
+        (testing "a non-superuser can list every data app"
+          (is (=? [{:name "demo" :enabled true}
+                   {:name "disabled" :enabled false}]
+                  (mt/user-http-request :rasta :get 200 "apps"))))
         (testing "a non-superuser can view (open) a data app"
           (is (=? {:name "demo"}
                   (mt/user-http-request :rasta :get 200 "apps/demo")))
@@ -61,11 +70,11 @@
                "BUNDLE")))
         (testing "but is still forbidden from managing data apps"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "apps")))
-          (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "apps/repo-status")))
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 "apps/demo" {:enabled false}))))))))
+                 (mt/user-http-request :rasta :put 403 "apps/demo" {:enabled false})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 "apps/demo"))))))))
 
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!

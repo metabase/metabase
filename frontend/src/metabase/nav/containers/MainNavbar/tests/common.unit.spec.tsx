@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 
 import { screen, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 import {
   createMockCard,
@@ -36,6 +37,28 @@ describe("nav > containers > MainNavbar", () => {
       await setup({ pathname: "/" });
       const link = screen.getByRole("listitem", { name: /Home/i });
       expect(link).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("Data Apps plugin", () => {
+    it("renders the plugin navbar section", async () => {
+      const originalMainNavbarSection = PLUGIN_DATA_APPS.MainNavbarSection;
+
+      function DataAppsPluginSection() {
+        return <div>Data Apps plugin section</div>;
+      }
+
+      PLUGIN_DATA_APPS.MainNavbarSection = DataAppsPluginSection;
+
+      try {
+        await setup();
+
+        expect(
+          screen.getByText("Data Apps plugin section"),
+        ).toBeInTheDocument();
+      } finally {
+        PLUGIN_DATA_APPS.MainNavbarSection = originalMainNavbarSection;
+      }
     });
   });
 

@@ -91,7 +91,6 @@
 (api.macros/defendpoint :get "/" :- [:sequential DataAppResponse]
   "List the data apps provided by the connected repository."
   []
-  (api/check-superuser)
   (->> (data-app/select-non-blob {:order-by [[:display_name :asc]]})
        (mapv api/read-check)))
 
