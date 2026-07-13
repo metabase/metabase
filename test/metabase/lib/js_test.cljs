@@ -192,6 +192,12 @@
       (is (= expected-order
              (mapv :name roundtripped-tags))))))
 
+(deftest ^:parallel template-tags-js->cljs-test
+  (testing "Should use map key as :name"
+    (is (= {:name "tag", :display-name "Tag", :type :number}
+           (#'lib.js/template-tags-js->cljs
+            #js {"tag" #js {"display-name" "Tag", "type" "number"}})))))
+
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
   (is (false? (lib.js/column-metadata? 1))))

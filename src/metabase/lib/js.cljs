@@ -2005,17 +2005,19 @@
 (defn- template-tags-js->cljs
   "Convert a JavaScript Object containing template `tags` to a ClojureScript sequence."
   [tags-object]
-  (perf/mapv (fn [tag-object]
-               (-> tag-object
-                   remove-undefined-properties
-                   js->clj
-                   ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
-                   ;; Not changing this now in case there's some sort of good reason for doing it manually
-                   (perf/update-keys keyword)
-                   (update :type keyword)
-                   (m/update-existing :widget-type #(some-> % keyword))
-                   (m/update-existing :dimension #(some-> % legacy-ref->mbql5))))
-             (gobject/getValues tags-object)))
+  (perf/mapv (fn [tag-name]
+               (let [tag-object (gobject/get tags-object tag-name)]
+                 (-> tag-object
+                     remove-undefined-properties
+                     js->clj
+                     ;; TODO (Cam 2026-07-09) why not just normalize template tags the same way we do everything else?
+                     ;; Not changing this now in case there's some sort of good reason for doing it manually
+                     (perf/update-keys keyword)
+                     (assoc :name tag-name) ; prefer the tag name used as a map key in case it's unset in the tag itself or differs
+                     (update :type keyword)
+                     (m/update-existing :widget-type #(some-> % keyword))
+                     (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))
+             (gobject/getKeys tags-object)))
 
 (defn- template-tag-cljs->js [tag]
   (-> tag
@@ -2038,8 +2040,8 @@
   "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
 
   > **Code health:** Healthy"
-  [a-query tags-map]
-  (lib.core/with-template-tags a-query (template-tags-js->cljs tags-map)))
+  [a-query tags-object]
+  (lib.core/with-template-tags a-query (template-tags-js->cljs tags-object)))
 
 (defn ^:export raw-native-query
   "Returns the native query string for the native first stage of `a-query`.
