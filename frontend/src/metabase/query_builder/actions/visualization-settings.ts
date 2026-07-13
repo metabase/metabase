@@ -1,4 +1,7 @@
+import _ from "underscore";
+
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { getReferencedCardsFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -38,10 +41,20 @@ export const onUpdateVisualizationSettings =
       return;
     }
 
+    const updatedQuestion = question.updateSettings(settings);
+
+    // Dynamic goals resolved by the backend during query execution, so re-run
+    // the query whenever the set of referenced cards/columns changes.
+    const referencedCardsChanged = !_.isEqual(
+      getReferencedCardsFromVizSettings(question.settings()),
+      getReferencedCardsFromVizSettings(updatedQuestion.settings()),
+    );
+
     // The check allows users without data permission to resize/rearrange columns
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
-      updateQuestion(question.updateSettings(settings), {
+      updateQuestion(updatedQuestion, {
+        run: referencedCardsChanged,
         shouldUpdateUrl: isEditable,
       }),
     );
@@ -50,16 +63,29 @@ export const onUpdateVisualizationSettings =
 export const onReplaceAllVisualizationSettings =
   (settings: VisualizationSettings, newQuestion?: Question) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const question = newQuestion ?? getQuestion(getState());
+    const currentQuestion = getQuestion(getState());
+    const question = newQuestion ?? currentQuestion;
     if (question) {
       const updatedQuestion = question.setSettings(settings);
       const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
       const hasWritePermissions = isEditable;
 
+      // Dynamic goals resolved by the backend during query execution, so re-run
+      // the query whenever the set of referenced cards/columns changes.
+      const referencedCardsChanged =
+        currentQuestion != null &&
+        !_.isEqual(
+          getReferencedCardsFromVizSettings(currentQuestion.settings()),
+          getReferencedCardsFromVizSettings(updatedQuestion.settings()),
+        );
+
       await dispatch(
         updateQuestion(updatedQuestion, {
-          // rerun the query when it is changed alongside settings
-          run: newQuestion != null && hasWritePermissions,
+          // rerun the query when it is changed alongside settings, or when a
+          // dynamic goal reference changed
+          run:
+            hasWritePermissions &&
+            (newQuestion != null || referencedCardsChanged),
           shouldUpdateUrl: hasWritePermissions,
         }),
       );
