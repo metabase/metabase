@@ -71,20 +71,26 @@
     (assert v (str ns-sym "/" sym " not found"))
     v))
 
+(defn- working-executable? [executable]
+  (try
+    (zero? (:exit (shell/sh executable "--version")))
+    (catch java.io.IOException _
+      false)))
+
+(defn- find-babashka-executable []
+  (some #(when (working-executable? %) %)
+        ["./bin/bb" "bb"]))
+
 (def ^:private babashka-executable
-  (delay
-    (cond
-      (.canExecute (io/file "./bin/bb")) "./bin/bb"
-      :else
-      (try
-        (when (zero? (:exit (shell/sh "bb" "--version")))
-          "bb")
-        (catch java.io.IOException _
-          nil)))))
+  (delay (find-babashka-executable)))
 
 (defn- babashka-available?
   []
   (some? (force babashka-executable)))
+
+(deftest ^:parallel babashka-executable-falls-back-to-path-test
+  (with-redefs [working-executable? #(= % "bb")]
+    (is (= "bb" (find-babashka-executable)))))
 
 (defn- bb-mage-file->module [modules-config filename]
   (let [expr               (str "(do "
