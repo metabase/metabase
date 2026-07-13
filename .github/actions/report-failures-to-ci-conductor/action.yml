@@ -1,0 +1,47 @@
+name: Report failures to CI Conductor
+description: >-
+  Report this job's test failures to ci-conductor. Best-effort; no-ops unless
+  CI_CONDUCTOR_BASE_URL is set. Gate it at the call site with continue-on-error
+  and an `if:` on the test step's outcome.
+
+inputs:
+  test-suite:
+    description: Per-job identity label (CI_CONDUCTOR_TEST_SUITE); unique per job/leg.
+    required: true
+  adapter:
+    description: Which reporter to run; resolves to report-<adapter>.ts. backend or frontend.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Detect bun
+      id: bun
+      shell: bash
+      run: |
+        if command -v bun >/dev/null; then
+          echo "present=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "present=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Install bun
+      if: steps.bun.outputs.present != 'true'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      with:
+        bun-version-file: 'package.json'
+        token: ${{ github.token }}
+    - name: Report failed tests to ci-conductor
+      shell: bash
+      env:
+        REPO_ID: ${{ github.event.repository.id }}
+        COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        CI_CONDUCTOR_TEST_SUITE: ${{ inputs.test-suite }}
+        ADAPTER: ${{ inputs.adapter }}
+      # Keep the path constrained to known entrypoints.
+      run: |
+        case "$ADAPTER" in
+          backend|frontend) ;;
+          *) echo "::error::Unknown ci-conductor adapter '$ADAPTER'"; exit 1 ;;
+        esac
+        bun "release/ci-conductor/src/report-${ADAPTER}.ts"

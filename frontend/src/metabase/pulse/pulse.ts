@@ -139,7 +139,7 @@ export function cleanPulse<T extends DashboardSubscriptionData>(
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
     parameters: cleanPulseParameters(getPulseParameters(pulse)),
-  } as T;
+  };
 }
 
 function cleanPulseChannels(

@@ -1,140 +1,63 @@
 import type { LineSeriesOption } from "echarts/charts";
 import type { MarkLine2DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 
-import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { RenderingContext } from "metabase/visualizations/types";
-import type { IconName, TimelineEventId } from "metabase-types/api";
+import type { TimelineEventId } from "metabase-types/api";
 
-import {
-  TIMELINE_EVENT_DATA_NAME,
-  TIMELINE_EVENT_SERIES_ID,
-} from "../constants/dataset";
-
-// TODO: change to GraalVM supported implementation
-export const setSvgColor = (svgString: string, color: string) => {
-  // Parse the SVG string into a DOM element
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgString, "image/svg+xml");
-  const svg = doc.documentElement;
-
-  // Set the color attribute of the SVG
-  svg.setAttribute("color", color);
-
-  // Serialize the SVG back to a string
-  const serializer = new XMLSerializer();
-  return serializer.serializeToString(svg);
-};
-
-export function svgToDataUri(svgString: string) {
-  const base64Encoded = btoa(svgString);
-  return `data:image/svg+xml;base64,${base64Encoded}`;
-}
-
-function svgToImageUri(svgString: string) {
-  return `image://${svgToDataUri(svgString)}`;
-}
+export const TIMELINE_EVENT_SELECTION_SERIES_ID = "timeline-event-selection";
 
 export interface SplitPanelYExtent {
   topY: number;
   bottomY: number;
 }
 
-export const getTimelineEventsSeries = (
+// Draws a vertical marker line for each selected timeline event
+export const getTimelineEventsSelectionSeries = (
   timelineEventsModel: TimelineEventsModel,
-  selectedEventsIds: TimelineEventId[],
-  { fontFamily, getColor, theme }: RenderingContext,
+  selectedEventIds: TimelineEventId[],
+  { getColor }: RenderingContext,
   splitPanelYExtent?: SplitPanelYExtent,
 ): LineSeriesOption | null => {
-  const { fontSize } = theme?.cartesian?.label ?? {};
+  const selectedDates = timelineEventsModel
+    .filter(({ events }) =>
+      events.some((event) => selectedEventIds.includes(event.id)),
+    )
+    .map(({ date }) => date);
 
-  if (timelineEventsModel.length === 0) {
+  if (selectedDates.length === 0) {
     return null;
   }
 
-  const timelineEventsData = timelineEventsModel.map(({ date, events }) => {
-    const isSelected = events.some((event) =>
-      selectedEventsIds.includes(event.id),
-    );
-
-    const color = getColor(isSelected ? "core-brand" : "text-disabled");
-    const iconName =
-      events.length === 1 ? (events[0].icon as IconName) : "star";
-
-    const iconSvg = setSvgColor(Icons[iconName].source, color);
-    const dataUri = svgToImageUri(iconSvg);
-
-    const itemProps = {
-      name: TIMELINE_EVENT_DATA_NAME,
-      symbolSize: 16,
-      symbolOffset: [0, 12],
-      symbolRotate: 0,
-      symbol: dataUri,
-      lineStyle: isSelected ? { color: getColor("core-brand") } : undefined,
-      label: {
-        show: events.length > 1,
-        formatter: () => String(events.length),
-        position: "start" as const,
-        padding: [0, 0, 0, 24],
-        hideOverlap: true,
-        color,
-        fontSize,
-        fontWeight: CHART_STYLE.axisTicks.weight,
-        fontFamily,
-      },
-    };
-
+  const markLineData = selectedDates.map((date) => {
     if (splitPanelYExtent) {
-      const markLineData: MarkLine2DDataItemOption = [
-        { ...itemProps, xAxis: date, y: splitPanelYExtent.bottomY },
+      const data: MarkLine2DDataItemOption = [
+        { xAxis: date, y: splitPanelYExtent.bottomY },
         { xAxis: date, y: splitPanelYExtent.topY, symbol: "none" },
       ];
-      return markLineData;
+      return data;
     }
 
-    return { ...itemProps, xAxis: date };
+    return { xAxis: date };
   });
 
   return {
-    id: TIMELINE_EVENT_SERIES_ID,
+    id: TIMELINE_EVENT_SELECTION_SERIES_ID,
     animation: false,
     type: "line",
     data: [],
     markLine: {
-      blur: {
-        label: {
-          opacity: 1,
-        },
-        itemStyle: {
-          opacity: 1,
-        },
-        lineStyle: {
-          opacity: 1,
-        },
-      },
-      emphasis: {
-        lineStyle: {
-          color: getColor("core-brand"),
-        },
-        label: {
-          color: getColor("core-brand"),
-        },
-        itemStyle: {
-          color: getColor("core-brand"),
-        },
-      },
       symbol: "none",
       lineStyle: {
         type: "solid",
-        // eslint-disable-next-line metabase/no-color-literals
-        color: "rgba(105, 110, 123, 0.2)",
-        width: 2,
+        color: getColor("core-brand"),
+        width: CHART_STYLE.timelineEvents.selectionLineWidth,
       },
       label: {
         show: false,
       },
-      data: timelineEventsData,
+      data: markLineData,
     },
   };
 };

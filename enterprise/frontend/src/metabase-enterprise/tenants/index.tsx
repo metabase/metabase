@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -7,7 +6,6 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
-import { getGroupNameLocalized } from "metabase/admin/utils/groups";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
@@ -18,6 +16,7 @@ import {
   getCollectionIcon,
 } from "metabase/common/collections/utils";
 import { useSetting } from "metabase/common/hooks/use-setting";
+import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
@@ -25,6 +24,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { IndexRedirect, IndexRoute, Route } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";

@@ -974,6 +974,7 @@ describe("scenarios > organization > entity picker", () => {
           expect(lastColumn).to.not.be.null;
 
           expect(container.scrollLeft).to.equal(
+            // Unjustified type cast. FIXME
             (lastColumn as HTMLElement).offsetLeft,
           );
         });

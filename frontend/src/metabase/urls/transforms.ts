@@ -71,6 +71,10 @@ export function transformSettings(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/settings`;
 }
 
+export function transformIndexes(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/indexes`;
+}
+
 export function transformDependencies(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/dependencies`;
 }

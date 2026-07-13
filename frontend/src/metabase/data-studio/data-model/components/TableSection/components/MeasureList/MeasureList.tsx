@@ -29,6 +29,7 @@ export function MeasureList({ table }: MeasureListProps) {
     getUserCanWriteMeasures(state, table.is_published),
   );
   const onNewMeasureClick = () => {
+    // Unjustified type cast. FIXME
     trackMeasureCreateStarted(table.id as ConcreteTableId);
   };
   const newMeasureUrl = Urls.newDataStudioDataModelMeasure({

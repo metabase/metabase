@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
+import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabasesEndpoints,
   setupTableSearchEndpoint,
   setupUserKeyValueEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -14,11 +16,14 @@ import {
   waitFor,
 } from "__support__/ui";
 import { SelectionProvider } from "metabase/data-studio/data-model/pages/DataModel/contexts/SelectionContext";
-import type { Database, User } from "metabase-types/api";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import type { Database, TokenFeatures, User } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSchema,
   createMockTable,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -147,9 +152,11 @@ const currentUser: User = createMockUser({
 function setup({
   path = {},
   databases = MOCK_DATABASES,
+  tokenFeatures = {},
 }: {
   path?: TreePath;
   databases?: Database[];
+  tokenFeatures?: Partial<TokenFeatures>;
 } = {}) {
   setupDatabasesEndpoints(databases);
   setupTableSearchEndpoint(
@@ -163,6 +170,16 @@ function setup({
     key: "seen-publish-tables-info",
     value: false,
   });
+
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+  });
+
+  if (tokenFeatures.library) {
+    setupEnterpriseOnlyPlugin("library");
+  }
 
   const onChange = jest.fn();
   const setOnUpdateCallback = jest.fn();
@@ -182,7 +199,7 @@ function setup({
         </SelectionProvider>
       )}
     />,
-    { withRouter: true },
+    { withRouter: true, storeInitialState: state },
   );
   return { onChange };
 }
@@ -562,6 +579,46 @@ describe("TablePicker", () => {
       expect(item(GRAULT)).not.toBeInTheDocument();
     });
   });
+
+  describe("Published tables filter", () => {
+    it("is hidden when the Library is not enabled", async () => {
+      setup();
+      await waitLoading();
+
+      await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+
+      expect(
+        await screen.findByTestId("table-picker-filter"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Published tables only"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("sends published-only=true when enabled, checked, and applied", async () => {
+      setup({ tokenFeatures: { library: true } });
+      await waitLoading();
+
+      // Enter search mode first so the table-search endpoint matches the request
+      await userEvent.type(searchInput(), "o");
+      await waitLoading();
+
+      await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+      await userEvent.click(
+        await screen.findByLabelText("Published tables only"),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+      await waitLoading();
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls("path:/api/table");
+        const lastCall = calls.at(-1);
+        expect(lastCall).toBeDefined();
+        const url = new URL(lastCall!.url);
+        expect(url.searchParams.get("published-only")).toBe("true");
+      });
+    });
+  });
 });
 
 function searchInput() {
@@ -588,8 +645,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   if (!textElement) {
     return null;
   }
-  return (textElement.closest('[data-testid="tree-item"]') ??
-    null) as HTMLElement | null;
+  return textElement.closest('[data-testid="tree-item"]') ?? null;
 }
 
 async function clickItem(

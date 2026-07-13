@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
@@ -7,6 +6,7 @@ import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
+import { Link } from "metabase/router";
 import {
   ActionIcon,
   Box,

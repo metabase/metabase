@@ -48,6 +48,7 @@ export const WithDocLink = {
 };
 
 export const Fixed = {
+  // Unjustified type cast. FIXME
   render: ((args) => {
     return (
       <>

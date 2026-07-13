@@ -1,6 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
@@ -17,6 +16,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   ActionIcon,
   Box,
@@ -193,7 +193,7 @@ export const Comments = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to send comment`,
       });
     }
@@ -226,6 +226,7 @@ export const Comments = ({
         className={S.tabsContainer}
         value={activeTab}
         onChange={(value) => {
+          // Unjustified type cast. FIXME
           setActiveTab(value as SidesheetTab);
         }}
       >

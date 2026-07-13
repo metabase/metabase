@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupBookmarksEndpoints,
@@ -24,6 +23,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { FileUploadStatus } from "metabase/status/components/FileUploadStatus/FileUploadStatus";
 import {
   createMockCollection,

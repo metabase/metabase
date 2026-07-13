@@ -97,6 +97,7 @@ export function merge(
   }
 
   const merged = { ...a, ...b };
+  // Unjustified type cast. FIXME
   (merged as { children: TreeNode[] }).children = children;
   return merged;
 }
@@ -113,6 +114,7 @@ type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export function node<T extends TreeNode>(
   x: Optional<T, "key" | "children">,
 ): T {
+  // Unjustified type cast. FIXME
   return {
     ...x,
     key: toKey(x.value),
@@ -135,6 +137,7 @@ export function getFiltersCount(filters: FilterState): number {
     filters.dataLayer != null,
     filters.ownerEmail != null || filters.ownerUserId != null,
     filters.unusedOnly === true,
+    filters.publishedOnly === true,
   ].filter(Boolean).length;
 }
 

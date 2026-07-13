@@ -1,5 +1,4 @@
-import type { SelfDescribingJson } from "@snowplow/browser-tracker";
-
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import { createMockSettingsState } from "metabase/redux/store/mocks/settings";
 import { createMockState } from "metabase/redux/store/mocks/state";
@@ -8,10 +7,15 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 const mockNewTracker = jest.fn();
 const mockTrackSelfDescribingEvent = jest.fn();
+const mockTrackMetaplowEvent = jest.fn();
 
 jest.mock("@snowplow/browser-tracker", () => ({
   newTracker: mockNewTracker,
   trackSelfDescribingEvent: mockTrackSelfDescribingEvent,
+}));
+
+jest.mock("metabase/utils/metaplow", () => ({
+  trackMetaplowEvent: mockTrackMetaplowEvent,
 }));
 
 // Re-import the module under test so its module-scoped init guard resets per test.
@@ -19,14 +23,14 @@ const loadModule = () => import("./snowplow");
 
 function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
   return {
-    getState: () =>
-      createMockState({
-        sdk: createMockSdkState(),
-        settings: createMockSettingsState({
-          "anon-tracking-enabled": true,
-          ...overrides,
-        }),
+    getState: (): SdkStoreState => ({
+      ...createMockState(),
+      sdk: createMockSdkState(),
+      settings: createMockSettingsState({
+        "anon-tracking-enabled": true,
+        ...overrides,
       }),
+    }),
   };
 }
 
@@ -53,14 +57,15 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
       });
 
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
+      // Only assert important config keys
       expect(mockNewTracker).toHaveBeenCalledWith(
         "sdk",
         "https://metabase.example.com",
-        // Only assert important config keys
         expect.objectContaining({
           postPath: "/api/analytics-proxy",
           stateStorageStrategy: "none",
           anonymousTracking: { withServerAnonymisation: true },
+          withCredentials: false,
         }),
       );
     });
@@ -86,18 +91,19 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
 
     it("wasJustInitialized: true on first call, false on subsequent calls", async () => {
       const { initSdkTracker } = await loadModule();
+      const store = makeStore();
 
       const firstResult = initSdkTracker({
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: false,
-        store: makeStore(),
+        store,
       });
       const secondResult = initSdkTracker({
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: false,
-        store: makeStore(),
+        store,
       });
 
       expect(firstResult).toBe(true);
@@ -174,19 +180,103 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
     });
   });
 
-  describe("trackSdkEvent", () => {
-    it("routes to the isolated sdk tracker, not the default", async () => {
-      const { trackSdkEvent } = await loadModule();
-      const event: SelfDescribingJson = {
-        schema: "iglu:com.metabase/embedded_analytics_js/jsonschema/3-0-0",
-        data: { event: "setup" },
-      };
+  describe("trackSdkSimpleEvent", () => {
+    it("sends via SDK Snowplow proxy tracker with simple_event schema", async () => {
+      const { trackSdkSimpleEvent } = await loadModule();
 
-      trackSdkEvent(event);
+      trackSdkSimpleEvent({
+        event: "embedding_sdk_initialized",
+        event_detail: JSON.stringify({
+          global: {
+            auth_method: "sso",
+            sdk_version: "1.0.0",
+            locale_used: false,
+          },
+        }),
+      });
 
-      expect(mockTrackSelfDescribingEvent).toHaveBeenCalledWith({ event }, [
-        "sdk",
-      ]);
+      expect(mockTrackSelfDescribingEvent).toHaveBeenCalledWith(
+        {
+          event: {
+            schema: "iglu:com.metabase/simple_event/jsonschema/1-0-0",
+            data: {
+              event: "embedding_sdk_initialized",
+              event_detail: JSON.stringify({
+                global: {
+                  auth_method: "sso",
+                  sdk_version: "1.0.0",
+                  locale_used: false,
+                },
+              }),
+            },
+          },
+        },
+        ["sdk"],
+      );
+    });
+
+    it("does not call Metaplow when the tracker has not been initialized", async () => {
+      const { trackSdkSimpleEvent } = await loadModule();
+
+      trackSdkSimpleEvent({
+        event: "embedding_sdk_initialized",
+        event_detail: "",
+      });
+
+      expect(mockTrackMetaplowEvent).not.toHaveBeenCalled();
+    });
+
+    it("does not call Metaplow when metaplow-tracking-enabled is false", async () => {
+      const { initSdkTracker, trackSdkSimpleEvent } = await loadModule();
+
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        store: makeStore({ "metaplow-tracking-enabled": false }),
+      });
+
+      trackSdkSimpleEvent({
+        event: "embedding_sdk_initialized",
+        event_detail: "",
+      });
+
+      expect(mockTrackMetaplowEvent).not.toHaveBeenCalled();
+    });
+
+    it("calls Metaplow when metaplow-tracking-enabled is on", async () => {
+      const { initSdkTracker, trackSdkSimpleEvent } = await loadModule();
+
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        store: makeStore({ "metaplow-tracking-enabled": true }),
+      });
+
+      trackSdkSimpleEvent({
+        event: "embedding_sdk_initialized",
+        event_detail: JSON.stringify({
+          global: {
+            auth_method: "sso",
+            sdk_version: "1.0.0",
+            locale_used: false,
+          },
+        }),
+      });
+
+      expect(mockTrackMetaplowEvent).toHaveBeenCalledWith(
+        "embedding_sdk_initialized",
+        {
+          event_detail: JSON.stringify({
+            global: {
+              auth_method: "sso",
+              sdk_version: "1.0.0",
+              locale_used: false,
+            },
+          }),
+        },
+      );
     });
   });
 });

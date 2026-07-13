@@ -101,6 +101,7 @@ export function LinkOptions({
                 <CustomLinkText
                   updateSettings={updateSettings}
                   clickBehavior={
+                    // Unjustified type cast. FIXME
                     clickBehavior as unknown as ArbitraryCustomDestinationClickBehavior
                   }
                 />

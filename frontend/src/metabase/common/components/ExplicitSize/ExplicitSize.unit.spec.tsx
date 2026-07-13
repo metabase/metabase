@@ -35,6 +35,7 @@ const triggerResize = (
   entry: Partial<ResizeObserverEntry>,
 ) => {
   act(() => {
+    // Unjustified type cast. FIXME
     (
       resizeObserver as unknown as {
         _trigger: (
@@ -95,6 +96,7 @@ const createEntry = (
   inlineSize: number,
   blockSize: number,
 ): Partial<ResizeObserverEntry> =>
+  // Unjustified type cast. FIXME
   ({
     target,
     borderBoxSize: [{ inlineSize, blockSize }],
@@ -175,6 +177,7 @@ describe("ExplicitSize", () => {
     // so stub a real size — there is no resize event to supply one.
     rerender(<ConditionalSizedComponent hasContent={true} />);
     const element = screen.getByTestId("sized");
+    // Unjustified type cast. FIXME
     jest.spyOn(element, "getBoundingClientRect").mockReturnValue({
       width: 400,
       height: 300,

@@ -1016,6 +1016,7 @@ describe("documents", () => {
 
             cy.log(`${ogHeight}, ${newHeight}`);
 
+            // Unjustified type cast. FIXME
             expect(newHeight).to.be.lessThan(ogHeight as number);
           });
         });

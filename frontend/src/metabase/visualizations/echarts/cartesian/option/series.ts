@@ -169,6 +169,7 @@ export function getDataLabelFormatter(
   );
 
   return (params: CallbackDataParams) => {
+    // Unjustified type cast. FIXME
     const datum = params.data as Datum;
     const value = accessor != null ? accessor(datum) : datum[dataKey];
 
@@ -399,6 +400,7 @@ export const buildEChartsStackLabelOptions = (
       renderingContext.getColor,
     ),
     formatter: (params: CallbackDataParams) => {
+      // Unjustified type cast. FIXME
       const transformedDatum = params.data as Datum;
       const originalIndex = transformedDatum[INDEX_KEY] ?? params.dataIndex;
       const datum = originalDataset[originalIndex];
@@ -770,6 +772,7 @@ function getStackedDataLabelFormatter(
     }
 
     const stackValue = getStackTotalValue(
+      // Unjustified type cast. FIXME
       params.data as Datum,
       stackDataKeys,
       signKey,
@@ -870,6 +873,7 @@ export const getStackTotalsSeries = (
   );
 
   return Object.values(seriesByStackName).flatMap((seriesOptions) => {
+    // Unjustified type cast. FIXME
     const stackDataKeys = seriesOptions // we set string dataKeys as series IDs
       .map((s) => s.id)
       .filter(isNotNull) as string[];
@@ -877,6 +881,7 @@ export const getStackTotalsSeries = (
 
     const labelFormatter = firstSeriesInStack.stack
       ? chartModel.stackedLabelsFormatters?.[
+          // Unjustified type cast. FIXME
           firstSeriesInStack.stack as "bar" | "area"
         ]
       : undefined;
@@ -949,6 +954,7 @@ export const buildEChartsSeries = (
       );
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, number>,
   );
 

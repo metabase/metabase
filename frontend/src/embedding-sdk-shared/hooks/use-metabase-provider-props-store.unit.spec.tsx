@@ -8,6 +8,7 @@ import { useMetabaseProviderPropsStore } from "./use-metabase-provider-props-sto
 const PROPS_STORE_KEY = "METABASE_PROVIDER_PROPS_STORE" as const;
 
 const resetWindow = () => {
+  // Unjustified type cast. FIXME
   delete (window as any)[PROPS_STORE_KEY];
 };
 
@@ -52,7 +53,7 @@ describe("useMetabaseProviderPropsStore", () => {
 
     act(() => {
       ensureMetabaseProviderPropsStore().setProps({
-        authConfig: { metabaseInstanceUrl: "https://example.com" } as any,
+        authConfig: { metabaseInstanceUrl: "https://example.com" },
       });
     });
 
@@ -86,7 +87,7 @@ describe("useMetabaseProviderPropsStore", () => {
 
     act(() => {
       ensureMetabaseProviderPropsStore().setProps({
-        authConfig: { metabaseInstanceUrl: "https://before.com" } as any,
+        authConfig: { metabaseInstanceUrl: "https://before.com" },
       });
     });
     expect(screen.getByTestId("instance-url")).toHaveTextContent(
@@ -102,7 +103,7 @@ describe("useMetabaseProviderPropsStore", () => {
 
     act(() => {
       ensureMetabaseProviderPropsStore().setProps({
-        authConfig: { metabaseInstanceUrl: "https://after.com" } as any,
+        authConfig: { metabaseInstanceUrl: "https://after.com" },
       });
     });
 

@@ -46,6 +46,7 @@ export const createMockRecentCollectionItem = (
 export const createMockRecentModel = (
   model: Partial<RecentCollectionItem>,
 ): RecentModel =>
+  // Unjustified type cast. FIXME
   createMockRecentCollectionItem({ ...model, model: "dataset" }) as RecentModel;
 
 export const createMockPopularTableItem = (

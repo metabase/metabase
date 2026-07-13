@@ -67,10 +67,12 @@ program
     "--include <substring>",
     "only rewrite when the Root Suite's spec file path contains this substring (repeatable)",
     (value: string, previous: string[]) => previous.concat([value]),
+    // Unjustified type cast. FIXME
     [] as string[],
   )
   .parse();
 
+// Unjustified type cast. FIXME
 const [inDir, outDir = inDir] = program.processedArgs as [string, string?];
 const { dryRun = false, include: includes } = program.opts<Options>();
 
@@ -138,6 +140,7 @@ function findSpecFile(node: unknown): string | null {
   if (!node || typeof node !== "object") {
     return null;
   }
+  // Unjustified type cast. FIXME
   const file = (node as Record<string, unknown>)["@_file"];
   if (typeof file === "string") {
     return file;

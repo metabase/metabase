@@ -225,9 +225,7 @@ export const settings = {
         const hasOnlyFormattableColumns =
           columnFormat.columns
             .map((columnName) =>
-              (data.cols as DatasetColumn[]).find(
-                (column) => column.name === columnName,
-              ),
+              data.cols.find((column) => column.name === columnName),
             )
             .filter(Boolean) ?? [].every(isFormattablePivotColumn);
 

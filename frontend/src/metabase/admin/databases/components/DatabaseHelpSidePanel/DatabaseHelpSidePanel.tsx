@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
@@ -8,6 +7,7 @@ import { getHelpUrl } from "metabase/common/utils/help-url";
 import CS from "metabase/css/core/index.css";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {

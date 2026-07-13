@@ -1,54 +1,50 @@
 (ns metabase.slackbot.persistence
   "Slack-specific persistence: reconstruct conversation history from stored messages."
   (:require
+   [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private legacy-history-block-types
-  "Legacy AI-SDK-message `:_type` values that carry tool history."
-  #{"TOOL_CALL" "TOOL_RESULT"})
-
-(defn- legacy-block->history-message
-  "Legacy AI-SDK-message block: keep history-relevant fields, keywordize role."
-  [block]
-  (-> (select-keys block [:role :content :tool_calls :tool_call_id])
-      (update :role keyword)))
-
-(defn- native-tool-input->history-message
-  "Native `tool-input` block → AI-SDK-message with a single `:tool_calls` entry."
-  [block]
-  {:role       :assistant
-   :tool_calls [{:id        (:id block)
-                 :name      (:function block)
-                 :arguments (:arguments block)}]})
-
-(defn- native-tool-output->history-message
-  "Native `tool-output` block → AI-SDK `tool` message. Only the `:output`
-  string is needed for history replay."
-  [block]
-  {:role         :tool
-   :tool_call_id (:id block)
-   :content      (get-in block [:result :output])})
-
-(defn- block->history-message
-  "Dispatch a single stored `:data` block to an AI-SDK-message map, or nil to
-  skip. Handles both legacy slackbot blocks (`:_type \"TOOL_CALL\"` /
-  `\"TOOL_RESULT\"`) and native agent-loop blocks (`:type \"tool-input\"` /
-  `\"tool-output\"`). Text blocks are skipped — assistant text still comes
-  from Slack's copy of the thread."
-  [block]
-  (cond
-    (legacy-history-block-types (:_type block)) (legacy-block->history-message block)
-    (= "tool-input" (:type block))              (native-tool-input->history-message block)
-    (= "tool-output" (:type block))             (native-tool-output->history-message block)
-    :else                                       nil))
+(defn- tool-part->history-messages
+  "A stored v2 tool part (`:type \"tool-<name>\"`, merged input/output) →
+  AI-SDK-message pair: an assistant message with a single `:tool_calls` entry,
+  plus a `tool` message when the call resolved. Parts still in
+  `input-available` state (tool never finished) are skipped — there is no
+  result to replay. Text and data parts are skipped — assistant text still
+  comes from Slack's copy of the thread."
+  [part]
+  (when (and (schema.v2/tool-part? part)
+             (not= "input-available" (:state part)))
+    (let [input       (:input part)
+          state       (:state part)
+          tool-call   {:role       :assistant
+                       :tool_calls [{:id        (:toolCallId part)
+                                     :name      (schema.v2/tool-part-name part)
+                                     :arguments (if (string? input)
+                                                  input
+                                                  (json/encode (or input {})))}]}
+          tool-result (when (#{"output-available" "output-error"} state)
+                        {:role         :tool
+                         :tool_call_id (:toolCallId part)
+                         :content      (if (= "output-error" state)
+                                         (or (:errorText part) "Tool execution failed")
+                                         ;; a map result stores the LLM text under
+                                         ;; `[:output :output]`; a non-map result (a
+                                         ;; bare string/scalar) is stored flat under `:output`
+                                         (let [output (:output part)]
+                                           (or (if (map? output) (:output output) output) "")))})]
+      (cond-> [tool-call]
+        tool-result (conj tool-result)))))
 
 (defn- extract-history-messages
   "Walk `(:data message)` in insertion order and emit AI-SDK-message maps for
   history replay. Preserves adjacency of tool calls and their tool results."
   [message]
-  (into [] (keep block->history-message) (:data message)))
+  (->> (or (:data message) [])
+       (schema.v2/check-message-data "slack history replay metabot_message.data")
+       (into [] (mapcat tool-part->history-messages))))
 
 (defn message-history
   "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."

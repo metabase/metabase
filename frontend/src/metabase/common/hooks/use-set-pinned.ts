@@ -43,6 +43,7 @@ const PINNABLE_MODELS = new Set<PinnableModel>([
 export function isPinnable<T extends { model: string }>(
   item: T,
 ): item is T & { model: PinnableModel } {
+  // Unjustified type cast. FIXME
   return PINNABLE_MODELS.has(item.model as PinnableModel);
 }
 

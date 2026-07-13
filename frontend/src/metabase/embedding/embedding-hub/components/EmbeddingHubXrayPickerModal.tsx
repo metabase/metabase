@@ -68,7 +68,7 @@ export const EmbeddingHubXrayPickerModal = ({
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to create dashboard`,
       });
     }

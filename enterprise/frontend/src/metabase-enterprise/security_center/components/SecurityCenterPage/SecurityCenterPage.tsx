@@ -81,7 +81,7 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
     } catch {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to check for security advisories`,
       });
     }
@@ -108,7 +108,7 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
       setIsPolling(false);
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Security advisory check is taking longer than expected. Results will appear when ready.`,
       });
     }

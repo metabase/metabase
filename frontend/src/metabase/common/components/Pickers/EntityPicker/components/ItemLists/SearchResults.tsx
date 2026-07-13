@@ -253,6 +253,7 @@ export function SearchScopeSelector() {
       <Text>{t`Where to search:`}</Text>
       <SegmentedControl
         value={searchScope ? String(searchScope) : "all"}
+        // Unjustified type cast. FIXME
         onChange={(newValue) => setSearchScope(newValue as SearchScope)}
         data={options}
       />

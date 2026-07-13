@@ -1,7 +1,5 @@
 import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
-import type { WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -18,6 +16,8 @@ import {
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
+import type { WithRouterProps } from "metabase/router";
+import { push } from "metabase/router";
 import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
 import {
   canUserCreateNativeQueries,

@@ -14,6 +14,16 @@
       text-align: left; /* "start" for some reason doesn't work properly */
     }
   }
+
+  &[data-variant="pills"] .tab {
+    border-radius: 999px;
+    padding: 0.6rem 1rem;
+
+    &[data-active="true"] {
+      background-color: var(--mb-color-background_surface-selected);
+      color: var(--mb-color-core-brand);
+    }
+  }
 }
 
 [data-list-border-hidden] .list::before {
@@ -31,7 +41,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:disabled {

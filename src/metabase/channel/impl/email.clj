@@ -220,11 +220,11 @@
   {:notification/dashboard {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{payload.dashboard.name}}"
-                                           :path    "metabase/channel/email/dashboard_subscription.hbs"}}
+                                           :path    "dashboard_subscription"}}
    :notification/card      {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{computed.subject}}"
-                                           :path    "metabase/channel/email/notification_card.hbs"}}})
+                                           :path    "notification_card"}}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
@@ -276,10 +276,12 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defn- dashboard-pdf-attachment
-  "Render the whole dashboard to a PDF email attachment, or `nil` if rendering fails."
-  [dashboard-id dashboard-name creator-id parameters]
+  "Render the whole dashboard to a PDF email attachment, or `nil` if rendering fails. `parts` are the dashboard's
+  already-executed parts, reused so the PDF generation doesn't re-run every query."
+  [dashboard-id dashboard-name creator-id parameters parts]
   (try
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters))
+    ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
           temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
                       (.deleteOnExit))]
       (with-open [os (io/output-stream temp-file)]
@@ -336,7 +338,7 @@
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
         card-attachments    (map make-message-attachment merged-attachments)
         pdf-attachment      (when include_pdf
-                              (dashboard-pdf-attachment (:id dashboard) (:name dashboard) creator_id parameters))
+                              (dashboard-pdf-attachment (:id dashboard) (:name dashboard) creator_id parameters dashboard_parts))
         attachments         (cond-> (into [icon-attachment] result-attachments)
                               (not attachment_only) (concat card-attachments)
                               pdf-attachment        (concat [pdf-attachment]))
