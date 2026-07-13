@@ -467,7 +467,7 @@
       true
       (let [api-namespaces (module-api-namespaces config required-module)
             friends        (module-friends config required-module)]
-        (or (empty? api-namespaces)
+        (or (nil? api-namespaces)
             (contains? api-namespaces ns-symb)
             (contains? friends current-module))))))
 
