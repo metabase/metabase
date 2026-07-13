@@ -131,6 +131,16 @@
    [:truncated          {:optional true :tool/description "Whether more rows sit behind this page."} [:maybe :boolean]]
    [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset and the parameters that narrow the set."} [:maybe :string]]])
 
+(def ^:private browse-data-mcp-output-malli
+  "MCP-visible output of `browse_data` — the list envelope's structured channel plus `omitted`, the
+   `get_fields` remainder a next call works through."
+  [:map
+   [:returned           {:tool/description "Rows in this page — tables, for `get_fields`."} :int]
+   [:total              {:optional true :tool/description "Rows in the whole set; requested tables, for `get_fields`."} [:maybe :int]]
+   [:truncated          {:optional true :tool/description "Whether more rows sit behind this page."} [:maybe :boolean]]
+   [:truncation_message {:optional true :tool/description "How to reach the rest: the next offset and the parameters that narrow the set."} [:maybe :string]]
+   [:omitted            {:optional true :tool/description "`get_fields` only: requested tables not in this response, each with the reason."} [:maybe [:sequential :map]]]])
+
 (def ^:private mcp-output-overrides
   "tool-name → Malli schema. Replaces the manifest's derived `:outputSchema`.
    Both construct tools emit `{:query_handle}` via the body transform (see
@@ -138,7 +148,8 @@
    structured channel, not the body: the body is in the text block."
   {"construct_query"        construct-query-mcp-output-malli
    "construct_native_query" construct-query-mcp-output-malli
-   "search"                 list-envelope-mcp-output-malli})
+   "search"                 list-envelope-mcp-output-malli
+   "browse_data"            browse-data-mcp-output-malli})
 
 (defn- override->input-json-schema [malli tool-name]
   (tools-manifest/assert-optional-fields-nullable! malli tool-name)

@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.agent-api.browse-data :as agent-api.browse-data]
    [metabase.agent-api.search :as agent-api.search]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.tools :as agent-api.tools]
@@ -279,6 +280,105 @@
    (-> body
        (m/update-existing :term_queries coerce-query-list)
        (m/update-existing :semantic_queries coerce-query-list))))
+
+;;; --------------------------------------------------- Browse Data --------------------------------------------------
+
+(mr/def ::browse-data-request
+  "Arguments to the `browse_data` tool. Only `action` is schema-required; per-action requirements are
+  runtime-enforced with teaching errors in [[metabase.agent-api.browse-data/browse-data]], so a strict
+  client's always-send-every-property shape validates."
+  [:map
+   [:action
+    {:tool/description (str "What to list: `list_databases` needs nothing else; `list_schemas`, "
+                            "`list_tables`, and `list_models` need `database_id`; `get_fields` needs "
+                            "`table_ids`.")}
+    (into [:enum] agent-api.browse-data/actions)]
+   [:database_id
+    {:optional true
+     :tool/description (str "The database to browse — required for `list_schemas`, `list_tables`, and "
+                            "`list_models`. Accepts a numeric id or a 21-character entity_id.")}
+    [:maybe agent-api.tools/IdRef]]
+   [:schema
+    {:optional true
+     :tool/description (str "Scope `list_tables` to one schema. Pass \"\" for tables outside any "
+                            "schema.")}
+    [:maybe :string]]
+   [:search
+    {:optional true
+     :tool/description "Case-insensitive substring filter on table name — `list_tables` only."}
+    [:maybe ms/NonBlankString]]
+   [:table_ids
+    {:optional true
+     :tool/description (str "The tables whose fields to return — `get_fields` only, up to 20 per "
+                            "call. Each accepts a numeric id or a 21-character entity_id.")}
+    [:maybe [:sequential agent-api.tools/IdRef]]]
+   [:include_hidden
+    {:optional true
+     :tool/description "Include hidden tables and fields (default false)."}
+    [:maybe :boolean]]
+   [:limit
+    {:optional true
+     :tool/description "Rows per page for the `list_*` actions (default 50, max 200)."}
+    [:maybe [:int {:min 1 :max 200}]]]
+   [:offset
+    {:optional true
+     :tool/description (str "For `list_*` actions: rows to skip — page with the offset the truncation "
+                            "message names. For `get_fields` with a single table: the field position "
+                            "to continue a too-wide table from.")}
+    [:maybe [:int {:min 0}]]]
+   [:response_format
+    {:optional true
+     :tool/description (str "\"concise\" (default) returns the id/name/type essentials per row; "
+                            "\"detailed\" on `get_fields` adds each field's full record (fingerprint "
+                            "stats, `has_field_values`), sample values, and the questions, models, "
+                            "and transforms derived from each table.")}
+    agent-api.tools/ResponseFormatField]])
+
+(mr/def ::browse-data-response
+  "The bounded list envelope. For `get_fields`, `data` is the table units (each with its `fields`),
+  `total` counts the requested tables, and `omitted` names the requested tables not in this response —
+  cut for response budget, or not visible to the caller — with the reason."
+  [:map
+   [:data               [:sequential :any]]
+   [:returned           :int]
+   [:total              {:optional true} :int]
+   [:truncated          {:optional true} :boolean]
+   [:truncation_message {:optional true} :string]
+   [:omitted            {:optional true} [:sequential :map]]])
+
+(api.macros/defendpoint :post "/v2/browse-data" :- ::browse-data-response
+  "Browse the data hierarchy — databases, schemas, tables, models, fields.
+
+  The action is a named enum, never inferred from argument presence: `list_databases`,
+  `list_schemas` / `list_tables` / `list_models` (all scoped by `database_id`), and `get_fields` for
+  the fields of up to 20 tables at once."
+  {:scope "agent:discover:read"
+   :tool  {:name  "browse_data"
+           :title "Browse Databases, Schemas, and Tables"
+           :description
+           (str "Browse the data hierarchy: databases → schemas → tables → fields. Pick an action:\n"
+                "- `list_databases` — every database you can query.\n"
+                "- `list_schemas` — a database's schemas (`database_id` required).\n"
+                "- `list_tables` — a database's tables (`database_id` required; scope with `schema`, "
+                "filter with `search`).\n"
+                "- `list_models` — the models built on a database (`database_id` required).\n"
+                "- `get_fields` — the fields of up to 20 tables at once (`table_ids` required). Read "
+                "the fields before writing a query; column names are never a guess.\n"
+                "\n"
+                "`list_*` actions page with `limit` (default 50, max 200) and `offset`. `get_fields` "
+                "returns complete tables until the response budget runs out and names the rest in "
+                "`omitted`; a single table too wide for one response comes back as an explicit slice "
+                "with the `offset` to continue from. `response_format: \"detailed\"` on `get_fields` "
+                "adds fingerprint stats, sample values, and each table's derived questions, models, "
+                "and transforms.")
+           :annotations {:read-only? true :idempotent? true}
+           :input-examples [{:action "list_databases"}
+                            {:action "list_tables" :database_id 1 :schema "PUBLIC" :search "order"}
+                            {:action "get_fields" :table_ids [7 9] :response_format "detailed"}]}}
+  [_route-params
+   _query-params
+   body :- ::browse-data-request]
+  (agent-api.browse-data/browse-data body))
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 

@@ -172,6 +172,7 @@
               llm
               metabot
               native-query-snippets
+              parameters
               permissions
               queries
               query-permissions
@@ -180,7 +181,9 @@
               search
               server
               settings
-              util}
+              util
+              warehouse-schema
+              warehouses}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2705,13 +2708,16 @@
 
   warehouses
   {:team "UX West"
-   :api  #{metabase.warehouses.core
+   :api  #{metabase.warehouses.browse
+           metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
    :uses #{analytics-interface
            api
            app-db
            audit-app
+           classloader
+           config
            driver
            lib
            models
@@ -2721,7 +2727,8 @@
            secrets
            settings
            sync
-           util}
+           util
+           enterprise/advanced-permissions}
    :model-exports #{:model/Database}
    :model-imports #{:model/Card
                     :model/Field

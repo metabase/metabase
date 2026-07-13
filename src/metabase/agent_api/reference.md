@@ -286,6 +286,83 @@ countable (a fused ranking is a union of ranked windows and counts nothing):
 `response_format: "detailed"` returns every field the search index carries
 instead of the five above.
 
+### POST /v2/browse-data
+
+The `browse_data` tool: one endpoint for the data hierarchy — databases,
+schemas, tables, models, fields. The action is a named enum, never inferred
+from which arguments happen to be present.
+
+| Action | Arguments | Returns |
+| --- | --- | --- |
+| `list_databases` | — | the databases the caller may see |
+| `list_schemas` | `database_id` | the database's schemas, as strings |
+| `list_tables` | `database_id`, `schema?`, `search?` | the database's tables |
+| `list_models` | `database_id` | the models built on that database |
+| `get_fields` | `table_ids` (≤ 20) | each table with its fields |
+
+Shared arguments: `include_hidden` (hidden tables/fields, default `false`),
+`response_format`, and — for the `list_*` actions — `limit` (default 50, max
+200) and `offset`. `search` is a case-insensitive substring filter on table
+name. Every id argument accepts a numeric id or a 21-character `entity_id`.
+
+Request:
+
+```json
+{
+  "action": "list_tables",
+  "database_id": 1,
+  "schema": "PUBLIC",
+  "search": "order",
+  "limit": 50,
+  "offset": 0
+}
+```
+
+`list_*` responses are the bounded list envelope (`data`, `returned`, `total`,
+`truncated?`, `truncation_message?`); a cut page's message names the narrowing
+parameters and the next offset ("143 tables in schema `public` — showing 50.
+narrow with `search` or page with `offset: 50`.").
+
+`get_fields` bounds by response budget with per-table fault isolation: complete
+tables in request order until the budget runs out, then the rest named in
+`omitted` — never a silently half-emitted table. `total` counts the requested
+tables. Requested ids the caller cannot see (or that name nothing) are also
+listed in `omitted` with the reason.
+
+```json
+{
+  "data": [
+    {"id": 7, "name": "ORDERS", "display_name": "Orders", "schema": "PUBLIC",
+     "db_id": 1, "entity_type": "entity/TransactionTable",
+     "fields": [
+       {"id": 41, "name": "TOTAL", "display_name": "Total",
+        "base_type": "type/Float", "semantic_type": null,
+        "table_id": 7, "fk_target_field_id": null, "description": null}
+     ]}
+  ],
+  "returned": 1,
+  "total": 2,
+  "truncated": true,
+  "truncation_message": "1 of 2 tables returned — the rest exceeded the response budget; request each omitted table in its own `get_fields` call.",
+  "omitted": [
+    {"id": 9, "name": "PRODUCTS", "reason": "response budget — request it in a separate call"}
+  ]
+}
+```
+
+When a single requested table alone exceeds the budget, the response is an
+explicit slice instead: fields in position order, `returned`/`total` field
+counts on the table, and a `truncation_message` naming the continuation —
+"ORDERS: 150 of 620 fields — continue with `browse_data(action: "get_fields",
+table_ids: [7], offset: 150)`". `offset` applies to `get_fields` only in this
+single-table case.
+
+`response_format: "detailed"` on `get_fields` returns each field's whole REST
+record (fingerprint stats, `has_field_values`), attaches up to 20 stored
+sample `values` to list-valued fields (via the same sandbox-aware path the
+field-values endpoints read), and adds each table's `derived` questions,
+models, and transforms.
+
 ### POST /v2/construct-query
 
 Construct an MBQL query from a representations JSON payload. Returns a
@@ -641,8 +718,9 @@ Response:
 ## Typical workflow
 
 1. **Search** - POST /v1/search to find relevant tables, metrics, cards, or dashboards
-2. **Navigate** - POST /v1/read-resource with `metabase://` URIs to drill into
-   databases, schemas, tables, fields, collections, dashboards, etc.
+2. **Navigate** - POST /v2/browse-data to walk databases → schemas → tables →
+   fields; POST /v1/read-resource with `metabase://` URIs to drill into
+   collections, dashboards, and other saved content
 3. **Build query** - POST /v2/construct-query with a representations JSON
    payload (`{"query": <external-query-object>}`); see the
    `construct_notebook_query` tool prompt for the format reference

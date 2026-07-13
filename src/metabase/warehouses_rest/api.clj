@@ -22,7 +22,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
@@ -44,16 +44,12 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.browse :as warehouses.browse]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; Forward declaration so `add-schemas` (near the top-of-file helpers) can
-;; reuse the same per-schema permission check used by `/api/database/:id/schemas`
-;; lower in the file.
-(declare can-read-schema?)
 
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
@@ -108,7 +104,7 @@
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
               readable    (->> raw-schemas
-                               (filter (partial can-read-schema? db-id))
+                               (filter (partial warehouses.browse/can-read-schema? db-id))
                                (map #(if (nil? %) "" %))
                                distinct
                                sort
@@ -331,9 +327,6 @@
         filter-by-data-access? (not (or include-editable-data-model?
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
-        user-info {:user-id api/*current-user-id*
-                   :is-superuser? (mi/superuser?)
-                   :is-data-analyst? api/*is-data-analyst?*}
         base-where [:and
                     [:= :is_stub false]
                     (when-not include-analytics?
@@ -342,9 +335,7 @@
                       [:= :router_database_id router-database-id]
                       [:= :router_database_id nil])]
         where-clause (if filter-by-data-access?
-                       [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
-                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
+                       [:and base-where (warehouses.browse/database-visibility-clause)]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
@@ -1379,25 +1370,6 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
-(defenterprise current-user-can-manage-schema-metadata?
-  "Returns a boolean whether the current user has permission to edit table metadata for any tables in the schema.
-  On OSS, this is only available to admins."
-  metabase-enterprise.advanced-permissions.common
-  [_db-id _schema-name]
-  (mi/superuser?))
-
-(defn- can-read-schema?
-  "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
-  at least some of its tables?)"
-  [database-id schema-name]
-  (or
-   (contains? #{:query-builder :query-builder-and-native}
-              (perms/schema-permission-for-user api/*current-user-id*
-                                                :perms/create-queries
-                                                database-id
-                                                schema-name))
-   (current-user-can-manage-schema-metadata? database-id schema-name)))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1419,45 +1391,6 @@
          (vec)
          (sort))))
 
-(defn database-schemas
-  "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
-  (let [filter-schemas (fn [schemas]
-                         (if include-editable-data-model?
-                           (if-let [f (u/ignore-exceptions
-                                        (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                        (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
-                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                             schemas)
-                           (filter (partial can-read-schema? id) schemas)))
-        clauses         (cond-> []
-                          ;; a non-nil value means Table is hidden --
-                          ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                          (not include-hidden?) (conj [:= :visibility_type nil]))
-        ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
-        filter-schemas-by-tables (fn [schemas]
-                                   (if (or can-query? can-write-metadata?)
-                                     (let [tables (t2/select :model/Table :db_id id :active true)
-                                           filtered-tables (cond->> tables
-                                                             can-query?          (filter mi/can-query?)
-                                                             can-write-metadata? (filter mi/can-write?))
-                                           allowed-schemas (set (map :schema filtered-tables))]
-                                       (filter #(contains? allowed-schemas %) schemas))
-                                     schemas))]
-    (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (t2/select-fn-set :schema :model/Table
-                           :db_id id :active true
-                           (merge
-                            {:order-by [[:%lower.schema :asc]]}
-                            (when clauses
-                              {:where (into [:and] clauses)})))
-         filter-schemas
-         filter-schemas-by-tables
-         ;; for `nil` schemas return the empty string
-         (map #(if (nil? %) "" %))
-         distinct
-         sort)))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1478,10 +1411,10 @@
                                     [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                     [:can-query                   {:optional true} [:maybe :boolean]]
                                     [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
-  (database-schemas id {:include-editable-data-model? include_editable_data_model
-                        :include-hidden?              include_hidden
-                        :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata}))
+  (warehouses.browse/database-schemas id {:include-editable-data-model? include_editable_data_model
+                                          :include-hidden?              include_hidden
+                                          :can-query?                   can-query
+                                          :can-write-metadata?          can-write-metadata}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1513,41 +1446,6 @@
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
-(defn- schema-tables-list
-  ([db-id schema]
-   (schema-tables-list db-id schema {}))
-  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata? include-measures?]}]
-   (when-not include-editable-data-model?
-     (api/read-check :model/Database db-id)
-     (api/check-403 (can-read-schema? db-id schema)))
-   (let [candidate-tables (if include-hidden?
-                            (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
-                                       {:order-by [[:display_name :asc]]})
-                            (t2/select :model/Table
-                                       :db_id db-id
-                                       :schema schema
-                                       :active true
-                                       :visibility_type nil
-                                       {:order-by [[:display_name :asc]]}))
-         filtered-tables  (cond->> (if include-editable-data-model?
-                                     (if-let [f (when config/ee-available?
-                                                  (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                                  (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
-                                       (f candidate-tables)
-                                       candidate-tables)
-                                     (filter mi/can-read? candidate-tables))
-                            can-query?          (filter mi/can-query?)
-                            can-write-metadata? (filter mi/can-write?))
-         hydration-keys   (cond-> []
-                            (premium-features/any-transforms-enabled?)   (conj :transform)
-                            include-measures? (conj :measures))]
-     (if (seq hydration-keys)
-       (apply t2/hydrate filtered-tables hydration-keys)
-       filtered-tables))))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1571,7 +1469,7 @@
                                                                                                           [:can-query                   {:optional true} [:maybe :boolean]]
                                                                                                           [:can-write-metadata          {:optional true} [:maybe :boolean]]
                                                                                                           [:include_measures            {:optional true} [:maybe :boolean]]]]
-  (api/check-404 (seq (schema-tables-list
+  (api/check-404 (seq (warehouses.browse/schema-tables-list
                        id
                        schema
                        {:include-hidden?              include_hidden
@@ -1607,8 +1505,8 @@
               :can-query?                   can-query
               :can-write-metadata?          can-write-metadata
               :include-measures?            include_measures}]
-    (api/check-404 (seq (concat (schema-tables-list id nil opts)
-                                (schema-tables-list id "" opts))))))
+    (api/check-404 (seq (concat (warehouses.browse/schema-tables-list id nil opts)
+                                (warehouses.browse/schema-tables-list id "" opts))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

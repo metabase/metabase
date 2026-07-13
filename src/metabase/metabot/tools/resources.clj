@@ -342,17 +342,23 @@
                     (mapv present-table))]
     (list-result :database-tables tables query-params)))
 
+(defn database-models
+  "Non-archived models on database `db-id` the current user can read, ordered by name. Read-checks the
+   database first, so a blocked database is a 403 rather than an empty list. Shared by the v1
+   `metabase://database/{id}/models` resource and the v2 `browse_data` `list_models` action — models
+   have no REST listing endpoint, so this is the one implementation both surfaces run."
+  [db-id]
+  (api/read-check :model/Database db-id)
+  (->> (t2/select [:model/Card :id :name :type :display :description :card_schema
+                   :collection_id :database_id :table_id :archived]
+                  :type        :model
+                  :database_id db-id
+                  :archived    false
+                  {:order-by [[:%lower.name :asc]]})
+       (filterv mi/can-read?)))
+
 (defn- fetch-database-models [id-str query-params]
-  (let [db-id  (parse-long id-str)
-        _      (api/read-check :model/Database db-id)
-        models (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                :collection_id :database_id :table_id]
-                               :type        :model
-                               :database_id db-id
-                               :archived    false
-                               {:order-by [[:%lower.name :asc]]})
-                    (filter mi/can-read?)
-                    (mapv present-card))]
+  (let [models (mapv present-card (database-models (parse-long id-str)))]
     (list-result :database-models models query-params)))
 
 (defn- fetch-database-schemas [id-str query-params]
@@ -452,30 +458,37 @@
                              :field-id    field-id
                              :limit       30}))
 
-(defn- fetch-table-derived [id-str query-params]
-  (let [table-id   (parse-long id-str)
-        table      (api/read-check :model/Table table-id)
+(defn table-derived-content
+  "The content derived from table `table-id` that the current user can read: `{:cards [...]
+   :transforms [...]}` — the cards (questions, models, metrics) built on it and the transforms that
+   read from it. Read-checks the table first. Shared by the v1 `metabase://table/{id}/derived`
+   resource and the v2 `browse_data` detailed `get_fields` read."
+  [table-id]
+  (let [table      (api/read-check :model/Table table-id)
         db-id      (:db_id table)
-        cards      (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                    :collection_id :database_id :table_id]
+        cards      (->> (t2/select [:model/Card :id :name :type :display :description :card_schema
+                                    :collection_id :database_id :table_id :archived]
                                    :table_id table-id
                                    :archived false
                                    {:order-by [[:%lower.name :asc]]})
-                        (filter mi/can-read?)
-                        (mapv present-card))
+                        (filterv mi/can-read?))
         ;; SQL-narrow transforms by source_database_id (a transform can only reference
         ;; tables in its source DB). Pull `:source` in the same select to extract source
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
         ;; on the already-narrowed candidate set.
         transforms (when db-id
-                     (->> (t2/select [:model/Transform :id :name :description
-                                      :source_database_id :source]
+                     (->> (t2/select :model/Transform
                                      :source_database_id db-id
                                      {:order-by [[:%lower.name :asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))
-                          (filter mi/can-read?)
-                          (mapv present-transform)))]
-    (list-result :table-derived (concat cards transforms) query-params)))
+                          (filterv mi/can-read?)))]
+    {:cards cards :transforms (vec transforms)}))
+
+(defn- fetch-table-derived [id-str query-params]
+  (let [{:keys [cards transforms]} (table-derived-content (parse-long id-str))]
+    (list-result :table-derived
+                 (concat (map present-card cards) (map present-transform transforms))
+                 query-params)))
 
 ;; ----- Card (model / question) -----
 

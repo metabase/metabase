@@ -22,6 +22,17 @@
                                       :type     :native
                                       :native   {:query "SELECT * FROM VENUES"}}]})))))
 
+(deftest browse-data-get-fields-sandboxed-user-parity-test
+  (testing "a sandboxed user reads a table's metadata through both surfaces — the sandbox filters columns, it does not deny"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! {:gtaps {:venues {}}}
+        (parity/check-parity!
+         {:scenario :sandboxed-user
+          :user     :rasta
+          :expect   :allowed
+          :tool     ["browse_data" {:action "get_fields" :table_ids [(mt/id :venues)]}]
+          :rest     [:get (str "table/" (mt/id :venues) "/query_metadata")]})))))
+
 (deftest execute-question-sandboxed-user-parity-test
   (testing "a sandboxed user may still run a saved question — the sandbox filters rows, it does not deny"
     (mt/with-premium-features #{:sandboxes}

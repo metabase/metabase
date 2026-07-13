@@ -54,7 +54,7 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope                     | Grants access to                                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `agent:discover:read`     | the discover toolset: `search`                                                                                  |
+| `agent:discover:read`     | the discover toolset: `search`, `browse_data`                                                                   |
 | `agent:resource:read`     | `read_resource` (always granted to any authenticated caller; per-URI perm checks happen inside the dispatcher) |
 | `agent:query:construct`   | `construct_query`                                                                                              |
 | `agent:query`             | `query`                                                                                                        |
@@ -89,6 +89,7 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | Tool            | Description                                                                                                                                                         |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `search`        | Search for tables, metrics, cards, dashboards, and collections using keyword or natural-language queries.                                                           |
+| `browse_data`   | Browse the data hierarchy with a named `action`: `list_databases`, `list_schemas`, `list_tables`, `list_models`, and `get_fields` for up to 20 tables at once under the response budgeter. |
 | `read_resource` | Read one or more Metabase entities by `metabase://` URI. Covers database/schema/table/collection/question/dashboard/metric/transform navigation. Up to 5 URIs per call. |
 
 ### Query construction + execution

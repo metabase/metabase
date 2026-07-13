@@ -390,7 +390,8 @@
 ;;; ----------------------------------------------- Tools listing ---------------------------------------------------
 
 (def ^:private all-tool-names
-  #{"construct_query"
+  #{"browse_data"
+    "construct_query"
     "construct_native_query"
     "create_collection"
     "create_dashboard"
@@ -693,8 +694,8 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
-    "read_resource"
+  #{"search" "browse_data" "construct_query" "construct_native_query" "query" "execute_query"
+    "execute_sql" "read_resource"
     "create_question" "execute_question" "create_metric" "create_dashboard"
     "update_question" "update_metric" "update_dashboard" "create_collection"})
 
@@ -730,6 +731,9 @@
                 coll-id      (atom nil)]
             (try
               (let [_              (call-tool "search" {:term_queries ["orders"]})
+                    _              (call-tool "browse_data" {:action "list_tables"
+                                                             :database_id (mt/id)
+                                                             :search "orders"})
                     construct-data (call-tool "construct_query" {:query orders-query})
                     native-data    (call-tool "construct_native_query"
                                               {:database_id (mt/id)

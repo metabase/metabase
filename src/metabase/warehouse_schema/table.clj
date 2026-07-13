@@ -64,10 +64,11 @@
 (defn batch-fetch-query-metadatas*
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)
+    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)"
   ([ids]
    (batch-fetch-query-metadatas* ids nil))
-  ([ids {:keys [include-sensitive-fields?]}]
+  ([ids {:keys [include-sensitive-fields? include-hidden-fields?]}]
    (when (seq ids)
      (let [tables (->> (t2/select :model/Table :id [:in ids])
                        (filter can-access-table-for-query-metadata?))
@@ -76,7 +77,8 @@
                               :segments
                               :measures
                               :metrics)
-           excluded-visibility-types (cond-> #{:hidden}
+           excluded-visibility-types (cond-> #{}
+                                       (not include-hidden-fields?)    (conj :hidden)
                                        (not include-sensitive-fields?) (conj :sensitive))]
        (for [table tables]
          (-> table
@@ -95,7 +97,8 @@
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)
+    - `include-hidden-fields?` - if true, includes fields with visibility_type :hidden (default false)"
   metabase-enterprise.sandbox.api.table
   [ids opts]
   (batch-fetch-query-metadatas* ids opts))

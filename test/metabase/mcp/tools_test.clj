@@ -143,3 +143,12 @@
       (testing "and its outputSchema describes the structured channel, not the body"
         (is (= #{:returned :total :truncated :truncation_message}
                (set (keys (get-in tool [:outputSchema :properties])))))))))
+
+(deftest browse-data-is-granted-by-its-toolset-test
+  (testing "browse_data rides the discover grant, and its outputSchema describes the structured channel"
+    (let [tool (some #(when (= "browse_data" (:name %)) %)
+                     (mcp.tools/list-tools #{(mcp.toolsets/toolset-scope :discover)}))]
+      (is (some? tool))
+      (is (true? (get-in tool [:annotations :readOnlyHint])))
+      (is (= #{:returned :total :truncated :truncation_message :omitted}
+             (set (keys (get-in tool [:outputSchema :properties]))))))))

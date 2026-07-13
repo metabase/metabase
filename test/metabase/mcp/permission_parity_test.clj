@@ -197,6 +197,42 @@
         :tool     ["execute_question" {:id (:id card)}]
         :rest     [:post (str "card/" (:id card) "/query")]}))))
 
+;;; ----------------------------------------------- browse_data ----------------------------------------------------
+
+(deftest browse-data-baseline-parity-test
+  (testing "the positive control: with full permissions both surfaces list the database's schemas"
+    (check-parity!
+     {:scenario :full-permissions
+      :user     :rasta
+      :expect   :allowed
+      :tool     ["browse_data" {:action "list_schemas" :database_id (mt/id)}]
+      :rest     [:get (str "database/" (mt/id) "/schemas")]})))
+
+(deftest browse-data-blocked-database-parity-test
+  (perms.test-util/with-no-data-perms-for-all-users!
+    (check-parity!
+     {:scenario :blocked-database
+      :user     :rasta
+      :expect   :denied
+      :tool     ["browse_data" {:action "list_schemas" :database_id (mt/id)}]
+      :rest     [:get (str "database/" (mt/id) "/schemas")]})))
+
+(defn- get-fields-denied?
+  "Classifier for a single-table `get_fields`: the batch metadata read reports a refusal by returning
+   the table in `omitted` rather than erroring the call, so a denial is an empty `data`."
+  [result]
+  (empty? (:data (tool-body result))))
+
+(deftest browse-data-get-fields-blocked-database-parity-test
+  (perms.test-util/with-no-data-perms-for-all-users!
+    (check-parity!
+     {:scenario     :blocked-database
+      :user         :rasta
+      :expect       :denied
+      :tool         ["browse_data" {:action "get_fields" :table_ids [(mt/id :venues)]}]
+      :tool-denied? get-fields-denied?
+      :rest         [:get (str "table/" (mt/id :venues) "/query_metadata")]})))
+
 ;;; ------------------------------------------------- search -------------------------------------------------------
 ;;
 ;; `search` never refuses a call, so there is no denial to hold against REST's — it answers with what
