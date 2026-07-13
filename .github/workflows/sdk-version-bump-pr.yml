@@ -280,6 +280,10 @@ jobs:
           # TODO (EMB-2095) auto-approve and auto-merge this PR once the computed
           # version/distTag/tagAsLatest have proven out over a few real releases.
           # Nothing gates on review today - merging is only manual as a seatbelt.
+          #
+          # --reviewer tags the team so a release is visible, not because anything
+          # waits on a review. It needs the automation PAT: GITHUB_TOKEN cannot
+          # resolve an org team.
           gh pr create --base "$BRANCH" \
                        --assignee "${GITHUB_ACTOR}" \
                        --reviewer metabase/embedding \
@@ -299,18 +303,3 @@ jobs:
           BODY
           )"
 
-      - name: Add no-backport label (using GitHub Actions account)
-        # CODEOWNERS does NOT cover this on release branches - the embedding
-        # team's CODEOWNERS entries are deliberately commented out there as
-        # part of a repo-wide practice to cut auto-backport review noise
-        # (unrelated to this workflow; see the embedding-release-checklist's
-        # beta-prep step). EMB-1000 hit this exact gap on the old release
-        # follow-up PR, which silently lost its review request the same way.
-        # The fix here is an explicit `--reviewer metabase/embedding` on the
-        # "Open version-bump PR" step above (using the automation PAT, which
-        # - unlike GITHUB_TOKEN - has org read access to resolve the team),
-        # so the bump PR always gets a review request regardless of branch.
-        run: |
-          gh pr edit --add-label no-backport
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
