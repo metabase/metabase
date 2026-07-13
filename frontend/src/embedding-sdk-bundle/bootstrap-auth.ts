@@ -14,7 +14,7 @@ import {
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
-import * as MetabaseError from "embedding-sdk-bundle/errors";
+import * as MetabaseError from "embedding-sdk-shared/errors";
 
 type SdkAuthState = {
   status: "idle" | "in-progress" | "completed" | "error" | "skipped";

@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import "embedding-sdk-bundle";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { USERS } from "../../../../e2e/support/cypress_data";

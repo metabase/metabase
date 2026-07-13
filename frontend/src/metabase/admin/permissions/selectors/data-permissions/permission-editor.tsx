@@ -3,11 +3,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { databaseApi } from "metabase/api";
 import {
   getSpecialGroupType,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
-import { databaseApi } from "metabase/api";
+} from "metabase/common/utils/groups";
 import { getPlan } from "metabase/common/utils/plan";
 import { getIsHosted } from "metabase/databases/selectors";
 import {

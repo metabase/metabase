@@ -19,8 +19,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode, useEffect, useState } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-
-import { ensureMetabaseProviderPropsStore } from "../lib/ensure-metabase-provider-props-store";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 import { useLazySelector } from "./use-lazy-selector";
 

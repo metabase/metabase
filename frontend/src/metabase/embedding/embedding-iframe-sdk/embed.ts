@@ -1,6 +1,6 @@
-import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
-import * as MetabaseErrors from "embedding-sdk-bundle/errors";
 import type { SqlParameterValues } from "embedding-sdk-bundle/types";
+import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
+import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,

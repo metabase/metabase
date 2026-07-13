@@ -9,7 +9,6 @@ import {
   openSamlLoginPopup,
   validateSession,
 } from "embedding/auth-common";
-import * as MetabaseError from "embedding-sdk-bundle/errors";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
@@ -23,9 +22,10 @@ import type {
   SdkDispatch,
   SdkStoreState,
 } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import * as MetabaseError from "embedding-sdk-shared/errors";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
