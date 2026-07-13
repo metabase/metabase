@@ -2986,6 +2986,7 @@
            metabase-enterprise.content-diagnostics.init}
    :uses #{api
            collections
+           documents
            models
            premium-features
            request
@@ -2998,6 +2999,7 @@
                     :model/Dashboard
                     :model/Document
                     :model/Transform
+                    :model/TransformRun
                     :model/User}}
 
   enterprise/content-translation
