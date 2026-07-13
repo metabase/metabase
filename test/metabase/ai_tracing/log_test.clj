@@ -27,10 +27,10 @@
     (let [node {:type :llm :name "llm.call" :id "n1" :parent-id "p0"
                 :attributes {:ai/model "claude" :ai/output-text "hi"}
                 :events [{:event :note}]
-                :duration-ms 12.5 :start-epoch-nanos 1000 :end-epoch-nanos 2000}
+                :duration-ms 12.5 :start-epoch-ms 1000 :end-epoch-ms 2000}
           e    (#'ait.log/node->entry node "sess-1")]
       (is (= {:session "sess-1" :id "n1" :parent "p0" :type :llm :name "llm.call"
-              :start-epoch-ns 1000 :end-epoch-ns 2000 :dur-ms 12.5
+              :start-epoch-ms 1000 :end-epoch-ms 2000 :dur-ms 12.5
               :attributes {:ai/model "claude" :ai/output-text "hi"}
               :events [{:event :note}]}
              e))
@@ -46,7 +46,7 @@
       ;; a bare Object has no JSON encoding — the direct encode throws and we fall back to json-safe
       (ait.log/emit! {:type :turn :name "agent.turn" :id "n" :parent-id nil
                       :attributes {:ai/final-state (Object.) :ai/model "m"} :events []
-                      :duration-ms 1.0 :start-epoch-nanos 1 :end-epoch-nanos 2}
+                      :duration-ms 1.0 :start-epoch-ms 1 :end-epoch-ms 2}
                      "sess-x")
       (let [es (entries messages)]
         (is (= 1 (count es)) "span still emitted despite the non-encodable attribute")
@@ -62,7 +62,7 @@
       ;; before the fix — the re-encode would throw and drop the (root) span. The key must stringify.
       (ait.log/emit! {:type :turn :name "agent.turn" :id "n" :parent-id nil
                       :attributes {:ai/data {[1 2] "v"}} :events []
-                      :duration-ms 1.0 :start-epoch-nanos 1 :end-epoch-nanos 2}
+                      :duration-ms 1.0 :start-epoch-ms 1 :end-epoch-ms 2}
                      "sess-x")
       (let [es (entries messages)]
         (is (= 1 (count es)) "span still emitted despite the non-scalar map key")
@@ -152,7 +152,7 @@
       (binding [clojure.tools.logging/*logger-factory* (recording-logger-factory sink)]
         (ait.log/emit! {:type :llm :name "llm.call" :id "n" :parent-id nil
                         :attributes {} :events [] :duration-ms 1.0
-                        :start-epoch-nanos 1 :end-epoch-nanos 2}
+                        :start-epoch-ms 1 :end-epoch-ms 2}
                        "route-me"))
       (is (= 1 (count @sink)))
       (is (= "route-me" (get-in (first @sink) [:mdc "mb-eval-session-id"]))

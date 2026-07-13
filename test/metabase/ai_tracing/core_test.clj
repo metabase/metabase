@@ -56,14 +56,14 @@
       (is (= 2 (get-in llm [:attributes :ai/iteration]))))))
 
 (deftest ^:parallel timing-fields-test
-  (testing "finished spans carry duration + wall-clock epoch nanos for OTLP replay"
+  (testing "finished spans carry a precise duration + wall-clock epoch millis"
     (let [{:keys [trace]} (ait/capturing (ait/with-llm-call {} (Thread/sleep 2) :ok))
           llm (first trace)]
       (is (number? (:duration-ms llm)))
       (is (<= 0 (:duration-ms llm)))
-      (is (integer? (:start-epoch-nanos llm)))
-      (is (integer? (:end-epoch-nanos llm)))
-      (is (<= (long (:start-epoch-nanos llm)) (long (:end-epoch-nanos llm))))
+      (is (integer? (:start-epoch-ms llm)))
+      (is (integer? (:end-epoch-ms llm)))
+      (is (<= (long (:start-epoch-ms llm)) (long (:end-epoch-ms llm))))
       (is (nil? (:start-ns llm)) "internal monotonic marker stripped from finished node"))))
 
 (deftest ^:parallel error-recorded-and-rethrown-test

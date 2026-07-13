@@ -115,27 +115,29 @@
 
 (defn- now-ns ^long [] (System/nanoTime))
 
-(defn- now-epoch-nanos ^long [] (* (System/currentTimeMillis) 1000000))
+(defn- now-epoch-ms ^long [] (System/currentTimeMillis))
 
 (defn- new-node [span-type span-name attrs parent-id]
-  ;; :start-ns (monotonic) drives duration; :start-epoch-nanos (wall clock) drives the log line.
-  (atom {:type              span-type
-         :name              span-name
-         :id                (str (random-uuid))
-         :parent-id         parent-id
-         :attributes        (or attrs {})
-         :events            []
-         :children          []
-         :start-ns          (now-ns)
-         :start-epoch-nanos (now-epoch-nanos)}))
+  ;; :start-ns (monotonic) drives duration; :start-epoch-ms (wall clock) drives the log line.
+  (atom {:type           span-type
+         :name           span-name
+         :id             (str (random-uuid))
+         :parent-id      parent-id
+         :attributes     (or attrs {})
+         :events         []
+         :children       []
+         :start-ns       (now-ns)
+         :start-epoch-ms (now-epoch-ms)}))
 
 (defn- finish-node [node]
   ;; one deref ⇒ a consistent snapshot (duration, start, and :children all from the same state).
-  (let [{:keys [start-ns start-epoch-nanos] :as snapshot} @node
+  (let [{:keys [start-ns start-epoch-ms] :as snapshot} @node
         dur-ns (- (now-ns) start-ns)]
     (-> snapshot
-        (assoc :duration-ms     (/ (double dur-ns) 1e6)
-               :end-epoch-nanos (+ (long start-epoch-nanos) dur-ns))
+        (assoc :duration-ms (/ (double dur-ns) 1e6)
+               ;; wall-clock end derived from the monotonic duration (no second, possibly
+               ;; backward-jumping clock read); ms-granular — sub-ms precision is in :duration-ms.
+               :end-epoch-ms (+ (long start-epoch-ms) (Math/round (/ (double dur-ns) 1e6))))
         (dissoc :start-ns))))
 
 (defn- attach! [parent finished]

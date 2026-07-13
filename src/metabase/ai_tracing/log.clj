@@ -8,9 +8,9 @@
   Each line is the message only (the appender uses `%m%n`), so the file is pure JSONL: an external
   script joins lines by `:session` and rebuilds the tree by chaining `:id`/`:parent`.
 
-  `:start-epoch-ns`/`:end-epoch-ns` are wall-clock epoch nanoseconds (millisecond-granular — the
-  source is `currentTimeMillis`), NOT `System/nanoTime`; `:dur-ms` carries the precise monotonic
-  duration.
+  `:start-epoch-ms`/`:end-epoch-ms` are wall-clock epoch milliseconds (`currentTimeMillis`), NOT
+  `System/nanoTime`; `:dur-ms` carries the precise (sub-ms, monotonic) duration. The end is the start
+  plus that duration, so it never reads a second, possibly backward-jumping wall clock.
 
   The single on/off switch is `MB_AI_EVAL_CAPTURE` (off by default): [[emit!]] is only reached while
   a capture is active, so on a normal instance this logger writes nothing even though it sits at
@@ -31,16 +31,17 @@
 (defn- node->entry
   "Pure: a finished span node + `session-id` → the JSONL map. No semantic-convention mapping and no
   size limits — full payloads. The reconstruction script joins on `:session` and chains
-  `:id`/`:parent`. `:start-epoch-ns`/`:end-epoch-ns` are wall-clock epoch nanos (see ns docstring)."
-  [{:keys [type name id parent-id attributes events duration-ms start-epoch-nanos end-epoch-nanos]}
+  `:id`/`:parent`. `:start-epoch-ms`/`:end-epoch-ms` are wall-clock epoch milliseconds (see ns
+  docstring); sub-ms precision lives in `:dur-ms`."
+  [{:keys [type name id parent-id attributes events duration-ms start-epoch-ms end-epoch-ms]}
    session-id]
   {:session        session-id
    :id             id
    :parent         parent-id
    :type           type
    :name           name
-   :start-epoch-ns start-epoch-nanos
-   :end-epoch-ns   end-epoch-nanos
+   :start-epoch-ms start-epoch-ms
+   :end-epoch-ms   end-epoch-ms
    :dur-ms         duration-ms
    :attributes     attributes
    :events         events})
