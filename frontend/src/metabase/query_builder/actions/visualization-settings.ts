@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getReferencedCardsFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
@@ -43,18 +41,16 @@ export const onUpdateVisualizationSettings =
 
     const updatedQuestion = question.updateSettings(settings);
 
-    // Dynamic goals resolved by the backend during query execution, so re-run
-    // the query whenever the set of referenced cards/columns changes.
-    const referencedCardsChanged = !_.isEqual(
-      getReferencedCardsFromVizSettings(question.settings()),
-      getReferencedCardsFromVizSettings(updatedQuestion.settings()),
+    const hasNewForeignColumnRefs = hasNewForeignColumnRefsAdded(
+      question.settings(),
+      updatedQuestion.settings(),
     );
 
     // The check allows users without data permission to resize/rearrange columns
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
       updateQuestion(updatedQuestion, {
-        run: referencedCardsChanged,
+        run: hasNewForeignColumnRefs,
         shouldUpdateUrl: isEditable,
       }),
     );
@@ -70,24 +66,46 @@ export const onReplaceAllVisualizationSettings =
       const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
       const hasWritePermissions = isEditable;
 
-      // Dynamic goals resolved by the backend during query execution, so re-run
-      // the query whenever the set of referenced cards/columns changes.
-      const referencedCardsChanged =
+      const hasNewForeignColumnRefs =
         currentQuestion != null &&
-        !_.isEqual(
-          getReferencedCardsFromVizSettings(currentQuestion.settings()),
-          getReferencedCardsFromVizSettings(updatedQuestion.settings()),
+        hasNewForeignColumnRefsAdded(
+          currentQuestion.settings(),
+          updatedQuestion.settings(),
         );
 
       await dispatch(
         updateQuestion(updatedQuestion, {
-          // rerun the query when it is changed alongside settings, or when a
-          // dynamic goal reference changed
+          // rerun the query when it is changed alongside settings, or when a new
+          // dynamic goal reference appears
           run:
             hasWritePermissions &&
-            (newQuestion != null || referencedCardsChanged),
+            (newQuestion != null || hasNewForeignColumnRefs),
           shouldUpdateUrl: hasWritePermissions,
         }),
       );
     }
   };
+
+// Dynamic goals referencing another question's column are resolved by the
+// backend during query execution. We only need to re-run the query when a *new*
+// foreign reference appears.
+function hasNewForeignColumnRefsAdded(
+  previousSettings: VisualizationSettings,
+  nextSettings: VisualizationSettings,
+): boolean {
+  const previousKeys = getForeignColumnRefsKeys(previousSettings);
+  const nextKeys = Array.from(getForeignColumnRefsKeys(nextSettings));
+
+  return nextKeys.some((key) => !previousKeys.has(key));
+}
+
+function getForeignColumnRefsKeys(
+  settings: VisualizationSettings,
+): Set<string> {
+  return new Set(
+    getReferencedCardsFromVizSettings(settings).flatMap((ref) => {
+      const columns = ref.columns ?? [];
+      return columns.map((column) => `${ref.card_id}:${column}`);
+    }),
+  );
+}

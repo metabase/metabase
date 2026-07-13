@@ -59,6 +59,14 @@ describe("onUpdateVisualizationSettings", () => {
     );
     expectRun(false);
   });
+
+  it("does not re-run when a dynamic range is removed", async () => {
+    await dispatchWith(
+      DYNAMIC_SEGMENTS,
+      onUpdateVisualizationSettings(STATIC_SEGMENTS),
+    );
+    expectRun(false);
+  });
 });
 
 describe("onReplaceAllVisualizationSettings", () => {
@@ -78,6 +86,26 @@ describe("onReplaceAllVisualizationSettings", () => {
       }),
     );
     expectRun(false);
+  });
+
+  it("does not re-run when a dynamic range is removed", async () => {
+    await dispatchWith(
+      DYNAMIC_SEGMENTS,
+      onReplaceAllVisualizationSettings(STATIC_SEGMENTS),
+    );
+    expectRun(false);
+  });
+
+  it("re-runs when a dynamic range is retargeted to a different column", async () => {
+    await dispatchWith(
+      DYNAMIC_SEGMENTS,
+      onReplaceAllVisualizationSettings({
+        "gauge.segments": [
+          { min: 0, max: { card_id: 2, column: "avg" }, color: "red" },
+        ],
+      }),
+    );
+    expectRun(true);
   });
 });
 
