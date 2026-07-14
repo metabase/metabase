@@ -19,6 +19,26 @@
       </PatternLayout>
     </RollingFile>
     -->
+
+    <!-- Eval-trace sink (metabase.ai-tracing): one JSONL file per eval session, keyed on the
+         mb-eval-session-id ThreadContext value. Inert unless that key is set (i.e. only during a
+         capture). NOTE: the `$$` in the Routes pattern is REQUIRED — a single `$` resolves once at
+         config-parse time and collapses every session into one file. `%m%n` keeps each line pure
+         JSON. No redaction: traces intentionally contain full prompts; keep this off in prod. -->
+    <Routing name="EVAL_TRACE_ROUTING">
+      <Routes pattern="$${ctx:mb-eval-session-id}">
+        <Route>
+          <File name="eval-trace-${ctx:mb-eval-session-id}"
+                fileName="${sys:logfile.path:-target/log}/eval-traces/${ctx:mb-eval-session-id}.jsonl"
+                append="true">
+            <PatternLayout pattern="%m%n"/>
+          </File>
+        </Route>
+        <!-- Required default route: fires when the ctx key is absent. -->
+        <Route key="$${ctx:mb-eval-session-id}" ref="STDOUT"/>
+      </Routes>
+      <IdlePurgePolicy timeToLive="15" timeUnit="MINUTES"/>
+    </Routing>
   </Appenders>
 
   <Loggers>
@@ -27,6 +47,14 @@
     <Logger name="metabase" level="INFO"/>
     <Logger name="metabase-enterprise" level="INFO"/>
     <Logger name="metabase.metabot" level="DEBUG"/>
+    <!-- Eval-trace sink. The single on/off switch is MB_AI_EVAL_CAPTURE (off by default): this
+         logger only ever receives events while a capture is active, so on a normal instance it
+         writes nothing even though it sits at INFO. additivity=false keeps these lines out of the
+         main app log. Set level="off" here as a hard kill if you ever need to mute it regardless
+         of the capture flag. -->
+    <Logger name="metabase.ai-tracing.log" level="info" additivity="false">
+      <AppenderRef ref="EVAL_TRACE_ROUTING"/>
+    </Logger>
     <Logger name="metabase.plugins" level="DEBUG"/>
     <Logger name="metabase.query-processor.async" level="DEBUG"/>
     <Logger name="metabase.server.middleware" level="DEBUG"/>

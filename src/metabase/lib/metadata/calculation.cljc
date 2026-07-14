@@ -544,7 +544,7 @@
 
  * `returned-columns` for a Card has the same source and desired aliases you'd see in that Card's `:result-metadata`!!"
   ([query]
-   (returned-columns query (lib.util/query-stage query -1)))
+   (returned-columns query -1 query))
 
   ([query x]
    (returned-columns query -1 x))
