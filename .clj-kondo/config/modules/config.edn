@@ -100,7 +100,7 @@
            events
            legacy-mbql
            lib
-           lib-be
+           lib.be
            model-persistence
            models
            parameters
@@ -155,37 +155,6 @@
                     :model/QueryExecution
                     :model/Table}}
 
-  agent-api
-  {:team    "Metabot"
-   :api     #{metabase.agent-api.api
-              metabase.agent-api.init}
-   :uses    #{ai-tracing
-              api
-              auth-identity
-              channel
-              collections
-              dashboards
-              events
-              lib
-              lib-be
-              llm
-              metabot
-              queries
-              query-permissions
-              query-processor
-              request
-              server
-              settings
-              util}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardTab
-                    :model/Database
-                    :model/Table
-                    :model/User}}
-
   agent-lib
   {:team "Metabot"
    :api  #{metabase.agent-lib.representations
@@ -193,15 +162,6 @@
            metabase.agent-lib.representations.resolve}
    :uses #{lib
            models
-           util}}
-
-  ai-tracing
-  {:team "Metabot"
-   :api  #{metabase.ai-tracing.api
-           metabase.ai-tracing.core
-           metabase.ai-tracing.init}
-   :uses #{api
-           settings
            util}}
 
   analytics
@@ -220,7 +180,7 @@
            driver
            eid-translation
            internal-stats
-           lib-be
+           lib.be
            models
            permissions
            premium-features
@@ -367,9 +327,7 @@
 
   audit-app
   {:team "UX West"
-   :api  #{metabase.audit-app.core
-           metabase.audit-app.init}
-   :friends #{enterprise/memoize-monitor}
+   :api  #{metabase.audit-app.core metabase.audit-app.impl metabase.audit-app.init}
    :uses #{api
            app-db
            events
@@ -509,7 +467,8 @@
            formatter
            geojson
            lib
-           lib-be
+           lib.be
+           metabot.slackbot
            models
            notification
            parameters
@@ -519,7 +478,6 @@
            query-processor
            request
            settings
-           slackbot
            system
            task
            tiles
@@ -626,7 +584,7 @@
            collections
            eid-translation
            events
-           lib-be
+           lib.be
            models
            notification
            permissions
@@ -757,7 +715,7 @@
            embedding
            events
            lib
-           lib-be
+           lib.be
            models
            parameters
            permissions
@@ -866,12 +824,12 @@
            auth-provider
            classloader
            config
-           driver-api
            events
            lib
-           lib-be
+           lib.be
            premium-features
            query-processor
+           query-processor.driver-api
            settings
            sql-tools
            system
@@ -879,37 +837,8 @@
            util
            warehouse-schema
            warehouses
-           ;; `metabase.driver.sync/include-schema?` skips workspace iso schemas
-           ;; on parent (non-workspace-mode) instances. See GHY-3489.
            workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
-
-  driver-api
-  {:team "Querying Platform"
-   :api  #{metabase.driver-api.core}
-   :uses #{actions
-           api
-           app-db
-           appearance
-           classloader
-           config
-           connection-pool
-           database-routing
-           events
-           legacy-mbql
-           lib
-           lib-be
-           logger
-           models
-           premium-features
-           query-processor
-           secrets
-           settings
-           sync
-           system
-           upload
-           util
-           warehouse-schema}}
 
   eid-translation
   {:team "UX West"
@@ -985,11 +914,9 @@
 
   events
   {:team "DevEx"
-   :api  #{metabase.events.core
-           metabase.events.init}
+   :api  #{metabase.events.core metabase.events.impl metabase.events.init}
    :uses #{models
            util}
-   :friends #{tracing}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1051,7 +978,7 @@
           metabase.health-inspector.init}
    :uses #{api
            lib
-           lib-be
+           lib.be
            settings
            task
            util}}
@@ -1129,19 +1056,28 @@
 
   lib
   {:team "Querying Platform"
+   :module-exports #{lib.be
+                     lib.source-swap}
    :api  #{metabase.lib.core
            metabase.lib.equality
+           metabase.lib.expression
+           metabase.lib.field.util
+           metabase.lib.hierarchy
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
+           metabase.lib.metadata.result-metadata
+           metabase.lib.normalize
            metabase.lib.options
-           metabase.lib.pivot
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
+           metabase.lib.schema.binning
            metabase.lib.schema.common
+           metabase.lib.schema.constraints
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
+           metabase.lib.schema.expression.window
            metabase.lib.schema.filter
            metabase.lib.schema.id
            metabase.lib.schema.info
@@ -1151,29 +1087,39 @@
            metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
+           metabase.lib.schema.middleware-options
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
+           metabase.lib.schema.settings
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.test-spec
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util}
+           metabase.lib.util
+           metabase.lib.walk}
    :uses #{config
            graph
            legacy-mbql
            types
            util}
-   :friends #{agent-lib           ;; Structured MBQL builder; needs direct access to a few lib internals.
-              legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
-              lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
-              query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
-              source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
-              enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
+   :friends #{query-processor}}     ;; Necessarily manipulates MBQL; the one irreducible friend edge -- lib and the QP are one MBQL subsystem.
 
-  lib-be
+  lib-metric
+  {:team "UX West"
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metric.schema}
+   :uses #{lib
+           lib.be
+           settings
+           types
+           util}
+   :model-imports #{:model/Card :model/Field :model/Table}}
+
+  lib.be
   {:team "Querying Platform"
+   :ns-prefix "metabase.lib-be"
    :api  #{metabase.lib-be.core
            metabase.lib-be.init}
    :uses #{lib
@@ -1192,16 +1138,16 @@
                     :model/Table
                     :model/Transform}}
 
-  lib-metric
-  {:team "UX West"
-   :api  #{metabase.lib-metric.core
-           metabase.lib-metric.schema}
-   :uses #{lib
-           lib-be
-           settings
-           types
-           util}
-   :model-imports #{:model/Card :model/Field :model/Table}}
+  lib.source-swap
+  {:team "Graphy"
+   :ns-prefix "metabase.source-swap"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema
+           metabase.source-swap.util}
+   :uses #{driver
+           lib
+           sql-tools
+           util}}
 
   llm
   {:team "Metabot"
@@ -1213,7 +1159,7 @@
            api
            driver
            lib
-           lib-be
+           lib.be
            metabot
            models
            premium-features
@@ -1263,13 +1209,11 @@
            metabase.mcp.usage}
    :model-exports #{:model/McpSessionLog
                     :model/McpToolCallLog}
-   :uses #{agent-api
-           ai-tracing
-           api
+   :uses #{api
            app-db
            config
            llm
-           metabot
+           metabot.agent-api
            oauth-server
            premium-features
            request
@@ -1285,7 +1229,7 @@
    :uses #{api
            events
            lib
-           lib-be
+           lib.be
            metrics
            models
            permissions
@@ -1302,15 +1246,15 @@
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
+              metabase.metabot.persistence
+              metabase.metabot.schema.v2
               metabase.metabot.self
-              metabase.metabot.settings}
-   :friends #{agent-api
-              enterprise/metabot
-              enterprise/metabot-analytics
-              slackbot}
+              metabase.metabot.settings
+              metabase.metabot.tools}
+   :module-exports #{metabot.agent-api
+                     metabot.slackbot}
    :uses    #{activity-feed
               agent-lib
-              ai-tracing
               analytics
               analytics-interface
               api
@@ -1326,8 +1270,9 @@
               interestingness
               legacy-mbql
               lib
-              lib-be
+              lib.be
               llm
+              metabot.slackbot
               models
               native-query-snippets
               notification
@@ -1340,8 +1285,8 @@
               search
               server
               settings
-              slackbot
               sql-tools
+              store-api
               sync
               system
               task
@@ -1357,8 +1302,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardTab
                     :model/Database
                     :model/Field
                     :model/Glossary
@@ -1370,6 +1313,63 @@
                     :model/Transform
                     :model/User}}
 
+  metabot.agent-api
+  {:team    "Metabot"
+   :ns-prefix "metabase.agent-api"
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.init}
+   :uses    #{api
+              auth-identity
+              channel
+              collections
+              dashboards
+              events
+              lib
+              lib.be
+              llm
+              metabot
+              queries
+              query-permissions
+              query-processor
+              request
+              server
+              settings
+              util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/Table
+                    :model/User}}
+
+  metabot.slackbot
+  {:team    "Metabot"
+   :ns-prefix "metabase.slackbot"
+   :api     #{metabase.slackbot.api
+              metabase.slackbot.config
+              metabase.slackbot.init}
+   :uses    #{analytics
+              analytics-interface
+              api
+              channel
+              formatter
+              lib
+              metabot
+              permissions
+              query-processor
+              request
+              server
+              settings
+              sso
+              system
+              upload
+              util}
+   :model-imports #{:model/AuthIdentity
+                    :model/Card
+                    :model/Database
+                    :model/MetabotMessage}}
+
   metrics
   {:team "UX West"
    :api  #{metabase.metrics.api
@@ -1377,8 +1377,8 @@
    :uses #{api
            collections
            lib
-           lib-be
            lib-metric
+           lib.be
            models
            parameters
            permissions
@@ -1447,17 +1447,6 @@
                     :model/Segment
                     :model/Table
                     :model/User}}
-
-  mq
-  {:team "UX West"
-   :api  #{metabase.mq.init}
-   :uses #{analytics-interface
-           app-db
-           classloader
-           settings
-           startup
-           task
-           util}}
 
   native-query-snippets
   {:team "Graphy"
@@ -1569,7 +1558,7 @@
            app-db
            classloader
            lib
-           lib-be
+           lib.be
            models
            query-processor
            util
@@ -1776,7 +1765,7 @@
            events
            graph
            lib
-           lib-be
+           lib.be
            metrics
            models
            parameters
@@ -1823,7 +1812,7 @@
            embedding
            events
            lib
-           lib-be
+           lib.be
            models
            parameters
            permissions
@@ -1848,7 +1837,7 @@
    :uses #{api
            legacy-mbql
            lib
-           lib-be
+           lib.be
            models
            permissions
            query-processor
@@ -1858,13 +1847,10 @@
 
   query-processor
   {:team    "Querying Platform"
-   :friends #{driver-api
-              enterprise/cache
-              enterprise/sandbox
-              parameters
-              transforms-base
-              warehouse-schema}
-   :api     #{metabase.query-processor.api
+   :module-exports #{query-processor.cache-backend
+                     query-processor.driver-api}
+   :api     #{metabase.query-processor
+              metabase.query-processor.api
               metabase.query-processor.card
               metabase.query-processor.compile
               metabase.query-processor.core
@@ -1873,6 +1859,8 @@
               metabase.query-processor.init
               metabase.query-processor.interface
               metabase.query-processor.metadata
+              metabase.query-processor.middleware.add-remaps
+              metabase.query-processor.middleware.catch-exceptions
               metabase.query-processor.middleware.constraints
               metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
@@ -1882,7 +1870,9 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
+              metabase.query-processor.reducible
               metabase.query-processor.schema
+              metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
               metabase.query-processor.streaming.common
@@ -1902,13 +1892,12 @@
            cache
            config
            dashboards
-           database-routing
            driver
            events
            formatter
            legacy-mbql
            lib
-           lib-be
+           lib.be
            model-persistence
            models
            parameters
@@ -1917,6 +1906,7 @@
            premium-features
            queries
            query-permissions
+           query-processor.cache-backend
            request
            server
            settings
@@ -1928,9 +1918,44 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/QueryCache
                     :model/QueryExecution
                     :model/Table}}
+
+  query-processor.cache-backend
+  {:team      "Querying Platform"
+   :ns-prefix "metabase.query-processor.middleware.cache-backend"
+   :api       #{metabase.query-processor.middleware.cache-backend.db
+                metabase.query-processor.middleware.cache-backend.interface}
+   :uses      #{app-db premium-features util}
+   :model-imports #{:model/QueryCache}}
+
+  query-processor.driver-api
+  {:team "Querying Platform"
+   :ns-prefix "metabase.driver-api"
+   :api  #{metabase.driver-api.core}
+   :uses #{actions
+           api
+           app-db
+           appearance
+           classloader
+           config
+           connection-pool
+           database-routing
+           events
+           legacy-mbql
+           lib
+           lib.be
+           logger
+           models
+           premium-features
+           query-processor
+           secrets
+           settings
+           sync
+           system
+           upload
+           util
+           warehouse-schema}}
 
   remote-sync
   {:team "UX West"
@@ -1996,12 +2021,12 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{driver
-           plugins
+   :uses #{plugins
            settings
            sync
            util}
-   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Table}}
 
   search
   {:team "UX West"
@@ -2026,7 +2051,7 @@
            config
            events
            lib
-           lib-be
+           lib.be
            models
            permissions
            premium-features
@@ -2058,7 +2083,7 @@
    :uses #{api
            events
            lib
-           lib-be
+           lib.be
            models
            permissions
            remote-sync
@@ -2086,7 +2111,7 @@
            driver
            embedding
            initialization-status
-           lib-be
+           lib.be
            mcp
            oauth-server
            premium-features
@@ -2115,7 +2140,6 @@
            channel
            config
            events
-           premium-features
            request
            settings
            sso
@@ -2173,47 +2197,10 @@
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
 
-  slackbot
-  {:team    "Metabot"
-   :api     #{metabase.slackbot.api
-              metabase.slackbot.config
-              metabase.slackbot.init}
-   :friends #{metabot}
-   :uses    #{analytics
-              analytics-interface
-              api
-              channel
-              formatter
-              lib
-              metabot
-              permissions
-              query-processor
-              request
-              server
-              settings
-              sso
-              system
-              upload
-              util}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
-                    :model/Database
-                    :model/MetabotMessage}}
-
-  source-swap
-  {:team "Graphy"
-   :api  #{metabase.source-swap.core
-           metabase.source-swap.schema
-           metabase.source-swap.util}
-   :uses #{driver
-           lib
-           sql-tools
-           util}}
-
   sql-parsing
   {:team "DevEx"
-   :api #{metabase.sql-parsing.core}
-   :uses #{analytics-interface util}}
+   :api #{metabase.sql-parsing.core metabase.sql-parsing.init}
+   :uses #{analytics-interface settings util}}
 
   sql-tools
   {:team "DevEx"
@@ -2234,7 +2221,6 @@
               metabase.sso.core
               metabase.sso.init
               metabase.sso.settings}
-   :friends #{enterprise/sso}
    :uses    #{api
               auth-identity
               config
@@ -2284,7 +2270,7 @@
            events
            interestingness
            lib
-           lib-be
+           lib.be
            models
            premium-features
            query-processor
@@ -2351,12 +2337,11 @@
            app-db
            config
            lib
-           lib-be
+           lib.be
            mcp
            permissions
            premium-features
            search
-           session
            util}
    :model-imports #{:model/AiUsageLog
                     :model/Card
@@ -2376,7 +2361,7 @@
    :uses #{api
            legacy-mbql
            lib
-           lib-be
+           lib.be
            parameters
            query-processor
            settings
@@ -2411,6 +2396,8 @@
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
+           metabase.transforms.instrumentation
+           metabase.transforms.interface
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics-interface
@@ -2423,7 +2410,7 @@
            events
            indexes
            lib
-           lib-be
+           lib.be
            models
            permissions
            premium-features
@@ -2439,8 +2426,6 @@
            tracing
            transforms-base
            util}
-   :friends #{models
-              enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformJob
                     :model/TransformJobRun
@@ -2458,6 +2443,8 @@
   {:team "Graphy"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
+           metabase.transforms-base.ordering
+           metabase.transforms-base.schema
            metabase.transforms-base.util}
    ;; TODO regressions — transforms-base should not depend on :model/Transform or
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
@@ -2473,14 +2460,12 @@
            events
            indexes
            lib
-           lib-be
+           lib.be
            premium-features
            query-processor
            sync
            util
-           workspaces}
-   :friends #{transforms
-              enterprise/transforms-python}}
+           workspaces}}
 
   transforms-inspector
   {:team "Gadget"
@@ -2549,7 +2534,7 @@
                     :model/Table}
    :uses #{app-db
            lib
-           lib-be
+           lib.be
            models
            settings
            task
@@ -2675,7 +2660,7 @@
            collections
            driver
            lib
-           lib-be
+           lib.be
            models
            parameters
            permissions
@@ -2763,7 +2748,7 @@
            driver
            events
            lib
-           lib-be
+           lib.be
            models
            permissions
            premium-features
@@ -2804,7 +2789,7 @@
            driver
            legacy-mbql
            lib
-           lib-be
+           lib.be
            models
            queries
            query-permissions
@@ -2835,7 +2820,7 @@
            driver
            events
            lib
-           lib-be
+           lib.be
            models
            query-processor
            sync
@@ -2898,7 +2883,6 @@
    :uses #{driver
            premium-features
            enterprise/advanced-config
-           enterprise/mfa
            enterprise/scim
            enterprise/semantic-search
            enterprise/sso}
@@ -2981,6 +2965,7 @@
    :uses #{cache
            premium-features
            query-processor
+           query-processor.cache-backend
            task
            util}
    :model-imports #{:model/CacheConfig
@@ -3132,6 +3117,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
+           config
            database-routing
            driver
            events
@@ -3163,7 +3149,7 @@
            events
            graph
            lib
-           lib-be
+           lib.be
            models
            permissions
            premium-features
@@ -3335,11 +3321,8 @@
    :api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :friends #{slackbot
-              mcp
-              metabot}
    :uses    #{api
-              lib-be
+              lib.be
               metabot
               models
               permissions
@@ -3361,29 +3344,13 @@
    :uses #{api
            driver
            metabot
+           metabot.slackbot
            permissions
            query-processor
            request
-           slackbot
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
-
-  enterprise/mfa
-  {:team "Graphy"
-   :api  #{metabase-enterprise.mfa.core
-           metabase-enterprise.mfa.init
-           metabase-enterprise.mfa.routes}
-   :uses #{api
-           appearance
-           channel
-           config
-           events
-           premium-features
-           settings
-           sso
-           util}
-   :model-imports #{:model/AuthIdentity :model/User}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3446,11 +3413,11 @@
            app-db
            events
            lib
-           lib-be
+           lib.be
+           lib.source-swap
            model-persistence
            models
            queries
-           source-swap
            task
            transforms
            util
@@ -3564,7 +3531,6 @@
            config
            connection-pool
            events
-           lib-be
            llm
            metabot
            models
@@ -3584,10 +3550,10 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.dump
            metabase-enterprise.serialization.init
            metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
-   :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
            app-db
@@ -3700,7 +3666,7 @@
            driver
            events
            lib
-           lib-be
+           lib.be
            query-processor
            server
            sql-tools
@@ -3725,7 +3691,7 @@
            driver
            events
            lib
-           lib-be
+           lib.be
            models
            permissions
            query-processor

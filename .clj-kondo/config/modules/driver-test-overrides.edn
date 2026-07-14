@@ -9,8 +9,8 @@
  #{analytics
    analytics-interface
    api
-   api-scope
    api-keys
+   api-scope
    appearance
    audit-app
    auth-identity
@@ -25,12 +25,6 @@
    documents
    eid-translation
    embedding
-   enterprise/api
-   enterprise/scim
-   enterprise/serialization
-   enterprise/sso
-   enterprise/transforms
-   enterprise/transforms-inspector
    entity-retrieval
    events
    formatter
@@ -42,6 +36,8 @@
    login-history
    mcp
    metabot
+   metabot.agent-api
+   metabot.slackbot
    notification
    oauth-server
    permissions
@@ -50,14 +46,12 @@
    pulse
    remote-sync
    request
-   sample-data
    search
    secrets
    server
    session
    settings
    setup
-   slackbot
    sso
    staleness
    startup
@@ -73,4 +67,8 @@
    version
    view-log
    warehouse-schema
-   workspaces}}
+   workspaces
+   enterprise/api
+   enterprise/scim
+   enterprise/serialization
+   enterprise/sso}}
