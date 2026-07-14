@@ -1,17 +1,15 @@
 (ns metabase.sql-tools.core
   "Public API for sql-tools SQL parsing functionality.
 
-   This namespace provides parser-agnostic functions that delegate to the
-   configured backend (Macaw or SQLGlot) via multimethods.
+   Functions delegate to the SQLGlot backend via multimethods.
 
-   Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
+   Note: The implementation namespace (sqlglot.core) is loaded via
    metabase.sql-tools.init to avoid circular dependencies."
   (:require
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as common]
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.metrics :as metrics]
-   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sql-tools.sqlglot.core :as sqlglot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -75,26 +73,23 @@
   simple-query?-impl
   add-into-clause-impl])
 
-(defn parser-backend
-  "Get current value of sql-tools-parser-backend."
-  []
-  (sql-tools.settings/current-parser-backend))
+(def ^:private parser
+  "The parser backend keyword used for multimethod dispatch and metrics labels."
+  :sqlglot)
 
 (mu/defn returned-columns :- [:sequential :map]
   "Return appdb columns for the `native-query`."
   [driver :- :keyword
    native-query]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "returned-columns"]
-      (interface/returned-columns-impl parser driver native-query))))
+  (metrics/with-operation-timing [parser "returned-columns"]
+    (interface/returned-columns-impl parser driver native-query)))
 
 (mu/defn referenced-tables :- [:set :map]
   "Return tables referenced by the `native-query`"
   [driver :- :keyword
    native-query]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "referenced-tables"]
-      (interface/referenced-tables-impl parser driver native-query))))
+  (metrics/with-operation-timing [parser "referenced-tables"]
+    (interface/referenced-tables-impl parser driver native-query)))
 
 (mu/defn referenced-fields :- [:set :map]
   "Return appdb fields referenced (used) by the `native-query`.
@@ -103,11 +98,10 @@
   Returns a set of :metadata/column maps."
   [driver :- :keyword
    native-query]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "referenced-fields"]
-      (interface/referenced-fields-impl parser driver native-query))))
+  (metrics/with-operation-timing [parser "referenced-fields"]
+    (interface/referenced-fields-impl parser driver native-query)))
 
-(mu/defn field-references :- :metabase.sql-tools.macaw.references/field-references
+(mu/defn field-references :- ::common/field-references
   "Return field references for SQL string.
 
   Returns a map with:
@@ -116,17 +110,15 @@
   - :errors - set of validation errors"
   [driver :- :keyword
    sql-string :- :string]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "field-references"]
-      (interface/field-references-impl parser driver sql-string))))
+  (metrics/with-operation-timing [parser "field-references"]
+    (interface/field-references-impl parser driver sql-string)))
 
 (mu/defn validate-query :- [:set :map]
   "Validate native query. Returns a set of validation errors (empty set if valid)."
   [driver :- :keyword
    native-query]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "validate-query"]
-      (interface/validate-query-impl parser driver native-query))))
+  (metrics/with-operation-timing [parser "validate-query"]
+    (interface/validate-query-impl parser driver native-query)))
 
 (mu/defn replace-names :- :string
   "Replace schema, table, and column names in a SQL query.
@@ -151,17 +143,15 @@
     sql-string :- :string
     replacements :- ::replacements
     opts :- ::replace-names-opts]
-   (let [parser (sql-tools.settings/current-parser-backend)]
-     (metrics/with-operation-timing [parser "replace-names"]
-       (interface/replace-names-impl parser driver sql-string replacements opts)))))
+   (metrics/with-operation-timing [parser "replace-names"]
+     (interface/replace-names-impl parser driver sql-string replacements opts))))
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
   [driver :- :keyword
    sql-str :- :string]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "referenced-tables-raw"]
-      (interface/referenced-tables-raw-impl parser driver sql-str))))
+  (metrics/with-operation-timing [parser "referenced-tables-raw"]
+    (interface/referenced-tables-raw-impl parser driver sql-str)))
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
@@ -171,9 +161,8 @@
   - `:is_simple` - boolean indicating if query is simple
   - `:reason` - string explaining why query is not simple (when false)"
   [sql-string :- :string]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "simple-query?"]
-      (interface/simple-query?-impl parser sql-string))))
+  (metrics/with-operation-timing [parser "simple-query?"]
+    (interface/simple-query?-impl parser sql-string)))
 
 (mu/defn add-into-clause :- :string
   "Add an INTO clause to a SELECT statement.
@@ -186,9 +175,8 @@
   [driver :- :keyword
    sql :- :string
    table-name :- :string]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "add-into-clause"]
-      (interface/add-into-clause-impl parser driver sql table-name))))
+  (metrics/with-operation-timing [parser "add-into-clause"]
+    (interface/add-into-clause-impl parser driver sql table-name)))
 
 (defn find-table-or-transform
   "Given a table and schema parsed from a native query, find the matching table or transform.
@@ -214,8 +202,7 @@
   [sql :- :string
    from-dialect :- [:maybe :string]
    to-dialect :- [:maybe :string]]
-  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
-                                sql from-dialect to-dialect))
+  (interface/transpile-sql-impl parser sql from-dialect to-dialect))
 
 (defn is-single-stmt-of-type?
   "Wrapper around `sql-parsing/is-single-stmt-of-type?`."

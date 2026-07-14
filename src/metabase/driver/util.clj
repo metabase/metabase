@@ -874,12 +874,12 @@
         (.setStackTrace (.getStackTrace t))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Macaw parsing helpers                                                |
+;;; |                                              SQL parsing helpers                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; At some point, we may want a way for 3rd party drivers to opt in, but a public API deserves some hammock time.
 (def trusted-for-table-permissions?
-  "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
+  "Do we trust that the SQL parser will not give us false negatives for tables referenced by a given query?"
   #{:h2 :mysql :postgres})
 
 (def ^:const transform-temp-table-prefix

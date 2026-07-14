@@ -7,7 +7,7 @@
    [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.sql-tools.core :as sql-tools]
-   ;; sql-tools.init registers multimethod implementations for :macaw parser backend
+   ;; sql-tools.init registers the parser multimethod implementations
    [metabase.sql-tools.init]
    [metabase.util :as u]
    [metabase.util.performance :as perf]))
