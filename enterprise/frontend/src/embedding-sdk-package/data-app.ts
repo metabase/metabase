@@ -23,6 +23,7 @@ export {
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
 export type {
+  LocalFieldReference,
   MetabaseBreakout,
   MetabaseOrderBy,
   MetabaseQueryOptions,

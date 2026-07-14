@@ -12,6 +12,7 @@ export { breakout, filter, orderBy } from "./query-helpers";
 export { useMetabaseQuery } from "./use-metabase-query";
 export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
+  LocalFieldReference,
   MetabaseBreakout,
   MetabaseOrderBy,
   MetabaseQueryOptions,
