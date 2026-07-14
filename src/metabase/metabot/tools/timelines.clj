@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.timeline.core :as timeline]
    [metabase.util.malli :as mu]))
@@ -38,8 +39,8 @@
   (if (seq timelines)
     (str "<timelines>\n"
          (str/join "\n" (map (fn [{:keys [id name description]}]
-                               (str "<timeline id=\"" id "\" name=\"" name "\">"
-                                    (when description description)
+                               (str "<timeline id=\"" id "\" name=\"" (llm-shape/escape-xml name) "\">"
+                                    (when description (llm-shape/escape-xml description))
                                     "</timeline>"))
                              timelines))
          "\n</timelines>")
@@ -47,15 +48,15 @@
 
 (defn- format-timeline-details-output
   [{:keys [id name description events]}]
-  (str "<timeline id=\"" id "\" name=\"" name "\">\n"
-       (when description (str "<description>" description "</description>\n"))
+  (str "<timeline id=\"" id "\" name=\"" (llm-shape/escape-xml name) "\">\n"
+       (when description (str "<description>" (llm-shape/escape-xml description) "</description>\n"))
        (if (seq events)
          (str "<events>\n"
               (str/join "\n" (map (fn [{:keys [id name description timestamp]}]
                                     (str "<event id=\"" id
-                                         "\" name=\"" name
-                                         "\" timestamp=\"" timestamp
-                                         (when description description)
+                                         "\" name=\"" (llm-shape/escape-xml name)
+                                         "\" timestamp=\"" timestamp "\">"
+                                         (when description (llm-shape/escape-xml description))
                                          "</event>"))
                                   events))
               "\n</events>\n")
