@@ -2,11 +2,13 @@
   "Health-inspector check for semantic search, plus the embedding-service probe shared with the NLQ
   retrieval check ([[metabase-enterprise.entity-retrieval.health]]).
 
-  Semantic search degrades silently -- no active index, a stalled indexer, or an unreachable embedding
-  service just falls back to appdb search, and nobody notices; this check surfaces that.
-  Health is status-style: 100 = serving the good path, 0 = enabled but degraded (the `:message` names the
-  failing condition).
-  A not-enabled instance returns nil, so the check is omitted rather than reported as a misleading 100."
+  Semantic search degrades silently -- a missing index, stalled indexer, or unreachable embedder just falls
+  back to appdb search, unnoticed. This check surfaces that.
+
+  :health can take the following values:
+  - nil = not enabled (check omitted)
+  -   0 = enabled but degraded (`:message` names the cause)
+  - 100 = serving"
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
@@ -69,9 +71,7 @@
       (not reachable?)
       (str "embedding service unreachable: " error)
 
-      ;; Half-open returns degraded (not healthy) so an outage that flaps the breaker open<->half-open doesn't
-      ;; alternate the verdict every cycle -- the state-change hooks re-persist on each transition and only an
-      ;; identical (health, message) dedups.
+      ;; Treat half-open as degraded, to avoid persisting a transition on every open<->half-open probe.
       (semantic.embedding/embedder-circuit-untrusted?)
       "embedder circuit open (probe reachable; breaker still guarding calls)")))
 
@@ -90,12 +90,11 @@
   map: healthy when an active index is present, queryable, un-stalled, and the embedding service is
   reachable; degraded (naming the failing conditions) otherwise."
   []
-  ;; semantic-search-available? is capability (pgvector + license) AND the semantic-search-enabled kill
-  ;; switch, matching the engine's own gate -- so a disabled instance neither records runs nor probes the
-  ;; embedder.
+  ;; semantic-search-available? gates on the kill switch too, so a disabled instance neither records runs
+  ;; nor probes the embedder.
   (when (semantic.util/semantic-search-available?)
-    ;; Datasource acquisition is inside the try: ensure-initialized-data-source! throws on a malformed
-    ;; MB_PGVECTOR_DB_URL, and that must read as degraded, not throw out of the check.
+    ;; Acquire the datasource inside the try, so a malformed MB_PGVECTOR_DB_URL reads as degraded instead of
+    ;; throwing out of the check.
     (let [active (try
                    (let [pgvector       (semantic.env/get-pgvector-datasource!)
                          index-metadata (semantic.env/get-index-metadata)]
@@ -132,9 +131,8 @@
 (defn- persist-index-check-on-breaker-change!
   "Re-run and persist the semantic-search index check against a fresh embedder probe."
   [_state]
-  ;; Clear the probe cache first so the re-persist uses fresh evidence, not a probe up to 10s old: on recovery
-  ;; a stale "unreachable" would otherwise persist a false row until the next daily report. The NLQ hook runs
-  ;; after this one and rides the same fresh probe.
+  ;; Clear the probe cache first, so on recovery we don't persist a stale "unreachable" from the cached probe.
+  ;; The NLQ hook runs after and rides the same fresh probe.
   (memoize/memo-clear! embedding-service-reachable?)
   (health-inspector/run-and-save-check! :semantic-search-index))
 
@@ -142,10 +140,9 @@
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;
-;;; Coverage / garbage / staleness for the AI-search indexes, each computed once per engine and fed to BOTH a
-;;; labelled Prometheus gauge (engine = "semantic" | "nlq") and a health-inspector row. The gauge, threshold,
-;;; and message shaping live here so each engine supplies only raw collectors; the NLQ engine
-;;; ([[metabase-enterprise.entity-retrieval.health]]) registers through the same entry point.
+;;; Coverage / garbage / staleness for the AI-search indexes, each computed once per engine and fed to both a
+;;; Prometheus gauge and a health-inspector row. Gauge/threshold/message shaping lives here; each engine
+;;; supplies only raw collectors.
 
 (def ^:private measure->gauge
   {:coverage  :metabase-ai-index/coverage-ratio
@@ -208,31 +205,23 @@
   (atom []))
 
 (defonce ^:private live-gauge-series
-  ;; [gauge-key engine] pairs that have emitted a real value in this process. NaN-clearing is restricted to
-  ;; these: NaN-ing an unemitted series would CREATE it, growing engine-labelled NaN series on instances
-  ;; where the feature was never on (e.g. pgvector configured but unlicensed -- the collector job still runs
-  ;; there, with every measure N/A).
+  ;; [gauge-key engine] pairs that have emitted a real value. Only clear these, to avoid even creating a
+  ;; metric series for unlicensed instances.
   (atom #{}))
 
 (defn- set-index-gauge!
-  "Write `value` to `engine`'s labelled series of `gauge-key`; nil clears it with NaN so a previously-emitted
-  series doesn't keep exposing a stale healthy value after its feature turns off or its collector starts
-  failing (PromQL treats NaN as no-data, so it won't false-alert). A never-emitted series is left uncreated
-  (see [[live-gauge-series]])."
+  "Update a gauge for the given engine, clearing it if nil. Gauge is created on first update."
   [gauge-key engine value]
   (if (some? value)
     (do (analytics/set-gauge! gauge-key {:engine (name engine)} value)
-        ;; marked live only after the write succeeds: a throwing first write must not license later N/A
-        ;; clears to CREATE the series as NaN-only
+        ;; Mark live only after the first successful write, so we don't pre-emptively create a metric series.
         (swap! live-gauge-series conj [gauge-key engine]))
     (when (contains? @live-gauge-series [gauge-key engine])
       (analytics/set-gauge! gauge-key {:engine (name engine)} ##NaN))))
 
 (defn- run-measure!
-  "Run one measure's collector, write its labelled Prometheus gauge (independent of the inspector setting),
-  and return the `{:health :message}` result -- or nil when N/A. A nil or *throwing* collector clears the
-  gauge instead of leaving a stale value, so a failing collector never freezes the gauge at its last healthy
-  reading."
+  "Run a measure's collector, update its gauge, and return the health result. Clear the gauge if it throws,
+  or is disabled."
   [{:keys [gauge-key engine collect check-name]}]
   (let [{:keys [value health message]}
         (try
@@ -244,10 +233,9 @@
     (when health {:health health, :message message})))
 
 (defn register-index-check!
-  "Register an AI-index measure. `engine` is :semantic | :nlq, `measure` is :coverage | :garbage | :staleness,
-  and `collect` is a 0-arg fn returning nil (N/A) or a `{:value :health :message}` map (see
-  [[coverage-result]] et al.). Registers a health-inspector check `<engine>-<measure>` and records the
-  measure so its Prometheus gauge is refreshed alongside. Returns the measure descriptor."
+  "Register an AI-index measure -- `engine` :semantic|:nlq, `measure` :coverage|:garbage|:staleness, `collect`
+  a 0-arg fn returning nil (N/A) or a `{:value :health :message}` map. Registers the `<engine>-<measure>`
+  health check and its gauge; returns the descriptor."
   [engine measure collect]
   (let [descriptor {:check-name (keyword (str (name engine) "-" (name measure)))
                     :gauge-key  (measure->gauge measure)
@@ -259,9 +247,8 @@
     descriptor))
 
 (defn- refresh-measure!
-  "Refresh one measure: run its collector (which writes/clears the gauge) and, when the inspector is enabled,
-  persist the deduplicated health row. Never throws -- a failed persist can't undo the gauge write or stop
-  the other measures."
+  "Refresh one measure: run its collector (writes/clears the gauge) and persist the deduplicated health row
+  when the inspector is enabled. Never throws, so a failed persist can't stop the other measures."
   [{:keys [check-name] :as descriptor}]
   (try
     (when-let [result (run-measure! descriptor)]
@@ -271,10 +258,8 @@
       (log/error e "AI index health-row persist errored" {:check check-name}))))
 
 (defn refresh-ai-index-metrics!
-  "Recompute every registered AI-index measure once: set its Prometheus gauge, and -- when the health
-  inspector is enabled -- persist the (deduplicated) health row. A measure whose feature is off is a cheap
-  no-op (its collector returns nil). Measures are isolated: one failing can't freeze or skip the others.
-  Driven by the periodic task so gauges stay fresh between daily reports."
+  "Compute and record all AI-index measures. Ensure health is persisted, if the inspector is enabled.
+  Run periodically to keep gauges fresh between daily reports."
   []
   (run! refresh-measure! @index-measures))
 
@@ -302,8 +287,8 @@
         nil))))
 
 (def ^:private active-index
-  "TTL-memoized [[active-index*]] so the semantic coverage + staleness collectors (and the repair reporter)
-  share one get-active-index-state per refresh cycle instead of each issuing their own pgvector round-trip."
+  "Cached [[active-index*]] so we can share the calculation between the coverage + staleness collectors, and
+  the repair reporter."
   (memoize/ttl active-index* :ttl/threshold (* 30 1000)))
 
 (defn- scalar-row [pgvector sql]
