@@ -36,13 +36,19 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getDatasetError } from "metabase/visualizations/lib/errors";
+import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, TimelineEvent } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -170,6 +176,12 @@ export const CardEmbedComponent = memo(
     });
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
+    const selectedEmbedIndex = useSelector(
+      host.selectors.getSelectedEmbedIndex,
+    );
+    const selectedTimelineEventIdsFromState = useSelector(
+      host.selectors.getSelectedTimelineEventIds,
+    );
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
     const commentsPath = document
@@ -188,6 +200,10 @@ export const CardEmbedComponent = memo(
     } = useDndHelpers({ editor, node, getPos });
 
     const embedIndex = getEmbedIndex(editor, getPos);
+    const selectedTimelineEventIds =
+      embedIndex === selectedEmbedIndex
+        ? selectedTimelineEventIdsFromState
+        : undefined;
 
     // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
@@ -347,6 +363,48 @@ export const CardEmbedComponent = memo(
         dispatch(host.actions.openVizSettingsSidebar({ embedIndex }));
       }
     };
+
+    const shouldShowTimelineEventsMenu = useMemo(() => {
+      if (!series) {
+        return false;
+      }
+      const transformed = getVisualizationTransformed(
+        extractRemappings(series),
+      );
+      const settings = getComputedSettingsForSeries(transformed.series);
+      return isTimeseries(settings);
+    }, [series]);
+
+    const handleEditTimelineEvents = () => {
+      if (embedIndex !== -1) {
+        dispatch(host.actions.openTimelineEventsSidebar({ embedIndex }));
+      }
+    };
+
+    const handleOpenTimelines = useCallback(
+      (eventIds?: number[]) => {
+        if (embedIndex !== -1) {
+          dispatch(
+            host.actions.openTimelineEventsSidebar({
+              embedIndex,
+              focusedEventIds: eventIds,
+            }),
+          );
+        }
+      },
+      [dispatch, embedIndex, host.actions],
+    );
+
+    const handleSelectTimelineEvents = useCallback(
+      (events: TimelineEvent[]) => {
+        dispatch(host.actions.selectTimelineEvents(events));
+      },
+      [dispatch, host.actions],
+    );
+
+    const handleDeselectTimelineEvents = useCallback(() => {
+      dispatch(host.actions.deselectTimelineEvents());
+    }, [dispatch, host.actions]);
 
     const handleTitleClick = () => {
       if (card && metadata) {
@@ -622,6 +680,10 @@ export const CardEmbedComponent = memo(
                             handleEditVisualizationSettings={
                               handleEditVisualizationSettings
                             }
+                            shouldShowTimelineEventsMenu={
+                              shouldShowTimelineEventsMenu
+                            }
+                            handleEditTimelineEvents={handleEditTimelineEvents}
                             handleAddSupportingText={handleAddSupportingText}
                             setIsModifyModalOpen={setIsModifyModalOpen}
                             handleReplaceQuestion={handleReplaceQuestion}
@@ -655,6 +717,10 @@ export const CardEmbedComponent = memo(
                           ? undefined
                           : handleUpdateVisualizationSettings
                       }
+                      onOpenTimelines={handleOpenTimelines}
+                      onSelectTimelineEvents={handleSelectTimelineEvents}
+                      onDeselectTimelineEvents={handleDeselectTimelineEvents}
+                      selectedTimelineEventIds={selectedTimelineEventIds}
                       getExtraDataForClick={() => ({})}
                       isEditing={false}
                       isDashboard={false}

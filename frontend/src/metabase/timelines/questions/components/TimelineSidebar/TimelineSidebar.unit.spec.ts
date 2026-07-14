@@ -87,9 +87,9 @@ describe("getEventsXDomain", () => {
 });
 
 describe("formatTitle", () => {
-  const june3 = dayjs("2027-06-03T00:00:00Z");
-  const june27 = dayjs("2027-06-27T00:00:00Z");
-  const july5 = dayjs("2027-07-05T00:00:00Z");
+  const june3 = dayjs.utc("2027-06-03T00:00:00Z");
+  const june27 = dayjs.utc("2027-06-27T00:00:00Z");
+  const july5 = dayjs.utc("2027-07-05T00:00:00Z");
 
   it("returns a generic title without a domain", () => {
     expect(formatTitle()).toBe("Events");

@@ -14,6 +14,8 @@ import type {
 import type {
   Card,
   Document,
+  TimelineEvent,
+  TimelineEventId,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -32,6 +34,7 @@ export const loadMetadataForDocumentCard = createAsyncThunk(
 
 export const initialState: DocumentsState = {
   selectedEmbedIndex: null,
+  sidebarMode: null,
   cardEmbeds: [],
   currentDocument: null,
   draftCards: {},
@@ -41,17 +44,47 @@ export const initialState: DocumentsState = {
   hoveredChildTargetId: undefined,
   hasUnsavedChanges: false,
   isHistorySidebarOpen: false,
+  selectedTimelineEventIds: [],
+  focusedTimelineEventIds: null,
 };
 
 const documentsSlice = createSlice({
   name: "documents",
   initialState,
   reducers: {
+    updateSelectedEmbedIndex: (state, action: PayloadAction<number>) => {
+      state.selectedEmbedIndex = action.payload;
+      state.selectedTimelineEventIds = [];
+      state.focusedTimelineEventIds = null;
+    },
     openVizSettingsSidebar: (
       state,
       action: PayloadAction<{ embedIndex: number }>,
     ) => {
       state.selectedEmbedIndex = action.payload.embedIndex;
+      state.sidebarMode = "viz-settings";
+    },
+    openTimelineEventsSidebar: (
+      state,
+      action: PayloadAction<{
+        embedIndex: number;
+        focusedEventIds?: TimelineEventId[];
+      }>,
+    ) => {
+      const { embedIndex, focusedEventIds } = action.payload;
+      state.selectedEmbedIndex = embedIndex;
+      state.sidebarMode = "timeline-events";
+      state.selectedTimelineEventIds = focusedEventIds ?? [];
+      state.focusedTimelineEventIds = focusedEventIds ?? null;
+    },
+    selectTimelineEvents: (state, action: PayloadAction<TimelineEvent[]>) => {
+      state.selectedTimelineEventIds = action.payload.map((event) => event.id);
+    },
+    deselectTimelineEvents: (state) => {
+      state.selectedTimelineEventIds = [];
+    },
+    clearFocusedTimelineEvents: (state) => {
+      state.focusedTimelineEventIds = null;
     },
     updateVizSettings: (
       state,
@@ -79,6 +112,9 @@ const documentsSlice = createSlice({
     },
     closeSidebar: (state) => {
       state.selectedEmbedIndex = null;
+      state.sidebarMode = null;
+      state.selectedTimelineEventIds = [];
+      state.focusedTimelineEventIds = null;
     },
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
@@ -138,7 +174,12 @@ const documentsSlice = createSlice({
 });
 
 export const {
+  updateSelectedEmbedIndex,
   openVizSettingsSidebar,
+  openTimelineEventsSidebar,
+  selectTimelineEvents,
+  deselectTimelineEvents,
+  clearFocusedTimelineEvents,
   updateVizSettings,
   updateVisualizationType,
   closeSidebar,

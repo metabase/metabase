@@ -1,4 +1,4 @@
-import type { Card, Document } from "metabase-types/api";
+import type { Card, Document, TimelineEventId } from "metabase-types/api";
 
 export interface CardEmbedRef {
   id: number;
@@ -13,6 +13,7 @@ export interface MentionCacheItem {
 
 export interface DocumentsState {
   selectedEmbedIndex: number | null;
+  sidebarMode: "viz-settings" | "timeline-events" | null;
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
   draftCards: Record<number, Card>;
@@ -22,4 +23,6 @@ export interface DocumentsState {
   hoveredChildTargetId: string | undefined;
   hasUnsavedChanges: boolean;
   isHistorySidebarOpen: boolean;
+  selectedTimelineEventIds: TimelineEventId[];
+  focusedTimelineEventIds: TimelineEventId[] | null;
 }
