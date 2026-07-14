@@ -64,21 +64,26 @@ export const BrowseDatabases = () => {
           <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
-              databases.map((database) => (
-                <BrowseCard
-                  // in case of name collisions, use id-slug url for uniqueness
-                  to={
-                    databases.filter((db) => db.name === database.name)
-                      .length === 1
-                      ? Urls.permalinkDatabase(database)
-                      : Urls.browseDatabase(database)
-                  }
-                  key={database.id}
-                  title={database.name}
-                  icon="database"
-                  size="lg"
-                />
-              ))}
+              databases.map((database) => {
+                const hasNameCollision = databases.some(
+                  (db) => db.id !== database.id && db.name === database.name,
+                );
+
+                // in case of name collisions, use id-slug url for uniqueness
+                const databaseUrl = hasNameCollision
+                  ? Urls.browseDatabase(database)
+                  : Urls.permalinkDatabase(database);
+
+                return (
+                  <BrowseCard
+                    to={databaseUrl}
+                    key={database.id}
+                    title={database.name}
+                    icon="database"
+                    size="lg"
+                  />
+                );
+              })}
             {isAdmin && <AddDatabaseCard />}
           </BrowseGrid>
         </Flex>
