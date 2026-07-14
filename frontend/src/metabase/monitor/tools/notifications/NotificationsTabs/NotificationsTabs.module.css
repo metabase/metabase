@@ -1,6 +1,5 @@
 .list {
   padding: 0;
-  gap: var(--mantine-spacing-md);
 }
 
 .tab.tab {
