@@ -498,9 +498,9 @@
              [{:type :text :text "ok"}])))
         ;; conversation-detail uses production reader ordering — the errored pair drops,
         ;; leaving just the retry turn.
-        (let [{:keys [chat_messages]} (metabot-persistence/conversation-detail conversation-id)]
+        (let [{:keys [messages]} (metabot-persistence/conversation-detail conversation-id)]
           (is (= [["user" "retry"] ["agent" "ok"]]
-                 (mapv (juxt :role :message) chat_messages))))))))
+                 (mapv (juxt :role :message) messages))))))))
 
 (deftest placeholder-still-active-uses-nil-finished-marker-test
   (testing "the in-flight predicate keys off finished IS NULL (not :data emptiness or :error)"
@@ -550,7 +550,7 @@
                   :created-at (.plusSeconds now 3)
                   :deleted-at now})
         (let [detail (metabot-persistence/conversation-detail conversation-id)
-              texts  (mapv :message (:chat_messages detail))]
+              texts  (mapv :message (:messages detail))]
           (is (= conversation-id (:conversation_id detail)))
           (is (= ["first" "second"] texts)))))))
 
@@ -727,7 +727,7 @@
             (testing "conversation-detail shows the prompt exactly once"
               (metabot-persistence/finalize-assistant-turn!
                assistant-msg-id [{:type :text :text "retried reply"}])
-              (let [messages (:chat_messages (metabot-persistence/conversation-detail conversation-id))]
+              (let [messages (:messages (metabot-persistence/conversation-detail conversation-id))]
                 (is (= ["hi" "retried reply"] (map :message messages)))))))))))
 
 (deftest retry-turn-deletes-all-trailing-assistant-rows-test

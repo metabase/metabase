@@ -840,7 +840,7 @@ export const loadConversation = createAsyncThunk(
         agentId,
         conversationId: detail.conversation_id,
         title: detail.title ?? undefined,
-        messages: normalizeFetchedChatMessages(detail.chat_messages),
+        messages: normalizeFetchedChatMessages(detail.messages),
         state: detail.state,
         activeToolCalls: [],
       }),

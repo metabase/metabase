@@ -765,4 +765,4 @@
        :title           (:title conv)
        :user_id         (:user_id conv)
        :state           (conversation-state messages)
-       :chat_messages   (messages->chat-messages messages)})))
+       :messages        (messages->chat-messages messages)})))

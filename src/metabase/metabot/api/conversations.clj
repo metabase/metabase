@@ -48,7 +48,7 @@
    [:title           [:maybe :string]]
    [:user_id         [:maybe ms/PositiveInt]]
    [:state           {:optional true} [:maybe ::metabot.schema/state]]
-   [:chat_messages   [:sequential :map]]])
+   [:messages        [:sequential :map]]])
 
 (def ^:private ConversationTitleResponse
   [:map

@@ -182,6 +182,10 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
+                onRefreshConversation={() => {
+                  metabot.setPrompt("");
+                  metabot.loadConversation(metabot.conversationId);
+                }}
                 isDoingScience={metabot.isDoingScience}
                 debug={metabot.debugMode}
               />

@@ -21,14 +21,14 @@ export type MetabotConversationDetail = {
   user_id: number | null;
   profile_id?: string | null;
   state?: MetabotStateContext;
-  chat_messages: FetchedChatMessage[];
+  messages: FetchedChatMessage[];
 };
 
 // NOTE: this should go away long-term. The FE should refactor around turns instead of a flat list of message.
 // this would allow for annotations like error / finished at this higher level abstraction.
 
 /**
- * Convert a fetched conversation's `chat_messages` payload into the shape the
+ * Convert a fetched conversation's `messages` payload into the shape the
  * live chat UI expects: strip the BE's `finished` / `error` annotations off
  * the last agent message of each turn and re-emit them as dedicated trailing
  * `turn_aborted` / `turn_errored` messages.

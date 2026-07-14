@@ -522,7 +522,7 @@ describe("metabot > ui", () => {
         createMockMetabotConversationDetail({
           conversation_id: PAST_CONVERSATION_ID,
           title: "Orders by month",
-          chat_messages: [
+          messages: [
             {
               id: "u1",
               role: "user",

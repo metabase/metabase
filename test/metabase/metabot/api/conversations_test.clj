@@ -147,7 +147,7 @@
           (is (= convo-id (:conversation_id response)))
           (is (= "mine" (:title response)))
           (is (= user-id (:user_id response)))
-          (is (= 1 (count (:chat_messages response)))))))))
+          (is (= 1 (count (:messages response)))))))))
 
 (deftest get-conversation-second-participant-can-read-test
   (testing "GET /api/metabot/conversations/:id is readable by any participant, not just the originator"

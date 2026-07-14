@@ -70,7 +70,7 @@ export function createMockMetabotConversationDetail(
     user_id: 1,
     profile_id: null,
     state: {},
-    chat_messages: [],
+    messages: [],
     ...opts,
   };
 }
