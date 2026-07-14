@@ -1365,8 +1365,8 @@
               config
               documents
               driver
-              explorations
               entity-retrieval
+              explorations
               interestingness
               legacy-mbql
               lib
