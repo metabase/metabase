@@ -1096,7 +1096,7 @@
    :api  #{metabase.indexes-rest.api}
    :uses #{api
            indexes
-           transforms-base
+           transforms.base
            util}
    :model-imports #{:model/Database
                     :model/TableIndex
@@ -1434,7 +1434,7 @@
               task
               timeline
               transforms
-              transforms-base
+              transforms.base
               util
               warehouses}
    :model-exports #{:model/AiUsageLog
@@ -2626,7 +2626,9 @@
 
   transforms
   {:team "Graphy"
-   :module-exports #{transforms.rest}
+   :module-exports #{transforms.base
+                     transforms.inspector
+                     transforms.rest}
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
@@ -2659,7 +2661,7 @@
            task
            task-history
            tracing
-           transforms-base
+           transforms.base
            util}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
@@ -2675,8 +2677,9 @@
                     :model/TableIndex
                     :model/User}}
 
-  transforms-base
+  transforms.base
   {:team "Graphy"
+   :ns-prefix "metabase.transforms-base"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
            metabase.transforms-base.ordering
@@ -2704,8 +2707,9 @@
            sync
            util}}
 
-  transforms-inspector
+  transforms.inspector
   {:team "Gadget"
+   :ns-prefix "metabase.transforms-inspector"
    :api  #{}
    :uses #{}}
 
@@ -2719,7 +2723,7 @@
            models
            request
            transforms
-           transforms-base
+           transforms.base
            util}
    :model-imports #{:model/Transform
                     :model/TransformDagRun
@@ -3457,7 +3461,7 @@
            sql-tools
            task
            transforms
-           transforms-base
+           transforms.base
            util}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3628,18 +3632,18 @@
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
    :uses           #{api
-              lib.be
-              llm
-              metabot
-              models
-              permissions
-              premium-features
-              settings
-              task
-              util
-              enterprise/cloud-add-ons
-              enterprise/dependencies
-              enterprise/transforms-python}
+                     lib.be
+                     llm
+                     metabot
+                     models
+                     permissions
+                     premium-features
+                     settings
+                     task
+                     util
+                     enterprise/cloud-add-ons
+                     enterprise/dependencies
+                     enterprise/transforms.python}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/PermissionsGroup
@@ -3713,7 +3717,7 @@
            util
            enterprise/data-apps
            enterprise/serialization
-           enterprise/transforms-python}
+           enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
    :model-imports #{:model/Card
                     :model/Collection
@@ -3987,14 +3991,15 @@
 
   enterprise/transforms
   {:team "Graphy"
+   :module-exports #{enterprise/transforms.inspector
+                     enterprise/transforms.python}
    :api  #{metabase-enterprise.transforms.api}
-   :uses #{premium-features
-           util
-           enterprise/transforms-inspector}
+   :uses #{premium-features util enterprise/transforms.inspector}
    :model-imports #{:model/Transform}}
 
-  enterprise/transforms-inspector
+  enterprise/transforms.inspector
   {:team "Gadget"
+   :ns-prefix "metabase-enterprise.transforms-inspector"
    :api  #{metabase-enterprise.transforms-inspector.api}
    :uses #{analytics-interface
            api
@@ -4009,15 +4014,16 @@
            sql-tools
            tracing
            transforms
-           transforms-base
+           transforms.base
            util}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
                     :model/Transform}}
 
-  enterprise/transforms-python
+  enterprise/transforms.python
   {:team "Graphy"
+   :ns-prefix "metabase-enterprise.transforms-python"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init}
@@ -4036,7 +4042,7 @@
            settings
            tracing
            transforms
-           transforms-base
+           transforms.base
            util}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database

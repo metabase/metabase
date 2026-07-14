@@ -18,7 +18,7 @@
  :max-file-test-namespaces 1490
  :model-import-bypass-modules 2
  :module-count 209
- :module-exports 25
- :ns-prefix-overrides 23
- :parent-team-mismatches 7
+ :module-exports 29
+ :ns-prefix-overrides 27
+ :parent-team-mismatches 9
  :total-api 597}
