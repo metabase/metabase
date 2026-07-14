@@ -27,8 +27,8 @@ SELECT
     a.total_tokens,
     a.conversation_id,
     a.user_id,
-    CONCAT('user_', a.user_id)                                        AS user_qualified_id,
-    COALESCE(CONCAT(u.first_name, ' ', u.last_name), u.email)         AS user_display_name,
+    'user_' || a.user_id                                              AS user_qualified_id,
+    COALESCE(u.first_name || ' ' || u.last_name, u.email)             AS user_display_name,
     (SELECT pg.name
      FROM permissions_group_membership pgm
      JOIN permissions_group pg ON pg.id = pgm.group_id
@@ -37,8 +37,14 @@ SELECT
      ORDER BY pg.name
      LIMIT 1)                                                         AS group_name,
     c.ip_address                                                      AS ip_address,
+    c.embedding_hostname                                              AS embedding_hostname,
+    c.embedding_path                                                  AS embedding_path,
+    c.user_agent                                                      AS user_agent,
+    c.sanitized_user_agent                                            AS sanitized_user_agent,
     a.tenant_id,
-    a.request_id
+    a.request_id,
+    a.cache_creation_tokens,
+    a.cache_read_tokens
 FROM ai_usage_log a
 LEFT JOIN core_user u
     ON u.id = a.user_id
