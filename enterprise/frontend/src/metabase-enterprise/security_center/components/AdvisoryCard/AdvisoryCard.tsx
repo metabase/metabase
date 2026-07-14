@@ -79,9 +79,9 @@ export function AdvisoryCard({
             <Text fw={700} mb="xs">{t`Affected versions`}</Text>
             <List size="sm">
               {advisory.affected_versions.map((v) => (
-                <List.Item key={`${v.min}-${v.fixed}`}>
-                  <Text span>{`${v.min} - ${v.fixed}`}</Text>
-                </List.Item>
+                <List.Item
+                  key={`${v.min}-${v.fixed}`}
+                >{`${v.min} - ${v.fixed}`}</List.Item>
               ))}
             </List>
           </Box>
