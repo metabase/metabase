@@ -100,7 +100,8 @@ describe("RunSection DAG run flow", () => {
     const call = fetchMock.callHistory.lastCall(
       `path:/api/transform/${TRANSFORM_ID}/run-dag`,
     );
-    const body = JSON.parse((call?.options?.body as string) ?? "{}");
+    const rawBody = call?.options?.body;
+    const body = JSON.parse(typeof rawBody === "string" ? rawBody : "{}");
     expect(body.direction).toBe("upstream");
   });
 
