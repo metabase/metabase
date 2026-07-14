@@ -168,13 +168,14 @@
 
   analytics
   {:team "UX West"
+   :module-exports #{analytics.interface}
    :api  #{metabase.analytics.api
            metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
            metabase.analytics.settings}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            app-db
            appearance
@@ -217,8 +218,9 @@
                     :model/TransformRun
                     :model/User}}
 
-  analytics-interface
+  analytics.interface
   {:team "Querying Platform"
+   :ns-prefix "metabase.analytics-interface"
    :api  #{metabase.analytics-interface.core}
    :uses #{}}
 
@@ -335,7 +337,7 @@
            premium-features
            settings
            task
-           task-history
+           task.history
            tracing
            util}
    :model-exports #{:model/AuditLog}
@@ -457,7 +459,7 @@
            metabase.channel.template.core
            metabase.channel.urls}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            app-db
            appearance
@@ -838,7 +840,7 @@
            metabase.driver.sql.util
            metabase.driver.sync
            metabase.driver.util}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            app-db
            appearance
            audit-app
@@ -964,7 +966,7 @@
   {:team "UX West"
    :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            app-db
            collections
@@ -974,8 +976,8 @@
            events
            interestingness
            lib
-           lib-metric
            lib.be
+           lib.metric
            metrics
            models
            mq
@@ -987,7 +989,7 @@
            search
            settings
            task
-           task-history
+           task.history
            timeline
            types
            util}
@@ -1014,7 +1016,7 @@
   frontend-errors
   {:team "UX West"
    :api  #{metabase.frontend-errors.api}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            request
            util}}
@@ -1127,6 +1129,7 @@
                      lib.be
                      lib.legacy-mbql
                      lib.metadata
+                     lib.metric
                      lib.schema
                      lib.source-swap}
    :api  #{metabase.lib.core
@@ -1149,19 +1152,6 @@
            types
            util}
    :friends #{query-processor}}     ;; Necessarily manipulates MBQL; the one irreducible friend edge -- lib and the QP are one MBQL subsystem.
-
-  lib-metric
-  {:team "UX West"
-   :api  #{metabase.lib-metric.core
-           metabase.lib-metric.schema}
-   :uses #{lib
-           lib.be
-           lib.metadata
-           lib.schema
-           settings
-           types
-           util}
-   :model-imports #{:model/Card :model/Field :model/Table}}
 
   lib.agent-lib
   {:team "Metabot"
@@ -1222,6 +1212,19 @@
            lib.schema
            types
            util}}
+
+  lib.metric
+  {:team "UX West"
+   :ns-prefix "metabase.lib-metric"
+   :api #{metabase.lib-metric.core metabase.lib-metric.schema}
+   :uses #{lib
+           lib.be
+           lib.metadata
+           lib.schema
+           settings
+           types
+           util}
+   :model-imports #{:model/Card :model/Field :model/Table}}
 
   lib.schema
   {:team "Querying Platform"
@@ -1331,6 +1334,7 @@
 
   mcp
   {:team "Metabot"
+   :module-exports #{mcp.oauth-server}
    :api  #{metabase.mcp.api
            metabase.mcp.callback-api
            metabase.mcp.core
@@ -1343,15 +1347,34 @@
            app-db
            config
            llm
+           mcp.oauth-server
            metabot
            metabot.agent-api
-           oauth-server
            premium-features
            request
            server
            session
            settings
            system
+           util}}
+
+  mcp.oauth-server
+  {:team "UX West"
+   :ns-prefix "metabase.oauth-server"
+   :api #{metabase.oauth-server.api
+          metabase.oauth-server.api.admin
+          metabase.oauth-server.core
+          metabase.oauth-server.init}
+   :uses #{api
+           api-scope
+           appearance
+           mcp
+           models
+           request
+           settings
+           system
+           task
+           tracing
            util}}
 
   measures
@@ -1388,7 +1411,7 @@
    :uses    #{activity-feed
               ai-tracing
               analytics
-              analytics-interface
+              analytics.interface
               api
               api-scope
               app-db
@@ -1496,7 +1519,7 @@
               metabase.slackbot.config
               metabase.slackbot.init}
    :uses    #{analytics
-              analytics-interface
+              analytics.interface
               api
               channel
               formatter
@@ -1526,9 +1549,9 @@
            app-db
            events
            lib
-           lib-metric
            lib.be
            lib.metadata
+           lib.metric
            models
            parameters
            permissions
@@ -1558,7 +1581,7 @@
            settings
            system
            task
-           task-history
+           task.history
            tracing
            util}
    :model-exports #{:model/PersistedInfo}
@@ -1599,7 +1622,7 @@
   mq
   {:team "UX West"
    :api #{metabase.mq.core metabase.mq.init}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            app-db
            classloader
            settings
@@ -1632,7 +1655,7 @@
            metabase.notification.models
            metabase.notification.payload.core}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            app-db
            appearance
@@ -1655,7 +1678,7 @@
            sso
            system
            task
-           task-history
+           task.history
            tracing
            users
            util}
@@ -1669,24 +1692,6 @@
                     :model/TaskHistory
                     :model/TaskRun
                     :model/User}}
-
-  oauth-server
-  {:team "UX West"
-   :api  #{metabase.oauth-server.api       ;; Special case OAuth standard endpoints under `/`
-           metabase.oauth-server.api.admin ;; The usual Metabase internal API endpoints under `/api`
-           metabase.oauth-server.core
-           metabase.oauth-server.init}
-   :uses #{api
-           api-scope
-           appearance
-           mcp
-           models
-           request
-           settings
-           system
-           task
-           tracing
-           util}}
 
   osi
   {:team "Metabot"
@@ -1809,7 +1814,7 @@
    :api  #{metabase.premium-features.api
            metabase.premium-features.core
            metabase.premium-features.init}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            app-db
            classloader
@@ -1903,7 +1908,7 @@
            query-processor
            request
            task
-           task-history
+           task.history
            tracing
            util
            enterprise/advanced-permissions
@@ -1928,7 +1933,7 @@
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            analyze
            api
            app-db
@@ -2071,7 +2076,7 @@
               metabase.query-processor.util.add-alias-info
               metabase.query-processor.util.persisted-cache}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            analyze
            api
            app-db
@@ -2086,10 +2091,10 @@
            events
            formatter
            lib
-           lib-metric
            lib.be
            lib.legacy-mbql
            lib.metadata
+           lib.metric
            lib.schema
            model-persistence
            models
@@ -2169,11 +2174,11 @@
            metabase.request.init
            metabase.request.schema
            metabase.request.user-agent}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            config
            embedding
-           permissions ; FIXME
+           permissions
            premium-features
            session
            settings
@@ -2216,7 +2221,7 @@
   run-tracking
   {:team "Gadget"
    :api  #{metabase.run-tracking.core}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            app-db
            task
            util}}
@@ -2247,7 +2252,7 @@
            metabase.search.spec
            metabase.search.task.search-index}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            app-db
            appearance
@@ -2309,7 +2314,7 @@
            metabase.server.settings
            metabase.server.streaming-response} ; TODO -- too many API namespaces
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            api-keys
            app-db
@@ -2320,8 +2325,8 @@
            initialization-status
            lib.be
            mcp
+           mcp.oauth-server
            metabot.agent-api
-           oauth-server
            premium-features
            query-processor
            request
@@ -2411,25 +2416,27 @@
            util}
    :model-imports #{:model/User}}
 
-  sql-parsing
-  {:team "DevEx"
-   :api #{metabase.sql-parsing.core}
-   :uses #{analytics-interface util}}
-
   sql-tools
   {:team "DevEx"
+   :module-exports #{sql-tools.parsing}
    :api #{metabase.sql-tools.core
           metabase.sql-tools.init}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            driver
            lib
            lib.metadata
            lib.schema
            settings
-           sql-parsing
+           sql-tools.parsing
            util}
    :model-imports #{:model/Table}}
+
+  sql-tools.parsing
+  {:team "DevEx"
+   :ns-prefix "metabase.sql-parsing"
+   :api #{metabase.sql-parsing.core}
+   :uses #{analytics.interface util}}
 
   sso
   {:team "UX West"
@@ -2476,7 +2483,7 @@
            metabase.sync.schedules
            metabase.sync.task.sync-databases
            metabase.sync.util}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            analyze
            api
            app-db
@@ -2494,7 +2501,7 @@
            query-processor
            settings
            task
-           task-history
+           task.history
            tracing
            util
            warehouse-schema
@@ -2512,6 +2519,7 @@
 
   task
   {:team "UX West"
+   :module-exports #{task.history}
    :api  #{metabase.task.bootstrap
            metabase.task.core}
    :uses #{app-db
@@ -2519,8 +2527,9 @@
            tracing
            util}}
 
-  task-history
+  task.history
   {:team "UX West"
+   :ns-prefix "metabase.task-history"
    :api  #{metabase.task-history.api
            metabase.task-history.core
            metabase.task-history.init}
@@ -2623,7 +2632,7 @@
            metabase.transforms.interface
            metabase.transforms.schema
            metabase.transforms.util}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            app-db
            channel
@@ -2646,7 +2655,7 @@
            search
            settings
            task
-           task-history
+           task.history
            tracing
            transforms.base
            util}
@@ -2761,7 +2770,7 @@
            metabase.upload.db
            metabase.upload.init}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            appearance
            driver
@@ -2980,7 +2989,7 @@
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            app-db
            audit-app
@@ -3342,7 +3351,7 @@
    :api  #{metabase-enterprise.data-complexity-score.api
            metabase-enterprise.data-complexity-score.init}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            app-db
            audit-app
@@ -3501,7 +3510,7 @@
   enterprise/entity-retrieval
   {:team "Metabot"
    :api  #{metabase-enterprise.entity-retrieval.init}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            app-db
            collections
            entity-retrieval
@@ -3534,7 +3543,7 @@
    :api  #{metabase-enterprise.gsheets.api
            metabase-enterprise.gsheets.init}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            premium-features
            settings
@@ -3595,7 +3604,7 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.memoize-monitor.init}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            audit-app
            collections
            driver
@@ -3682,7 +3691,7 @@
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            app-db
            collections
@@ -3693,7 +3702,7 @@
            settings
            startup
            task
-           task-history
+           task.history
            util
            enterprise/data-apps
            enterprise/serialization
@@ -3785,7 +3794,7 @@
    :api  #{metabase-enterprise.scim.core
            metabase-enterprise.scim.init
            metabase-enterprise.scim.routes}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            api-keys
            models
@@ -3811,7 +3820,7 @@
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.init}
    :uses #{analytics
-           analytics-interface
+           analytics.interface
            api
            app-db
            channel
@@ -3840,7 +3849,7 @@
            metabase-enterprise.semantic-search.util}
    :uses #{activity-feed
            analytics
-           analytics-interface
+           analytics.interface
            api
            app-db
            collections
@@ -3981,7 +3990,7 @@
   {:team "Gadget"
    :ns-prefix "metabase-enterprise.transforms-inspector"
    :api  #{metabase-enterprise.transforms-inspector.api}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            driver
            events
@@ -4007,7 +4016,7 @@
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init}
-   :uses #{analytics-interface
+   :uses #{analytics.interface
            api
            app-db
            config
