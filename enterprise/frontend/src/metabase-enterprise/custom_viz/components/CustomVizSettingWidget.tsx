@@ -3,6 +3,8 @@ import type { WidgetMount } from "custom-viz";
 import { usePluginMount } from "../use-plugin-mount";
 import { getWidgetMountPluginId } from "../widget-mount";
 
+import { SandboxedPluginContainer } from "./SandboxedPluginContainer";
+
 type Props = {
   mount: WidgetMount<Record<string, unknown>>;
   widgetProps: Record<string, unknown>;
@@ -16,10 +18,6 @@ export function CustomVizSettingWidget({ mount, widgetProps }: Props) {
   const containerRef = usePluginMount(mount, widgetProps);
 
   return (
-    <div
-      ref={containerRef}
-      data-plugin-sandbox={pluginId}
-      style={{ width: "100%" }}
-    />
+    <SandboxedPluginContainer containerRef={containerRef} pluginId={pluginId} />
   );
 }
