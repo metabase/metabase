@@ -2,7 +2,7 @@ import { act } from "@testing-library/react";
 import type { Location } from "history";
 
 import { renderHookWithProviders } from "__support__/ui";
-import { isSelfEmbedInIframe } from "metabase/embedding/config";
+import { isEmbedPreview } from "metabase/embedding/config";
 import { selectTab } from "metabase/redux/dashboard";
 import {
   createMockDashboardState,
@@ -32,7 +32,7 @@ jest.mock("metabase/router", () => ({
 
 jest.mock("metabase/embedding/config", () => ({
   ...jest.requireActual("metabase/embedding/config"),
-  isSelfEmbedInIframe: jest.fn(() => false),
+  isEmbedPreview: jest.fn(() => false),
 }));
 
 const DASHBOARD_ID = 1;
@@ -112,7 +112,7 @@ describe("useDashboardUrlQuery", () => {
     // Unjustified type cast. FIXME
     (replace as jest.Mock).mockClear();
     // Unjustified type cast. FIXME
-    (isSelfEmbedInIframe as jest.Mock).mockReturnValue(false);
+    (isEmbedPreview as jest.Mock).mockReturnValue(false);
   });
 
   it("syncs a parameter-value change with replace (not push), writing the parameter slug values into the query", () => {
@@ -157,9 +157,9 @@ describe("useDashboardUrlQuery", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("does not sync when isSelfEmbedInIframe() is true", () => {
+  it("does not sync when isEmbedPreview() is true", () => {
     // Unjustified type cast. FIXME
-    (isSelfEmbedInIframe as jest.Mock).mockReturnValue(true);
+    (isEmbedPreview as jest.Mock).mockReturnValue(true);
 
     setup({
       parameters: [createMockParameter({ id: "1", slug: "text" })],

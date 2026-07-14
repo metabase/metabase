@@ -3,7 +3,7 @@ import type {
   OnBeforeRequestHandlerConfig,
   RequestMethod,
 } from "metabase/api/client";
-import { isSelfEmbedInIframe } from "metabase/embedding/config";
+import { isEmbedPreview } from "metabase/embedding/config";
 import {
   PLUGIN_API,
   PLUGIN_CONTENT_TRANSLATION,
@@ -232,7 +232,7 @@ const EMBED_PREVIEW_API_BASE = "/api/preview_embed";
 export const rewriteEmbedPreviewUrl = async ({
   url,
 }: OnBeforeRequestHandlerConfig) => {
-  if (isSelfEmbedInIframe() && EMBED_API_BASE_PATTERN.test(url)) {
+  if (isEmbedPreview() && EMBED_API_BASE_PATTERN.test(url)) {
     return { url: url.replace(EMBED_API_BASE_PATTERN, EMBED_PREVIEW_API_BASE) };
   }
 };

@@ -8,7 +8,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import { PLUGIN_API } from "metabase/plugins";
 
-import { isSelfEmbedInIframe, setIsDataApp } from "./config";
+import { isEmbedPreview, setIsDataApp } from "./config";
 import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";
 
 const iframeState = { iframedInSelf: false };
@@ -115,7 +115,7 @@ describe("setIsDataApp", () => {
   });
 });
 
-describe("isSelfEmbedInIframe", () => {
+describe("isEmbedPreview", () => {
   const originalConfig = { ...EMBEDDING_SDK_CONFIG };
 
   afterEach(() => {
@@ -126,17 +126,17 @@ describe("isSelfEmbedInIframe", () => {
   it("is true when the page is iframed into itself", () => {
     iframeState.iframedInSelf = true;
 
-    expect(isSelfEmbedInIframe()).toBe(true);
+    expect(isEmbedPreview()).toBe(true);
   });
 
   it("is false for a data app, which is always iframed into Metabase", () => {
     iframeState.iframedInSelf = true;
     EMBEDDING_SDK_CONFIG.isDataApp = true;
 
-    expect(isSelfEmbedInIframe()).toBe(false);
+    expect(isEmbedPreview()).toBe(false);
   });
 
   it("is false outside an iframe", () => {
-    expect(isSelfEmbedInIframe()).toBe(false);
+    expect(isEmbedPreview()).toBe(false);
   });
 });

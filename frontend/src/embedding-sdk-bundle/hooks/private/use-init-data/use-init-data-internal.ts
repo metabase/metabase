@@ -84,9 +84,9 @@ export const useInitData = () => {
 
   const isGuestEmbed = !!props.authConfig.isGuest;
 
-  // Set by the data-app dev entry, which runs in a different module realm and
-  // can't call `setIsDataApp` against this bundle's config itself.
-  // Must be called before `useInitDataInternal` to avoid any possible requests made before `setIsDataApp` call
+  // `DataAppDevProvider` puts the app on the props store before rendering
+  // `MetabaseProvider`. Applied here, ahead of `useInitDataInternal`, so no request
+  // goes out unattributed.
   if (internalProps.dataApp) {
     setIsDataApp(internalProps.dataApp.name, {
       isDev: internalProps.dataApp.isDev,

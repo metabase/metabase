@@ -4,8 +4,6 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 
 import { DataAppDevProvider } from "./DataAppDevProvider";
 
-// The real MetabaseProvider boots the SDK bundle loading flow; this spec only
-// covers DataAppDevProvider's own wiring.
 jest.mock(
   "embedding-sdk-package/components/public/MetabaseProvider/MetabaseProvider",
   () => ({
@@ -16,8 +14,6 @@ jest.mock(
 );
 
 describe("DataAppDevProvider", () => {
-  // NOTE: the data-app context registration is `once` per module, so it is
-  // asserted in the first test only; later renders intentionally no-op.
   it("registers the data-app dev context for the bundle realm and renders children", () => {
     render(
       <DataAppDevProvider

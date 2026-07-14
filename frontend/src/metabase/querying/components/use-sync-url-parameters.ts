@@ -2,7 +2,7 @@ import querystring from "querystring";
 
 import { useEffect, useMemo } from "react";
 
-import { isSelfEmbedInIframe } from "metabase/embedding/config";
+import { isEmbedPreview } from "metabase/embedding/config";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter } from "metabase-types/api";
 
@@ -27,7 +27,7 @@ export function useSyncUrlParameters({
      * This causes the iframe to reload when changing the preview hash from appearance
      * settings because now the base URL (including the query string) is different.
      */
-    if (isSelfEmbedInIframe() || !enabled) {
+    if (isEmbedPreview() || !enabled) {
       return;
     }
 

@@ -96,6 +96,4 @@ export const isDataApp = () => EMBEDDING_SDK_CONFIG.isDataApp;
 /**
  * Whether we are in the Data App context.
  */
-export function isDataAppDev() {
-  return EMBEDDING_SDK_CONFIG.isDataAppDev;
-}
+export const isDataAppDev = () => EMBEDDING_SDK_CONFIG.isDataAppDev;

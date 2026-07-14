@@ -11,7 +11,6 @@ const registerDataAppDevContext = once((appSlug: string) => {
 });
 
 export type DataAppDevProviderProps = MetabaseProviderProps & {
-  /** The app slug from `data_app.yml` — the app's URL identity (`/apps/:slug`). */
   appSlug: string;
 };
 

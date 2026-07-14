@@ -36,7 +36,7 @@ export function setIsStaticEmbedding() {
    * This header is only used for analytics and for checking if we want to disable some features in the
    * embedding iframe (only for Documents at the time of this comment)
    */
-  if (!isSelfEmbedInIframe()) {
+  if (!isEmbedPreview()) {
     PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
       setRequestClientHeaders({ name: "embedding-iframe-static" });
   }
@@ -84,8 +84,8 @@ export function isEmbedding() {
 
 /**
  * Detect if this page is self embed within Metabase (embed preview).
- * The check that it is NOT a data app is required, as a data app is rendered inside an iframe inside Metabase
+ * As data apps are also rendered inside metabase, we check that it's not the data app environment
  */
-export function isSelfEmbedInIframe() {
+export function isEmbedPreview() {
   return IFRAMED_IN_SELF && !isDataApp();
 }
