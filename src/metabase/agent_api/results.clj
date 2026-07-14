@@ -15,7 +15,6 @@
    The response is bounded twice over: by the row cap the instance enforces, and by the token budget a client
    can hold. Both are real, and the second bites first — `response_format: \"detailed\"` returns whole
    query-processor columns, and a few hundred wide rows overrun a response long before the row cap does."
-  (:refer-clojure :exclude [run!])
   (:require
    [metabase.agent-api.projections :as projections]
    [metabase.agent-api.query :as agent-api.query]
@@ -70,7 +69,7 @@
   (tools/teaching-error! (str "The query failed: " message)
                          (if (qp.error-type/permission-error? error-type) 403 status)))
 
-(defn run!
+(defn execute!
   "Run `thunk`, one execution of a userland query, and return the query processor's result.
 
    A userland query does not throw on failure: the query processor hands back a result whose `:status` is
@@ -93,9 +92,9 @@
       result)))
 
 (defn run-query!
-  "Run `query-map` under the app's own userland preparation — see [[run!]]."
+  "Run `query-map` under the app's own userland preparation — see [[execute!]]."
   [query-map]
-  (run! #(qp/process-query (agent-api.query/prepare query-map))))
+  (execute! #(qp/process-query (agent-api.query/prepare query-map))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Paging

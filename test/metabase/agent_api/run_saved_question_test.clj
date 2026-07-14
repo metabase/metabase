@@ -270,9 +270,36 @@
 (deftest an-export-too-large-to-store-is-refused-rather-than-half-written-test
   (with-redefs [exports/max-bytes 64]
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
-      (is (re-find #"larger than" (refusal (run-question! :crowberto 400 {:id (:id card) :export "csv"}))))
+      (let [message (refusal (run-question! :crowberto 400 {:id (:id card) :export "csv"}))]
+        (is (re-find #"larger than" message))
+        (testing "and the refusal names the fix rather than blaming the query, which is not what went wrong"
+          (is (not (re-find #"The query failed" message)))))
       (testing "and nothing was stored"
         (is (not (t2/exists? :model/McpExport :card_id (:id card))))))))
+
+(deftest a-user-may-not-fill-the-store-with-exports-test
+  (testing "one file is bounded by `max-bytes`; the pile one user holds at once is bounded too, or a loop of
+            small exports fills the application database a call at a time"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (let [first-url (:download_url (run-question! {:id (:id card) :export "csv"}))
+            size      (alength ^bytes (t2/select-one-fn :content :model/McpExport
+                                                        :id (last (str/split first-url #"/"))))]
+        (testing "with no room left, the next export is refused and says when the room comes back"
+          (with-redefs [exports/max-live-bytes-per-user size]
+            (let [message (refusal (run-question! :crowberto 400 {:id (:id card) :export "json"}))]
+              (is (re-find #"as much as one user may keep at once" message))
+              (is (re-find #"oldest link expires" message)))))
+        (testing "and the link they already hold still downloads"
+          (is (some? (download :crowberto first-url 200))))))))
+
+(deftest a-pivot-card-runs-and-exports-test
+  (testing "a pivot card is run by the pivot query processor, which the card-query path swaps in — the page is
+            still cut from the query it built"
+    (mt/with-temp [:model/Card card {:display       :pivot
+                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                                           :breakout    [$price]})}]
+      (is (pos? (:row_count (run-question! {:id (:id card)}))))
+      (is (pos? (:row_count (run-question! {:id (:id card) :export "csv"})))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The tool, through MCP
@@ -299,9 +326,16 @@
       (is (re-find #"/api/agent/v2/export/"
                    (get-in result [:structuredContent :download_url]))))))
 
-(deftest bounded-output-stream-refuses-past-its-limit-test
-  (with-redefs [exports/max-bytes 4]
-    (let [os (exports/bounded-output-stream (ByteArrayOutputStream.))]
-      (.write os (byte-array 4))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"larger than"
-                            (.write os (byte-array 1)))))))
+(deftest bounded-output-stream-stops-at-its-limit-test
+  (testing "past the bound the stream drops rather than throws — a throw from inside the query processor's own
+            writer comes back as a failed query, which is not what went wrong"
+    (with-redefs [exports/max-bytes 4]
+      (let [sink       (ByteArrayOutputStream.)
+            overflowed (volatile! false)
+            os         (exports/bounded-output-stream sink overflowed)]
+        (.write os (byte-array 4))
+        (is (false? @overflowed))
+        (.write os (byte-array 1))
+        (is (true? @overflowed))
+        (testing "and the heap stays bounded: the dropped bytes never reached the sink"
+          (is (= 4 (count (.toByteArray sink)))))))))

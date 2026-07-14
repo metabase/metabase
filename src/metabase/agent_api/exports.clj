@@ -17,6 +17,7 @@
    [java-time.api :as t]
    [metabase.agent-api.models.mcp-export]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.agent-api.tools :as tools]
    [metabase.channel.urls :as urls]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -33,9 +34,37 @@
    stores nothing."
   (* 32 1024 1024))
 
+(def max-live-bytes-per-user
+  "The most an agent may hold in the store on one user's behalf at once.
+
+   [[max-bytes]] bounds one file; this bounds the pile. Without it a loop that exports a hundred times writes a
+   hundred files into the application database and keeps every one of them until its TTL expires — each call
+   under the per-file bound, and the store unbounded all the same."
+  (* 4 max-bytes))
+
 (defn- expires-at
   []
   (t/plus (t/offset-date-time) (t/hours (agent-api.settings/mcp-export-ttl-hours))))
+
+(defn- check-room-for!
+  "Refuse a new export that would take `user-id` past [[max-live-bytes-per-user]]. The refusal names when the
+   room comes back, because the only thing the caller can do about it is wait or download what they already
+   have."
+  [user-id size]
+  (let [live (or (:bytes (t2/query-one {:select [[[:sum [:length :content]] :bytes]]
+                                        :from   [:mcp_export]
+                                        :where  [:and
+                                                 [:= :user_id user-id]
+                                                 [:> :expires_at :%now]]}))
+                 0)]
+    (when (< max-live-bytes-per-user (+ live size))
+      (let [expiry (t2/select-one-fn :expires_at :model/McpExport
+                                     {:where    [:and [:= :user_id user-id] [:> :expires_at :%now]]
+                                      :order-by [[:expires_at :asc]]})]
+        (tools/teaching-error!
+         (str "You already hold " (quot live (* 1024 1024)) " MB of export files, which is as much as one user "
+              "may keep at once. The oldest link expires at " expiry " and its space comes back then. Read the "
+              "rows here instead of exporting them, or narrow the question so the file is smaller."))))))
 
 (mu/defn store-export! :- [:map [:id :string]]
   "Store `content` (the generated file's bytes) for `user-id` and return the download link's `:id` and the
@@ -43,6 +72,7 @@
    snapshots, and the second must not silently replace the first while the caller still holds a link to it."
   [user-id :- :int
    {:keys [card-id filename content-type row-count ^bytes content]}]
+  (check-room-for! user-id (alength content))
   (let [id      (str (random-uuid))
         expires (expires-at)]
     (t2/insert! :model/McpExport
@@ -57,33 +87,42 @@
     {:id id :expires_at expires}))
 
 (defn bounded-output-stream
-  "`os`, refusing to accept more than [[max-bytes]].
+  "`os`, dropping everything past [[max-bytes]] and setting `overflowed` when it does.
 
-   The refusal has to come while the file is being written, not after: a stream that took every byte and then
-   said the file was too big would already have spent the heap it was warning about."
-  ^java.io.OutputStream [^java.io.OutputStream os]
+   The bound has to bite while the file is being written: a stream that took every byte and only afterwards
+   said the file was too big would already have spent the heap it was warning about. It *drops* rather than
+   throws, because the writer on the other end of this stream is the query processor's, and a throw from
+   inside it comes back as a failed query — which is not what went wrong, and not what the caller can fix.
+   The caller reads `overflowed` once the run is over and refuses then, with [[too-large-error!]]."
+  ^java.io.OutputStream [^java.io.OutputStream os overflowed]
   (let [written (volatile! 0)
-        check!  (fn [n]
-                  (when (< max-bytes (vswap! written + n))
-                    (throw (ex-info (str "This export would be larger than " (quot max-bytes (* 1024 1024))
-                                         " MB, which is more than a download link can hold. Narrow the "
-                                         "question — a `parameters` value, a filter, an aggregation — or "
-                                         "download the result from Metabase itself.")
-                                    {:status-code 400}))))]
+        room?   (fn [n]
+                  (if (< max-bytes (vswap! written + n))
+                    (do (vreset! overflowed true) false)
+                    true))]
     (proxy [java.io.OutputStream] []
       (write
         ([b]
          (if (bytes? b)
            (let [^bytes b b]
-             (check! (alength b))
-             (.write os b))
-           (do (check! 1)
-               (.write os (int b)))))
+             (when (room? (alength b))
+               (.write os b)))
+           (when (room? 1)
+             (.write os (int b)))))
         ([b off len]
-         (check! len)
-         (.write os ^bytes b (int off) (int len))))
+         (when (room? len)
+           (.write os ^bytes b (int off) (int len)))))
       (flush [] (.flush os))
       (close [] (.close os)))))
+
+(defn too-large-error!
+  "Refuse an export that overran [[max-bytes]]. Raised after the run, so it names the file rather than the
+   query — the query was fine; the answer is just too big to hand over as a link."
+  []
+  (tools/teaching-error!
+   (str "This export would be larger than " (quot max-bytes (* 1024 1024)) " MB, which is more than a "
+        "download link can hold. Narrow the question — a `parameters` value, a filter, an aggregation — or "
+        "download the result from Metabase itself.")))
 
 (defn- find-export
   "The live (unexpired) export row `export-id` names, owned by `user-id`. Ownership and expiry are one query,

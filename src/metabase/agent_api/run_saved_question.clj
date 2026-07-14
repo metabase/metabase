@@ -142,7 +142,7 @@
     (fn [query info]
       (let [pager (results/pager query offset row-limit)]
         (results/page-response pager
-                               (results/run! #(qp (results/window pager (update query :info merge info)) nil))
+                               (results/execute! #(qp (results/window pager (update query :info merge info)) nil))
                                {:response-format response-format})))))
 
 (defn- write-file
@@ -153,7 +153,7 @@
     (fn [query info]
       (qp.streaming/do-with-streaming-rff
        export-format os
-       (fn [rff] (results/run! #(qp (update query :info merge info) rff)))))))
+       (fn [rff] (results/execute! #(qp (update query :info merge info) rff)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The tool
@@ -172,9 +172,10 @@
                            "_" (streaming.common/export-filename-timestamp)
                            "." export)
         os            (ByteArrayOutputStream.)
+        overflowed    (volatile! false)
         {:keys [row_count]}
         (run-card! card export-format parameters
-                   (write-file (exports/bounded-output-stream os))
+                   (write-file (exports/bounded-output-stream os overflowed))
                    {;; `nil` rather than the userland default: an export carries the whole result, bounded by
                     ;; the instance's download row limit and by the caller's download tier.
                     :constraints nil
@@ -183,6 +184,7 @@
                                   :skip-results-metadata? true
                                   :ignore-cached-results? true
                                   :js-int-to-string?      false}})
+        _ (when @overflowed (exports/too-large-error!))
         {:keys [id expires_at]}
         (exports/store-export! api/*current-user-id*
                                {:card-id      (:id card)
