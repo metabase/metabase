@@ -50,9 +50,11 @@
 (def ^:dynamic *write-permits*
   "Semaphore capping concurrent cache writes ([[cache/query-caching-max-concurrent-writes]]) so a burst of cache misses
   can't spike CPU/memory with unbounded concurrent result serialization. When exhausted, queries run normally but skip
-  caching that run. The root value is a delay so the setting isn't read at namespace load (AOT-safe) -- deref with
-  `force`. Bind a bare `Semaphore` in tests."
-  (delay (Semaphore. (max 1 (cache/query-caching-max-concurrent-writes)))))
+  caching that run. nil (the setting is unset or not a positive integer) means no limit. The root value is a delay so
+  the setting isn't read at namespace load (AOT-safe) -- deref with `force`. Bind a bare `Semaphore` in tests."
+  (delay (let [n (cache/query-caching-max-concurrent-writes)]
+           (when (pos-int? n)
+             (Semaphore. n)))))
 
 (def ^:private purge-interval-seconds
   "How often, at most, to purge cache entries older than [[cache/query-caching-max-ttl]]. Purging on every save is
@@ -268,12 +270,12 @@
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (defn- reduce-with-serialization!
-  "Reduce with `orig-reduce`, serializing every reduced object into the current cache entry -- if a [[*write-permits*]]
-  permit is available. Otherwise reduce without serializing: this run just isn't cached ([[*result-fn*]] stays nil, so
-  [[save-results-xform]] reports `:stored false` and skips the save)."
+  "Reduce with `orig-reduce`, serializing every reduced object into the current cache entry -- unless the concurrent
+  cache-write limit ([[*write-permits*]]) is reached, in which case reduce without serializing: that run just isn't
+  cached ([[*result-fn*]] stays nil, so [[save-results-xform]] reports `:stored false` and skips the save)."
   [orig-reduce rff metadata rows]
   (let [^Semaphore permits (force *write-permits*)]
-    (if-not (.tryAcquire permits)
+    (if (and permits (not (.tryAcquire permits)))
       (do (log/throttle (u/minutes->ms 1)
                         (log/warn "Not caching results: the concurrent cache-write limit was reached"))
           (orig-reduce rff metadata rows))
@@ -284,7 +286,7 @@
                      *result-fn* result-fn]
              (orig-reduce rff metadata rows))))
         (finally
-          (.release permits))))))
+          (some-> permits .release))))))
 
 (defn- run-and-cache!
   "Run `query` through `qp` and save the results to the cache (if eligible). Used on a cache miss, or when this process
