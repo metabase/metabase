@@ -244,7 +244,7 @@ export function SearchResult({
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
-          <Loader />
+          <Loader data-testid="search-result-sync-loading-indicator" />
         </LoadingSection>
       )}
       {showXRayButton && (
