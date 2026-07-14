@@ -27,11 +27,15 @@
   {:javascriptReference path})
 
 (defn- entry-value
-  [m k]
+  "Returns the requested entry without invoking map lookup.
+
+  Some rendered schemas can contain sorted maps with string keys; direct keyword
+  lookup can make those maps compare keywords to strings and throw."
+  [entries-map entry-key-to-find]
   (some (fn [[entry-key entry-value]]
-          (when (= entry-key k)
+          (when (= entry-key entry-key-to-find)
             entry-value))
-        m))
+        entries-map))
 
 (defn reference?
   "Returns true when `value` is a raw JavaScript expression marker created by [[reference]]."
@@ -40,24 +44,29 @@
        (string? (entry-value value :javascriptReference))))
 
 (defn- javascript-key
-  [k]
-  (let [s (u/qualified-name k)]
-    (if (re-matches js-identifier-pattern s)
-      s
-      (json/encode s))))
+  "Renders a value as a JavaScript object key.
+
+  Valid identifiers render bare e.g. orders; everything else renders as a quoted
+  property name e.g. \"orders-by-month\"."
+  [entry-key]
+  (let [key-name (u/qualified-name entry-key)]
+    (if (re-matches js-identifier-pattern key-name)
+      key-name
+      (json/encode key-name))))
 
 (defn- javascript-property-access
-  [k]
-  (let [s (u/qualified-name k)]
-    (if (re-matches js-identifier-pattern s)
-      (str "." s)
-      (str "[" (json/encode s) "]"))))
+  "Renders property access for a JavaScript reference path segment."
+  [path-segment]
+  (let [segment-name (u/qualified-name path-segment)]
+    (if (re-matches js-identifier-pattern segment-name)
+      (str "." segment-name)
+      (str "[" (json/encode segment-name) "]"))))
 
 (defn reference-path
-  "Returns a JavaScript property path for `ks`."
-  [& ks]
-  (str (u/qualified-name (first ks))
-       (apply str (map javascript-property-access (rest ks)))))
+  "Returns a JavaScript property path for `path-segments`."
+  [& path-segments]
+  (str (u/qualified-name (first path-segments))
+       (apply str (map javascript-property-access (rest path-segments)))))
 
 (defn- primitive-value?
   [value]
@@ -75,6 +84,10 @@
 (declare render-value*)
 
 (defn- render-node
+  "Renders one nested value with its optional leading comments and object key.
+
+  The four-argument arity is for vector items, which have comments but no key.
+  The five-argument arity is for map entries, which render `key: value`."
   ([options indent path value]
    (let [{:keys [item-comments]} options
          comments (item-comments indent path value)
@@ -83,30 +96,35 @@
             (str (str/join "\n" comments) "\n"))
           prefix
           (render-value* value indent path options))))
-  ([options indent path k value]
+  ([options indent path entry-key value]
    (let [{:keys [entry-comments]} options
-         comments (entry-comments indent path k value)
+         comments (entry-comments indent path entry-key value)
          prefix   (spaces indent)]
      (str (when (seq comments)
             (str (str/join "\n" comments) "\n"))
           prefix
-          (javascript-key k)
+          (javascript-key entry-key)
           ": "
-          (render-value* value indent (conj path k) options)))))
+          (render-value* value indent (conj path entry-key) options)))))
 
 (defn- render-entry
-  [options indent path k value]
-  (render-node options indent path k value))
+  [options indent path entry-key value]
+  (render-node options indent path entry-key value))
 
 (defn- render-map
+  "Renders a map as a JavaScript object literal.
+
+  `:map-keys` controls both key ordering and which keys are emitted."
   [{:keys [map-keys] :as options} value indent path]
   (let [entries (->> (map-keys path value)
-                     (map (fn [k] (render-entry options (+ indent 2) path k (get value k)))))]
+                     (map (fn [entry-key]
+                            (render-entry options (+ indent 2) path entry-key (get value entry-key)))))]
     (if (seq entries)
       (str "{\n" (str/join ",\n" entries) "\n" (spaces indent) "}")
       "{ }")))
 
 (defn- render-vector
+  "Renders a vector as a compact array for primitive values, or multiline array otherwise."
   [options value indent path]
   (cond
     (empty? value)
@@ -116,12 +134,16 @@
     (str "[ " (str/join ", " (map json/encode value)) " ]")
 
     :else
-    (let [entries (map-indexed (fn [i item]
-                                 (render-node options (+ indent 2) (conj path i) item))
+    (let [entries (map-indexed (fn [index item]
+                                 (render-node options (+ indent 2) (conj path index) item))
                                value)]
       (str "[\n" (str/join ",\n" entries) "\n" (spaces indent) "]"))))
 
 (defn- render-value*
+  "Recursive implementation for [[render-value]].
+
+  `path` tracks where the value lives so callers can choose keys and comments
+  based on surrounding schema context."
   [value indent path options]
   (cond
     (reference? value) (entry-value value :javascriptReference)
@@ -131,7 +153,7 @@
     :else              (json/encode value)))
 
 (defn render-value
-  "Renders `value` as JavaScript syntax.
+  "Renders `value` into JavaScript syntax.
 
   Options:
   - `:path` is the current object path.

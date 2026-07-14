@@ -68,32 +68,42 @@
                                    :dimensions {"createdAt" {:type     "column"
                                                              :name     "created_at"
                                                              :baseType "type/DateTime"
-                                                             :jsType   "Date"
-                                                             :metricId 6}}}}})
+                                                             :jsType   "Date"}}}}})
 
-(deftest typescript-renderer-compacts-metric-dimensions-test
+(deftest typescript-renderer-emits-comments-and-runtime-metadata-test
   (let [body (typed-schemas.api.render/render-typescript compacting-schema)]
-    (is (str/includes? body (str "/" "/ Description: Saved orders")))
-    (is (str/includes? body (str "/" "/ Description: Total order revenue")))
-    (is (str/includes? body (str "/" "/ Display name: Payment Method")))
-    (is (str/includes? body (str "/" "/ Semantic type: type/Category")))
+    ;; Emit comments to provide context for agents
+    (is (str/includes? body "// Description: Saved orders"))
+    (is (str/includes? body "// Description: Total order revenue"))
+    (is (str/includes? body "// Display name: Payment Method"))
+    (is (str/includes? body "// Semantic type: type/Category"))
+    ;; Emit metadata needed for the Lib.createTestQuery DSL
     (is (str/includes? body "ordersQuestion: {\n    type: \"card\""))
     (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
     (is (str/includes? body "databaseId: 1"))
     (is (str/includes? body "sourceTableId: 10"))
     (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
+    ;; Comment-only metadata should not become runtime fields.
+    (is (not (str/includes? body "displayName: \"Payment Method\"")))))
+
+(deftest typescript-renderer-compacts-metric-dimensions-test
+  (let [body (typed-schemas.api.render/render-typescript compacting-schema)]
+    ;; Metric dimensions should compact into pickFields(...) references.
     (is (str/includes? body "function pickFields"))
     (is (str/includes? body "const field = fields[key] as { tableId?: number };"))
     (is (str/includes? body "const { tableId, ...joinedField } = field;"))
     (is (str/includes? body "orders: pickFields(tables.orders.fields, [ \"paymentMethod\" ])"))
     (is (str/includes? body "franchises: pickFields(tables.franchises.fields, [ \"name\" ], { sourceFieldId: 42 })"))
+    ;; Source field id should be preserved.
     (is (= 1 (count (re-seq #"sourceFieldId: 42" body))))
-    (is (not (str/includes? body "displayName: \"Payment Method\"")))
+    ;; `metricId` is only used to identify dimensions while compacting them.
+    ;; The generated TypeScript module should not contain metric id.
     (is (not (str/includes? body "metricId: 5")))))
 
 (deftest typescript-renderer-omits-pick-fields-helper-for-raw-dimensions-test
   (let [body (typed-schemas.api.render/render-typescript raw-dimensions-schema)]
+    ;; Dimensions that cannot be resolved to table fields stay as raw fields, so
+    ;; the rendered module should not include the pickFields helper.
     (is (not (str/includes? body "function pickFields")))
     (is (not (str/includes? body "pickFields(")))
-    (is (str/includes? body "fields: {\n        createdAt: {"))
-    (is (not (str/includes? body "metricId: 6")))))
+    (is (str/includes? body "fields: {\n        createdAt: {"))))
