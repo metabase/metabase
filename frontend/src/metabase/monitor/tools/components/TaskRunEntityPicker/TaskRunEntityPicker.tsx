@@ -44,7 +44,7 @@ export const TaskRunEntityPicker = ({
   ...props
 }: TaskRunEntityPickerProps) => {
   const effectiveStartedAt = toBackendStartedAt(startedAt, includeToday);
-  const hasAllRequiredParams = Boolean(runType && effectiveStartedAt);
+  const hasAllRequiredParams = runType != null && effectiveStartedAt != null;
   const { data: entities, isLoading } = useAbortableQuery(
     useLazyListTaskRunEntitiesQuery,
     hasAllRequiredParams
