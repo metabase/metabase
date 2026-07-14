@@ -75,7 +75,7 @@ export function AdvisoryCard({
             <List size="sm">
               {advisory.affected_versions.map((v) => (
                 <List.Item key={`${v.min}-${v.fixed}`}>
-                  <Group gap="xs">
+                  <Group gap="xs" align="baseline">
                     <Text span>{`${v.min} - ${v.fixed}`}</Text>
                     {v.download_jar_url && (
                       <Anchor
