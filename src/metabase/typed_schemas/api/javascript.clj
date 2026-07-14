@@ -29,7 +29,8 @@
             entry-value))
         m))
 
-(defn- reference?
+(defn reference?
+  "Returns true when `value` is a marker created by [[reference]]."
   [value]
   (and (map? value)
        (string? (entry-value value :javascriptReference))))
@@ -69,16 +70,29 @@
 
 (declare render-value*)
 
+(defn- render-node
+  ([options indent path value]
+   (let [{:keys [item-comments]} options
+         comments (item-comments indent path value)
+         prefix   (spaces indent)]
+     (str (when (seq comments)
+            (str (str/join "\n" comments) "\n"))
+          prefix
+          (render-value* value indent path options))))
+  ([options indent path k value]
+   (let [{:keys [entry-comments]} options
+         comments (entry-comments indent path k value)
+         prefix   (spaces indent)]
+     (str (when (seq comments)
+            (str (str/join "\n" comments) "\n"))
+          prefix
+          (javascript-key k)
+          ": "
+          (render-value* value indent (conj path k) options)))))
+
 (defn- render-entry
-  [{:keys [entry-comments] :as options} indent path k value]
-  (let [comments (entry-comments indent path k value)
-        prefix   (spaces indent)]
-    (str (when (seq comments)
-           (str (str/join "\n" comments) "\n"))
-         prefix
-         (javascript-key k)
-         ": "
-         (render-value* value indent (conj path k) options))))
+  [options indent path k value]
+  (render-node options indent path k value))
 
 (defn- render-map
   [{:keys [map-keys] :as options} value indent path]
@@ -89,7 +103,7 @@
       "{ }")))
 
 (defn- render-vector
-  [{:keys [item-comments] :as options} value indent path]
+  [options value indent path]
   (cond
     (empty? value)
     "[ ]"
@@ -98,16 +112,9 @@
     (str "[ " (str/join ", " (map json/encode value)) " ]")
 
     :else
-    (let [entries (map-indexed
-                   (fn [i item]
-                     (let [item-path (conj path i)
-                           comments  (item-comments (+ indent 2) item-path item)
-                           prefix    (spaces (+ indent 2))]
-                       (str (when (seq comments)
-                              (str (str/join "\n" comments) "\n"))
-                            prefix
-                            (render-value* item (+ indent 2) item-path options))))
-                   value)]
+    (let [entries (map-indexed (fn [i item]
+                                 (render-node options (+ indent 2) (conj path i) item))
+                               value)]
       (str "[\n" (str/join ",\n" entries) "\n" (spaces indent) "]"))))
 
 (defn- render-value*

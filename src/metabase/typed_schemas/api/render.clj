@@ -13,7 +13,8 @@
                       :comment [:entityId :description :verified]}
    :table            {:runtime [:type :id :name :fields :segments :measures]
                       :comment [:entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:type :name :sourceName :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
+   :field            {:runtime [:type :name :sourceName :jsType :fieldId :tableId
+                                :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
    :segment          {:runtime [:type :id :tableId :name]
                       :comment [:entityId :description]}
@@ -187,34 +188,33 @@
 
 (defn- compact-metric-dimension-fields
   [fields-reference-by-table field-key-by-table-and-field dimensions]
-  (let [fields-by-group (reduce (fn [groups [_ dimension]]
-                                  (if-let [field (metric-dimension-table-field fields-reference-by-table
-                                                                               field-key-by-table-and-field
-                                                                               dimension)]
-                                    (add-compact-metric-dimension-field groups field)
-                                    groups))
-                                (array-map)
-                                dimensions)
+  (let [{:keys [fields-by-group dimension-keys]}
+        (reduce (fn [acc [dimension-key dimension]]
+                  (if-let [field (metric-dimension-table-field fields-reference-by-table
+                                                               field-key-by-table-and-field
+                                                               dimension)]
+                    (-> acc
+                        (update :fields-by-group add-compact-metric-dimension-field field)
+                        (update :dimension-keys conj dimension-key))
+                    acc))
+                {:dimension-keys  #{}
+                 :fields-by-group (array-map)}
+                dimensions)
         table-key-count (frequencies (map (comp :table-key val) fields-by-group))]
-    (not-empty
-     (reduce-kv (fn [acc _ {:keys [table-key reference field-keys source-field-id]}]
-                  (assoc acc
-                         (dimension-group-output-key table-key source-field-id table-key-count)
-                         (javascript/reference (pick-fields-call reference
-                                                                 (distinct field-keys)
-                                                                 source-field-id))))
-                (array-map)
-                fields-by-group))))
+    {:dimension-keys dimension-keys
+     :fields         (not-empty
+                      (reduce-kv (fn [acc _ {:keys [table-key reference field-keys source-field-id]}]
+                                   (assoc acc
+                                          (dimension-group-output-key table-key source-field-id table-key-count)
+                                          (javascript/reference (pick-fields-call reference
+                                                                                  (distinct field-keys)
+                                                                                  source-field-id))))
+                                 (array-map)
+                                 fields-by-group))}))
 
 (defn- compact-metric-dimension-keys
-  [fields-reference-by-table field-key-by-table-and-field dimensions]
-  (->> dimensions
-       (keep (fn [[dimension-key dimension]]
-               (when (metric-dimension-table-field fields-reference-by-table
-                                                   field-key-by-table-and-field
-                                                   dimension)
-                 dimension-key)))
-       set))
+  [compact-fields]
+  (:dimension-keys compact-fields))
 
 (defn- raw-metric-dimension-fields
   [dimensions compact-keys compact-fields]
@@ -237,11 +237,10 @@
                                    compact-fields (compact-metric-dimension-fields fields-reference-by-table
                                                                                    field-key-by-table-and-field
                                                                                    dimensions)
-                                   compact-keys   (compact-metric-dimension-keys fields-reference-by-table
-                                                                                 field-key-by-table-and-field
-                                                                                 dimensions)
-                                   raw-fields     (raw-metric-dimension-fields dimensions compact-keys compact-fields)
-                                   compact-dimensions (not-empty (merge raw-fields compact-fields))]
+                                   fields         (:fields compact-fields)
+                                   compact-keys   (compact-metric-dimension-keys compact-fields)
+                                   raw-fields     (raw-metric-dimension-fields dimensions compact-keys fields)
+                                   compact-dimensions (not-empty (merge raw-fields fields))]
                                (cond-> (dissoc metric :dimensions)
                                  compact-dimensions (assoc :dimensions compact-dimensions)))))))))
 
@@ -291,7 +290,10 @@
 
 (defn- uses-pick-fields-helper?
   [schema]
-  (boolean (some (comp seq :dimensions) (vals (:metrics schema)))))
+  (boolean
+   (some (fn [metric]
+           (some javascript/reference? (vals (:dimensions metric))))
+         (vals (:metrics schema)))))
 
 (defn- render-schema-module
   [schema const-suffix]
