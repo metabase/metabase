@@ -149,7 +149,15 @@
           (binding [api/*current-user-id* other-id]
             (is (nil? (check! (str (random-uuid)))))))))))
 
-(def ^:private check-turn! @#'metabot.api/check-turn!)
+(def ^:private check-turn!* @#'metabot.api/check-turn!)
+(def ^:private make-out-of-sync-fn @#'metabot.api/make-out-of-sync-fn)
+
+(defn- check-turn!
+  "Shim over the 4-arg impl: reads live messages and builds `out-of-sync!` from `conversation-id`."
+  [conversation-id parent-message-id retry-message-id]
+  (check-turn!* (metabot.persistence/live-messages conversation-id)
+                parent-message-id retry-message-id
+                (make-out-of-sync-fn conversation-id parent-message-id retry-message-id)))
 
 (defn- rejection! [& args]
   (try (apply check-turn! args)
@@ -157,12 +165,12 @@
 
 (deftest check-turn-test
   (testing "check-turn! parent_message_id branches"
-    (testing "nil parent_message_id starts a turn on a brand-new conversation"
-      (is (= {:action :start} (check-turn! (str (random-uuid)) nil nil))))
     (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
                    :model/MetabotMessage _leaf {:conversation_id convo-id
                                                 :role            "assistant"
                                                 :external_id     "leaf-ext"}]
+      (testing "nil parent_message_id starts a turn on a brand-new conversation"
+        (is (= {:action :start} (check-turn! (str (random-uuid)) nil nil))))
       (testing "nil parent_message_id is rejected once the conversation has a leaf message"
         (is (= {:status-code 409 :reason :parent-message-missing}
                (rejection! convo-id nil nil))))
@@ -183,8 +191,8 @@
                      :model/MetabotMessage _other {:conversation_id other-convo-id
                                                    :role            "assistant"
                                                    :external_id     "other-ext"}]
-        (testing "a parent_message_id belonging to a different conversation is rejected"
-          (is (=? {:reason :parent-message-different-conversation}
+        (testing "a parent_message_id belonging to a different conversation is not found in these messages"
+          (is (=? {:reason :parent-message-not-found}
                   (rejection! convo-id "other-ext" nil)))))
       (mt/with-temp [:model/MetabotMessage _user-msg {:conversation_id convo-id
                                                       :role            "user"
@@ -205,9 +213,9 @@
                                               :external_id     "a1"
                                               :created_at      (seconds-ago 30)}]
       (testing "retrying the last live user message is allowed"
-        (is (= {:action :retry} (check-turn! convo-id nil "u1"))))
+        (is (=? {:action :retry} (check-turn! convo-id nil "u1"))))
       (testing "parent_message_id is ignored when retry_message_id is present"
-        (is (= {:action :retry} (check-turn! convo-id "stale-or-anything" "u1"))))
+        (is (=? {:action :retry} (check-turn! convo-id "stale-or-anything" "u1"))))
       (testing "a retry_message_id that does not exist is rejected"
         (is (=? {:reason :retry-message-not-found}
                 (rejection! convo-id nil (str (random-uuid))))))
@@ -218,8 +226,8 @@
                      :model/MetabotMessage _other-u {:conversation_id other-convo-id
                                                      :role            "user"
                                                      :external_id     "other-u"}]
-        (testing "a retry_message_id belonging to a different conversation is rejected"
-          (is (=? {:reason :retry-message-different-conversation}
+        (testing "a retry_message_id belonging to a different conversation is not found in these messages"
+          (is (=? {:reason :retry-message-not-found}
                   (rejection! convo-id nil "other-u")))))
       (mt/with-temp [:model/MetabotMessage _u2 {:conversation_id convo-id
                                                 :role            "user"
@@ -233,7 +241,7 @@
           (is (=? {:reason :retry-message-not-last}
                   (rejection! convo-id nil "u1"))))
         (testing "the last user message is still retryable"
-          (is (= {:action :retry} (check-turn! convo-id nil "u2"))))))))
+          (is (=? {:action :retry} (check-turn! convo-id nil "u2"))))))))
 
 (deftest check-turn-replace-failed-turn-test
   (testing "check-turn! replaces trailing failed turns when the parent points before them"

@@ -1457,31 +1457,33 @@
   (testing "streaming-request passes metabot-id to native-agent-streaming-request"
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
-      (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
-                                  api/check-conversation-access!        (constantly nil)
-                                  metabot.persistence/leaf-external-id  (constantly nil)
-                                  metabot.persistence/live-messages     (constantly [])
-                                  metabot.persistence/history           (constantly [])
-                                  metabot.persistence/start-turn!       (fn [& _]
-                                                                          {:assistant-msg-id 1
-                                                                           :assistant-external-id "ext-id"})
-                                  api/native-agent-streaming-request    (fn [args]
-                                                                          (reset! captured-args args)
-                                                                          ;; Return a minimal streaming response
-                                                                          nil)]
-        (api/streaming-request {:metabot_id      test-metabot-id
-                                :profile_id      nil
-                                :message         "test message"
-                                :context         {}
-                                :conversation_id (str (random-uuid))
-                                :state           {}
-                                :debug           false}
-                               {:origin nil :referer nil :user-agent nil :ip-address nil})
-        (testing "metabot-id is included in the arguments"
-          (is (some? (:metabot-id @captured-args))
-              "metabot-id should not be nil")
-          (is (= test-metabot-id (:metabot-id @captured-args))
-              "metabot-id should match the input metabot_id"))))))
+      (mt/with-model-cleanup [:model/MetabotMessage
+                              [:model/MetabotConversation :created_at]]
+        (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                                    api/check-conversation-access!        (constantly nil)
+                                    metabot.persistence/leaf-external-id  (constantly nil)
+                                    metabot.persistence/live-messages     (constantly [])
+                                    metabot.persistence/history           (constantly [])
+                                    metabot.persistence/start-turn!       (fn [& _]
+                                                                            {:assistant-msg-id 1
+                                                                             :assistant-external-id "ext-id"})
+                                    api/native-agent-streaming-request    (fn [args]
+                                                                            (reset! captured-args args)
+                                                                            ;; Return a minimal streaming response
+                                                                            nil)]
+          (api/streaming-request {:metabot_id      test-metabot-id
+                                  :profile_id      nil
+                                  :message         "test message"
+                                  :context         {}
+                                  :conversation_id (str (random-uuid))
+                                  :state           {}
+                                  :debug           false}
+                                 {:origin nil :referer nil :user-agent nil :ip-address nil})
+          (testing "metabot-id is included in the arguments"
+            (is (some? (:metabot-id @captured-args))
+                "metabot-id should not be nil")
+            (is (= test-metabot-id (:metabot-id @captured-args))
+                "metabot-id should match the input metabot_id")))))))
 
 (deftest streaming-request-ip-address-test
   (mt/with-model-cleanup [:model/MetabotMessage
