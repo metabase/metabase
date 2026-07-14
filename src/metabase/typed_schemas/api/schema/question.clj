@@ -1,18 +1,57 @@
 (ns metabase.typed-schemas.api.schema.question
-  "Saved-question typed-schema generation."
+  "Typed schema generation for saved questions."
   (:require
    [medley.core :as m]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.typed-schemas.api.common :as common]
    [metabase.typed-schemas.api.schema.common :as schema.common]))
 
 (set! *warn-on-reflection* true)
 
-(defn question-schema
-  "Returns the typed-schema representation for a saved question.
+(defn- schema-card-type-name
+  [card]
+  (some-> (:type card) name))
 
-  Saved questions are read sources for the SDK query DSL, so they keep runtime
-  identifiers and result columns but leave action/model concerns to later
-  generator namespaces."
+(defn- question-details-error-message
+  [card error-message]
+  (format "Failed to build schema details for %s \"%s\" (card %s): %s"
+          (or (schema-card-type-name card) "card")
+          (or (:name card) "Untitled")
+          (:id card)
+          (or error-message "unknown error")))
+
+(defn- question-details-error-data
+  [card error-data]
+  (m/assoc-some
+   {:card-id   (:id card)
+    :card-name (:name card)
+    :card-type (:type card)}
+   :status-code (:status-code error-data)))
+
+(defn- question-details
+  "Returns card details for a saved question."
+  [card]
+  (let [response (try
+                   (entity-details/get-report-details {:report-id             (:id card)
+                                                       :with-field-values?    false
+                                                       :with-related-tables?  false
+                                                       :with-metrics?         false
+                                                       :with-measures?        false
+                                                       :with-segments?        false})
+                   (catch Exception exception
+                     (throw (ex-info (question-details-error-message card (ex-message exception))
+                                     (assoc (question-details-error-data card (ex-data exception))
+                                            :cause-message (ex-message exception))
+                                     exception))))]
+    (or (:structured-output response)
+        (let [error-message (:output response)]
+          (throw (ex-info (question-details-error-message card error-message)
+                          (assoc (question-details-error-data card response)
+                                 :error-message error-message
+                                 :response response)))))))
+
+(defn question-schema
+  "Returns the schema for a saved question."
   [{:keys [id name description verified display result-columns portable_entity_id]}]
   (m/assoc-some
    {:type    "card"
@@ -26,15 +65,11 @@
    :verified (when verified true)))
 
 (defn question-schemas
-  "Returns saved-question schemas for optional database and collection scopes.
-
-  This stays separate from the API namespace so endpoint branches can compose
-  question, table, model, and metric sections without owning the details of how
-  each section is selected or rendered."
+  "Returns schemas for saved questions, with optional database and collection scopes."
   ([database-ids]
    (question-schemas database-ids nil))
   ([database-ids collection-ids]
    (for [card (schema.common/select-schema-cards :question database-ids collection-ids)
-         :let [details (schema.common/question-details card)]
+         :let [details (question-details card)]
          :when details]
      (question-schema details))))

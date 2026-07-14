@@ -254,7 +254,7 @@
   (let [field-id (or field_id (some-> dimension :sources first :field-id))]
     (or (:table_id dimension)
         (:table-id dimension)
-        (schema.table/field-table-id field-id))))
+        (schema.table/table-by-field-id field-id))))
 
 (defn- dimension-schema
   ([dimension metric-id]
@@ -412,8 +412,7 @@
    (model-schemas database-ids nil))
   ([database-ids collection-ids]
    (for [card (schema.common/select-schema-cards :model database-ids collection-ids)
-         :let [details (schema.common/question-details card)
-               schema  (some-> details model-schema)]
+         :let [schema (model-schema card)]
          :when schema]
      schema)))
 

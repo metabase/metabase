@@ -1,5 +1,5 @@
 (ns metabase.typed-schemas.api.schema
-  "Top-level typed-schema assembly helpers."
+  "Top-level typed schema helpers."
   (:require
    [metabase.system.core :as system]
    [metabase.typed-schemas.api.common :as common])
@@ -9,12 +9,7 @@
 (set! *warn-on-reflection* true)
 
 (defn base-schema
-  "Returns the top-level typed-schema map shared by every endpoint scope.
-
-  The coordinator keeps this shape outside `api.clj` so endpoint code can focus
-  on request validation/routing, while schema namespaces decide which generated
-  sections are present. Empty sections stay present because SDK consumers expect
-  stable top-level keys."
+  "Returns the top-level typed schema map."
   [questions models tables metrics]
   (array-map
    :schemaVersion 2

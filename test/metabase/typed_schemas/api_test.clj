@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.actions.core :as actions]
-   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -68,11 +67,8 @@
                   (is (= :model card-type))
                   (is (= #{1} database-ids))
                   (is (nil? collection-ids))
-                  [{:id 42} {:id 43}])
-                typed-schemas.api.schema.common/question-details
-                (fn [card]
-                  {:id   (:id card)
-                   :name (str "Model " (:id card))})
+                  [{:id 42 :name "Model 42"}
+                   {:id 43 :name "Model 43"}])
                 typed-schemas.api/model-actions
                 (fn [model]
                   (when (= (:id model) 42)
@@ -265,37 +261,6 @@
       (#'typed-schemas.api/typed-schema {:database "Boba"})
       (#'typed-schemas.api/typed-schema {:database "Boba" :questions "true"})
       (is (= [#{42} #{42}] @model-database-ids)))))
-
-(deftest model-schemas-surface-detail-errors-test
-  (with-redefs [typed-schemas.api.schema.common/select-schema-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
-                entity-details/get-report-details (constantly {:output "source table not found"
-                                                               :status-code 404})]
-    (let [exception (is (thrown? clojure.lang.ExceptionInfo
-                                 (doall (#'typed-schemas.api/model-schemas #{1}))))]
-      (is (= "Failed to build schema details for model \"Broken model\" (card 100): source table not found"
-             (ex-message exception)))
-      (is (= {:card-id       100
-              :card-name     "Broken model"
-              :card-type     "model"
-              :status-code   404
-              :error-message "source table not found"}
-             (select-keys (ex-data exception) [:card-id :card-name :card-type :status-code :error-message]))))))
-
-(deftest model-schemas-surface-detail-exceptions-test
-  (with-redefs [typed-schemas.api.schema.common/select-schema-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
-                entity-details/get-report-details (fn [_]
-                                                    (throw (ex-info "Invalid output: [\"Valid Table metadata, got: nil\"]"
-                                                                    {:status-code 500})))]
-    (let [exception (is (thrown? clojure.lang.ExceptionInfo
-                                 (doall (#'typed-schemas.api/model-schemas #{1}))))]
-      (is (= "Failed to build schema details for model \"Broken model\" (card 100): Invalid output: [\"Valid Table metadata, got: nil\"]"
-             (ex-message exception)))
-      (is (= {:card-id       100
-              :card-name     "Broken model"
-              :card-type     "model"
-              :status-code   500
-              :cause-message "Invalid output: [\"Valid Table metadata, got: nil\"]"}
-             (select-keys (ex-data exception) [:card-id :card-name :card-type :status-code :cause-message]))))))
 
 (deftest model-schema-surfaces-action-selection-errors-test
   (with-redefs [typed-schemas.api/raw-model-actions (constantly [])
