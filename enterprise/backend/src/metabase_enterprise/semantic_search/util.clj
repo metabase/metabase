@@ -27,8 +27,8 @@
   (second (qualified-table-parts table-name)))
 
 (defn quote-table
-  "Quote a possibly schema-qualified `table-name` for a raw-SQL FROM/JOIN, quoting the schema and table parts
-  separately so a dotted name renders as \"schema\".\"table\", not one identifier with a literal dot."
+  "Quote a possibly schema-qualified `table-name` for raw SQL, quoting schema and table separately so it
+  renders as \"schema\".\"table\" rather than one identifier with a literal dot."
   [table-name]
   (let [[schema table] (qualified-table-parts table-name)]
     (if schema
