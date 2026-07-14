@@ -1,4 +1,4 @@
-import _userEvent from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -46,8 +46,6 @@ const STATE = createMockState({
 const metadata = createMockMetadata({ databases: DATABASES });
 const provider = createMetadataProvider({ metadata });
 
-const userEvent = _userEvent.setup();
-
 function createQuery(tableId: number) {
   return Lib.createTestQuery(provider, {
     stages: [{ source: { type: "table", id: tableId } }],
@@ -83,22 +81,24 @@ function setup(query: Lib.Query) {
   });
 
   return {
+    user: userEvent.setup(),
     rerender: (nextQuery: Lib.Query) => rerender(renderJoinDraft(nextQuery)),
   };
 }
 
-async function pickRightTable(tableName: string) {
-  await userEvent.click(
+async function pickRightTable(
+  user: ReturnType<typeof userEvent.setup>,
+  tableName: string,
+) {
+  await user.click(
     within(screen.getByLabelText("Right table")).getByRole("textbox"),
   );
-  await userEvent.click(
-    await screen.findByRole("menuitem", { name: /Browse all/ }),
-  );
+  await user.click(await screen.findByRole("menuitem", { name: /Browse all/ }));
   const modal = await screen.findByTestId("entity-picker-modal");
   await waitForLoaderToBeRemoved();
-  await userEvent.click(await within(modal).findByText("Databases"));
-  await userEvent.click(await screen.findByText(/Sample Database/));
-  await userEvent.click(await within(modal).findByText(tableName));
+  await user.click(await within(modal).findByText("Databases"));
+  await user.click(await screen.findByText(/Sample Database/));
+  await user.click(await within(modal).findByText(tableName));
 }
 
 describe("JoinDraft", () => {
@@ -114,11 +114,11 @@ describe("JoinDraft", () => {
   // notebook data step switches to a different database), the in-progress draft
   // join clause must be discarded so no stale/invalid condition lingers.
   it("should reset the draft join clause when the query data source changes (metabase#42385)", async () => {
-    const { rerender } = setup(createQuery(ORDERS_ID));
+    const { user, rerender } = setup(createQuery(ORDERS_ID));
 
     // Build up a draft join: pick a right table that has no suggested
     // conditions, so the draft stays open with an empty condition.
-    await pickRightTable("Reviews");
+    await pickRightTable(user, "Reviews");
 
     const rightTable = screen.getByLabelText("Right table");
     expect(await within(rightTable).findByText("Reviews")).toBeInTheDocument();

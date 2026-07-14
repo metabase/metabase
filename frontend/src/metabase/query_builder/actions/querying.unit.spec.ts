@@ -65,7 +65,7 @@ describe("queryErrored (metabase#49270)", () => {
   it("resets the document title and clears the loading timeout on a real error", async () => {
     const store = setupErroredStore();
 
-    await store.dispatch(queryErrored(Date.now(), { status: 500 }) as any);
+    await store.dispatch(queryErrored(Date.now(), { status: 500 }));
 
     expect(getDocumentTitle(store.getState())).toBe("");
     expect(clearTimeoutSpy).toHaveBeenCalledWith(FAKE_TIMEOUT_ID);
@@ -74,9 +74,7 @@ describe("queryErrored (metabase#49270)", () => {
   it("leaves the loading title untouched when the query was aborted", async () => {
     const store = setupErroredStore();
 
-    await store.dispatch(
-      queryErrored(Date.now(), { name: "AbortError" }) as any,
-    );
+    await store.dispatch(queryErrored(Date.now(), { name: "AbortError" }));
 
     expect(getDocumentTitle(store.getState())).toBe(LOADING_TITLE);
     expect(clearTimeoutSpy).not.toHaveBeenCalled();
@@ -117,7 +115,10 @@ describe("runOrCancelQuestionOrSelectedQuery (metabase#59356)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockApiRunQuestionQuery.mockImplementation(
-      () => Promise.resolve({}) as any,
+      () =>
+        Promise.resolve({}) as unknown as ReturnType<
+          typeof apiRunQuestionQuery
+        >,
     );
   });
 
@@ -161,12 +162,7 @@ describe("loadStartUIControls (metabase#40051)", () => {
   it("sets the document title to the loading message string, not the factory", () => {
     const store = getMainStore();
 
-    store.dispatch(
-      runQuestionQuery({
-        shouldUpdateUrl: false,
-        overrideWithQuestion: {} as never,
-      }) as never,
-    );
+    store.dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
 
     expect(getDocumentTitle(store.getState())).toBe("Doing science...");
   });

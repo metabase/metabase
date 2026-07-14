@@ -4,6 +4,7 @@ import { createMockEntitiesState } from "__support__/store";
 import * as runRtkEndpointModule from "metabase/api/utils/run-rtk-endpoint";
 import * as questionsActions from "metabase/questions/actions";
 import * as cardsModule from "metabase/redux/cards";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -177,8 +178,16 @@ describe("QB Actions > apiCreateQuestion", () => {
 
     const loadMetadataSpy = jest
       .spyOn(questionsActions, "loadMetadataForCard")
-      .mockReturnValue((async () => undefined) as any);
-    jest.spyOn(querying, "runQuestionQuery").mockReturnValue((() => {}) as any);
+      .mockReturnValue(
+        (async () => undefined) as unknown as ReturnType<
+          typeof questionsActions.loadMetadataForCard
+        >,
+      );
+    jest
+      .spyOn(querying, "runQuestionQuery")
+      .mockReturnValue((() => {}) as unknown as ReturnType<
+        typeof querying.runQuestionQuery
+      >);
     jest.spyOn(analytics, "trackNewQuestionSaved").mockImplementation(() => {});
 
     // The first (and only) thunk dispatched is createQuestionCard, which resolves
@@ -188,7 +197,10 @@ describe("QB Actions > apiCreateQuestion", () => {
     );
     const getState = () => ({ ...createMockState(), entities });
 
-    await apiCreateQuestion(question!)(dispatch as any, getState as any);
+    await apiCreateQuestion(question!)(
+      dispatch as unknown as Dispatch,
+      getState as unknown as GetState,
+    );
 
     expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
     expect(loadMetadataSpy).toHaveBeenCalledWith(

@@ -5,7 +5,9 @@
 import type { Location } from "history";
 
 import * as queryBuilderReduxModule from "metabase/redux/query-builder";
+import type { GetState } from "metabase/redux/store";
 import * as routingModule from "metabase/selectors/routing";
+import type { Card } from "metabase-types/api";
 
 import * as selectorsModule from "../selectors";
 import * as typedUtilsModule from "../typed-utils";
@@ -159,11 +161,16 @@ describe("locationChanged", () => {
 // pushes a fresh history entry, corrupting the back/forward stack. The fix hard
 // -codes shouldUpdateUrl:false regardless of card type; the bug computed it from
 // `card.type === "model"`, so model cards leaked a true value.
+// Action creators dispatched by popState are mocked with sentinel actions
+// (dispatch only records them); each call casts this to the mocked creator's
+// return type.
+const sentinelAction = (type: string): unknown => ({ type });
+
 describe("popState — shouldUpdateUrl", () => {
   let dispatch: jest.Mock;
   let setCardAndRunSpy: jest.SpyInstance;
 
-  const runPopStateWithCard = async (card: any) => {
+  const runPopStateWithCard = async (card: Partial<Card>) => {
     const location = {
       pathname: "/model/1",
       search: "",
@@ -172,7 +179,7 @@ describe("popState — shouldUpdateUrl", () => {
       state: { card },
     } as unknown as Location;
 
-    await popState(location)(dispatch, () => ({}) as any);
+    await popState(location)(dispatch, (() => ({})) as unknown as GetState);
   };
 
   beforeEach(() => {
@@ -180,34 +187,60 @@ describe("popState — shouldUpdateUrl", () => {
 
     setCardAndRunSpy = jest
       .spyOn(coreModule, "setCardAndRun")
-      .mockReturnValue({ type: "MOCK_SET_CARD_AND_RUN" } as any);
+      .mockReturnValue(
+        sentinelAction("MOCK_SET_CARD_AND_RUN") as ReturnType<
+          typeof coreModule.setCardAndRun
+        >,
+      );
 
     // Neutralize every other action/selector popState touches so the test
     // isolates the setCardAndRun options at the mutation site.
     jest
       .spyOn(queryingModule, "cancelQuery")
-      .mockReturnValue({ type: "MOCK_CANCEL" } as any);
+      .mockReturnValue(
+        sentinelAction("MOCK_CANCEL") as ReturnType<
+          typeof queryingModule.cancelQuery
+        >,
+      );
     jest.spyOn(selectorsModule, "getZoomedObjectId").mockReturnValue(null);
     // current card differs from the one in history, so popState runs it
-    jest.spyOn(selectorsModule, "getCard").mockReturnValue({ id: -1 } as any);
+    jest
+      .spyOn(selectorsModule, "getCard")
+      .mockReturnValue({ id: -1 } as ReturnType<
+        typeof selectorsModule.getCard
+      >);
     jest.spyOn(selectorsModule, "getQueryBuilderMode").mockReturnValue("view");
     jest.spyOn(selectorsModule, "getDatasetEditorTab").mockReturnValue("query");
-    jest.spyOn(routingModule, "getLocation").mockReturnValue({} as any);
+    jest
+      .spyOn(routingModule, "getLocation")
+      .mockReturnValue({} as ReturnType<typeof routingModule.getLocation>);
     jest
       .spyOn(typedUtilsModule, "getQueryBuilderModeFromLocation")
       .mockReturnValue({
         queryBuilderMode: "view",
         datasetEditorTab: "query",
-      } as any);
+      });
     jest
       .spyOn(stateModule, "setCurrentState")
-      .mockReturnValue({ type: "MOCK_SET_CURRENT_STATE" } as any);
+      .mockReturnValue(
+        sentinelAction("MOCK_SET_CURRENT_STATE") as ReturnType<
+          typeof stateModule.setCurrentState
+        >,
+      );
     jest
       .spyOn(uiModule, "setQueryBuilderMode")
-      .mockReturnValue({ type: "MOCK_SET_QB_MODE" } as any);
+      .mockReturnValue(
+        sentinelAction("MOCK_SET_QB_MODE") as ReturnType<
+          typeof uiModule.setQueryBuilderMode
+        >,
+      );
     jest
       .spyOn(queryBuilderReduxModule, "resetUIControls")
-      .mockReturnValue({ type: "MOCK_RESET_UI" } as any);
+      .mockReturnValue(
+        sentinelAction("MOCK_RESET_UI") as ReturnType<
+          typeof queryBuilderReduxModule.resetUIControls
+        >,
+      );
   });
 
   afterEach(() => {
@@ -259,13 +292,15 @@ describe("popState — datasetEditorTab restoration", () => {
   }) => {
     jest
       .spyOn(selectorsModule, "getDatasetEditorTab")
-      .mockReturnValue(currentTab as any);
+      .mockReturnValue(
+        currentTab as ReturnType<typeof selectorsModule.getDatasetEditorTab>,
+      );
     jest
       .spyOn(typedUtilsModule, "getQueryBuilderModeFromLocation")
       .mockReturnValue({
         queryBuilderMode: locationMode,
         datasetEditorTab: locationTab,
-      } as any);
+      } as ReturnType<typeof typedUtilsModule.getQueryBuilderModeFromLocation>);
 
     // No location.state.card, so the setCardAndRun branch is skipped and the
     // test isolates the queryBuilderMode/datasetEditorTab restoration branch.
@@ -277,7 +312,7 @@ describe("popState — datasetEditorTab restoration", () => {
       state: null,
     } as unknown as Location;
 
-    return popState(location)(dispatch, () => ({}) as any);
+    return popState(location)(dispatch, (() => ({})) as unknown as GetState);
   };
 
   beforeEach(() => {
@@ -285,19 +320,33 @@ describe("popState — datasetEditorTab restoration", () => {
 
     setQueryBuilderModeSpy = jest
       .spyOn(uiModule, "setQueryBuilderMode")
-      .mockReturnValue({ type: "MOCK_SET_QB_MODE" } as any);
+      .mockReturnValue(
+        sentinelAction("MOCK_SET_QB_MODE") as ReturnType<
+          typeof uiModule.setQueryBuilderMode
+        >,
+      );
 
     // Neutralize everything else popState touches; mode-from-state is "dataset"
     // so only the editor tab varies between state and location.
     jest
       .spyOn(queryingModule, "cancelQuery")
-      .mockReturnValue({ type: "MOCK_CANCEL" } as any);
+      .mockReturnValue(
+        sentinelAction("MOCK_CANCEL") as ReturnType<
+          typeof queryingModule.cancelQuery
+        >,
+      );
     jest.spyOn(selectorsModule, "getZoomedObjectId").mockReturnValue(null);
-    jest.spyOn(selectorsModule, "getCard").mockReturnValue({ id: -1 } as any);
+    jest
+      .spyOn(selectorsModule, "getCard")
+      .mockReturnValue({ id: -1 } as ReturnType<
+        typeof selectorsModule.getCard
+      >);
     jest
       .spyOn(selectorsModule, "getQueryBuilderMode")
       .mockReturnValue("dataset");
-    jest.spyOn(routingModule, "getLocation").mockReturnValue({} as any);
+    jest
+      .spyOn(routingModule, "getLocation")
+      .mockReturnValue({} as ReturnType<typeof routingModule.getLocation>);
   });
 
   afterEach(() => {
