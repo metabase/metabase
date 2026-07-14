@@ -889,8 +889,14 @@
 (defn- serve-cached-stored-result
   "Cached branch of the card-query endpoint. Loads the stored_result, runs the cached-read
   perm gate, and returns the cached Dataset shape — same shape as a live query response, so
-  the FE doesn't care which path served the data."
-  [stored-result-id sort]
+  the FE doesn't care which path served the data.
+
+  The read-check on the URL card authorizes only snapshots actually materialized for that
+  card, so the (card, stored_result) pairing must exist in `stored_result_use` — otherwise
+  any readable card would serve as a skeleton key for arbitrary client-supplied snapshot
+  ids. 404s (rather than 403s) on an unpaired id so it doesn't confirm the snapshot exists."
+  [card-id stored-result-id sort]
+  (api/check-exists? :model/StoredResultUse :card_id card-id :stored_result_id stored-result-id)
   (let [sr (api/check-404 (t2/select-one :model/StoredResult :id stored-result-id))]
     (when-not (= api/*current-user-id* (:creator_id sr))
       (queries/assert-can-view-cached-result! sr))
@@ -920,9 +926,9 @@
     (if stored_result_id
       (do
         (api/read-check (api/check-404 (t2/select-one :model/Card :id resolved-card-id)))
-        (serve-cached-stored-result stored_result_id sort))
+        (serve-cached-stored-result resolved-card-id stored_result_id sort))
       (qp.card/process-query-for-card
-       (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
+       (api/check-404 (t2/select-one :model/Card :id resolved-card-id)) :api
        :parameters parameters
        :ignore-cache ignore_cache
        :dashboard-id dashboard_id
