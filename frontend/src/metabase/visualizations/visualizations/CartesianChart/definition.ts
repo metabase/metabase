@@ -32,7 +32,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { transformSeries } from "./chart-definition-legacy";
+import { transformSeries } from "./definition-legacy";
 
 const transformCartesianSeries = (series: Series): TransformedSeries => {
   if ("_raw" in series) {
