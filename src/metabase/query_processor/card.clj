@@ -22,6 +22,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -135,9 +136,9 @@
   this constraint is enforced.
 
   Normally, when running a query in the context of a /Card/, this is `false`, and the constraint is enforced. By
-  binding this to a truthy value you can disable the checks. Currently this is only done
-  by [[metabase.query-processor.dashboard]], which does its own parameter validation before handing off to the code
-  here."
+  binding this to a truthy value you can disable the checks. It is bound only by callers that validate the
+  parameters themselves before handing off to the code here: [[metabase.query-processor.dashboard]] against the
+  dashboard's declaration, and [[resolve-declared-parameters]] against the card's."
   false)
 
 (mu/defn- card-template-tag-parameters
@@ -267,6 +268,52 @@
     (into merged-parameters
           (remove #(contains? parameter-ids (:id %)))
           template-tag-parameters)))
+
+(mu/defn resolve-declared-parameters :- [:maybe ::parameters.schema/parameters]
+  "`request-params` — `{:id … :value …}` entries — resolved against the parameters `card` *declares*.
+
+  [[validate-card-parameters]] matches a card's parameters against its **native template tags**, so a saved
+  question that declares a filter widget over an MBQL query cannot be run with a value for it: the value has no
+  template tag to match by name, and the call is refused. This applies to the card's own declaration the rule
+  [[metabase.query-processor.dashboard]] applies to a dashboard's. A parameter has to name one the card declares,
+  and its `:type` and `:target` — the column the value actually filters — are read off that declaration and never
+  off the request. That is what keeps this a widening of the values a card accepts rather than a hole in the
+  control it relaxes: a request cannot point a declared parameter at a column the card never declared.
+
+  A caller binds [[*allow-arbitrary-mbql-parameters*]] around the run it hands these to, exactly as the dashboard
+  path does around its own resolution — the parameters are validated here, and the template-tag check downstream
+  does not know the declared ones."
+  [card           :- ::queries.schema/card
+   request-params :- [:maybe [:sequential [:map [:id :string]]]]]
+  (let [declared (m/index-by :id (combined-parameters-and-template-tags card))]
+    (mapv (fn [{param-id :id, value :value}]
+            (let [{param-type :type, target :target}
+                  (or (get declared param-id)
+                      (throw (ex-info (tru "Invalid parameter: Card {0} does not declare a parameter with ID {1}."
+                                           (:id card)
+                                           (pr-str param-id))
+                                      {:type               qp.error-type/invalid-parameter
+                                       :status-code        400
+                                       :invalid-parameter  param-id
+                                       :allowed-parameters (vec (keys declared))})))]
+              (when-not target
+                (throw (ex-info (tru "Parameter {0} of Card {1} is not wired to a column, so it filters nothing."
+                                     (pr-str param-id)
+                                     (:id card))
+                                {:type              qp.error-type/invalid-parameter
+                                 :status-code       400
+                                 :invalid-parameter param-id})))
+              {:id     param-id
+               :type   param-type
+               :target target
+               ;; An operator parameter takes its values as a list. Callers send the single value they mean, as
+               ;; the app's own filter widget does, and a blank one means no value at all.
+               :value  (if (and (params.ops/operator? param-type)
+                                (if (string? value) (not (str/blank? value)) (some? value))
+                                (not (sequential? value)))
+                         [value]
+                         value)}))
+          request-params)))
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."

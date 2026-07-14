@@ -354,41 +354,6 @@
 
 ;;; ---------------------------------------------------- Rows ------------------------------------------------------
 
-(deftest execute-sql-baseline-parity-test
-  (testing "the positive control: with full permissions both surfaces run the query"
-    (check-parity!
-     {:scenario :full-permissions
-      :user     :rasta
-      :expect   :allowed
-      :tool     ["execute_sql" {:database_id (mt/id) :sql "SELECT 1"}]
-      :rest     [:post "dataset" {:database (mt/id)
-                                  :type     :native
-                                  :native   {:query "SELECT 1"}}]})))
-
-(deftest execute-sql-blocked-database-parity-test
-  (perms.test-util/with-no-data-perms-for-all-users!
-    (check-parity!
-     {:scenario :blocked-database
-      :user     :rasta
-      :expect   :denied
-      :tool     ["execute_sql" {:database_id (mt/id) :sql "SELECT 1"}]
-      :rest     [:post "dataset" {:database (mt/id)
-                                  :type     :native
-                                  :native   {:query "SELECT 1"}}]})))
-
-(deftest execute-sql-no-native-permission-parity-test
-  (testing "a query-builder-only user is refused the native query by both surfaces"
-    (perms.test-util/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
-      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
-      (check-parity!
-       {:scenario :no-native-query-permission
-        :user     :rasta
-        :expect   :denied
-        :tool     ["execute_sql" {:database_id (mt/id) :sql "SELECT 1"}]
-        :rest     [:post "dataset" {:database (mt/id)
-                                    :type     :native
-                                    :native   {:query "SELECT 1"}}]}))))
-
 (deftest read-resource-no-collection-access-parity-test
   (testing "a card the user cannot read is refused by both surfaces"
     (mt/with-temp [:model/Collection coll {}
@@ -994,6 +959,63 @@
                                  :condition    [:= [:field (mt/id :venues :id) nil]
                                                 [:field (mt/id :checkins :venue_id) {:join-alias "Checkins"}]]}]
                         :limit 1})]})))))
+
+;;; --------------------------------------------- run_saved_question -----------------------------------------------
+;;
+;; The REST endpoint a `run_saved_question` call stands in for is `POST /api/card/:id/query`, which is what the
+;; app posts when someone opens a saved question — and `POST /api/card/:id/query/csv` when they download it.
+
+(def ^:private saved-question-rows-payload
+  "The payload claim of a saved-question run: the same rows on both surfaces. The tool answers in its own
+   envelope, with `rows` at the top level; REST hands back the dataset response, whose rows sit under `data`."
+  {:from-tool #(result-rows (:rows %))
+   :from-rest #(result-rows (get-in % [:data :rows]))})
+
+(deftest run-saved-question-baseline-parity-test
+  (testing "the positive control: with full permissions both surfaces run the card, and return the same rows"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (check-parity!
+       {:scenario :full-permissions
+        :user     :rasta
+        :expect   :allowed
+        :tool     ["run_saved_question" {:id (:id card)}]
+        :rest     [:post (str "card/" (:id card) "/query")]
+        :payload  saved-question-rows-payload}))))
+
+(deftest run-saved-question-no-collection-access-parity-test
+  (testing "a card in a collection the caller cannot read does not run, on either surface"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       card {:collection_id (:id coll)
+                                           :dataset_query (mt/mbql-query venues)}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (check-parity!
+         {:scenario :no-collection-access
+          :user     :rasta
+          :expect   :denied
+          :tool     ["run_saved_question" {:id (:id card)}]
+          :rest     [:post (str "card/" (:id card) "/query")]})))))
+
+(deftest run-saved-question-blocked-database-parity-test
+  (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+    (perms.test-util/with-no-data-perms-for-all-users!
+      (check-parity!
+       {:scenario :blocked-database
+        :user     :rasta
+        :expect   :denied
+        :tool     ["run_saved_question" {:id (:id card)}]
+        :rest     [:post (str "card/" (:id card) "/query")]}))))
+
+(deftest run-saved-question-records-the-view-parity-test
+  (testing "running a card marks it viewed, as running it in the app does — `search`'s recent mode reads those
+            events back, and a card's read event comes from the query processor when the card is *run*"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (check-parity!
+       {:scenario :full-permissions
+        :user     :rasta
+        :expect   :allowed
+        :tool     ["run_saved_question" {:id (:id card)}]
+        :rest     [:post (str "card/" (:id card) "/query")]
+        :observe  (read-events! :event/card-read)}))))
 
 ;;; ------------------------------------------------- execute_sql --------------------------------------------------
 ;;

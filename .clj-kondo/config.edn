@@ -831,11 +831,12 @@
   ;;
   ;; Out of the group are the namespaces whose rows are the *server's own*, not user content, and which
   ;; therefore have no user permission to inherit: the Toucan models under `*.models.*`, the query-handle
-  ;; store (`metabase.agent-api.handles`), the authentication that runs before any tool has been chosen
-  ;; (`metabase.agent-api.auth`, `metabase.mcp.session`), and the tool-call usage log
-  ;; (`metabase-enterprise.mcp.usage`, `metabase-enterprise.mcp.task.*`).
+  ;; store (`metabase.agent-api.handles`), the export store (`metabase.agent-api.exports`), the
+  ;; authentication that runs before any tool has been chosen (`metabase.agent-api.auth`,
+  ;; `metabase.mcp.session`), and the tool-call usage log (`metabase-enterprise.mcp.usage`,
+  ;; `metabase-enterprise.mcp.task.*`).
   ;;
-  {:pattern "^(?:metabase\\.(?:mcp|agent-api)\\.(?!models\\.)(?!handles$)(?!auth$)(?!session$)|metabase-enterprise\\.mcp\\.(?!usage$)(?!task\\.)).*(?<!-test)$"
+  {:pattern "^(?:metabase\\.(?:mcp|agent-api)\\.(?!models\\.)(?!handles$)(?!exports$)(?!auth$)(?!session$)|metabase-enterprise\\.mcp\\.(?!usage$)(?!task\\.)).*(?<!-test)$"
    :name    mcp-tool-namespaces}]
 
  :config-in-ns

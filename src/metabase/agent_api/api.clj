@@ -14,9 +14,11 @@
    [metabase.agent-api.browse-data :as agent-api.browse-data]
    [metabase.agent-api.execute-query :as agent-api.execute-query]
    [metabase.agent-api.execute-sql :as agent-api.execute-sql]
+   [metabase.agent-api.exports :as agent-api.exports]
    [metabase.agent-api.get-content :as agent-api.get-content]
    [metabase.agent-api.parameter-values :as agent-api.parameter-values]
    [metabase.agent-api.results :as agent-api.results]
+   [metabase.agent-api.run-saved-question :as agent-api.run-saved-question]
    [metabase.agent-api.search :as agent-api.search]
    [metabase.agent-api.tools :as agent-api.tools]
    [metabase.agent-api.v1-api :as v1-api]
@@ -27,7 +29,9 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -776,6 +780,149 @@
    _query-params
    body :- ::execute-sql-request]
   (agent-api.execute-sql/execute-sql body))
+
+;;; ----------------------------------------------- Run Saved Question -----------------------------------------------
+
+(mr/def ::saved-question-parameter
+  "One filter value: which of the card's parameters, and what to set it to."
+  [:map
+   [:id
+    {:optional true
+     :tool/description (str "The parameter's id — `get_content(include: [\"parameters\"])` lists them. Give "
+                            "this or `slug`, not both.")}
+    [:maybe ms/NonBlankString]]
+   [:slug
+    {:optional true
+     :tool/description "The parameter's slug, which is what it is called in the question's filter widget."}
+    [:maybe ms/NonBlankString]]
+   [:value
+    {:tool/description (str "The value to filter by. `get_parameter_values` lists the values the column "
+                            "actually holds — a value the warehouse does not spell that way matches no rows.")}
+    :any]])
+
+(mr/def ::run-saved-question-request
+  "Arguments to the `run_saved_question` tool."
+  [:map
+   [:id
+    {:tool/description "The question, model, or metric to run. A numeric id or a 21-character entity_id."}
+    agent-api.tools/IdRef]
+   [:parameters
+    {:optional true
+     :tool/description (str "Values for the filters the question declares. Each names one by `id` or `slug` "
+                            "and gives its `value`; a filter you name no value for keeps its default.")}
+    [:maybe [:sequential ::saved-question-parameter]]]
+   [:export
+    {:optional true
+     :tool/description (str "Return the whole result as a downloadable file instead of rows. Answers with a "
+                            "link and a row count, never with the file's bytes.")}
+    [:maybe (into [:enum] agent-api.run-saved-question/export-formats)]]
+   [:row_limit
+    {:optional true
+     :tool/description (str "Rows to return (default " agent-api.results/default-row-limit
+                            ", max " agent-api.results/max-row-limit "). A page that would exceed the "
+                            "response budget comes back smaller, and says so. Not for use with `export`.")}
+    [:maybe [:int {:min 1 :max agent-api.results/max-row-limit}]]]
+   [:offset
+    {:optional true
+     :tool/description (str "Rows to skip — page with the offset the truncation message names. Not for use "
+                            "with `export`.")}
+    [:maybe [:int {:min 0}]]]
+   [:response_format
+    {:optional true
+     :tool/description (str "\"concise\" (default) describes each column by name, display name, description, "
+                            "and type; \"detailed\" returns every field the query processor carries about it. "
+                            "Rows are unaffected.")}
+    agent-api.tools/ResponseFormatField]])
+
+(mr/def ::saved-question-response
+  "The dataset REST shape and the steer to the next page — or, under `export`, the link to the file and nothing
+  of what is in it."
+  [:map {:closed true}
+   [:cols               {:optional true} [:sequential :map]]
+   [:rows               {:optional true} [:sequential [:sequential :any]]]
+   [:row_count          {:optional true} :int]
+   [:truncated          {:optional true} :boolean]
+   [:truncation_message {:optional true} :string]
+   [:download_url       {:optional true} :string]
+   [:filename           {:optional true} :string]
+   [:expires_at         {:optional true} :string]])
+
+(mr/def ::saved-question-structured-output
+  "The `structuredContent` of `run_saved_question`: the rows travel once, in the text block, and what a next call
+  or a person acts on rides here — the count, the truncation steer, and the download link."
+  [:map
+   [:row_count    {:optional true :tool/description "Rows in this page, or in the exported file."} [:maybe :int]]
+   [:truncated    {:optional true :tool/description "Whether more rows sit behind this page."} [:maybe :boolean]]
+   [:truncation_message
+    {:optional true :tool/description "How to reach the rest: the next offset, and what narrows the result."}
+    [:maybe :string]]
+   [:download_url {:optional true
+                   :tool/description "`export` only: the URL that downloads the file. Give it to the user."}
+    [:maybe :string]]
+   [:filename     {:optional true :tool/description "`export` only: the name the file downloads under."}
+    [:maybe :string]]
+   [:expires_at   {:optional true :tool/description "`export` only: when the download link stops working."}
+    [:maybe :string]]])
+
+(api.macros/defendpoint :post "/v2/run-saved-question" :- ::saved-question-response
+  "Run a saved question, model, or metric — with values for the filters it declares.
+
+  Runs the card's stored query under the caller's permissions, exactly as opening it in the app does.
+  `parameters` set the filters the card declares, named by id or by slug and resolved against the card's own
+  parameter list. `export` generates the whole result as a file and answers with a TTL'd download link."
+  {:scope "agent:query:read"
+   :tool  {:name  "run_saved_question"
+           :title "Run a Saved Question"
+           :description
+           (str "Run a saved question, model, or metric and get its rows. Prefer this over rebuilding the "
+                "query: a saved question is the one somebody already got right, and its number is the one "
+                "their team agrees on.\n"
+                "\n"
+                "`id` takes the numeric id or the entity_id `search` and `browse_collection` return.\n"
+                "\n"
+                "**Filters.** If the question declares parameters, set them with `parameters`: "
+                "`[{\"slug\": \"category\", \"value\": \"Gadget\"}]`. Name each one by `slug` or by `id` — "
+                "`get_content` with `include: [\"parameters\"]` lists both. Read the values a filter accepts "
+                "with `get_parameter_values` first: a value the warehouse does not spell that way matches no "
+                "rows, and an empty result looks like an answer. A filter you give no value for keeps its "
+                "default.\n"
+                "\n"
+                "**Rows.** `row_limit` defaults to " agent-api.results/default-row-limit " (max "
+                agent-api.results/max-row-limit "); a truncated page says so and names the next `offset`. To "
+                "answer a question about many rows, do not page through them — run a question that aggregates "
+                "them, or build one with `execute_query`.\n"
+                "\n"
+                "**Files.** `export: \"csv\" | \"xlsx\" | \"json\"` returns the *whole* result as a file: a "
+                "`download_url` to give the user, the `row_count` it holds, and when the link expires. The "
+                "rows in that file are the rows this call counted. It needs download permission on the data, "
+                "and it does not take `row_limit` or `offset`.")
+           :annotations       {:read-only? true :idempotent? true}
+           :structured-output ::saved-question-structured-output
+           :input-examples [{:id 42}
+                            {:id 42 :parameters [{:slug "category" :value "Gadget"}]}
+                            {:id 42 :export "csv"}]}}
+  [_route-params
+   _query-params
+   body :- ::run-saved-question-request]
+  (agent-api.run-saved-question/run-saved-question body))
+
+;;; ------------------------------------------------ Export Download -------------------------------------------------
+
+(api.macros/defendpoint :get "/v2/export/:id" :- :any
+  "Download the file a `run_saved_question` export generated.
+
+  Carries no `:tool` metadata and so publishes no tool: this is the other end of the `download_url` that tool
+  hands back, for the person in the chat to click. The link is not a capability — the request authenticates like
+  every other one, and the export resolves for the user who generated it and for nobody else."
+  {:scope "agent:query:read"}
+  [{:keys [id]} :- [:map [:id ms/NonBlankString]]]
+  (let [{:keys [content content_type filename]}
+        (api/check-404 (agent-api.exports/read-export api/*current-user-id* id))]
+    {:status  200
+     :headers {"Content-Type"           content_type
+               "Content-Disposition"    (format "attachment; filename=\"%s\"" filename)
+               "X-Content-Type-Options" "nosniff"}
+     :body    (ByteArrayInputStream. ^bytes content)}))
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 

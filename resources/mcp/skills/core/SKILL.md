@@ -15,7 +15,8 @@ user with their permissions, so a tool can never reach data the person couldn't 
    `browse_collection` (the folder tree).
 2. **Inspect** — `get_content` for an entity, `browse_data` with the `get_fields` action for a table's
    columns. Read the fields before you write a query. Column names are never a guess.
-3. **Run** — `execute_query` (MBQL), `execute_sql` (raw SQL).
+3. **Run** — `run_saved_question` (a question somebody already saved), `execute_query` (MBQL),
+   `execute_sql` (raw SQL).
 4. **Save** — `create_question`, `create_metric`, `create_dashboard`, `create_collection`, and the
    matching update tools.
 
@@ -30,7 +31,8 @@ Reads and writes never share a tool. Nothing is saved as a side effect of runnin
 | What's in this collection, or where does it live? | `browse_collection` |
 | What is this thing, exactly? | `get_content` |
 | What values can this filter take? | `get_parameter_values` |
-| Answer a data question | `execute_query`, or `execute_sql` when structured MBQL can't say it |
+| Answer a data question | `run_saved_question` when a saved one already asks it; otherwise `execute_query`, or `execute_sql` when structured MBQL can't say it |
+| Get the result as a file the user can open | `run_saved_question` with `export` — it answers with a download link, never with the bytes |
 | Save an answer | `create_question` — load the `mbql` skill for the query itself |
 | Save a number the business agrees on | `create_metric` |
 | Put saved questions on a dashboard | `create_dashboard` — load the `dashboard` skill |
@@ -58,7 +60,13 @@ whatever `search` hands back is what a write tool accepts.
 **Query handles.** `execute_query` returns a `query_handle` whether or not it executed — `validate_only`
 dry-runs it. Pass the handle to `create_question` or `visualize_query` instead of re-emitting the query:
 the handle saves exactly the query that ran, and a re-emitted query is a regeneration that can silently
-differ. The same handle with a higher `offset` continues a large result set.
+differ. The same handle with a higher `offset` continues a large result set. `run_saved_question` mints
+none: the card *is* the name of its query, so a next page is the same `id` with a higher `offset`.
+
+**Saved questions come with their filters.** If `run_saved_question` refuses a parameter, the question
+does not declare it — the refusal lists the ones it does. Read the values a filter accepts with
+`get_parameter_values` before setting it: a value the warehouse doesn't spell that way matches no rows,
+and an empty result reads as an answer.
 
 **Errors teach.** A failure names the fix — the missing permission, the parameter to change, the tool
 to call instead. Read it and correct the call. Repeating an identical call is never the fix.

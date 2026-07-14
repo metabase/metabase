@@ -83,73 +83,8 @@
           lib/prepare-for-serialization))))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; Paging
-;;; ──────────────────────────────────────────────────────────────────
-;;
-;; MBQL pages by `:page {:page n :items m}` — rows (n-1)*m+1 through n*m — so an offset it can express is a
-;; multiple of the page size. Rather than silently rounding a stray offset (which would return rows the caller
-;; did not ask for and look like an answer), the tool says so; every offset a truncation message names
-;; conforms by construction.
-
-(defn- page-size
-  "How many rows a page actually carries: `row-limit`, unless the query processor would return fewer. Sizing
-   the page to what will survive the row cap keeps every row reachable — see [[results/row-cap]]."
-  [query-map row-limit]
-  (min (or (results/row-cap query-map) row-limit) row-limit))
-
-(defn- check-offset!
-  [offset row-limit query-map]
-  (when-not (zero? (mod offset row-limit))
-    (tools/teaching-error!
-     (str "offset must be a multiple of the page size (" row-limit "); " offset " is not. Continue with the "
-          "offset the previous response named.")))
-  (when-let [limit (agent-api.query/own-limit query-map)]
-    (when (<= limit offset)
-      (tools/teaching-error!
-       (str "This query's own limit of " limit " rows ends before offset " offset
-            ". Raise the query's limit to read further.")))))
-
-(defn- paginated
-  "`query-map` windowed to the page `offset` and `row-limit` name. `:page` and `:limit` cannot coexist on a
-   stage, so the caller's `limit:` comes off here and is re-applied to the rows — it caps the set, and the
-   page reads within it."
-  [query-map offset row-limit]
-  (let [last-stage (dec (count (:stages query-map)))]
-    (-> query-map
-        (update-in [:stages last-stage] dissoc :limit)
-        (assoc-in [:stages last-stage :page] {:page  (inc (quot offset row-limit))
-                                              :items row-limit}))))
-
-;;; ──────────────────────────────────────────────────────────────────
 ;;; The tool
 ;;; ──────────────────────────────────────────────────────────────────
-
-(defn- ordered?
-  "Whether the query's last stage orders its rows."
-  [query-map]
-  (boolean (seq (:order-by (last (:stages query-map))))))
-
-(defn- unordered-warning
-  "Paging an unordered query is not sound: `offset` compiles to SQL `OFFSET`, and a database is free to
-   return the rows of two unordered windows in different orders, so a page boundary can repeat one row and
-   skip another. Say so rather than hand back a result that is subtly not the table."
-  [query-map]
-  (when-not (ordered? query-map)
-    (str " This query has no `order-by`, so its row order is not guaranteed: add one before paging, or a row "
-         "can repeat on one page and be missed on the next.")))
-
-(defn- check-call!
-  "Everything that has to hold before a query runs, and every one of them holds for `validate_only` too.
-
-   A dry run that blesses a call the same handle would later refuse is worse than no dry run at all — and
-   when what it blesses is a table the caller cannot query or a column their sandbox hides, the refusal it
-   skipped was the only thing standing between the model and an existence oracle for exactly the data the
-   permission was meant to hide."
-  [query-map {:keys [offset]} row-limit]
-  (check-mbql! query-map)
-  (agent-api.query/check-shape! query-map)
-  (agent-api.query/check-source-permissions! query-map)
-  (check-offset! (or offset 0) row-limit query-map))
 
 (mu/defn execute-query :- :map
   "Validate a query, run it, and hand back a handle for what ran.
@@ -161,22 +96,24 @@
    one per attempt."
   [{:keys [query_handle validate_only row_limit offset response_format] :as params} :- Params]
   (tools/check-exactly-one! params [:query :query_handle])
-  (let [offset    (or offset 0)
-        query-map (resolve-query params)
-        row-limit (page-size query-map (tools/clamp-limit row_limit
-                                                          results/default-row-limit
-                                                          results/max-row-limit))]
-    (check-call! query-map params row-limit)
-    ;; A handle already names this query, byte for byte. Re-minting would hash the re-encoded JSON, which
-    ;; need not encode identically, and hand back a *different* handle than the one the caller passed —
-    ;; while the truncation message tells them to keep using the same one.
-    (let [handle (or query_handle (handles/store-query! api/*current-user-id* query-map))]
+  (let [query-map (resolve-query params)]
+    ;; Everything that has to hold before a query runs, and every one of them holds for `validate_only` too. A
+    ;; dry run that blesses a call the same handle would later refuse is worse than no dry run at all — and
+    ;; when what it blesses is a table the caller cannot query or a column their sandbox hides, the refusal it
+    ;; skipped was the only thing standing between the model and an existence oracle for exactly the data the
+    ;; permission was meant to hide. [[results/pager]] refuses an offset MBQL's `:page` cannot express.
+    (check-mbql! query-map)
+    (agent-api.query/check-shape! query-map)
+    (agent-api.query/check-source-permissions! query-map)
+    (let [pager  (results/pager query-map
+                                (or offset 0)
+                                (tools/clamp-limit row_limit results/default-row-limit results/max-row-limit))
+          ;; A handle already names this query, byte for byte. Re-minting would hash the re-encoded JSON, which
+          ;; need not encode identically, and hand back a *different* handle than the one the caller passed —
+          ;; while the truncation message tells them to keep using the same one.
+          handle (or query_handle (handles/store-query! api/*current-user-id* query-map))]
       (if validate_only
         {:query_handle handle :validated true}
-        (-> (results/run-query! (paginated query-map offset row-limit))
-            (results/page-response {:handle          handle
-                                    :offset          offset
-                                    :row-limit       row-limit
-                                    :response-format response_format
-                                    :own-limit       (agent-api.query/own-limit query-map)
-                                    :warning         (unordered-warning query-map)}))))))
+        (results/page-response pager
+                               (results/run-query! (results/window pager query-map))
+                               {:handle handle :response-format response_format})))))

@@ -16,9 +16,9 @@
    the values: a page, a save, or a chart taken from the handle reproduces the query the caller saw, and a
    question saved from it keeps those values as its variables' defaults.
 
-   Paging is a re-read: raw SQL has no `:page` clause to re-window it in the warehouse, so an `offset` reads
-   `offset + row_limit` rows and drops the ones already seen. The instance's row cap is therefore a ceiling
-   on how far `offset` can reach, and a page that ends at it says so and names the SQL-side recovery."
+   Paging is a re-read — raw SQL has no clause to re-window it in the warehouse — which makes the instance's
+   row cap a ceiling on how far an `offset` can reach. The arithmetic is [[metabase.agent-api.results/pager]]'s:
+   it reads the strategy off the query, not off the tool that holds it."
   (:require
    [clojure.string :as str]
    [metabase.agent-api.handles :as handles]
@@ -189,48 +189,6 @@
     (built-query sql params)))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; Paging
-;;; ──────────────────────────────────────────────────────────────────
-;;
-;; Raw SQL carries no clause the tool can re-window it with, so a page is read by fetching through the offset
-;; and dropping what the caller has already seen. The instance's row cap bounds the fetch, and so bounds how
-;; far an `offset` reaches; past it the only way on is `LIMIT`/`OFFSET` in the SQL itself.
-
-(defn- page
-  "How many rows this page carries and how many the query must fetch to reach it, given the row cap."
-  [query-map offset row-limit]
-  (let [cap       (results/row-cap query-map)
-        available (if cap (- cap offset) row-limit)]
-    (when-not (pos? available)
-      (tools/teaching-error!
-       (str "This instance returns at most " cap " rows for one query, and offset " offset " starts past "
-            "that. Page inside the SQL with `LIMIT`/`OFFSET`, or aggregate — a question about that many "
-            "rows is not answered by reading them.")))
-    (let [row-limit (min row-limit available)]
-      {:cap       cap
-       :row-limit row-limit
-       :fetch     (+ offset row-limit)})))
-
-(defn- capped-message
-  "The steer for a full page that ends at the row cap: `offset` cannot reach the rows behind it, so the next
-   call is a different query rather than a different offset."
-  [{:keys [cap row-limit fetch]} offset]
-  (when (and cap (= fetch cap))
-    (str "Showing " row-limit " rows from offset " offset ", and more may follow — but this instance returns "
-         "at most " cap " rows for one query, so `offset` cannot read past it. Add `LIMIT`/`OFFSET` to the "
-         "SQL to read further, or aggregate to answer the question without the rows.")))
-
-(defn- unordered-warning
-  "Paging by re-reading is only sound if the SQL orders its rows: without an `ORDER BY` a database may return
-   two reads of the same query in different orders, and a page boundary can then repeat one row and skip
-   another. The check is on the text and is therefore a caveat, not a verdict — it is attached to a steering
-   message, never to a refusal."
-  [query-map]
-  (when-not (re-find #"(?i)\border\s+by\b" (str (get-in query-map [:stages 0 :native])))
-    (str " This SQL has no `ORDER BY`, so its row order is not guaranteed: add one before paging, or a row "
-         "can repeat on one page and be missed on the next.")))
-
-;;; ──────────────────────────────────────────────────────────────────
 ;;; The tool
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -245,23 +203,13 @@
   [{:keys [query_handle validate_only row_limit offset response_format] :as params} :- Params]
   (check-enabled!)
   (tools/check-exactly-one! params [:sql :query_handle])
-  (let [offset    (or offset 0)
-        query-map (resolve-query params)
-        paging    (page query-map offset (tools/clamp-limit row_limit
-                                                            results/default-row-limit
-                                                            results/max-row-limit))
-        row-limit (:row-limit paging)
+  (let [query-map (resolve-query params)
+        pager     (results/pager query-map
+                                 (or offset 0)
+                                 (tools/clamp-limit row_limit results/default-row-limit results/max-row-limit))
         handle    (or query_handle (handles/store-query! api/*current-user-id* query-map))]
     (if validate_only
       {:query_handle handle :validated true}
-      (-> (results/run-query! (assoc query-map :constraints {:max-results           (:fetch paging)
-                                                             :max-results-bare-rows (:fetch paging)}))
-          ;; The window is cut here rather than in the warehouse: the rows through `offset` were fetched to
-          ;; reach the ones the caller asked for, and they are not part of the answer.
-          (update-in [:data :rows] #(vec (drop offset %)))
-          (results/page-response {:handle          handle
-                                  :offset          offset
-                                  :row-limit       row-limit
-                                  :response-format response_format
-                                  :warning         (unordered-warning query-map)
-                                  :capped-message  (capped-message paging offset)})))))
+      (results/page-response pager
+                             (results/run-query! (results/window pager query-map))
+                             {:handle handle :response-format response_format}))))

@@ -9,6 +9,7 @@
    would pass a verdict-only matrix while handing an agent rows, columns, and recipients the app would
    never show that user."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.tu]
    [metabase-enterprise.sandbox.test-util :as met]
@@ -17,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.permission-parity-test :as parity]
+   [metabase.mcp.tools :as mcp.tools]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
@@ -157,6 +159,20 @@
             :user     :rasta
             :expect   :allowed
             :tool     ["execute_question" {:id (:id card)}]
+            :rest     [:post (str "card/" (:id card) "/query")]
+            :payload  (assoc query-rows-payload :narrower-than (all-venues-rows))}))))))
+
+(deftest run-saved-question-sandboxed-user-parity-test
+  (testing "a row-sandboxed user may run a saved question with `run_saved_question` — and gets the sandbox's
+            rows from both surfaces, never the table's"
+    (mt/with-premium-features #{:sandboxes}
+      (met/with-gtaps! (row-sandbox)
+        (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+          (parity/check-parity!
+           {:scenario :row-sandboxed-user
+            :user     :rasta
+            :expect   :allowed
+            :tool     ["run_saved_question" {:id (:id card) :row_limit 200}]
             :rest     [:post (str "card/" (:id card) "/query")]
             :payload  (assoc query-rows-payload :narrower-than (all-venues-rows))}))))))
 
@@ -353,9 +369,50 @@
           :tool     ["execute_query" {:query_handle (venues-query-handle! :rasta) :row_limit 200}]
           :rest     [:post "dataset" (mt/mbql-query venues)]
           :payload  query-rows-payload})
-        (testing "and the app's export refuses them, which is the surface download permission governs — the
-                  tool catalog exposes no export at all, so there is nothing here for it to govern"
+        (testing "and the app's export refuses them, which is the surface download permission governs"
           (is (= 403
                  (:status (mt/user-http-request-full-response
                            :rasta :post "dataset/csv"
                            {:query (mt/mbql-query venues {:limit 1})})))))))))
+
+(deftest run-saved-question-export-no-download-permission-parity-test
+  (testing "`run_saved_question`'s export *is* a download, and it is refused by the permission that governs
+            one — on both surfaces. The tool would silently bypass the check if it ran the export under any
+            context but the app's own download context, which is the only thing the middleware recognizes"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
+        (perms.test-util/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/download-results :no)
+          (parity/check-parity!
+           {:scenario :no-download-permission
+            :user     :rasta
+            :expect   :denied
+            :tool     ["run_saved_question" {:id (:id card) :export "csv"}]
+            :rest     [:post (str "card/" (:id card) "/query/csv")]})
+          (testing "while the same card still *reads* for them: download permission gates the file, not the rows"
+            (parity/check-parity!
+             {:scenario :no-download-permission
+              :user     :rasta
+              :expect   :allowed
+              :tool     ["run_saved_question" {:id (:id card)}]
+              :rest     [:post (str "card/" (:id card) "/query")]})))))))
+
+(deftest run-saved-question-export-limited-download-permission-parity-test
+  (testing "the limited download tier caps an export at ten thousand rows, and the tool's file carries exactly
+            the rows the app's own download does"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query checkins)}]
+        (perms.test-util/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/download-results
+                                          :ten-thousand-rows)
+          (let [rest-rows (-> (mt/user-http-request :rasta :post 200 (str "card/" (:id card) "/query/csv"))
+                              str
+                              str/split-lines
+                              count
+                              dec)                                  ; the header is not a row
+                tool-rows (:row_count (parity/tool-body
+                                       (mt/with-test-user :rasta
+                                         (mcp.tools/call-tool nil "run_saved_question"
+                                                              {:id (:id card) :export "csv"}))))]
+            (is (pos? rest-rows))
+            (is (= rest-rows tool-rows))))))))

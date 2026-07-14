@@ -81,6 +81,7 @@ These render inline visualizations in your AI client, and only work in clients t
 - **Query tables and metrics** (`query`): Run a query and page through large result sets with a continuation token.
 - **Read resource** (`read_resource`): Read up to five Metabase entities (or lists) per call by `metabase://` URI. List URIs (like a collection's items or a table's fields) return up to 25 items each.
 - **Execute question** (`execute_question`): Run a saved question and return its results.
+- **Run saved question** (`run_saved_question`): Run a saved question, model, or metric — with values for the filters it declares — and return its rows. Can instead export the whole result as a CSV, XLSX, or JSON file and hand back a download link that expires; exporting needs download permission on the data.
 
 ### Write/delete tools
 

@@ -55,7 +55,7 @@ Access tokens are scoped to limit what tools a client can use:
 | Scope                     | Grants access to                                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `agent:discover:read`     | the discover toolset: `search`, `browse_data`, `browse_collection`, `get_content`, `get_parameter_values`       |
-| `agent:query:read`        | the query toolset: `execute_query`, `execute_sql`                                                              |
+| `agent:query:read`        | the query toolset: `execute_query`, `execute_sql`, `run_saved_question`                                       |
 | `agent:resource:read`     | `read_resource` (always granted to any authenticated caller; per-URI perm checks happen inside the dispatcher) |
 | `agent:query:construct`   | `construct_query`                                                                                              |
 | `agent:query`             | `query`                                                                                                        |
@@ -101,6 +101,7 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `execute_query`   | Run a query: portable MBQL 5 JSON or a `query_handle`, `validate_only` for a dry run, `row_limit` + `offset` to page. Returns the rows in the dataset REST shape and a `query_handle` naming what ran — the handle a save or a chart reuses. |
 | `execute_sql`     | Run raw SQL: `sql` against a `database_id`, or a `query_handle`, with `template_tag_values` for the SQL's `{{variables}}`, `validate_only` for a dry run, `row_limit` + `offset` to page. Returns the rows and a `query_handle` naming what ran — the handle a save or a chart reuses. Requires native-query permission on the database. The `mcp-execute-sql-enabled` setting turns it off instance-wide, and a disabled tool is absent from `tools/list` as well as refused when called. |
 | `execute_question` | Run a saved question by id and return its rows + column metadata. Runs under the caller's permissions. Parameterized questions are not supported (returns an error). |
+| `run_saved_question` | Run a saved question, model, or metric: `id` (numeric or entity_id), `parameters` for the filters the card declares (named by `id` or `slug`, resolved server-side), `row_limit` + `offset` to page. `export: "csv" / "xlsx" / "json"` generates the whole result as a file and answers with a TTL'd `download_url` and a row count, never with the bytes. The export runs under the app's download context, so the EE download-permission tiers apply to it exactly as they do to the app's own Download Results. |
 
 ### Write
 
