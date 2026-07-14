@@ -16,6 +16,23 @@ export function Outlet(): JSX.Element {
 }
 
 /**
+ * Turns a v7-style route `element` into a react-router v3 route `component`. The
+ * child route that v3 injects as `props.children` is exposed through context, so
+ * the element can render it with `<Outlet/>`.
+ */
+export function routeElement(
+  element: ReactNode,
+): ComponentType<{ children?: ReactNode }> {
+  return function RouteElement({ children }) {
+    return (
+      <OutletContext.Provider value={children}>
+        {element}
+      </OutletContext.Provider>
+    );
+  };
+}
+
+/**
  * Wraps a v7-style component so it can be used as a react-router v3 route
  * `component`. The child route that v3 injects as `props.children` is exposed
  * through context, letting the wrapped component render it with `<Outlet/>`.
@@ -23,11 +40,5 @@ export function Outlet(): JSX.Element {
 export function withOutlet(
   Component: ComponentType,
 ): ComponentType<{ children?: ReactNode }> {
-  return function RouteWithOutlet({ children }) {
-    return (
-      <OutletContext.Provider value={children}>
-        <Component />
-      </OutletContext.Provider>
-    );
-  };
+  return routeElement(<Component />);
 }
