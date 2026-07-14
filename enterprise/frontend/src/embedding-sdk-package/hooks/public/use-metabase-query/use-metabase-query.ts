@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
+import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { isQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 
