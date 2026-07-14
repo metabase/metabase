@@ -40,32 +40,12 @@ If you're using Metabase Cloud, we've encrypted your keys for you.
 ### Set up email for the fallback code
 
 The email fallback only appears if your Metabase can send [email](../configuring-metabase/email.md). If you skip this, people will rely on their authenticator app and recovery codes only.
+
 ## See who's enrolled
 
 When 2FA is on, the **Two-factor authentication** card shows how many people have enrolled and how many haven't. Since enrollment is up to each person in this version, these counts help you follow up with anyone who hasn't set it up yet.
 
 The counts are the whole picture Metabase gives you here: there's no per-person status or admin control to remove someone's 2FA from the People page.
-
-## Help someone who's locked out
-
-Because there's no admin reset in this version, people need to recover access themselves, so make sure everyone knows their options before they enroll:
-
-- Enter one of the **recovery codes** they saved during enrollment.
-- If you've set up email, have Metabase **email a code** from the login screen.
-
-Encourage people to store their recovery codes somewhere safe. Without a recovery code or the email fallback, someone who loses their authenticator app can't get back in.
-
-## How 2FA changes logging in
-
-Signing in becomes a two-step process: after entering their email and password, enrolled people enter a code before Metabase creates their session. See [logging in with two-factor authentication](./account-settings.md#logging-in-with-two-factor-authentication) for what people see.
-
-Resetting a password doesn't skip the second step. When an enrolled person resets their password, Metabase still asks for their 2FA code before signing them in, so a password reset alone can't get around 2FA.
-
-## Limitations in this version
-
-- 2FA is opt-in. You can make it available, but you can't require people to enroll yet.
-- There's no per-person status or 2FA removal on the People page. Admins see enrollment counts only.
-- No SMS codes or hardware keys (passkeys, U2F, WebAuthn).
 
 ## Further reading
 
