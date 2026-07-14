@@ -50,6 +50,7 @@ describe("getHoveredFromHighlighted", () => {
     return createMockCartesianChartModel({
       seriesModels,
       dataset,
+      // Unjustified type cast. FIXME
       transformedDataset: dataset.map((datum, index) => ({
         ...datum,
         [INDEX_KEY]: index,
@@ -334,6 +335,7 @@ describe("getHoveredFromHighlighted", () => {
     const chartModel = createMockCartesianChartModel({
       seriesModels: [seriesModel],
       dataset: [datum],
+      // Unjustified type cast. FIXME
       transformedDataset: [
         { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
       ] as Datum[],

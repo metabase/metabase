@@ -1,5 +1,4 @@
 import { act } from "@testing-library/react";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
@@ -9,6 +8,7 @@ import {
   createQuery,
   createThread,
 } from "metabase/explorations/test-utils";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Exploration, ExplorationThread } from "metabase-types/api";
 

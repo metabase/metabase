@@ -449,6 +449,7 @@ describe("getCommentLabel", () => {
     const group = makeSeriesGroup([], []);
     expect(getCommentLabel(undefined, group)).toBeNull();
     expect(
+      // Unjustified type cast. FIXME
       getCommentLabel({ cardId: 1 } as HighlightedObject, undefined),
     ).toBeNull();
   });

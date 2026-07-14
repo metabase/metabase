@@ -788,6 +788,7 @@ describe("scenarios > explorations > chart click-through", () => {
   it("clicking a cartesian point opens Explore further + Add comment, posts explore-further filters, and navigates from the new-thread toast", () => {
     createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
       cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+        // Unjustified type cast. FIXME
         const data = body as GetExplorationDataResponse;
         const ordersMetric = data.metrics.find(
           (metric) => metric.name === "Count of orders",
@@ -831,6 +832,7 @@ describe("scenarios > explorations > chart click-through", () => {
 
           cy.request("GET", `/api/exploration/${explorationId}`).then(
             ({ body }) => {
+              // Unjustified type cast. FIXME
               const exploration = body as Exploration;
               initialThreadIds = (exploration.threads ?? []).map(
                 (thread) => thread.id,
@@ -892,6 +894,7 @@ describe("scenarios > explorations > chart click-through", () => {
               "value",
             );
 
+            // Unjustified type cast. FIXME
             const threads = (response?.body as Exploration).threads ?? [];
             const newThread = threads.find(
               (thread) => !initialThreadIds.includes(thread.id),

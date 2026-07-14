@@ -225,6 +225,7 @@ function ExplorationGroupVisualizationChart({
     (comment: Comment) => {
       const context = comment.context;
 
+      // Unjustified type cast. FIXME
       const highlighted = context?.highlighted as HighlightedObject | undefined;
       const commentLabel = getCommentLabel(
         highlighted,

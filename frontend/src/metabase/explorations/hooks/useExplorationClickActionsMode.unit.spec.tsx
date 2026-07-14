@@ -99,7 +99,10 @@ function renderMode(
         ...overrides,
       }),
     {
-      initialProps: { commentDrafts: {} as CommentDrafts },
+      initialProps: {
+        // Unjustified type cast. FIXME
+        commentDrafts: {} as CommentDrafts,
+      },
     },
   );
   return { ...view, setCommentDrafts };
@@ -134,6 +137,7 @@ describe("useExplorationClickActionsMode", () => {
   it("fires explore further with filters and closes the popover", async () => {
     const closePopover = jest.fn();
     const { result } = renderMode();
+    // Unjustified type cast. FIXME
     const exploreAction = result.current
       .actionsForClick(makeClicked())
       .find((action) => action.name === "explore-further") as {
@@ -141,6 +145,7 @@ describe("useExplorationClickActionsMode", () => {
     };
 
     await act(async () => {
+      // Unjustified type cast. FIXME
       exploreAction?.onClick?.({ closePopover } as any);
     });
 
@@ -158,6 +163,7 @@ describe("useExplorationClickActionsMode", () => {
   it("shows an error toast when explore further fails", async () => {
     exploreFurtherMock.mockResolvedValue({ error: { status: 500 } });
     const { result } = renderMode();
+    // Unjustified type cast. FIXME
     const exploreAction = result.current
       .actionsForClick(makeClicked())
       .find((action) => action.name === "explore-further") as {
@@ -165,6 +171,7 @@ describe("useExplorationClickActionsMode", () => {
     };
 
     await act(async () => {
+      // Unjustified type cast. FIXME
       exploreAction?.onClick?.({ closePopover: jest.fn() } as any);
     });
 
@@ -186,6 +193,7 @@ describe("useExplorationClickActionsMode", () => {
     }
 
     render(
+      // Unjustified type cast. FIXME
       <Popover {...({ onClose } as unknown as ClickActionPopoverProps)} />,
     );
     await userEvent.click(
@@ -220,6 +228,7 @@ describe("useExplorationClickActionsMode", () => {
     }
 
     render(
+      // Unjustified type cast. FIXME
       <Popover {...({ onClose } as unknown as ClickActionPopoverProps)} />,
     );
     await userEvent.click(
