@@ -52,3 +52,114 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_field_fk_target_ref_field_id
             onDelete: SET NULL
+
+  ## metabase_field_user_settings.fk_target_field_id mirrors metabase_field.fk_target_field_id
+  ## (it stores the user-set override of the same reference) and had the same problem: nothing
+  ## enforced it, so it gets the same cleanup + index + FK treatment.
+  - changeSet:
+      id: v63.2026-07-14T00:00:03
+      author: ranquild
+      comment: Null out metabase_field_user_settings.fk_target_field_id values that point to deleted fields
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field_user_settings AS a
+              LEFT JOIN metabase_field AS b ON b.id = a.fk_target_field_id
+              SET a.fk_target_field_id = NULL
+              WHERE a.fk_target_field_id IS NOT NULL AND b.id IS NULL;
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_field_user_settings
+              SET fk_target_field_id = NULL
+              WHERE fk_target_field_id IS NOT NULL
+                AND fk_target_field_id NOT IN (SELECT id FROM metabase_field);
+      rollback: # no change
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:04
+      author: ranquild
+      comment: Index metabase_field_user_settings.fk_target_field_id
+      changes:
+        - createIndex:
+            tableName: metabase_field_user_settings
+            indexName: idx_field_user_settings_fk_target_field_id
+            columns:
+              - column:
+                  name: fk_target_field_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:05
+      author: ranquild
+      comment: Add FK constraint on metabase_field_user_settings.fk_target_field_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            baseColumnNames: fk_target_field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_user_settings_fk_target_ref_field_id
+            onDelete: SET NULL
+
+  ## oauth_refresh_token.user_id is documented as an FK to core_user.id and its sibling tables
+  ## (oauth_authorization_code, oauth_access_token) got an index + FK when they were created,
+  ## but the refresh-token table was left unconstrained. A refresh token whose user is gone is
+  ## unusable (and undesirable to keep), so dangling rows are deleted rather than nulled:
+  ## user_id NULL is reserved for tokens that were never tied to a user.
+  - changeSet:
+      id: v63.2026-07-14T00:00:06
+      author: ranquild
+      comment: Delete oauth_refresh_token rows whose user has been deleted
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE a FROM oauth_refresh_token AS a
+              LEFT JOIN core_user AS b ON b.id = a.user_id
+              WHERE a.user_id IS NOT NULL AND b.id IS NULL;
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DELETE FROM oauth_refresh_token
+              WHERE user_id IS NOT NULL
+                AND user_id NOT IN (SELECT id FROM core_user);
+      rollback: # no change
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:07
+      author: ranquild
+      comment: Index oauth_refresh_token.user_id
+      changes:
+        - createIndex:
+            tableName: oauth_refresh_token
+            indexName: idx_oauth_refresh_token_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:08
+      author: ranquild
+      comment: Add FK on oauth_refresh_token.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: oauth_refresh_token
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_oauth_refresh_token_user_id
+
+  ## pulse_channel.channel_id has had an FK since v51 but never an index; it was grandfathered
+  ## into the excluded-fks set of fks-are-indexed-test. Index it and drop the exclusion.
+  - changeSet:
+      id: v63.2026-07-14T00:00:09
+      author: ranquild
+      comment: Index pulse_channel.channel_id
+      changes:
+        - createIndex:
+            tableName: pulse_channel
+            indexName: idx_pulse_channel_channel_id
+            columns:
+              - column:
+                  name: channel_id
