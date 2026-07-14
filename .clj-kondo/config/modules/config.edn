@@ -1207,31 +1207,6 @@
            sql-tools
            util}}
 
-  llm
-  {:team "Metabot"
-   :api  #{metabase.llm.api
-           metabase.llm.init
-           metabase.llm.settings
-           metabase.llm.startup}
-   :uses #{analytics
-           api
-           driver
-           lib
-           lib.be
-           lib.metadata
-           metabot
-           models
-           premium-features
-           request
-           settings
-           sql-tools
-           sync
-           util
-           warehouse-schema}
-   :model-imports #{:model/Card
-                    :model/Database
-                    :model/Field
-                    :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1272,9 +1247,9 @@
    :uses #{api
            app-db
            config
-           llm
            mcp.oauth-server
            metabot.agent-api
+           metabot.llm
            premium-features
            request
            server
@@ -1329,6 +1304,7 @@
               metabase.metabot.self
               metabase.metabot.settings}
    :module-exports #{metabot.agent-api
+                     metabot.llm
                      metabot.slackbot}
    :uses    #{activity-feed
               analytics
@@ -1350,7 +1326,7 @@
               lib.legacy-mbql
               lib.metadata
               lib.schema
-              llm
+              metabot.llm
               metabot.slackbot
               models
               native-query-snippets
@@ -1405,8 +1381,8 @@
               events
               lib
               lib.be
-              llm
               metabot
+              metabot.llm
               queries
               query-permissions
               query-processor
@@ -1421,6 +1397,33 @@
                     :model/Database
                     :model/Table
                     :model/User}}
+
+  metabot.llm
+  {:team    "Metabot"
+   :ns-prefix "metabase.llm"
+   :api  #{metabase.llm.api
+           metabase.llm.init
+           metabase.llm.settings
+           metabase.llm.startup}
+   :uses #{analytics
+           api
+           driver
+           lib
+           lib.be
+           lib.metadata
+           metabot
+           models
+           premium-features
+           request
+           settings
+           sql-tools
+           sync
+           util
+           warehouse-schema}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   metabot.slackbot
   {:team    "Metabot"
@@ -1714,7 +1717,7 @@
            config
            events
            internal-stats
-           llm
+           metabot.llm
            settings
            startup
            task
@@ -3663,8 +3666,8 @@
            config
            connection-pool
            events
-           llm
            metabot
+           metabot.llm
            models
            permissions
            premium-features

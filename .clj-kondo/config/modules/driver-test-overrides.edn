@@ -32,12 +32,12 @@
    initialization-status
    interestingness
    internal-stats
-   llm
    login-history
    mcp
    mcp.oauth-server
    metabot
    metabot.agent-api
+   metabot.llm
    metabot.slackbot
    notification
    permissions
