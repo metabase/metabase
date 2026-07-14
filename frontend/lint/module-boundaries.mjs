@@ -229,6 +229,22 @@ const elements = [
       mode: "full",
     }),
   ),
+  // The Near-Membrane sandbox + its ABI (globals map, factory/provider-props
+  // contract). Feature tier on purpose: it's a library consumed by the app-tier
+  // entries (runtime + SDK package dev preset), and the tier guarantees it only
+  // reaches shared/lib — keep the sandbox's dependency surface auditable.
+  createElement({
+    type: "feature",
+    name: "data-app-sandbox",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    mode: "full",
+  }),
+  createElement({
+    type: "app",
+    name: "data-app-runtime",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    mode: "full",
+  }),
   createElement({
     type: "feature",
     name: "enterprise",

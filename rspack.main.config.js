@@ -130,8 +130,10 @@ const config = {
     "app-embed-mcp": "./app-embed-mcp.tsx",
     styles: "./css/index.module.css",
     ...(isEEBuild && {
-      "app-data-app": ENTERPRISE_SRC_PATH + "/data_apps/app-data-app.tsx",
-      "data-app-vendors": ENTERPRISE_SRC_PATH + "/data_apps/iframe-vendors.ts",
+      "app-data-app":
+        ENTERPRISE_SRC_PATH + "/data_apps/runtime/app-data-app.tsx",
+      "data-app-vendors":
+        ENTERPRISE_SRC_PATH + "/data_apps/runtime/iframe-vendors.ts",
     }),
   },
 

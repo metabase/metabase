@@ -7,9 +7,9 @@ import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPort
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { getCspNonce } from "metabase/utils/csp";
+import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data_apps/sandbox/types";
 
 import { useHostSdkStore } from "../../lib/use-host-sdk-store";
-import type { DataAppMetabaseProviderProps } from "../../sandbox";
 import { DataAppErrorState } from "../DataAppErrorState/DataAppErrorState";
 
 // Note: Mantine + SDK CSS is loaded into the iframe via the `data-app-vendors`

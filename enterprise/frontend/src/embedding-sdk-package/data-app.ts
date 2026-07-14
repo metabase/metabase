@@ -39,4 +39,4 @@ export type {
 export type {
   DataAppFactory,
   DataAppMetabaseProviderProps,
-} from "metabase-enterprise/data_apps/sandbox";
+} from "metabase-enterprise/data_apps/sandbox/types";

@@ -1,12 +1,13 @@
+import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
+
 import {
   DataAppBundleError,
   fetchDataAppBundleCode,
   instantiateDataAppBundle,
 } from "./loader";
-import { createDataAppSandbox } from "./sandbox";
 
-jest.mock("./sandbox", () => ({
-  ...jest.requireActual("./sandbox"),
+jest.mock("metabase-enterprise/data_apps/sandbox/sandbox", () => ({
+  ...jest.requireActual("metabase-enterprise/data_apps/sandbox/sandbox"),
   createDataAppSandbox: jest.fn(),
 }));
 
