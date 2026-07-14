@@ -142,6 +142,24 @@
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
 
+(deftest update-definition-table-test
+  (testing "PUT /api/segment/:id"
+    (testing "an updated definition must still specify a source table"
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :users)
+                                                  :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+        (is (= "Segment definition must specify a source table."
+               (mt/user-http-request :crowberto :put 400 (str "segment/" id)
+                                     {:revision_message "no more source table"
+                                      :definition       {}})))))
+    (testing "a definition that moves the Segment to another table keeps table_id in sync"
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :users)
+                                                  :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+        (mt/user-http-request :crowberto :put 200 (str "segment/" id)
+                              {:revision_message "move to venues"
+                               :definition       (mbql4-segment-definition (mt/id :venues) (mt/id :venues :name) "cans")})
+        (is (= (mt/id :venues)
+               (t2/select-one-fn :table_id :model/Segment :id id)))))))
+
 (deftest update-test
   (testing "PUT /api/segment/:id"
     (mt/with-temp [:model/Segment {:keys [id]} {:table_id (mt/id :users)
@@ -180,8 +198,7 @@
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
                                          {:name             "Cool name"
-                                          :revision_message "WOW HOW COOL"
-                                          :definition       {}})))))))
+                                          :revision_message "WOW HOW COOL"})))))))
 
 (deftest update-with-full-legacy-query-test
   (testing "PUT /api/segment/:id"

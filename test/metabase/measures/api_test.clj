@@ -114,6 +114,24 @@
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
 
+(deftest update-definition-table-test
+  (testing "PUT /api/measure/:id"
+    (testing "an updated definition must still specify a source table"
+      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
+                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+        (is (= "Measure definition must specify a source table."
+               (mt/user-http-request :crowberto :put 400 (str "measure/" id)
+                                     {:revision_message "no more source table"
+                                      :definition       {}})))))
+    (testing "a definition that moves the Measure to another table keeps table_id in sync"
+      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
+                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+        (mt/user-http-request :crowberto :put 200 (str "measure/" id)
+                              {:revision_message "move to checkins"
+                               :definition       (mbql5-measure-definition (mt/id :checkins) (mt/id :checkins :user_id))})
+        (is (= (mt/id :checkins)
+               (t2/select-one-fn :table_id :model/Measure :id id)))))))
+
 (deftest update-test
   (testing "PUT /api/measure/:id"
     (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)

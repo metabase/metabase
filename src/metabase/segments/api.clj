@@ -92,6 +92,13 @@
         new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
                      new-body)]
+    ;; An updated definition must still specify a source table; if it implicitly moves the Segment to a different
+    ;; table, the write-check above checked the old table, so also make sure the user could create a Segment on the
+    ;; new one.
+    (when-let [definition (:definition new-body)]
+      (let [new-table-id (definition-table-id definition)]
+        (when (not= new-table-id (:table_id existing))
+          (api/create-check :model/Segment {:table_id new-table-id}))))
     (when changes
       (t2/update! :model/Segment id changes))
     (u/prog1 (hydrated-segment id)

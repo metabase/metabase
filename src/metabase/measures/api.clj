@@ -76,7 +76,6 @@
     (api/create-check :model/Measure (assoc body :table_id table-id))
     (let [measure (api/check-500
                    (first (t2/insert-returning-instances! :model/Measure
-                                                          :table_id    table-id
                                                           :creator_id  api/*current-user-id*
                                                           :name        name
                                                           :description description
@@ -119,6 +118,13 @@
                     (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)]
+    ;; An updated definition must still specify a source table; if it implicitly moves the Measure to a different
+    ;; table, the write-check above checked the old table, so also make sure the user could create a Measure on the
+    ;; new one.
+    (when new-def
+      (let [new-table-id (definition-table-id new-def)]
+        (when (not= new-table-id (:table_id existing))
+          (api/create-check :model/Measure {:table_id new-table-id}))))
     (when changes
       (t2/update! :model/Measure id changes))
     (u/prog1 (hydrated-measure id)
