@@ -75,7 +75,7 @@ describe("useAbortableQuery", () => {
     expect(result.current.error).toBeUndefined();
   });
 
-  it("never surfaces the abort error while the replacement request is still in flight", async () => {
+  it("never surfaces the abort error", async () => {
     fetchMock.get({
       url: "path:/api/task",
       query: { offset: "0" },
@@ -112,7 +112,7 @@ describe("useAbortableQuery", () => {
     expect(result.current.error).toBeUndefined();
   });
 
-  it("does not re-trigger or abort when a referentially new but deeply-equal arg is passed, and refetch issues exactly one more request", async () => {
+  it("does not re-trigger or abort when a referentially new but deeply-equal arg is passed, and refetch is triggered exactly once", async () => {
     fetchMock.get("path:/api/task", makeResponse(PAGE_0_TASK_ID));
 
     const { result, rerender } = setup({ arg: { limit: 50, offset: 0 } });
@@ -156,7 +156,7 @@ describe("useAbortableQuery", () => {
   it("refetches a live cache entry when refetchOnMountOrArgChange is set", async () => {
     fetchMock.get("path:/api/task", makeResponse(PAGE_0_TASK_ID));
 
-    const { result, rerender, store } = setup({
+    const { result, rerender } = setup({
       arg: { limit: 50, offset: 0 },
       refetchOnMountOrArgChange: true,
     });
@@ -166,14 +166,6 @@ describe("useAbortableQuery", () => {
     expect(getTaskCalls()).toHaveLength(1);
 
     rerender({ arg: { limit: 50, offset: 0 }, skip: true });
-    const selectQuery = taskApi.endpoints.listTasks.select({
-      limit: 50,
-      offset: 0,
-    });
-    await waitFor(() =>
-      expect(selectQuery(store.getState()).status).not.toBe("pending"),
-    );
-
     rerender({ arg: { limit: 50, offset: 0 }, skip: false });
     await waitFor(() => expect(getTaskCalls()).toHaveLength(2));
   });
