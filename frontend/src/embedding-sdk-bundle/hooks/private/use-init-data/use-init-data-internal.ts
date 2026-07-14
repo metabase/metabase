@@ -23,7 +23,7 @@ import {
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler = async (
   config: OnBeforeRequestHandlerConfig,

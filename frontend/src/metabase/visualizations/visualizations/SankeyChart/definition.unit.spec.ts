@@ -6,7 +6,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
 
-import { SANKEY_CHART_DEFINITION } from "./chart-definition";
+import { SANKEY_CHART_DEFINITION } from "./definition";
 
 const isSensible = checkNotNull(SANKEY_CHART_DEFINITION.isSensible);
 

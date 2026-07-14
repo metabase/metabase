@@ -6,10 +6,13 @@ import { render, screen } from "__support__/ui";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import type { OptionsType } from "metabase/utils/formatting/types";
+import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { formatValue } from "./value";
+
+registerJsxFormatting();
 
 const SITE_URL = "http://localhost:3000";
 
