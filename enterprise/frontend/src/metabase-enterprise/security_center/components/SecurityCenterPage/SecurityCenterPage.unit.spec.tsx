@@ -16,7 +16,7 @@ import { SecurityCenterPage } from "./SecurityCenterPage";
 
 jest.mock("metabase/admin/components/AdminLayout/AdminSettingsLayout", () => ({
   AdminSettingsLayout: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
+    <div data-testid="admin-settings-layout">{children}</div>
   ),
 }));
 
@@ -28,16 +28,18 @@ function setup(
   {
     lastCheckedAt = null,
     location,
+    isError = false,
   }: {
     lastCheckedAt?: string | null;
     location?: Location<{ open?: string }>;
+    isError?: boolean;
   } = {},
 ) {
   jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
     data: advisories,
     lastCheckedAt,
     isLoading: false,
-    isError: false,
+    isError,
     acknowledgeAdvisory: mockAcknowledge,
     acknowledgeAdvisories: mockAcknowledgeAll,
   });
@@ -85,6 +87,15 @@ describe("SecurityCenterPage", () => {
 
     expect(screen.getByText("Security Center")).toBeInTheDocument();
     expect(screen.getByTestId("current-version")).toHaveTextContent("v0.59.3");
+  });
+
+  it("renders the error state within the admin settings layout (GDGT-2748)", async () => {
+    setup([], { isError: true });
+
+    expect(
+      screen.getByText("Something went wrong loading security advisories."),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("admin-settings-layout")).toBeInTheDocument();
   });
 
   it("renders the empty state when there are no advisories", async () => {

@@ -1113,6 +1113,8 @@
   "Update a saved question (card). Patch semantics - only fields that you pass are changed.
 
   Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.
+  Archiving is a soft delete - there is no delete endpoint. It can be reversed by setting
+  `archived: false`.
   Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
   string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
   native-query permission on the target database."
@@ -1120,7 +1122,9 @@
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
-                             "To archive, set archived true. To replace the underlying query, pass query "
+                             "Archiving (archived true) is a soft delete - use it when asked to "
+                             "delete or remove a question; set archived false to restore. "
+                             "To replace the underlying query, pass query "
                              "(a query_handle from construct_query or construct_native_query).")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
@@ -1519,15 +1523,18 @@
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
   "Update a dashboard. Patch semantics - only fields you pass are changed.
 
-  Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations
-  are submitted under `dashcards` as a list of
+  Metadata: `name`, `description`, `collection_id`, `archived`. Archiving is a soft delete - there
+  is no delete endpoint. It can be reversed by setting `archived: false`.
+  Dashcard mutations are submitted under `dashcards` as a list of
   `{action: add|add_heading|add_text|update_text|remove|move, ...}` entries applied in
   order. `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
   for text cards); `update_text`, `remove`, and `move` require `dashcard_id`."
   {:scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
            :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
-                             "Set collection_id to move it. Set archived true to archive. "
+                             "Set collection_id to move it. "
+                             "Archiving (archived true) is a soft delete - use it when asked to "
+                             "delete or remove a dashboard; set archived false to restore. "
                              "Use dashcards to add, remove, or move cards: "
                              "[{\"action\":\"add\",\"card_id\":42},{\"action\":\"remove\",\"dashcard_id\":101}]. "
                              "add_heading adds a full-width section heading and add_text adds a "
