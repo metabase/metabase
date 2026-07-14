@@ -32,31 +32,66 @@
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
 
+  # Step 1 originally shipped as changeSet v62.2026-07-07T00:00:00 with a query that joined metabase_table
+  # and the per-db active-table counts to every table-level row BEFORE aggregating. On the ballooned tables
+  # this migration exists to fix, Postgres misestimates the NOT EXISTS anti-join at one row and puts nested
+  # loops above it, making the statement O(rows x databases); on a Cloud instance with 9M rows it exceeded
+  # the appDB's 5-minute socketTimeout and blocked the upgrade. v62.2026-07-14T00:00:01 below is the
+  # row-for-row equivalent replacement that aggregates the table-level rows down to (group_id, db_id) first
+  # and applies the joins and the NOT EXISTS to the aggregate, so a misestimate can only ever nest loops
+  # over thousands of rows, not millions. This changeSet retires the original's changelog entry so that
+  # instances that already ran it pick up the replacement (re-collapsing already-collapsed data is a cheap
+  # no-op); on instances where the original timed out, or that have never seen it, this DELETE is a no-op.
+  # DATABASECHANGELOG is unquoted on purpose: it folds to the table's actual case on postgres (lowercase)
+  # and h2 (uppercase), and matches it exactly on mysql/mariadb.
   - changeSet:
-      id: v62.2026-07-07T00:00:00
+      id: v62.2026-07-14T00:00:00
+      author: ranquild
+      comment: Retire the timeout-prone original of v62.2026-07-14T00:00:01 (#76077)
+      changes:
+        - sql:
+            sql: DELETE FROM DATABASECHANGELOG WHERE id = 'v62.2026-07-07T00:00:00';
+      rollback: # not necessary; the replacement changeSet is a superset of the original
+
+  # The aggregate subquery reads each table-level view-data row once, in (group_id, db_id) index order.
+  # MIN = MAX = 'blocked' is the original's COUNT(DISTINCT perm_value) = 1 AND MIN(perm_value) = 'blocked'.
+  # Coverage of every active table is counted as distinct tables covered minus distinct INACTIVE tables
+  # covered: data_permissions.table_id has a foreign key to metabase_table, so every covered table is one or
+  # the other, and joining only the inactive side keeps the lookup's working set tiny. The db-level-row
+  # exclusion and the comparison against each database's active-table count then run against the ~one row
+  # per (group_id, db_id) that leaves the aggregate.
+  - changeSet:
+      id: v62.2026-07-14T00:00:01
       author: ranquild
       comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
       changes:
         - sql:
             sql: >-
               INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
-              SELECT dp.group_id, dp.perm_type, dp.db_id, MIN(dp.perm_value)
-              FROM data_permissions dp
-              LEFT JOIN metabase_table mt ON mt.id = dp.table_id
+              SELECT agg.group_id, 'perms/view-data', agg.db_id, 'blocked'
+              FROM (
+                SELECT dp.group_id, dp.db_id,
+                       MIN(dp.perm_value) AS min_value,
+                       MAX(dp.perm_value) AS max_value,
+                       COUNT(DISTINCT dp.table_id) AS tables_covered,
+                       COUNT(DISTINCT CASE WHEN it.id IS NOT NULL THEN dp.table_id END) AS inactive_covered
+                FROM data_permissions dp
+                LEFT JOIN metabase_table it ON it.id = dp.table_id AND it.active = FALSE
+                WHERE dp.perm_type = 'perms/view-data'
+                  AND dp.table_id IS NOT NULL
+                GROUP BY dp.group_id, dp.db_id
+              ) agg
               JOIN (SELECT db_id, COUNT(*) AS n FROM metabase_table WHERE active = TRUE GROUP BY db_id) tc
-                ON tc.db_id = dp.db_id
-              WHERE dp.perm_type = 'perms/view-data'
-                AND dp.table_id IS NOT NULL
+                ON tc.db_id = agg.db_id
+              WHERE agg.min_value = 'blocked'
+                AND agg.max_value = 'blocked'
+                AND agg.tables_covered - agg.inactive_covered = tc.n
                 AND NOT EXISTS (
                   SELECT 1 FROM data_permissions dbp
-                  WHERE dbp.group_id = dp.group_id
-                    AND dbp.db_id = dp.db_id
-                    AND dbp.perm_type = dp.perm_type
-                    AND dbp.table_id IS NULL)
-              GROUP BY dp.group_id, dp.db_id, dp.perm_type, tc.n
-              HAVING COUNT(DISTINCT dp.perm_value) = 1
-                 AND MIN(dp.perm_value) = 'blocked'
-                 AND COUNT(DISTINCT CASE WHEN mt.active = TRUE THEN dp.table_id END) = tc.n;
+                  WHERE dbp.group_id = agg.group_id
+                    AND dbp.db_id = agg.db_id
+                    AND dbp.perm_type = 'perms/view-data'
+                    AND dbp.table_id IS NULL);
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
   # The rows to keep are every data_permissions row EXCEPT the table-level view-data rows that a db-level

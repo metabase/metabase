@@ -2889,9 +2889,9 @@
           attrs)))
 
 (deftest collapse-uniform-table-permissions-migration-test
-  (testing "Migrations v62.2026-07-07T00:00:00 through v62.2026-07-07T00:00:05:
+  (testing "Migrations v62.2026-07-14T00:00:00 through v62.2026-07-07T00:00:05:
             uniform full-coverage :blocked view-data table rows collapse to a db-level row (#76077)"
-    (impl/test-migrations ["v62.2026-07-07T00:00:00" "v62.2026-07-07T00:00:05"] [migrate!]
+    (impl/test-migrations ["v62.2026-07-14T00:00:00" "v62.2026-07-07T00:00:05"] [migrate!]
       (let [group-id (t2/insert-returning-pk! :permissions_group {:name "collapse-test-group"})
             db!      (fn [db-name]
                        (t2/insert-returning-pk! :metabase_database
