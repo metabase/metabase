@@ -477,7 +477,8 @@
         ;; table ids in memory — no per-row re-fetch. Apply the can-read? check last,
         ;; on the already-narrowed candidate set.
         transforms (when db-id
-                     (->> (t2/select :model/Transform
+                     (->> (t2/select [:model/Transform :id :name :description :source_database_id
+                                      :source :source_type :target :target_db_id]
                                      :source_database_id db-id
                                      {:order-by [[:%lower.name :asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))

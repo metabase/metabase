@@ -248,10 +248,15 @@
   way, so a caller gets one ranking whatever engines the instance has."
   [base-context term-queries semantic-queries]
   (let [search-fn       (fn [search-string search-engine]
-                          (:data (search/search
-                                  (search/search-context
-                                   (cond-> (assoc base-context :search-string search-string)
-                                     search-engine (assoc :search-engine (name search-engine)))))))
+                          (let [search-context (search/search-context
+                                                (cond-> (assoc base-context :search-string search-string)
+                                                  search-engine (assoc :search-engine (name search-engine))))
+                                _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
+                                                          search-string (:models search-context))
+                                data           (:data (search/search search-context))
+                                result-models  (frequencies (map :model data))]
+                            (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
+                            data))
         search-fn*      (fn [search-engine queries]
                           (join-results-by-rrf search-fn search-engine
                                                (search.engine/disjunction search-engine queries)))
@@ -289,6 +294,7 @@
   (let [search-models     (if (seq entity-types)
                             (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                             metabot-search-models)
+        _                 (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
         metabot           (t2/select-one :model/Metabot :entity_id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
         use-verified?     (if metabot-id
                             (:use_verified_content metabot)

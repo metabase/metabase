@@ -193,6 +193,7 @@
 (defn- get-card-with-last-edit-info
   "Get `Card` with ID, annotated with `:last-edit-info`."
   [id]
+  ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
   (first (revisions/with-last-edit-info [(queries/get-card id)] :card)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
