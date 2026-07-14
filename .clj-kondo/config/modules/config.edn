@@ -160,7 +160,8 @@
 
   analytics
   {:team "UX West"
-   :module-exports #{analytics.interface}
+   :module-exports #{analytics.interface
+                     analytics.internal-stats}
    :api  #{metabase.analytics.api
            metabase.analytics.api.proxy
            metabase.analytics.core
@@ -168,13 +169,13 @@
            metabase.analytics.init
            metabase.analytics.settings}
    :uses #{analytics.interface
+           analytics.internal-stats
            api
            app-db
            appearance
            config
            driver
            eid-translation
-           internal-stats
            lib.be
            models
            permissions
@@ -215,6 +216,19 @@
    :ns-prefix "metabase.analytics-interface"
    :api  #{metabase.analytics-interface.core}
    :uses #{}}
+
+  analytics.internal-stats
+  {:team "UX West"
+   :ns-prefix "metabase.internal-stats"
+   :api  #{metabase.internal-stats.core}
+   :uses #{app-db
+           models}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/Dashboard
+                    :model/MetabotMessage
+                    :model/QueryExecution
+                    :model/User}}
 
   analyze
   {:team "Graphy"
@@ -358,6 +372,7 @@
                     :model/TransformRun
                     :model/User}}
 
+
   auth-identity
   {:team "UX West"
    :api  #{metabase.auth-identity.core
@@ -377,6 +392,7 @@
   {:team "UX West"
    :api  #{metabase.auth-provider.core}
    :uses #{premium-features}}
+
 
   batch-processing
   {:team "UX West"
@@ -843,6 +859,7 @@
            workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
+
   eid-translation
   {:team "UX West"
    :api  #{metabase.eid-translation.api
@@ -1007,27 +1024,7 @@
    :model-exports #{:model/ModelIndex :model/ModelIndexValue}
    :model-imports #{:model/Card :model/Collection}}
 
-  indexes
-  {:team "Gadget"
-   :module-exports #{indexes.rest}
-   :api  #{metabase.indexes.models.table-index
-           metabase.indexes.reconcile}
-   :uses #{driver
-           models
-           util}
-   :model-exports #{:model/TableIndex}}
 
-  indexes.rest
-  {:team    "Gadget"
-   :ns-prefix "metabase.indexes-rest"
-   :api  #{metabase.indexes-rest.api}
-   :uses #{api
-           indexes
-           transforms.base
-           util}
-   :model-imports #{:model/Database
-                    :model/TableIndex
-                    :model/Transform}}
 
   initialization-status
   {:team "UX West"
@@ -1039,17 +1036,6 @@
    :api  #{metabase.interestingness.core}
    :uses #{util}}
 
-  internal-stats
-  {:team "UX West"
-   :api  #{metabase.internal-stats.core}
-   :uses #{app-db
-           models}
-   :model-imports #{:model/AiUsageLog
-                    :model/Card
-                    :model/Dashboard
-                    :model/MetabotMessage
-                    :model/QueryExecution
-                    :model/User}}
 
   lib
   {:team "Querying Platform"
@@ -1699,12 +1685,12 @@
            metabase.premium-features.core
            metabase.premium-features.init}
    :uses #{analytics.interface
+           analytics.internal-stats
            api
            app-db
            classloader
            config
            events
-           internal-stats
            metabot.llm
            settings
            startup
@@ -2023,13 +2009,13 @@
            models
            premium-features
            query-processor
-           secrets
            settings
            sync
            system
            upload
            util
-           warehouses.schema}}
+           warehouses.schema
+           warehouses.secrets}}
 
   query-processor.pivot
   {:team "UX West"
@@ -2152,11 +2138,6 @@
                     :model/Table
                     :model/User}}
 
-  secrets
-  {:team "Graphy"
-   :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}
-   :model-exports #{:model/Secret}}
 
   segments
   {:team "Graphy"
@@ -2490,6 +2471,7 @@
   transforms
   {:team "Graphy"
    :module-exports #{transforms.base
+                     transforms.indexes
                      transforms.inspector
                      transforms.rest}
    :api  #{metabase.transforms.core
@@ -2504,7 +2486,6 @@
            database-routing
            driver
            events
-           indexes
            lib
            lib.be
            lib.schema
@@ -2522,6 +2503,7 @@
            task.history
            tracing
            transforms.base
+           transforms.indexes
            util}
    :model-exports #{:model/Transform
                     :model/TransformJob
@@ -2556,7 +2538,6 @@
    :uses #{database-routing
            driver
            events
-           indexes
            lib
            lib.be
            lib.metadata
@@ -2564,8 +2545,32 @@
            premium-features
            query-processor
            sync
+           transforms.indexes
            util
            workspaces}}
+
+  transforms.indexes
+  {:team "Gadget"
+   :ns-prefix "metabase.indexes"
+   :module-exports #{transforms.indexes.rest}
+   :api  #{metabase.indexes.models.table-index
+           metabase.indexes.reconcile}
+   :uses #{driver
+           models
+           util}
+   :model-exports #{:model/TableIndex}}
+
+  transforms.indexes.rest
+  {:team    "Gadget"
+   :ns-prefix "metabase.indexes-rest"
+   :api  #{metabase.indexes-rest.api}
+   :uses #{api
+           transforms.base
+           transforms.indexes
+           util}
+   :model-imports #{:model/Database
+                    :model/TableIndex
+                    :model/Transform}}
 
   transforms.inspector
   {:team "Gadget"
@@ -2750,7 +2755,8 @@
   warehouses
   {:team "UX West"
    :module-exports #{warehouses.rest
-                     warehouses.schema}
+                     warehouses.schema
+                     warehouses.secrets}
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
@@ -2764,10 +2770,10 @@
            permissions
            premium-features
            search
-           secrets
            settings
            sync
-           util}
+           util
+           warehouses.secrets}
    :model-exports #{:model/Database}
    :model-imports #{:model/Card
                     :model/Field
@@ -2797,13 +2803,13 @@
            queries
            request
            sample-data
-           secrets
            settings
            sync
            upload
            util
            warehouses
            warehouses.schema
+           warehouses.secrets
            enterprise/permissions}
    :model-imports #{:model/Card
                     :model/Collection
@@ -2885,6 +2891,13 @@
                     :model/Field
                     :model/FieldValues
                     :model/Table}}
+
+  warehouses.secrets
+  {:team "Graphy"
+   :ns-prefix "metabase.secrets"
+   :api  #{metabase.secrets.core}
+   :uses #{api driver models premium-features util}
+   :model-exports #{:model/Secret}}
 
   workspaces
   {:team "Graphy"
@@ -2983,6 +2996,13 @@
            enterprise/semantic-search
            enterprise/sso}
    :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
+
+  enterprise/analytics.internal-stats
+  {:team "UX West"
+   :ns-prefix "metabase-enterprise.internal-stats"
+   :api  #{}
+   :uses #{premium-features
+           settings}}
 
   enterprise/api
   {:team "UX West"
@@ -3361,11 +3381,6 @@
            store-api
            util}}
 
-  enterprise/internal-stats
-  {:team "UX West"
-   :api  #{}
-   :uses #{premium-features
-           settings}}
 
   enterprise/library
   {:team "UX West"
