@@ -3574,11 +3574,12 @@
            enterprise/serialization}}
 
   enterprise/metabot
-  {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api
+  {:team           "Metabot"
+   :module-exports #{enterprise/metabot.analytics}
+   :api            #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :uses    #{api
+   :uses           #{api
               lib.be
               llm
               metabot
@@ -3597,9 +3598,10 @@
                     :model/PermissionsGroupMembership
                     :model/Transform}}
 
-  enterprise/metabot-analytics
+  enterprise/metabot.analytics
   {:team "Metabot"
-   :api  #{metabase-enterprise.metabot-analytics.api}
+   :ns-prefix "metabase-enterprise.metabot-analytics"
+   :api #{metabase-enterprise.metabot-analytics.api}
    :uses #{api
            driver
            metabot
