@@ -111,6 +111,7 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
+    "data-app-dev": "./data-app-dev.ts",
   },
 
   output: {
@@ -144,6 +145,7 @@ const dataAppDevEntryConfig = {
     "react/jsx-dev-runtime",
     "@metabase/embedding-sdk-react",
     "@metabase/embedding-sdk-react/data-app",
+    "@metabase/embedding-sdk-react/data-app-dev",
     DATA_APP_DEV_CONFIG_VIRTUAL_ID,
   ],
 

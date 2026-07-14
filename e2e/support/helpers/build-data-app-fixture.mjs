@@ -8,7 +8,7 @@ import { build } from "vite";
 import {
   BUILD_CONFIGS_DIR,
   DATA_APP_FIXTURES_DIR,
-  SDK_DATA_APP_DEV_SOURCE,
+  SDK_DATA_APP_DEV_CONFIG_SOURCE,
 } from "./data-app-fixture-paths.mjs";
 
 const appName = process.argv[2];
@@ -29,7 +29,7 @@ fs.mkdirSync(scratchDir, { recursive: true });
 const dataAppDevEntry = path.join(scratchDir, `${appName}.data-app-dev.mjs`);
 
 await bundle({
-  entryPoints: [SDK_DATA_APP_DEV_SOURCE],
+  entryPoints: [SDK_DATA_APP_DEV_CONFIG_SOURCE],
   outfile: dataAppDevEntry,
   bundle: true,
   platform: "node",
