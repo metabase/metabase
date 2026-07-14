@@ -3,9 +3,8 @@
 
   Concrete planners implement
   `metabase.explorations.query-plan.planner/QueryPlanner` — see that
-  namespace for the contract. This orchestrator selects one based on the
-  `explorations-query-planner` setting + LLM availability, dispatches
-  through the protocol, materializes the returned plan items into
+  namespace for the contract. This orchestrator dispatches through the
+  protocol, materializes the returned plan items into
   `ExplorationQuery` rows via the variant builders, persists the full
   transcript to `exploration_thread.query_plan_transcript`, and on a fatal
   failure terminally stamps the thread and replaces the AI Summary
@@ -19,12 +18,9 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.query-plan.context :as qp.context]
-   [metabase.explorations.query-plan.llm :as qp.llm]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
    [metabase.explorations.query-plan.variants :as qp.variants]
-   [metabase.explorations.settings :as explorations.settings]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -39,25 +35,11 @@
 ;; ---------------------------------------------------------------------------
 
 (defn pick-planner!
-  "Decide which planner to invoke. Returns either:
-    - a `QueryPlanner` instance the caller should dispatch through, or
-    - `{:skip <reason-keyword>}` when the caller should skip entirely.
-
-  Setting `explorations-query-planner` (`:auto` / `:llm` / `:mechanical`):
-   - `:auto`       — LLM when configured, otherwise mechanical (never skips).
-   - `:llm`        — LLM if configured; if not, returns `{:skip :skip-no-llm}`.
-   - `:mechanical` — always the mechanical planner.
-
-  Public so tests can `with-redefs` it to inject a stub planner. The `!`
-  suffix marks that it inspects mutable global state (the setting + the
-  LLM-configured flag); it has no side effects of its own."
+  "Return the `QueryPlanner` instance to invoke — currently always the
+  mechanical planner. Kept as a seam so tests can `with-redefs` it to inject
+  a stub planner and so a future planner has an obvious dispatch point."
   []
-  (let [choice (explorations.settings/explorations-query-planner)
-        llm?   (metabot.settings/llm-metabot-configured?)]
-    (case choice
-      :auto       (if llm? qp.llm/planner qp.mechanical/planner)
-      :llm        (if llm? qp.llm/planner {:skip :skip-no-llm})
-      :mechanical qp.mechanical/planner)))
+  qp.mechanical/planner)
 
 ;; ---------------------------------------------------------------------------
 ;; Plan materialization (planner-agnostic)
@@ -285,13 +267,11 @@
   (save-transcript! thread-id (assoc (merge pre extras) :outcome outcome)))
 
 (defn- preamble
-  "Common transcript preamble: who chose what, when, with which planner."
+  "Common transcript preamble: which thread, when, with which planner."
   [thread-id planner-name]
   {:generated-at (u.date/format (Instant/now))
    :thread-id    thread-id
-   :planner      planner-name
-   :setting      (explorations.settings/explorations-query-planner)
-   :llm-config   (when (= planner-name :llm) (qp.llm/llm-config))})
+   :planner      planner-name})
 
 ;; ---------------------------------------------------------------------------
 ;; Ctx building
@@ -372,8 +352,6 @@
 
   Returns one of:
     `:ok`                — plan succeeded, rows inserted, transcript written
-    `:skip-no-llm`       — `explorations-query-planner :llm` set but no LLM
-                           configured (mechanical fallback disabled)
     `:skip-empty`        — thread has no metrics or no dimensions
     `:failed`            — planner reported failure; thread terminally
                            stamped, placeholder doc replaced with error
@@ -382,22 +360,12 @@
   (try
     (let [{:keys [thread-blocks] :as ctx} (build-planner-ctx thread-id)
           picked     (pick-planner!)
-          skip?      (:skip picked)
-          planner-id (when-not skip? (planner/planner-name picked))
+          planner-id (planner/planner-name picked)
           pre        (preamble thread-id planner-id)]
-      (cond
-        (not-any? #(and (seq (:metrics %)) (seq (:dimensions %))) thread-blocks)
+      (if (not-any? #(and (seq (:metrics %)) (seq (:dimensions %))) thread-blocks)
         (do (log/infof "Thread %d: no block has both a metric and a dimension; skipping query plan" thread-id)
             (record-outcome! thread-id pre :skip-empty)
             :skip-empty)
-
-        skip?
-        (do (log/infof "Thread %d: planner setting=%s and LLM not configured; skipping" thread-id
-                       (explorations.settings/explorations-query-planner))
-            (record-outcome! thread-id pre skip?)
-            skip?)
-
-        :else
         (run-planner! ctx picked planner-id pre)))
     (catch Throwable e
       (log/errorf e "generate-query-plan! failed for thread %d" thread-id)

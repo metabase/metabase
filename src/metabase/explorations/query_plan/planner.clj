@@ -1,7 +1,7 @@
 (ns metabase.explorations.query-plan.planner
   "The query-planner contract.
 
-  Concrete planners (LLM-driven, mechanical, future stubs) live in their own
+  Concrete planners (mechanical, future stubs) live in their own
   namespaces and implement `QueryPlanner`. The orchestrator
   (`metabase.explorations.query-plan`) selects one based on settings + LLM
   availability and dispatches through the protocol — it never knows which
@@ -49,7 +49,7 @@
   selects one and dispatches through the protocol — no concrete planner
   namespace is special-cased."
   (planner-name [this]
-    "Keyword identifying the planner — e.g. `:llm`, `:mechanical`. Stamped
+    "Keyword identifying the planner — e.g. `:mechanical`. Stamped
     into the persisted transcript and log lines so a thread's transcript can
     be traced back to the implementation that produced it.")
 
