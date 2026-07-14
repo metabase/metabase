@@ -1039,10 +1039,15 @@
                                                    [(-> database :details :db)]))
             ;; The ticket's failure shape is a caller that CAN create schemas but
             ;; CANNOT create users: postgres/redshift check CREATE at the database
-            ;; level, so grant it to user A. Elsewhere, pre-create ws-b's
-            ;; namespace so the leading `CREATE ... IF NOT EXISTS` skips instead
-            ;; of failing — either way execution reaches the password-bearing
-            ;; CREATE USER, which fails with permission denied.
+            ;; level, so grant it to user A — execution then reaches the
+            ;; password-bearing CREATE USER, which fails with permission denied.
+            ;; Elsewhere, pre-create ws-b's namespace so the leading
+            ;; `CREATE ... IF NOT EXISTS` can skip instead of failing. That only
+            ;; helps engines that check existence before privileges (SQL Server's
+            ;; guarded EXEC); MySQL and ClickHouse check privileges regardless,
+            ;; so on those the batch dies on the namespace statement and never
+            ;; reaches CREATE USER — the leak assertion still covers whatever
+            ;; exception surfaces, it just can't prove the echo path there.
             (when (#{:postgres :redshift} driver)
               (jdbc/execute! admin-spec [(format "GRANT CREATE ON DATABASE \"%s\" TO \"%s\""
                                                  (or (:dbname details) (:db details))
@@ -1066,19 +1071,43 @@
                     "the instrumented password generator should have been called")
                 (when thrown
                   (let [text (throwable-log-text thrown)]
-                    (doseq [pw @generated]
+                    ;; ws-a's password is also live here — it authenticates the
+                    ;; low-priv pool, and connection failures can stash details
+                    ;; maps in ex-data.
+                    (doseq [pw (cons (get-in ws-a-full [:database_details :password]) @generated)
+                            :when (some? pw)]
                       (is (not (str/includes? text pw))
-                          (str "generated password leaked into exception text:\n" text)))
-                    ;; Postgres echoes the aborted statement in the batch
-                    ;; exception message; requiring the redaction marker proves
-                    ;; this test reached the CREATE USER echo rather than failing
-                    ;; earlier and passing vacuously.
-                    (when (= driver :postgres)
+                          (str "workspace password leaked into exception text:\n" text)))
+                    ;; pgjdbc (and redshift's fork of it) echoes the aborted
+                    ;; statement in the batch exception message; requiring the
+                    ;; redaction marker proves this test reached the CREATE USER
+                    ;; echo rather than failing earlier and passing vacuously.
+                    ;; Only these two drivers get the database-level CREATE
+                    ;; grant that lets execution reach CREATE USER.
+                    (when (#{:postgres :redshift} driver)
                       (is (str/includes? text "****")
                           (str "expected redacted CREATE USER echo in exception text:\n" text))))))))
           (finally
+            ;; If init for ws-b unexpectedly succeeded (isolation regression),
+            ;; a user with a live password exists — tear it down too. Also
+            ;; drops ws-b's pre-created namespace; the loop below is backup.
+            (try (driver/destroy-workspace-isolation!
+                  driver database
+                  (merge ws-b {:schema           b-ns
+                               :database_details {:user (driver.u/workspace-isolation-user-name ws-b)}}))
+                 (catch Throwable _ nil))
             (doseq [sql (drop-input-namespace-sqls driver b-ns [])]
               (try (jdbc/execute! admin-spec [sql]) (catch Throwable _ nil)))
+            ;; Redshift's destroy has no DROP OWNED BY equivalent, so the
+            ;; database-level CREATE granted above would block DROP USER there
+            ;; (and roll back destroy's whole cleanup batch). Revoke before
+            ;; destroying; postgres doesn't need it (DROP OWNED BY) but it's
+            ;; harmless.
+            (when (#{:postgres :redshift} driver)
+              (try (jdbc/execute! admin-spec [(format "REVOKE CREATE ON DATABASE \"%s\" FROM \"%s\""
+                                                      (or (:dbname details) (:db details))
+                                                      (driver.u/workspace-isolation-user-name ws-a))])
+                   (catch Throwable _ nil)))
             (try (driver/destroy-workspace-isolation! driver database @ws-a-state)
                  (catch Throwable t
                    (log/warnf t "destroy-workspace-isolation! failed for %s during password-leak test cleanup"
