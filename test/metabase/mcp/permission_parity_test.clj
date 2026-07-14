@@ -1073,3 +1073,94 @@
         :expect   :denied
         :tool     ["execute_sql" {:database_id (mt/id) :sql venues-sql :validate_only true}]
         :rest     [:post "dataset" (native-venues-query)]}))))
+
+;;; ------------------------------------------ question_write · metric_write ---------------------------------------
+;;
+;; A card write's REST counterpart is `POST /api/card` and `PUT /api/card/:id` — literally, since the tool calls the
+;; same two functions those endpoints call. The rows below are the two scenarios a write has that a read does not: a
+;; collection the user may read but not write into, and a target that is in the trash.
+
+(defn- venues-card-body
+  "The body `POST /api/card` takes for the query the tool saves — the same query, spelled the way REST spells it."
+  [collection-id]
+  {:name                   "Parity"
+   :dataset_query          (mt/mbql-query venues {:limit 1})
+   :display                "table"
+   :visualization_settings {}
+   :collection_id          collection-id})
+
+(defn- venues-external-query
+  "The same query in the portable dialect the tool takes."
+  []
+  {:lib/type "mbql/query"
+   :stages   [{:lib/type     "mbql.stage/mbql"
+               :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "VENUES"]
+               :limit        1}]})
+
+(deftest question-write-read-only-collection-parity-test
+  (testing "a collection the user can read but not curate is refused as a save target by both surfaces"
+    (mt/with-temp [:model/Collection coll {}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
+        (check-parity!
+         {:scenario :read-only-collection
+          :user     :rasta
+          :expect   :denied
+          :tool     ["question_write" {:method        "create"
+                                       :name          "Parity"
+                                       :query         (venues-external-query)
+                                       :collection_id (:id coll)}]
+          :rest     [:post "card" (venues-card-body (:id coll))]})))))
+
+(deftest question-write-blocked-database-parity-test
+  (testing "a query the user cannot run is a query they cannot save, on both surfaces: saving one is running it
+            later"
+    (perms.test-util/with-no-data-perms-for-all-users!
+      (check-parity!
+       {:scenario :blocked-database
+        :user     :rasta
+        :expect   :denied
+        :tool     ["question_write" {:method "create" :name "Parity" :query (venues-external-query)}]
+        :rest     [:post "card" (venues-card-body nil)]}))))
+
+(deftest question-write-archived-target-parity-test
+  (testing "archiving is not a permission: a writable archived question is still editable, on both surfaces"
+    (mt/with-temp [:model/Card card {:archived      true
+                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
+      (check-parity!
+       {:scenario :archived-target
+        :user     :rasta
+        :expect   :allowed
+        :tool     ["question_write" {:method "update" :id (:id card) :description "Parity"}]
+        :rest     [:put (str "card/" (:id card)) {:description "Parity"}]}))))
+
+(deftest metric-write-read-only-collection-parity-test
+  (testing "a metric lands through the same collection check a question does"
+    (mt/with-temp [:model/Collection coll {}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
+        (check-parity!
+         {:scenario :read-only-collection
+          :user     :rasta
+          :expect   :denied
+          :tool     ["metric_write" {:method        "create"
+                                     :name          "Parity"
+                                     :definition    (assoc-in (venues-external-query)
+                                                              [:stages 0 :aggregation] [["count" {}]])
+                                     :collection_id (:id coll)}]
+          :rest     [:post "card" (-> (venues-card-body (:id coll))
+                                      (assoc :type "metric")
+                                      (assoc :dataset_query
+                                             (mt/mbql-query venues {:aggregation [[:count]]})))]})))))
+
+(deftest metric-write-archived-target-parity-test
+  (testing "a writable archived metric is still editable, on both surfaces"
+    (mt/with-temp [:model/Card card {:type          :metric
+                                     :archived      true
+                                     :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (check-parity!
+       {:scenario :archived-target
+        :user     :rasta
+        :expect   :allowed
+        :tool     ["metric_write" {:method "update" :id (:id card) :description "Parity"}]
+        :rest     [:put (str "card/" (:id card)) {:description "Parity"}]}))))

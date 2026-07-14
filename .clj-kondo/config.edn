@@ -181,6 +181,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     metabase.agent-api.tools/check-at-most-one!
      metabase.agent-api.tools/check-exactly-one!
      metabase.agent-api.tools/validate-write!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!

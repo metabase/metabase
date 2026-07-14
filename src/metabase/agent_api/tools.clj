@@ -46,22 +46,71 @@
   ([message status data]
    (throw (ex-info (str message) (merge {:status-code status} data)))))
 
+(defn- key-list
+  [ks]
+  (->> ks (map #(str "`" (name %) "`")) (str/join ", ")))
+
+(defn check-at-most-one!
+  "Enforce that no more than one of the mutually-exclusive keys `ks` is present (non-nil) in `params`,
+   returning `params` on success. The half of the \"exactly one of X | Y\" contract that still applies where
+   none of them is required — a `_write` update names its query only if it is replacing it."
+  [params ks]
+  (when (< 1 (count (filterv #(some? (get params %)) ks)))
+    (teaching-error! (str "Provide only one of " (key-list ks) ", not several together.")))
+  params)
+
 (defn check-exactly-one!
   "Enforce that exactly one of the mutually-exclusive keys `ks` is present (non-nil) in `params`,
    returning `params` on success. Strict clients reject a top-level `oneOf`, so an \"exactly one of
    X | Y\" contract (e.g. `query` vs `query_handle`) is a runtime rule, not a schema combinator. The
    teaching error names the keys either way — nothing given or too much given."
   [params ks]
-  (let [present (filterv #(some? (get params %)) ks)
-        names   (->> ks (map #(str "`" (name %) "`")) (str/join ", "))]
-    (cond
-      (empty? present)
-      (teaching-error! (str "Provide exactly one of " names "."))
+  (check-at-most-one! params ks)
+  (when-not (some #(some? (get params %)) ks)
+    (teaching-error! (str "Provide exactly one of " (key-list ks) ".")))
+  params)
 
-      (< 1 (count present))
-      (teaching-error! (str "Provide only one of " names ", not several together."))
+;;; ──────────────────────────────────────────────────────────────────
+;;; The `_write` recipe
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; A `_write` tool carries create and update behind one `method` enum, and `method` is the only field its
+;; schema requires. It cannot require more: the strict-client transform turns every other property into
+;; required-but-nullable, so a client sends `null` for each argument the call does not set, and an absent
+;; argument and a null one arrive as the same argument. **A `nil` value means "not supplied"** — on an
+;; update that is "leave it alone", which is what makes the patch semantics work at all.
+;;
+;; So the per-method contract lives here rather than in the schema, and the teaching error that names the
+;; missing field is the contract itself, not decoration around it.
 
-      :else params)))
+(def MethodField
+  "Malli entry for the `method` argument of a `_write` tool: which of the two writes this call is."
+  [:enum "create" "update"])
+
+(defn- backticked
+  [ks]
+  (str/join ", " (map #(str "`" (name %) "`") ks)))
+
+(defn validate-write!
+  "Enforce a `_write` tool's per-method requirements, returning `params` on success.
+
+   `requirements` maps a method to the fields it needs — `{\"create\" [:name] \"update\" []}`. `update`
+   always also needs `id`, and `create` never takes one: there is no upsert, because an id the caller
+   mistyped would then create a silent duplicate rather than say so."
+  [{:keys [method] :as params} requirements]
+  (when (and (= "create" method) (some? (:id params)))
+    (teaching-error!
+     (str "`create` mints its own id, so it takes no `id`. To change what " (pr-str (:id params))
+          " already names, pass `method: \"update\"`.")))
+  (let [required (cond->> (get requirements method [])
+                   (= "update" method) (cons :id))
+        missing  (filterv #(nil? (get params %)) required)]
+    (when (seq missing)
+      (teaching-error!
+       (str "`method: \"" method "\"` needs " (backticked missing) "."
+            (when (some #{:id} missing)
+              " `id` names the one to change — `search` and `get_content` return it.")))))
+  params)
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Read events
@@ -112,6 +161,12 @@
    property value, where the manifest keeps it as `anyOf` (strict clients accept nested composites)."
   [:or ms/PositiveInt ms/NanoIdString])
 
+(def CollectionRef
+  "Malli schema for the collection a write *targets* (`collection_id`, `parent_id`): numeric id, entity_id,
+   or `\"root\"` for the top level. Pair it with `[:maybe]`. `\"trash\"` is not here: content is trashed by
+   `archived: true`, and a destination is not a state."
+  [:or ms/PositiveInt ms/NanoIdString [:= "root"]])
+
 (def CollectionLocator
   "Malli schema for a collection *locator* argument (e.g. `browse_collection`'s `id`): numeric id,
    entity_id, or the `\"root\"`/`\"trash\"` tokens. Locators read; they do not write, so `\"trash\"` is
@@ -150,6 +205,22 @@
     :entity-id (eid-translation/->id-or-404 model ref)
     (teaching-error! (str (pr-str ref)
                           " is not a valid id here: pass a numeric id or a 21-character entity_id."))))
+
+(defn resolve-collection-id
+  "The numeric collection id a write's `collection_id`/`parent_id` names: `\"root\"` is the top-level
+   collection, whose id is `nil`, an entity_id translates, and a numeric id passes through. `\"trash\"` is
+   refused with the fix, because the trash is a state a thing is in and not a place to put it in.
+
+   A `nil` ref is `nil`, which is the *root* collection only where the tool says it is: a strict client
+   spells an unset argument `null`, so what an absent `collection_id` means is the tool's decision and not
+   this function's."
+  [ref]
+  (case (:kind (classify-ref ref))
+    (:null :root) nil
+    :trash        (teaching-error!
+                   (str "The trash is not a place to save to. Pass `archived: true` to trash something, "
+                        "`archived: false` to restore it."))
+    (resolve-id :model/Collection ref)))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; response_format projections

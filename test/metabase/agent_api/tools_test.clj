@@ -40,9 +40,52 @@
          ExceptionInfo #"Provide exactly one"
          (tools/check-exactly-one! {:query nil :query_handle nil} [:query :query_handle])))))
 
+(deftest ^:parallel check-at-most-one!-test
+  (testing "none present is fine — an update names its query only if it is replacing it"
+    (is (= {} (tools/check-at-most-one! {} [:query :query_handle]))))
+  (testing "several present names the fix, in the same words `check-exactly-one!` uses"
+    (is (thrown-with-msg?
+         ExceptionInfo #"Provide only one of `query`, `query_handle`, not several together"
+         (tools/check-at-most-one! {:query {} :query_handle "abc"} [:query :query_handle])))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; The `_write` recipe
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel validate-write!-test
+  (testing "a create that brought what its method needs passes through"
+    (is (= {:method "create" :name "Q"}
+           (tools/validate-write! {:method "create" :name "Q"} {"create" [:name] "update" []}))))
+  (testing "a missing field is named, and so is the method that needs it"
+    (is (thrown-with-msg?
+         ExceptionInfo #"`method: \"create\"` needs `name`, `definition`\."
+         (tools/validate-write! {:method "create"} {"create" [:name :definition] "update" []}))))
+  (testing "an update always needs an id, and the refusal says where to find one"
+    (is (thrown-with-msg?
+         ExceptionInfo #"`method: \"update\"` needs `id`\. `id` names the one to change"
+         (tools/validate-write! {:method "update" :name "Q"} {"create" [:name] "update" []}))))
+  (testing "a nil is not a value: a strict client sends one for every argument it did not set"
+    (is (thrown-with-msg?
+         ExceptionInfo #"needs `name`"
+         (tools/validate-write! {:method "create" :name nil} {"create" [:name] "update" []}))))
+  (testing "an id on a create is refused rather than upserted — a typo would make a silent duplicate"
+    (is (thrown-with-msg?
+         ExceptionInfo #"`create` mints its own id, so it takes no `id`"
+         (tools/validate-write! {:method "create" :id 42 :name "Q"} {"create" [:name] "update" []})))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Ref ergonomics
 ;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel resolve-collection-id-test
+  (testing "\"root\" and an unset argument are both the top-level collection, whose id is nil"
+    (is (nil? (tools/resolve-collection-id "root")))
+    (is (nil? (tools/resolve-collection-id nil))))
+  (is (= 7 (tools/resolve-collection-id 7)))
+  (testing "the trash is a state, not a destination, and the refusal names the field that puts things there"
+    (is (thrown-with-msg?
+         ExceptionInfo #"Pass `archived: true` to trash something"
+         (tools/resolve-collection-id "trash")))))
 
 (deftest ^:parallel classify-ref-test
   (is (= {:kind :id :id 42} (tools/classify-ref 42)))

@@ -29,7 +29,6 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -63,17 +62,13 @@
      403)))
 
 (defn- check-native-permissions!
-  "Refuse a caller who may not write SQL against this database. The query processor checks this again when the
-   query runs; this is what stands in front of the paths that never reach it — a `validate_only` dry run, and
-   the parse of the SQL's template tags, which would otherwise say which snippets and cards exist to a caller
-   who may not query the database at all."
+  "Refuse a caller who may not write SQL against this database, and point them at the tool that runs under the
+   permissions they do have."
   [database-id]
-  (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
-    (tools/teaching-error!
-     (str "You do not have permission to run native queries against this database — that is the "
-          "\"Native query editing\" permission, and only an admin can grant it. Answer the question with "
-          "`execute_query` instead, which runs under the query permissions you do have.")
-     403)))
+  (agent-api.query/check-native-permissions!
+   database-id
+   (str "Answer the question with `execute_query` instead, which runs under the query permissions you do "
+        "have.")))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Template tags

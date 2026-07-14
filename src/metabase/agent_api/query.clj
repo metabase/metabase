@@ -12,6 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.warehouse-schema.table :as schema.table]))
 
 (set! *warn-on-reflection* true)
@@ -48,6 +49,21 @@
   (when (native-query? query-map)
     (throw (ex-info "This is a native SQL query. Run it with `execute_sql`, which is scoped for raw SQL."
                     {:status-code 400}))))
+
+(defn check-native-permissions!
+  "Refuse a caller who may not write SQL against `database-id`. `recovery` finishes the refusal in the voice
+   of the tool that called — there is no rewrite of the SQL that helps, so the message has to name what
+   does.
+
+   The query processor checks this again when a query runs, and `create-card!` checks it again when one is
+   saved. This is what stands in front of the paths that reach neither: a `validate_only` dry run, and the
+   parse of the SQL's template tags, which would otherwise say which snippets and cards exist to a caller
+   who may not query the database at all."
+  [database-id recovery]
+  (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
+    (throw (ex-info (str "You do not have permission to run native queries against this database — that is "
+                         "the \"Native query editing\" permission, and only an admin can grant it. " recovery)
+                    {:status-code 403}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The shape of a client-reachable query

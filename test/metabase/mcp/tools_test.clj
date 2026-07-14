@@ -210,7 +210,9 @@
     "created_by" "validate_only" "parent_collection_id" "visualization_settings" "dataset_query"
     "truncation_message" "skipped_includes" "parameter_mappings" "continuation_token" "last_edited_at"
     "construct_notebook_query" "query_metadata" "entity_id" "table_ids" "field_id" "has_field_values"
-    "list_databases" "list_schemas" "list_tables" "list_models" "get_fields" "download_url"})
+    "list_databases" "list_schemas" "list_tables" "list_models" "get_fields" "download_url"
+    "card_type" "column_metadata" "collection_position" "display_name" "semantic_type" "visibility_type"
+    "widget_type" "dashboard_id"})
 
 (defn- named-tools
   "Every tool name `text` mentions."

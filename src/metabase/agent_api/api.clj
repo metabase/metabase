@@ -12,6 +12,7 @@
    [metabase.agent-api.auth :as agent-api.auth]
    [metabase.agent-api.browse-collection :as agent-api.browse-collection]
    [metabase.agent-api.browse-data :as agent-api.browse-data]
+   [metabase.agent-api.card-write :as agent-api.card-write]
    [metabase.agent-api.execute-query :as agent-api.execute-query]
    [metabase.agent-api.execute-sql :as agent-api.execute-sql]
    [metabase.agent-api.exports :as agent-api.exports]
@@ -905,6 +906,285 @@
    _query-params
    body :- ::run-saved-question-request]
   (agent-api.run-saved-question/run-saved-question body))
+
+;;; ------------------------------------------------- Card Writes ----------------------------------------------------
+
+(mr/def ::card-write-response
+  "The card a write saved, in the concise projection `get_content` returns it in: a save answers the question a
+  read would have asked, so the agent can say what it saved and where without a follow-up call."
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:name           :string]
+   [:type           [:or :keyword :string]]
+   [:display        {:optional true} [:maybe [:or :keyword :string]]]
+   [:description    {:optional true} [:maybe :string]]
+   [:database_id    {:optional true} [:maybe :int]]
+   [:table_id       {:optional true} [:maybe :int]]
+   [:source_card_id {:optional true} [:maybe :int]]
+   [:collection_id  {:optional true} [:maybe :int]]
+   [:archived       :boolean]])
+
+(mr/def ::card-write-structured-output
+  "The `structuredContent` of a card write: what the card now is, and what a next call addresses it by."
+  [:map
+   [:id            {:tool/description "The card's id. `get_content` reads it; `dashboard_write` places it."}
+    :int]
+   [:name          {:tool/description "The name it was saved under."} :string]
+   [:type          {:tool/description "\"question\", \"model\", or \"metric\"."} [:or :keyword :string]]
+   [:collection_id {:optional true
+                    :tool/description "The collection it lives in — null is the top level, \"Our analytics\"."}
+    [:maybe :int]]
+   [:archived      {:tool/description "Whether it is in the trash."} :boolean]])
+
+(mr/def ::native-source
+  "A native SQL question's query: the SQL, the database it speaks, and the variables it declares."
+  [:map
+   [:database_id
+    {:optional true
+     :tool/description "The database the SQL runs against. A numeric id or a 21-character entity_id."}
+    [:maybe agent-api.tools/IdRef]]
+   [:sql
+    {:optional true
+     :tool/description "The SQL to save, in that database's own dialect."}
+    [:maybe ms/NonBlankString]]
+   [:template_tags
+    {:optional true
+     :tool/description
+     (str "The `{{variables}}` the SQL declares, as {variable_name: {...}}. Each takes a `type`: "
+          "\"text\", \"number\", \"date\", or \"dimension\" (a filter on a column, which also needs "
+          "`field_id` and `widget_type`). Optional per variable: `display_name`, `default`, `required`. "
+          "A variable the SQL does not declare is an error — write `{{name}}` into the SQL to create it.")}
+    [:maybe [:map-of ms/NonBlankString
+             [:map
+              [:type         {:optional true}
+               [:maybe (into [:enum] agent-api.card-write/template-tag-types)]]
+              [:display_name {:optional true} [:maybe :string]]
+              [:default      {:optional true} [:maybe :any]]
+              [:required     {:optional true} [:maybe :boolean]]
+              [:field_id     {:optional true} [:maybe ms/PositiveInt]]
+              [:widget_type  {:optional true} [:maybe ms/NonBlankString]]]]]]])
+
+(mr/def ::question-write-request
+  "Arguments to the `question_write` tool. Only `method` is schema-required: a strict client sends `null` for
+  every argument a call does not set, so an absent argument and a null one arrive the same way and the
+  per-method requirements are runtime-enforced with teaching errors."
+  [:map
+   [:method
+    {:tool/description "\"create\" saves a new question or model; \"update\" changes an existing one."}
+    agent-api.tools/MethodField]
+   [:id
+    {:optional true
+     :tool/description (str "The question or model to change — required for `update`, and never given on "
+                            "`create`. A numeric id or a 21-character entity_id.")}
+    [:maybe agent-api.tools/IdRef]]
+   [:card_type
+    {:optional true
+     :tool/description (str "\"question\" (default) or \"model\" — a model is a curated, reusable table other "
+                            "questions are built on. On `update`, changing this converts the card.")}
+    [:maybe (into [:enum] agent-api.card-write/card-types)]]
+   [:name
+    {:optional true :tool/description "The name it is saved under — required for `create`."}
+    [:maybe ms/NonBlankString]]
+   [:description
+    {:optional true :tool/description "What it answers, in a sentence."}
+    [:maybe :string]]
+   [:query_handle
+    {:optional true
+     :tool/description (str "The query to save, as a handle from `execute_query`, `execute_sql`, or "
+                            "`run_saved_question`. Prefer this: it saves exactly the query that ran.")}
+    [:maybe ms/UUIDString]]
+   [:query
+    {:optional true
+     :tool/description (str "The query to save, as MBQL 5 JSON in the portable dialect `execute_query` takes. "
+                            "Use `query_handle` instead when you have one.")}
+    [:maybe :map]]
+   [:native
+    {:optional true
+     :tool/description (str "The query to save, as raw SQL: `{database_id, sql, template_tags?}`. Needs "
+                            "native-query permission on the database.")}
+    [:maybe ::native-source]]
+   [:collection_id
+    {:optional true
+     :tool/description (str "The collection to save it in, or to move it to. A numeric id, a 21-character "
+                            "entity_id, or \"root\" for the top level (\"Our analytics\"). Omit it on "
+                            "`create` and it is saved to your personal collection.")}
+    [:maybe agent-api.tools/CollectionRef]]
+   [:dashboard_id
+    {:optional true
+     :tool/description (str "Save the question inside this dashboard instead of a collection — a dashboard "
+                            "question, which only that dashboard uses. Not with `collection_id`.")}
+    [:maybe agent-api.tools/IdRef]]
+   [:collection_position
+    {:optional true
+     :tool/description "Pin it in its collection, at this position. 1 is the first pin."}
+    [:maybe [:int {:min 1}]]]
+   [:display
+    {:optional true
+     :tool/description "How it is visualized — \"table\" (default), \"bar\", \"line\", \"pie\", and so on."}
+    [:maybe (into [:enum] agent-api.card-write/displays)]]
+   [:visualization_settings
+    {:optional true
+     :tool/description "The visualization's settings, in the REST shape. Defaults to none."}
+    [:maybe :map]]
+   [:cache_ttl
+    {:optional true :tool/description "How many hours to cache its results for."}
+    [:maybe [:int {:min 1}]]]
+   [:column_metadata
+    {:optional true
+     :tool/description
+     (str "Curate the columns of a **model** — `[{name, display_name?, description?, semantic_type?, "
+          "visibility_type?}]`, one entry per column you are changing, `name` being the column's own name "
+          "as the query returns it. Models only. The columns you do not name keep what the query says they "
+          "are.")}
+    [:maybe [:sequential
+             [:map
+              [:name            ms/NonBlankString]
+              [:display_name    {:optional true} [:maybe :string]]
+              [:description     {:optional true} [:maybe :string]]
+              [:semantic_type   {:optional true} [:maybe ms/NonBlankString]]
+              [:visibility_type {:optional true} [:maybe ms/NonBlankString]]]]]]
+   [:archived
+    {:optional true
+     :tool/description (str "`update` only: `true` moves it to the trash — the soft delete, and the only "
+                            "delete there is — and `false` restores it.")}
+    [:maybe :boolean]]])
+
+(api.macros/defendpoint :post "/v2/question-write" :- ::card-write-response
+  "Create or update a question or a model — one tool for both, keyed by `method`.
+
+  `create` needs a `name` and exactly one query source (`query_handle`, `query`, or `native`); `update` needs
+  an `id` and changes only the fields it names. Every check the app's own save runs, this runs: run permission
+  on the query, write permission on the collection it lands in and the one it leaves."
+  {:scope "agent:author:write"
+   :tool  {:name  "question_write"
+           :title "Create or Update a Question"
+           :description
+           (str "Save a question or a model in Metabase.\n"
+                "\n"
+                "`method: \"create\"` makes a new one: it needs a `name` and exactly one query source.\n"
+                "`method: \"update\"` changes an existing one: it needs its `id`, and changes only the "
+                "fields you pass.\n"
+                "\n"
+                "**The query.** Give it exactly one of:\n"
+                "- `query_handle` — the handle `execute_query` or `execute_sql` returned. Prefer this: it "
+                "saves byte-for-byte the query whose rows you just saw, rather than a rebuilt near-miss.\n"
+                "- `query` — MBQL 5 JSON, in the same portable dialect `execute_query` takes.\n"
+                "- `native` — `{database_id, sql, template_tags?}` for raw SQL. Needs native-query "
+                "permission. `template_tags` types the `{{variables}}` the SQL declares: \"text\", "
+                "\"number\", \"date\", or \"dimension\" (a filter on a column, which also needs a "
+                "`field_id` and a `widget_type`).\n"
+                "\n"
+                "**Where it lands.** Omit `collection_id` and it is saved to your personal collection. Pass "
+                "a collection's id, or \"root\" for the top level (\"Our analytics\"). `dashboard_id` "
+                "instead saves it inside a dashboard, where only that dashboard uses it. On an `update`, "
+                "`collection_id` *moves* it and `collection_position` pins it — there is no separate move "
+                "tool.\n"
+                "\n"
+                "**Models.** `card_type: \"model\"` saves it as a model, the curated table other questions "
+                "build on. `column_metadata` renames and retypes its columns: one entry per column you are "
+                "changing, keyed by the column's `name`. It is a model-only field.\n"
+                "\n"
+                "**Trash.** `archived: true` on an update moves it to the trash — that is the delete, and it "
+                "is reversible with `archived: false`. There is no hard delete.\n"
+                "\n"
+                "Metrics have their own tool: `metric_write`.")
+           :annotations       {:idempotent? false}
+           :structured-output ::card-write-structured-output
+           :input-examples
+           [{:method "create" :name "Orders by month" :query_handle "1c9d2f3a-5b6e-4a7c-8d9e-0f1a2b3c4d5e"
+             :display "line"}
+            {:method "create" :name "Paid orders" :card_type "model"
+             :native {:database_id 1
+                      :sql "SELECT id, total FROM orders WHERE status = {{status}}"
+                      :template_tags {:status {:type "text" :default "paid"}}}
+             :column_metadata [{:name "TOTAL" :display_name "Order total" :semantic_type "type/Currency"}]}
+            {:method "update" :id 42 :name "Orders by month, 2026" :collection_id 7}
+            {:method "update" :id 42 :archived true}]}}
+  [_route-params
+   _query-params
+   body :- ::question-write-request]
+  (agent-api.card-write/question-write body))
+
+(mr/def ::metric-write-request
+  "Arguments to the `metric_write` tool. Only `method` is schema-required; the per-method requirements are
+  runtime-enforced with teaching errors."
+  [:map
+   [:method
+    {:tool/description "\"create\" saves a new metric; \"update\" changes an existing one."}
+    agent-api.tools/MethodField]
+   [:id
+    {:optional true
+     :tool/description (str "The metric to change — required for `update`, and never given on `create`. A "
+                            "numeric id or a 21-character entity_id.")}
+    [:maybe agent-api.tools/IdRef]]
+   [:name
+    {:optional true :tool/description "The name it is saved under — required for `create`."}
+    [:maybe ms/NonBlankString]]
+   [:description
+    {:optional true :tool/description "What it measures, and how it is meant to be read."}
+    [:maybe :string]]
+   [:definition
+    {:optional true
+     :tool/description (str "The metric's query — MBQL 5 JSON, in the portable dialect `execute_query` takes. "
+                            "Exactly one aggregation, and at most one date grouping. Required for `create`.")}
+    [:maybe :map]]
+   [:collection_id
+    {:optional true
+     :tool/description (str "The collection to save it in, or to move it to. A numeric id, a 21-character "
+                            "entity_id, or \"root\" for the top level. Omit it on `create` and it is saved to "
+                            "your personal collection.")}
+    [:maybe agent-api.tools/CollectionRef]]
+   [:collection_position
+    {:optional true :tool/description "Pin it in its collection, at this position."}
+    [:maybe [:int {:min 1}]]]
+   [:archived
+    {:optional true
+     :tool/description "`update` only: `true` trashes it, `false` restores it."}
+    [:maybe :boolean]]])
+
+(api.macros/defendpoint :post "/v2/metric-write" :- ::card-write-response
+  "Create or update a metric — a card whose query the product constrains to one aggregation.
+
+  `create` needs a `name` and a `definition`; `update` needs an `id`. A definition that is not a metric — two
+  aggregations, two date groupings — is refused with the change to make, exactly as the app refuses it."
+  {:scope "agent:author:write"
+   :tool  {:name  "metric_write"
+           :title "Create or Update a Metric"
+           :description
+           (str "Save a metric in Metabase: a named number a team agrees on — \"Revenue\", \"Active "
+                "customers\" — that anybody can then group and filter without rebuilding the arithmetic.\n"
+                "\n"
+                "`method: \"create\"` needs a `name` and a `definition`. `method: \"update\"` needs the "
+                "metric's `id` and changes only the fields you pass.\n"
+                "\n"
+                "**The definition** is the metric's query, as MBQL 5 JSON in the portable dialect "
+                "`execute_query` takes. It must have exactly one aggregation (a count, a sum, an average) "
+                "and at most one date grouping — that is what makes it a metric rather than a question. "
+                "Build it with `execute_query` first and check the number, then save that query here.\n"
+                "\n"
+                "**Where it lands.** Omit `collection_id` and it is saved to your personal collection; pass "
+                "a collection's id, or \"root\" for the top level. On an `update`, `collection_id` moves it "
+                "and `archived: true` trashes it.\n"
+                "\n"
+                "A metric is not a *measure*. A measure is a reusable aggregation expression attached to one "
+                "table (`measure_write`); a metric is a standalone saved query anybody can run and drill "
+                "into. If you were asked for something a question could answer, save a question with "
+                "`question_write` instead — a metric is a commitment the whole team reads.")
+           :annotations       {:idempotent? false}
+           :structured-output ::card-write-structured-output
+           :input-examples
+           [{:method "create" :name "Total revenue"
+             :definition {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table ["Sample Database" "PUBLIC" "ORDERS"]
+                                      :aggregation  [["sum" {} ["field" {} ["Sample Database" "PUBLIC"
+                                                                            "ORDERS" "TOTAL"]]]]}]}}
+            {:method "update" :id 10 :description "Gross revenue, before refunds." :collection_id 7}
+            {:method "update" :id 10 :archived true}]}}
+  [_route-params
+   _query-params
+   body :- ::metric-write-request]
+  (agent-api.card-write/metric-write body))
 
 ;;; ------------------------------------------------ Export Download -------------------------------------------------
 

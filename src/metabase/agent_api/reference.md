@@ -578,6 +578,117 @@ Response — the REST shape verbatim. A value is `[value]`, or
 }
 ```
 
+### POST /v2/question-write
+
+The `question_write` tool: create or update a question or a model. `method` is
+the only required argument — `"create"` or `"update"` — and the rest of the
+contract is per-method, enforced at runtime with errors that name the fix. A
+strict client sends `null` for every argument it does not set, so a null is not
+a value: on an update it means "leave this alone".
+
+| Method | Needs | Notes |
+| --- | --- | --- |
+| `create` | `name`, and exactly one query source | `id` is refused — a create mints its own |
+| `update` | `id` | changes only the fields the call names |
+
+The query source is exactly one of `query_handle` (a handle `execute_query`,
+`execute_sql`, or an earlier write minted — it saves the query that ran, byte
+for byte), `query` (portable MBQL 5, the dialect `/v2/execute-query` takes), or
+`native` (`{database_id, sql, template_tags?}`, which needs native-query
+permission on the database).
+
+`template_tags` types the `{{variables}}` the SQL declares, keyed by variable
+name: `type` is `text`, `number`, `date`, or `dimension`, and a dimension also
+takes the `field_id` it filters and the `widget_type` the question shows for it
+(`"string/="`, `"date/all-options"`, …). Optional per variable: `display_name`,
+`default`, `required`. A variable the SQL does not declare is a 400 naming the
+ones it does — a value bound to a variable that is not there would silently do
+nothing.
+
+| Parameter | Meaning |
+| --- | --- |
+| `card_type` | `"question"` (default) or `"model"`. On an update, this converts the card. |
+| `name`, `description` | |
+| `collection_id` | Where it lands, or where it moves to: an id, an entity_id, or `"root"` for the top level. **Omitted on a create, it is saved to the caller's personal collection** — not to shared "Our analytics". |
+| `dashboard_id` | Save the question inside a dashboard (a dashboard question). Not with `collection_id`: a card in a dashboard lives in the dashboard's collection. |
+| `collection_position` | Pin it, at this position. |
+| `display` | `"table"` (default), `"bar"`, `"line"`, … |
+| `visualization_settings` | REST shape; defaults to `{}`. |
+| `cache_ttl` | Hours to cache results for. |
+| `column_metadata` | Models only: `[{name, display_name?, description?, semantic_type?, visibility_type?}]`, one entry per column being changed. It is merged into the columns the query itself yields and persists as the card's `result_metadata`; a column the query does not return is a 400 naming the ones it does. |
+| `archived` | Update only: `true` trashes, `false` restores. The only delete there is. |
+
+Request:
+
+```json
+{
+  "method": "create",
+  "name": "Orders by month",
+  "query_handle": "1c9d2f3a-5b6e-4a7c-8d9e-0f1a2b3c4d5e",
+  "display": "line",
+  "collection_id": 7
+}
+```
+
+Response — the card's concise projection, the same shape `get_content` returns
+for it, so a save needs no follow-up read:
+
+```json
+{
+  "id": 42,
+  "name": "Orders by month",
+  "type": "question",
+  "display": "line",
+  "description": null,
+  "database_id": 1,
+  "table_id": 9,
+  "source_card_id": null,
+  "collection_id": 7,
+  "archived": false
+}
+```
+
+Every check the app's own save runs, this runs, because it calls the same
+functions `POST /api/card` and `PUT /api/card/:id` call
+(`metabase.queries.card-write`): run permission on the query being saved, create
+or write permission on the collection it lands in and the one it leaves, the
+cycle check, and the shape rules of the type.
+
+### POST /v2/metric-write
+
+The `metric_write` tool: create or update a metric. A metric is a card with
+`type: "metric"` — the same endpoint, no separate API — and it is its own tool
+because its authoring contract is its own.
+
+`create` needs a `name` and a `definition`; `update` needs an `id`. The
+`definition` is the metric's query, as portable MBQL 5, and it must have exactly
+one aggregation and at most one date grouping (`lib/can-save?`, the same rule the
+app applies). A definition that is not a metric is a 400 naming the change to
+make. `description`, `collection_id`, `collection_position`, and `archived`
+behave as they do on `question_write`; there is no display or visualization to
+set, and no native source — a metric is a number, not a page of SQL.
+
+A metric is not a *measure*: a measure is a reusable aggregation expression
+attached to one table (`measure_write`), and a metric is a standalone saved query
+anybody can run and drill into.
+
+Request:
+
+```json
+{
+  "method": "create",
+  "name": "Total revenue",
+  "definition": {
+    "lib/type": "mbql/query",
+    "stages": [{"lib/type": "mbql.stage/mbql",
+                "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+                "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]]}]
+  }
+}
+```
+
+Response: the card's concise projection, exactly as `question_write` returns it.
+
 ### POST /v2/execute-query
 
 The `execute_query` tool: one call for a query you hold. It validates, runs, and

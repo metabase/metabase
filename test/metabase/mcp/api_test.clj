@@ -498,9 +498,12 @@
     "execute_sql"
     "get_content"
     "get_parameter_values"
+    "metric_write"
     "query"
+    "question_write"
     "read_resource"
     "render_drill_through"
+    "run_saved_question"
     "search"
     "update_dashboard"
     "update_metric"
@@ -834,8 +837,9 @@
    invocation check."
   #{"search" "browse_data" "browse_collection" "get_content" "get_parameter_values"
     "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
-    "read_resource" "create_question" "execute_question" "create_metric" "create_dashboard"
-    "update_question" "update_metric" "update_dashboard" "create_collection"})
+    "run_saved_question" "read_resource" "create_question" "execute_question" "create_metric"
+    "create_dashboard" "update_question" "update_metric" "update_dashboard" "create_collection"
+    "question_write" "metric_write"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -878,7 +882,9 @@
                 question-id  (atom nil)
                 metric-id    (atom nil)
                 dash-id      (atom nil)
-                coll-id      (atom nil)]
+                coll-id      (atom nil)
+                v2-question-id (atom nil)
+                v2-metric-id   (atom nil)]
             (try
               (let [_              (call-tool "search" {:term_queries ["orders"]})
                     _              (call-tool "browse_data" {:action "list_tables"
@@ -899,6 +905,7 @@
                     _              (call-tool "execute_query"
                                               {:query_handle (:query_handle construct-data)})
                     _              (call-tool "execute_sql" {:database_id (mt/id) :sql "SELECT 1"})
+                    _              (call-tool "run_saved_question" {:id (:id param-card)})
                     _              (call-tool "read_resource" {:uris ["metabase://databases"]})
                     ;; Write tools — record IDs as soon as they're known so the `finally` block
                     ;; can clean up even if a later step throws.
@@ -934,13 +941,29 @@
                     _              (call-tool "update_dashboard"
                                               {:id          (:id dash-data)
                                                :description "Smoke updated dashboard"})
+                    v2-question    (call-tool "question_write" {:method "create"
+                                                                :name   "Smoke v2 Question"
+                                                                :query  orders-query})
+                    _              (reset! v2-question-id (:id v2-question))
+                    _              (call-tool "question_write" {:method      "update"
+                                                                :id          (:id v2-question)
+                                                                :description "Smoke v2 updated"})
+                    v2-metric      (call-tool "metric_write" {:method     "create"
+                                                              :name       "Smoke v2 Metric"
+                                                              :definition metric-query})
+                    _              (reset! v2-metric-id (:id v2-metric))
+                    _              (call-tool "metric_write" {:method      "update"
+                                                              :id          (:id v2-metric)
+                                                              :description "Smoke v2 updated"})
                     coll-data      (call-tool "create_collection" {:name "Smoke Collection"})]
                 (reset! coll-id (:id coll-data)))
               (finally
-                (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
-                (when-let [mid @metric-id]   (t2/delete! :model/Card :id mid))
-                (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
-                (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
+                (when-let [qid @question-id]    (t2/delete! :model/Card :id qid))
+                (when-let [mid @metric-id]      (t2/delete! :model/Card :id mid))
+                (when-let [qid @v2-question-id] (t2/delete! :model/Card :id qid))
+                (when-let [mid @v2-metric-id]   (t2/delete! :model/Card :id mid))
+                (when-let [did @dash-id]        (t2/delete! :model/Dashboard :id did))
+                (when-let [cid @coll-id]        (t2/delete! :model/Collection :id cid))))))))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query runs a plain MBQL query and carries the rows once, in the text block"

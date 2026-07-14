@@ -35,15 +35,15 @@
 (deftest a-v2-tool-namespace-may-not-reach-the-app-db-test
   (testing "the v2 tools are the namespaces the ban exists for: a Toucan call in one is caught"
     (let [caught (app-db-findings! 'metabase.agent-api.api
-                                  ["[toucan2.core :as t2]"]
-                                  "(defn- cards [] (t2/select :model/Card))")]
+                                   ["[toucan2.core :as t2]"]
+                                   "(defn- cards [] (t2/select :model/Card))")]
       (is (= 1 (count caught)))
       (is (re-find #"Tool code must not reach the app DB" (:message (first caught))))))
   (testing "and so is a reach for the app DB behind Toucan — the ban is on the namespace, not on a list of
             its vars, so a var nobody thought to enumerate is banned too"
     (let [caught (app-db-findings! 'metabase.agent-api.api
-                                  ["[metabase.app-db.core :as app-db]"]
-                                  "(defn- upsert! [] (app-db/update-or-insert! :model/Card {:id 1} identity))")]
+                                   ["[metabase.app-db.core :as app-db]"]
+                                   "(defn- upsert! [] (app-db/update-or-insert! :model/Card {:id 1} identity))")]
       (is (= 1 (count caught)))
       (is (re-find #"Tool code must not reach the app DB" (:message (first caught)))))))
 
@@ -55,14 +55,15 @@
                      metabase.agent-api.browse-data
                      metabase.agent-api.browse-collection
                      metabase.agent-api.get-content
+                     metabase.agent-api.card-write
                      metabase.agent-api.execute-query
                      metabase.agent-api.parameter-values
                      metabase.mcp.tools
                      metabase-enterprise.mcp.init]]
       (testing ns-sym
         (is (= 1 (count (app-db-findings! ns-sym
-                                         ["[toucan2.core :as t2]"]
-                                         "(defn- cards [] (t2/select :model/Card))"))))))))
+                                          ["[toucan2.core :as t2]"]
+                                          "(defn- cards [] (t2/select :model/Card))"))))))))
 
 (deftest the-server-s-own-storage-is-not-tool-code-test
   (testing "a namespace whose rows are the server's own has no user permission to inherit, so it is outside
@@ -75,8 +76,8 @@
                      metabase-enterprise.mcp.usage]]
       (testing ns-sym
         (is (empty? (app-db-findings! ns-sym
-                                     ["[toucan2.core :as t2]"]
-                                     "(defn- rows [] (t2/select :model/Card))")))))))
+                                      ["[toucan2.core :as t2]"]
+                                      "(defn- rows [] (t2/select :model/Card))")))))))
 
 (deftest the-v1-tools-carry-the-only-exemption-test
   (testing "the v1 tools assemble dashcards and patch cards through Toucan, and the exemption reaches them
@@ -84,9 +85,9 @@
     (doseq [ns-sym '[metabase.agent-api.v1-api metabase.agent-api.v1-dashcards]]
       (testing ns-sym
         (is (empty? (app-db-findings! ns-sym
-                                     ["[toucan2.core :as t2]"]
-                                     "(defn- cards [] (t2/select :model/Card))")))))
+                                      ["[toucan2.core :as t2]"]
+                                      "(defn- cards [] (t2/select :model/Card))")))))
     (testing "and even there the app DB itself stays out of reach"
       (is (= 1 (count (app-db-findings! 'metabase.agent-api.v1-api
-                                       ["[metabase.app-db.core :as app-db]"]
-                                       "(defn- q [] (app-db/query {:select [1]}))")))))))
+                                        ["[metabase.app-db.core :as app-db]"]
+                                        "(defn- q [] (app-db/query {:select [1]}))")))))))

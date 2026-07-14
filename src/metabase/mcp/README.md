@@ -56,6 +56,7 @@ Access tokens are scoped to limit what tools a client can use:
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `agent:discover:read`     | the discover toolset: `search`, `browse_data`, `browse_collection`, `get_content`, `get_parameter_values`       |
 | `agent:query:read`        | the query toolset: `execute_query`, `execute_sql`, `run_saved_question`                                       |
+| `agent:author:write`      | the author toolset: `question_write`, `metric_write`                                                           |
 | `agent:resource:read`     | `read_resource` (always granted to any authenticated caller; per-URI perm checks happen inside the dispatcher) |
 | `agent:query:construct`   | `construct_query`                                                                                              |
 | `agent:query`             | `query`                                                                                                        |
@@ -114,6 +115,8 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `create_dashboard`  | Create a new dashboard, optionally populated with saved questions (auto-positioned on the grid).                  |
 | `update_dashboard`  | Update a dashboard's metadata (name, description, collection, archived).                                          |
 | `create_collection` | Create a new collection. Optionally nested under a `parent_collection_id`.                                        |
+| `question_write`    | Create or update a question or a model, keyed by `method`. A create names its query exactly one way — `query_handle`, portable MBQL `query`, or `native: {database_id, sql, template_tags?}` — and needs a `name`; an update needs an `id` and changes only the fields it names. `collection_id` (or `"root"`) saves and moves, `collection_position` pins, `dashboard_id` saves the card inside a dashboard, `archived` trashes and restores. `card_type: "model"` saves a model, whose `column_metadata` edits persist through the card's `result_metadata`. Omitting `collection_id` saves to the caller's personal collection. |
+| `metric_write`      | Create or update a metric, keyed by `method`. A create needs a `name` and a `definition` — portable MBQL with exactly one aggregation and at most one date grouping, refused with the change to make when it is not. Moves, pins, and archives like `question_write`. |
 
 The v1 `query` tool returns at most 200 rows per request and pages with a `continuation_token` that carries the
 whole query. `execute_query` returns `row_limit` rows (default 100, max 2000) and pages with the `query_handle` and

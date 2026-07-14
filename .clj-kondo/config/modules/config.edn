@@ -1771,7 +1771,8 @@
 
   queries
   {:team "Graphy"
-   :api  #{metabase.queries.core
+   :api  #{metabase.queries.card-write
+           metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
@@ -1788,6 +1789,7 @@
            content-verification
            dashboards
            documents
+           eid-translation
            embedding
            events
            graph
@@ -1832,29 +1834,23 @@
   queries-rest
   {:team "Querying Platform"
    :api  #{metabase.queries-rest.api}
-   :uses #{analyze
-           api
+   :uses #{api
            collections
            eid-translation
            embedding
            events
            lib
-           lib-be
            models
-           parameters
            permissions
            public-sharing
            queries
-           query-permissions
            query-processor
            request
            revisions
-           search
            util}
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
-                    :model/Dashboard
                     :model/Database
                     :model/Table}}
 
