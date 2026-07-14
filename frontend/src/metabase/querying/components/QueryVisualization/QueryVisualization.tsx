@@ -130,13 +130,13 @@ export function VisualizationRunningState({
   return (
     <Flex
       className={cx(className, QueryBuilderS.Overlay)}
-      c="brand"
+      c="core-brand"
       direction="column"
       justify="center"
       align="center"
     >
       <LoadingSpinner />
-      <Title c="brand" order={3} mt="lg">
+      <Title c="core-brand" order={3} mt="lg">
         {message}
       </Title>
     </Flex>

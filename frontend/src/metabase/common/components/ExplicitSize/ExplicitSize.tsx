@@ -143,6 +143,7 @@ export function ExplicitSize<T>({
 
       _getRefreshMode = () => {
         if (this.context) {
+          // Unjustified type cast. FIXME
           return this.context as RefreshMode;
         }
 
@@ -302,6 +303,7 @@ export function ExplicitSize<T>({
               <ComposedComponent
                 ref={forwardedRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
+                // Unjustified type cast. FIXME
                 {...(rest as unknown as T)}
                 {...this.state}
               />
@@ -311,6 +313,7 @@ export function ExplicitSize<T>({
           return (
             <ComposedComponent
               ref={this._setElementRef}
+              // Unjustified type cast. FIXME
               {...(props as unknown as T)}
               {...this.state}
             />
@@ -322,6 +325,7 @@ export function ExplicitSize<T>({
     return React.forwardRef<
       unknown,
       PropsWithoutRef<ExplicitSizeOuterProps<T>>
+      // Unjustified type cast. FIXME
     >((props, ref) => (
       <WrappedComponent {...(props as T & InnerProps)} forwardedRef={ref} />
     ));

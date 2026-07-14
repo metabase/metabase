@@ -83,6 +83,7 @@ const parseGuardedEnum = <T extends string, D extends T | null>(
 
 const guardChannel = (value: string): value is NotificationChannelType =>
   (CHANNEL_VALUES satisfies NotificationChannelType[]).includes(
+    // Unjustified type cast. FIXME
     value as NotificationChannelType,
   );
 
@@ -91,6 +92,7 @@ const parseChannels = (param: QueryParam): NotificationChannelType[] =>
 
 const guardLastSendStatus = (value: string): value is NotificationRunStatus =>
   (LAST_SEND_STATUS_VALUES satisfies NotificationRunStatus[]).includes(
+    // Unjustified type cast. FIXME
     value as NotificationRunStatus,
   );
 
@@ -111,6 +113,7 @@ const parseCreatorActive = (param: QueryParam): boolean | null => {
 };
 
 const guardTab = (value: string): value is NotificationsTab =>
+  // Unjustified type cast. FIXME
   (TAB_VALUES satisfies NotificationsTab[]).includes(value as NotificationsTab);
 
 const parseTabEnum = (param: QueryParam): NotificationsTab =>
@@ -118,6 +121,7 @@ const parseTabEnum = (param: QueryParam): NotificationsTab =>
 
 const guardSortColumn = (value: string): value is AdminNotificationSortColumn =>
   (SORT_COLUMN_VALUES satisfies AdminNotificationSortColumn[]).includes(
+    // Unjustified type cast. FIXME
     value as AdminNotificationSortColumn,
   );
 

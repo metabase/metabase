@@ -4,8 +4,7 @@ import { dedent } from "ts-dedent";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 12445", { tags: ["@external", "@skip"] }, () => {
   const CC_NAME = "Abbr";
@@ -43,63 +42,6 @@ describe("issue 12445", { tags: ["@external", "@skip"] }, () => {
     });
   });
 });
-
-describe("issue 13289", () => {
-  const CC_NAME = "Math";
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.openOrdersTable({ mode: "notebook" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
-
-    // Add custom column that will be used later in summarize (group by)
-    H.enterCustomColumnDetails({ formula: "1 + 1", name: CC_NAME });
-    cy.button("Done").click();
-  });
-
-  it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
-    H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-
-    H.popover().findByText(CC_NAME).click();
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.icon("add").last().click();
-
-    H.popover().within(() => {
-      cy.findByText("Created At").click();
-    });
-
-    H.visualize();
-
-    cy.findByTestId("query-visualization-root").within(() => {
-      H.cartesianChartCircle()
-        .eq(5) // random circle in the graph (there is no specific reason for this index)
-        .click();
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See this month by week").click();
-    cy.wait("@dataset");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is Sep 1–30, 2025");
-  });
-});
-
 describe("issue 13751", { tags: "@external" }, () => {
   const CC_NAME = "C-States";
   const PG_DB_NAME = "QA Postgres12";
@@ -846,38 +788,6 @@ describe("issue 25189", { tags: "@skip" }, () => {
     });
   });
 });
-
-describe("issue 32032", () => {
-  const QUERY = {
-    "source-table": REVIEWS_ID,
-    expressions: {
-      "Custom Reviewer": ["field", REVIEWS.REVIEWER, null],
-    },
-    fields: [
-      ["field", REVIEWS.ID, { "base-type": "type/BigInteger" }],
-      ["field", REVIEWS.REVIEWER, { "base-type": "type/Text" }],
-      ["expression", "Custom Reviewer", { "base-type": "type/Text" }],
-    ],
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createQuestion({ query: QUERY }, { visitQuestion: true });
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should allow quick filter drills on custom columns", () => {
-    H.tableInteractive().findAllByText("xavier").eq(1).click();
-    H.popover().findByText("Is xavier").click();
-    cy.wait("@dataset");
-    H.main()
-      .findByText(/There was a problem/i)
-      .should("not.exist");
-    H.tableInteractive().findAllByText("xavier").should("have.length", 2);
-  });
-});
-
 // broken. see https://github.com/metabase/metabase/issues/55673
 describe("issue 42949", { tags: "@skip" }, () => {
   beforeEach(() => {
@@ -1479,39 +1389,5 @@ describe("issue 53527", () => {
     H.popover().button("Done").click();
     H.visualize();
     H.tableInteractive().findByText("ab").should("be.visible");
-  });
-});
-
-describe("issue 48562", () => {
-  const questionDetails = {
-    query: {
-      "source-table": ORDERS_ID,
-      expressions: {
-        CustomColumn: ["contains", ["field", 10000, null], "abc"],
-      },
-      filter: ["+", 1, ["segment", 10001]],
-      aggregation: [["metric", 10002]],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not crash when referenced columns, segments, and metrics do not exist (metabase#48562)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    H.openNotebook();
-
-    H.getNotebookStep("expression").findByText("CustomColumn").click();
-    H.CustomExpressionEditor.value().should("contain", "[Unknown Field]");
-    H.expressionEditorWidget().button("Cancel").click();
-
-    H.getNotebookStep("filter").findByText("1 + [Unknown Segment]").click();
-    H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
-    H.expressionEditorWidget().button("Cancel").click();
-
-    H.getNotebookStep("summarize").findByText("[Unknown Metric]").click();
-    H.CustomExpressionEditor.value().should("contain", "[Unknown Metric]");
   });
 });

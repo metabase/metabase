@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 
@@ -92,6 +93,35 @@ describe("QuestionSharingMenu", () => {
         expect(
           screen.queryByText("Create a public link"),
         ).not.toBeInTheDocument();
+      });
+
+      // Creating a public link is a write; on a read-only remote-synced question
+      // (can_write=false) the "Create" action is hidden (MB #72752)...
+      it("should hide 'Create a public link' when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: false,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(
+          screen.queryByText("Create a public link"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Public link")).not.toBeInTheDocument();
+      });
+
+      // ...but an existing public link stays visible so it can still be
+      // viewed/copied/revoked, which are reads.
+      it("should keep an existing 'Public link' visible when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
       });
 
       it("should hide the public link option if public sharing is disabled", async () => {
@@ -210,6 +240,63 @@ describe("QuestionSharingMenu", () => {
         });
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
+    });
+
+    describe("admins", () => {
+      it("should expose the 'Embed' option for a writable question", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          question: { can_write: true },
+        });
+        await openMenu();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
+      });
+
+      // The Embed option stays available even on a read-only remote-synced
+      // question (can_write=false); the Publish button inside the modal is
+      // disabled instead of hiding the entry point (MB #72752).
+      it("should still show the 'Embed' option when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("invite to view", () => {
+    it("shows the invite item for admins", async () => {
+      await setupQuestionSharingMenu({ isAdmin: true });
+      await openMenu();
+      expect(
+        screen.getByText("Invite someone to view this"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the invite item for non-admins", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: false,
+        isPublicSharingEnabled: true,
+        hasPublicLink: true,
+      });
+      await openMenu();
+      expect(
+        screen.queryByText("Invite someone to view this"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the invite modal for the question", async () => {
+      fetchMock.get("path:/api/permissions/group", []);
+      await setupQuestionSharingMenu({ isAdmin: true });
+      await openMenu();
+      await userEvent.click(screen.getByText("Invite someone to view this"));
+      expect(
+        await screen.findByText("Invite someone to view this question"),
+      ).toBeInTheDocument();
     });
   });
 });

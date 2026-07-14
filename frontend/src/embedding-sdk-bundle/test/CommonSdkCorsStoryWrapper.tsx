@@ -7,6 +7,7 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 
 const METABASE_INSTANCE_URL =
+  // Unjustified type cast. FIXME
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 
 const DEFAULT_AUTH_CONFIG: MetabaseAuthConfig = {

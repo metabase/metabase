@@ -42,6 +42,7 @@ export const useErrorInfo = (
       /(question|model|dashboard|collection|metric)[[\/\#]([\d\w]+)/,
     );
 
+    // Unjustified type cast. FIXME
     const entity = (matches?.[1] ?? undefined) as
       | ReportableEntityName
       | undefined;

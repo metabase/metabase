@@ -1,9 +1,9 @@
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { getDataFromClicked } from "metabase/parameters/utils/click-behavior";
 import { isEmail } from "metabase/utils/email";
 import { removeNewLines } from "metabase/utils/formatting/strings";
 import type { ColumnSettings } from "metabase-types/api";
 
+import { getDataFromClicked } from "./click-data";
 import { renderLinkTextForClick } from "./link";
 
 export function formatEmail(
@@ -20,7 +20,7 @@ export function formatEmail(
   const email = String(value);
   const label =
     clicked && link_text
-      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked) as any)
+      ? renderLinkTextForClick(link_text, getDataFromClicked(clicked))
       : null;
 
   if (

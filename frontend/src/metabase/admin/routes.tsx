@@ -1,12 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
 import { Fragment } from "react";
-import {
-  IndexRedirect,
-  IndexRoute,
-  Redirect,
-  Route,
-  type RouteComponent,
-} from "react-router";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
@@ -72,6 +65,13 @@ import {
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Redirect,
+  Route,
+  type RouteComponent,
+} from "metabase/router";
 import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
@@ -280,6 +280,7 @@ export const getRoutes = (
         {/* Metabot */}
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
           {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
+          {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
           <Route key="index-layout" component={MetabotAdminLayout}>
             <IndexRoute key="index" component={AISettingsPage} />
             <Route key="mcp" path="mcp" component={McpSettingsPage} />

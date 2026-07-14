@@ -1,5 +1,4 @@
 import { Fragment, type ReactNode, useCallback } from "react";
-import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -8,6 +7,7 @@ import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/perm
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import { push } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";

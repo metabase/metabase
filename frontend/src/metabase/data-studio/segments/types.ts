@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 
+import type { Route } from "metabase/router";
 import type { Segment, Table } from "metabase-types/api";
 
 export type SegmentTabUrls = {

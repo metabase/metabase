@@ -33,9 +33,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers []
-  (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil))
-  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
+  (api.session/reset-throttlers-for-testing!))
 
 (use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
@@ -131,6 +129,14 @@
     (is (=? {:errors {:password "did not match stored password"}}
             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
                                                (assoc :password "something else")))))))
+
+(deftest login-unknown-email-does-not-leak-account-existence-test
+  (testing "POST /api/session - an unknown email returns the same 401 error as a wrong password (anti-enumeration)"
+    (let [unknown-email-resp  (mt/client :post 401 "session" {:username "definitely-not-a-user@metabase.test"
+                                                              :password "whatever-UP12!!"})
+          wrong-password-resp (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
+                                                                 (assoc :password "whatever-UP12!!")))]
+      (is (= wrong-password-resp unknown-email-resp)))))
 
 (deftest login-throttling-test
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"

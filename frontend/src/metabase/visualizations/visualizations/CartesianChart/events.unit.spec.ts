@@ -8,21 +8,14 @@ import type {
   Datum,
   DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createMockColumn,
   createMockDatetimeColumn,
   createMockSingleSeries,
-  createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import {
-  canBrush,
-  getEventDimensions,
-  getTimelineEventsForEvent,
-} from "./events";
+import { canBrush, getEventDimensions } from "./events";
 
 const CARD_ID = 107;
 
@@ -348,49 +341,5 @@ describe("canBrush", () => {
     expect(
       canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
     ).toBe(true);
-  });
-});
-
-describe("getTimelineEventsForEvent", () => {
-  const timelineEventsModel: TimelineEventsModel = [
-    {
-      date: "2027-10-01T00:00:00Z",
-      events: [createMockTimelineEvent({ id: 1, name: "RC1" })],
-    },
-    {
-      date: "2027-11-01T00:00:00Z",
-      events: [createMockTimelineEvent({ id: 2, name: "RC2" })],
-    },
-  ];
-
-  it("finds events by event.value", () => {
-    const event = {
-      value: "2027-10-01T00:00:00Z",
-      data: null,
-    } as unknown as EChartsSeriesMouseEvent;
-
-    const result = getTimelineEventsForEvent(timelineEventsModel, event);
-    expect(result).toEqual(timelineEventsModel[0].events);
-  });
-
-  it("finds events by event.data.xAxis when value is not populated (stacked series) #74005", () => {
-    const event = {
-      value: undefined,
-      data: { xAxis: "2027-10-01T00:00:00Z" },
-    } as unknown as EChartsSeriesMouseEvent;
-
-    const result = getTimelineEventsForEvent(timelineEventsModel, event);
-    expect(result).toEqual(timelineEventsModel[0].events);
-  });
-
-  it("returns undefined when no matching date exists", () => {
-    const event = {
-      value: "9999-01-01T00:00:00Z",
-      data: null,
-    } as unknown as EChartsSeriesMouseEvent;
-
-    expect(
-      getTimelineEventsForEvent(timelineEventsModel, event),
-    ).toBeUndefined();
   });
 });

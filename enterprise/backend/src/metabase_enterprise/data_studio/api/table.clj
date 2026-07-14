@@ -127,10 +127,9 @@
           table-ids-to-update (when (seq downstream-ids)
                                 (t2/select-pks-set :model/Table :id [:in downstream-ids] :is_published true))]
       (when (seq table-ids-to-update)
-        (t2/query {:update (t2/table-name :model/Table)
-                   :set    {:collection_id nil
-                            :is_published  false}
-                   :where  [:in :id table-ids-to-update]})
+        (t2/update! :model/Table :id [:in table-ids-to-update]
+                    {:collection_id nil
+                     :is_published  false})
         ;; Publish events for audit log and remote sync tracking
         (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
           (doseq [table updated-tables]
@@ -175,12 +174,11 @@
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
-    (t2/query {:update (t2/table-name :model/Table)
-               :set    {:collection_id (:id target-collection)
-                        :is_published  true}
-               :where  update-where})
-    ;; Publish events for audit log and remote sync tracking
     (when (seq table-ids-to-update)
+      (t2/update! :model/Table :id [:in table-ids-to-update]
+                  {:collection_id (:id target-collection)
+                   :is_published  true})
+      ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-publish {:object  table
@@ -201,12 +199,11 @@
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
-    (t2/query {:update (t2/table-name :model/Table)
-               :set    {:collection_id nil
-                        :is_published  false}
-               :where  update-where})
-    ;; Publish events for audit log and remote sync tracking
     (when (seq table-ids-to-update)
+      (t2/update! :model/Table :id [:in table-ids-to-update]
+                  {:collection_id nil
+                   :is_published  false})
+      ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-unpublish {:object  table

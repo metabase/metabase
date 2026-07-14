@@ -4,12 +4,12 @@ import _ from "underscore";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getParameterValues } from "metabase/dashboard/selectors";
+import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { useSelector } from "metabase/redux";
 import { Popover } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { getUrlTarget } from "metabase/visualizations/lib/open-url";
-import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   LinkCardSettings,

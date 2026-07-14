@@ -2,15 +2,15 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
-import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useQuestionListQuery } from "metabase/common/hooks";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
+import { ListItem } from "metabase/reference/components/ListItem";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import visualizations from "metabase/visualizations";
@@ -71,6 +71,7 @@ const SegmentQuestionsInner = ({
     isLoading,
     error,
   } = useQuestionListQuery({
+    // Unjustified type cast. FIXME
     query: { f: "using_segment" as any, model_id: segment.id },
   });
 
@@ -119,4 +120,5 @@ const SegmentQuestionsInner = ({
 export const SegmentQuestions = connect(
   mapStateToProps,
   mapDispatchToProps,
+  // Unjustified type cast. FIXME
 )(SegmentQuestionsInner as unknown as React.ComponentType);

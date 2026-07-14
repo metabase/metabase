@@ -324,7 +324,7 @@
 ;; Scalability — targeted writes, full-diff backstop.
 ;; The full diff is O(total index size) per run, not O(changes). Embeddings — the only expensive resource —
 ;; are already change-scoped (only a new doc_text is embedded; an idle run embeds nothing), and the O(total)
-;; metadata read is cheap over the *library* (the bounded curated tier), so a full run stays comfortable
+;; metadata read is cheap over the *library* (a bounded tier), so a full run stays comfortable
 ;; into the tens of thousands of docs. The write path no longer pays it on every edit: an `osi_ai_context`
 ;; write drives [[reconcile-entity!]] (one entity's slice), and [[reconcile!]] runs only on a slow schedule
 ;; and from the force-reconcile API as the backstop for membership / name / description changes that aren't

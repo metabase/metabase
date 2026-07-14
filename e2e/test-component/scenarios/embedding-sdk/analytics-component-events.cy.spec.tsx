@@ -29,22 +29,29 @@ type SdkEventData = {
 
 const sdkEventsFromProxyBody = (body: unknown): SdkEventData[] => {
   const rows =
+    // Unjustified type cast. FIXME
     body && Array.isArray((body as { data?: unknown[] }).data)
-      ? (body as { data: Array<{ ue_pr?: string }> }).data
+      ? // Unjustified type cast. FIXME
+        (body as { data: Array<{ ue_pr?: string }> }).data
       : [];
 
-  return rows
-    .map((row) => {
-      try {
-        return JSON.parse(row.ue_pr ?? "");
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean)
-    .map((unstruct) => unstruct.data) // unstruct_event -> { schema, data }
-    .filter((selfDescribing) => selfDescribing?.schema === SIMPLE_EVENT_SCHEMA)
-    .map((selfDescribing) => selfDescribing.data as SdkEventData);
+  return (
+    rows
+      .map((row) => {
+        try {
+          return JSON.parse(row.ue_pr ?? "");
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .map((unstruct) => unstruct.data) // unstruct_event -> { schema, data }
+      .filter(
+        (selfDescribing) => selfDescribing?.schema === SIMPLE_EVENT_SCHEMA,
+      )
+      // Unjustified type cast. FIXME
+      .map((selfDescribing) => selfDescribing.data as SdkEventData)
+  );
 };
 
 const parseEventDetail = (event: SdkEventData) => {

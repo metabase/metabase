@@ -7,10 +7,9 @@ import {
   useUpdateUserMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { UserForm } from "metabase/common/components/UserForm";
 import { Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";
-
-import { UserForm } from "../../forms/UserForm";
 
 interface EditUserModalProps {
   onClose: () => void;

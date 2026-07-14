@@ -123,6 +123,7 @@ export function FunnelNormal({
   const formatPercent = (percent: number) => `${(100 * percent).toFixed(2)} %`;
 
   const dimensions = sortedRows.map((row) => row[dimensionIndex]);
+  // Unjustified type cast. FIXME
   const metrics = sortedRows.map((row) => row[metricIndex]) as number[];
 
   // this is a little hacky, since this component and static-viz use different data structures for the funnel steps

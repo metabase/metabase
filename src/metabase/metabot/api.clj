@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.ai-tracing.core :as ait]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -85,9 +86,10 @@
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
-  Streams AI SDK v4 line protocol to the client in real-time while simultaneously
-  collecting parts for database storage. Text parts are combined before storage
-  to consolidate streaming chunks into single text parts.
+  Streams AI SDK SSE `data: {UIMessageChunk}` events
+  (see [[self.core/parts->aisdk-sse-xf]]) to the client in real-time while
+  simultaneously collecting parts for database storage. Text parts are combined
+  before storage to consolidate streaming chunks into single text parts.
 
   Monitors `canceled-chan` for client disconnection — when the client closes the
   connection, the pipeline stops via `reduced` and collected parts are still persisted.
@@ -97,10 +99,11 @@
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
-  `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
-  line protocol so the client can correlate streamed messages with feedback."
+  `:external-id` is the assistant row's `external_id`, emitted as the SSE
+  `start` event's `messageId` so the client can correlate streamed messages
+  with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           assistant-msg-id external-id]}]
+           eval-session-id assistant-msg-id external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
@@ -113,20 +116,19 @@
             ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
             ;; from a clean success.
             thrown     (volatile! nil)
-            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
-                                                       :external-id external-id}))]
+                             (self.core/parts->aisdk-sse-xf {:message-id external-id}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages      messages
-                               :state         state
-                               :metabot-id    metabot-id
-                               :profile-id    (keyword profile-id)
-                               :context       enriched-context
-                               :tracking-opts {:session-id conversation-id}}
+                      (cond-> {:messages        messages
+                               :state           state
+                               :metabot-id      metabot-id
+                               :profile-id      (keyword profile-id)
+                               :context         enriched-context
+                               :eval-session-id eval-session-id
+                               :tracking-opts   {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -142,16 +144,17 @@
                        {:conversation-id conversation-id
                         :assistant-msg-id assistant-msg-id
                         :external-id     external-id})
-            ;; Stream a well-formed AI SDK error part so the client surfaces the failure
+            ;; Stream a well-formed AI SDK error tail so the client surfaces the failure
             ;; instead of treating the truncated stream as a silent success. Unlike binary
             ;; downloads (which abort the connection), an event stream carries its own error
-            ;; framing, so we emit the error event and then let the body fn return to close
-            ;; the socket cleanly — aborting here would deny the client this very event.
+            ;; framing, so we emit the error event, a closing `finish`, and `[DONE]`, then let
+            ;; the body fn return to close the socket cleanly — aborting here would deny the
+            ;; client this very event.
             (try
-              (let [error-line (self.core/format-error-line
-                                {:error (metabot.persistence/throwable->error-payload t)})]
-                (.write os (.getBytes (str error-line "\n") "UTF-8"))
-                (.flush os))
+              (.write os (.getBytes ^String (self.core/format-error-frames
+                                             {:error (metabot.persistence/throwable->error-payload t)})
+                                    "UTF-8"))
+              (.flush os)
               (catch org.eclipse.jetty.io.EofException _
                 (vreset! canceled? true))))
           (finally
@@ -185,7 +188,7 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug eval_session_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -210,6 +213,7 @@
         :conversation-id  conversation_id
         :state            state
         :debug?           debug?
+        :eval-session-id  eval_session_id
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id}))))
 
@@ -254,6 +258,12 @@
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
+            ;; eval-only: lets the benchmark harness name the per-session trace file it will read back.
+            ;; Length + charset enforced at this HTTP boundary so a bad id 400s cleanly instead of
+            ;; throwing deep in `ait/checked-session-id` and surfacing as a generic agent error.
+            ;; `ait/max-session-id-length` / `ait/safe-session-id-re` are the single source of truth.
+            [:eval_session_id {:optional true}
+             [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)
@@ -278,13 +288,7 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (let [message (metabot.feedback/persist-feedback! body)]
-    (try
-      (api/check-400 (metabot.feedback/submit-to-harbormaster!
-                      (metabot.feedback/harbormaster-payload body message))
-                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
-      (catch Exception e
-        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
+  (metabot.feedback/persist-feedback! body)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/source-feedback" :- [:map
@@ -396,21 +400,32 @@
     (str/starts-with? id "openai.")    "OpenAI"
     :else                              nil))
 
+(defn- openai-model-group
+  "Group an OpenAI model by version family for the picker."
+  [{:keys [id]}]
+  (when-let [version (second (re-find #"^gpt-(\d+(?:\.\d+)?)" id))]
+    (str "GPT-" version)))
+
 (defn- openrouter-model-group
   [{:keys [display_name id]}]
-  (or (some-> display_name
-              (str/split #": " 2)
-              first)
-      (some-> id
-              (str/split #"/" 2)
-              first
-              title-case-token)))
+  (cond
+    (and display_name (str/includes? display_name ": "))
+    (-> display_name
+        (str/split #": " 2)
+        first)
+
+    (and id (str/includes? id "/"))
+    (-> id
+        (str/split #"/" 2)
+        first
+        title-case-token)))
 
 (defn- decorate-provider-model
   [provider model]
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
     "bedrock"    (assoc model :group (bedrock-model-group model))
+    "openai"     (assoc model :group (openai-model-group model))
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
@@ -428,7 +443,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "bedrock" "openrouter"} provider)
+    (if (contains? #{"anthropic" "bedrock" "openai" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys

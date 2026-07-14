@@ -59,6 +59,7 @@ export function useSdkIframeEmbedNavigation({
 
         if (
           !EXPERIENCES_WITHOUT_RESOURCE_SELECTION.includes(
+            // Unjustified type cast. FIXME
             experience as (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number],
           )
         ) {

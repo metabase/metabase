@@ -24,6 +24,10 @@ export function setupListTransformsEndpoint(transforms: Transform[]) {
   fetchMock.get(`path:/api/transform`, transforms);
 }
 
+export function setupGetTransformEndpoint(transform: Transform) {
+  fetchMock.get(`path:/api/transform/${transform.id}`, transform);
+}
+
 export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
   fetchMock.get(`path:/api/transform-tag`, tags);
 }

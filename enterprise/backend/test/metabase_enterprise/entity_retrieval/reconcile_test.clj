@@ -10,11 +10,16 @@
    [metabase.measures.test-util :as measures.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; raw t2/collections.tu access below runs before any auto-initializing mt helper, so the app db must be
+;; set up explicitly — on the appdb-mode CI job this namespace can be the first db touch in the JVM
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; OsiAiContext write hooks fire request-entity-sync!, which would spawn a background targeted reconcile
 ;; using the *real* configured embedding model and race these tests — they drive reconcile! / reconcile-entity!
@@ -103,7 +108,7 @@
 (deftest ^:sequential reconcile-lifecycle-test
   ;; :library lets us publish a Table into a library-data collection; the reconcile enumerates the
   ;; library tree via collections/library-collection + descendant-ids, so we build a real library root.
-  (mt/with-premium-features #{:library :semantic-search}
+  (mt/with-premium-features #{:library :library-retrieval}
     (with-isolated-index [ds]
       (let [model semantic.tu/mock-embedding-model]
         (mt/with-temp [:model/Collection {lib-id :id}     {:type "library" :location "/"}
@@ -158,7 +163,7 @@
 
 (deftest ^:sequential reconcile!-runs-to-completion-test
   (testing "reconcile! blocks until the run completes and a second run is idempotent"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
@@ -177,7 +182,7 @@
                 (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model))))))))))))
 
 (deftest ^:sequential rebuild-on-model-change-test
-  (mt/with-premium-features #{:library :semantic-search}
+  (mt/with-premium-features #{:library :library-retrieval}
     (with-isolated-index [ds]
       (let [model semantic.tu/mock-embedding-model]
         (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
@@ -205,7 +210,7 @@
 
 (deftest ^:sequential measures-and-segments-indexed-and-hydrated-test
   (testing "measures/segments on a published library table are indexed and hydrate with parent-table context"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (let [model  semantic.tu/mock-embedding-model
               orders (mt/id :orders)
@@ -242,7 +247,7 @@
 
 (deftest ^:sequential failed-insert-spares-only-that-entitys-orphans-test
   (testing "a failed insert spares that entity's orphans; an unrelated entity's orphans still GC"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (let [model semantic.tu/mock-embedding-model]
           (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
@@ -267,7 +272,7 @@
 
 (deftest ^:sequential reconcile-entity!-targets-one-slice-test
   (testing "reconcile-entity! reconciles only the given entity's docs, leaving other entities untouched"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
@@ -290,7 +295,7 @@
 
 (deftest ^:sequential reconcile-entity!-leaving-library-deletes-all-test
   (testing "reconcile-entity! on an entity that has left the library GCs all of its docs"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
@@ -309,7 +314,7 @@
 
 (deftest ^:sequential reconcile-entity!-ai-context-removal-keeps-name-test
   (testing "removing an entity's ai_context and reconciling it GCs synonym/example docs but keeps name/description"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
@@ -329,7 +334,7 @@
 
 (deftest ^:sequential reconcile!-keeps-ai-context-across-a-card-type-flip-test
   (testing "a full reconcile matches ai_context by entity class, so relabelling a card keeps its synonyms"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{metrics :metrics}]
           (let [model semantic.tu/mock-embedding-model]
@@ -351,7 +356,7 @@
 
 (deftest ^:sequential library-entity-matches-library-entities-test
   (testing "library-entity (point lookup) agrees with library-entities (full scan) for members and non-members"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (collections.tu/with-library [{data :data metrics :metrics}]
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {tbl :id}      {:db_id db-id :collection_id (:id data) :is_published true
@@ -382,7 +387,7 @@
 
 (deftest ^:sequential reconcile-entity!-on-first-build-repopulates-whole-library-test
   (testing "a targeted reconcile that creates the index (first caller, empty table) repopulates the whole library"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]
@@ -400,7 +405,7 @@
 
 (deftest ^:sequential reconcile-entity!-on-rebuild-repopulates-whole-library-test
   (testing "a targeted reconcile that triggers a model/format rebuild repopulates the whole library, not just the one entity"
-    (mt/with-premium-features #{:library :semantic-search}
+    (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
           (let [model semantic.tu/mock-embedding-model]

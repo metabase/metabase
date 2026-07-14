@@ -1,6 +1,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
+import { getBasename } from "metabase/utils/basename";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
@@ -28,15 +29,13 @@ import {
 const MAX_RETRIES = 10;
 
 export class ApiClient extends EventEmitter<EventMap> {
-  basename = "";
-
   private buildUrl(
     template: string,
     data: Record<string, unknown>,
     body?: Record<string, unknown>,
   ): URL {
     const relativePath = substituteUrlTags(template, data, body);
-    return new URL(this.basename.concat(relativePath), location.origin);
+    return new URL(getBasename().concat(relativePath), location.origin);
   }
 
   private getClientHeaders(
@@ -111,7 +110,7 @@ export class ApiClient extends EventEmitter<EventMap> {
 
       if (!init.noEvent && (status === 401 || status === 403)) {
         // Strip basename so listeners (app-main.js) see the relative path.
-        this.emit(status, relativeUrl(this.basename, init.url));
+        this.emit(status, relativeUrl(getBasename(), init.url));
       }
 
       if (!ok) {
@@ -225,7 +224,8 @@ export class ApiClient extends EventEmitter<EventMap> {
       data: options.params ?? {},
       body: bodyIsRaw
         ? undefined
-        : (options.body as Record<string, unknown> | undefined),
+        : // Unjustified type cast. FIXME
+          (options.body as Record<string, unknown> | undefined),
     });
 
     let body: BodyInit | undefined = undefined;
@@ -240,6 +240,7 @@ export class ApiClient extends EventEmitter<EventMap> {
         appendQueryParameters(url, resolvedBody);
       }
     } else if (bodyIsRaw) {
+      // Unjustified type cast. FIXME
       body = options.body as BodyInit;
 
       // Let the browser set Content-Type with the multipart boundary
@@ -269,6 +270,7 @@ export class ApiClient extends EventEmitter<EventMap> {
     } & RequestOptions<Raw>,
   ): Promise<ResponseFor<Raw>> {
     const init = await this._prepareRequest(options);
+    // Unjustified type cast. FIXME
     return this._send(init, options.retry ?? false) as ResponseFor<Raw>;
   }
 
