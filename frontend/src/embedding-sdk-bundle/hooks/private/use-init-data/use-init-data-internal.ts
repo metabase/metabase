@@ -31,7 +31,6 @@ import {
 } from "metabase/embedding-sdk/config";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { setBasename } from "metabase/utils/basename";
-import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler: OnBeforeRequestHandler = async (
@@ -61,7 +60,6 @@ const sdkResponseErrorHandler = ({
     );
 };
 
-const registerJsxFormattingOnce = _.once(registerJsxFormatting);
 const registerVisualizationsOnce = _.once(registerVisualizations);
 const registerDashboardVisualizationsOnce = _.once(
   registerDashboardVisualizations,
@@ -172,7 +170,6 @@ export const useInitDataInternal = ({
   });
 
   useMount(function registerVisualizations() {
-    registerJsxFormattingOnce();
     registerVisualizationsOnce();
     registerDashboardVisualizationsOnce();
   });

@@ -3,6 +3,7 @@ import {
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/visualizations";
+import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
 import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
@@ -112,4 +113,5 @@ function registerVisualizationSettingWidgets() {
 export function registerVisualizations() {
   registerVisualizationComponents();
   registerVisualizationSettingWidgets();
+  registerJsxFormatting();
 }
