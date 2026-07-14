@@ -12,17 +12,14 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { createMockState } from "metabase/redux/store/mocks";
 import { MetabotMentionPluginKey } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
-  createMockCard,
   createMockCollection,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { MetabotPromptInput } from "./MetabotPromptInput";
 
@@ -145,77 +142,5 @@ describe("MetabotPromptInput", () => {
     );
 
     expect(await typeMentionQueryAndGetSearchDbId()).toBe("2");
-  });
-
-  describe("pasting a chart", () => {
-    const datasetQuery = createMockStructuredDatasetQuery();
-    const chartText = serializeChartClipboard(
-      {
-        name: "Orders by month",
-        display: "bar",
-        dataset_query: datasetQuery,
-        visualization_settings: {},
-        chart_id: "chart-1",
-        query_id: "query-1",
-      },
-      "https://metabase.example",
-    );
-
-    const pasteIntoEditor = (text: string) => {
-      const event = new Event("paste", { bubbles: true, cancelable: true });
-      Object.defineProperty(event, "clipboardData", {
-        value: {
-          getData: (type: string) => (type === "text/plain" ? text : ""),
-        },
-      });
-      getEditor().dispatchEvent(event);
-    };
-
-    it("inserts a chart mention referencing the chart id without saving a card", async () => {
-      fetchMock.post("path:/api/card", createMockCard({ id: 42 }));
-      const onChange = jest.fn();
-      const onPasteChart = jest.fn();
-      setup({ onChange, onPasteChart });
-
-      pasteIntoEditor(chartText);
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(
-          expect.stringContaining("metabase://chart/chart-1"),
-        );
-      });
-      expect(onPasteChart).toHaveBeenCalledWith(
-        expect.objectContaining({ chart_id: "chart-1", query_id: "query-1" }),
-      );
-      expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
-    });
-
-    it("ignores pasted content that is not a chart", async () => {
-      fetchMock.post("path:/api/card", createMockCard({ id: 42 }));
-      const onChange = jest.fn();
-      setup({ onChange });
-
-      pasteIntoEditor("just some text");
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalled();
-      });
-      expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
-      const lastValue = onChange.mock.calls.at(-1)?.[0];
-      expect(lastValue).not.toContain("metabase://chart/");
-    });
-
-    it("does not insert a chart mention when the host does not handle chart pastes", async () => {
-      const onChange = jest.fn();
-      setup({ onChange });
-
-      pasteIntoEditor(chartText);
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalled();
-      });
-      const lastValue = onChange.mock.calls.at(-1)?.[0];
-      expect(lastValue).not.toContain("metabase://chart/");
-    });
   });
 });

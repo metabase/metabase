@@ -7,7 +7,10 @@ import {
 } from "@tiptap/pm/model";
 import { match } from "ts-pattern";
 
-import { createMetabaseProtocolLink } from "metabase/metabot/utils/links";
+import {
+  METABSE_PROTOCOL_MD_LINK,
+  createMetabaseProtocolLink,
+} from "metabase/metabot/utils/links";
 import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 
 function serializeNodes(nodes: JSONContent[]): string {
@@ -44,17 +47,6 @@ function serializeNode(node: JSONContent): string {
         name: label,
       });
     }
-    case "chartMention": {
-      const { chartId, label } = node.attrs || {};
-      if (!chartId || !label) {
-        return label || "";
-      }
-      return createMetabaseProtocolLink({
-        id: chartId,
-        model: "chart",
-        name: label,
-      });
-    }
     case "hardBreak":
       return "\n";
     default:
@@ -84,31 +76,7 @@ export const parseClipboardTextAsParagraphs = (
   return Slice.maxOpen(fragment);
 };
 
-const MENTION_REGEX = /\[([^\]]+)\]\(metabase:\/\/([^/)]+)\/([^)]+)\)/g;
-const CHART_MENTION_ID_REGEX = /^[A-Za-z0-9_-]+$/;
-const ENTITY_MENTION_ID_REGEX = /^\d+$/;
-
-function mentionToTiptapNode(
-  label: string,
-  mbProtocolModel: string,
-  id: string,
-): JSONContent | null {
-  if (mbProtocolModel === "chart") {
-    return CHART_MENTION_ID_REGEX.test(id)
-      ? { type: "chartMention", attrs: { label, chartId: id } }
-      : null;
-  }
-  return ENTITY_MENTION_ID_REGEX.test(id)
-    ? {
-        type: "smartLink",
-        attrs: {
-          label,
-          model: mbProtocolModelToSuggestionModel(mbProtocolModel),
-          entityId: id,
-        },
-      }
-    : null;
-}
+const MENTION_REGEX = new RegExp(METABSE_PROTOCOL_MD_LINK, "g");
 
 export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
   // Split text by lines to handle paragraphs
@@ -117,12 +85,8 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
     let lastIndex = 0;
 
     for (const match of line.matchAll(MENTION_REGEX)) {
-      const [fullMatch, label, mbProtocolModel, id] = match;
-      const mentionNode = mentionToTiptapNode(label, mbProtocolModel, id);
-
-      if (!mentionNode) {
-        continue;
-      }
+      const [fullMatch, label, mbProtocolModel, entityId] = match;
+      const model = mbProtocolModelToSuggestionModel(mbProtocolModel);
 
       // Add text before the mention
       if (match.index > lastIndex) {
@@ -132,7 +96,10 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
         });
       }
 
-      pContent.push(mentionNode);
+      pContent.push({
+        type: "smartLink",
+        attrs: { label, model, entityId },
+      });
 
       lastIndex = match.index + fullMatch.length;
     }

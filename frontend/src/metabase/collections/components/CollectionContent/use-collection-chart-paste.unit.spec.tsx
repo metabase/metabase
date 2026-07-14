@@ -34,7 +34,7 @@ function setup({ canWrite = true }: { canWrite?: boolean } = {}) {
     name: "My Collection",
     can_write: canWrite,
   });
-  renderWithProviders(<TestComponent collection={collection} />);
+  return renderWithProviders(<TestComponent collection={collection} />);
 }
 
 function paste(text: string) {
@@ -61,6 +61,32 @@ describe("useCollectionChartPaste", () => {
     await waitFor(() => {
       expect(fetchMock.callHistory.called("create-card")).toBe(true);
     });
+  });
+
+  it("shows an in-progress toast and ignores repeated pastes while saving", async () => {
+    fetchMock.post("path:/api/card", createMockCard({ id: 5 }), {
+      name: "create-card",
+      delay: 100,
+    });
+
+    const { store } = setup({ canWrite: true });
+    act(() => {
+      paste(chartText);
+      paste(chartText);
+    });
+
+    await waitFor(() => {
+      expect(store.getState().undo).toContainEqual(
+        expect.objectContaining({ message: "Saving chart to My Collection…" }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(store.getState().undo).toContainEqual(
+        expect.objectContaining({ message: "Chart saved to My Collection" }),
+      );
+    });
+    expect(fetchMock.callHistory.calls("create-card")).toHaveLength(1);
   });
 
   it("does nothing in a read-only collection", () => {

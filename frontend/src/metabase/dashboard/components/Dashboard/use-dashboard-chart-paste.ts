@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import { useCreateCardMutation } from "metabase/api";
@@ -9,22 +9,34 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
+const PASTE_TOAST_ID = "dashboard-chart-paste";
+
 export function useDashboardChartPaste() {
   const dispatch = useDispatch();
   const [createCard] = useCreateCardMutation();
   const { dashboard, isEditing, selectedTabId } = useDashboardContext();
+  const isPastingRef = useRef(false);
 
   const dashboardId = dashboard?.id ?? null;
 
   const handlePasteChart = useCallback(
     async (payload: ChartClipboardPayload) => {
-      if (dashboardId == null) {
+      if (dashboardId == null || isPastingRef.current) {
         return;
       }
+      isPastingRef.current = true;
       const savedTabId =
         typeof selectedTabId === "number" && selectedTabId > 0
           ? selectedTabId
           : undefined;
+      dispatch(
+        addUndo({
+          id: PASTE_TOAST_ID,
+          icon: null,
+          timeout: null,
+          message: t`Adding chart to dashboard…`,
+        }),
+      );
       try {
         const card = await createCard({
           name: payload.name,
@@ -44,6 +56,7 @@ export function useDashboardChartPaste() {
         );
         dispatch(
           addUndo({
+            id: PASTE_TOAST_ID,
             icon: "check_filled",
             message: t`Chart added to dashboard`,
           }),
@@ -51,11 +64,14 @@ export function useDashboardChartPaste() {
       } catch {
         dispatch(
           addUndo({
+            id: PASTE_TOAST_ID,
             icon: "warning",
             toastColor: "error",
             message: t`Couldn't add the chart to this dashboard`,
           }),
         );
+      } finally {
+        isPastingRef.current = false;
       }
     },
     [dispatch, createCard, dashboardId, selectedTabId],

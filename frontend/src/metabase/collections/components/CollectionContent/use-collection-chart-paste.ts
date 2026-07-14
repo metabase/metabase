@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import { useCreateCardMutation } from "metabase/api";
@@ -9,14 +9,29 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection } from "metabase-types/api";
 
+const PASTE_TOAST_ID = "collection-chart-paste";
+
 export function useCollectionChartPaste(collection: Collection) {
   const dispatch = useDispatch();
   const [createCard] = useCreateCardMutation();
+  const isPastingRef = useRef(false);
 
   const { id, name, can_write } = collection;
 
   const handlePasteChart = useCallback(
     async (payload: ChartClipboardPayload) => {
+      if (isPastingRef.current) {
+        return;
+      }
+      isPastingRef.current = true;
+      dispatch(
+        addUndo({
+          id: PASTE_TOAST_ID,
+          icon: null,
+          timeout: null,
+          message: t`Saving chart to ${name}…`,
+        }),
+      );
       try {
         await createCard({
           name: payload.name,
@@ -28,6 +43,7 @@ export function useCollectionChartPaste(collection: Collection) {
         }).unwrap();
         dispatch(
           addUndo({
+            id: PASTE_TOAST_ID,
             icon: "check_filled",
             message: t`Chart saved to ${name}`,
           }),
@@ -35,11 +51,14 @@ export function useCollectionChartPaste(collection: Collection) {
       } catch {
         dispatch(
           addUndo({
+            id: PASTE_TOAST_ID,
             icon: "warning",
             toastColor: "error",
             message: t`Couldn't save the chart to this collection`,
           }),
         );
+      } finally {
+        isPastingRef.current = false;
       }
     },
     [createCard, dispatch, id, name],
