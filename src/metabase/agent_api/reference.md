@@ -731,6 +731,30 @@ op created has no id until the call is saved), `position` (`{row, col}`), and
 free slot on its tab; the grid is 24 columns wide, and a card that runs past it
 is a 400 naming the fix.
 
+| Filter op | Args |
+| --- | --- |
+| `add_parameter` | `name`, `type`, and optionally `default`, `required`, `isMultiSelect`, `temporal_units`, `values_query_type`, `values_source_type`, `values_source_config`, `filteringParameters`. The names are the dashboard row's own, camelCase warts included; the tool validates the ones its schema does not declare (`required`, `isMultiSelect`). A name the dashboard already uses is refused. |
+| `update_parameter` | `parameter_id`, and the fields to change — every property of a filter is a field of one object, so one op sets all of them. Changing the `type` clears the default and the wiring the new type cannot carry. |
+| `remove_parameter` | `parameter_id`. Takes the wiring, the linked-filter references, and the card the widget sat on with it, and **names the subscriptions the removal breaks** in `broken_subscriptions` — the save archives them and mails their creators. |
+| `move_parameter` | `parameter_id`, and an `index` (a place in the row of filters at the top of the page) or a `dashcard_id` (the filter sits on that card — a question card or a heading). |
+| `wire_parameter` | `parameter_id`, a `dashcard_id` (or the `card_id` the dashcard shows, which is how a call wires a card it added in the same list), and exactly one of `target_field` (a column of the card, by name or field id), `target_tag` (a `{{tag}}` of a SQL or text card), or `target` (the raw mapping target, as `layout` reports it). `autowire: true` wires every other card **on the same tab** that has the column. |
+| `unwire_parameter` | `parameter_id`, and a `dashcard_id` to unwire one card rather than all of them. |
+
+`parameter_id` takes a filter's id or its *name*, on the same bargain `tab`
+makes: a filter an earlier op added has no id until the save mints one.
+
+**A filter does nothing until it is wired.** `add_parameter` makes the widget;
+`wire_parameter` connects it to one column of one card. `autowire` is the
+editor's "filter the rest of these cards too", performed rather than offered: it
+maps every card on the tab whose query has that column — matched by *column*,
+not by name, so a card built on another table is left alone — and skips a card
+already wired to the filter. A filter that sits on a question card spreads to
+nothing: the card is where its widget is. What a filter can reach at all is
+decided by its `type`: a `date/*` filter reaches a temporal column, a `category`
+filter a column whose values are listed, a native card its `{{tags}}` rather
+than its columns. A `target_field` the filter cannot narrow comes back naming
+the columns it can.
+
 **The compile is all-or-nothing.** Ops validate in order against a state the
 compiler carries — so a call can add a tab and put a card on it — and then
 compile into the one `PUT` the app makes. An op that fails aborts the whole
@@ -762,10 +786,18 @@ Request:
     {"op": "add_tab", "name": "Overview"},
     {"op": "add_heading", "text": "This quarter", "tab": "Overview"},
     {"op": "add_card", "card_id": 42, "tab": "Overview"},
-    {"op": "add_card", "card_id": 43, "size": {"size_x": 12, "size_y": 6}}
+    {"op": "add_card", "card_id": 43, "size": {"size_x": 12, "size_y": 6}},
+    {"op": "add_parameter", "name": "Created at", "type": "date/all-options"},
+    {"op": "wire_parameter", "parameter_id": "Created at", "card_id": 42,
+     "target_field": "CREATED_AT", "autowire": true}
   ]
 }
 ```
+
+A whole dashboard, filters and all, in one call: the ops that wire name the
+filter by its `name` and the card by its `card_id`, because the dashboard's own
+ids — the filter's, the dashcards' — are minted by the save this call compiles
+into.
 
 Response — the dashboard's **editing skeleton**, the same shape `/v2/content`
 returns for a dashboard: its tabs, its filters, and one summary row per dashcard

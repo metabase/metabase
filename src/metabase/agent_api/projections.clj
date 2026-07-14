@@ -108,7 +108,7 @@
 ;; op is authorable from it, so an agent that just wrote a dashboard can write the next op against the response
 ;; instead of reading the dashboard back.
 
-(defn- dashcard-kind
+(defn dashcard-kind
   "What a dashcard *is*: a saved card, or one of the virtual cards the editor places — text, heading, link,
    iframe, action. The kind lives in the virtual card's `display`; a dashcard without one shows a card."
   [dashcard]

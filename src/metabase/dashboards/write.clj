@@ -345,6 +345,23 @@
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 
+(defn subscriptions-filtering-on
+  "The dashboard's live subscriptions that filter on any of `parameter-ids`, as `{:id, :name}`.
+
+  A subscription saves the filter values it sends with, so a parameter the dashboard drops takes every subscription
+  that named it with it: [[handle-broken-subscriptions]] archives them and mails their creators. This says which ones
+  *would* go, which is the thing worth knowing before the parameter is dropped rather than after."
+  [dashboard-id parameter-ids]
+  (when (seq parameter-ids)
+    (let [parameter-ids (set parameter-ids)]
+      (into []
+            (keep (fn [{:keys [id name parameters]}]
+                    (when (some (comp parameter-ids :id) parameters)
+                      {:id id :name name})))
+            (t2/select [:model/Pulse :id :name :parameters]
+                       :dashboard_id dashboard-id
+                       :archived     false)))))
+
 ;;; --------------------------------------------------- Save --------------------------------------------------------
 
 (defn dashboard-for-save

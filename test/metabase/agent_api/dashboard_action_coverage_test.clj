@@ -39,7 +39,6 @@
    - `:dashboard-field` — a field of the dashboard rather than of its layout, written by a named argument of the
      tool rather than by an op.
    - `:another-tool` — a capability with a home elsewhere in the catalog, named in the comment beside it.
-   - `:parameters` — a filter op, which is `dashboard_write`'s other half.
    - `:out-of-scope` — deliberately not exposed, with the reason beside it."
   {;; core.ts — the primitives every persisted edit dispatches through
    "core.ts/setEditingDashboard"                        :ephemeral
@@ -94,29 +93,34 @@
    "tabs.ts/getIdFromSlug"                              :not-an-action
    "tabs.ts/tabsReducer"                                :not-an-action
 
-   ;; parameters.tsx — the filters, which are this tool's other half
-   "parameters.tsx/addParameter"                        :parameters
-   "parameters.tsx/removeParameter"                     :parameters
-   "parameters.tsx/moveParameter"                       :parameters
-   "parameters.tsx/setParameterIndex"                   :parameters
-   "parameters.tsx/setParameterMapping"                 :parameters
-   "parameters.tsx/resetParameterMapping"               :parameters
-   "parameters.tsx/updateParameterMappingsForDashcardText" :parameters
-   "parameters.tsx/setParameterName"                    :parameters
-   "parameters.tsx/setParameterType"                    :parameters
-   "parameters.tsx/setParameterDefaultValue"            :parameters
-   "parameters.tsx/setParameterRequired"                :parameters
-   "parameters.tsx/setParameterIsMultiSelect"           :parameters
-   "parameters.tsx/setParameterTemporalUnits"           :parameters
-   "parameters.tsx/setParameterQueryType"               :parameters
-   "parameters.tsx/setParameterSourceType"              :parameters
-   "parameters.tsx/setParameterSourceConfig"            :parameters
-   "parameters.tsx/setParameterFilteringParameters"     :parameters
-   "parameters.tsx/duplicateParameters"                 :parameters
-   "parameters.tsx/removeParameterAndReferences"        :parameters
-   ;; The action a button on the dashboard runs. `add_action` sets it when the card is placed; changing it
-   ;; afterwards is a parameter-era gesture the parameter half will carry.
-   "parameters.tsx/setActionForDashcard"                :parameters
+   ;; parameters.tsx — the filters
+   "parameters.tsx/addParameter"                        ["add_parameter"]
+   "parameters.tsx/removeParameter"                     ["remove_parameter"]
+   "parameters.tsx/removeParameterAndReferences"        ["remove_parameter"]
+   "parameters.tsx/moveParameter"                       ["move_parameter"]
+   "parameters.tsx/setParameterIndex"                   ["move_parameter"]
+   "parameters.tsx/setParameterMapping"                 ["wire_parameter"]
+   "parameters.tsx/resetParameterMapping"               ["unwire_parameter"]
+   ;; The editor drops a text card's mappings when the `{{tag}}` they filled in is edited out of its text. The op
+   ;; that edits the text is the op that drops them.
+   "parameters.tsx/updateParameterMappingsForDashcardText" ["patch_dashcard"]
+   ;; Every property of a filter is a field of one object — the sidebar's ten controls all write to it — so one op
+   ;; sets all of them.
+   "parameters.tsx/setParameterName"                    ["update_parameter"]
+   "parameters.tsx/setParameterType"                    ["update_parameter"]
+   "parameters.tsx/setParameterDefaultValue"            ["update_parameter"]
+   "parameters.tsx/setParameterRequired"                ["update_parameter"]
+   "parameters.tsx/setParameterIsMultiSelect"           ["update_parameter"]
+   "parameters.tsx/setParameterTemporalUnits"           ["update_parameter"]
+   "parameters.tsx/setParameterQueryType"               ["update_parameter"]
+   "parameters.tsx/setParameterSourceType"              ["update_parameter"]
+   "parameters.tsx/setParameterSourceConfig"            ["update_parameter"]
+   "parameters.tsx/setParameterFilteringParameters"     ["update_parameter"]
+   ;; Duplicating a filter is adding one with the same settings, which a call already has in front of it.
+   "parameters.tsx/duplicateParameters"                 ["add_parameter"]
+   ;; The action a button on the dashboard runs is fixed when the button is placed: swapping it is removing the
+   ;; button and placing another.
+   "parameters.tsx/setActionForDashcard"                ["remove" "add_action"]
    "parameters.tsx/toggleAutoApplyFilters"              :dashboard-field
    "parameters.tsx/setEditingParameter"                 :ephemeral
    "parameters.tsx/setParameterValue"                   :ephemeral
@@ -176,6 +180,19 @@
    "data-fetching.ts/setDocumentTitle"                  :ephemeral
    "data-fetching.ts/setShowLoadingCompleteFavicon"     :ephemeral
 
+   ;; auto-wire-parameters/ — the editor's offer to wire the rest of the cards, which the server performs. The
+   ;; toasts are the offer; `wire_parameter` with `autowire` is the wiring.
+   "auto-wire-parameters/actions.ts/showAutoWireToast"        ["wire_parameter"]
+   "auto-wire-parameters/actions.ts/showAutoWireToastNewCard" ["wire_parameter"]
+   "auto-wire-parameters/toasts.ts/showAutoWireParametersToast"      :ephemeral
+   "auto-wire-parameters/toasts.ts/showAddedCardAutoWireParametersToast" :ephemeral
+   "auto-wire-parameters/toasts.ts/closeAutoWireParameterToast"      :ephemeral
+   "auto-wire-parameters/toasts.ts/closeAddCardAutoWireToasts"       :ephemeral
+   "auto-wire-parameters/utils.ts/getAllDashboardCardsWithUnmappedParameters" :not-an-action
+   "auto-wire-parameters/utils.ts/getMatchingParameterOption"        :not-an-action
+   "auto-wire-parameters/utils.ts/getAutoWiredMappingsForDashcards"  :not-an-action
+   "auto-wire-parameters/utils.ts/getParameterMappings"              :not-an-action
+
    ;; utils.ts, getNewCardUrl.ts — helpers
    "utils.ts/getExistingDashCards"                      :not-an-action
    "utils.ts/hasDashboardChanged"                       :not-an-action
@@ -193,9 +210,12 @@
   #"(?m)^export (?:const|function) ([A-Za-z][A-Za-z0-9_]*)")
 
 (defn- exports
-  "Every export of the action layer, as `\"file.ts/name\"`."
+  "Every export of the action layer, as `\"file.ts/name\"` — and, for the auto-wire that lives in a directory of its
+   own, `\"auto-wire-parameters/file.ts/name\"`."
   []
-  (let [dir (io/file actions-dir)]
+  (let [dir  (io/file actions-dir)
+        path (fn [^java.io.File f]
+               (subs (.getPath f) (inc (count actions-dir))))]
     (into #{}
           (comp (filter #(re-find #"\.tsx?$" (.getName ^java.io.File %)))
                 (remove #(str/includes? (.getName ^java.io.File %) ".unit.spec."))
@@ -203,8 +223,8 @@
                 (mapcat (fn [^java.io.File f]
                           (for [[_ export-name] (re-seq export-pattern (slurp f))
                                 :when           (not (re-matches #"[A-Z0-9_]+" export-name))]
-                            (str (.getName f) "/" export-name)))))
-          (.listFiles dir))))
+                            (str (path f) "/" export-name)))))
+          (file-seq dir))))
 
 (deftest ^:parallel every-dashboard-action-creator-is-mapped-test
   (testing "the dashboard editor is the enumeration of what a person can do to a dashboard, and every gesture in

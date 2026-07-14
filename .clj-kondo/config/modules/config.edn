@@ -1583,6 +1583,7 @@
            metabase.parameters.field
            metabase.parameters.field-values
            metabase.parameters.init
+           metabase.parameters.mapping
            metabase.parameters.params
            metabase.parameters.schema
            metabase.parameters.shared}

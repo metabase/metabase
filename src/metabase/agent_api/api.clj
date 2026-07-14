@@ -1193,15 +1193,16 @@
   "The dashboard a write saved, as its editing skeleton — the same shape `get_content` returns for a dashboard. A
   write answers the question the next read would have asked, so the next op is authorable from the response."
   [:map {:closed true}
-   [:id            {:optional true} [:maybe ms/PositiveInt]]
-   [:name          {:optional true} [:maybe :string]]
-   [:description   {:optional true} [:maybe :string]]
-   [:collection_id {:optional true} [:maybe :int]]
-   [:archived      {:optional true} [:maybe :boolean]]
-   [:validated     {:optional true} :boolean]
-   [:tabs          [:sequential :map]]
-   [:parameters    [:sequential :map]]
-   [:dashcards     [:sequential :map]]])
+   [:id                   {:optional true} [:maybe ms/PositiveInt]]
+   [:name                 {:optional true} [:maybe :string]]
+   [:description          {:optional true} [:maybe :string]]
+   [:collection_id        {:optional true} [:maybe :int]]
+   [:archived             {:optional true} [:maybe :boolean]]
+   [:validated            {:optional true} :boolean]
+   [:tabs                 [:sequential :map]]
+   [:parameters           [:sequential :map]]
+   [:dashcards            [:sequential :map]]
+   [:broken_subscriptions {:optional true} [:sequential :map]]])
 
 (mr/def ::dashboard-write-structured-output
   "The `structuredContent` of a dashboard write: what the dashboard now is, and what a next call addresses it by."
@@ -1213,7 +1214,13 @@
    [:validated {:optional true
                 :tool/description "Present, and true, only on a `validate_only` call: the ops are valid, and
                                    nothing was written."}
-    [:maybe :boolean]]])
+    [:maybe :boolean]]
+   [:broken_subscriptions
+    {:optional true
+     :tool/description (str "The subscriptions a `remove_parameter` broke, by id and name. Removing a filter a "
+                            "subscription sends archives that subscription and mails its creator — tell the user "
+                            "which ones went.")}
+    [:maybe [:sequential :map]]]])
 
 (mr/def ::dashboard-position
   "Where a card sits on the 24-column grid."
@@ -1244,10 +1251,17 @@
           "(`dashcard_id`, `card_ids`); `patch_dashcard` (`dashcard_id`, `patch`). Every add takes an optional "
           "`tab`, `position`, and `size`. Tabs: `add_tab` (`name`); `rename_tab` (`tab_id`, `name`); `move_tab` "
           "(`tab_id`, `index`); `duplicate_tab` (`tab_id`); `remove_tab` (`tab_id`, which deletes the cards on "
-          "it).")}
+          "it). Filters: `add_parameter` (`name`, `type`); `update_parameter` (`parameter_id`, and the fields to "
+          "change); `remove_parameter` (`parameter_id`); `move_parameter` (`parameter_id`, and an `index` or a "
+          "`dashcard_id`); `wire_parameter` (`parameter_id`, a `dashcard_id` or the `card_id` it shows, and one of "
+          "`target_field`, `target_tag`, `target` — plus `autowire` to filter the tab's other cards by the same "
+          "column); `unwire_parameter` (`parameter_id`, and a `dashcard_id` to unwire one card).")}
     (into [:enum] agent-api.dashboard-write/ops)]
    [:card_id
-    {:optional true :tool/description "The card to place, or to replace a dashcard's card with."}
+    {:optional true
+     :tool/description (str "The card to place, or to replace a dashcard's card with. On `wire_parameter`, it names "
+                            "the dashcard *showing* that card — which is how a call wires a card it added in this "
+                            "same list, whose dashcard id the save has not minted yet.")}
     [:maybe agent-api.tools/IdRef]]
    [:dashcard_id
     {:optional true
@@ -1323,11 +1337,92 @@
      :tool/description "The tab to rename, move, duplicate, or remove: its id, or its name."}
     [:maybe [:or :int ms/NonBlankString]]]
    [:name
-    {:optional true :tool/description "`add_tab` and `rename_tab`: the tab's name."}
+    {:optional true
+     :tool/description (str "`add_tab` and `rename_tab`: the tab's name. `add_parameter` and `update_parameter`: the "
+                            "filter's name, which is what the widget is labelled with.")}
     [:maybe ms/NonBlankString]]
    [:index
-    {:optional true :tool/description "`move_tab`: the tab's new place in the row of tabs. 0 is the first."}
-    [:maybe [:int {:min 0}]]]])
+    {:optional true
+     :tool/description (str "`move_tab`: the tab's new place in the row of tabs. 0 is the first. `move_parameter`: the "
+                            "filter's new place in the row of filters at the top of the dashboard.")}
+    [:maybe [:int {:min 0}]]]
+   [:parameter_id
+    {:optional true
+     :tool/description (str "The filter to change, move, wire, or remove: its id, or its name. A filter an earlier op "
+                            "in this same list added has no id yet, so name it. `get_content` on the dashboard lists "
+                            "the filters by id and name, and so does this tool's own response.")}
+    [:maybe ms/NonBlankString]]
+   [:type
+    {:optional true
+     :tool/description (str "`add_parameter` and `update_parameter`: what kind of filter it is. \"string/=\", "
+                            "\"number/=\", \"number/between\", \"date/all-options\", \"id\", \"boolean/=\", and "
+                            "\"temporal-unit\" (which re-groups a chart by day/week/month rather than filtering it) "
+                            "are the ones to reach for. The type decides which columns the filter can be wired to: a "
+                            "date filter reaches a date column and nothing else. Changing it on a filter that is "
+                            "already wired clears the wiring it can no longer carry, and its default.")}
+    [:maybe (into [:enum] agent-api.dashboard-write/parameter-types)]]
+   [:default
+    {:optional true
+     :tool/description (str "The value the filter starts with. A `required` filter needs one — the dashboard cannot be "
+                            "read without a value, so it has to bring its own.")}
+    [:maybe :any]]
+   [:required
+    {:optional true
+     :tool/description "Whether the dashboard refuses to run without a value for this filter. Needs a `default`."}
+    [:maybe :boolean]]
+   [:isMultiSelect
+    {:optional true
+     :tool/description "Whether the reader can pick several values at once (default true)."}
+    [:maybe :boolean]]
+   [:temporal_units
+    {:optional true
+     :tool/description (str "`type: \"temporal-unit\"`: the groupings the reader may choose between — for example "
+                            "[\"day\", \"week\", \"month\"].")}
+    [:maybe [:sequential ms/NonBlankString]]]
+   [:values_query_type
+    {:optional true
+     :tool/description (str "How the widget offers its values: \"list\" (pick from all of them), \"search\" (type to "
+                            "search), or \"none\" (type the value in).")}
+    [:maybe (into [:enum] agent-api.dashboard-write/values-query-types)]]
+   [:values_source_type
+    {:optional true
+     :tool/description (str "Where the values come from: \"static-list\" (a list you give in "
+                            "`values_source_config.values`) or \"card\" (a column of a question, named in "
+                            "`values_source_config` as `card_id` and `value_field`). Omitted, they come from the "
+                            "column the filter is wired to.")}
+    [:maybe (into [:enum] agent-api.dashboard-write/values-source-types)]]
+   [:values_source_config
+    {:optional true
+     :tool/description (str "The values themselves — `{values: [...]}` for a static list, or `{card_id, value_field}` "
+                            "for a column of a question.")}
+    [:maybe :map]]
+   [:filteringParameters
+    {:optional true
+     :tool/description (str "Ids of the filters that narrow this one — a linked filter. With the state filter listed "
+                            "here, the city filter offers only the cities in the state that is chosen.")}
+    [:maybe [:sequential ms/NonBlankString]]]
+   [:target_field
+    {:optional true
+     :tool/description (str "`wire_parameter`: the column of the card the filter narrows, by its name or its field id. "
+                            "This is the one to reach for. `get_content` with `include: [\"fields\"]` on the card "
+                            "lists its columns, and a wrong name comes back with the columns the filter can reach.")}
+    [:maybe [:or ms/PositiveInt ms/NonBlankString]]]
+   [:target_tag
+    {:optional true
+     :tool/description (str "`wire_parameter`: the `{{tag}}` of the card the filter fills in — a variable or a field "
+                            "filter in a SQL question, or a `{{tag}}` written into a text or heading card.")}
+    [:maybe ms/NonBlankString]]
+   [:target
+    {:optional true
+     :tool/description (str "`wire_parameter`: the raw mapping target, as `get_content` with `include: [\"layout\"]` "
+                            "reports it. The escape hatch — prefer `target_field` and `target_tag`.")}
+    [:maybe [:sequential :any]]]
+   [:autowire
+    {:optional true
+     :tool/description (str "`wire_parameter`: also wire every other card on the same tab that has this column, which "
+                            "is what makes one filter narrow the whole dashboard. A card without the column is left "
+                            "alone.")}
+    [:maybe :boolean]]])
 
 (mr/def ::dashboard-write-request
   "Arguments to the `dashboard_write` tool. Only `method` is schema-required; the per-method requirements are
@@ -1414,6 +1509,22 @@
                 "cards on the tab along with it. `move` with a `tab` moves a card between tabs. Name a tab an "
                 "earlier op created by its `name`: it has no id until the call is saved.\n"
                 "\n"
+                "Filters: `add_parameter` (a `name` and a `type`), `update_parameter`, `remove_parameter`, "
+                "`move_parameter` (into the header at an `index`, or onto a card), `wire_parameter`, and "
+                "`unwire_parameter`.\n"
+                "\n"
+                "**A filter does nothing until it is wired.** `add_parameter` makes the widget; `wire_parameter` "
+                "connects it to one column of one card — `target_field` names the column, `target_tag` names a "
+                "`{{tag}}` in a SQL or text card. Pass `autowire: true` and every other card on the tab that has "
+                "that column is wired to it too, which is what makes one filter narrow the whole dashboard. So: "
+                "`add_parameter`, then `wire_parameter` with `autowire`, in the same call — naming the filter by "
+                "its `name` and the card by its `card_id`, since the dashboard's own ids are minted by the save.\n"
+                "\n"
+                "The filter's `type` decides what it can reach — a `date/all-options` filter reaches a date "
+                "column and nothing else — so pick the type from the column you mean to filter. Removing a "
+                "filter takes its wiring with it, and archives any subscription that was sending it; the "
+                "response names those.\n"
+                "\n"
                 "**Position.** Omit `position` and the card lands in the first free slot on its tab, which is "
                 "almost always what you want. The grid is 24 columns wide; pass `{row, col}` and `{size_x, "
                 "size_y}` to place a card exactly.\n"
@@ -1441,6 +1552,10 @@
              :ops    [{:op "add_tab" :name "Detail"}
                       {:op "move" :dashcard_id 101 :tab "Detail"}
                       {:op "remove" :dashcard_id 102}]}
+            {:method "update" :id 9
+             :ops    [{:op "add_parameter" :name "Created at" :type "date/all-options"}
+                      {:op "wire_parameter" :parameter_id "Created at" :dashcard_id 101
+                       :target_field "CREATED_AT" :autowire true}]}
             {:method "update" :id 9
              :ops    [{:op "patch_dashcard" :dashcard_id 101
                        :patch {:graph.dimensions ["CREATED_AT"] :graph.metrics ["count"]}}]}

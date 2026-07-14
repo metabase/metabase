@@ -1213,3 +1213,31 @@
         :expect   :allowed
         :tool     ["dashboard_write" {:method "update" :id (:id dash) :description "Parity"}]
         :rest     [:put (str "dashboard/" (:id dash)) {:description "Parity"}]}))))
+
+(deftest dashboard-write-parameter-mapping-data-permission-parity-test
+  (testing "wiring a filter to a column is querying that column when the dashboard is read, so both surfaces refuse
+            the mapping to a table the user cannot query — even on a dashboard they may edit and a card they may read"
+    (mt/with-temp [:model/Dashboard     dash     {:parameters [{:id   "_CATEGORY_ID_" :name "Category"
+                                                                :slug "category"     :type "id"}]}
+                   :model/Card          card     {:dataset_query (mt/mbql-query venues)}
+                   :model/DashboardCard dashcard {:dashboard_id (:id dash) :card_id (:id card)
+                                                  :row 0 :col 0 :size_x 4 :size_y 4}]
+      (mt/with-no-data-perms-for-all-users!
+        (check-parity!
+         {:scenario :no-data-permission
+          :user     :rasta
+          :expect   :denied
+          :tool     ["dashboard_write"
+                     {:method "update"
+                      :id     (:id dash)
+                      :ops    [{:op           "wire_parameter"
+                                :parameter_id "_CATEGORY_ID_"
+                                :dashcard_id  (:id dashcard)
+                                :target_field (mt/id :venues :category_id)}]}]
+          :rest     [:put (str "dashboard/" (:id dash))
+                     {:tabs      []
+                      :dashcards [{:id      (:id dashcard) :card_id (:id card)
+                                   :row     0 :col 0 :size_x 4 :size_y 4
+                                   :parameter_mappings
+                                   [{:parameter_id "_CATEGORY_ID_"
+                                     :target       ["dimension" ["field" (mt/id :venues :category_id) nil]]}]}]}]})))))

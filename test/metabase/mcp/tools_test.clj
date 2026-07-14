@@ -218,7 +218,9 @@
      "card_type" "column_metadata" "collection_position" "display_name" "semantic_type" "visibility_type"
      "widget_type" "dashboard_id"
      "card_ids" "tab_id" "inline_parameters" "auto_apply_filters" "size_x" "size_y" "action_id"
-     "column_settings" "click_behavior" "dashboard_tab_id"}))
+     "column_settings" "click_behavior" "dashboard_tab_id"
+     "target_field" "target_tag" "temporal_units" "values_query_type" "values_source_type"
+     "values_source_config" "value_field" "broken_subscriptions"}))
 
 (defn- named-tools
   "Every tool name `text` mentions."

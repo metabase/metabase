@@ -35,6 +35,11 @@
    [metabase.dashboards.constants :as dashboard.constants]
    [metabase.dashboards.read :as dashboards.read]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.parameters.mapping :as parameters.mapping]
+   [metabase.parameters.shared :as parameters.shared]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -48,9 +53,13 @@
   "The ops that act on the tabs of a dashboard."
   ["add_tab" "rename_tab" "move_tab" "duplicate_tab" "remove_tab"])
 
+(def parameter-ops
+  "The ops that act on the filters of a dashboard, and on what they filter."
+  ["add_parameter" "update_parameter" "remove_parameter" "move_parameter" "wire_parameter" "unwire_parameter"])
+
 (def ops
   "Every op `dashboard_write` takes."
-  (into card-ops tab-ops))
+  (-> card-ops (into tab-ops) (into parameter-ops)))
 
 (def action-displays
   "How an action dashcard offers itself: a button that opens the form, or the form laid out on the dashboard."
@@ -142,11 +151,12 @@
       (assoc :series (mapv #(select-keys % [:id :name]) (:series dashcard)))))
 
 (defn- initial-state
-  [{:keys [dashcards tabs parameters]}]
-  {:tabs          (mapv #(select-keys % [:id :name]) tabs)
-   :dashcards     (mapv state-dashcard dashcards)
-   :parameter-ids (into #{} (map :id) parameters)
-   :next-temp-id  -1})
+  [{:keys [id dashcards tabs parameters]}]
+  {:dashboard-id id
+   :tabs         (mapv #(select-keys % [:id :name]) tabs)
+   :dashcards    (mapv state-dashcard dashcards)
+   :parameters   (vec parameters)
+   :next-temp-id -1})
 
 (defn- temp-id
   "The next negative id, and the state that has spent it."
@@ -297,15 +307,28 @@
               (op-error! "There is no free slot on this tab for a card that size."))
           (select-keys [:row :col :size_x :size_y])))))
 
+(defn- parameter
+  "The filter a `parameter_id` argument names: its id, or its name. A name is what a call has to use for a filter it
+   added earlier in the same list, whose id the server mints and the caller has not seen yet — the same bargain `tab`
+   makes."
+  [state parameter-ref]
+  (let [parameters (:parameters state)]
+    (or (m/find-first #(= parameter-ref (:id %)) parameters)
+        (case (count (filterv #(= parameter-ref (:name %)) parameters))
+          0 (op-error! (str "This dashboard has no filter " (pr-str parameter-ref)
+                            ". `get_content` on the dashboard lists its filters, by id and by name, and "
+                            "`add_parameter` makes one.")
+                       404)
+          1 (m/find-first #(= parameter-ref (:name %)) parameters)
+          (op-error! (str "This dashboard has more than one filter named " (pr-str parameter-ref)
+                          ", so the name does not say which of them. Name it by id instead."))))))
+
 (defn- check-inline-parameters!
-  "A filter widget an op attaches to a card has to be a filter the dashboard already has: creating one is a
-   parameter op, and those are this tool's other half."
+  "A filter widget an op attaches to a card has to be one the dashboard has — `add_parameter` earlier in this same list
+   counts."
   [state parameter-ids]
-  (doseq [parameter-id parameter-ids
-          :when        (not (contains? (:parameter-ids state) parameter-id))]
-    (op-error! (str "This dashboard has no parameter " (pr-str parameter-id)
-                    ". `get_content` on the dashboard lists its parameters and their ids.")
-               404)))
+  (doseq [parameter-id parameter-ids]
+    (parameter state parameter-id)))
 
 (defn- place
   "A new dashcard, placed. What every add op has in common: an id, a tab, a slot, and the empty content a dashcard
@@ -482,6 +505,27 @@
                       #(assoc % :series (mapv (fn [ref] (select-keys (readable-card ref) [:id :name]))
                                               card_ids)))))
 
+(defn- text-tags
+  "The `{{tags}}` a text, heading, link, or iframe card carries — the only things a filter can be wired to on one."
+  [dashcard]
+  (let [settings (:visualization_settings dashcard)]
+    (set (parameters.shared/tag-names (or (:text settings)
+                                          (get-in settings [:link :url])
+                                          (:iframe settings)
+                                          "")))))
+
+(defn- prune-text-mappings
+  "The wiring a text card can no longer carry, dropped. A filter fills in a `{{tag}}` where it stands in the card's
+   text; edit that tag out of the text and the mapping points at nothing. The editor drops it on the same edit."
+  [dashcard]
+  (if (:card_id dashcard)
+    dashcard
+    (let [tags (text-tags dashcard)]
+      (update dashcard :parameter_mappings
+              (partial filterv (fn [{[kind tag] :target}]
+                                 (or (not= :text-tag (keyword kind))
+                                     (contains? tags tag))))))))
+
 (defn- patch-dashcard
   "The content escape hatch: a merge over a dashcard's visualization settings, which is where everything a dashcard
    *shows* lives — a chart's settings, its column settings, its click behavior, a link's target, a visualizer's
@@ -492,7 +536,10 @@
     (doseq [[k owner] layout-keys
             :when     (contains? patch k)]
       (op-error! (str "`patch` does not set `" (name k) "`: that is layout, not content. Use " owner " for it.")))
-    (replace-dashcard state (:id source) #(update % :visualization_settings merge patch))))
+    (replace-dashcard state (:id source)
+                      #(-> %
+                           (update :visualization_settings merge patch)
+                           prune-text-mappings))))
 
 (defn- duplicate-tab
   "A copy of a tab, with copies of its cards, at the end. The cards keep their slots — the copy is a copy."
@@ -513,6 +560,402 @@
         (update :next-temp-id - (count copies)))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; Filters
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; A dashboard filter is two things, and the ops keep them apart. The *parameter* is the widget — its name, its type,
+;; the values it offers — and lives on the dashboard. The *mapping* is the wire from that widget to one thing on one
+;; card: a column of an MBQL query, a field-filter tag or a variable of a native one, a `{{tag}}` in a text card. A
+;; parameter with no mappings is a widget that does nothing, which is the failure this half of the tool exists to make
+;; hard: `wire_parameter` with `autowire` maps every card that has the column, in one op, the way the editor offers to
+;; when a person maps the first one.
+
+(def parameter-types
+  "Every type a dashboard filter can have, in the app's own vocabulary."
+  (mapv u/qualified-name (keys lib.schema.parameter/types)))
+
+(def values-query-types
+  "How a filter offers its values: not at all, as a list to pick from, or as a search box."
+  ["none" "list" "search"])
+
+(def values-source-types
+  "Where a filter's values come from: a list the dashboard carries, or a column of a card."
+  ["static-list" "card"])
+
+(def ^:private parameter-fields
+  "The fields of a filter an op sets, named as the dashboard row names them — `filteringParameters` and `isMultiSelect`
+   included, camelCase and all. A tool that renamed them would have to rename them back on the way into the save, and a
+   read of the dashboard would answer in a vocabulary no write takes."
+  [:default :required :isMultiSelect :temporal_units :values_query_type :values_source_type :values_source_config
+   :filteringParameters])
+
+(defn- check-enum!
+  [op k allowed]
+  (when-let [v (get op k)]
+    (when-not (some #{v} allowed)
+      (op-error! (str "`" (name k) "` is " (str/join " or " (map pr-str allowed)) ".")))))
+
+(defn- check-boolean!
+  [op k]
+  (when-let [v (get op k)]
+    (when-not (boolean? v)
+      (op-error! (str "`" (name k) "` is true or false.")))))
+
+(defn- checked-parameter-fields
+  "The parameter fields the op sets, checked. The dashboard's own schema lets `required` and `isMultiSelect` through
+   unvalidated — they are not fields it declares — so a `\"yes\"` would be stored and read back as a filter nobody can
+   fill in. The tool is where they are checked, or nowhere is."
+  [state op]
+  (check-boolean! op :required)
+  (check-boolean! op :isMultiSelect)
+  (check-enum! op :values_query_type values-query-types)
+  (check-enum! op :values_source_type values-source-types)
+  (doseq [unit (:temporal_units op)]
+    (when-not (contains? lib.schema.temporal-bucketing/temporal-bucketing-units (keyword unit))
+      (op-error! (str (pr-str unit) " is not a time unit. The units are: "
+                      (str/join ", " (sort (map name lib.schema.temporal-bucketing/temporal-bucketing-units))) "."))))
+  (doseq [filtering-id (:filteringParameters op)]
+    (parameter state filtering-id))
+  (select-keys op parameter-fields))
+
+(defn- check-default!
+  "A filter that must be answered has to answer itself when nobody does. The app's editor will not let a person mark one
+   required without giving it a default, and a dashboard that carries one runs its cards with an empty filter."
+  [parameter]
+  (when (and (:required parameter) (nil? (:default parameter)))
+    (op-error! (str "A required filter needs a `default`: `required: true` means the dashboard cannot be read without "
+                    "a value for it, so it has to bring one."))))
+
+(defn- fresh-parameter-id
+  "An id for a new filter — eight hex characters, as the editor mints them, and none this dashboard already uses."
+  [state]
+  (let [taken? (into #{} (map :id) (:parameters state))]
+    (first (remove taken? (repeatedly #(format "%08x" (rand-int Integer/MAX_VALUE)))))))
+
+(defn- checked-parameter-name
+  "The name a new filter takes, refused when the dashboard already has one by that name. Two filters called \"Date\" are
+   two filters a reader cannot tell apart — and two a later op cannot tell apart either, because a filter added in this
+   same call is named by its name until the save mints its id."
+  [state wanted own-id]
+  (when-let [clash (m/find-first #(and (= wanted (:name %)) (not= own-id (:id %))) (:parameters state))]
+    (op-error! (str "This dashboard already has a filter named " (pr-str wanted) " (id " (pr-str (:id clash))
+                    "). Wire that one instead, or give this one a name of its own.")))
+  wanted)
+
+(defn- checked-parameter-type
+  "A filter's type, refused when the app has no such type. It is what decides which columns the filter can reach, so a
+   type nobody has is a filter that can reach nothing."
+  [parameter-type]
+  (when-not (some #{parameter-type} parameter-types)
+    (op-error! (str (pr-str parameter-type) " is not a filter type. The common ones are \"string/=\", \"number/=\", "
+                    "\"number/between\", \"date/all-options\", \"id\", and \"temporal-unit\".")))
+  parameter-type)
+
+(defn- add-parameter
+  "A new filter on the dashboard. It filters nothing until it is wired — `wire_parameter` does that, and can name this
+   filter by the name this op gave it."
+  [state op]
+  (let [parameter-name (checked-parameter-name state (required op :name) nil)
+        new-parameter  (merge {:id    (fresh-parameter-id state)
+                               :name  parameter-name
+                               :slug  (u/slugify parameter-name)
+                               :type  (checked-parameter-type (required op :type))}
+                              (checked-parameter-fields state op))]
+    (check-default! new-parameter)
+    (update state :parameters conj new-parameter)))
+
+(defn- replace-parameter
+  [state id f]
+  (update state :parameters (partial mapv #(cond-> % (= id (:id %)) f))))
+
+(defn- retyped
+  "A filter whose type changed, with what the old type meant stripped off it: its default, and the values it offered.
+   A default of `\"Widget\"` on a filter that is now a number is a default the dashboard cannot apply, and the editor
+   clears it for the same reason."
+  [parameter]
+  (dissoc parameter :default :values_query_type :values_source_type :values_source_config))
+
+(defn- mapped-dashcards
+  "The dashcards a filter reaches, and the mapping on each."
+  [state parameter-id]
+  (for [dashcard (:dashcards state)
+        mapping  (:parameter_mappings dashcard)
+        :when    (= parameter-id (:parameter_id mapping))]
+    [dashcard mapping]))
+
+(defn- drop-mapping
+  [dashcard parameter-id]
+  (update dashcard :parameter_mappings
+          (partial filterv #(not= parameter-id (:parameter_id %)))))
+
+(defn- unwire-incompatible
+  "The wiring a retyped filter can no longer carry, cut. A date filter wired to a date column and then made a number
+   filter is wired to a column it cannot narrow; the app's editor drops the mapping, and a dashboard that kept it would
+   run its cards with a filter that does nothing."
+  [state parameter]
+  (reduce (fn [state [dashcard {:keys [target]}]]
+            (if (or (not (:card_id dashcard))
+                    (parameters.mapping/resolve-option (:card dashcard) parameter target))
+              state
+              (replace-dashcard state (:id dashcard) #(drop-mapping % (:id parameter)))))
+          state
+          (mapped-dashcards state (:id parameter))))
+
+(defn- update-parameter
+  "One filter, changed. Every property of a filter is a field of one object — the editor's ten sidebar controls all
+   write to it — so there is one op for all of them."
+  [state op]
+  (let [current (parameter state (required op :parameter_id))
+        retyped? (and (:type op) (not= (:type op) (u/qualified-name (:type current))))
+        renamed (when-let [parameter-name (:name op)]
+                  {:name (checked-parameter-name state parameter-name (:id current))
+                   :slug (u/slugify parameter-name)})
+        changed (merge (cond-> current retyped? retyped)
+                       renamed
+                       (when-let [parameter-type (:type op)]
+                         {:type (checked-parameter-type parameter-type)})
+                       (checked-parameter-fields state op))]
+    (check-default! changed)
+    (cond-> (replace-parameter state (:id current) (constantly changed))
+      retyped? (unwire-incompatible changed))))
+
+(defn- inline-dashcard
+  "The dashcard a filter sits on, when it sits on one rather than at the top of the page."
+  [state parameter-id]
+  (m/find-first #(some #{parameter-id} (:inline_parameters %)) (:dashcards state)))
+
+(defn- remove-inline-parameter
+  [state parameter-id]
+  (update state :dashcards
+          (partial mapv (fn [dashcard]
+                          (cond-> dashcard
+                            (some #{parameter-id} (:inline_parameters dashcard))
+                            (update :inline_parameters (partial filterv #(not= parameter-id %))))))))
+
+(defn- remove-parameter
+  "A filter, and every reference to it: the wiring to the cards it filtered, the linked-filter lists that narrowed it,
+   and the card it sat on. A reference left behind is a filter the dashboard cannot show and the save cannot resolve.
+   The subscriptions it breaks are named in the response — the save archives them, and a person who was getting that
+   email is not going to notice on their own."
+  [state op]
+  (let [{:keys [id]} (parameter state (required op :parameter_id))]
+    (-> (reduce (fn [state [dashcard _]]
+                  (replace-dashcard state (:id dashcard) #(drop-mapping % id)))
+                state
+                (mapped-dashcards state id))
+        (remove-inline-parameter id)
+        (update :parameters (partial into []
+                                     (comp (remove #(= id (:id %)))
+                                           (map (fn [parameter]
+                                                  (cond-> parameter
+                                                    (:filteringParameters parameter)
+                                                    (update :filteringParameters
+                                                            (partial filterv #(not= id %))))))))))))
+
+(defn- reordered-parameters
+  "The dashboard's filters with `parameter-id` at `index` of the row of filters at the top of the page.
+
+   A filter's place in the list is its place in that row — but the filters that sit on cards are in the list too and
+   are not in the row, so the index the caller means is counted over the header's own. The moved filter lands directly
+   after the filter it is to follow, which leaves the others where they were."
+  [state parameter-id index]
+  (let [moving (parameter state parameter-id)
+        others (filterv #(not= parameter-id (:id %)) (:parameters state))
+        header (filterv #(not (inline-dashcard state (:id %))) others)]
+    (when-not (<= 0 index (count header))
+      (op-error! (str "This dashboard has " (count header) " other filter(s) in its header, so `index` is between 0 "
+                      "and " (count header) ". 0 is the leftmost.")))
+    (let [follows (when (pos? index) (:id (nth header (dec index))))
+          at      (if follows
+                    (inc (first (keep-indexed #(when (= follows (:id %2)) %1) others)))
+                    0)]
+      (into (conj (subvec others 0 at) moving) (subvec others at)))))
+
+(defn- move-parameter
+  "A filter, somewhere else: to another place in the row of filters at the top of the page, or onto a card — where it
+   shows as a widget on the card itself. `dashcard_id` puts it on a card; `index` puts it back in the header, at that
+   place in the row."
+  [state {:keys [index dashcard_id] :as op}]
+  (let [{:keys [id]} (parameter state (required op :parameter_id))
+        _            (when-not (or index dashcard_id)
+                       (op-error! (str "`move_parameter` needs an `index` — where in the header to put the filter — "
+                                       "or a `dashcard_id`, to put it on a card.")))
+        state        (remove-inline-parameter state id)]
+    (if dashcard_id
+      (let [target (dashcard state dashcard_id)]
+        (when-not (or (:card_id target) (= "heading" (projections/dashcard-kind target)))
+          (op-error! (str "A filter can only sit on a card or on a heading. Dashcard " (:id target)
+                          " is neither, so this filter belongs in the header — `move_parameter` with an `index`.")))
+        (replace-dashcard state (:id target) #(update % :inline_parameters (fnil conj []) id)))
+      (assoc state :parameters (reordered-parameters state id index)))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Wiring
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- virtual-target
+  "The target a `target_tag` names on a card the editor drew rather than a query: the `{{tag}}` itself, which is
+   substituted with the filter's value where it stands."
+  [dashcard op]
+  (let [tag  (or (:target_tag op)
+                 (op-error! (str "Dashcard " (:id dashcard) " is a text, heading, link, or iframe card, and the only "
+                                 "thing a filter can fill in on one is a `{{tag}}` in its text. Pass `target_tag`.")))
+        tags (text-tags dashcard)]
+    (when-not (contains? tags tag)
+      (op-error! (str "Dashcard " (:id dashcard) " has no `{{" tag "}}` in it. "
+                      (if (seq tags)
+                        (str "Its tags are: " (str/join ", " (map #(str "{{" % "}}") (sort tags))) ".")
+                        (str "Write `{{" tag "}}` into its text first — `patch_dashcard` with `text`.")))))
+    [:text-tag tag]))
+
+(defn- named-option
+  "The mapping option a `target_field` names: a column of the card, by its name, its display name, or its field id. The
+   editor's dropdown is this list, and so is the error when the name is not on it.
+
+   A card reaches the columns of the tables it joins as well as its own — an order has a product's category — and two
+   of them can carry the same name. The card's own column wins, because that is what a person naming a bare column
+   means; a name that is still ambiguous after that is refused rather than guessed at."
+  [card parameter ref]
+  (let [options (parameters.mapping/mapping-options card parameter)
+        named?  (fn [{:keys [name column]}]
+                  (if (integer? ref)
+                    (= ref (:id column))
+                    (some #(and % (.equalsIgnoreCase ^String % ^String ref)) [name (:name column)])))
+        matches (filterv named? options)
+        matches (or (not-empty (filterv #(not= :source/implicitly-joinable (:lib/source (:column %))) matches))
+                    matches)]
+    (case (count matches)
+      1 (first matches)
+      0 (op-error!
+         (str "Card " (:id card) " (" (pr-str (:name card)) ") has nothing called " (pr-str ref)
+              " that this filter can narrow. "
+              (if (seq options)
+                (str "It can filter: " (str/join ", " (map #(pr-str (:name %)) options)) ".")
+                (str "It has no column of the filter's type at all — a date filter needs a date column. Check the "
+                     "filter's `type`, or wire it to another card."))))
+      (op-error!
+       (str "Card " (:id card) " (" (pr-str (:name card)) ") has " (count matches) " columns called " (pr-str ref)
+            ", so the name does not say which of them. Name it by field id instead — `browse_data` with `get_fields` "
+            "lists the ids.")))))
+
+(defn- tag-option
+  "The mapping option a `target_tag` names on a native card: one of the `{{tags}}` its SQL declares."
+  [card parameter tag]
+  (let [options (parameters.mapping/mapping-options card parameter)
+        tag-of  (fn [{:keys [target]}]
+                  (let [[_ [reference tag-name]] target]
+                    (when (= :template-tag (keyword reference))
+                      tag-name)))]
+    (or (m/find-first #(= tag (tag-of %)) options)
+        (op-error!
+         (str "Card " (:id card) " (" (pr-str (:name card)) ") has no `{{" tag "}}` this filter can fill in. "
+              (if-let [tags (seq (keep tag-of options))]
+                (str "Its tags are: " (str/join ", " (map #(str "{{" % "}}") tags)) ".")
+                (str "It declares no variable of the filter's kind. A card is filtered by a `{{tag}}` only when its "
+                     "SQL declares one — otherwise write the filter into the SQL first.")))))))
+
+(defn- given-target
+  "The target an op spelled out in full — the escape hatch for a wiring the named forms cannot say, and the way a
+   mapping read out of `get_content`'s `layout` is written straight back."
+  [card parameter target]
+  (or (parameters.mapping/resolve-option card parameter target)
+      (op-error! (str "Card " (:id card) " (" (pr-str (:name card)) ") cannot be filtered by " (pr-str target)
+                      ". `target_field` names a column of the card and is what to reach for; `target` is for a target "
+                      "you read off the dashboard's own `layout`."))))
+
+(defn- wiring-target
+  "What a `wire_parameter` op wires to, on the dashcard it names."
+  [dashcard param {:keys [target_field target_tag target] :as op}]
+  (let [card (:card dashcard)]
+    (one-of! op [:target_field :target_tag :target])
+    (cond
+      (not (:card_id dashcard)) (virtual-target dashcard op)
+      target_field              (:target (named-option card param target_field))
+      target_tag                (:target (tag-option card param target_tag))
+      :else                     (:target (given-target card param target)))))
+
+(defn- rewire
+  "The dashcard's mappings with this filter wired to `target` — replacing whatever it was wired to on this card, because
+   one filter narrows one thing on one card."
+  [dashcard parameter-id target]
+  (let [mappings (->> (:parameter_mappings dashcard)
+                      (filterv #(and (not= parameter-id (:parameter_id %))
+                                     ;; a `{{tag}}` in a text card takes one filter: a second one would substitute over
+                                     ;; the first
+                                     (not= target (:target %)))))]
+    (assoc dashcard :parameter_mappings
+           (conj mappings (cond-> {:parameter_id parameter-id :target target}
+                            (:card_id dashcard) (assoc :card_id (:card_id dashcard)))))))
+
+(defn- autowire-candidates
+  "The other cards `autowire` reaches: every card on the *same tab* that shows a saved question and has this filter
+   wired to nothing yet. The tab is the boundary the editor draws — it offers to wire the cards a person is looking at
+   — and a filter that sits on a card rather than in the header is a filter about that card, so it spreads to nothing."
+  [state parameter-id seed]
+  (when-not (inline-dashcard state parameter-id)
+    (for [candidate (:dashcards state)
+          :when     (and (:card_id candidate)
+                         (not= (:id seed) (:id candidate))
+                         (= (:dashboard_tab_id seed) (:dashboard_tab_id candidate))
+                         (not-any? #(= parameter-id (:parameter_id %)) (:parameter_mappings candidate)))]
+      candidate)))
+
+(defn- autowire
+  "The same wiring, on every candidate card that has the column. A card that does not have it is left alone — auto-wire
+   maps what it can and says nothing about what it cannot, exactly as the editor's does."
+  [state param seed target]
+  (reduce (fn [state candidate]
+            (if-let [option (parameters.mapping/resolve-option (:card candidate) param target)]
+              (replace-dashcard state (:id candidate) #(rewire % (:id param) (:target option)))
+              state))
+          state
+          (autowire-candidates state (:id param) seed)))
+
+(defn- wired-dashcard
+  "The dashcard a wiring op acts on: the one it names by `dashcard_id`, or the one showing the card it names by
+   `card_id`. The second is how a call wires a card it added in this same list — the dashcard's id does not exist until
+   the save mints it, and the card's does."
+  [state op]
+  (if-let [dashcard-id (:dashcard_id op)]
+    (dashcard state dashcard-id)
+    (let [card-id (tools/resolve-id :model/Card
+                                    (or (:card_id op)
+                                        (op-error! (str "`" (:op op) "` needs a `dashcard_id` — the card on the "
+                                                        "dashboard to wire — or a `card_id`, which names the dashcard "
+                                                        "showing that card."))))
+          matches (filterv #(= card-id (:card_id %)) (:dashcards state))]
+      (case (count matches)
+        0 (op-error! (str "This dashboard shows no card " card-id ". `add_card` puts it on the dashboard first.") 404)
+        1 (first matches)
+        (op-error! (str "This dashboard shows card " card-id " on " (count matches)
+                        " of its dashcards, so `card_id` does not say which one to wire. Name it by `dashcard_id` — "
+                        "this tool's response lists them."))))))
+
+(defn- wire-parameter
+  "A filter, wired to one thing on one card. `autowire` carries the same wiring to every other card on the tab that has
+   the column — which is what makes one filter narrow a whole dashboard, rather than the one card the op names."
+  [state op]
+  (let [param    (parameter state (required op :parameter_id))
+        seed     (wired-dashcard state op)
+        target   (wiring-target seed param op)
+        state    (replace-dashcard state (:id seed) #(rewire % (:id param) target))]
+    (cond-> state
+      (and (:autowire op) (:card_id seed)) (autowire param seed target))))
+
+(defn- unwire-parameter
+  "A filter, unwired: from the card the op names, or — naming none — from every card it reached. The filter itself stays
+   on the dashboard; `remove_parameter` is what takes it away."
+  [state op]
+  (let [{:keys [id]} (parameter state (required op :parameter_id))]
+    (if-let [dashcard-id (:dashcard_id op)]
+      (let [target (dashcard state dashcard-id)]
+        (replace-dashcard state (:id target) #(drop-mapping % id)))
+      (reduce (fn [state [dashcard _]]
+                (replace-dashcard state (:id dashcard) #(drop-mapping % id)))
+              state
+              (mapped-dashcards state id)))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; The compiler
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -530,11 +973,17 @@
    "remove"         remove-card
    "set_series"     set-series
    "patch_dashcard" patch-dashcard
-   "add_tab"        add-tab
-   "rename_tab"     rename-tab
-   "move_tab"       move-tab
-   "duplicate_tab"  duplicate-tab
-   "remove_tab"     remove-tab})
+   "add_tab"          add-tab
+   "rename_tab"       rename-tab
+   "move_tab"         move-tab
+   "duplicate_tab"    duplicate-tab
+   "remove_tab"       remove-tab
+   "add_parameter"    add-parameter
+   "update_parameter" update-parameter
+   "remove_parameter" remove-parameter
+   "move_parameter"   move-parameter
+   "wire_parameter"   wire-parameter
+   "unwire_parameter" unwire-parameter})
 
 (defn- apply-op
   [state [index {op-name :op :as op}]]
@@ -560,26 +1009,38 @@
    :series :visualization_settings :parameter_mappings :inline_parameters :action_id])
 
 (defn- layout
-  "The `dashcards` and `tabs` of the save: the dashboard's whole desired state, which is what the save takes.
-   Sending them at all is what makes a save a layout change, so a call with no ops sends neither and the layout is
-   left exactly as it was."
+  "The `dashcards`, `tabs`, and `parameters` of the save: the dashboard's whole desired state, which is what the save
+   takes. Sending them at all is what makes a save a layout change, so a call with no ops sends none of them and the
+   layout is left exactly as it was."
   [state]
-  {:dashcards (mapv #(select-keys % save-keys) (:dashcards state))
-   :tabs      (mapv #(select-keys % [:id :name]) (:tabs state))})
+  {:dashcards  (mapv #(select-keys % save-keys) (:dashcards state))
+   :tabs       (mapv #(select-keys % [:id :name]) (:tabs state))
+   :parameters (:parameters state)})
 
-(defn- skeleton
-  "The dashboard a write answers with: the editing skeleton, the same shape `get_content` returns for a dashboard.
-   The next op is authorable from it, so a build needs no read between its steps."
-  [dashboard]
-  (projections/dashboard-skeleton dashboard
-                                  (tools/project "concise" (projections/spec :dashboard) dashboard)))
+(defn- broken-subscriptions
+  "The subscriptions this call's ops break: the ones that send a filter it removes. The save archives them and mails
+   their creators — nothing here does that — so naming them is all the tool can do, and is the whole of what a
+   `validate_only` can offer before the fact."
+  [dashboard state]
+  (let [kept    (into #{} (map :id) (:parameters state))
+        removed (remove kept (map :id (:parameters dashboard)))]
+    (dashboards.write/subscriptions-filtering-on (:id dashboard) removed)))
+
+(defn- answer
+  "The dashboard a write answers with: the editing skeleton, the same shape `get_content` returns for a dashboard, so
+   the next op is authorable from it and a build needs no read between its steps. And the subscriptions it broke, which
+   nothing else is going to mention."
+  [dashboard broken]
+  (cond-> (projections/dashboard-skeleton dashboard
+                                          (tools/project "concise" (projections/spec :dashboard) dashboard))
+    (seq broken) (assoc :broken_subscriptions (vec broken))))
 
 (defn- would-be
-  "The layout the ops would produce, without producing it. Every check an op makes has run — the cards exist and are
-   readable, the tabs resolve, the slots fit the grid — and nothing has been written. The ids of the rows it would
-   create are negative, because they do not exist."
-  [dashboard state]
-  (assoc (skeleton (merge dashboard (select-keys state [:dashcards :tabs])))
+  "The dashboard the ops would produce, without producing it. Every check an op makes has run — the cards exist and are
+   readable, the tabs resolve, the slots fit the grid, the filters reach a column of the cards they name — and nothing
+   has been written. The ids of the rows it would create are negative, because they do not exist."
+  [dashboard state broken]
+  (assoc (answer (merge dashboard (select-keys state [:dashcards :tabs :parameters])) broken)
          :validated true))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -626,17 +1087,17 @@
       ;; A dry run that said yes and then failed on permission would have taught the model nothing, so the create
       ;; check runs here too.
       (do (api/create-check :model/Dashboard {:collection_id collection-id})
-          (would-be (empty-dashboard params) state))
+          (would-be (empty-dashboard params) state nil))
       (let [dashboard (dashboards.write/create-dashboard!
                        (cond-> {:name          dashboard-name
                                 :collection_id collection-id}
                          description         (assoc :description description)
                          collection_position (assoc :collection_position collection_position)
                          cache_ttl           (assoc :cache_ttl cache_ttl)))]
-        (skeleton
-         (if (seq ops)
-           (dashboards.write/update-dashboard! (:id dashboard) (layout state))
-           dashboard))))))
+        (answer (if (seq ops)
+                  (dashboards.write/update-dashboard! (:id dashboard) (layout state))
+                  dashboard)
+                nil)))))
 
 (defn- current-dashboard
   "The dashboard the ops compile against.
@@ -653,15 +1114,16 @@
   (let [dashboard-id (tools/resolve-id :model/Dashboard id)
         _            (api/write-check :model/Dashboard dashboard-id)
         current      (current-dashboard dashboard-id)
-        state        (compile-ops current ops)]
+        state        (compile-ops current ops)
+        broken       (broken-subscriptions current state)]
     (if validate_only
-      (would-be current state)
-      (skeleton
-       (dashboards.write/update-dashboard!
-        dashboard-id
-        (cond-> (dashboard-updates params)
-          (some? collection_id) (assoc :collection_id (tools/resolve-collection-id collection_id))
-          (seq ops)             (merge (layout state))))))))
+      (would-be current state broken)
+      (answer (dashboards.write/update-dashboard!
+               dashboard-id
+               (cond-> (dashboard-updates params)
+                 (some? collection_id) (assoc :collection_id (tools/resolve-collection-id collection_id))
+                 (seq ops)             (merge (layout state))))
+              broken))))
 
 (mu/defn dashboard-write :- :map
   "Create or update a dashboard. See the tool's description on `POST /v2/dashboard-write` for the argument
