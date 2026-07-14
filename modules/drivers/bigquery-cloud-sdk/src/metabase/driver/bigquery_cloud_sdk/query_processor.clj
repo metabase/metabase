@@ -214,7 +214,7 @@
 ;; BigQuery's string type is `STRING`. Mirrors the `:text` handler above.
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
 
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[h2x/with-database-type-info]] stuff we've added. [[h2x/with-database-type-info]] was inspired by this BigQuery code
@@ -277,7 +277,7 @@
       (:bigquery-cloud-sdk/base-temporal-type (meta identifier))))
 
 (defmethod temporal-type :absolute-datetime
-  [[_ t _]]
+  [[_ _opts t _unit]]
   (temporal-type t))
 
 (defmethod temporal-type :time
@@ -396,8 +396,8 @@
         x))))
 
 (defmethod ->temporal-type [:temporal-type :absolute-datetime]
-  [target-type [_ t unit]]
-  [:absolute-datetime (->temporal-type target-type t) unit])
+  [target-type [_ opts t unit]]
+  [:absolute-datetime opts (->temporal-type target-type t) unit])
 
 (def ^:private temporal-type->supported-units
   {:timestamp #{:microsecond :millisecond :second :minute :hour :day}
@@ -406,7 +406,7 @@
    :time      #{:microsecond :millisecond :second :minute :hour}})
 
 (defmethod ->temporal-type [:temporal-type :relative-datetime]
-  [target-type [_ _ unit :as clause]]
+  [target-type [_ _opts _amount unit :as clause]]
   {:post [(= target-type (temporal-type %))]}
   (with-temporal-type
    ;; check and see whether we need to do a conversion. If so, use the parent method which will just wrap this in a
@@ -622,7 +622,7 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
   [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
@@ -687,7 +687,7 @@
   [driver [_field opts id-or-name :as field-clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
-        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])]
+        parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
     (binding [*field-is-from-join-or-source-query?* (not (integer? source-table))]
@@ -697,9 +697,13 @@
       (let [field-clause (-> field-clause
                              (with-temporal-type (temporal-type field-clause))
                              with-base-temporal-type)
+            ;; convert to the legacy clause shape the [:sql :field] parent method expects ourselves, rather than going
+            ;; through the generic [:sql-mbql5 :field] conversion, which returns a fresh vector that loses the
+            ;; temporal type metadata we just attached
+            legacy-clause (with-meta [:field id-or-name opts] (meta field-clause))
             stored-field  (when (integer? id-or-name)
                             (driver-api/field (driver-api/metadata-provider) id-or-name))
-            result       (parent-method driver field-clause)
+            result       (parent-method driver legacy-clause)
             result       (cond-> result
                            (not (temporal-type result))
                            (with-temporal-type (temporal-type field-clause)))]
