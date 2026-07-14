@@ -9,7 +9,17 @@ summary: Add a second step to logins by having people confirm their identity wit
 
 Two-factor authentication (2FA) adds a second step to signing in. On top of their email and password, people confirm their identity with a time-based code from an authenticator app, so a stolen password isn't enough to get into an account.
 
-You (an admin) turn 2FA on for your Metabase, and people opt in from their own [account settings](./account-settings.md#two-factor-authentication). In this version, 2FA is available but not required, so it's up to each person to enroll.
+## Turn on two-factor authentication
+
+An admin turn 2FA on for your Metabase, and people opt in from their own [account settings](./account-settings.md#two-factor-authentication).
+
+1. Go to **Admin settings** > **Settings** > **Authentication**.
+2. Find the **Two-factor authentication** card.
+3. Toggle it to **Enabled**.
+
+Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll.
+
+If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set it to `optional` to let people enroll, or `off` to turn 2FA off.
 
 ## Supported methods
 
@@ -21,28 +31,15 @@ Metabase doesn't support SMS codes or hardware keys (passkeys, U2F, or WebAuthn)
 
 ## Before you turn on two-factor authentication
 
-Set up these two things first so 2FA works well for everyone.
+### If you're self-hosting Metbase, set an encryption key
 
-### Set an encryption key
+Set the [`MB_ENCRYPTION_SECRET_KEY`](../databases/encrypting-details-at-rest.md) environment variable so Metabase encrypts authenticator secrets at rest. If you turn on 2FA without it, Metabase shows a warning on the settings page.
 
-Set the [`MB_ENCRYPTION_SECRET_KEY`](../databases/encrypting-details-at-rest.md) environment variable so Metabase encrypts authenticator secrets at rest. If you turn on 2FA without it, Metabase shows a warning on the settings page:
-
-> Make sure to set the MB_ENCRYPTION_SECRET_KEY environment variable to encrypt authenticator secrets.
+If you're using Metabase Cloud, we've encrypted your keys for you.
 
 ### Set up email for the fallback code
 
 The email fallback only appears if your Metabase can send [email](../configuring-metabase/email.md). If you skip this, people will rely on their authenticator app and recovery codes only.
-
-## Turn on two-factor authentication
-
-1. Go to **Admin settings** > **Settings** > **Authentication**.
-2. Find the **Two-factor authentication** card.
-3. Toggle it to **Enabled**.
-
-Once enabled, a **Security** tab shows up in each person's account settings, where they can enroll.
-
-If you configure Metabase through environment variables or a [config file](../configuring-metabase/config-file.md), the matching setting is [`MB_MFA_ENFORCEMENT`](../configuring-metabase/environment-variables.md#mb_mfa_enforcement). Set it to `optional` to let people enroll, or `off` to turn 2FA off.
-
 ## See who's enrolled
 
 When 2FA is on, the **Two-factor authentication** card shows how many people have enrolled and how many haven't. Since enrollment is up to each person in this version, these counts help you follow up with anyone who hasn't set it up yet.
