@@ -39,7 +39,7 @@ describe("updateTransformSignature", () => {
     expect(script).toContain("orders: DataFrame containing the data");
   });
 
-  it("should be idempotent, so re-applying the same tables does not change the script", () => {
+  it("should be idempotent, so re-applying the same tables does not change the script (GDGT-1570)", () => {
     const script = updateTransformSignature(TEMPLATE_BODY, tables, [table]);
     const scriptAfter2ndPass = updateTransformSignature(script, tables, [
       table,
@@ -48,7 +48,7 @@ describe("updateTransformSignature", () => {
     expect(scriptAfter2ndPass).toBe(script);
   });
 
-  it("should not leave trailing whitespace on the signature line when replacing an existing Args section", () => {
+  it("should not leave trailing whitespace on the signature line when replacing an existing Args section (GDGT-1570)", () => {
     const script = updateTransformSignature(TEMPLATE_BODY, tables, [table]);
     const scriptAfter2ndPass = updateTransformSignature(script, tables, [
       table,
