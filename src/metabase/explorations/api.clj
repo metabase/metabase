@@ -378,6 +378,7 @@
    [:exploration_id             ms/PositiveInt]
    [:prompt                     {:optional true} [:maybe :string]]
    [:position                   ms/IntGreaterThanOrEqualToZero]
+   [:source_page_id             {:optional true} [:maybe ms/PositiveInt]]
    [:started_at                 {:optional true} [:maybe :any]]
    [:canceled_at                {:optional true} [:maybe :any]]
    [:completed_at               {:optional true} [:maybe :any]]
@@ -622,7 +623,8 @@
                              :model/ExplorationThread
                              {:exploration_id id
                               :name           (explore-further-thread-name card-name filter-value)
-                              :position       next-position}))
+                              :position       next-position
+                              :source_page_id page_id}))
               tid    (:id thread)]
           (insert-thread-default-documents! tid coll-id {:include-ai-summary? false})
           (t2/insert! :model/ExplorationBlock

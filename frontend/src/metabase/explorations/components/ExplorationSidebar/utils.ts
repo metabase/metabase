@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
@@ -13,6 +13,7 @@ import type {
   ExplorationQueryId,
   ExplorationQueryStatus,
   ExplorationThread,
+  ExplorationThreadId,
 } from "metabase-types/api";
 import {
   getExplorationPages,
@@ -109,47 +110,125 @@ export function getExplorationSidebarTree(
   treeItemFilter: TreeItemFilter,
   sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
-  const initialThreadId = exploration.threads?.[0]?.id;
-  const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
-    .map((thread, index) => {
-      const children = getExplorationQueryTree(
-        thread,
-        treeItemFilter,
-        sortOrder,
-      );
-      const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
-      if (
-        aiSummaryDocumentNode != null &&
-        treeItemFilter(aiSummaryDocumentNode)
-      ) {
-        children.push(aiSummaryDocumentNode);
+  const threads = exploration.threads ?? [];
+  const initialThreadId = threads[0]?.id;
+  const pageThreadIds = new Map<number, ExplorationThreadId>();
+  for (const thread of threads) {
+    for (const block of thread.blocks ?? []) {
+      for (const page of block.pages) {
+        pageThreadIds.set(page.id, thread.id);
       }
-      return {
-        id: thread.id,
-        name: getExplorationThreadName(thread, index),
-        icon: "empty" as const,
-        data: {
-          type: "heading" as const,
-          headingKind:
-            index === 0 ? ("root" as const) : ("sub-exploration" as const),
-          explorationId: exploration.id,
-          thread,
-          status: getExplorationQueryGroupStatus(thread.queries ?? []),
-          lastActivityAt: latestTimestamp(
-            (thread.queries ?? []).map((query) => query.finished_at),
-          ),
-          // Every group is hideable except the first thread ("Initial investigation").
-          hideable: index > 0,
-          ...getHeadingHideState(children),
-        },
-        children,
-      };
-    })
-    .filter((heading) => {
-      const isInitialThread = initialThreadId && heading.id === initialThreadId;
-      return isInitialThread || (heading.children ?? []).length > 0;
+    }
+  }
+  const getParentThreadId = (
+    thread: ExplorationThread,
+  ): ExplorationThreadId | undefined =>
+    thread.source_page_id != null
+      ? pageThreadIds.get(thread.source_page_id)
+      : undefined;
+
+  const nodeByThreadId = new Map<string, ITreeNodeItem<ExplorationTreeNode>>();
+  threads.forEach((thread, index) => {
+    const parentThreadId = getParentThreadId(thread);
+    const isFollowUp = parentThreadId != null;
+    // Only the first sub-exploration off the initial investigation surfaces the
+    // metric it drilled into; follow-ups nested inside another sub-exploration
+    // don't repeat it ("Revenue → State = TX" once, not on every descendant).
+    const isTopLevelFollowUp = isFollowUp && parentThreadId === initialThreadId;
+    let children = getExplorationQueryTree(thread, treeItemFilter, sortOrder);
+    // A follow-up drill copies a single metric, so its lone metric-group
+    // heading ("Revenue") is redundant as a row — surface its pages directly
+    // under the thread, and for the first sub-exploration fold the metric's
+    // name into the thread heading ("Revenue → State = TX").
+    let metricName: string | undefined;
+    if (
+      isFollowUp &&
+      children.length === 1 &&
+      children[0].data?.type === "heading"
+    ) {
+      if (isTopLevelFollowUp) {
+        metricName = children[0].name || undefined;
+      }
+      children = [...(children[0].children ?? [])];
+    }
+    const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
+    if (
+      aiSummaryDocumentNode != null &&
+      treeItemFilter(aiSummaryDocumentNode)
+    ) {
+      children.push(aiSummaryDocumentNode);
+    }
+    nodeByThreadId.set(String(thread.id), {
+      id: thread.id,
+      name: getExplorationThreadName(thread, index, metricName),
+      icon: "empty" as const,
+      data: {
+        type: "heading" as const,
+        headingKind:
+          index === 0 ? ("root" as const) : ("sub-exploration" as const),
+        explorationId: exploration.id,
+        thread,
+        status: getExplorationQueryGroupStatus(thread.queries ?? []),
+        lastActivityAt: latestTimestamp(
+          (thread.queries ?? []).map((query) => query.finished_at),
+        ),
+        // Every group is hideable except the first thread ("Initial investigation").
+        hideable: index > 0,
+        ...getHeadingHideState(children),
+      },
+      children,
     });
-  return tree;
+  });
+
+  const getNestingParentId = (thread: ExplorationThread): string | null => {
+    const parentId = getParentThreadId(thread);
+    if (parentId == null) {
+      return null;
+    }
+    if (initialThreadId != null && parentId === initialThreadId) {
+      return null;
+    }
+    return String(parentId);
+  };
+
+  const topLevel: ITreeNodeItem<ExplorationTreeNode>[] = [];
+  threads.forEach((thread) => {
+    const node = nodeByThreadId.get(String(thread.id));
+    if (node == null) {
+      return;
+    }
+    const parentId = getNestingParentId(thread);
+    const parentNode = parentId != null ? nodeByThreadId.get(parentId) : null;
+    if (parentNode != null && parentNode !== node) {
+      // Sub-explorations appear after the parent thread's own charts.
+      parentNode.children = [...(parentNode.children ?? []), node];
+    } else {
+      topLevel.push(node);
+    }
+  });
+
+  return pruneEmptyHeadings(topLevel, initialThreadId);
+}
+
+function pruneEmptyHeadings(
+  nodes: ITreeNodeItem<ExplorationTreeNode>[],
+  initialThreadId: ExplorationThreadId | undefined,
+): ITreeNodeItem<ExplorationTreeNode>[] {
+  return nodes
+    .map((node) =>
+      node.children?.length
+        ? {
+            ...node,
+            children: pruneEmptyHeadings(node.children, initialThreadId),
+          }
+        : node,
+    )
+    .filter(
+      (node) =>
+        node.data?.type !== "heading" ||
+        node.id === initialThreadId ||
+        (node.children?.length ?? 0) > 0,
+    );
 }
 
 function latestTimestamp(
@@ -383,14 +462,17 @@ function getExplorationDocumentStatus(
 export function getExplorationThreadName(
   thread: ExplorationThread,
   index: number,
+  metricName?: string,
 ) {
-  if (thread.name) {
-    return thread.name;
+  const base =
+    thread.name || (index === 0 ? t`Initial investigation` : t`New research`);
+  // For a follow-up branch, prefix the metric it drilled into so the row reads
+  // "Revenue → State = TX" rather than just the bare drill path.
+  if (metricName) {
+    return c("{0} is a metric name, {1} is the follow-up's drill path")
+      .t`${metricName} → ${base}`;
   }
-  if (index === 0) {
-    return t`Initial investigation`;
-  }
-  return t`New research`;
+  return base;
 }
 
 export function flattenTree(

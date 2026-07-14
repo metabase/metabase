@@ -332,6 +332,7 @@ export interface ExplorationThread {
   name: string | null;
   prompt: string | null;
   position: number;
+  source_page_id: number | null;
   started_at: string | null;
   completed_at: string | null;
   canceled_at: string | null;

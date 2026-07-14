@@ -1463,6 +1463,31 @@
     (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
 
+(deftest explore-further-persists-source-page-test
+  (testing "POST /:id/explore-further records the drilled page on the new thread"
+    (mt/with-temp [:model/User u {:email "explore-further@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp       (create-exploration! u
+                                            {:name "explore-further"
+                                             :metrics [{:card_id (:id metric)
+                                                        :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
+                                             :dimensions [{:dimension_id "d1"}]})
+            eid        (:id resp)
+            page-id    (-> resp :threads first :blocks first :pages first :id)
+            resp'      (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" eid)
+                                             {:page_id         page-id
+                                              :explore_filters [{:field_ref ["field" {} 1] :value "TX"}]})
+            threads    (sort-by :position (:threads resp'))
+            src-thread (first threads)
+            new-thread (last threads)]
+        (is (= 2 (count threads)))
+        (testing "the drill thread records the page it was drilled from"
+          (is (= page-id (:source_page_id new-thread))))
+        (testing "the source thread carries no lineage"
+          (is (nil? (:source_page_id src-thread))))
+        (testing "the drill thread is positioned after the source thread"
+          (is (= (inc (:position src-thread)) (:position new-thread))))))))
+
 (deftest exploration-create-auto-creates-scratchpad-document-test
   (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"
     (with-ai-summary-available
