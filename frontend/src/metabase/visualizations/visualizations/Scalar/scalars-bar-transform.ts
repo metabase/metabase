@@ -5,6 +5,7 @@ import { TYPE } from "metabase-lib/v1/types/constants";
 import type { RawSeries } from "metabase-types/api";
 
 export const scalarToBarTransform: TransformSeries = (rawSeries) => {
+  // Unjustified type cast. FIXME
   return rawSeries.map(({ card, data }) => {
     let metricColumnIndex = data.cols.findIndex(
       (col) => col.name === card.visualization_settings["scalar.field"],

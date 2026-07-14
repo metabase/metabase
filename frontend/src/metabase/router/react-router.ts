@@ -44,7 +44,9 @@ export type IndexRouteProps = Omit<BaseIndexRouteProps, LifecycleHook>;
 
 // `react-router` exports each of these as both a value and a type, so mirror that.
 export type Route = ComponentClass<RouteProps>;
+// Unjustified type cast. FIXME
 export const Route = BaseRoute as Route;
 
 export type IndexRoute = ComponentClass<IndexRouteProps>;
+// Unjustified type cast. FIXME
 export const IndexRoute = BaseIndexRoute as IndexRoute;

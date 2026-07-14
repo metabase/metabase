@@ -72,6 +72,7 @@ export const SdkAdHocQuestion = ({
 
   const questionId = resolveQuestionId(
     params.slug,
+    // Unjustified type cast. FIXME
     deserializedCard as { dataset_query?: { type?: string } } | undefined,
   );
 

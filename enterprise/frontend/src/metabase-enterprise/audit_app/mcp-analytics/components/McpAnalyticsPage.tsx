@@ -129,6 +129,7 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
           .otherwise(() => (
             <Tabs
               value={tab}
+              // Unjustified type cast. FIXME
               onChange={(val) => patchUrlState({ tab: val as McpTab })}
               keepMounted={false}
             >

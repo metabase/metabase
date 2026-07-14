@@ -44,6 +44,7 @@ function setup({
       <AIQuestionAnalysisButton />
     </MetabotProvider>,
     {
+      // Unjustified type cast. FIXME
       storeInitialState: createMockState({
         settings,
         metabot: metabotState,

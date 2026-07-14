@@ -52,6 +52,7 @@ const IconsTemplate = (args: TabsProps) => (
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
+          // Unjustified type cast. FIXME
           leftSection={<Icon name={tab.icon as keyof typeof Icon} />}
         >
           {tab.label}

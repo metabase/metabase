@@ -56,6 +56,7 @@ const EditSandboxingModalContainer = ({
   // The plugins state is added dynamically by the enterprise plugin system,
   // so we need to cast to SandboxesState (same approach as the old connect-based mapStateToProps).
   const draftPolicy = useSelector((state) =>
+    // Unjustified type cast. FIXME
     getGroupTableAccessPolicy(state as unknown as SandboxesState, { params }),
   );
 

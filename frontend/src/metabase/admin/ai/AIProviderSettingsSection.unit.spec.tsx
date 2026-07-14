@@ -341,6 +341,7 @@ async function setup({
   const settings = mockSettings(sessionProperties);
   setupEnterpriseOnlyPlugin("metabot");
 
+  // Unjustified type cast. FIXME
   for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
     const response = responseMap[provider];
 
@@ -370,6 +371,7 @@ async function setup({
   });
 
   const handleMetabotSettingsUpdate = (call: { options?: RequestInit }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(
       String(call.options?.body ?? "{}"),
     ) as MetabotSettingsUpdateBody;
@@ -456,16 +458,21 @@ async function setup({
       return settingUpdateResponse;
     }
 
+    // Unjustified type cast. FIXME
     const body = JSON.parse(String(call.options?.body ?? "{}")) as Partial<
       Record<MetabotSettingKey, string | null>
     >;
 
     Object.entries(body).forEach(([key, nextValue]) => {
       if (key in settingsDefinitions) {
+        // Unjustified type cast. FIXME
         settingsDefinitions[key as keyof typeof settingsDefinitions] =
           createMockSettingDefinition({
+            // Unjustified type cast. FIXME
             ...settingsDefinitions[key as keyof typeof settingsDefinitions],
+            // Unjustified type cast. FIXME
             key: key as keyof typeof settingsDefinitions,
+            // Unjustified type cast. FIXME
             value: (nextValue ??
               undefined) as MetabotSettingDefinition["value"],
           });

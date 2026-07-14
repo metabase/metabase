@@ -44,6 +44,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const baseCollectionsById = useMemo(
     () =>
+      // Unjustified type cast. FIXME
       getExpandedCollectionsById(
         allCollectionsList,
         userPersonalCollectionId,

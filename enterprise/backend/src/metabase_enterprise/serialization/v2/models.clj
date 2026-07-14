@@ -89,6 +89,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "McpFeedback"
    "McpQueryHandle"
    "McpSessionLog"
    "McpToolCallLog"

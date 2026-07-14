@@ -68,6 +68,7 @@ function RunMethodFilterForm({
   const isValid = runMethods.length > 0;
 
   const handleChange = (values: string[]) => {
+    // Unjustified type cast. FIXME
     setRunMethods(values as TransformRunMethod[]);
   };
 

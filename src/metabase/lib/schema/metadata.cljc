@@ -10,6 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [get-in]]))
@@ -754,10 +755,9 @@
 
 (mr/def ::native-query-snippet
   [:map
-   [:lib/type [:= :metadata/native-query-snippet]]
-   [:id       ::lib.schema.id/native-query-snippet]])
-;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
-
+   [:lib/type      [:= :metadata/native-query-snippet]]
+   [:id            ::lib.schema.id/native-query-snippet]
+   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]])
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 (mr/def ::table

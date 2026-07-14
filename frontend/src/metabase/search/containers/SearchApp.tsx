@@ -61,6 +61,7 @@ export function SearchApp({ location }: { location: SearchAwareLocation }) {
   );
   const models = searchFilters[SearchFilterKeys.Type];
 
+  // Unjustified type cast. FIXME
   const query = {
     q: searchText,
     ..._.omit(searchFilters, SearchFilterKeys.Type),

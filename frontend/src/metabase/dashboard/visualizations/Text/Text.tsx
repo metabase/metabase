@@ -13,10 +13,10 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actions";
 import { getParameterValues } from "metabase/dashboard/selectors";
+import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
 import { useDispatch, useSelector } from "metabase/redux";
 import { isEmpty } from "metabase/utils/validate";
 import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
-import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
 import type {
   Dashboard,

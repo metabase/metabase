@@ -3,18 +3,25 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.analytics-interface.core :as analytics.interface]))
 
-(defn- make-test-reporter [calls]
-  (reify analytics.interface/Reporter
-    (-inc! [_ metric labels amount]
-      (swap! calls conj {:op :inc! :metric metric :labels labels :amount amount}))
-    (-dec-gauge! [_ metric labels amount]
-      (swap! calls conj {:op :dec-gauge! :metric metric :labels labels :amount amount}))
-    (-set-gauge! [_ metric labels amount]
-      (swap! calls conj {:op :set-gauge! :metric metric :labels labels :amount amount}))
-    (-observe! [_ metric labels amount]
-      (swap! calls conj {:op :observe! :metric metric :labels labels :amount amount}))
-    (-clear! [_ metric]
-      (swap! calls conj {:op :clear! :metric metric}))))
+(defn- make-test-reporter
+  "Builds a Reporter that records calls into `calls`. The global reporter is process-wide, so a
+  background thread emitting analytics (e.g. a queue backend's poll loop) would otherwise pollute
+  the capture; record only calls made on the thread that installed the reporter — the test thread —
+  so these assertions stay deterministic."
+  [calls]
+  (let [#?@(:clj [capture-thread (Thread/currentThread)])
+        ours? (fn [] #?(:clj (identical? (Thread/currentThread) capture-thread) :cljs true))]
+    (reify analytics.interface/Reporter
+      (-inc! [_ metric labels amount]
+        (when (ours?) (swap! calls conj {:op :inc! :metric metric :labels labels :amount amount})))
+      (-dec-gauge! [_ metric labels amount]
+        (when (ours?) (swap! calls conj {:op :dec-gauge! :metric metric :labels labels :amount amount})))
+      (-set-gauge! [_ metric labels amount]
+        (when (ours?) (swap! calls conj {:op :set-gauge! :metric metric :labels labels :amount amount})))
+      (-observe! [_ metric labels amount]
+        (when (ours?) (swap! calls conj {:op :observe! :metric metric :labels labels :amount amount})))
+      (-clear! [_ metric]
+        (when (ours?) (swap! calls conj {:op :clear! :metric metric}))))))
 
 (defn- do-with-test-reporter! [thunk]
   (let [calls             (atom [])

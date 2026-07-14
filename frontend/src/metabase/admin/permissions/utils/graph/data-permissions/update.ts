@@ -346,6 +346,7 @@ function inferEntityPermissionValueFromChildTables(
     .groupBy(_.identity)
     .value();
 
+  // Unjustified type cast. FIXME
   const keys = Object.keys(entityIdsByPermValue) as DataPermissionValue[];
   const allTablesHaveSamePermissions = keys.length === 1;
 
@@ -366,6 +367,7 @@ export function inferAndUpdateEntityPermissions(
   permission: DataPermission,
 ) {
   const { databaseId } = entityId;
+  // Unjustified type cast. FIXME
   const schemaName = (entityId as SchemaEntityId).schemaName ?? "";
 
   if (schemaName) {

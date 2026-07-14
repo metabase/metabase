@@ -257,6 +257,7 @@ export function DashCardVisualization({
       dataSources,
     );
     const card = extendCardWithDashcardSettings(
+      // Unjustified type cast. FIXME
       {
         // Visualizer click handling code expect visualizer cards not to have card.id
         name: dashcard.card.name,
@@ -275,6 +276,7 @@ export function DashCardVisualization({
     const series: RawSeries = [
       {
         card,
+        // Unjustified type cast. FIXME
         data: mergeVisualizerData({
           columns,
           columnValuesMapping,
@@ -325,6 +327,7 @@ export function DashCardVisualization({
       const disableClickBehavior =
         getVisualizationRaw(series)?.disableClickBehavior;
       if (isVirtualDashCard(dashcard) || disableClickBehavior) {
+        // Unjustified type cast. FIXME
         const virtualDashcardType = getVirtualCardType(
           dashcard,
         ) as VirtualCardDisplay;
@@ -443,6 +446,7 @@ export function DashCardVisualization({
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
+    // Unjustified type cast. FIXME
     const result = cardResult ?? (series[0] as unknown as Dataset);
 
     const showMenu =

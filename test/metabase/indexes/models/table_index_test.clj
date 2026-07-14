@@ -121,6 +121,25 @@
   (testing "a nil transform-id is a no-op"
     (is (nil? (table-index/mark-for-revalidation! nil)))))
 
+(deftest pending-changes-for-transform?-test
+  (testing "any unsettled request forces the transform's next run to be a full rebuild"
+    (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)
+                   :model/TableIndex {index-id :id} {:transform_id transform-id
+                                                     :index_name   "idx"
+                                                     :status       :succeeded
+                                                     :structured   {:kind :btree :name "idx"
+                                                                    :columns [{:name "a"}]}}]
+      (is (false? (table-index/pending-changes-for-transform? transform-id))
+          "a settled (:succeeded) request needs no rebuild")
+      ;; :failed is included: its index DDL already ran against a materialized table, so only a full rebuild
+      ;; safely re-attempts it instead of appending duplicate rows from the stale checkpoint.
+      (doseq [status [:create-pending :update-pending :delete-pending :running :failed]]
+        (t2/update! :model/TableIndex index-id {:status status})
+        (is (true? (table-index/pending-changes-for-transform? transform-id))
+            (str status " forces a full rebuild")))))
+  (testing "a nil transform-id is not pending"
+    (is (false? (table-index/pending-changes-for-transform? nil)))))
+
 (deftest select-for-verification-test
   (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)
                  :model/TableIndex {running-id :id} {:transform_id transform-id

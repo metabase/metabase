@@ -51,7 +51,8 @@
   (transduce-stages
    (comp (filter (fn [stage]
                    (= (:lib/type stage) :mbql.stage/native)))
-         (mapcat :template-tags))
+         (mapcat :template-tags)
+         (map (juxt :name identity)))
    (fn rf
      ([m]
       (not-empty (persistent! m)))

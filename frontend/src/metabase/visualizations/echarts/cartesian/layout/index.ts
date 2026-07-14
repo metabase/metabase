@@ -246,6 +246,7 @@ const getXAxisTicksWidth = (
     if (isNumericAxis(axisModel)) {
       // extents need to be untransformed to get the value of the tick label
       return axisModel.fromEChartsAxisValue(
+        // Unjustified type cast. FIXME
         dataset[index][X_AXIS_DATA_KEY] as number,
       );
     }
