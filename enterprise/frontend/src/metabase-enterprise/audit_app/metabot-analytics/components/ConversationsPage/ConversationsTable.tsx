@@ -6,12 +6,12 @@ import { SortableColumnHeader } from "metabase/common/components/ItemsTable/Base
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { formatNumber } from "metabase/formatting";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import { Badge, Ellipsified, Flex, Tooltip } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
 import type { SortingOptions } from "metabase-types/api";
 

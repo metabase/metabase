@@ -3,13 +3,12 @@ import querystring from "querystring";
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import { getDataFromClicked, renderLinkURLForClick } from "metabase/formatting";
 import {
   formatSourceForTarget,
   getTargetForQueryParams,
 } from "metabase/parameters/utils/click-behavior";
 import * as Urls from "metabase/urls";
-import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
-import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";

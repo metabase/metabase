@@ -1,5 +1,5 @@
+import { formatValue as internalFormatValue } from "metabase/formatting";
 import { getSubpathSafeUrl } from "metabase/urls";
-import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
 import type {
   ColumnSettings,
   CustomVizPluginId,

@@ -2,7 +2,7 @@ import { isValidElement } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/formatting";
 import type {
   ColumnSettings,
   DashboardId,

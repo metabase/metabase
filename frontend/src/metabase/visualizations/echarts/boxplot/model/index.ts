@@ -1,4 +1,5 @@
 import { memoize } from "metabase/common/hooks/use-memoized-callback";
+import { formatValue } from "metabase/formatting";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -31,7 +32,6 @@ import type {
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {

@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import ss from "simple-statistics";
 
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/formatting";
 import {
   isCountry,
   isDimension,

@@ -27,6 +27,7 @@ export * from "./embedding-theme";
 export * from "./entity-id";
 export * from "./erd";
 export * from "./field";
+export * from "./formatting";
 export * from "./geojson";
 export * from "./group";
 export * from "./icon";

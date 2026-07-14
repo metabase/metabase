@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { duration } from "metabase/formatting";
 import { Tooltip } from "metabase/ui";
-import { duration } from "metabase/utils/formatting";
 import type { Dataset } from "metabase-types/api";
 
 import { RunButton, type RunButtonProps } from "./RunButton";

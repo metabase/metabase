@@ -451,7 +451,7 @@
                row-tree)))))
 
 (defn display-name-for-col
-  "Translated from frontend/src/metabase/utils/formatting/column.ts"
+  "Translated from frontend/src/metabase/formatting/column.ts"
   [column col-settings format-values?]
   (or (if format-values?
         (or

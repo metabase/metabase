@@ -1,11 +1,10 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 
+import { formatDateTimeRangeWithUnit, formatValue } from "metabase/formatting";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { isNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
-import { formatValue } from "metabase/visualizations/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";

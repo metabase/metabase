@@ -2,10 +2,7 @@ import dayjs from "dayjs";
 
 import { render, screen } from "__support__/ui";
 import { DateTime } from "metabase/common/components/DateTime";
-import {
-  DEFAULT_DATE_STYLE,
-  DEFAULT_TIME_STYLE,
-} from "metabase/utils/formatting/datetime-utils";
+import { DEFAULT_DATE_STYLE, DEFAULT_TIME_STYLE } from "metabase/formatting";
 import MetabaseSettings from "metabase/utils/settings";
 
 describe("DateTime", () => {

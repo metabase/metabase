@@ -3,9 +3,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { trackUpsellClicked } from "metabase/common/components/upsells/components/analytics";
+import { formatNumber } from "metabase/formatting";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Stack, Text } from "metabase/ui";
-import { formatNumber } from "metabase/utils/formatting";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 import type { ICloudAddOnProduct } from "metabase-types/api/store";

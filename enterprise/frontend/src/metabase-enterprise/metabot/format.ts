@@ -1,4 +1,4 @@
-import { formatNumber } from "metabase/utils/formatting";
+import { formatNumber } from "metabase/formatting";
 
 export function formatMetabaseCost(value: number) {
   return formatNumber(value, {

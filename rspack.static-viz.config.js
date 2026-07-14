@@ -60,6 +60,13 @@ module.exports = (env) => {
           use: "null-loader",
         },
         {
+          // The formatting module has no import-time side effects, so unused
+          // files behind its barrel (index.ts) can be tree-shaken away.
+          test: /\.(tsx?|jsx?)$/,
+          include: SRC_PATH + "/formatting/",
+          sideEffects: false,
+        },
+        {
           test: /\.(tsx?|jsx?)$/,
           exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
           use: [

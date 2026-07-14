@@ -9,7 +9,7 @@ import {
   getTimeFormatFromStyle,
   hasDay,
   hasHour,
-} from "metabase/utils/formatting/datetime-utils";
+} from "./datetime-utils";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings } from "metabase-types/api";

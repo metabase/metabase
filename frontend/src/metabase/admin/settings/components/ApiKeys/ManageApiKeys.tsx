@@ -6,6 +6,7 @@ import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListApiKeysQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { formatDateTimeWithUnit } from "metabase/formatting";
 import {
   ActionIcon,
   Box,
@@ -24,7 +25,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type { ApiKey } from "metabase-types/api";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";

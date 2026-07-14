@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { formatDurationLong } from "metabase/formatting";
 import { ErrorSection } from "metabase/transforms/components/ErrorSection";
 import {
   formatStatus,
@@ -13,7 +14,6 @@ import {
 import { Anchor, Box, FixedSizeIcon, Group, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import { formatDurationLong } from "metabase/utils/formatting/time";
 import type { TransformRunForJobRun } from "metabase-types/api";
 
 import S from "./TransformRunItem.module.css";

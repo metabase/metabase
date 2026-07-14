@@ -1,5 +1,5 @@
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,

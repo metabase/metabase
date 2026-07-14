@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { displayNameForColumn } from "metabase/formatting";
 import { Box } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import { displayNameForColumn } from "metabase/utils/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {

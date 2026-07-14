@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import { duration } from "metabase/utils/formatting";
+import { duration } from "metabase/formatting";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 
 import {

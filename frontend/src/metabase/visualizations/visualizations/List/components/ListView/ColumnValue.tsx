@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 
 import {
+  formatNumber,
+  formatValue,
+  getCurrencySymbol,
+} from "metabase/formatting";
+import {
   Badge,
   Box,
   Ellipsified,
@@ -10,9 +15,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { formatNumber, getCurrencySymbol } from "metabase/utils/formatting";
 import { MiniBarCell } from "metabase/visualizations/components/TableInteractive/cells/MiniBarCell";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { TYPE } from "metabase-lib/v1/types/constants";

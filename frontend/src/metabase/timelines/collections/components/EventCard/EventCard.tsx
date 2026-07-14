@@ -2,10 +2,10 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
+import { formatDateTimeWithUnit } from "metabase/formatting";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {

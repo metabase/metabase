@@ -6,6 +6,7 @@ import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { formatNumber } from "metabase/formatting";
 import {
   AgentMessage,
   Messages,
@@ -36,7 +37,6 @@ import {
   Title,
 } from "metabase/ui";
 import { question as ML_getUrl } from "metabase/urls/questions";
-import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";

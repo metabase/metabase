@@ -2,23 +2,20 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  type TimeEnabled,
   currency,
   displayNameForColumn,
   getCurrency,
   getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
-  numberFormatterForOptions,
-} from "metabase/utils/formatting";
-import { hasHour } from "metabase/utils/formatting/datetime-utils";
-import MetabaseSettings from "metabase/utils/settings";
-import { getVisualizationRaw } from "metabase/visualizations";
-import {
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/visualizations/lib/formatting";
+  hasHour,
+  numberFormatterForOptions,
+} from "metabase/formatting";
+import MetabaseSettings from "metabase/utils/settings";
+import { getVisualizationRaw } from "metabase/visualizations";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
@@ -51,6 +48,7 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Series,
+  TimeEnabled,
   VisualizationSettings,
 } from "metabase-types/api";
 

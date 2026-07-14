@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { formatNullable } from "metabase/utils/formatting/nullable";
+import { formatNullable } from "metabase/formatting";
 import { isNotNull } from "metabase/utils/types";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {

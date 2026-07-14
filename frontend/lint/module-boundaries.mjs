@@ -135,6 +135,7 @@ const elements = [
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
+  createElement({ type: "shared", name: "formatting" }),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),

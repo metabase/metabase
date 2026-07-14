@@ -1,5 +1,4 @@
-import { formatNullable } from "metabase/utils/formatting/nullable";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatNullable, formatValue } from "metabase/formatting";
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { getFormattingOptionsWithoutScaling } from "../echarts/cartesian/model/util";

@@ -1,7 +1,7 @@
 import { ColorPill } from "metabase/common/components/ColorPill";
+import { formatValue } from "metabase/formatting";
 import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import type {
   ColumnSettings,
   RowValue,

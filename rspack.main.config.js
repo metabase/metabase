@@ -145,6 +145,13 @@ const config = {
   module: {
     rules: [
       {
+        // The formatting module has no import-time side effects, so unused
+        // files behind its barrel (index.ts) can be tree-shaken away.
+        test: /\.(tsx?|jsx?)$/,
+        include: SRC_PATH + "/formatting/",
+        sideEffects: false,
+      },
+      {
         // swc breaks styles for the whole app if we process this file
         test: /css\/core\/fonts\.styled\.ts$/,
         exclude: /node_modules|cljs/,

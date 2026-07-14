@@ -12,8 +12,8 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { formatNumber } from "metabase/formatting";
 import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
-import { formatNumber } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

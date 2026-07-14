@@ -2,8 +2,8 @@ import { useField } from "formik";
 import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
+import { slugify } from "metabase/formatting";
 import { FormTextInput } from "metabase/forms";
-import { slugify } from "metabase/visualizations/lib/formatting/url";
 
 type TargetNameInputProps = {
   description?: string;

@@ -43,12 +43,12 @@ import type {
   PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { formatValue } from "metabase/formatting";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,

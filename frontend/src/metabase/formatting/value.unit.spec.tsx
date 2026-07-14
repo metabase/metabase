@@ -5,7 +5,7 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
+import { registerJsxFormatting } from "./ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
