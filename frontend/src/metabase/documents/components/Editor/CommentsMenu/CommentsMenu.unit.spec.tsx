@@ -1,7 +1,6 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 
-
 import { CommentsMenu } from "./CommentsMenu";
 
 const defaultStyle = { top: 0, left: 0 };

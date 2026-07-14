@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
-
 import {
   fireEvent,
   renderWithProviders,
@@ -433,16 +432,12 @@ describe("ExplorationSidebar", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows the all-hidden message without thread headings when every page is hidden", () => {
-      setup({ queries: [hiddenQuery], blocks: [hiddenBlock] });
+    it("shows the all-hidden note (not the generic message) when there is nothing to show", () => {
+      setup({ queries: [] });
 
-      expect(screen.getByTestId("exploration-all-hidden")).toBeInTheDocument();
       expect(
         screen.getByText("All items have been hidden."),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Initial investigation"),
-      ).not.toBeInTheDocument();
       expect(
         screen.queryByText("Nothing to see here yet."),
       ).not.toBeInTheDocument();

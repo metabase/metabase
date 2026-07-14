@@ -1,10 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createPage, createQuery } from "metabase/explorations/test-utils";
 import { Route } from "metabase/router";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Comment,
   Dataset,
@@ -184,6 +183,7 @@ function setup({
           setCommentDrafts={jest.fn()}
           isCommentsSidebarOpen={isCommentsSidebarOpen}
           wasCommentsSidebarOpen={wasCommentsSidebarOpen}
+          blockType={"metric"}
         />
       )}
     />,

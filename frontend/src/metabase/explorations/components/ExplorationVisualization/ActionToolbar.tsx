@@ -191,6 +191,10 @@ export function ActionToolbar({
 
   const pageId = String(page.id);
 
+  const handleChangeCommentDraft = (content: DocumentContent) => {
+    setCommentDrafts((prev) => ({ ...prev, [pageId]: content }));
+  };
+
   const handleAddComment = async (content: DocumentContent) => {
     const { error } = await createComment({
       target_id: explorationId,

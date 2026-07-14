@@ -229,6 +229,8 @@ function ExplorationGroupVisualizationChart({
     (comment: Comment) => {
       const context = comment.context;
 
+      // comment context is an untyped JSON blob; `highlighted` is written by
+      // us as a HighlightedObject when the comment captures a chart point
       const highlighted = context?.highlighted as HighlightedObject | undefined;
       const commentLabel = getCommentLabel(
         highlighted,

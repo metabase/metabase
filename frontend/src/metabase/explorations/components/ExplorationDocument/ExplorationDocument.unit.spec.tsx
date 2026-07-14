@@ -1,6 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
 
-
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Editor } from "metabase/documents/components/Editor";

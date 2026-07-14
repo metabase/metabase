@@ -47,7 +47,6 @@ import type {
   ExplorationId,
   ExplorationQueryStatus,
   ExplorationThreadId,
-  IconName,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
@@ -513,7 +512,7 @@ function ExplorationTreeHeading({
           depth === 0 && item.data?.headingKind === "sub-exploration",
       })}
       onClick={onToggleExpand}
-      style={{ "--tree-depth": depth } as React.CSSProperties}
+      style={{ "--tree-depth": depth }}
     >
       <Box className={S.treeChevron} aria-hidden>
         <Icon
@@ -763,6 +762,7 @@ function ExplorationTreeItem({
       })}
       onMouseEnter={() => handlePrefetch(item)}
       onClick={handleClick}
+      // custom css var used for tree styles
       style={{ "--tree-depth": depth } as React.CSSProperties}
     >
       <ExplorationTreeItemIcon

@@ -15,6 +15,7 @@ export const DEFAULT_SORT_ORDER: ExplorationSortOrder = "interestingness";
 function read<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
+    // localStorage JSON is untyped, so have to type it
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
     return fallback;
