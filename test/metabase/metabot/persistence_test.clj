@@ -151,6 +151,7 @@
         q2         (by-text "q2")]
     (is (= ["q1" "discarded-1" "discarded-2" "older-live" "kept-1" "kept-2" "q2"]
            (map :message messages)))
+    (is (nil? (:parent_message_id q1)))
     (is (= (:id q1) (:parent_message_id discarded-1)))
     (is (= (:id discarded-1) (:parent_message_id discarded-2)))
     (is (= (:id q1) (:parent_message_id older-live)))

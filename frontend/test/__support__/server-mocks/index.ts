@@ -32,6 +32,7 @@ export * from "./library";
 export * from "./logger";
 export * from "./measure";
 export * from "./metabot";
+export * from "./metabot-analytics";
 export * from "./metric";
 export * from "./model-indexes";
 export * from "./native-query-snippet";

@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupMetabotConversationEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -15,12 +16,6 @@ jest.mock("metabase/admin/ai/MetabotAdminLayout", () => ({
 // Avoid unrelated permission and tenant requests.
 jest.mock("./ConversationHeader", () => ({
   ConversationHeader: () => null,
-}));
-
-const mockUseGetMetabotConversationQuery = jest.fn();
-jest.mock("../../api", () => ({
-  useGetMetabotConversationQuery: (...args: unknown[]) =>
-    mockUseGetMetabotConversationQuery(...args),
 }));
 
 type ConversationMessage = ConversationDetail["messages"][number];
@@ -91,11 +86,7 @@ function createConversation(
 }
 
 function setup(conversation: ConversationDetail) {
-  mockUseGetMetabotConversationQuery.mockReturnValue({
-    data: conversation,
-    isLoading: false,
-    error: null,
-  });
+  setupMetabotConversationEndpoint(conversation);
   return renderWithProviders(
     <Route path="/conversations/:convoId" component={ConversationDetailPage} />,
     {
@@ -118,7 +109,7 @@ describe("ConversationDetailPage", () => {
       ]),
     );
 
-    expect(screen.getByText("kept answer")).toBeInTheDocument();
+    expect(await screen.findByText("kept answer")).toBeInTheDocument();
     expect(screen.queryByText("first try")).not.toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next version" })).toBeDisabled();
@@ -154,7 +145,7 @@ describe("ConversationDetailPage", () => {
     );
 
     expect(
-      screen.getByTestId("metabot-response-in-progress"),
+      await screen.findByTestId("metabot-response-in-progress"),
     ).toBeInTheDocument();
     expect(screen.getByText(/Response in progress/)).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
@@ -186,7 +177,7 @@ describe("ConversationDetailPage", () => {
       ]),
     );
 
-    expect(screen.getByText("kept answer")).toBeInTheDocument();
+    expect(await screen.findByText("kept answer")).toBeInTheDocument();
     expect(screen.getByText("monthly answer")).toBeInTheDocument();
 
     await userEvent.click(
@@ -198,7 +189,7 @@ describe("ConversationDetailPage", () => {
     expect(screen.queryByText("monthly answer")).not.toBeInTheDocument();
   });
 
-  it("does not let admins submit feedback ratings from the transcript", () => {
+  it("does not let admins submit feedback ratings from the transcript", async () => {
     setup(
       createConversation([
         userMessage("u1", null, "hi"),
@@ -206,6 +197,7 @@ describe("ConversationDetailPage", () => {
       ]),
     );
 
+    expect(await screen.findByText("an answer")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-chat-message-thumbs-up"),
     ).not.toBeInTheDocument();
@@ -214,7 +206,7 @@ describe("ConversationDetailPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("resolves feedback left on a regenerated-away attempt", () => {
+  it("resolves feedback left on a regenerated-away attempt", async () => {
     const feedback: ConversationFeedback = {
       id: 1,
       metabot_id: 1,
@@ -236,6 +228,6 @@ describe("ConversationDetailPage", () => {
       ),
     );
 
-    expect(screen.getByText("discarded answer")).toBeInTheDocument();
+    expect(await screen.findByText("discarded answer")).toBeInTheDocument();
   });
 });

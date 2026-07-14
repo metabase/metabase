@@ -195,8 +195,8 @@
                    :profile_id              "nlq"}
                   r3)))))))
 
-(deftest deleted-messages-excluded-test
-  (testing "soft-deleted messages are excluded from counts"
+(deftest deleted-messages-included-test
+  (testing "soft-deleted messages are included in counts"
     (let [convo-id (str (random-uuid))
           now      (java.time.OffsetDateTime/now)
           earlier  (.minusHours now 1)]
@@ -205,9 +205,9 @@
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "user"      :profile_id "nlq" :total_tokens 0 :data [] :created_at earlier}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :created_at now}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :deleted_at now}]
-        (is (=? {:message_count           2
+        (is (=? {:message_count           3
                  :user_message_count      1
-                 :assistant_message_count 1}
+                 :assistant_message_count 2}
                 (first (query-view [convo-id]))))))))
 
 (deftest user-display-name-test
@@ -343,7 +343,7 @@
           (is (nil? (:last_message_at row))))))))
 
 (deftest last-message-at-test
-  (testing "last_message_at reflects the most recent non-deleted message"
+  (testing "last_message_at reflects the most recent message"
     (let [convo-id (str (random-uuid))
           t1       (java.time.OffsetDateTime/parse "2026-01-01T12:00:00Z")
           t2-ts    (java.time.OffsetDateTime/parse "2026-01-02T12:00:00Z")
@@ -352,11 +352,10 @@
                      :model/MetabotConversation _ {:id convo-id :user_id user-id}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "user"      :profile_id "nlq" :total_tokens 0 :data [] :created_at t1}
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :created_at t2-ts}
-                     ;; newest message is deleted — should not count
                      :model/MetabotMessage      _ {:conversation_id convo-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :created_at t3 :deleted_at t3}]
         (let [row (first (query-view [convo-id]))]
           ;; Compare instants to avoid DB-specific timestamp type differences
-          (is (= (t/instant t2-ts) (t/instant (:last_message_at row)))))))))
+          (is (= (t/instant t3) (t/instant (:last_message_at row)))))))))
 
 (deftest multiple-conversations-independent-test
   (testing "multiple conversations aggregate independently"
