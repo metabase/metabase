@@ -1368,6 +1368,17 @@
   [driver database target]
   ((get-method drop-transform-target! [driver :table]) driver database target))
 
+(defmulti refresh-table-stats!
+  "Refresh the database's table statistics (e.g. `ANALYZE`) for `table` after a transform run materializes it, so
+  query planners see fresh stats. Defaults to a no-op."
+  {:added "0.63.0", :arglists '([driver database schema table transform-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod refresh-table-stats! :default
+  [_driver _database _schema _table _transform-type]
+  nil)
+
 (mr/def ::native-query-deps.table-dep
   [:map
    {:closed true}

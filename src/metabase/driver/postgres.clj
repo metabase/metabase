@@ -1334,6 +1334,13 @@
     (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
       (driver/execute-raw-queries! driver conn-spec sql))))
 
+(defmethod driver/refresh-table-stats! :postgres
+  [driver database schema table _transform-type]
+  (let [qtable (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))]
+    (driver/execute-raw-queries! driver
+                                 (driver/connection-spec driver database)
+                                 [[(format "ANALYZE %s" qtable)]])))
+
 (defmethod driver/extra-info :postgres
   [_driver]
   {:providers [{:name "Aiven" :pattern "\\.aivencloud\\.com$"}

@@ -6,6 +6,9 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
+- New driver method `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` --
+  refreshes table statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
+
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support
   `:metadata/key-constraints`.
