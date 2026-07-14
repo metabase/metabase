@@ -89,6 +89,7 @@ const setup = async ({
   };
 
   const searchParams = new URLSearchParams(
+    // Unjustified type cast. FIXME
     params as unknown as Record<string, string>,
   ).toString();
 
@@ -184,7 +185,9 @@ describe("SearchApp", () => {
         const popover = within(screen.getByTestId("popover"));
         await userEvent.click(
           popover.getByRole("checkbox", {
+            // Unjustified type cast. FIXME
             name: TYPE_FILTER_LABELS[
+              // Unjustified type cast. FIXME
               model as EnabledSearchModel
             ] as EnabledSearchModel,
           }),
@@ -205,6 +208,7 @@ describe("SearchApp", () => {
       async ({ name, model }) => {
         await setup({
           searchText: name,
+          // Unjustified type cast. FIXME
           searchFilters: { type: [model as EnabledSearchModel] },
         });
 
@@ -218,6 +222,7 @@ describe("SearchApp", () => {
         const fieldSetContent = typeFilter.getByTestId("field-set-content");
 
         expect(fieldSetContent).toHaveTextContent(
+          // Unjustified type cast. FIXME
           TYPE_FILTER_LABELS[model as EnabledSearchModel],
         );
       },

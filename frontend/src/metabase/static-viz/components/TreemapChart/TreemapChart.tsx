@@ -206,5 +206,7 @@ function renderTreemapChartSvg({
 
   // 2nd to render/hide labels
   chart.setOption(getStaticTreemapOption(config, layouts));
-  return sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  chart.dispose();
+  return chartSvg;
 }

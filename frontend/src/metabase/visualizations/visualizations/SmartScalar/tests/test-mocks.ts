@@ -43,6 +43,7 @@ export const mockSeries = ({
     NumberColumn({ name: "Sum" }),
   ];
 
+  // Unjustified type cast. FIXME
   return [
     {
       card: {

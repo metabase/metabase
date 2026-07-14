@@ -34,6 +34,7 @@ export const LegendItemDot = forwardRef<
         aria-label={isVisible ? t`Hide series` : t`Show series`}
         onClick={onClick}
         style={sizeStyle}
+        // Unjustified type cast. FIXME
         ref={ref as Ref<HTMLButtonElement>}
       >
         <OuterCircle style={sizeStyle} />
@@ -46,6 +47,7 @@ export const LegendItemDot = forwardRef<
     <Root
       data-testid="legend-item-dot"
       style={sizeStyle}
+      // Unjustified type cast. FIXME
       ref={ref as Ref<HTMLDivElement>}
     >
       <OuterCircle style={sizeStyle} />

@@ -124,6 +124,7 @@ describe("order by", () => {
       );
 
       expect(
+        // Unjustified type cast. FIXME
         Lib.displayInfo(query, 0, productsTitle as Lib.ColumnMetadata),
       ).toEqual(
         expect.objectContaining({

@@ -159,6 +159,7 @@ export function nestedSettings<
 
   type Value = VisualizationSettingsDefinitions[Key];
 
+  // Unjustified type cast. FIXME
   const idDef: SeriesSettingDefinition<Value, TProps & { id: string }> = {
     getSection: () => t`Display`,
     getDefault: () => ({}),

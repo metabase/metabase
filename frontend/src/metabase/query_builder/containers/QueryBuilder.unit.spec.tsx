@@ -223,6 +223,7 @@ describe("QueryBuilder", () => {
       const calls = fetchMock.callHistory.calls("path:/api/dataset/csv");
       const lastCall = calls[calls.length - 1];
       const body = await Promise.resolve(lastCall.options?.body);
+      // Unjustified type cast. FIXME
       const urlSearchParams = new URLSearchParams(body as string);
       expect(lastCall.url).toEqual(expect.stringContaining("/api/dataset/csv"));
       const query =

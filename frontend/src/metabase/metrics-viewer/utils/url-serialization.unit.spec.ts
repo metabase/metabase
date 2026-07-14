@@ -1052,6 +1052,7 @@ describe("url-serialization", () => {
               type: "expression",
               id: "expression:test",
               name: "test",
+              // Unjustified type cast. FIXME
               tokens: [{ type: "metric" } as any],
             },
           ],
@@ -1069,6 +1070,7 @@ describe("url-serialization", () => {
               type: "expression",
               id: "expression:test",
               name: "test",
+              // Unjustified type cast. FIXME
               tokens: [{ type: "operator" } as any],
             },
           ],
@@ -1188,6 +1190,7 @@ describe("url-serialization", () => {
             {
               type: "metric",
               id: 5,
+              // Unjustified type cast. FIXME
               filters: filters as any,
             },
           ],
@@ -1228,6 +1231,7 @@ describe("url-serialization", () => {
                 {
                   type: "metric",
                   sourceId: "metric:1",
+                  // Unjustified type cast. FIXME
                   filters: tokenFilters as any,
                 },
               ],

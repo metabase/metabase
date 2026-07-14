@@ -39,6 +39,7 @@ export function isDataStudioTableMetadataTab(
   tab: unknown,
 ): tab is DataStudioTableMetadataTab {
   return DATA_STUDIO_TABLE_METADATA_TABS.includes(
+    // Unjustified type cast. FIXME
     tab as DataStudioTableMetadataTab,
   );
 }
@@ -338,4 +339,8 @@ export function dataStudioArchivedSnippets() {
 
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioLibrary()}/segments/${segmentId}`;
+}
+
+export function dataStudioSettings() {
+  return `${dataStudio()}/settings`;
 }

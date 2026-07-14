@@ -31,9 +31,9 @@ module.exports = (env) => {
 
     entry: {
       "lib-static-viz": {
-        import: "./static-viz/index.tsx",
+        import: "./app-static-viz.ts",
         library: {
-          name: "StaticViz",
+          name: "MetabaseStaticViz",
           type: "var",
         },
       },
@@ -43,7 +43,7 @@ module.exports = (env) => {
       path: BUILD_PATH + "/app/dist",
       filename: "[name].bundle.js",
       publicPath: "/app/dist",
-      globalObject: "{}",
+      globalObject: "globalThis",
     },
 
     module: {

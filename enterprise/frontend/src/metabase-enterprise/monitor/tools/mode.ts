@@ -1,6 +1,6 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { push } from "metabase/router";
 import { card } from "metabase/urls";
 import type { ClickObject } from "metabase-lib/v1/queries/drills/types";
 

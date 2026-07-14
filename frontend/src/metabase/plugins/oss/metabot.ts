@@ -9,6 +9,7 @@ export type MetabaseAIProviderSetupProps = {
 const getDefaultPluginMetabot = () => ({
   isEnabled: false,
   MetabaseAIProviderSetup:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<MetabaseAIProviderSetupProps>,
 });
 

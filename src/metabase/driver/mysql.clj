@@ -1,7 +1,8 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:refer-clojure :exclude [get-in some not-empty])
+  (:refer-clojure :exclude [get-in mapv some not-empty])
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -35,7 +36,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [get-in not-empty some]]
+   [metabase.util.performance :as perf :refer [get-in mapv not-empty some]]
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
@@ -50,7 +51,7 @@
   mysql.actions/keep-me
   mysql.ddl/keep-me)
 
-(driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :mysql, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
@@ -69,6 +70,8 @@
                               :full-join                              false
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
+                              :index/fetch                            true
+                              :index/standalone-create                true
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
@@ -91,8 +94,7 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
-                              ;; currently disabled as :describe-indexes is not supported
-                              :transforms/index-ddl                   false
+                              :transforms/index-ddl                   true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
@@ -415,7 +417,7 @@
   :signed)
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   (let [text (sql.qp/->honeysql driver text)
         div  (sql.qp/->honeysql driver divider)
         pos  (sql.qp/->honeysql driver position)]
@@ -441,21 +443,21 @@
       div -1]]))
 
 (defmethod sql.qp/->honeysql [:mysql :text]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
 
 ;; MySQL/MariaDB `CAST` does not accept `TEXT` as a target type — the string cast target is
 ;; `CHAR`.
 (defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "char"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "char")))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:mysql :length]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:char_length (sql.qp/->honeysql driver arg)])
 
 (def ^:private database-type->mysql-cast-type-name
@@ -495,10 +497,10 @@
         [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]]))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
-  [driver [_ id-or-name opts :as mbql-clause]]
+  [driver [_ opts id-or-name :as mbql-clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
         honeysql-expr (parent-method driver mbql-clause)]
     (cond
       (not (driver-api/json-field? stored-field))
@@ -605,7 +607,7 @@
        (temporal-cast (h2x/database-type expr))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
         timestamp? (or (sql.qp.u/field-with-tz? arg)
                        (h2x/is-of-type? expr "timestamp"))]
@@ -1118,8 +1120,9 @@
     #"^GRANT (.+) TO "
     :>>
     (fn [[_ roles]]
+      ;; role names are case-sensitive to MySQL, so they must be passed back to `SHOW GRANTS ... USING` verbatim
       {:type  :roles
-       :roles (set (map u/lower-case-en (str/split roles #",")))})))
+       :roles (set (str/split roles #","))})))
 
 (defn- privilege-grants-for-user
   "Returns a list of parsed privilege grants for a user, taking into account the roles that the user has.
@@ -1135,7 +1138,7 @@
          privilege-grants :privileges} (group-by :type grants)]
     (if (seq role-grants)
       (let [roles  (:roles (first role-grants))
-            grants (map parse-grant (query (str "SHOW GRANTS FOR " user "USING " (str/join "," roles))))
+            grants (map parse-grant (query (str "SHOW GRANTS FOR " user " USING " (str/join "," roles))))
             {privilege-grants :privileges} (group-by :type grants)]
         privilege-grants)
       privilege-grants)))
@@ -1374,10 +1377,10 @@
   [username schemas]
   (let [quoted-user      (quote-field username)
         source-databases (set schemas)]
-    (perf/mapv (fn [db]
-                 (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                         (quote-schema db) quoted-user))
-               source-databases)))
+    (mapv (fn [db]
+            (format "GRANT SELECT ON %s.* TO %s@'%%'"
+                    (quote-schema db) quoted-user))
+          source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
   [_driver database workspace schemas]
@@ -1446,6 +1449,103 @@
                               nil))
                           (ex-message e)))]
            result))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :mysql
+  [_driver _database]
+  ;; spatial is niche, and InnoDB silently rewrites USING HASH into btree, so neither is offered.
+  (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
+    {:btree    {:lifecycle    :standalone
+                :display-name (deferred-tru "B-Tree")
+                :fields       [driver.common/index-name-field
+                               driver.common/index-unique-field
+                               driver.common/index-columns-field]}
+     :fulltext {:lifecycle    :standalone
+                :display-name (deferred-tru "Full-text")
+                :fields       name+cols}}))
+
+(defn- mysql-index-column-sql
+  "Quote an indexed column, appending `ASC`/`DESC` only for btree (fulltext has no per-column order)."
+  [btree? {col-name :name :keys [direction]}]
+  (cond-> (sql.u/quote-name :mysql :field col-name)
+    (and btree? direction) (str " " (u/upper-case-en (name direction)))))
+
+(defn- create-index-sql
+  [schema table {index-name :name, :keys [kind columns unique]}]
+  (let [fulltext? (= kind :fulltext)
+        target    (apply sql.u/quote-name :mysql :table (if (not-empty schema) [schema table] [table]))
+        cols      (str/join ", " (map #(mysql-index-column-sql (not fulltext?) %) columns))]
+    (format "CREATE %sINDEX %s ON %s (%s)"
+            (cond fulltext? "FULLTEXT "
+                  unique    "UNIQUE "
+                  :else     "")
+            (sql.u/quote-name :mysql :field index-name)
+            target
+            cols)))
+
+(defn- utf8-string-expr
+  "A MySQL expression evaluating to the string `s`, hex-encoded so there is nothing to escape and SQL injection is
+  impossible. Index names are unvalidated free-form user input and `sql.u/escape-sql` is explicitly not safe for that
+  (a backslash defeats its quote-doubling, and its escaping is session-dependent), so we use the hex pattern instead."
+  [^String s]
+  (format "CONVERT(UNHEX('%s') USING utf8mb4)" (codecs/bytes->hex (.getBytes s "UTF-8"))))
+
+(defmethod driver/compile-create-index :mysql
+  [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]
+  (let [create (create-index-sql schema table structured)]
+    (if-not if-not-exists
+      [[create]]
+      ;; MySQL has no `CREATE INDEX IF NOT EXISTS`, and the apply path re-issues creates on full rebuilds, so guard
+      ;; with dynamic SQL that runs the create only when no index of this name exists. Strings (including the whole
+      ;; CREATE statement) are inlined as hex-encoded expressions rather than bound params because the MariaDB driver
+      ;; rejects `?` placeholders inside `SET @var := (SELECT ...)`.
+      [[(format "SET @mb_idx_exists := (SELECT COUNT(*) FROM information_schema.statistics
+                                        WHERE table_schema = %s AND table_name = %s AND index_name = %s)"
+                (if (not-empty schema) (utf8-string-expr schema) "DATABASE()")
+                (utf8-string-expr table)
+                (utf8-string-expr index-name))]
+       [(format "SET @mb_idx_sql := IF(@mb_idx_exists > 0, 'DO 0', %s)"
+                (utf8-string-expr create))]
+       ["PREPARE mb_idx_stmt FROM @mb_idx_sql"]
+       ["EXECUTE mb_idx_stmt"]
+       ["DEALLOCATE PREPARE mb_idx_stmt"]])))
+
+(defn- mysql-index-type->kind
+  [index-type]
+  (case (u/upper-case-en (or index-type ""))
+    "FULLTEXT" :fulltext
+    "SPATIAL"  :spatial
+    :btree))
+
+(defn- mysql-index-rows->index
+  "Collapse one index's per-column `information_schema.statistics` rows (ordered by `SEQ_IN_INDEX`) into an index map."
+  [rows]
+  (let [{:keys [index_name non_unique index_type]} (first rows)]
+    {:name              index_name
+     :kind              (mysql-index-type->kind index_type)
+     :access-method     (some-> index_type u/lower-case-en)
+     :is-unique         (zero? (long non_unique))
+     :is-primary        (= index_name "PRIMARY")
+     :is-valid          true
+     :key-columns       (mapv :column_name rows)
+     :include-columns   []
+     :partial-predicate nil
+     :definition        nil}))
+
+(defmethod driver/fetch-table-indexes :mysql
+  [_driver database schema table]
+  (->> (jdbc/query
+        (sql-jdbc.conn/db->pooled-connection-spec database)
+        ["SELECT index_name, seq_in_index, column_name, non_unique, index_type
+          FROM information_schema.statistics
+          WHERE table_schema = COALESCE(?, DATABASE()) AND table_name = ?
+          ORDER BY index_name, seq_in_index"
+         (not-empty schema) table])
+       (partition-by :index_name)
+       (mapv mysql-index-rows->index)))
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
   "metabot/prompts/dialects/mysql.md")

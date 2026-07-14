@@ -29,7 +29,9 @@ import {
  * RTK Query stores the original arguments in action.meta.arg.originalArgs
  */
 function getOriginalArgs<T>(action: UnknownAction): T | undefined {
+  // Unjustified type cast. FIXME
   const meta = (action as { meta?: { arg?: { originalArgs?: unknown } } }).meta;
+  // Unjustified type cast. FIXME
   return meta?.arg?.originalArgs as T | undefined;
 }
 

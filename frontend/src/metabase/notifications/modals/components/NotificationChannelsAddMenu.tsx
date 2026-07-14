@@ -50,6 +50,7 @@ export const NotificationChannelsAddMenu = ({
         result[item.channel_id] = true;
         return result;
       },
+      // Unjustified type cast. FIXME
       {} as { [key: number]: true },
     );
 

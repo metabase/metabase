@@ -242,6 +242,7 @@ function useFilteredMetrics(metricFilters: MetricFilterSettings) {
 
   const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
   const error = hasVerifiedMetrics.error || metricsResult.error;
+  // Unjustified type cast. FIXME
   const metrics = metricsResult.data?.data as MetricResult[] | undefined;
 
   return {

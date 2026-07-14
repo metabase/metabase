@@ -1,6 +1,6 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:refer-clojure :exclude [mapv get-in])
+  (:refer-clojure :exclude [mapv get-in not-empty])
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -29,13 +30,12 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [mapv get-in]]
+   [metabase.util.performance :as perf :refer [mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
@@ -57,6 +57,8 @@
                               :expression-literals                    true
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
+                              :index/fetch                            true
+                              :index/standalone-create                true
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false
@@ -1086,20 +1088,11 @@
   [_ e]
   (= (sql-jdbc/get-sql-state e) "S0002"))
 
-(defmethod driver/insert-from-source! [:sqlserver :jsonl-file]
-  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
-  (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)
-          data-rows (map (fn [line]
-                           (let [m (json/decode line)]
-                             (mapv (fn [column]
-                                     (let [value (get m (:name column))]
-                                       (if (boolean? value)
-                                         (if value 1 0)
-                                         value)))
-                                   columns)))
-                         lines)]
-      (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
+(defmethod driver/insert-col->val [:sqlserver :jsonl-file]
+  [_driver _ _column-def value]
+  (if (boolean? value)
+    (if value 1 0)
+    value))
 
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
@@ -1257,6 +1250,98 @@
                        [(format "GRANT SELECT ON SCHEMA::%s TO %s"
                                 (quote-schema schema)
                                 quoted-user)])))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :sqlserver
+  [_driver _database]
+  ;; Both rowstore kinds are B-tree, so both take UNIQUE and per-column ASC/DESC. Columnstore/XML/spatial are niche
+  ;; and left out.
+  (let [fields [driver.common/index-name-field
+                (assoc driver.common/index-columns-field :directions true)
+                driver.common/index-unique-field]]
+    {:nonclustered {:lifecycle    :standalone
+                    :display-name (deferred-tru "Nonclustered")
+                    :fields       fields}
+     :clustered    {:lifecycle    :standalone
+                    :display-name (deferred-tru "Clustered")
+                    :fields       fields}}))
+
+(defn- index-column-sql
+  "Quote one indexed column, appending its `ASC`/`DESC` direction when set."
+  [{col-name :name :keys [direction]}]
+  (cond-> (quote-field col-name)
+    direction (str " " (u/upper-case-en (name direction)))))
+
+(defn- create-index-sql
+  [schema table {index-name :name, :keys [kind columns unique]}]
+  (let [target (apply sql.u/quote-name :sqlserver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map index-column-sql columns))]
+    (format "CREATE %s%s INDEX %s ON %s (%s)"
+            (if unique "UNIQUE " "")
+            (if (= kind :clustered) "CLUSTERED" "NONCLUSTERED")
+            (quote-field index-name)
+            target
+            cols)))
+
+(defn- sql-string-literal
+  "A SQL Server `N'...'` string literal for trusted `s`, escaping embedded quotes."
+  [s]
+  (str "N'" (sql.u/escape-sql s :ansi) \'))
+
+(defmethod driver/compile-create-index :sqlserver
+  [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]
+  (let [create (create-index-sql schema table structured)]
+    (if-not if-not-exists
+      [[create]]
+      ;; SQL Server has no `CREATE INDEX IF NOT EXISTS`, so guard the create with a T-SQL `IF NOT EXISTS (...)` that
+      ;; runs it only when no index of this name exists on the table.
+      (let [target (apply sql.u/quote-name :sqlserver :table (if (not-empty schema) [schema table] [table]))]
+        [[(format "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = %s AND object_id = OBJECT_ID(%s)) %s"
+                  (sql-string-literal index-name)
+                  (sql-string-literal target)
+                  create)]]))))
+
+(defn- bit->bool
+  "JDBC may hand back a SQL Server `bit` as a Boolean or a 0/1 number; normalize either to a boolean."
+  [v]
+  (if (number? v) (not (zero? v)) (boolean v)))
+
+(defn- index-rows->index
+  "Collapse one index's per-column `sys.index_columns` rows (key columns first, then INCLUDE columns) into an index map."
+  [rows]
+  (let [{:keys [index_name index_type is_unique is_primary is_disabled filter_definition]} (first rows)]
+    {:name              index_name
+     :kind              (if (= index_type "CLUSTERED") :clustered :nonclustered)
+     :access-method     (some-> index_type u/lower-case-en)
+     :is-unique         (bit->bool is_unique)
+     :is-primary        (bit->bool is_primary)
+     :is-valid          (not (bit->bool is_disabled))
+     :key-columns       (->> rows (remove (comp bit->bool :is_included)) (mapv :column_name))
+     :include-columns   (->> rows (filter (comp bit->bool :is_included)) (mapv :column_name))
+     :partial-predicate filter_definition
+     :definition        nil}))
+
+;; Only rowstore clustered (`type` 1) and nonclustered (2) indexes are reported; heaps, columnstore, XML, and spatial
+;; are skipped. A missing table makes `OBJECT_ID` return NULL, so the predicate matches nothing and fetch returns [].
+(defmethod driver/fetch-table-indexes :sqlserver
+  [_driver database schema table]
+  (let [qualified (apply sql.u/quote-name :sqlserver :table (if (not-empty schema) [schema table] [table]))]
+    (->> (jdbc/query
+          (sql-jdbc.conn/db->pooled-connection-spec database)
+          ["SELECT i.name AS index_name, i.type_desc AS index_type, i.is_unique, i.is_primary_key AS is_primary,
+                   i.is_disabled, i.filter_definition, c.name AS column_name,
+                   ic.is_included_column AS is_included, ic.key_ordinal, ic.index_column_id
+            FROM sys.indexes i
+            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+            JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+            WHERE i.object_id = OBJECT_ID(?) AND i.type IN (1, 2)
+            ORDER BY i.index_id, ic.is_included_column, ic.key_ordinal, ic.index_column_id"
+           qualified])
+         (partition-by :index_name)
+         (mapv index-rows->index))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")

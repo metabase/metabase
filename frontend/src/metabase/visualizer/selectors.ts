@@ -127,6 +127,7 @@ const getVisualizerDatasetData = createSelector(
     getVisualizerColumnValuesMapping,
   ],
   (dataSources, datasets, columns, columnValuesMapping): DatasetData =>
+    // Unjustified type cast. FIXME
     mergeVisualizerData({
       columns,
       columnValuesMapping,
@@ -155,6 +156,7 @@ const getVisualizerFlatRawSeries = createSelector(
 
     const series: RawSeries = [
       {
+        // Unjustified type cast. FIXME
         card: {
           display,
           dataset_query: {},
@@ -247,6 +249,7 @@ export const getTabularPreviewSeries = createSelector(
     return [
       {
         ...rest,
+        // Unjustified type cast. FIXME
         card: {
           display: "table",
           dataset_query: {},

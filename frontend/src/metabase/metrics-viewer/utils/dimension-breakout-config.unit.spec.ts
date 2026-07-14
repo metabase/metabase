@@ -84,6 +84,7 @@ const latitudeCol = createMockColumn({
 // ── Shared helpers ──
 
 const METRIC_ENTITY: MetricsViewerFormulaEntity = {
+  // Unjustified type cast. FIXME
   id: "metric:1" as MetricSourceId,
   type: "metric",
   definition: null,
@@ -190,6 +191,7 @@ describe("getDimensionBreakoutConfig", () => {
   });
 
   it("throws for unknown dimensionBreakout type", () => {
+    // Unjustified type cast. FIXME
     expect(() => getDimensionBreakoutConfig("unknown" as any)).toThrow(
       "No dimension breakout config found for type: unknown",
     );
@@ -475,6 +477,7 @@ describe("DISPLAY_TYPE_REGISTRY", () => {
 
     it("sets scalar.label to entity name for expression entries", () => {
       const expressionEntity: MetricsViewerFormulaEntity = {
+        // Unjustified type cast. FIXME
         id: "expr:1" as any,
         type: "expression",
         name: "Revenue Growth",

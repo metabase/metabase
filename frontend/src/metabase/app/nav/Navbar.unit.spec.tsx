@@ -89,7 +89,7 @@ async function setup({
     },
   );
 
-  // manually dispatch the location event that would otherwise be done for us with react-router-redux
+  // manually dispatch the location event that the router history sync would otherwise dispatch for us
   dispatchLocationChange({ store, initialRoute: true, pathname });
 
   await waitForLoaderToBeRemoved();

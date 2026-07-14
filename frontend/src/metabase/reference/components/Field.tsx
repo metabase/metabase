@@ -4,7 +4,6 @@ import { memo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import S from "metabase/common/components/List/List.module.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
 import {
@@ -12,6 +11,7 @@ import {
   SemanticTypePicker,
 } from "metabase/metadata/components";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
+import S from "metabase/reference/components/List/List.module.css";
 import { Link } from "metabase/router";
 import { Box, Icon } from "metabase/ui";
 import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";

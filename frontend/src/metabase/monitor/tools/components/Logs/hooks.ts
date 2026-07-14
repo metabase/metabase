@@ -24,6 +24,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
     if (!queryError) {
       return null;
     }
+    // Unjustified type cast. FIXME
     const errorWithData = queryError as {
       data?: { message?: string };
       message?: string;

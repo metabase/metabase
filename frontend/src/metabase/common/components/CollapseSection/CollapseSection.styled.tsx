@@ -66,6 +66,7 @@ export const ToggleIcon = styled(
   }: ToggleIconProps & Omit<IconProps, "name">) => {
     const { collapsed, expanded } = ICON_VARIANTS[variant];
     const name = isExpanded ? expanded : collapsed;
+    // Unjustified type cast. FIXME
     return <Icon name={name as IconName} size={size} {...props} />;
   },
 )`

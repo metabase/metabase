@@ -21,6 +21,7 @@ const createMockAction = ({
   section = "basic",
   disabled,
 }: mockAction): PaletteActionImpl =>
+  // Unjustified type cast. FIXME
   ({ id, name, section, disabled }) as PaletteActionImpl;
 
 describe("command palette utils", () => {

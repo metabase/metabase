@@ -18,6 +18,7 @@ describe("compileFormatter", () => {
   it("should return a function, even for unsupported operators", () => {
     const formatter = compileFormatter({
       type: "single",
+      // Unjustified type cast. FIXME
       operator: "this-non-existant-operator-is-used-for-testing" as never,
       value: null,
       color: "#ffffff",

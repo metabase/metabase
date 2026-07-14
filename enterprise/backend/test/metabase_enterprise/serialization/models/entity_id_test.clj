@@ -63,7 +63,10 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpFeedback
     :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback
@@ -122,6 +125,7 @@
     :model/SourceSegmentDaily
     :model/SsoRelayState
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant
