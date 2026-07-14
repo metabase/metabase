@@ -151,16 +151,29 @@ export function ExplorationPage({
     [location.pathname, location.search],
   );
 
+  const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
+
   const getSelectedEntityIdUrl = useCallback(
-    (entityId: SelectedEntityId) => {
-      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${location.search}`;
+    (entityId: SelectedEntityId, options?: { tab?: ExplorationSidebarTab }) => {
+      const search = new URLSearchParams(location.search);
+      if (options?.tab) {
+        search.set("tab", options.tab);
+      }
+      const searchString = search.toString();
+      return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${searchString ? `?${searchString}` : ""}`;
     },
     [params.id, location.search],
   );
 
   const setSelectedEntityId = useCallback(
-    (entityId: SelectedEntityId) => {
-      dispatch(push(getSelectedEntityIdUrl(entityId)));
+    (
+      entityId: SelectedEntityId,
+      options?: { tab?: ExplorationSidebarTab; scrollIntoView?: boolean },
+    ) => {
+      if (options?.scrollIntoView) {
+        shouldScrollSelectionRef.current = true;
+      }
+      dispatch(push(getSelectedEntityIdUrl(entityId, options)));
     },
     [dispatch, getSelectedEntityIdUrl],
   );
@@ -611,6 +624,7 @@ export function ExplorationPage({
             selectedEntityId={selectedEntityId}
             setSelectedEntityId={setSelectedEntityId}
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+            shouldScrollSelectionRef={shouldScrollSelectionRef}
             isOpen={isSidebarOpen}
             readPageIds={readPageIds}
             showHidden={showHidden}

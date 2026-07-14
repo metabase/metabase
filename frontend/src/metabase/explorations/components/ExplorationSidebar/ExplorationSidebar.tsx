@@ -90,6 +90,7 @@ interface ExplorationSidebarProps {
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   isOpen: boolean;
   readPageIds: ReadonlySet<string>;
   showHidden: boolean;
@@ -108,6 +109,7 @@ export function ExplorationSidebar({
   selectedEntityId,
   setSelectedEntityId,
   getSelectedEntityIdUrl,
+  shouldScrollSelectionRef,
   isOpen,
   readPageIds,
   showHidden,
@@ -121,7 +123,6 @@ export function ExplorationSidebar({
     selectedId: selectedEntityId?.id,
     freezeAutoExpandOnManualToggle: true,
   });
-  const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
 
   const flatItems = useMemo(() => flattenTree(tree), [tree]);
 
@@ -149,6 +150,21 @@ export function ExplorationSidebar({
   // eslint complains when passing `treeController.collapse` to `useEffect` deps
   // so destructure it
   const { collapse, setExpandedIds } = treeController;
+
+  // When programmatic navigation sets shouldScrollSelectionRef, also expand
+  // the tree to reveal the selected item. useTree's auto-expand is frozen
+  // after a manual chevron toggle, so we bypass it here.
+  useEffect(() => {
+    if (shouldScrollSelectionRef.current && selectedEntityId) {
+      setExpandedIds(
+        (prev) =>
+          new Set([
+            ...prev,
+            ...getInitialExpandedIds(selectedEntityId.id, tree),
+          ]),
+      );
+    }
+  }, [selectedEntityId, shouldScrollSelectionRef, setExpandedIds, tree]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -223,6 +239,7 @@ export function ExplorationSidebar({
     handlePrefetch,
     collapse,
     exploration.id,
+    shouldScrollSelectionRef,
   ]);
 
   const TreeNode = useCallback(
@@ -241,6 +258,7 @@ export function ExplorationSidebar({
       exploration.id,
       exploration.can_write,
       handlePrefetch,
+      shouldScrollSelectionRef,
       getSelectedEntityIdUrl,
       readPageIds,
     ],
@@ -619,8 +637,8 @@ function ExplorationGroupMenu({
   );
 
   const handleRestart = useCallback(
-    async (explorationId: ExplorationId) => {
-      const { error } = await restartExploration(explorationId);
+    async (explorationId: ExplorationId, threadId: ExplorationThreadId) => {
+      const { error } = await restartExploration({ explorationId, threadId });
       if (error) {
         sendToast({
           message: t`Failed to restart`,
@@ -633,6 +651,10 @@ function ExplorationGroupMenu({
     },
     [restartExploration, sendToast],
   );
+
+  if (!item.data?.explorationId || !item.data?.thread) {
+    return null;
+  }
 
   const thread = item.data?.thread;
   const canStop = canWrite && thread != null && thread.completed_at == null;

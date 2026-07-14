@@ -1,5 +1,9 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type {
+  Exploration,
+  GetExplorationDataResponse,
+} from "metabase-types/api";
 
 const { H } = cy;
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -38,6 +42,9 @@ const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
 function seedMetrics() {
   for (const metric of [ORDERS_COUNT_METRIC, ORDERS_TIMESERIES_METRIC]) {
     H.createQuestion(metric).then(({ body }) => {
+      // The response is unused, but `GET /api/metric/:id` calls
+      // `sync-dimensions!` server-side, persisting the metric's dimensions
+      // and dimension_mappings — which `/api/exploration/dimensions` needs.
       cy.request("GET", `/api/metric/${body.id}`);
     });
   }
@@ -422,23 +429,28 @@ describe("scenarios > explorations > detail page", () => {
 
       selectedRows().should("have.length.at.least", 1);
 
-      const readSelectedText = () =>
-        selectedRows()
-          .first()
-          .invoke("text")
-          .then((s: string) => s.trim());
+      // `findAllByRole` → `filter` → `first` → `invoke` are all Cypress
+      // queries, so a `.should` chained onto this re-runs the whole lookup
+      // until the assertion passes. Trimming happens inside the `.should`
+      // callbacks below — a `.then` here would freeze the subject and break
+      // retryability.
+      const selectedText = () => selectedRows().first().invoke("text");
 
-      readSelectedText().then((initialText) => {
-        cy.wrap(initialText).as("initialText");
+      selectedText().then((initial: string) => {
+        const initialText = initial.trim();
 
         // The keyboard handler attaches to `window` (see
         // `ExplorationSidebar.tsx`), so we fire the event on the
         // body.
         cy.get("body").type("{rightarrow}");
-        readSelectedText().should("not.eq", initialText);
+        selectedText().should((text: string) => {
+          expect(text.trim()).not.to.eq(initialText);
+        });
 
         cy.get("body").type("{leftarrow}");
-        readSelectedText().should("eq", initialText);
+        selectedText().should((text: string) => {
+          expect(text.trim()).to.eq(initialText);
+        });
 
         // ArrowRight onto the next page, ArrowLeft back onto the
         // initial one — and `expectUnstructuredSnowplowEvent` asserts
@@ -766,6 +778,178 @@ describe("scenarios > explorations > detail page", () => {
   });
 });
 
+describe("scenarios > explorations > chart click-through", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.enableExplorations();
+    seedMetrics();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+    cy.task("stopMockLlmServer");
+  });
+
+  it("clicking a cartesian point opens Explore further + Add comment, posts explore-further filters, and navigates from the new-thread toast", () => {
+    createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
+      cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
+        // Unjustified type cast. FIXME
+        const data = body as GetExplorationDataResponse;
+        const ordersMetric = data.metrics.find(
+          (metric) => metric.name === "Count of orders",
+        );
+        expect(
+          ordersMetric,
+          '"Count of orders" metric is exposed by /api/exploration/dimensions',
+        ).to.exist;
+        const dimsById = new Map(
+          data.dimension_groups.flatMap((group) =>
+            group.dimensions.map((dim) => [dim.id, dim] as const),
+          ),
+        );
+        const categoricalDimension = ordersMetric!.dimension_ids
+          .map((id) => dimsById.get(id))
+          .find((dim) => dim != null && !dim.effective_type.includes("Date"));
+        expect(
+          categoricalDimension,
+          "orders metric exposes at least one non-temporal dimension",
+        ).to.exist;
+
+        H.createExplorationViaApi({
+          name: "Chart click-through fixture",
+          metricCardIds: [ordersMetric!.id],
+          dimensionIds: [categoricalDimension!.id],
+          timelineIds: [timelineId],
+        }).then((explorationId) => {
+          let initialThreadIds: number[] = [];
+
+          cy.intercept(
+            "POST",
+            `/api/exploration/${explorationId}/explore-further`,
+          ).as("exploreFurther");
+
+          cy.visit(
+            `/question/research/${explorationId}?timeline=${timelineId}`,
+          );
+          cy.findAllByRole("treeitem", { timeout: 30000 })
+            .first()
+            .should("be.visible");
+
+          cy.request("GET", `/api/exploration/${explorationId}`).then(
+            ({ body }) => {
+              // Unjustified type cast. FIXME
+              const exploration = body as Exploration;
+              initialThreadIds = (exploration.threads ?? []).map(
+                (thread) => thread.id,
+              );
+            },
+          );
+
+          cy.findByTestId("exploration-page-sidebar").within(() => {
+            cy.findByRole("group", { name: ordersMetric!.name }).then(
+              ($group) => {
+                if ($group.attr("aria-expanded") !== "true") {
+                  cy.wrap($group).click();
+                }
+              },
+            );
+            cy.findByRole("treeitem", {
+              name: new RegExp(`By ${categoricalDimension!.display_name}`),
+            })
+              .first()
+              .click();
+          });
+
+          cy.location("pathname").should("include", "/page/");
+          cy.location("pathname").then((pathname) => {
+            const match = pathname.match(/\/page\/(\d+)/);
+            expect(match, "selected page is reflected in the URL").to.exist;
+            cy.wrap(Number(match![1])).as("pageId");
+          });
+
+          // Wait for the selected page's queries to settle before clicking
+          // the chart — `Ready` is the settled-state icon label.
+          cy.findAllByLabelText("Ready", { timeout: 30000 })
+            .first()
+            .should("be.visible");
+
+          H.chartPathWithFillColor("#509EE3").first().click({ force: true });
+
+          cy.findByTestId("click-actions-view").within(() => {
+            cy.findByRole("button", { name: /Explore further/i }).should(
+              "be.visible",
+            );
+            cy.findByRole("button", { name: /Add comment/i }).should(
+              "be.visible",
+            );
+          });
+
+          cy.findByTestId("click-actions-view")
+            .findByRole("button", { name: /Explore further/i })
+            .click();
+
+          cy.wait("@exploreFurther").then(({ request, response }) => {
+            cy.get("@pageId").then((pageId) => {
+              expect(request.body.page_id).to.eq(pageId);
+            });
+            expect(request.body.explore_filters).to.be.an("array").and.not.be
+              .empty;
+            expect(request.body.explore_filters[0]).to.include.keys(
+              "field_ref",
+              "value",
+            );
+
+            // Unjustified type cast. FIXME
+            const threads = (response?.body as Exploration).threads ?? [];
+            const newThread = threads.find(
+              (thread) => !initialThreadIds.includes(thread.id),
+            );
+            expect(newThread, "explore-further adds a new thread").to.exist;
+            cy.wrap(newThread!.name).as("newThreadName");
+          });
+
+          // The FE polls every 2s while the new thread's queries are in flight,
+          // then toasts once its first page lands. Timing is covered by
+          // ExplorationPage.unit.spec.tsx — here we just wait for the real BE.
+          cy.get("@newThreadName").then((name) => {
+            cy.findByText(`Added ${name}`, { timeout: 60000 }).should(
+              "be.visible",
+            );
+          });
+
+          cy.findByRole("button", { name: "View" }).click();
+
+          cy.location("pathname").should(
+            "include",
+            `/question/research/${explorationId}/page/`,
+          );
+          cy.location("search").should("include", "tab=all");
+          cy.location("search").should("include", `timeline=${timelineId}`);
+
+          cy.get("@newThreadName").then((name) => {
+            cy.findByRole("group", { name: String(name) }).should(
+              "have.attr",
+              "aria-expanded",
+              "true",
+            );
+          });
+
+          cy.findAllByRole("treeitem")
+            .filter('[aria-selected="true"]')
+            .should("have.length", 1);
+
+          cy.findByRole("main")
+            .findByTestId("exploration-chart-grid")
+            .should("exist");
+        });
+      });
+    });
+  });
+});
+
 describe("scenarios > explorations > collection placement + archive", () => {
   beforeEach(() => {
     H.restore();
@@ -828,11 +1012,10 @@ describe("scenarios > explorations > collection placement + archive", () => {
             expect(response?.statusCode).to.eq(200);
           });
 
-          // After archive, the row disappears from the active
-          // listing in the personal collection.
-          cy.findByText("This collection is empty")
-            .findByText(explorationName)
-            .should("not.exist");
+          // After archive, the collection shows its empty state and
+          // the exploration row is gone from the page.
+          cy.findByText("This collection is empty").should("be.visible");
+          cy.findByText(explorationName).should("not.exist");
 
           // BE state agrees: a subsequent GET reports
           // `archived: true`.

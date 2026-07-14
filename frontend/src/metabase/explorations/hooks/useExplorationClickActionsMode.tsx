@@ -59,6 +59,7 @@ export function useExplorationClickActionsMode({
 
         const handleExploreFurther = async () => {
           const exploreFilters = getExploreFurtherFilters(clicked);
+          sendToast({ icon: "bolt", message: t`Exploring further…` });
           const { error } = await exploreFurther({
             id: explorationId,
             page_id: pageId,
@@ -70,8 +71,6 @@ export function useExplorationClickActionsMode({
               iconColor: "warning",
               message: t`Couldn't start a new exploration`,
             });
-          } else {
-            sendToast({ icon: "bolt", message: t`Exploring further…` });
           }
         };
 
@@ -116,7 +115,7 @@ export function useExplorationClickActionsMode({
             sendToast({
               icon: "warning_triangle_filled",
               iconColor: "warning",
-              message: t`Failed to send comment`,
+              message: t`Failed to add comment`,
             });
           } else {
             onClose();

@@ -46,7 +46,7 @@
          (mapv (fn [[label cnt]] [label (long cnt)])))))
 
 ;; ---------------------------------------------------------------------------
-;; Temporal-axis variants: order by date desc + not-null filter + row cap
+;; Temporal-axis variants: order by date desc + row cap (no filters added)
 ;; ---------------------------------------------------------------------------
 
 (defn- orders-count-card
@@ -234,3 +234,59 @@
            (into {} (map (juxt identity variants/variant-qualifier))
                  ["default" "temporal-pattern-day" "temporal-pattern-hour" "time-facet"
                   "per-value-time-series" "top-n-other" "filtered-subset" "some-future-variant"])))))
+
+(defn- widget-filtered-card
+  "`card` with its `:dataset_query` rebuilt and scoped to `category = Widget`, the way
+  `build-row-context` re-applies a block's `:explore_filters` per row. Each call mints fresh
+  `:lib/uuid`s, so two invocations produce equal-but-not-identical queries with different hashes."
+  [card]
+  (let [mp (mt/metadata-provider)]
+    (assoc card :dataset_query
+           (lib/->legacy-MBQL
+            (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                (lib/aggregate (lib/count))
+                (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Widget")))))))
+
+(def ^:private widget-explore-filters
+  "The `:explore_filters` chain that produced a Widget-scoped card — what the ctx carries and the
+  discovery cache keys on."
+  [{:field_ref ["field" {} 4242] :value "Widget"}])
+
+(deftest cached-discovery-isolates-filtered-queries-test
+  (testing "cached-discovery keys on the :explore-filters chain so segments don't share top-N results"
+    (let [card-id    9000100
+          mp         (mt/metadata-provider)
+          unfiltered (products-count-card card-id)
+          filtered   (widget-filtered-card unfiltered)
+          base-ctx   {:mp mp :target (category-target) :dim category-dim :segment nil :params {:k 2}}
+          discover           (fn [card explore-filters]
+                               (#'variants/cached-discovery
+                                (assoc base-ctx :card card :explore-filters explore-filters)))
+          unfiltered-results (discover unfiltered nil)
+          filtered-results   (discover filtered widget-explore-filters)]
+      (is (not= unfiltered-results filtered-results)
+          "unfiltered top-N must not be served from cache after a filtered query with the same card/dim/k")
+      (is (= ["Widget"] filtered-results)
+          "a Widget-scoped metric query only discovers that segment"))))
+
+(deftest cached-discovery-key-is-stable-across-query-rebuilds-test
+  (testing "the cache key is stable across per-row query rebuilds, so the discovery query runs once —"
+    (testing "keying on the reconstructed :dataset_query never hit: `lib/=` mints fresh :lib/uuids per row"
+      (let [card-id  9000101
+            mp       (mt/metadata-provider)
+            base-ctx {:mp mp :target (category-target) :dim category-dim :segment nil :params {:k 2}}
+            card     (products-count-card card-id)
+            runs     (atom 0)
+            discover (fn []
+                       ;; A fresh rebuild each call — equal query, different :lib/uuids (and so a
+                       ;; different hash), exactly like two rows of the same block.
+                       (#'variants/cached-discovery
+                        (assoc base-ctx
+                               :card (widget-filtered-card card)
+                               :explore-filters widget-explore-filters)))]
+        (with-redefs-fn {#'variants/run-top-k-discovery (fn [& _] (swap! runs inc) ["Widget"])}
+          (fn []
+            (is (= ["Widget"] (discover)))
+            (is (= ["Widget"] (discover)) "second row is served from cache")
+            (is (= 1 @runs)
+                "discovery ran once across both rebuilds — the key ignores the churning :lib/uuids")))))))

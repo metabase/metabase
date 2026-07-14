@@ -123,13 +123,14 @@
           (by-dimension dim))))))
 
 (defn- block-explore-filter-value
-  "For an \"Explore further\" block (its metric selections carry `:explore_filters`), the clicked
-   segment values as a display string, capitalized and joined — e.g. `Texas / 2024`. Prefixed onto
-   every chart title in the block. Returns nil for a normal block."
+  "For an \"Explore further\" block (its metric selections carry an `:explore_filters` chain), the
+   clicked segment values as a display string, capitalized and joined — e.g. `Texas`, or
+   `Texas / 2024` for a compound drill. Prefixed onto every chart title in the block. Returns nil
+   for a normal block."
   [block]
   (when-let [filters (seq (:explore_filters (first (:metrics block))))]
     (->> filters
-         (map #(u/capitalize-first-char (str (:value %))))
+         (map (comp u/capitalize-first-char str :value))
          (str/join " / "))))
 
 ;;; ------------------------------------------ scoring ------------------------------------------
@@ -162,7 +163,7 @@
   (let [long-name (page-long-name page queries card-name-by-id)]
     (if (str/blank? filter-value)
       long-name
-      (tru "{0} {1}" filter-value long-name))))
+      (str filter-value " " long-name))))
 
 (defn- page-node
   [block page queries card-name-by-id filter-value]

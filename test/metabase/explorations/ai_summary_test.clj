@@ -17,7 +17,7 @@
    [metabase.metabot.self.claude]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -69,6 +69,33 @@
                        ":something-else")
         "Unknown phases fall back to (str phase)")))
 
+;;; ---------------------------------------------- resizeNode wrapping ----------------------------------------------
+
+(deftest wrap-card-embeds-in-resize-nodes-test
+  (let [wrap    #'ai-summary/wrap-card-embeds-in-resize-nodes
+        embed   (fn [sr-id] {:type "cardEmbed" :attrs {:stored_result_id sr-id}})
+        wrapped (fn [sr-id] {:type "resizeNode" :attrs {:height 400} :content [(embed sr-id)]})]
+    (testing "top-level cardEmbeds get wrapped in a resizeNode"
+      (is (= {:type "doc" :content [(wrapped 1)]}
+             (wrap {:type "doc" :content [(embed 1)]}))))
+    (testing "nested cardEmbeds (e.g. inside a blockquote) get wrapped too"
+      (is (= {:type    "doc"
+              :content [{:type    "blockquote"
+                         :content [{:type "paragraph" :content [{:type "text" :text "quote"}]}
+                                   (wrapped 2)]}
+                        (wrapped 3)]}
+             (wrap {:type    "doc"
+                    :content [{:type    "blockquote"
+                               :content [{:type "paragraph" :content [{:type "text" :text "quote"}]}
+                                         (embed 2)]}
+                              (embed 3)]}))))
+    (testing "an already-wrapped cardEmbed is not double-wrapped"
+      (is (= {:type "doc" :content [(wrapped 4)]}
+             (wrap {:type "doc" :content [(wrapped 4)]}))))
+    (testing "docs without embeds pass through unchanged"
+      (let [doc {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "hi"}]}]}]
+        (is (= doc (wrap doc)))))))
+
 ;;; ----------------------------------------- _id attributes (comment targets) -----------------------------------------
 
 (defn- every-commentable-node-has-id?
@@ -111,7 +138,7 @@
    :row_count 5})
 
 (defn- serialize-result [qp-result]
-  (cache.impl/do-with-serialization
+  (qp/do-with-serialization
    (fn [in result-fn] (in qp-result) (result-fn))))
 
 ;; ----- skip-no-permission / skip-usage-limit (UXW-4126) -----
@@ -246,6 +273,33 @@
               (is (= :skip-metabot-disabled outcome))
               (is (zero? @adapter-calls)
                   "LLM provider adapter must not be reached when Metabot is disabled"))))))))
+
+(deftest ^:integration generate-ai-summary-skips-explore-further-threads-test
+  (testing "a thread whose block metrics carry :explore_filters came from an \"Explore further\" drill —"
+    (testing "it re-runs the source block's charts scoped to a segment, so it gets no summary of its own"
+      (mt/with-temp [:model/User u {:email "ai-explore-further@example.com"}
+                     :model/Exploration e {:name "x" :creator_id (:id u)}
+                     :model/ExplorationThread t {:exploration_id (:id e)
+                                                 :position       1}]
+        (let [{:keys [card-id]} (seed-one-prepped-chart! (:id u) (:id t))
+              adapter-calls     (atom 0)]
+          (t2/update! :model/ExplorationBlock :exploration_thread_id (:id t)
+                      {:metrics [{:card_id         card-id
+                                  :explore_filters [{:field_ref ["field" {} (mt/id :orders :total)]
+                                                     :value     10}]}]})
+          (mt/with-temporary-setting-values [ai-features-enabled? true
+                                             metabot-enabled?     true]
+            (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                                        metabase.metabot.self.claude/claude
+                                        (fn [& _] (swap! adapter-calls inc) [])]
+              (let [outcome (ai-summary/generate-ai-summary! (:id t))]
+                (is (= :skip-explore-further outcome)
+                    "the skip is explicit and named, not an inferred nil")
+                (is (zero? @adapter-calls)
+                    "LLM provider adapter must not be reached for an \"Explore further\" thread")
+                (is (nil? (t2/select-one :model/Document :exploration_thread_id (:id t)
+                                         :name "AI Summary"))
+                    "no AI Summary doc is created for the drill thread")))))))))
 
 (deftest ^:integration generate-ai-summary-end-to-end-test
   (testing "Happy path: stubbed LLM produces a curation and analysis; a Document is created with a materialized chart embed"

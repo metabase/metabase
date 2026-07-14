@@ -4,9 +4,10 @@
   entry point lives in [[metabase.contextual-interestingness.core]] and calls
   [[llm-call!]] here.
 
-  The JSON schema is ordered so descriptions come *before* the score — Anthropic/OpenAI
-  structured outputs fill in declared property order, so the model has just written its
-  descriptions when it scores, acting as a schema-driven chain of thought."
+  The JSON schema is ordered so descriptions come *before* the score — structured-output
+  models tend to emit properties in declared order (the prompt also spells the order out),
+  so the model has typically just written its descriptions when it scores, acting as a
+  schema-driven chain of thought."
   (:require
    [clojure.string :as str]
    [metabase.interestingness.core :as interestingness]
@@ -19,9 +20,10 @@
 (defn- response-schema
   "Build the response schema. `metric-description` is required iff the caller signals the
   chart has no authored description (so we ask the LLM to produce one); otherwise it's
-  forbidden via `:type \"null\"`."
+  omitted from the schema and rejected via `additionalProperties: false`."
   [generate-metric?]
-  {:type       "object"
+  {:type "object"
+   :additionalProperties false
    :properties (cond-> {:chart_description
                         {:type        "string"
                          :description (str "One short sentence (≤ 25 words) describing WHAT THE CHART IS — the metric and the dimension it's broken out by, in the terms the user would use. "
@@ -45,9 +47,9 @@
                          :minimum     0
                          :maximum     1
                          :description "Relevance in [0.0, 1.0]. 1 = directly answers; 0.5 = tangentially useful; 0 = unrelated or misleading."}))
-   :required   (cond-> ["chart_description"]
-                 generate-metric? (conj "metric_description")
-                 :always          (into ["reasoning" "score"]))})
+   :required (cond-> ["chart_description"]
+               generate-metric? (conj "metric_description")
+               :always          (into ["reasoning" "score"]))})
 
 (def ^:private rubric-preamble
   "We fold the rubric into the user message instead of using a `system` role

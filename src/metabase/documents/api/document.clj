@@ -151,7 +151,12 @@
    _query-params]
   {:items (as-> (t2/select :model/Document {:where [:and
                                                     (collection/visible-collection-filter-clause)
-                                                    [:= :archived false]]}) docs
+                                                    [:= :archived false]
+                                                    ;; Documents attached to an exploration thread are
+                                                    ;; internal to that exploration — every other listing
+                                                    ;; surface (search, recents, collection items)
+                                                    ;; excludes them too.
+                                                    [:= :exploration_thread_id nil]]}) docs
             (filter mi/can-read? docs)
             (t2/hydrate docs :creator :can_write :is_remote_synced))})
 

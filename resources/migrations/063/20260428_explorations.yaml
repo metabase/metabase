@@ -1262,7 +1262,7 @@ databaseChangeLog:
               - column:
                   name: query_plan_transcript
                   type: ${text.type}
-                  remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final plan) used to materialize this thread's exploration_query rows. Debug-only — not surfaced to the user.
+                  remarks: EDN-encoded transcript of the planning run (planner, outcome, validation errors, final plan) used to materialize this thread's exploration_query rows. Debug-only — not surfaced to the user.
                   constraints:
                     nullable: true
 

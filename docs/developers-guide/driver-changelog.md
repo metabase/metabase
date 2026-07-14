@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.64.0
+
+- Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
+  `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
+  derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to `false`.
+
 ## Metabase 0.63.0
 
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,

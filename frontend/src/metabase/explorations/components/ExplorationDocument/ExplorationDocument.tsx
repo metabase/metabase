@@ -15,7 +15,6 @@ import { DocumentMenu } from "metabase/documents/components/DocumentMenu";
 import { DocumentRevisionHistorySidebar } from "metabase/documents/components/DocumentRevisionHistorySidebar";
 import { Editor } from "metabase/documents/components/Editor";
 import { EmbedQuestionSettingsSidebar } from "metabase/documents/components/EmbedQuestionSettingsSidebar";
-import { TimelineEventsSidebar } from "metabase/documents/components/TimelineEventsSidebar";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "metabase/documents/constants";
 import {
   setChildTargetId,
@@ -26,7 +25,6 @@ import {
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
   getSelectedQuestionId,
-  getSidebarMode,
 } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { EditorCapabilities } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -122,7 +120,6 @@ export function ExplorationDocument({
 
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const sidebarMode = useSelector(getSidebarMode);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
 
   const handleShowHistory = useCallback(() => {
@@ -244,31 +241,14 @@ export function ExplorationDocument({
         </Stack>
       </Stack>
 
-      {selectedQuestionId &&
-        selectedEmbedIndex !== null &&
-        editorInstance &&
-        sidebarMode === "viz-settings" && (
-          <Box className={S.sidebar} data-testid="document-card-sidebar">
-            <EmbedQuestionSettingsSidebar
-              cardId={selectedQuestionId}
-              editorInstance={editorInstance}
-            />
-          </Box>
-        )}
-
-      {selectedQuestionId &&
-        selectedEmbedIndex !== null &&
-        editorInstance &&
-        sidebarMode === "timeline-events" && (
-          <Box className={S.sidebar} data-testid="document-timeline-sidebar">
-            <TimelineEventsSidebar
-              cardId={selectedQuestionId}
-              selectedEmbedIndex={selectedEmbedIndex}
-              editorInstance={editorInstance}
-              collectionId={documentData?.collection_id ?? null}
-            />
-          </Box>
-        )}
+      {selectedQuestionId && selectedEmbedIndex !== null && editorInstance && (
+        <Box className={S.sidebar} data-testid="document-card-sidebar">
+          <EmbedQuestionSettingsSidebar
+            cardId={selectedQuestionId}
+            editorInstance={editorInstance}
+          />
+        </Box>
+      )}
 
       <LeaveRouteConfirmModal
         // the confirm modal open state only resets when `route` changes

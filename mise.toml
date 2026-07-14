@@ -113,3 +113,7 @@ op = "latest"
 # jq - Command-line JSON processor
 # https://github.com/jqlang/jq
 jq = "latest"
+
+# actionlint - Linting for Github Actions workflows
+# https://github.com/rhysd/actionlint
+actionlint = "latest"

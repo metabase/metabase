@@ -209,3 +209,45 @@
       (is (thrown-with-msg? Exception #"requires a dimension_id"
                             (explorations.impl/research-groups
                              {:groups [{:anchor "dimension"}]}))))))
+
+;;; ------------------------------------------ exploration-data ------------------------------------------
+
+(def ^:private threshold-source {:source 3})
+
+(def ^:private threshold-metrics
+  "One metric with a candidate dim (scores above the threshold), an unscored dim (nil — kept),
+  and a sub-threshold dim (dropped by the candidate filter and the dimension groups alike)."
+  [{:id 1 :name "Revenue" :description "rev" :result_column_name "count"
+    :dimensions [(dim "keep-1" "Keep" 0.9 [region-source])
+                 (dim "unscored-1" "Unscored" nil [plan-source])
+                 (dim "weak-1" "Weak" 0.05 [threshold-source])]}])
+
+(deftest exploration-data-no-dangling-dimension-ids-test
+  (testing "metric :dimension_ids and :dimension_groups apply the same interestingness filter"
+    (with-redefs [explorations.impl/hydrated-metrics (fn [_] threshold-metrics)]
+      (let [{:keys [metrics dimension_groups]} (explorations.impl/exploration-data {})
+            metric-dim-ids (set (:dimension_ids (first metrics)))
+            group-dim-ids  (into #{} (mapcat #(map :id (:dimensions %))) dimension_groups)]
+        (testing "the sub-threshold dimension is dropped from the metric's dimension_ids"
+          (is (= #{"keep-1" "unscored-1"} metric-dim-ids)))
+        (testing "every referenced dimension id resolves to a dimension group (no dangling ids)"
+          (is (= metric-dim-ids group-dim-ids)))))))
+
+;;; --------------------------------------- metric search matching ---------------------------------------
+
+(deftest metric-search-matches-displayed-names-test
+  (testing "search matches the '<group> - <dimension>' combination the picker displays"
+    (let [matches? #(#'explorations.impl/metric-matches-search? %1 %2)
+          metric   {:name       "Revenue"
+                    :dimensions [{:display_name "Created At"
+                                  :group        {:display_name "Orders"}}]}]
+      (testing "metric name still matches"
+        (is (matches? metric "revenue")))
+      (testing "the raw dimension name still matches"
+        (is (matches? metric "created at")))
+      (testing "the group name matches"
+        (is (matches? metric "orders")))
+      (testing "the displayed combination matches"
+        (is (matches? metric "orders - created")))
+      (testing "non-matches stay non-matches"
+        (is (not (matches? metric "customers")))))))

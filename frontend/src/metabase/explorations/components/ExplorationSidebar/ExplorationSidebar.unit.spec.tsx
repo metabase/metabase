@@ -166,6 +166,7 @@ function setup({
       selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+      shouldScrollSelectionRef={{ current: true }}
       isOpen
       readPageIds={readPageIds}
       showHidden={showHidden}
@@ -511,6 +512,7 @@ describe("ExplorationSidebar", () => {
     );
 
     const path = Urls.exploration(exploration.id);
+    const shouldScrollSelectionRef = { current: true };
     const sidebarWith = (
       tree: ReturnType<typeof getExplorationSidebarTree>,
     ) => (
@@ -523,6 +525,7 @@ describe("ExplorationSidebar", () => {
         selectedEntityId={{ type: "page", id: String(REVENUE_PAGE_ID) }}
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
+        shouldScrollSelectionRef={shouldScrollSelectionRef}
         isOpen
         readPageIds={new Set<string>()}
         showHidden={false}
@@ -602,6 +605,7 @@ describe("ExplorationSidebar", () => {
         getSelectedSidebarTabUrl,
         getTree,
       } = getSidebarTestContext(exploration);
+      const shouldScrollSelectionRef = { current: true };
       const sidebarWith = (
         tree: ReturnType<typeof getExplorationSidebarTree>,
         selectedId: string,
@@ -615,6 +619,7 @@ describe("ExplorationSidebar", () => {
           selectedEntityId={{ type: "page", id: selectedId }}
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
+          shouldScrollSelectionRef={shouldScrollSelectionRef}
           isOpen
           readPageIds={new Set<string>()}
           showHidden={false}
@@ -919,6 +924,7 @@ describe("ExplorationSidebar", () => {
   describe("thread menu", () => {
     // A canceled thread is stamped with both timestamps by the cancel endpoint.
     const canceledThread = {
+      id: 1,
       canceled_at: "2026-04-30T00:01:00Z",
       completed_at: "2026-04-30T00:01:00Z",
     };
@@ -991,8 +997,9 @@ describe("ExplorationSidebar", () => {
       ).toBeInTheDocument();
     });
 
-    it("calls restart when Restart is clicked on a canceled thread", async () => {
-      fetchMock.post("path:/api/exploration/1/restart", {
+    it("calls restart on the thread whose menu was opened", async () => {
+      const restartPath = `path:/api/exploration/thread/${canceledThread.id}/restart`;
+      fetchMock.post(restartPath, {
         ...createExploration({ queries: [pendingQuery] }),
       });
 
@@ -1006,9 +1013,7 @@ describe("ExplorationSidebar", () => {
 
       await waitFor(() => {
         expect(
-          fetchMock.callHistory.called("path:/api/exploration/1/restart", {
-            method: "POST",
-          }),
+          fetchMock.callHistory.called(restartPath, { method: "POST" }),
         ).toBe(true);
       });
     });
@@ -1545,6 +1550,149 @@ describe("ExplorationSidebar", () => {
         });
         expect(planHeading).toHaveAttribute("aria-expanded", "false");
       });
+    });
+  });
+
+  describe("programmatic selection scrolling", () => {
+    const BLOCK_ID = 800;
+    const PAGE_ID = 801;
+    const scrollIntoViewMock = jest.fn();
+
+    beforeEach(() => {
+      scrollIntoViewMock.mockClear();
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        configurable: true,
+        writable: true,
+        value: scrollIntoViewMock,
+      });
+    });
+
+    function renderNestedSidebar(
+      shouldScrollSelectionRef: { current: boolean },
+      selectedEntityId: TestSelectedEntityId,
+    ) {
+      const exploration = createExploration({
+        blocks: [
+          createBlock({
+            id: BLOCK_ID,
+            name: "Nested group",
+            pages: [
+              createPage({
+                id: PAGE_ID,
+                name: "Nested page",
+                query_ids: [1],
+              }),
+            ],
+          }),
+        ],
+        queries: [createQuery({ id: 1, name: "Nested query", status: "done" })],
+      });
+      const {
+        path,
+        explorationSidebarTabsInfo,
+        selectedSidebarTab,
+        getSelectedSidebarTabUrl,
+        getTree,
+      } = getSidebarTestContext(exploration);
+
+      return renderWithProviders(
+        <Route
+          path={path}
+          component={() => (
+            <ExplorationSidebar
+              exploration={exploration}
+              explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+              selectedSidebarTab={selectedSidebarTab}
+              getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+              tree={getTree()}
+              selectedEntityId={selectedEntityId}
+              setSelectedEntityId={jest.fn()}
+              getSelectedEntityIdUrl={() => path}
+              shouldScrollSelectionRef={shouldScrollSelectionRef}
+              isOpen
+              showHidden={false}
+              onToggleShowHidden={jest.fn()}
+            />
+          )}
+        />,
+        { withRouter: true, initialRoute: path },
+      );
+    }
+
+    it("scrolls the selected page into view and clears the scroll ref", () => {
+      const shouldScrollSelectionRef = { current: true };
+      renderNestedSidebar(shouldScrollSelectionRef, {
+        type: "page",
+        id: String(PAGE_ID),
+      });
+
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({ block: "nearest" });
+      expect(shouldScrollSelectionRef.current).toBe(false);
+    });
+
+    it("re-expands collapsed ancestors when programmatic navigation arms scrolling", async () => {
+      const shouldScrollSelectionRef = { current: false };
+      const { rerender } = renderNestedSidebar(shouldScrollSelectionRef, {
+        type: "page",
+        id: String(PAGE_ID),
+      });
+
+      const heading = screen.getByRole("group", { name: /Nested group/ });
+      await userEvent.click(heading);
+      expect(heading).toHaveAttribute("aria-expanded", "false");
+
+      shouldScrollSelectionRef.current = true;
+      rerender(
+        <Route
+          path={Urls.exploration(1)}
+          component={() => {
+            const exploration = createExploration({
+              blocks: [
+                createBlock({
+                  id: BLOCK_ID,
+                  name: "Nested group",
+                  pages: [
+                    createPage({
+                      id: PAGE_ID,
+                      name: "Nested page",
+                      query_ids: [1],
+                    }),
+                  ],
+                }),
+              ],
+              queries: [
+                createQuery({ id: 1, name: "Nested query", status: "done" }),
+              ],
+            });
+            const {
+              explorationSidebarTabsInfo,
+              selectedSidebarTab,
+              getSelectedSidebarTabUrl,
+              getTree,
+            } = getSidebarTestContext(exploration);
+            return (
+              <ExplorationSidebar
+                exploration={exploration}
+                explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+                selectedSidebarTab={selectedSidebarTab}
+                getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+                tree={getTree()}
+                selectedEntityId={{ type: "page", id: String(PAGE_ID) }}
+                setSelectedEntityId={jest.fn()}
+                getSelectedEntityIdUrl={() => Urls.exploration(1)}
+                shouldScrollSelectionRef={shouldScrollSelectionRef}
+                isOpen
+                showHidden={false}
+                onToggleShowHidden={jest.fn()}
+              />
+            );
+          }}
+        />,
+      );
+
+      expect(
+        screen.getByRole("group", { name: /Nested group/ }),
+      ).toHaveAttribute("aria-expanded", "true");
     });
   });
 });

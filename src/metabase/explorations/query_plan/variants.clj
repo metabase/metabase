@@ -18,10 +18,10 @@
                         `per-value-time-series`.
 
   Discovery queries (`run-top-k-discovery`) for the two variants that need
-  them are deduplicated in-process via `discovery-cache`, a bounded LRU
-  keyed by `[card-id dim-id k]`. Both `query-name` and `dataset-query` go
-  through the cache, so the underlying QP call runs at most once per
-  (card, dim, k) while the entry stays warm in the LRU."
+  them are deduplicated in-process via `discovery-cache`, a bounded
+  LRU-with-TTL keyed by `[card-id dim-id k]`. Both `query-name` and
+  `dataset-query` go through the cache, so the underlying QP call runs at
+  most once per (card, dim, k) while the entry stays warm and fresh."
   (:require
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
@@ -29,7 +29,7 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru trun]]))
 
 (set! *warn-on-reflection* true)
 
@@ -137,24 +137,33 @@
   the LRU starts evicting."
   1024)
 
+(def ^:private discovery-cache-ttl-ms
+  "How long a [[discovery-cache]] entry stays valid before the discovery query re-runs.
+  Discovery results are top-K value sets over live warehouse data, so a process-lifetime
+  entry would pin stale values on a long-lived JVM. 15 minutes comfortably covers one
+  plan-then-execute burst (where the dedup matters) while letting values refresh between
+  explorations."
+  (* 15 60 1000))
+
 (defonce ^:private discovery-cache
-  ;; LRU keyed by [card-id dim-id k]. Bounded so a long-lived JVM with many
-  ;; explorations doesn't accumulate entries indefinitely.
-  (atom (cache/lru-cache-factory {} :threshold discovery-cache-threshold)))
+  ;; TTL layered over LRU, keyed by [card-id dim-id k]: the LRU bounds how many entries a
+  ;; long-lived JVM accumulates; the TTL bounds how stale any one entry can get.
+  (atom (-> {}
+            (cache/lru-cache-factory :threshold discovery-cache-threshold)
+            (cache/ttl-cache-factory :ttl discovery-cache-ttl-ms))))
 
 (defn- cached-discovery
   "Memoized `run-top-k-discovery` keyed by `[card-id dim-id k]`. Returns
   the discovered vector (or `[]` on failure / no rows). Both `query-name`
   and `dataset-query` go through this so the underlying QP query runs at
   most once per (card, dim, k) while the entry stays in the LRU."
-  [{:keys [mp card target dim params]}]
+  [{:keys [mp card target dim params explore-filters]}]
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))
         k         (:k params)
-        ;; Include the (possibly "Explore further"-filtered) query in the key: two threads
-        ;; sharing a (card, dim, k) but scoped to different segments must not share top-N
-        ;; discovery results.
-        cache-key [card-id dim-id k (:dataset_query card)]]
+        ;; Include the "Explore further" filter chain in the key: two threads sharing a
+        ;; (card, dim, k) but scoped to different segments must not share top-N discovery results.
+        cache-key [card-id dim-id k explore-filters]]
     (cache.wrapped/lookup-or-miss
      discovery-cache cache-key
      (fn [_] (or (run-top-k-discovery mp card target dim k) [])))))
@@ -234,7 +243,7 @@
   (let [values        (:filter_values params)
         value-summary (if (= 1 (count values))
                         (str (first values))
-                        (str (count values) " values"))]
+                        (trun "{0} value" "{0} values" (count values)))]
     (with-segment-suffix (tru "{0} by {1} ({2})" (:name card) dim-label value-summary) segment)))
 
 (defmethod query-name "per-value-time-series"

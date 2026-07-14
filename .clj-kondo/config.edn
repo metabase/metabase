@@ -179,6 +179,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
@@ -495,7 +496,9 @@
   metabase.query-processor.pipeline-queries-test/mbql5-query                            clojure.core/->
   metabase.query-processor.pipeline-queries-test/run-mbql5-query                        clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
+  metabase.query-processor.core/with-reducible-deserialized-results                     clojure.core/let
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
+  metabase.query-processor.result-serialization/with-reducible-deserialized-results     clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let

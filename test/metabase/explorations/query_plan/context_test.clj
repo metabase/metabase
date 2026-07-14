@@ -1,5 +1,6 @@
 (ns metabase.explorations.query-plan.context-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.lib.core :as lib]
@@ -12,6 +13,38 @@
    (let [mp (mt/metadata-provider)]
      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
          (lib/aggregate (lib/count))))))
+
+(defn- orders-count-metric-query []
+  (lib/->legacy-MBQL
+   (let [mp (mt/metadata-provider)]
+     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+         (lib/aggregate (lib/count))))))
+
+(defn- clause-names
+  [q clauses]
+  (mapv #(lib/display-name q %) clauses))
+
+(defn- card-filter-display-names
+  [card]
+  (let [mp (mt/metadata-provider)
+        q  (lib/query mp (:dataset_query card))]
+    (clause-names q (lib/filters q))))
+
+(defn- insert-block-page-row!
+  "Persist a block + page for `thread-id` and return the page pk."
+  [thread-id metric-id {:keys [metrics dimensions]} dim-id]
+  (let [block   (first (t2/insert-returning-instances!
+                        :model/ExplorationBlock
+                        {:exploration_thread_id thread-id
+                         :metrics               metrics
+                         :dimensions            dimensions
+                         :position              0}))
+        page-id (t2/insert-returning-pk! :model/ExplorationPage
+                                         {:exploration_block_id (:id block)
+                                          :card_id              metric-id
+                                          :dimension_id         dim-id
+                                          :query_type           "default"})]
+    page-id))
 
 (deftest per-block-context-scopes-applicability-test
   (testing "metric-and-dim-context returns one entry per block, with applicability scoped to that block's dims"
@@ -80,24 +113,201 @@
         (is (= "d1" (-> ctx :dim :dimension_id)))
         (is (= :type/Number (-> ctx :dim :effective_type)) "dim type keywordized by the model transform")))))
 
-(deftest prompt-vars-emits-per-block-sections-test
-  (testing "prompt-vars renders one section per block with its own metric/dimension counts"
-    (mt/with-temp [:model/Card metric {:type :metric :name "Revenue"
-                                       :dataset_query (count-metric-query)}]
+(deftest build-row-context-applies-explore-filters-test
+  (testing "build-row-context scopes the metric Card to a single explore filter"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid      (:id metric)
             mappings [{:dimension_id "d1" :table_id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}]
-            block    {:id 7
-                      :metrics    [{:card_id cid :dimension_mappings mappings}]
-                      :dimensions [{:dimension_id "d1" :display_name "Price"
-                                    :effective_type :type/Number}]}
-            ctx      (qp.context/metric-and-dim-context [block])
-            vars     (qp.context/prompt-vars {:metric-dim-ctx ctx :thread-prompt "why down?"})]
-        (is (= "why down?" (:thread_prompt vars)))
-        (is (= 1 (:block_count vars)))
-        (is (= 1 (count (:blocks vars))))
-        (let [b (first (:blocks vars))]
-          (is (= 7 (:block_id b)))
-          (is (= "Revenue" (:name b)) "block name is computed from the metric Card")
-          (is (string? (:metrics_md b)))
-          (is (string? (:dimensions_md b))))))))
+            page-id  (insert-block-page-row!
+                      (:id t) cid
+                      {:metrics    [{:card_id cid
+                                     :dimension_mappings mappings
+                                     :explore_filters    [{:field_ref ["field" {} (mt/id :venues :price)]
+                                                           :value     2}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Price"
+                                     :effective_type "type/Number"}]}
+                      "d1")
+            ctx      (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                    :page_id page-id :params {}})]
+        (is (some? ctx))
+        (is (some #(and (str/includes? % "Price") (str/includes? % "2"))
+                  (card-filter-display-names (:card ctx))))))))
+
+(deftest build-row-context-applies-multiple-explore-filters-test
+  (testing "build-row-context reduces multiple explore_filters onto the metric Card in order"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid      (:id metric)
+            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                       :target ["field" {} (mt/id :venues :price)]}
+                      {:dimension_id "d2" :table_id (mt/id :venues)
+                       :target ["field" {} (mt/id :venues :name)]}]
+            page-id  (insert-block-page-row!
+                      (:id t) cid
+                      {:metrics    [{:card_id cid
+                                     :dimension_mappings mappings
+                                     :explore_filters    [{:field_ref ["field" {} (mt/id :venues :price)]
+                                                           :value     2}
+                                                          {:field_ref ["field" {} (mt/id :venues :name)]
+                                                           :value     "Smallville"}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Price"
+                                     :effective_type "type/Number"}
+                                    {:dimension_id "d2" :display_name "Name"
+                                     :effective_type "type/Text"}]}
+                      "d1")
+            names    (card-filter-display-names
+                      (:card (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                            :page_id page-id :params {}})))]
+        (is (= 2 (count names)))
+        (is (some #(and (str/includes? % "Price") (str/includes? % "2")) names))
+        (is (some #(and (str/includes? % "Name") (str/includes? % "Smallville")) names))))))
+
+(deftest build-row-context-applies-temporal-bucket-filter-test
+  (testing "build-row-context applies the click ref's temporal bucket to the explore filter target"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (orders-count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid        (:id metric)
+            created-at (mt/id :orders :created_at)
+            mappings   [{:dimension_id "d1" :table_id (mt/id :orders)
+                         :target ["field" {} created-at]}]
+            page-id    (insert-block-page-row!
+                        (:id t) cid
+                        {:metrics    [{:card_id cid
+                                       :dimension_mappings mappings
+                                       :explore_filters    [{:field_ref ["field" {:temporal-unit :month} created-at]
+                                                             :value     "2020-01-01T00:00:00Z"}]}]
+                         :dimensions [{:dimension_id "d1" :display_name "Created At"
+                                       :effective_type "type/DateTimeWithLocalTZ"}]}
+                        "d1")
+            ctx        (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                      :page_id page-id :params {}})
+            q          (lib/query (mt/metadata-provider) (:dataset_query (:card ctx)))
+            lhs        (get (first (lib/filters q)) 2)]
+        (is (= :month (lib/raw-temporal-bucket lhs))
+            "click ref's :month bucket is applied to the explore filter target")))))
+
+(deftest build-row-context-applies-temporal-pattern-bucket-filter-test
+  (testing "the temporal-pattern variants (day-of-week / hour-of-day) bucket the filter target too —"
+    ;; These two are the cases the old `explore-filter-ref` special-cased off the page's
+    ;; `query_type`. The bucket now rides on the click's own `:field_ref`, so a click on an
+    ;; "Hour of day" bar must filter `hour(created_at) = 19`, not `created_at = 19` (which would
+    ;; match nothing and silently render an empty chart).
+    (doseq [[unit value] [[:day-of-week 3] [:hour-of-day 19]]]
+      (testing (str "unit " unit)
+        (mt/with-temp [:model/Card metric {:type :metric :dataset_query (orders-count-metric-query)}
+                       :model/Exploration e {:name "x"}
+                       :model/ExplorationThread t {:exploration_id (:id e)}]
+          (let [cid        (:id metric)
+                created-at (mt/id :orders :created_at)
+                mappings   [{:dimension_id "d1" :table_id (mt/id :orders)
+                             :target ["field" {} created-at]}]
+                page-id    (insert-block-page-row!
+                            (:id t) cid
+                            {:metrics    [{:card_id cid
+                                           :dimension_mappings mappings
+                                           :explore_filters    [{:field_ref ["field" {:temporal-unit unit} created-at]
+                                                                 :value     value}]}]
+                             :dimensions [{:dimension_id "d1" :display_name "Created At"
+                                           :effective_type "type/DateTimeWithLocalTZ"}]}
+                            "d1")
+                ctx        (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                          :page_id page-id :params {}})
+                q          (lib/query (mt/metadata-provider) (:dataset_query (:card ctx)))
+                lhs        (get (first (lib/filters q)) 2)]
+            (is (= unit (lib/raw-temporal-bucket lhs))
+                "the clicked bar's extraction unit is applied to the explore filter target")))))))
+
+(deftest build-row-context-applies-binning-filter-test
+  (testing "build-row-context applies the click ref's numeric binning to the explore filter target"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid      (:id metric)
+            price-id (mt/id :venues :price)
+            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                       :target ["field" {} price-id]}]
+            page-id  (insert-block-page-row!
+                      (:id t) cid
+                      {:metrics    [{:card_id cid
+                                     :dimension_mappings mappings
+                                     :explore_filters    [{:field_ref ["field" {:binning {:strategy :default}} price-id]
+                                                           :value     10}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Price"
+                                     :effective_type "type/Number"}]}
+                      "d1")
+            ctx      (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                    :page_id page-id :params {}})
+            q        (lib/query (mt/metadata-provider) (:dataset_query (:card ctx)))
+            lhs      (get (first (lib/filters q)) 2)]
+        (is (= :default (:strategy (lib/binning lhs)))
+            "click ref's default binning is applied to the explore filter target")))))
+
+;;; ---------------------------------------------------------------------------
+;;; build-row-context — "Explore further" filter edge cases
+;;; ---------------------------------------------------------------------------
+
+(deftest build-row-context-fails-closed-on-unresolvable-explore-filter-test
+  (testing "build-row-context throws when an :explore_filters entry names a field the metric query can't resolve"
+    ;; The row's own dimension d1 resolves; the *filter*'s field_ref points at a column that isn't
+    ;; on the metric query, so the filter can't be applied. Fail closed — the runner catches and
+    ;; records a row-level error — rather than render an unfiltered chart the block title still
+    ;; prefixes with the clicked segment.
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid      (:id metric)
+            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                       :target ["field" {} (mt/id :venues :name)]}]
+            page-id  (insert-block-page-row!
+                      (:id t) cid
+                      {:metrics    [{:card_id cid
+                                     :dimension_mappings mappings
+                                     ;; a column from another table — not resolvable on this query
+                                     :explore_filters    [{:field_ref ["field" {} (mt/id :orders :total)]
+                                                           :value     10}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Name"
+                                     :effective_type "type/Text"}]}
+                      "d1")]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Could not resolve explore filter field ref"
+             (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                            :page_id page-id :params {}})))))))
+
+(deftest build-row-context-exposes-explore-filters-as-cache-key-material-test
+  (testing "the ctx exposes stable :explore-filters for the discovery cache key —"
+    (testing "it repeats across rebuilds, while the reconstructed dataset_query hash does not"
+      ;; `qp.variants/cached-discovery` keys on `:explore-filters` so two threads sharing a
+      ;; (card, dim, k) but scoped to different segments don't share top-N results. It can't key on
+      ;; the filtered `:dataset_query`: that's rebuilt per row via `lib/=`, minting fresh
+      ;; `:lib/uuid`s, so its hash differs every call and the cache would never hit.
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid      (:id metric)
+              filters  [{:field_ref ["field" {} (mt/id :venues :name)] :value "foo"}]
+              mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                         :target ["field" {} (mt/id :venues :name)]}]
+              page-id  (insert-block-page-row!
+                        (:id t) cid
+                        {:metrics    [{:card_id cid
+                                       :dimension_mappings mappings
+                                       :explore_filters    filters}]
+                         :dimensions [{:dimension_id "d1" :display_name "Name"
+                                       :effective_type "type/Text"}]}
+                        "d1")
+              build!   #(qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                       :page_id page-id :params {}})
+              c1       (build!)
+              c2       (build!)]
+          (is (= filters (:explore-filters c1))
+              "the filter chain is exposed on the ctx")
+          (is (= (:explore-filters c1) (:explore-filters c2))
+              "explore-filters is identical across rebuilds — a usable cache key")
+          (is (not= (hash (:dataset_query (:card c1)))
+                    (hash (:dataset_query (:card c2))))
+              "the filtered dataset_query hash differs per rebuild (fresh :lib/uuids) — why it can't be the key"))))))
