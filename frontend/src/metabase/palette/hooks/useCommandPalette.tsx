@@ -130,7 +130,7 @@ export const useCommandPalette = ({
       },
     ];
     return ret;
-  }, [debouncedSearchText, docsSearchUrl, docsUrl, trimmedQuery]);
+  }, [debouncedSearchText, docsSearchUrl, docsUrl]);
 
   const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
