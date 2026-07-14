@@ -12,12 +12,12 @@
 (def ^:private ready-status
   {:pgvector? true :licensed? true :embedder-configured? true :index-compatible? true :populated? true})
 
-(defn- check [status & {:keys [circuit-open? reachable]
-                        :or   {circuit-open? false reachable {:reachable? true :error nil}}}]
+(defn- check [status & {:keys [circuit-untrusted? reachable]
+                        :or   {circuit-untrusted? false reachable {:reachable? true :error nil}}}]
   (mt/with-dynamic-fn-redefs
-    [entity-retrieval.core/retrieval-status       (constantly status)
-     semantic.embedding/embedder-circuit-open?    (constantly circuit-open?)
-     semantic.health/embedding-service-reachable? (constantly reachable)]
+    [entity-retrieval.core/retrieval-status         (constantly status)
+     semantic.embedding/embedder-circuit-untrusted? (constantly circuit-untrusted?)
+     semantic.health/embedding-service-reachable?   (constantly reachable)]
     (entity-retrieval.health/nlq-retrieval-health-check)))
 
 (deftest not-enabled-is-omitted-test
@@ -44,20 +44,21 @@
     (is (=? {:health 0 :message #".*index empty.*fallback\."}
             (check (assoc ready-status :populated? false))))))
 
-(deftest open-circuit-is-degraded-test
-  (testing "an open circuit degrades but still probes (so a recovered-but-idle embedder is detectable)"
+(deftest untrusted-circuit-is-degraded-test
+  (testing "a non-closed breaker (open or half-open) degrades but still probes (so a recovered-but-idle
+           embedder is detectable), and reads the same in both states so open<->half-open can't flap it"
     (let [probed? (atom false)]
       (mt/with-dynamic-fn-redefs
-        [entity-retrieval.core/retrieval-status       (constantly ready-status)
-         semantic.embedding/embedder-circuit-open?    (constantly true)
-         semantic.health/embedding-service-reachable? (fn [] (reset! probed? true) {:reachable? true})]
+        [entity-retrieval.core/retrieval-status         (constantly ready-status)
+         semantic.embedding/embedder-circuit-untrusted? (constantly true)
+         semantic.health/embedding-service-reachable?   (fn [] (reset! probed? true) {:reachable? true})]
         (is (=? {:health 0 :message #".*circuit open \(probe reachable.*"}
                 (entity-retrieval.health/nlq-retrieval-health-check)))
-        (is (true? @probed?) "an open circuit still probes so recovery is detectable"))))
-  (testing "an open circuit with an unreachable probe reads the same as unreachable with a closed one --
+        (is (true? @probed?) "a non-closed breaker still probes so recovery is detectable"))))
+  (testing "an untrusted breaker with an unreachable probe reads the same as unreachable with a closed one --
            state-independent wording, so a flapping breaker's re-persisted rows dedup instead of flooding"
     (is (=? {:health 0 :message #"Embedding service unreachable: boom.*"}
-            (check ready-status :circuit-open? true :reachable {:reachable? false :error "boom"})))))
+            (check ready-status :circuit-untrusted? true :reachable {:reachable? false :error "boom"})))))
 
 (deftest unreachable-embedder-is-degraded-test
   (testing "ready index but unreachable embedder -> degraded, names the error"

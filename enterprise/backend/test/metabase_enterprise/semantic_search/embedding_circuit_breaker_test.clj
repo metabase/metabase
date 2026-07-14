@@ -96,6 +96,20 @@
           (is (false? (semantic.embedding/embedder-circuit-open?)))
           (is (= :open (circuit-state))))))))
 
+(deftest ^:sequential circuit-untrusted?-covers-half-open-test
+  (testing "embedder-circuit-untrusted? is true whenever the enabled breaker isn't closed -- both :open and
+           :half-open -- so the health verdict can't flap as the breaker cycles between them"
+    (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
+      (doseq [state [:open :half-open]]
+        (with-redefs [semantic.embedding/embedder-circuit-state (constantly state)]
+          (is (true? (semantic.embedding/embedder-circuit-untrusted?)) (str state " reads untrusted"))))
+      (with-redefs [semantic.embedding/embedder-circuit-state (constantly :closed)]
+        (is (false? (semantic.embedding/embedder-circuit-untrusted?)) ":closed reads trusted"))))
+  (testing "disabled -> trusted regardless of raw state (calls bypass the breaker)"
+    (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled false]
+      (with-redefs [semantic.embedding/embedder-circuit-state (constantly :half-open)]
+        (is (false? (semantic.embedding/embedder-circuit-untrusted?)))))))
+
 (deftest ^:sequential state-change-persists-affected-checks-test
   (testing "a breaker state transition runs the registered hooks, persisting both embedder-dependent health
            checks immediately"

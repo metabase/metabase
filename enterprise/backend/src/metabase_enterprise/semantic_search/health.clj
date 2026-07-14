@@ -48,22 +48,22 @@
   (memoize/ttl probe-embedding-service :ttl/threshold (* 10 1000)))
 
 (defn embedding-problem
-  "Human-readable embedding-service problem, or nil when it looks healthy. Shared by the semantic-search
-  check below and the NLQ retrieval check ([[metabase-enterprise.entity-retrieval.health]]).
-  The wording deliberately does NOT vary with the breaker's open/half-open state: the state-change hooks
-  re-persist the checks on every transition, and only an identical (health, message) pair dedups in
-  [[metabase.health-inspector.core/save-check-result!]], so state-dependent wording would let a flapping
-  breaker (open <-> half-open each delay window) flood health_inspector_runs for the whole outage."
+  "Human-readable embedding-service problem, or nil when it looks healthy.
+  Shared by the semantic-search check below and the NLQ retrieval check
+  ([[metabase-enterprise.entity-retrieval.health]])."
   []
-  ;; Probe even when the circuit is open: on a quiet instance the breaker only leaves :open on a real call,
-  ;; so without this a recovered-but-idle embedder would read degraded until traffic.
+  ;; Probe even when the breaker isn't closed: on a quiet instance the breaker only leaves :open on a real
+  ;; call, so without this a recovered-but-idle embedder would read degraded until traffic.
   (let [{:keys [reachable? error]} (embedding-service-reachable?)]
     (cond
       (not reachable?)
       (str "embedding service unreachable: " error)
 
-      (semantic.embedding/embedder-circuit-open?)
-      "embedder circuit open (probe reachable; awaiting half-open trial)")))
+      ;; Half-open returns degraded (not healthy) so an outage that flaps the breaker open<->half-open doesn't
+      ;; alternate the verdict every cycle -- the state-change hooks re-persist on each transition and only an
+      ;; identical (health, message) dedups.
+      (semantic.embedding/embedder-circuit-untrusted?)
+      "embedder circuit open (probe reachable; breaker still guarding calls)")))
 
 (defn- active-index-queryable?
   "Whether a trivial `SELECT ... LIMIT 1` against the active index table succeeds -- i.e. pgvector is
@@ -120,16 +120,22 @@
 
 (health-inspector/register-check! :semantic-search-index index-health-check)
 
-;; Re-persist the check the moment the breaker changes state, so an outage or its recovery shows up within
-;; minutes instead of at the next daily report. The probe cache is cleared first: the transition is fresher
-;; evidence than a probe from up to 10s ago -- on :closed (two real trial successes) a cached failure would
-;; otherwise persist a false "unreachable" row that nothing revisits until the daily report. Clearing here
-;; also covers the NLQ hook: this hook registers first (the NLQ health namespace requires this one), so
-;; every embedder-dependent check re-runs against a fresh probe.
-(swap! semantic.embedding/embedder-circuit-state-change-hooks conj
-       (fn [_state]
-         (memoize/memo-clear! embedding-service-reachable?)
-         (health-inspector/run-and-save-check! :semantic-search-index)))
+(defn- persist-index-check-on-breaker-change!
+  "Re-persist the semantic-search index check on every embedder-breaker transition, so an outage or its
+  recovery shows up within minutes instead of at the next daily report."
+  [_state]
+  ;; Clear the probe cache first: the transition is fresher evidence than a probe from up to 10s ago -- on
+  ;; :closed (two real trial successes) a cached failure would otherwise persist a false "unreachable" row
+  ;; that nothing revisits until the daily report. This also covers the NLQ hook, which runs after this one
+  ;; (the NLQ health namespace requires this one), so every embedder-dependent check sees a fresh probe.
+  (memoize/memo-clear! embedding-service-reachable?)
+  (health-inspector/run-and-save-check! :semantic-search-index))
+
+;; defonce so a reload doesn't append a second hook; conj the var, not the fn, so redefining the fn above
+;; from the REPL updates the live hook.
+(defonce ^:private semantic-search-embedder-hook
+  (swap! semantic.embedding/embedder-circuit-state-change-hooks conj
+         #'persist-index-check-on-breaker-change!))
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;

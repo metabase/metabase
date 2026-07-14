@@ -251,6 +251,14 @@
   (and (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)
        (= :open (embedder-circuit-state))))
 
+(defn embedder-circuit-untrusted?
+  "Whether the breaker is enabled and not closed -- i.e. open or half-open, so it doesn't yet trust the
+  embedding service (open short-circuits calls; half-open is on a single trial).
+  False when the breaker is disabled, since calls then bypass it."
+  []
+  (and (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)
+       (not= :closed (embedder-circuit-state))))
+
 (defn- call-through-embedder-breaker
   "Run `thunk` under the embedder circuit breaker, unless it is bypassed (probe) or disabled (kill switch).
   An open circuit throws a 502 `ex-info` with `:cause :embedder/circuit-open`; any other failure propagates

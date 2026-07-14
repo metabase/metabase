@@ -62,11 +62,19 @@
 
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)
 
-;; Re-persist the check the moment the embedder breaker changes state, so an outage or its recovery shows
-;; up within minutes instead of at the next daily report. The shared probe cache is cleared by the
-;; semantic-search hook, which registers (and so runs) before this one -- this namespace requires that one.
-(swap! semantic.embedding/embedder-circuit-state-change-hooks conj
-       (fn [_state] (health-inspector/run-and-save-check! :nlq-retrieval)))
+(defn- persist-nlq-check-on-breaker-change!
+  "Re-persist the NLQ retrieval check on every embedder-breaker transition, so an outage or its recovery
+  shows up within minutes instead of at the next daily report."
+  [_state]
+  ;; The shared probe cache is cleared by the semantic-search hook, which registers (and so runs) before this
+  ;; one -- this namespace requires that one.
+  (health-inspector/run-and-save-check! :nlq-retrieval))
+
+;; defonce so a reload doesn't append a second hook; conj the var, not the fn, so redefining the fn above
+;; from the REPL updates the live hook.
+(defonce ^:private nlq-retrieval-embedder-hook
+  (swap! semantic.embedding/embedder-circuit-state-change-hooks conj
+         #'persist-nlq-check-on-breaker-change!))
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;
