@@ -1,13 +1,13 @@
+import type { ChangeEventHandler } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import type { InputProps } from "metabase/common/components/Input";
-import { Input } from "metabase/common/components/Input";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { Input, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -144,7 +144,7 @@ const SingleSelectListField = ({
     }
   };
 
-  const handleFilterChange: InputProps["onChange"] = (evt) => {
+  const handleFilterChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
     const value = evt.target.value;
     setFilter(value);
     onChange([]);
@@ -162,14 +162,21 @@ const SingleSelectListField = ({
   return (
     <>
       <FilterInputContainer isDashboardFilter={isDashboardFilter}>
-        <Input
-          fullWidth
+        <TextInput
           autoFocus
           placeholder={placeholder}
           value={filter}
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
-          onResetClick={handleResetClick}
+          rightSectionPointerEvents="all"
+          rightSection={
+            filter.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={handleResetClick}
+              />
+            ) : null
+          }
           data-testid="single-select-list-field"
         />
       </FilterInputContainer>

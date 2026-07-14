@@ -604,6 +604,9 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - measure-create
 - measure-delete
 - measure-update
+- mfa-disabled
+- mfa-enrolled
+- mfa-verification-failed
 - notification-create
 - notification-unsubscribe
 - notification-unsubscribe-ex
