@@ -68,7 +68,7 @@
   ;; No cache clear: the semantic-search hook runs first (this ns requires it) and already refreshed the probe.
   (health-inspector/run-and-save-check! :nlq-retrieval))
 
-(semantic.embedding/register-embedder-circuit-state-change-hook! #'persist-nlq-check-on-breaker-change!)
+(swap! semantic.embedding/embedder-circuit-state-change-hooks conj #'persist-nlq-check-on-breaker-change!)
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [diehard.circuit-breaker :as dh.cb]
    [diehard.core :as dh]
+   [flatland.ordered.set :refer [ordered-set]]
    [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
@@ -204,18 +205,14 @@
            ;; the caller's bad request and stays off the breaker.
            (and (integer? status) (>= (long status) 500)))))))
 
-(defonce ^{:doc "Hooks `(fn [state])` run on every breaker state change. The health namespaces register
-  hooks that re-persist their embedder-dependent checks (this module can't require them back -- they require
-  this one), so an outage or its recovery shows up within minutes instead of at the next daily report."}
+(defonce ^{:doc "Insertion-ordered set of `(fn [state])` hooks run on every breaker state change.
+  Health namespaces `conj` a hook here (inverting the dep -- they require this module) to re-persist their
+  embedder-dependent check on a transition, so an outage or recovery surfaces in minutes, not the next daily
+  report.
+  Ordered-set: `conj` is reload-idempotent and load-ordered, so the semantic hook clears the probe cache
+  before the NLQ hook reads it. Register a var so a REPL redef takes effect live."}
   embedder-circuit-state-change-hooks
-  (atom []))
-
-(defn register-embedder-circuit-state-change-hook!
-  "Register `hook-var` to run on every breaker state change. Pass a var so a REPL redef takes effect live;
-  idempotent by identity, so re-running on a namespace reload won't duplicate the hook."
-  [hook-var]
-  (swap! embedder-circuit-state-change-hooks
-         (fn [hooks] (if (some #{hook-var} hooks) hooks (conj hooks hook-var)))))
+  (atom (ordered-set)))
 
 (defn- on-embedder-circuit-state-change!
   "Run the registered [[embedder-circuit-state-change-hooks]] off the failsafe callback thread, in

@@ -110,19 +110,6 @@
       (with-redefs [semantic.embedding/embedder-circuit-state (constantly :half-open)]
         (is (false? (semantic.embedding/embedder-circuit-untrusted?)))))))
 
-(defn- sample-hook [_state])
-
-(deftest ^:sequential register-embedder-circuit-state-change-hook!-idempotent-test
-  (testing "registering the same hook var twice adds it once, so a namespace reload can't duplicate a hook"
-    (let [hooks  semantic.embedding/embedder-circuit-state-change-hooks
-          before @hooks]
-      (try
-        (semantic.embedding/register-embedder-circuit-state-change-hook! #'sample-hook)
-        (semantic.embedding/register-embedder-circuit-state-change-hook! #'sample-hook)
-        (is (= 1 (count (filter #{#'sample-hook} @hooks))))
-        (finally
-          (reset! hooks before))))))
-
 (deftest ^:sequential state-change-persists-affected-checks-test
   (testing "a breaker state transition runs the registered hooks, persisting both embedder-dependent health
            checks immediately"

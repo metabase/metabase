@@ -129,7 +129,7 @@
   (memoize/memo-clear! embedding-service-reachable?)
   (health-inspector/run-and-save-check! :semantic-search-index))
 
-(semantic.embedding/register-embedder-circuit-state-change-hook! #'persist-index-check-on-breaker-change!)
+(swap! semantic.embedding/embedder-circuit-state-change-hooks conj #'persist-index-check-on-breaker-change!)
 
 ;;; ------------------------------------------- AI index metrics --------------------------------------------
 ;;;
