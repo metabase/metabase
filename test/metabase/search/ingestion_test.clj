@@ -244,7 +244,7 @@
 (deftest curation-signals-surfaced-in-results-test
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"
-    (search.tu/with-new-search-if-available-without-fallback
+    (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table _ {:db_id          db-id
                                      :name           "Curatedgoldtbl"
