@@ -3539,6 +3539,7 @@
            config
            connection-pool
            events
+           lib-be
            llm
            metabot
            models

@@ -18,8 +18,6 @@
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
@@ -53,21 +51,6 @@
                           {:http-only true
                            :path      "/"
                            :max-age   0}))))
-
-(defn- process-non-temporal-dim-ids
-  "Parse and process non-temporal dimension IDs JSON string.
-  Filters out null values and sorts ascending, returning as JSON string."
-  [non-temporal-dim-ids]
-  (when non-temporal-dim-ids
-    (try
-      (->> (json/decode non-temporal-dim-ids)
-           (remove nil?)
-           sort
-           vec
-           json/encode)
-      (catch Exception e
-        (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
-        nil))))
 
 (defn- param->engine
   "Parse a search_engine param or cookie value into an engine keyword, nil when blank.
@@ -251,9 +234,7 @@
    [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
    [:calculate_available_models          {:optional true} [:maybe true?]]
    [:include_dashboard_questions         {:default false} [:maybe :boolean]]
-   [:include_metadata                    {:default false} [:maybe :boolean]]
-   [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]
-   [:has_temporal_dim                    {:optional true} [:maybe :boolean]]])
+   [:include_metadata                    {:default false} [:maybe :boolean]]])
 
 (def ^:private search-debug-request-schema
   (conj search-request-schema
@@ -281,9 +262,7 @@
     vector-search-explain               :vector_search_explain
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
-    include-metadata                    :include_metadata
-    non-temporal-dim-ids                :non_temporal_dim_ids
-    has-temporal-dim                    :has_temporal_dim}]
+    include-metadata                    :include_metadata}]
   (search/search-context
    {:archived                            archived
     :collection                          collection
@@ -315,8 +294,6 @@
     :calculate-available-models?         calculate-available-models
     :include-dashboard-questions?        include-dashboard-questions
     :include-metadata?                   include-metadata
-    :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
-    :has-temporal-dim                    has-temporal-dim
     :display-type                        (set display-type)}))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
@@ -347,8 +324,6 @@
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
-  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)
-  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)
 
   Note that not all item types support all filters, and the results will include only models that support the provided
   filters. For example:

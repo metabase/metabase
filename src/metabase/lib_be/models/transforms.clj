@@ -76,7 +76,8 @@
      (catch Throwable e
        (when strict?
          (throw e))
-       (log/errorf e "Error normalizing query %s" (pr-str query))
+       ;; Truncate: this fires for every non-strict normalization failure appwide, so full query dumps flood the logs.
+       (log/errorf e "Error normalizing query %s" (u/truncate (pr-str query) 500))
        {}))))
 
 (defn- transform-query-in [query]
