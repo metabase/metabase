@@ -1365,8 +1365,8 @@
               config
               documents
               driver
-              explorations
               entity-retrieval
+              explorations
               interestingness
               legacy-mbql
               lib
@@ -1911,7 +1911,6 @@
               metabase.query-processor.init
               metabase.query-processor.interface
               metabase.query-processor.metadata
-              metabase.query-processor.middleware.cache.impl
               metabase.query-processor.middleware.constraints
               metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
@@ -1921,6 +1920,7 @@
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
+              metabase.query-processor.result-serialization
               metabase.query-processor.schema
               metabase.query-processor.store
               metabase.query-processor.streaming

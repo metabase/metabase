@@ -14,7 +14,7 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.middleware.cache.impl :as cache.impl]
+   [metabase.query-processor.result-serialization :as qp.result-serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
@@ -86,13 +86,13 @@
 
 (defn deserialize-cached-result
   "Pull the QP result map out of a worker-serialized blob produced by
-  [[metabase.query-processor.middleware.cache.impl/do-with-serialization]]. Returns nil when
+  [[metabase.query-processor.result-serialization/do-with-serialization]]. Returns nil when
   the blob is missing or unreadable. Realizes rows fully — the caller may re-sort them in
   memory."
   [^bytes result-bytes]
   (when result-bytes
     (with-open [is (ByteArrayInputStream. result-bytes)]
-      (cache.impl/with-reducible-deserialized-results [[qp-result _] is]
+      (qp.result-serialization/with-reducible-deserialized-results [[qp-result _] is]
         (when qp-result
           (let [data (:data qp-result)]
             (assoc qp-result :data (assoc data :rows (vec (or (:rows data) []))))))))))
