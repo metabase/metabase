@@ -74,12 +74,12 @@
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))
-    (try
-      (display-name-method query stage-number x style)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
-                        {:query query, :x x}
-                        e)))))))
+    (lib.util/recover
+     (fn [] (display-name-method query stage-number x style))
+     (fn [e]
+       (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
+                       {:query query, :x x}
+                       e)))))))
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
@@ -92,14 +92,14 @@
    (or
     ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
     (:name (lib.options/options x))
-    (try
-      (column-name-method query stage-number x)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
-                        {:x            x
-                         :query        query
-                         :stage-number stage-number}
-                        e)))))))
+    (lib.util/recover
+     (fn [] (column-name-method query stage-number x))
+     (fn [e]
+       (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
+                       {:x            x
+                        :query        query
+                        :stage-number stage-number}
+                       e)))))))
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
@@ -259,20 +259,20 @@
 
 (defmethod metadata-method :default
   [query stage-number x]
-  (try
-    {:lib/type     :metadata/column
-     ;; TODO -- effective-type
-     :base-type    (type-of query stage-number x)
-     :name         (column-name query stage-number x)
-     :display-name (display-name query stage-number x)}
-    ;; if you see this error it's usually because you're calling [[metadata]] on something that you shouldn't be, for
-    ;; example a query
-    (catch #?(:clj Throwable :cljs js/Error) e
-      (throw (ex-info (i18n/tru "Error calculating metadata for {0}: {1}"
-                                (pr-str (lib.dispatch/dispatch-value x))
-                                (ex-message e))
-                      {:query query, :stage-number stage-number, :x x}
-                      e)))))
+  (lib.util/recover
+   (fn []
+     {:lib/type     :metadata/column
+      ;; TODO -- effective-type
+      :base-type    (type-of query stage-number x)
+      :name         (column-name query stage-number x)
+      :display-name (display-name query stage-number x)})
+   ;; This usually means [[metadata]] was called on something it shouldn't be, e.g. a query.
+   (fn [e]
+     (throw (ex-info (i18n/tru "Error calculating metadata for {0}: {1}"
+                               (pr-str (lib.dispatch/dispatch-value x))
+                               (ex-message e))
+                     {:query query, :stage-number stage-number, :x x}
+                     e)))))
 
 (mr/def ::metadata-map
   [:map [:lib/type [:and
@@ -305,13 +305,14 @@
   as [[describe-query]] except for native queries, where we don't describe anything."
   [query]
   (when-not (= (:lib/type (lib.util/query-stage query -1)) :mbql.stage/native)
-    (try
-      (describe-query query)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        ;; Throttled: a search reindex can call this for many failing metric Cards, don't log them all.
-        (log/throttle (* 10 1000)
-                      (log/errorf e "Error calculating display name for query: %s" (ex-message e)))
-        nil))))
+    (lib.util/recover
+     (fn [] (describe-query query))
+     (fn [e]
+       ;; Throttled: a bulk caller such as a search reindex can hit this for many failing metric Cards,
+       ;; so don't log every one.
+       (log/throttle (* 10 1000)
+                     (log/errorf e "Error calculating display name for query: %s" (ex-message e)))
+       nil))))
 
 (defmulti display-info-method
   "Implementation for [[display-info]]. Implementations that call [[display-name]] should use the `:default` display
@@ -382,14 +383,14 @@
     stage-number :- :int
     x]
    (letfn [(display-info* [x]
-             (try
-               (display-info-method query stage-number x)
-               (catch #?(:clj Throwable :cljs js/Error) e
-                 (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                           (lib.dispatch/dispatch-value x)
-                                           (ex-message e))
-                                 {:query query, :stage-number stage-number, :x x}
-                                 e)))))]
+             (lib.util/recover
+              (fn [] (display-info-method query stage-number x))
+              (fn [e]
+                (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                          (lib.dispatch/dispatch-value x)
+                                          (ex-message e))
+                                {:query query, :stage-number stage-number, :x x}
+                                e)))))]
      #?(:clj
         (display-info* x)
         :cljs
