@@ -310,12 +310,17 @@
       (malli->json-schema content))))
 
 (defn- tool-output-schema
-  "Derive a tool's MCP `outputSchema` from the endpoint's `:response-schema`.
-  No strict transform — outputs aren't constrained by OpenAI's strict-tool rules.
-  Layers above (e.g. `metabase.mcp.tools`) may patch this for tools whose MCP body transform
-  reshapes the endpoint response."
-  [form]
-  (response-schema->json-schema (:response-schema form)))
+  "Derive a tool's MCP `outputSchema`.
+
+  A tool that declares `:tool {:structured-output <malli>}` carries its payload once, in the result's text
+  block, and publishes only the next-step fields on the structured channel — that schema is what MCP
+  clients validate `structuredContent` against, so it is what gets published. Everything else publishes the
+  endpoint's `:response-schema`, whose body the result mirrors into both channels.
+
+  No strict transform — outputs aren't constrained by OpenAI's strict-tool rules. Layers above (e.g.
+  `metabase.mcp.tools`) may patch this for tools whose MCP body transform reshapes the endpoint response."
+  [tool-md form]
+  (response-schema->json-schema (or (:structured-output tool-md) (:response-schema form))))
 
 (defn- route-path->endpoint-path
   "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
@@ -330,16 +335,23 @@
        (map str/capitalize)
        (str/join " ")))
 
-(defn- assert-claude-connector-compliant!
-  "Throw if `annotations` lack the readOnlyHint or destructiveHint that the Claude
-   connector requires (every tool must declare one or the other)."
-  [tool-name annotations]
-  (let [{:keys [readOnlyHint destructiveHint]} annotations]
-    (when-not (or (true? readOnlyHint) (boolean? destructiveHint))
-      (throw (ex-info (str "Tool " tool-name
-                           " must declare :read-only? true or :destructive? <boolean> "
-                           "(Claude connector requirement).")
-                      {:tool tool-name :annotations annotations})))))
+(def ^:private required-annotations
+  "The MCP ToolAnnotations every published tool carries. A client reads them to decide whether it may
+   retry a call, whether it must confirm one, and whether the tool can reach outside the instance — a
+   missing hint is a decision the client has to guess at."
+  [:readOnlyHint :destructiveHint :idempotentHint :openWorldHint])
+
+(defn- assert-annotations-complete!
+  "Throw unless `annotations` declares every hint in [[required-annotations]] as a boolean.
+
+   The HTTP method supplies most of them, but POST implies nothing about idempotence — a POST tool has to
+   say whether calling it twice is the same as calling it once, and it says so with `:idempotent?`."
+  [tool-name method annotations]
+  (when-let [missing (seq (remove #(boolean? (get annotations %)) required-annotations))]
+    (throw (ex-info (str "Tool " tool-name " is missing the " (str/join ", " (map name missing))
+                         " annotation(s). The " (name method) " method does not imply them — declare them "
+                         "in :annotations (e.g. :idempotent? false).")
+                    {:tool tool-name :method method :missing (vec missing) :annotations annotations}))))
 
 (defn endpoint->tool-definition
   "Convert a single endpoint info + prefix to a tool definition map."
@@ -360,7 +372,7 @@
                            (:docstr form))
         full-path      (str prefix (route-path->endpoint-path route-path))
         input-schema   (tool-input-schema tool-name form)
-        output-schema  (tool-output-schema form)
+        output-schema  (tool-output-schema tool-md form)
         inferred       (infer-annotations method (:annotations tool-md))
         annotations    (:annotations inferred)
         _              (when (:contradictory? inferred)
@@ -372,7 +384,7 @@
                                               " has redundant :annotations matching defaults: "
                                               (pr-str (:redundant inferred)))
                                          {:tool tool-name :method method :redundant (:redundant inferred)})))
-        _              (assert-claude-connector-compliant! tool-name annotations)
+        _              (assert-annotations-complete! tool-name method annotations)
         task-support   (:task-support tool-md)
         input-examples (:input-examples tool-md)
         scope          (get-in form [:metadata :scope])]
@@ -383,6 +395,9 @@
                            :path   full-path}}
       input-schema        (assoc :inputSchema input-schema)
       output-schema       (assoc :outputSchema output-schema)
+      ;; The transport layer reads this to decide how to shape the tool result: a tool that declares a
+      ;; structured output carries its payload once, in the text block. See [[tool-output-schema]].
+      (:structured-output tool-md) (assoc :structuredOutput true)
       (seq annotations)   (assoc :annotations annotations)
       (seq input-examples) (assoc :inputExamples (vec input-examples))
       task-support        (assoc :execution {:taskSupport (name task-support)})

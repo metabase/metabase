@@ -3,6 +3,7 @@
    rather than reaching into internal namespaces like [[metabase.mcp.settings]]."
   (:require
    [clojure.string :as str]
+   [metabase.agent-api.catalog :as agent-api.catalog]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.settings :as mcp.settings]
@@ -40,6 +41,7 @@
    (e.g. visualize_query)."
   []
   (into (into (mcp.resources/resource-scopes) (mcp.toolsets/group-scopes))
-        (comp (keep #(get-in % [:form :metadata :scope]))
+        (comp (mapcat #(vals (api.macros/ns-routes %)))
+              (keep #(get-in % [:form :metadata :scope]))
               (filter string?))
-        (vals (api.macros/ns-routes 'metabase.agent-api.api))))
+        (keys agent-api.catalog/tool-namespaces)))

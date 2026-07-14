@@ -330,6 +330,56 @@
            #"redundant :annotations"
            (tools-manifest/endpoint->tool-definition "/api/agent" {:form form}))))))
 
+(deftest ^:parallel endpoint->tool-definition-requires-every-annotation-test
+  (testing "a POST tool that declares no :idempotent? is refused — the method implies nothing about
+            idempotence, so the hint would otherwise ship missing and the client would have to guess"
+    (let [form {:method   :post
+                :route    {:path "/v1/thing"}
+                :docstr   "Do a thing."
+                :metadata {:tool {:name "do_thing"}}
+                :body     '(nil)}]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"missing the idempotentHint annotation"
+           (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})))
+      (testing "and declaring it is enough"
+        (is (= {:readOnlyHint    false
+                :destructiveHint false
+                :idempotentHint  false
+                :openWorldHint   false}
+               (:annotations
+                (tools-manifest/endpoint->tool-definition
+                 "/api/agent"
+                 {:form (assoc-in form [:metadata :tool :annotations] {:idempotent? false})}))))))))
+
+(deftest ^:parallel endpoint->tool-definition-structured-output-test
+  (testing "an endpoint that declares a structured output publishes that as its outputSchema, and is
+            marked so the transport layer knows to carry the body once"
+    (let [form   {:method          :post
+                  :route           {:path "/v1/thing"}
+                  :docstr          "Do a thing."
+                  :response-schema [:map [:data [:sequential :map]] [:returned :int]]
+                  :metadata        {:tool {:name              "do_thing"
+                                           :annotations       {:idempotent? false}
+                                           :structured-output [:map [:returned :int]]}}
+                  :body            '(nil)}
+          result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
+      (is (true? (:structuredOutput result)))
+      (is (= {:type "object" :properties {:returned {:type "integer"}} :required [:returned]}
+             (:outputSchema result)))))
+  (testing "an endpoint without one publishes its response schema, and carries no marker"
+    (let [form   {:method          :post
+                  :route           {:path "/v1/thing"}
+                  :docstr          "Do a thing."
+                  :response-schema [:map [:returned :int]]
+                  :metadata        {:tool {:name        "do_thing"
+                                           :annotations {:idempotent? false}}}
+                  :body            '(nil)}
+          result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
+      (is (not (contains? result :structuredOutput)))
+      (is (= {:type "object" :properties {:returned {:type "integer"}} :required [:returned]}
+             (:outputSchema result))))))
+
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
 ;; It requires the agent API namespace to be loaded.
 
@@ -347,7 +397,7 @@
 (api.macros/defendpoint :post "/v1/test-action"
   "A test POST action."
   {:tool {:name "test_action"
-          :annotations {:read-only? true}}}
+          :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    body :- [:map [:name :string]]]
@@ -380,7 +430,7 @@
   :- [:map [:id :int] [:status ::test-status]]
   "Perform an action on a resource."
   {:tool {:name "test_resource_action"
-          :annotations {:read-only? true}
+          :annotations {:read-only? true :idempotent? true}
           :task-support :parallel}}
   [{:keys [id]} :- [:map [:id :int]]
    _query-params
@@ -403,6 +453,7 @@
   :- [:map [:id :int]]
   "Create or update a thing."
   {:tool {:name           "test_thing_write"
+          :annotations    {:idempotent? false}
           :input-examples [{:method "create" :name "A widget"}
                            {:method "update" :id 3 :name "Renamed"}]}}
   [_route-params
@@ -486,7 +537,7 @@
   (is (= {:name           "test_action"
           :title          "Test Action"
           :description    "A test POST action."
-          :annotations    {:readOnlyHint true :destructiveHint false :openWorldHint false}
+          :annotations    {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
           :inputSchema    {:type       "object"
                            :properties {:name {:type "string"}}
@@ -528,7 +579,7 @@
   (is (= {:name           "test_resource_action"
           :title          "Test Resource Action"
           :description    "Perform an action on a resource."
-          :annotations    {:readOnlyHint true :destructiveHint false :openWorldHint false}
+          :annotations    {:readOnlyHint true :idempotentHint true :destructiveHint false :openWorldHint false}
           :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
           :inputSchema    {:type       "object"
                            :properties {:id     {:type "integer"}

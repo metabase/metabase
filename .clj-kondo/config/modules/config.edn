@@ -157,7 +157,10 @@
 
   agent-api
   {:team    "Metabot"
-   :api     #{metabase.agent-api.api metabase.agent-api.handles metabase.agent-api.init}
+   :api     #{metabase.agent-api.api
+              metabase.agent-api.catalog
+              metabase.agent-api.handles
+              metabase.agent-api.init}
    :uses    #{activity-feed
               agent-lib
               api
@@ -189,6 +192,7 @@
               segments
               server
               settings
+              task
               timeline
               transforms
               util

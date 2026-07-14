@@ -146,7 +146,9 @@
 
    ;; these functions are allowed in `^:parallel` tests even tho they end in `!`
    :parallel/safe
-   #{clojure.core/assoc!
+   #{;; throws; it mutates nothing
+     metabase.agent-api.tools/teaching-error!
+     clojure.core/assoc!
      clojure.core/compare-and-set!
      clojure.core/conj!
      clojure.core/disj!
@@ -822,14 +824,18 @@
   {:pattern "(?:^mage.*)"
    :name    mage-namespaces}
   ;;
-  ;; MCP + Agent API tool code, excluding tests and the server's own storage — the Toucan models under
-  ;; `metabase.{mcp,agent-api}.models.*` and the query-handle store in `metabase.agent-api.handles`,
-  ;; whose rows are the server's own, not user content. A tool call is a synthetic in-process request
-  ;; under the caller's real user, and the permission checks it must pass live in the domain functions
-  ;; the public REST handlers call — so tool code delegates to those and never reaches the app DB
-  ;; itself.
+  ;; MCP + Agent API tool code, in OSS and enterprise alike, excluding tests. A tool call is a synthetic
+  ;; in-process request under the caller's real user, and the permission checks it must pass live in the
+  ;; domain functions the public REST handlers call — so tool code delegates to those and never reaches
+  ;; the app DB itself.
   ;;
-  {:pattern "^metabase\\.(?:mcp|agent-api)\\.(?!models\\.)(?!handles$).*(?<!-test)$"
+  ;; Out of the group are the namespaces whose rows are the *server's own*, not user content, and which
+  ;; therefore have no user permission to inherit: the Toucan models under `*.models.*`, the query-handle
+  ;; store (`metabase.agent-api.handles`), the authentication that runs before any tool has been chosen
+  ;; (`metabase.agent-api.auth`, `metabase.mcp.session`), and the tool-call usage log
+  ;; (`metabase-enterprise.mcp.usage`, `metabase-enterprise.mcp.task.*`).
+  ;;
+  {:pattern "^(?:metabase\\.(?:mcp|agent-api)\\.(?!models\\.)(?!handles$)(?!auth$)(?!session$)|metabase-enterprise\\.mcp\\.(?!usage$)(?!task\\.)).*(?<!-test)$"
    :name    mcp-tool-namespaces}]
 
  :config-in-ns
@@ -877,18 +883,20 @@
   mcp-tool-namespaces
   {:linters
    {:discouraged-namespace
-    {toucan2.core {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}
-     toucan.db    {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}
-     toucan.models {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}}
+    {toucan2.core        {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}
+     toucan.db           {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}
+     toucan.models       {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}
+     metabase.app-db.core {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls, so the tool inherits its permission checks."}}}}
 
-    :discouraged-var
-    {metabase.app-db.core/query           {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls."}
-     metabase.app-db.core/reducible-query {:message "Tool code must not reach the app DB. Delegate to the domain function the public REST handler calls."}}}}
+  ;; The v1 tools assemble dashcards and patch cards through Toucan directly, so they carry an exemption
+  ;; from the rule above. It reaches exactly the two namespaces that hold them; every other namespace in
+  ;; the group, the v2 tools included, lints under the ban.
+  metabase.agent-api.v1-api
+  {:linters
+   {:discouraged-namespace
+    {toucan2.core {:level :off}}}}
 
-  ;; The v1 tools assemble dashcards and read cards through Toucan directly, so they carry an
-  ;; exemption from the rule above. It is scoped to this one namespace and disappears with them; the
-  ;; v2 tool namespaces have no carve-out.
-  metabase.agent-api.api
+  metabase.agent-api.v1-dashcards
   {:linters
    {:discouraged-namespace
     {toucan2.core {:level :off}}}}

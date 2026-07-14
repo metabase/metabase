@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.agent-api.api :as agent-api.api]
+   [metabase.agent-api.search :as agent-api.search]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -122,7 +122,7 @@
             (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
 
 (deftest coerce-query-list-test
-  (let [coerce #'agent-api.api/coerce-query-list]
+  (let [coerce agent-api.search/coerce-queries]
     (testing "arrays pass through unchanged"
       (is (= ["orders" "revenue"] (coerce ["orders" "revenue"]))))
     (testing "nil stays nil"
@@ -336,7 +336,7 @@
                        ["nested legacy source-query"
                         {:database (mt/id) :type "query" :query {:source-query {:native "select 1"}}}]]]
       (testing label
-        (is (re-find #"Native queries are not supported"
+        (is (re-find #"native SQL query"
                      (str (mt/user-http-request :rasta :post 400 "agent/v1/execute"
                                                 {:query (u/encode-base64 (json/encode q))}))))))))
 
@@ -487,7 +487,7 @@
                         {:database (mt/id) :type "query"
                          :query    {:source-query {:native "select 1"}}}]]]
       (testing label
-        (is (re-find #"Native queries are not supported"
+        (is (re-find #"native SQL query"
                      (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
                                                 {:query (u/encode-base64 (json/encode q))}))))))))
 
@@ -504,7 +504,7 @@
                        ["non-map stage"          {:stages [1]}]
                        ["malformed :type"        {:type 1 :stages 1}]]]
       (testing label
-        (is (re-find #"expected a serialized MBQL query"
+        (is (re-find #"does not name a runnable query"
                      (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
                                                 {:query (u/encode-base64 (json/encode q))})))))))
   (testing "`/v2/query` returns 400 (not 500) for an invalid present last-stage :limit"
@@ -513,7 +513,7 @@
                            ["negative" -5]
                            ["boolean"  false]]]
       (testing label
-        (is (re-find #":limit must be a positive integer"
+        (is (re-find #"`limit` must be a positive integer"
                      (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
                                                 {:query (u/encode-base64
                                                          (json/encode {:stages [{:limit limit}]}))})))))))
