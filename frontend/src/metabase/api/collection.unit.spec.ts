@@ -2,9 +2,16 @@ import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
-import { findRequests } from "__support__/server-mocks";
+import {
+  findRequests,
+  setupBookmarksEndpoints,
+  setupCardEndpoints,
+  setupRootCollectionItemsEndpoint,
+  setupUpdateCollectionEndpoint,
+} from "__support__/server-mocks";
 import {
   createMockBookmark,
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockCollectionItemFromCollection,
@@ -30,8 +37,8 @@ const CHILD_CARD_ID = 20;
  * the picker keeps serving stale (archived) items.
  */
 function setup() {
-  fetchMock.get("path:/api/collection/root/items", {
-    data: [
+  setupRootCollectionItemsEndpoint({
+    rootCollectionItems: [
       createMockCollectionItemFromCollection({
         id: CHILD_COLLECTION_ID,
         name: "My collection",
@@ -42,13 +49,9 @@ function setup() {
         name: "My question",
       }),
     ],
-    models: ["collection", "card"],
-    total: 2,
-    limit: null,
-    offset: null,
   });
 
-  fetchMock.put(`path:/api/collection/${CHILD_COLLECTION_ID}`, () =>
+  setupUpdateCollectionEndpoint(
     createMockCollection({
       id: CHILD_COLLECTION_ID,
       name: "My collection",
@@ -56,13 +59,8 @@ function setup() {
     }),
   );
 
-  fetchMock.put(`path:/api/card/${CHILD_CARD_ID}`, () =>
-    createMockCollectionItem({
-      id: CHILD_CARD_ID,
-      model: "card",
-      name: "My question",
-      archived: true,
-    }),
+  setupCardEndpoints(
+    createMockCard({ id: CHILD_CARD_ID, name: "My question" }),
   );
 
   const store = getStore({ [Api.reducerPath]: Api.reducer }, {}, [
@@ -148,7 +146,7 @@ const BOOKMARK_COLLECTION_ID = 10;
  * keeps serving stale bookmarks.
  */
 function setupBookmarks() {
-  fetchMock.get("path:/api/bookmark", [
+  setupBookmarksEndpoints([
     createMockBookmark({
       id: "card-1",
       type: "card",
@@ -157,7 +155,7 @@ function setupBookmarks() {
     }),
   ]);
 
-  fetchMock.put(`path:/api/collection/${BOOKMARK_COLLECTION_ID}`, () =>
+  setupUpdateCollectionEndpoint(
     createMockCollection({
       id: BOOKMARK_COLLECTION_ID,
       name: "First collection",
