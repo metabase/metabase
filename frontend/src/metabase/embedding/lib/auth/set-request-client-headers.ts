@@ -2,7 +2,7 @@
 import type {
   OnBeforeRequestHandler,
   RequestClientInfo,
-} from "../../../api/client";
+} from "metabase/api/client";
 
 /**
  * This helper sets a client-related headers that help identify a client
