@@ -165,7 +165,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: 21
+        java-version: 25
 
     - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
       uses: ./.github/actions/fetch-artifact
