@@ -523,8 +523,8 @@ function ExplorationThreadMenu({
   );
 
   const handleRestart = useCallback(
-    async (explorationId: ExplorationId) => {
-      const { error } = await restartExploration(explorationId);
+    async (explorationId: ExplorationId, threadId: ExplorationThreadId) => {
+      const { error } = await restartExploration({ explorationId, threadId });
       if (error) {
         sendToast({
           message: t`Failed to restart`,
@@ -557,7 +557,10 @@ function ExplorationThreadMenu({
 
   if (canWrite && thread.canceled_at != null) {
     menuItems.push(
-      <Menu.Item key="restart" onClick={() => handleRestart(explorationId)}>
+      <Menu.Item
+        key="restart"
+        onClick={() => handleRestart(explorationId, thread.id)}
+      >
         {t`Restart`}
       </Menu.Item>,
     );

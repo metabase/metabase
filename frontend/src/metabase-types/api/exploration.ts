@@ -148,6 +148,11 @@ export interface UpdateExplorationRequest {
   collection_position?: number | null;
 }
 
+export interface RestartExplorationRequest {
+  explorationId: ExplorationId;
+  threadId: ExplorationThreadId;
+}
+
 export interface CancelExplorationThreadRequest {
   explorationId: ExplorationId;
   threadId: ExplorationThreadId;

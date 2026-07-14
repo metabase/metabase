@@ -863,6 +863,7 @@ describe("ExplorationSidebar", () => {
   describe("thread menu", () => {
     // A canceled thread is stamped with both timestamps by the cancel endpoint.
     const canceledThread = {
+      id: 1,
       canceled_at: "2026-04-30T00:01:00Z",
       completed_at: "2026-04-30T00:01:00Z",
     };
@@ -927,8 +928,9 @@ describe("ExplorationSidebar", () => {
       expect(findThreadMenuButton()).toBeUndefined();
     });
 
-    it("calls restart when Restart is clicked on a canceled thread", async () => {
-      fetchMock.post("path:/api/exploration/1/restart", {
+    it("calls restart on the thread whose menu was opened", async () => {
+      const restartPath = `path:/api/exploration/thread/${canceledThread.id}/restart`;
+      fetchMock.post(restartPath, {
         ...createExploration({ queries: [pendingQuery] }),
       });
 
@@ -942,9 +944,7 @@ describe("ExplorationSidebar", () => {
 
       await waitFor(() => {
         expect(
-          fetchMock.callHistory.called("path:/api/exploration/1/restart", {
-            method: "POST",
-          }),
+          fetchMock.callHistory.called(restartPath, { method: "POST" }),
         ).toBe(true);
       });
     });

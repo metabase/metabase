@@ -241,14 +241,6 @@
                 (positional-rows thread-id
                                  (map (fn [tl-id] {:timeline_id tl-id}) timeline-ids)))))
 
-(defn- thread-to-restart
-  "The thread a restart re-runs. The exploration UI is single-thread for now, so this is just the
-  exploration's (latest) thread; a future multi-thread UI will pass the thread id explicitly."
-  [exploration-id]
-  (t2/select-one :model/ExplorationThread
-                 :exploration_id exploration-id
-                 {:order-by [[:position :desc] [:id :desc]]}))
-
 (defn- reset-ai-summary-doc!
   [thread-id]
   (when-let [doc-id (t2/select-one-fn :ai_summary_document_id :model/ExplorationThread :id thread-id)]
@@ -284,14 +276,23 @@
 
 (defn- explore-further-thread-name
   "Build the sidebar name for an \"Explore further\" thread from the metric Card name and the
-  clicked value — e.g. card `Number of bugs` + value `open` → `Open bugs`. Falls back to the
-  card name when the value is blank."
-  [card-name value]
-  (let [v (some-> value str str/trim)]
-    (if (str/blank? v)
+  clicked `values` — e.g. card `Number of bugs` + value `open` → `Open bugs`.
+
+  A click carries one value per breakout the chart has, so a grouped bar or a table/map cell
+  yields several: all of them are joined, the same way the block's chart titles join them (see
+  `metabase.explorations.blocks`), so `Number of bugs` clicked at (`open`, `2024`) becomes
+  `Open / 2024 bugs`. Naming the thread after only one of the clicked values would describe a
+  narrower scope than the queries actually run under. Falls back to the card name when no value
+  is usable."
+  [card-name values]
+  (let [head (->> values
+                  (keep #(some-> % str str/trim not-empty))
+                  (map u/capitalize-first-char)
+                  (str/join " / ")
+                  not-empty)]
+    (if (nil? head)
       card-name
-      (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")
-            head (u/capitalize-first-char v)]
+      (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")]
         (str/trim (str head " " noun))))))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
@@ -591,19 +592,6 @@
                                {:object persisted :user-id api/*current-user-id*})
         (hydrate-exploration persisted)))))
 
-(api.macros/defendpoint :post "/:id/restart" :- ::HydratedExploration
-  "Re-run an exploration's analysis in place."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [exploration (get-exploration-or-404 id)
-        _           (api/write-check exploration)
-        thread      (api/check-404 (thread-to-restart id))]
-    (t2/with-transaction [_]
-      (reset-thread-for-rerun! (:id thread))
-      (let [updated (t2/select-one :model/Exploration :id id)]
-        (events/publish-event! :event/exploration-update
-                               {:object updated :user-id api/*current-user-id*})
-        (hydrate-exploration updated)))))
-
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.
 
@@ -633,7 +621,6 @@
                                                    :id src-thread-id :exploration_id id))
           card-id       (:card_id (first (:metrics block)))
           card-name     (when card-id (t2/select-one-fn :name :model/Card :id card-id))
-          filter-value  (:value (last explore_filters))
           ;; Append, don't overwrite: a source block that itself came from a prior drill already
           ;; carries `:explore_filters`; `into` keeps that earlier segment scope and adds this one.
           metrics'      (mapv #(update % :explore_filters (fnil into []) explore_filters)
@@ -650,7 +637,8 @@
         (let [thread (first (t2/insert-returning-instances!
                              :model/ExplorationThread
                              {:exploration_id id
-                              :name           (explore-further-thread-name card-name filter-value)
+                              :name           (explore-further-thread-name card-name
+                                                                           (map :value explore_filters))
                               :position       next-position}))
               tid    (:id thread)]
           (insert-thread-default-documents! tid coll-id {:include-ai-summary? false})
@@ -830,6 +818,19 @@
   (let [thread (get-thread-or-404 thread-id)]
     (api/write-check (get-exploration-or-404 (:exploration_id thread)))
     thread))
+
+(api.macros/defendpoint :post "/thread/:thread-id/restart" :- ::HydratedExploration
+  "Re-run one exploration thread in place, keeping its selections: drops the thread's materialized
+  queries, resets its AI Summary doc to the placeholder, and clears the terminal-state gates so the
+  background planner re-claims it. Returns the parent exploration."
+  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
+  (let [thread (write-check-thread thread-id)]
+    (t2/with-transaction [_]
+      (reset-thread-for-rerun! thread-id)
+      (let [updated (t2/select-one :model/Exploration :id (:exploration_id thread))]
+        (events/publish-event! :event/exploration-update
+                               {:object updated :user-id api/*current-user-id*})
+        (hydrate-exploration updated)))))
 
 (mr/def ::CanceledThread
   "Schema for the cancel endpoint response — just the state-bearing fields the FE needs to

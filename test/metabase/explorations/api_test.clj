@@ -827,7 +827,7 @@
         (is (zero? (count (-> resp :threads first :queries))))))))
 
 (deftest exploration-restart-reruns-existing-thread-test
-  (testing "POST /:id/restart re-runs the exploration's existing thread in place, keeping selections"
+  (testing "POST /thread/:thread-id/restart re-runs that thread in place, keeping selections"
     (mt/with-temp [:model/User u {:email "restart@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:creator_id (:id u)}]
@@ -850,7 +850,7 @@
                     {:query_plan_started_at (t/offset-date-time)
                      :analysis_started_at   (t/offset-date-time)
                      :completed_at          (t/offset-date-time)})
-        (let [resp     (mt/user-http-request u :post 200 (format "exploration/%d/restart" expl-id))
+        (let [resp     (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" orig-tid))
               threads  (:threads resp)
               rerun    (first threads)]
           (is (= 1 (count threads)) "restart does NOT add a thread")
@@ -878,11 +878,11 @@
               (is (pos? (count (:queries planned)))))))))))
 
 (deftest exploration-restart-resets-ai-summary-doc-test
-  (testing "POST /:id/restart swaps the AI Summary doc back to the Analysis-underway placeholder"
+  (testing "POST /thread/:thread-id/restart swaps the AI Summary doc back to the Analysis-underway placeholder"
     (with-ai-summary-available
       (mt/with-temp [:model/User u {:email "rs-summary@example.com"}]
         (let [created (mt/user-http-request u :post 200 "exploration" {:name "x"})
-              expl-id (:id created)
+              tid     (-> created :threads first :id)
               doc-id  (-> created :threads first :ai_summary_document_id)]
           (is (some? doc-id) "an AI Summary placeholder doc is created up-front")
           ;; Simulate a finished run: overwrite the placeholder with a real summary.
@@ -890,7 +890,7 @@
                       {:document {:type "doc"
                                   :content [{:type "paragraph"
                                              :content [{:type "text" :text "Old summary"}]}]}})
-          (mt/user-http-request u :post 200 (format "exploration/%d/restart" expl-id))
+          (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" tid))
           (let [persisted (t2/select-one-fn :document :model/Document :id doc-id)
                 all-text  (->> persisted
                                (tree-seq map? :content)
@@ -903,12 +903,42 @@
   (testing "Only a user with write access can restart an exploration"
     (mt/with-temp [:model/User owner {:email "rs-owner@example.com"}
                    :model/User other {:email "rs-other@example.com"}]
-      (let [{eid :id} (mt/user-http-request owner :post 200 "exploration"
-                                            {:name "private"
-                                             :collection_id (:id (collection/user->personal-collection (:id owner)))})]
-        (mt/user-http-request other :post 403 (format "exploration/%d/restart" eid))
-        (let [resp (mt/user-http-request owner :post 200 (format "exploration/%d/restart" eid))]
+      (let [created (mt/user-http-request owner :post 200 "exploration"
+                                          {:name "private"
+                                           :collection_id (:id (collection/user->personal-collection (:id owner)))})
+            tid     (-> created :threads first :id)]
+        ;; Perms ride the thread's parent exploration, resolved by `write-check-thread`.
+        (mt/user-http-request other :post 403 (format "exploration/thread/%d/restart" tid))
+        (let [resp (mt/user-http-request owner :post 200 (format "exploration/thread/%d/restart" tid))]
           (is (= 1 (count (:threads resp))) "still a single thread after restart"))))))
+
+(deftest exploration-restart-targets-the-requested-thread-test
+  (testing "POST /thread/:thread-id/restart restarts the addressed thread, not the exploration's newest one —"
+    (testing "an exploration holds several threads once \"Explore further\" is used, each with its own Restart"
+      (mt/with-temp [:model/User u {:email "rs-multi@example.com"}]
+        (let [created  (mt/user-http-request u :post 200 "exploration" {:name "multi"})
+              expl-id  (:id created)
+              root-tid (-> created :threads first :id)
+              ;; A later thread, as "Explore further" creates: higher position, so it's the one the
+              ;; old "latest thread" rule would have picked.
+              drill    (first (t2/insert-returning-instances!
+                               :model/ExplorationThread
+                               {:exploration_id expl-id :name "drill" :position 1
+                                :completed_at   (t/offset-date-time)}))]
+          (t2/update! :model/ExplorationThread root-tid {:completed_at (t/offset-date-time)})
+          (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" root-tid))
+          (is (nil? (t2/select-one-fn :completed_at :model/ExplorationThread :id root-tid))
+              "the named (root) thread was reset")
+          (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread :id (:id drill)))
+              "the newest thread was left alone"))))))
+
+(deftest exploration-restart-404s-on-unknown-thread-test
+  (testing "POST /thread/:thread-id/restart 404s for a thread that doesn't exist"
+    ;; The thread is the whole address, so a caller can't name a thread in one exploration while
+    ;; addressing another — the mismatch the exploration-scoped route had to guard against isn't
+    ;; expressible here. Perms ride the thread's parent exploration (see the permissions test).
+    (mt/with-temp [:model/User u {:email "rs-404@example.com"}]
+      (mt/user-http-request u :post 404 "exploration/thread/9999999/restart"))))
 
 (deftest exploration-get-permissions-test
   (testing "Only the creator (or a superuser) can GET an exploration"
@@ -2511,3 +2541,33 @@
           (is (= [prior new-f]
                  (mapv #(select-keys % [:field_ref :value]) filters))
               "both the prior (Texas) and the newly clicked (price) filter are present, in drill order"))))))
+
+(deftest explore-further-thread-name-includes-every-clicked-value-test
+  (testing "a click on a chart with several breakouts carries one value per dimension —"
+    (testing "the new thread is named for all of them, since its queries are scoped to all of them"
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card       metric {:name          "Number of venues"
+                                               :type          :metric
+                                               :dataset_query (lib/->legacy-MBQL
+                                                               (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count)))))}]
+        (let [src (insert-explore-fixture!
+                   {:creator-id    (mt/user->id :crowberto)
+                    :collection-id (:id coll)
+                    :card-id       (:id metric)
+                    :database-id   (mt/id)
+                    :dimension-id  "d1"
+                    :metrics       [{:card_id (:id metric)}]})]
+          (mt/user-http-request :crowberto :post 200
+                                (str "exploration/" (:exploration-id src) "/explore-further")
+                                {:page_id         (:page-id src)
+                                 :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)]
+                                                    :value     "gadget"}
+                                                   {:field_ref ["field" {} (mt/id :venues :price)]
+                                                    :value     2}]})
+          (let [new-thread (t2/select-one :model/ExplorationThread
+                                          :exploration_id (:exploration-id src)
+                                          {:order-by [[:position :desc] [:id :desc]]})]
+            (is (= "Gadget / 2 venues" (:name new-thread))
+                "both clicked values are in the name (the last one alone would read `2 venues`)")))))))
