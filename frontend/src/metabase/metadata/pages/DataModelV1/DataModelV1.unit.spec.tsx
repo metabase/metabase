@@ -24,7 +24,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { IndexRedirect, Link, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
