@@ -105,3 +105,13 @@
   padding: var(--mantine-spacing-sm) 0 0 var(--mantine-spacing-lg);
   border-top: none;
 }
+
+.column .deleteIconButton {
+  border: 1px solid var(--mb-color-border);
+  height: 2.25rem;
+  width: 2.25rem;
+
+  &:hover {
+    border: 1px solid var(--mb-color-border-strong);
+  }
+}

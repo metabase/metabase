@@ -62,21 +62,25 @@ export function DimensionList({
   });
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
-    onReorder(itemIds as DimensionId[]);
+    onReorder(itemIds.map(String));
   };
 
   return (
-    <Stack gap="md" className={S.column} data-testid="metric-dimension-list">
+    <Stack
+      className={S.column}
+      data-testid="metric-dimension-list"
+      gap="md"
+      pt="lg"
+    >
       <Group justify="space-between" wrap="nowrap" align="center">
         <Title order={4}>{t`Add, remove, edit, or reorder dimensions`}</Title>
         <Group gap="md" wrap="nowrap" align="center">
           {hasChecked && (
             <ActionIcon
+              className={S.deleteIconButton}
               aria-label={t`Remove`}
-              variant="viewHeader"
-              bd="1px solid border"
-              size="lg"
               onClick={onRemove}
+              variant="viewHeader"
             >
               <Icon name="trash" />
             </ActionIcon>
@@ -85,6 +89,7 @@ export function DimensionList({
             variant="filled"
             disabled={isAddDisabled}
             onClick={onAdd}
+            size="sm"
           >{t`Add`}</Button>
         </Group>
       </Group>

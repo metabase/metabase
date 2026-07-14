@@ -81,9 +81,10 @@ export function AddDimensionsPanel({
           <Text
             c="text-secondary"
             size="sm"
+            mt="xs"
           >{t`You can pick one or many.`}</Text>
         </Box>
-        <Button variant="filled" onClick={onDone}>{t`Done`}</Button>
+        <Button variant="filled" onClick={onDone} size="sm">{t`Done`}</Button>
       </Group>
 
       <TextInput
