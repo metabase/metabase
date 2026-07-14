@@ -26,6 +26,7 @@ import {
 
 registerVisualizations();
 
+// Unjustified type cast. FIXME
 const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
 
 const MockedVisualization = Object.assign(

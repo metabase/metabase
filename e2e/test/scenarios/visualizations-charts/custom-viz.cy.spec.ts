@@ -1267,21 +1267,6 @@ describe("admin > custom visualizations", () => {
     });
 
     it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
-      // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
-      // Call this before any nav-sidebar interaction so we open it only when
-      // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
-      // it unconditionally would close an already-open sidebar.
-      const ensureNavigationSidebarOpen = () => {
-        cy.get("body").then(($body) => {
-          const visible = $body.find(
-            '[data-testid="main-navbar-root"]:visible',
-          ).length;
-          if (!visible) {
-            H.openNavigationSidebar();
-          }
-        });
-      };
-
       H.interceptPluginBundle();
 
       cy.visit("/collection/root");
@@ -1332,7 +1317,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log('Navigate → home via the nav-sidebar "Home" link');
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar().findByText("Home").click();
 
       cy.log("Home recently-viewed section");
@@ -1344,7 +1329,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log("Navigate → dashboard via bookmark link in the nav sidebar");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DASHBOARD_NAME) })
         .click();
@@ -1362,7 +1347,7 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", { name: /Cancel/i }).click();
 
       cy.log("Navigate → document via bookmark link");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DOC_NAME) })
         .click();
@@ -1413,22 +1398,24 @@ describe("admin > custom visualizations", () => {
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
     let devServerPid: number | null = null;
 
+    before(() => {
+      cy.exec(`mkdir -p ${tmpDir}`);
+      cy.log("Build the SDK so we can use the repo-local CLI");
+      cy.exec(
+        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
+        {
+          timeout: TIMEOUT,
+        },
+      );
+    });
+
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
-    });
 
-    before(() => {
-      cy.exec(`mkdir -p ${tmpDir}`);
-      cy.log("Build the SDK so we can use the repo-local CLI");
-      cy.exec(`cd "${sdkDir}" && bun install && bun run build`, {
-        timeout: TIMEOUT,
-      });
-
-      // Scaffold the boilerplate plugin using the init CLI command.
       cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
       cy.exec(
         `cd "${tmpDir}" && node "${cliPath}" init "${CUSTOM_VIZ_DEV_PROJECT_NAME}"`,
@@ -1478,7 +1465,7 @@ describe("admin > custom visualizations", () => {
 
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
-      // Start the plugin dev server and keep it running
+
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
       }).then(({ pid }) => {
@@ -1486,12 +1473,11 @@ describe("admin > custom visualizations", () => {
       });
     });
 
-    after(() => {
-      if (devServerPid == null) {
-        return;
+    afterEach(() => {
+      if (devServerPid != null) {
+        cy.task("stopCustomVizDevServer", devServerPid);
+        devServerPid = null;
       }
-
-      cy.task("stopCustomVizDevServer", devServerPid);
     });
 
     it("should load a dev-only plugin from a local dev server URL and use it in a question", () => {

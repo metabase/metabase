@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { memo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { Link } from "metabase/router";
 
 import S from "./Detail.module.css";
 

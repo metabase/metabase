@@ -17,7 +17,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type { MetabaseFontFamily } from "metabase/utils/fonts";
 
 import { ColorSwatchCard } from "./ColorSwatchCard";
 import {
@@ -123,6 +122,7 @@ export function EditorPanel({
                 <ColorSwatchCard
                   key={key}
                   label={label()}
+                  // Unjustified type cast. FIXME
                   value={(colors[key] as string) ?? ""}
                   showAlpha
                   onChange={(color) => editor.setColor(key, color ?? "")}
@@ -175,6 +175,7 @@ export function EditorPanel({
                   <ColorSwatchCard
                     key={key}
                     label={label()}
+                    // Unjustified type cast. FIXME
                     value={(colors[key] as string) ?? ""}
                     showAlpha
                     onChange={(color) => editor.setColor(key, color ?? "")}
@@ -220,9 +221,7 @@ export function EditorPanel({
                 label={t`Font`}
                 data={FONT_FAMILY_OPTIONS}
                 value={currentTheme.settings.fontFamily ?? ""}
-                onChange={(value) =>
-                  editor.setFontFamily((value ?? "") as MetabaseFontFamily)
-                }
+                onChange={(value) => editor.setFontFamily(value ?? "")}
                 placeholder={t`Default`}
                 clearable
                 searchable
@@ -239,7 +238,7 @@ export function EditorPanel({
                 }}
                 placeholder={t`Default`}
                 rightSection={
-                  <Text c="text-tertiary" fz="sm">
+                  <Text c="text-disabled" fz="sm">
                     {"px"}
                   </Text>
                 }
@@ -252,7 +251,7 @@ export function EditorPanel({
           <Button
             mt="lg"
             variant="subtle"
-            color="error"
+            color="feedback-negative"
             px={0}
             leftSection={<Icon name="trash" size={16} />}
             onClick={onDelete}

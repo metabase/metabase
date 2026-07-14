@@ -2,7 +2,6 @@ import type { Location } from "history";
 import * as React from "react";
 import { type ReactNode, useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
-import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -10,9 +9,16 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
-import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Button, Flex, Icon, TextInput } from "metabase/ui";
+import { Link, withRouter } from "metabase/router";
+import {
+  Button,
+  DefaultSelectItem,
+  Flex,
+  Icon,
+  Select,
+  TextInput,
+} from "metabase/ui";
 import { openSaveDialog } from "metabase/utils/dom";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
@@ -110,24 +116,35 @@ const LogsBase = ({
 
                 {processUUIDs.length > 1 && (
                   <Select
-                    defaultValue="ALL"
                     value={process}
-                    width={400}
-                    onChange={(e: { target: { value: string } }) => {
-                      patchUrlState({ process: e.target.value });
-                      refollow();
+                    comboboxProps={{ width: 400, position: "bottom-start" }}
+                    data={[
+                      { value: "ALL", label: t`All Metabase processes` },
+                      ...processUUIDs.map((uuid) => ({
+                        value: uuid,
+                        label: uuid,
+                      })),
+                    ]}
+                    renderOption={(item) => (
+                      <DefaultSelectItem
+                        {...item.option}
+                        selected={item.checked}
+                        label={
+                          item.option.value === "ALL" ? (
+                            item.option.label
+                          ) : (
+                            <code>{item.option.label}</code>
+                          )
+                        }
+                      />
+                    )}
+                    onChange={(value) => {
+                      if (value !== null) {
+                        patchUrlState({ process: value });
+                        refollow();
+                      }
                     }}
-                  >
-                    <Option
-                      value="ALL"
-                      key="ALL"
-                    >{t`All Metabase processes`}</Option>
-                    {processUUIDs.map((uuid) => (
-                      <Option key={uuid} value={uuid}>
-                        <code>{uuid}</code>
-                      </Option>
-                    ))}
-                  </Select>
+                  />
                 )}
               </Flex>
 

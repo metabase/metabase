@@ -1,13 +1,11 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import { Radio } from "metabase/common/components/Radio";
 import { useSetting } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
 } from "metabase/plugins";
+import { Box, Tabs } from "metabase/ui";
 
 import type { PermissionsPageTab } from "./PermissionsPageLayout";
 
@@ -27,20 +25,29 @@ export const PermissionsTabs = ({ tab, onChangeTab }: PermissionsTabsProps) => {
           tab.value !== "tenant-specific-collections",
       );
 
+  const tabs = [
+    { name: t`Data`, value: "data" },
+    { name: t`Collections`, value: "collections" },
+    ...adminPermissionsTabs,
+    ...PLUGIN_APPLICATION_PERMISSIONS.tabs,
+  ];
+
   return (
-    <div className={cx(CS.px3, CS.mt1)}>
-      <Radio
-        colorScheme="accent7"
+    <Box mt="sm">
+      <Tabs
+        listBorder={false}
         value={tab}
-        options={[
-          { name: t`Data`, value: "data" },
-          { name: t`Collections`, value: "collections" },
-          ...adminPermissionsTabs,
-          ...PLUGIN_APPLICATION_PERMISSIONS.tabs,
-        ]}
-        onOptionClick={onChangeTab}
-        variant="underlined"
-      />
-    </div>
+        // Unjustified type cast. FIXME
+        onChange={(value) => value && onChangeTab(value as PermissionsPageTab)}
+      >
+        <Tabs.List pl="xl">
+          {tabs.map((tabOption) => (
+            <Tabs.Tab key={tabOption.value} value={tabOption.value}>
+              {tabOption.name}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
+    </Box>
   );
 };

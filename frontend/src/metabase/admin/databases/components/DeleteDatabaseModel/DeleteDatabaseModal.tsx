@@ -1,11 +1,11 @@
 import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetDatabaseUsageInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
+import { push } from "metabase/router";
 import {
   Alert,
   Box,
@@ -188,13 +188,13 @@ export const DeleteDatabaseModal = ({
           </DeleteDatabaseModalSection>
           <Flex gap="sm" justify="flex-end" align="center">
             {errorMessage && (
-              <Box c="error" px="md">
+              <Box c="feedback-negative" px="md">
                 {errorMessage}
               </Box>
             )}
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
             <Button
-              color="error"
+              color="feedback-negative"
               variant="filled"
               type="submit"
               disabled={!canDelete}

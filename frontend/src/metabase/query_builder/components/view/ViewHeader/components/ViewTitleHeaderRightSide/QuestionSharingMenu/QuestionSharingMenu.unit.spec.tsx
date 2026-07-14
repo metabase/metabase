@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 
@@ -210,6 +211,38 @@ describe("QuestionSharingMenu", () => {
         });
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("invite to view", () => {
+    it("shows the invite item for admins", async () => {
+      await setupQuestionSharingMenu({ isAdmin: true });
+      await openMenu();
+      expect(
+        screen.getByText("Invite someone to view this"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the invite item for non-admins", async () => {
+      await setupQuestionSharingMenu({
+        isAdmin: false,
+        isPublicSharingEnabled: true,
+        hasPublicLink: true,
+      });
+      await openMenu();
+      expect(
+        screen.queryByText("Invite someone to view this"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the invite modal for the question", async () => {
+      fetchMock.get("path:/api/permissions/group", []);
+      await setupQuestionSharingMenu({ isAdmin: true });
+      await openMenu();
+      await userEvent.click(screen.getByText("Invite someone to view this"));
+      expect(
+        await screen.findByText("Invite someone to view this question"),
+      ).toBeInTheDocument();
     });
   });
 });

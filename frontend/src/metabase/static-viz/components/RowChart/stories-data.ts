@@ -17,6 +17,7 @@ export const renderingContext: RenderingContext = {
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
+// Unjustified type cast. FIXME
 export const MULTIPLE_SERIES: StaticChartProps = {
   rawSeries: [
     {
@@ -211,6 +212,7 @@ export const MULTIPLE_SERIES: StaticChartProps = {
   renderingContext,
 } as any;
 
+// Unjustified type cast. FIXME
 export const METRIC_COLUMN_WITH_SCALING: StaticChartProps = {
   rawSeries: [
     {

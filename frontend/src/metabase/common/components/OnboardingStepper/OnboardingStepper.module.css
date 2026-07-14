@@ -99,13 +99,13 @@
 .StepNumberIcon {
   width: 1rem;
   height: 1rem;
-  color: var(--mb-color-success);
+  color: var(--mb-color-feedback-positive);
 }
 
 .StepLockIcon {
   width: 0.75rem;
   height: 0.75rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 /* Step content with title (only shown when active) */

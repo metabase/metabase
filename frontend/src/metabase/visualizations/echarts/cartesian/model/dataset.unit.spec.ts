@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 
 import { createMockSeriesModel } from "__support__/echarts";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNumber } from "metabase/utils/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -600,6 +601,7 @@ describe("dataset transform functions", () => {
 
     describe("ordinal series", () => {
       it("should stringify x values if they're objects (metabase#52684)", () => {
+        // Unjustified type cast. FIXME
         const dataset = [
           {
             [X_AXIS_DATA_KEY]: null,
@@ -780,6 +782,54 @@ describe("dataset transform functions", () => {
         );
 
         expect(result).toHaveLength(dataset.length);
+      });
+
+      it("should replace the missing DST spring-forward week with zero (#71811)", () => {
+        const dstDataset = [
+          {
+            [X_AXIS_DATA_KEY]: "2026-03-01T00:00:00-05:00",
+            series1: 12,
+          },
+          {
+            [X_AXIS_DATA_KEY]: "2026-03-15T00:00:00-04:00",
+            series1: 10,
+          },
+        ];
+        const dstXAxisModel: TimeSeriesXAxisModel = {
+          ...xAxisModel,
+          intervalsCount: 2,
+          interval: {
+            count: 1,
+            unit: "week",
+          },
+          timezone: "America/New_York",
+          toEChartsAxisValue: (value) => {
+            return parseTimestamp(value)
+              .tz("America/New_York")
+              .format("YYYY-MM-DDTHH:mm:ss[Z]");
+          },
+        };
+
+        const result = applyVisualizationSettingsDataTransformations(
+          dstDataset,
+          [],
+          dstXAxisModel,
+          [createMockSeriesModel({ dataKey: "series1" })],
+          [],
+          yAxisScaleTransforms,
+          createMockComputedVisualizationSettings({
+            series: () => ({
+              "line.missing": "zero",
+            }),
+          }),
+        );
+
+        expect(result.map((datum) => datum[X_AXIS_DATA_KEY])).toEqual([
+          "2026-03-01T00:00:00Z",
+          "2026-03-08T00:00:00Z",
+          "2026-03-15T00:00:00Z",
+        ]);
+        expect(result.map((datum) => datum.series1)).toEqual([12, 0, 10]);
       });
     });
 

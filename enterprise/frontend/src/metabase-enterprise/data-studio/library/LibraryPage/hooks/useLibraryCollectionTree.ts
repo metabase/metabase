@@ -150,6 +150,7 @@ export function useLibraryCollectionTree(
           !isEmptyStateData(original.data) &&
           "id" in original.data
         ) {
+          // Unjustified type cast. FIXME
           loadCollectionItems(original.data.id as number);
         }
       }

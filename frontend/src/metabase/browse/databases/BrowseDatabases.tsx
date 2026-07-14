@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
@@ -6,6 +7,12 @@ import { BrowseAddDataButton } from "metabase/browse/components/BrowseAddDataBut
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Flex } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { getEngineLogo } from "metabase/databases/utils/engine";
+import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { BrowseCard } from "../components/BrowseCard";
@@ -75,3 +82,56 @@ export const BrowseDatabases = () => {
     </Flex>
   );
 };
+
+const CardImageWrapper = ({ database }: { database: string }) => {
+  return (
+    <Box
+      bg="core-white"
+      h="xl"
+      w="xl"
+      className={CS.rounded}
+      style={{
+        boxShadow:
+          // eslint-disable-next-line metabase/no-color-literals
+          "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.10)",
+      }}
+    >
+      <Box
+        component="img"
+        src={getEngineLogo(database)}
+        alt={t`${database} database logo`}
+        h="xl"
+        w="xl"
+        p="xs"
+      />
+    </Box>
+  );
+};
+
+const AddDatabaseCard = () => (
+  <Link to={newDatabase()} onClick={() => trackAddDatabaseDBList()}>
+    <Stack
+      h="8.5rem"
+      justify="space-between"
+      p="lg"
+      className={cx(CS.rounded, CS.bordered, DB.addCard)}
+    >
+      <Group gap="xs">
+        <CardImageWrapper database={"postgres"} />
+        <CardImageWrapper database={"mysql"} />
+        <CardImageWrapper database={"snowflake"} />
+      </Group>
+      <div>
+        <Title order={2} size="md" lh={1.2} c="inherit">
+          {t`Add a database`}
+        </Title>
+        <Text
+          color="inherit"
+          fz="sm"
+          lh={1}
+          span
+        >{t`20+ data connectors. Start exploring in minutes.`}</Text>
+      </div>
+    </Stack>
+  </Link>
+);

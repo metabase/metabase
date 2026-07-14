@@ -4,6 +4,7 @@ import { getThemeSpecificCssVariables } from "./css-variables";
 
 describe("getThemeSpecificCssVariables", () => {
   it("returns the correct CSS variables", () => {
+    // Unjustified type cast. FIXME
     const theme = {
       other: {
         dashboard: {

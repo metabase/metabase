@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { QueryButton } from "metabase/common/components/QueryButton";
 import D from "metabase/reference/components/Detail.module.css";
+import { QueryButton } from "metabase/reference/components/QueryButton";
 import type { IconName } from "metabase-types/api";
 
 import S from "./UsefulQuestions.module.css";

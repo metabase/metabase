@@ -16,6 +16,7 @@ import {
 import { Scalar } from "./Scalar";
 
 const series = (value: number | null = 1.23) =>
+  // Unjustified type cast. FIXME
   [
     {
       card: createMockCard({ display: "scalar" }),
@@ -23,6 +24,7 @@ const series = (value: number | null = 1.23) =>
     },
   ] as Series;
 
+// Unjustified type cast. FIXME
 const mockedProps = {} as ComponentProps<typeof Scalar>;
 
 const settings = {
@@ -141,8 +143,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("Field to show")).toBeInTheDocument();
 
     const getFieldSelect = async () =>
@@ -177,8 +179,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
 
     expect(
       screen.queryByTestId("chart-settings-widget-scalar.field"),

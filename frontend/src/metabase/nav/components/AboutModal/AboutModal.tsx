@@ -25,6 +25,7 @@ export const AboutModal = ({
   onClose,
   opened,
 }: Pick<ModalProps, "onClose" | "opened">) => {
+  // Unjustified type cast. FIXME
   const version = useSetting("version") as MetabaseInfo["version"];
   const applicationName = useSelector(getApplicationName);
   const { tag, date, ...versionExtra } = version;

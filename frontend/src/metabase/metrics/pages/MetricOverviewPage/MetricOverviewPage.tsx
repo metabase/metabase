@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -9,6 +8,7 @@ import type {
   MetricUrls,
 } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
+import { replace } from "metabase/router";
 import { Center } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 

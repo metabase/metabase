@@ -15,6 +15,7 @@ export function getDefaultEmbeddingParams(
     acc[slug] = "disabled";
 
     return acc;
+    // Unjustified type cast. FIXME
   }, {} as EmbeddingParameters);
 
   const resourceEmbeddingParams = {

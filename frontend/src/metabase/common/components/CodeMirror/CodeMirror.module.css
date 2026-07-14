@@ -39,7 +39,7 @@
     .cm-gutterElement {
       font-weight: bold;
       font-size: 10px;
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       vertical-align: baseline;
       display: flex;
       align-items: center;
@@ -56,7 +56,7 @@
     }
 
     .cm-selectionBackground {
-      background: var(--mb-color-focus) !important;
+      background: var(--mb-color-input-focus) !important;
       border-radius: 1px;
     }
 
@@ -76,7 +76,7 @@
 
     .cm-matchingBracket {
       background: none !important;
-      outline: 0.5px solid var(--mb-color-text-tertiary);
+      outline: 0.5px solid var(--mb-color-text-disabled);
       border-radius: 2px;
     }
 
@@ -92,7 +92,7 @@
     }
 
     .cm-completionDetail {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       font-style: normal;
       text-align: right;
       overflow: hidden;

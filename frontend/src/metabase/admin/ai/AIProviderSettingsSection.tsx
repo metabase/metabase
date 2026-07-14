@@ -39,9 +39,8 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
           <Group gap="xs" wrap="nowrap">
             {connectedProvider && (
               <Badge
-                circle
-                size="12"
-                bg={hasCredentialsError ? "error" : "success"}
+                color={hasCredentialsError ? "negative" : "positive"}
+                indicator
                 mr="sm"
               />
             )}

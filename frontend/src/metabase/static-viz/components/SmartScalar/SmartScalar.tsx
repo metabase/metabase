@@ -25,6 +25,7 @@ export function SmartScalar({
   if (error || !trend) {
     throw new Error(
       `Failed to compute trend data for ${card.name}\: ${
+        // Unjustified type cast. FIXME
         (error as { message: string }).message
       }`,
     );
@@ -106,7 +107,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       marginRight: "6px",
     },
     percentChange: {
-      color: comparison.changeColor || getColor("text-tertiary"),
+      color: comparison.changeColor || getColor("text-disabled"),
       fontWeight: 900,
       marginRight: 4,
     },
@@ -115,7 +116,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       fontWeight: 700,
     },
     comparisonValue: {
-      color: getColor("text-tertiary"),
+      color: getColor("text-disabled"),
       fontWeight: 700,
     },
   };

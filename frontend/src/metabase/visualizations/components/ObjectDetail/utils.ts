@@ -43,6 +43,7 @@ export const getObjectName = ({
   const entityNameColumn = cols && cols?.findIndex(isEntityName);
 
   if (zoomedRow?.length && zoomedRow[entityNameColumn]) {
+    // Unjustified type cast. FIXME
     return zoomedRow[entityNameColumn] as string;
   }
 
@@ -82,6 +83,7 @@ export const getDisplayId = ({
     const pkColumn = cols[pkColumnIndex];
     const columnSetting = settings?.column?.(pkColumn) ?? {};
 
+    // Unjustified type cast. FIXME
     return formatValue(zoomedRow[pkColumnIndex], {
       ...columnSetting,
       column: pkColumn,
@@ -98,6 +100,7 @@ export const getDisplayId = ({
   const defaultColumn = cols[0];
   const columnSetting = settings?.column?.(defaultColumn) ?? {};
 
+  // Unjustified type cast. FIXME
   return formatValue(zoomedRow[0], {
     ...columnSetting,
     column: defaultColumn,
@@ -119,6 +122,7 @@ export const getIdValue = ({
 
   const { cols, rows } = data;
   const columnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
+  // Unjustified type cast. FIXME
   return rows[0][columnIndex] as number;
 };
 
@@ -192,6 +196,7 @@ export function getApiTable(
     return undefined;
   }
 
+  // Unjustified type cast. FIXME
   const apiTable: ApiTable = {
     ...table.getPlainObject(),
     fields: table.original_fields,

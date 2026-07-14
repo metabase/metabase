@@ -56,6 +56,7 @@ describe("getDataSourceParts", () => {
       formatTableAsComponent: false,
     });
     expect(parts).toHaveLength(2);
+    // Unjustified type cast. FIXME
     const partsArray = parts as any[];
     expect(partsArray[0]).toEqual({
       icon: "database",
@@ -77,6 +78,7 @@ describe("getDataSourceParts", () => {
       formatTableAsComponent: true,
     });
     expect(parts).toHaveLength(2);
+    // Unjustified type cast. FIXME
     const partsArray = parts as any[];
     expect(partsArray[0]).toEqual({
       icon: "database",

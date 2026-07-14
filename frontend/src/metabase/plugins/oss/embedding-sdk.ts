@@ -1,15 +1,14 @@
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
+import type { OnBeforeRequestHandler } from "metabase/api/client";
+
+const noop: OnBeforeRequestHandler = async () => {};
 
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,
   onBeforeRequestHandlers: {
-    getOrRefreshSessionHandler: async () => {},
-    getOrRefreshGuestSessionHandler: async (
-      _data: OnBeforeRequestHandlerConfig,
-    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
-    overrideRequestsForGuestEmbeds: async (
-      _data: OnBeforeRequestHandlerConfig,
-    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
+    getOrRefreshSessionHandler: noop,
+    getOrRefreshGuestSessionHandler: noop,
+    overrideRequestsForGuestEmbeds: noop,
+    reactSdkEmbedReferrer: noop,
   },
 });
 

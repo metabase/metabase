@@ -32,11 +32,7 @@ const responseHasCodeEdit = (action: SubmitInputResult) => {
   return (
     isFulfilled(action) &&
     action.payload.data?.processedResponse.data.some(
-      (dp) =>
-        typeof dp === "object" &&
-        dp !== null &&
-        "type" in dp &&
-        (dp as { type: string }).type === "code_edit",
+      (dp) => dp.type === "data-code_edit",
     )
   );
 };

@@ -5,9 +5,10 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
+import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -112,6 +113,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
 
+  const isTransformsSetupComplete = useSetting("transforms-setup-complete");
+  const areTransformsEnabled = useSetting("transforms-enabled");
+
+  const canUseTransforms = canAccessTransforms && areTransformsEnabled;
+  // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
+  const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
+
+  const settings = useDataStudioSettings();
+
   const currentTab = getCurrentTab(pathname);
 
   return (
@@ -176,7 +186,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
             isGated={!hasDependenciesFeature}
           />
-          {canAccessTransforms && (
+          {shouldShowTransforms && (
             <DataStudioTab
               label={t`Transforms`}
               icon="transform"
@@ -224,7 +234,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {canAccessTransforms && (
+          {canUseTransforms && (
             <DataStudioTab
               label={t`Jobs`}
               icon="clock"
@@ -233,12 +243,21 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {canAccessTransforms && (
+          {canUseTransforms && (
             <DataStudioTab
               label={t`Runs`}
               icon="play_outlined"
               to={Urls.transformRunList()}
               isSelected={currentTab === "runs"}
+              showLabel={isNavbarOpened}
+            />
+          )}
+          {settings.length > 0 && (
+            <DataStudioTab
+              label={t`Settings`}
+              icon="gear"
+              to={Urls.dataStudioSettings()}
+              isSelected={currentTab === "settings"}
               showLabel={isNavbarOpened}
             />
           )}

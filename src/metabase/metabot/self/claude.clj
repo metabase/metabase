@@ -51,6 +51,12 @@
    :cacheCreationTokens (:cache_creation_input_tokens u 0)
    :cacheReadTokens     (:cache_read_input_tokens u 0)})
 
+(def ^:private translated-chunk-type?
+  "Claude content-block types we translate into AI SDK chunks. Other block types
+  (e.g. `thinking`/`redacted_thinking` from extended or adaptive thinking) are
+  ignored, mirroring the OpenAI adapter's handling of reasoning output."
+  #{:text :tool_use})
+
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
 
@@ -82,10 +88,14 @@
           ;; usage in the completion arity so we don't lose data entirely.
           last-usage   (volatile! nil)
           close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text     :text-end
-                                                             :tool_use :tool-input-available)}
-                                                    @payload))
+                         ;; only emit an end marker for block types we translate; thinking and
+                         ;; other untranslated blocks are ignored.
+                         (u/prog1 (if-let [end-type (case @current-type
+                                                      :text     :text-end
+                                                      :tool_use :tool-input-available
+                                                      nil)]
+                                    (rf result (merge {:type end-type} @payload))
+                                    result)
                            (vreset! current-type nil)
                            (vreset! current-id nil)
                            (vreset! payload {})))]
@@ -100,10 +110,10 @@
                               :id    @message-id
                               :model @model-name})
            true          (rf)))
-        ([result {t :type :keys [message content_block delta error] :as chunk}]
+        ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
                             (keyword (:type content_block)))
-               chunk-id   (or (:id content_block) @current-id (core/mkid))]
+               chunk-id   (or (:id content_block) @current-id (some-> index str) (core/mkid))]
            (cond-> result
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
@@ -121,19 +131,24 @@
                                                           :tool_use {:toolCallId chunk-id
                                                                      :toolName   (:name content_block)}
                                                           nil)))
-                                             (rf (merge (case block-type
-                                                          :text     {:type :text-start}
-                                                          :tool_use {:type :tool-input-start})
-                                                        @payload)))
+                                             (cond->
+                                              (translated-chunk-type? block-type)
+                                               (rf (merge (case block-type
+                                                            :text     {:type :text-start}
+                                                            :tool_use {:type :tool-input-start})
+                                                          @payload))))
 
-             ;; content block delta
-             (= t "content_block_delta") (rf (case (:type delta)
-                                               "text_delta"       {:type  :text-delta
-                                                                   :id    (:id @payload)
-                                                                   :delta (:text delta)}
-                                               "input_json_delta" {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:partial_json delta)}))
+             ;; content block delta — ignore deltas for blocks we don't translate
+             ;; (e.g. thinking_delta / signature_delta from extended thinking)
+             (and (= t "content_block_delta")
+                  (contains? #{"text_delta" "input_json_delta"} (:type delta)))
+             (rf (case (:type delta)
+                   "text_delta"       {:type  :text-delta
+                                       :id    (:id @payload)
+                                       :delta (:text delta)}
+                   "input_json_delta" {:type           :tool-input-delta
+                                       :toolCallId     (:toolCallId @payload)
+                                       :inputTextDelta (:partial_json delta)}))
 
              ;; end of content block
              (= t "content_block_stop") (close!)
@@ -237,7 +252,7 @@
   by other provider adapters."
   "<<<METABOT_CACHE_BREAKPOINT>>>")
 
-(defn- system->cached-content-blocks
+(defn system->cached-content-blocks
   "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
 
   If `system` contains the cache breakpoint sentinel, split it into two content
@@ -274,42 +289,69 @@
       529 (tru "Anthropic API is overloaded and is asking us to wait")
       (tru "Anthropic API error (HTTP {0})" status))))
 
+(def ^:private supported-models
+  "Anthropic chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"claude-fable-5"             "Claude Fable 5"
+   "claude-opus-4-8"            "Claude Opus 4.8"
+   "claude-opus-4-7"            "Claude Opus 4.7"
+   "claude-opus-4-6"            "Claude Opus 4.6"
+   "claude-opus-4-5-20251101"   "Claude Opus 4.5"
+   "claude-opus-4-1-20250805"   "Claude Opus 4.1"
+   "claude-sonnet-5"            "Claude Sonnet 5"
+   "claude-sonnet-4-6"          "Claude Sonnet 4.6"
+   "claude-sonnet-4-5-20250929" "Claude Sonnet 4.5"
+   "claude-haiku-4-5-20251001"  "Claude Haiku 4.5"})
+
+(defn- supported-model?
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
+  [{:keys [id]}]
+  (contains? supported-models id))
+
+(defn- list-all-models
+  "Fetch the full Anthropic model catalog (`GET /v1/models`).
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  [{:keys [credentials ai-proxy?]}]
+  (try
+    (let [auth (core/resolve-auth "anthropic" "Anthropic"
+                                  (when-let [k (or (not-empty (:api-key credentials))
+                                                   (not-empty (llm/llm-anthropic-api-key)))]
+                                    {:url     (llm/llm-anthropic-api-base-url)
+                                     :headers {"x-api-key" k}})
+                                  ai-proxy?)
+          res  (core/request auth {:method  :get
+                                   :url     "/v1/models"
+                                   :headers {"anthropic-version" "2023-06-01"}})]
+      (:data (json/decode+kw (:body res))))
+    (catch Exception e
+      (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))
+
 (defn list-models
-  "List available Anthropic models.
+  "List the Anthropic chat models supported by this adapter (see [[supported-models]]).
   No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy?]}]
-   (when (and credentials (str/blank? (:api-key credentials)))
-     (throw (core/missing-api-key-ex "Anthropic")))
-   (try
-     (let [auth   (core/resolve-auth "anthropic" "Anthropic"
-                                     (when-let [k (or (not-empty (:api-key credentials))
-                                                      (not-empty (llm/llm-anthropic-api-key)))]
-                                       {:url     (llm/llm-anthropic-api-base-url)
-                                        :headers {"x-api-key" k}})
-                                     ai-proxy?)
-           res    (core/request auth {:method  :get
-                                      :url     "/v1/models"
-                                      :headers {"anthropic-version" "2023-06-01"}})
-           body   (json/decode+kw (:body res))
-           models (reverse (sort-by :created_at (:data body)))]
-       {:models (map #(select-keys % [:id :display_name]) models)})
-     (catch Exception e
-       (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
+  ([opts]
+   {:models (->> (list-all-models opts)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id display_name]}]
+                         {:id id :display_name (or display_name (supported-models id))})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
 
-  Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7.  Strips an
-  optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
+  Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7 and Sonnet 5.
+  Strips an optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
   [model]
   (let [model (str/replace-first (str model) #"^anthropic\." "")]
     (not (or (str/starts-with? model "claude-fable")
-             (when-let [[_ major minor] (re-find #"^claude-opus-(\d+)(?:-(\d+))?" model)]
+             (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:-(\d+))?" model)]
                (let [major (parse-long major)
                      minor (or (some-> minor parse-long) 0)]
-                 (or (> major 4)
-                     (and (= major 4) (>= minor 7)))))))))
+                 (case family
+                   "opus"   (or (> major 4)
+                                (and (= major 4) (>= minor 7)))
+                   "sonnet" (>= major 5))))))))
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."

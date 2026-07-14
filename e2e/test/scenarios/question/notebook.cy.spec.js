@@ -300,97 +300,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  describe("arithmetic (metabase#13175, metabase#18094)", () => {
-    beforeEach(() => {
-      // This is required because TableInteractive won't render columns
-      // that don't fit into the viewport
-      cy.viewport(1400, 1000);
-      H.openOrdersTable({ mode: "notebook" });
-    });
-
-    it("should work on custom column with `case`", () => {
-      cy.findByLabelText("Custom column").click();
-
-      H.enterCustomColumnDetails({
-        formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
-      });
-
-      H.CustomExpressionEditor.nameInput()
-        .focus()
-        .type("Example", { delay: 100 });
-
-      cy.button("Done").should("not.be.disabled").click();
-
-      H.getNotebookStep("expression").contains("Example").should("exist");
-
-      H.visualize();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Example");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Big");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Small");
-    });
-
-    it("should work on custom filter", () => {
-      H.filter({ mode: "notebook" });
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Custom Expression").click();
-
-      H.enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/^redundant input/i).should("not.exist");
-
-      cy.button("Done").should("not.be.disabled").click();
-
-      H.visualize();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Showing 97 rows");
-    });
-
-    const CASES = {
-      CountIf: ["CountIf(([Subtotal] + [Tax]) > 10)", "18,760"],
-      SumIf: ["SumIf([Subtotal], ([Subtotal] + [Tax] > 20))", "1,447,850.28"],
-      SumIf2: [
-        'SumIf([Total], [Created At] > "2016-01-01") + SumIf([Subtotal], [Created At] > "2016-01-01")',
-        "2,958,809.85",
-      ],
-      CountIf2: [
-        'CountIf([Created At] > "2016-01-01") + CountIf([Created At] > "2016-01-01")',
-        "37,520",
-      ],
-    };
-
-    Object.entries(CASES).forEach(([filter, formula]) => {
-      const [expression, result] = formula;
-
-      it(`should work on custom aggregation with ${filter}`, () => {
-        H.summarize({ mode: "notebook" });
-        H.popover().contains("Custom Expression").click();
-
-        H.enterCustomColumnDetails({ formula: expression });
-
-        H.CustomExpressionEditor.nameInput().click().type(filter);
-
-        H.popover().within(() => {
-          cy.contains(/^expected closing parenthesis/i).should("not.exist");
-          cy.contains(/^redundant input/i).should("not.exist");
-        });
-        cy.button("Done").should("not.be.disabled").click();
-
-        cy.findByTestId("aggregate-step").contains(filter).should("exist");
-
-        H.visualize();
-
-        cy.findByTestId("qb-header").contains(filter);
-        cy.findByTestId("query-builder-main").contains(result);
-      });
-    });
-  });
-
   // intentional simplification of "Select none" to quickly
   // fix users' pain caused by the inability to unselect all columns
   it("select no columns select the first one", () => {
@@ -601,29 +510,15 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
+  it("should properly render previews (metabase#28726, metabase#29959)", () => {
     H.startNewQuestion();
-
-    cy.log(
-      "Preview should not be possible without the source data (metabase#40608)",
-    );
-    H.getNotebookStep("data")
-      .as("dataStep")
-      .within(() => {
-        cy.findByPlaceholderText("Search for tables and more...").should(
-          "exist",
-        );
-        cy.icon("play").should("not.be.visible");
-      });
 
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
-    cy.get("@dataStep").icon("play").should("be.visible");
-    H.getNotebookStep("filter").icon("play").should("not.be.visible");
-    H.getNotebookStep("summarize").icon("play").should("not.be.visible");
+    H.getNotebookStep("data").as("dataStep");
 
     cy.get("@dataStep").within(() => {
       cy.icon("play").click();

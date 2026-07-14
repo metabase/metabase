@@ -114,7 +114,7 @@ export const CollectionSyncList = ({
   }
 
   if (error) {
-    return <Text c="error">{error}</Text>;
+    return <Text c="feedback-negative">{error}</Text>;
   }
 
   if (!syncRows.length) {

@@ -365,7 +365,7 @@ export function SchemaViewer({
               pt="xl"
               data-testid="schema-viewer-empty-state"
             >
-              <Text c="text-tertiary">{t`No schema selected`}</Text>
+              <Text c="text-disabled">{t`No schema selected`}</Text>
             </Stack>
           </Panel>
         )}

@@ -168,6 +168,7 @@ export const DatabaseReplicationForm = ({
                 label={t`Select schemas to replicate`}
                 onChange={(value) =>
                   setSchemaFiltersType(
+                    // Unjustified type cast. FIXME
                     value as typeof initialValues.schemaFiltersType,
                   )
                 }
@@ -194,7 +195,7 @@ export const DatabaseReplicationForm = ({
                     }
                   />
                   {previewResponse?.errors?.invalidSchemaFiltersPattern && (
-                    <Text c="error" fz="sm" mt="xs">
+                    <Text c="feedback-negative" fz="sm" mt="xs">
                       {t`Invalid schema filters pattern`}
                     </Text>
                   )}
@@ -281,7 +282,7 @@ export const DatabaseReplicationForm = ({
                               <Text span c="text-secondary" display="inline">
                                 .{table.tableName}
                               </Text>{" "}
-                              <Text span c="text-tertiary" display="inline">
+                              <Text span c="text-disabled" display="inline">
                                 {noSyncReason(table)}
                               </Text>
                             </Text>
@@ -395,7 +396,7 @@ export const DatabaseReplicationForm = ({
                 <Stack>
                   <Group justify="space-between">
                     <Box ta="left">
-                      <Text c="text-tertiary">{database.name}</Text>
+                      <Text c="text-disabled">{database.name}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.totalEstimatedRowCount ===
                         "number" ? (
@@ -410,7 +411,7 @@ export const DatabaseReplicationForm = ({
                     {previewResponseLoading && <Loader />}
 
                     <Box ta="right">
-                      <Text c="text-tertiary">{t`Available Cloud Storage`}</Text>
+                      <Text c="text-disabled">{t`Available Cloud Storage`}</Text>
                       {!previewResponseLoading &&
                       typeof previewResponse?.freeQuota === "number" ? (
                         <Text fw="bold" w="100%">

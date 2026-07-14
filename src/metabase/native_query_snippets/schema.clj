@@ -12,4 +12,5 @@
    [:content :string]
    [:description {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
+   ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
    [:template_tags [:ref ::lib.schema.template-tag/template-tag-map]]])

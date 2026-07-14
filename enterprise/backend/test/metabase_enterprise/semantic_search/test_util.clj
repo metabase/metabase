@@ -52,6 +52,11 @@
 (defn do-with-temp-datasource!
   "Impl [[with-temp-datasource]]."
   [db-name thunk]
+  ;; with no URL the redef'd nil db-url could resolve to :app-db mode and hand back the application
+  ;; pool — the dedicated harness (which DROPs/CREATEs databases) must never point at the app db.
+  ;; unconditional (not assert): this guards destructive setup, and asserts can be elided
+  (when (str/blank? (:mb-pgvector-db-url env))
+    (throw (ex-info "with-temp-datasource! requires the dedicated-harness MB_PGVECTOR_DB_URL" {})))
   (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
                 semantic.db.datasource/data-source (atom nil)]
     (try
@@ -309,6 +314,7 @@
 (defmethod semantic.embedding/get-embedding        "mock" [_ text & {:as _opts}] (get-mock-embedding text))
 (defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts & {:as _opts}] (get-mock-embeddings-batch texts))
 (defmethod semantic.embedding/pull-model           "mock" [_])
+(defmethod semantic.embedding/embedding-supported? "mock" [_] true)
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-index [search-context]
@@ -558,7 +564,7 @@
     (semantic.index/drop-index-table! pgvector {:table-name table_name})
     (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))
   (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
-  (semantic.db.migration/drop-migration-table! pgvector))
+  (semantic.db.migration/drop-migration-table! index-metadata pgvector))
 
 (defn get-table-names [pgvector]
   (->> ["select table_name from information_schema.tables"]

@@ -62,15 +62,19 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
   setupTableEndpoints(PRODUCTS_TABLE, [
     {
       origin: ordersProductId,
+      // Unjustified type cast. FIXME
       origin_id: ordersProductId.id as number,
       destination: productsId,
+      // Unjustified type cast. FIXME
       destination_id: productsId.id as number,
       relationship: "Mt1",
     },
     {
       origin: reviewsProductId,
+      // Unjustified type cast. FIXME
       origin_id: reviewsProductId.id as number,
       destination: productsId,
+      // Unjustified type cast. FIXME
       destination_id: productsId.id as number,
       relationship: "Mt1",
     },
@@ -96,6 +100,7 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
           },
         },
       }),
+      // Unjustified type cast. FIXME
       zoomedRowObjectId: testDataset.rows[0][ROW_ID_INDEX] as string,
       queryResults: [
         createMockDataset({

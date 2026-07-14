@@ -156,8 +156,6 @@ function BoxPlotInner({
       ...getBoxPlotOption(
         chartModel,
         layoutModel,
-        null,
-        [],
         settings,
         shouldAnimate,
         renderingContext,
