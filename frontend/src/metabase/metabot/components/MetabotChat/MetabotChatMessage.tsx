@@ -100,12 +100,14 @@ export const MessageContainer = ({
 
 interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotUserChatMessage;
+  extraActions?: ReactNode;
 }
 
 export const UserMessage = ({
   message,
   className,
   hideActions,
+  extraActions,
   ...props
 }: UserMessageProps) => {
   const clipboard = useClipboard({ timeout: 2000 });
@@ -133,6 +135,7 @@ export const UserMessage = ({
             </ActionIcon>
           </Tooltip>
         )}
+        {extraActions}
       </Flex>
     </MessageContainer>
   );
@@ -430,7 +433,7 @@ export const Messages = ({
   debug,
   readonly = false,
   onInternalLinkClick,
-  getExtraAgentActions,
+  getExtraActions,
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
@@ -438,7 +441,7 @@ export const Messages = ({
   debug: boolean;
   readonly?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
-  getExtraAgentActions?: (messageId: string) => ReactNode;
+  getExtraActions?: (messageId: string) => ReactNode;
 }) => {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
@@ -515,7 +518,7 @@ export const Messages = ({
                 : undefined
             }
             hideActions={next?.role === "agent" || (isDoingScience && !next)}
-            extraActions={getExtraAgentActions?.(message.id)}
+            extraActions={getExtraActions?.(message.id)}
             onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
@@ -524,6 +527,7 @@ export const Messages = ({
             data-testid="metabot-chat-message"
             message={message}
             hideActions={isDoingScience && visibleMessages.length === index + 1}
+            extraActions={getExtraActions?.(message.id)}
           />
         );
       })}

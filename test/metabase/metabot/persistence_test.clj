@@ -172,6 +172,42 @@
     (is (= ["text" "text"] (map :type messages)))
     (is (false? (:finished (second messages))))))
 
+(deftest ^:parallel messages->flat-messages-keeps-rewound-errored-turn-test
+  (let [deleted-at (t/offset-date-time)
+        rows       [{:id 1 :role :user :external_id "u1" :deleted_at deleted-at
+                     :data [{:type "text" :text "revenue"}]}
+                    {:id 2 :role :assistant :external_id "a1" :deleted_at deleted-at
+                     :finished true :error "{\"message\":\"boom\"}" :data []}
+                    {:id 3 :role :user :external_id "u2" :data [{:type "text" :text "orders"}]}
+                    {:id 4 :role :assistant :external_id "a2" :finished true
+                     :data [{:type "text" :text "here"}]}]]
+    (testing "with :include-rewound-errors? the rewound errored turn shows its prompt and error,
+              threaded as a dead branch the live follow-up does not descend from"
+      (let [messages (metabot-persistence/messages->flat-messages rows {:include-rewound-errors? true})
+            by-text  #(u/seek (fn [m] (= % (:message m))) messages)]
+        (is (= ["revenue" "" "orders" "here"] (map :message messages)))
+        (is (some (fn [m] (and (= "agent" (:role m)) (some? (:error m)))) messages)
+            "the errored reply's error survives")
+        (is (nil? (:parent_message_id (by-text "orders")))
+            "the live follow-up parents onto the root, not the rewound errored turn")))
+    (testing "by default the rewound errored turn is dropped"
+      (is (= ["orders" "here"]
+             (map :message (metabot-persistence/messages->flat-messages rows)))))))
+
+(deftest ^:parallel messages->flat-messages-drops-cleanly-superseded-turn-test
+  (testing "even with :include-rewound-errors?, a soft-deleted prompt with no error is dropped"
+    (let [deleted-at (t/offset-date-time)
+          messages   (metabot-persistence/messages->flat-messages
+                      [{:id 1 :role :user :external_id "u1" :deleted_at deleted-at
+                        :data [{:type "text" :text "stale-prompt"}]}
+                       {:id 2 :role :assistant :external_id "a1" :deleted_at deleted-at
+                        :finished true :data [{:type "text" :text "stale-reply"}]}
+                       {:id 3 :role :user :external_id "u2" :data [{:type "text" :text "orders"}]}
+                       {:id 4 :role :assistant :external_id "a2" :finished true
+                        :data [{:type "text" :text "here"}]}]
+                      {:include-rewound-errors? true})]
+      (is (= ["orders" "here"] (map :message messages))))))
+
 (deftest start-turn-persists-slack-conversation-metadata-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [conversation-id (str (random-uuid))

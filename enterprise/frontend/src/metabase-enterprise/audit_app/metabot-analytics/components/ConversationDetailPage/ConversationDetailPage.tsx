@@ -66,7 +66,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     [conversation?.messages],
   );
 
-  const { messages, getExtraAgentActions } = useBranchableMessages(
+  const { messages, getExtraActions } = useBranchableMessages(
     conversationMessages,
     { isSlack },
   );
@@ -139,7 +139,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           <Card withBorder shadow="none" p="xl">
             <Messages
               messages={messages}
-              getExtraAgentActions={getExtraAgentActions}
+              getExtraActions={getExtraActions}
               isDoingScience={false}
               debug
               readonly

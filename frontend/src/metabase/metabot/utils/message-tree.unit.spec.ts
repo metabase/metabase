@@ -99,4 +99,72 @@ describe("activeResponses", () => {
     });
     expect(followUp.messages[0].id).toBe("u2");
   });
+
+  describe("user-prompt branches (rewound errored turn)", () => {
+    const rewoundAtRoot = [
+      user("uErr", null),
+      agent("aErr", "uErr"),
+      user("uLive", null),
+      agent("aLive", "uLive"),
+    ];
+
+    it("defaults to the newest root prompt and marks it with a branch on the prompt", () => {
+      const [prompt, reply] = activeResponses(
+        rewoundAtRoot,
+        {},
+        { isSlack: false },
+      );
+
+      expect(prompt.messages.map(({ id }) => id)).toEqual(["uLive"]);
+      expect(prompt.branch).toEqual({
+        parentId: "__root__",
+        currentIndex: 1,
+        replyIds: ["uErr", "uLive"],
+      });
+      expect(reply.messages.map(({ id }) => id)).toEqual(["aLive"]);
+    });
+
+    it("follows a selected older root prompt to reveal the rewound errored turn", () => {
+      const responses = activeResponses(
+        rewoundAtRoot,
+        { __root__: "uErr" },
+        { isSlack: false },
+      );
+
+      expect(
+        responses.flatMap(({ messages }) => messages.map(({ id }) => id)),
+      ).toEqual(["uErr", "aErr"]);
+    });
+
+    it("branches user prompts mid-thread too", () => {
+      const messages = [
+        user("u1", null),
+        agent("a1", "u1"),
+        user("uErr", "a1"),
+        agent("aErr", "uErr"),
+        user("uLive", "a1"),
+        agent("aLive", "uLive"),
+      ];
+
+      const promptResponse = activeResponses(
+        messages,
+        {},
+        { isSlack: false },
+      ).find(({ messages }) => messages[0]?.id === "uLive");
+      expect(promptResponse?.branch).toEqual({
+        parentId: "a1",
+        currentIndex: 1,
+        replyIds: ["uErr", "uLive"],
+      });
+
+      const selected = activeResponses(
+        messages,
+        { a1: "uErr" },
+        { isSlack: false },
+      );
+      expect(
+        selected.flatMap(({ messages }) => messages.map(({ id }) => id)),
+      ).toEqual(["u1", "a1", "uErr", "aErr"]);
+    });
+  });
 });

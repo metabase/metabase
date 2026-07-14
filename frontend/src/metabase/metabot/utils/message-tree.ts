@@ -13,6 +13,8 @@ type BranchIndex = Map<string | null, ParentedChatMessage[]>;
 
 type SelectedReplyByParentId = Record<string, string>;
 
+const ROOT_KEY = "__root__";
+
 type ResponseBranch = {
   parentId: string;
   currentIndex: number;
@@ -51,7 +53,7 @@ function activePath(
     }
 
     const selectedId: string | undefined =
-      parentId === null ? undefined : selectedReplyByParentId[parentId];
+      selectedReplyByParentId[parentId ?? ROOT_KEY];
     // Siblings arrive oldest first; default to the newest.
     const node: ParentedChatMessage =
       siblings.find(({ id }) => id === selectedId) ??
@@ -94,18 +96,13 @@ function branchAt(
   response: ParentedChatMessage[],
 ): ResponseBranch | null {
   const head = response[0];
-  const parentId = head.parent_message_id;
-  if (head.role !== "agent" || parentId === null) {
-    return null;
-  }
-
   const siblings = index.get(head.parent_message_id) ?? [];
   if (siblings.length < 2) {
     return null;
   }
 
   return {
-    parentId,
+    parentId: head.parent_message_id ?? ROOT_KEY,
     currentIndex: siblings.findIndex(({ id }) => id === head.id),
     replyIds: siblings.map(({ id }) => id),
   };

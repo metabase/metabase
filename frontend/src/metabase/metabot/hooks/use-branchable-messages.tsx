@@ -14,7 +14,7 @@ export function useBranchableMessages(
   { isSlack = false }: { isSlack?: boolean } = {},
 ): {
   messages: MetabotChatMessage[];
-  getExtraAgentActions: (messageId: string) => ReactNode;
+  getExtraActions: (messageId: string) => ReactNode;
 } {
   const [selectedReplyByParentId, setSelectedReplyByParentId] = useState<
     Record<string, string>
@@ -33,7 +33,7 @@ export function useBranchableMessages(
 
     return {
       messages: responses.flatMap(({ messages }) => messages),
-      getExtraAgentActions: (messageId: string) => branchPickers[messageId],
+      getExtraActions: (messageId: string) => branchPickers[messageId],
     };
   }, [sourceMessages, selectedReplyByParentId, isSlack]);
 }
