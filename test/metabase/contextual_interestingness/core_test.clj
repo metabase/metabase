@@ -21,8 +21,12 @@
                    :display_name "Revenue"}}})
 
 (defn- with-llm-configured! [thunk]
+  ;; the LLM gate checks usage limits and user permissions in addition to the settings,
+  ;; so stub all four for tests that want the gate open.
   (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                metabot.settings/llm-metabot-configured? (constantly true)]
+                metabot.settings/llm-metabot-configured? (constantly true)
+                usage/check-usage-limits!                (constantly nil)
+                scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
     (thunk)))
 
 (defn- call

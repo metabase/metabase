@@ -51,11 +51,11 @@
     :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
     :thinking    - Provider-specific extended-thinking config. For Anthropic,
                    either of:
-                     - `{:type \"enabled\" :budget_tokens <int>}` (Sonnet 4.6 and
-                       earlier)
-                     - `{:type \"adaptive\" :effort \"high|medium|low\"}` (Opus
-                       4.7+; `:effort` is forwarded as
-                       `output_config.effort`)
+                     - `{:type \"enabled\" :budget_tokens <int>}` (explicit
+                       budget; rejected by adaptive-only models such as Opus
+                       4.7+)
+                     - `{:type \"adaptive\" :effort \"high|medium|low\"}`
+                       (`:effort` is forwarded as `output_config.effort`)
                    The Claude adapter normalizes whichever shape is given into
                    what the target model accepts (adaptive-only models reject
                    `budget_tokens`), so callers express intent rather than the

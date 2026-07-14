@@ -8,7 +8,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
-   (java.net URL)
+   (java.net MalformedURLException URL)
    (software.amazon.awssdk.regions Region)))
 
 (set! *warn-on-reflection* true)
@@ -41,9 +41,13 @@
   for blank URLs (so the normal not-configured handling still runs)."
   [url]
   (when (and config/is-e2e? (not (str/blank? url)))
-    (let [host (u/lower-case-en (.getHost (URL. ^String url)))]
-      (when-not (contains? loopback-hosts host)
-        (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." host)
+    (let [host (try
+                 (u/lower-case-en (.getHost (URL. ^String url)))
+                 ;; A malformed URL can't be verified as localhost — treat it as
+                 ;; not allowed (fail closed) rather than throwing raw.
+                 (catch MalformedURLException _ nil))]
+      (when-not (and host (contains? loopback-hosts host))
+        (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." (or host url))
                         {:status-code 400
                          :llm-url     url}))))))
 
