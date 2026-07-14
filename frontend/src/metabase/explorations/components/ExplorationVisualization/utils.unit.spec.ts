@@ -1,5 +1,5 @@
 import { createQuery } from "metabase/explorations/test-utils";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Dataset,
   ExplorationQuery,
