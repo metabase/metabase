@@ -146,8 +146,8 @@
     ;; falsely fresh -- coverage carries the "index empty" signal in that window.
     ;;
     ;; reconciled_at is added lazily -- ensure-tables! ALTERs it in on the first reconcile -- so an index
-    ;; built before the column existed lacks it until then. Read defensively: a missing column reads as N/A
-    ;; (skip), not a spurious degraded row; availability is the :nlq-retrieval check's job.
+    ;; built before the column existed lacks it until then, and only that case reads as N/A (skip). Any other
+    ;; SQL error propagates to run-measure!'s error path instead of hiding as N/A.
     (try
       (let [{:keys [age]} (jdbc/execute-one! ds
                                              [(format "SELECT EXTRACT(EPOCH FROM (now() - reconciled_at)) AS age FROM \"%s\" WHERE id = 1"
@@ -157,9 +157,11 @@
           (semantic.health/staleness-result
            age staleness-warn-seconds staleness-critical-seconds
            "Membership/name changes not hooked are caught by the ~15m full reconcile.")))
-      (catch Throwable e
-        (log/debug e "NLQ staleness metric skipped (reconciled_at unavailable)")
-        nil))))
+      (catch java.sql.SQLException e
+        ;; 42703 = undefined_column
+        (if (= "42703" (.getSQLState e))
+          (log/debug e "NLQ staleness metric skipped (reconciled_at not yet added)")
+          (throw e))))))
 
 (semantic.health/register-index-check! :nlq :coverage  nlq-coverage)
 (semantic.health/register-index-check! :nlq :garbage   nlq-garbage)

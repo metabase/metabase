@@ -84,9 +84,14 @@
 
 (deftest nlq-staleness-tolerates-missing-reconciled-at-test
   (testing "reconciled_at is added lazily by the first reconcile, so an index built before the column existed
-           lacks it and the staleness query throws 'column does not exist' -- that must read as N/A (skipped),
+           lacks it and the staleness query throws undefined_column (42703) -- that reads as N/A (skipped),
            not a spurious errored/degraded row"
     (mt/with-dynamic-fn-redefs
       [entity-retrieval.health/library-datasource (constantly ::ds)
-       jdbc/execute-one!                           (fn [& _] (throw (ex-info "column \"reconciled_at\" does not exist" {})))]
-      (is (nil? (#'entity-retrieval.health/nlq-staleness))))))
+       jdbc/execute-one! (fn [& _] (throw (java.sql.SQLException. "column \"reconciled_at\" does not exist" "42703")))]
+      (is (nil? (#'entity-retrieval.health/nlq-staleness)))))
+  (testing "any other SQL error (connectivity, permissions) propagates rather than hiding as N/A"
+    (mt/with-dynamic-fn-redefs
+      [entity-retrieval.health/library-datasource (constantly ::ds)
+       jdbc/execute-one! (fn [& _] (throw (java.sql.SQLException. "connection refused" "08006")))]
+      (is (thrown? java.sql.SQLException (#'entity-retrieval.health/nlq-staleness))))))
