@@ -300,20 +300,6 @@ export const closeSyncResultModal = () => {
   cy.findByTestId("sync-success-close-button", { timeout: 10000 }).click();
 };
 
-/**
- * The failure twin of `closeSyncResultModal`: yields the "Sync failed" modal a sync
- * raises when the task errors, so a test can assert on the reason it gives the admin.
- * Waits for it, since it renders off the task poll rather than the click.
- */
-export const syncErrorModal = () =>
-  cy
-    .findByTestId("sync-error-close-button", { timeout: 10000 })
-    .closest("[role='dialog']");
-
-export const closeSyncErrorModal = () => {
-  cy.findByTestId("sync-error-close-button", { timeout: 10000 }).click();
-};
-
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
@@ -331,38 +317,6 @@ export const waitForTask = (
     // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
     return closeSyncResultModal();
   });
-};
-
-/**
- * Poll until a task finishes and yield it whatever its outcome — unlike
- * `pollForTask`, which treats anything but success as a thrown error. Use it to
- * assert on a sync that is *supposed* to fail (e.g. an invalid repository), where
- * the failure and its message are the thing under test.
- */
-export const pollForFinishedTask = (
-  { taskName }: { taskName: "import" | "export" },
-  retries = 0,
-): Cypress.Chainable => {
-  if (retries > 30) {
-    throw Error(`Too many retries waiting for ${taskName}`);
-  }
-
-  return cy
-    .request("GET", "/api/ee/remote-sync/current-task")
-    .then((response) => {
-      const { body } = response;
-      const isFinished =
-        body &&
-        body.sync_task_type === taskName &&
-        ["successful", "errored", "conflict"].includes(body.status);
-
-      if (!isFinished) {
-        cy.wait(500);
-        return pollForFinishedTask({ taskName }, retries + 1);
-      }
-
-      return cy.wrap(body);
-    });
 };
 
 // Poll for task completion by actively querying the endpoint
