@@ -360,11 +360,12 @@
                            :native
                            :query)]
           (merge
-           {:query_type (keyword query-type)}
+           {:query_type (keyword query-type)
+            ;; unconditional so a stale table_id gets cleared when the query no longer has a source table
+            ;; (e.g. it was converted to native SQL), same as :source_card_id above
+            :table_id   table-id}
            (when database-id
-             {:database_id database-id})
-           (when table-id
-             {:table_id table-id}))))))))
+             {:database_id database-id}))))))))
 
 ;;; TODO -- move this to [[metabase.query-processor.card]] or Lib so the logic can be shared between the backend and
 ;;; frontend (?)
