@@ -1,7 +1,7 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { init } from "echarts/core";
 import mergeRefs from "merge-refs";
-import { forwardRef, useEffect, useRef } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
 import { registerEChartsModules } from "metabase/visualizations/echarts";
@@ -56,11 +56,31 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
       chartRef.current?.dispose();
     });
 
+    useEffect(() => {
+      const printMediaQuery = window.matchMedia("print");
+      const resizeForPrint = () => {
+        const chartElement = chartElemRef.current;
+        if (!chartElement) {
+          return;
+        }
+
+        chartRef.current?.resize({
+          width: chartElement.offsetWidth,
+          height: chartElement.offsetHeight,
+        });
+      };
+
+      printMediaQuery.addEventListener("change", resizeForPrint);
+      return () => {
+        printMediaQuery.removeEventListener("change", resizeForPrint);
+      };
+    }, []);
+
     useUpdateEffect(() => {
       chartRef.current?.setOption(option, notMerge);
     }, [option]);
 
-    useUpdateEffect(() => {
+    useLayoutEffect(() => {
       chartRef.current?.resize({ width, height });
     }, [width, height]);
 
