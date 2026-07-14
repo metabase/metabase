@@ -184,9 +184,10 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions();
 
         H.sidebar().within(() => {
-          cy.findByPlaceholderText("Enter user names or email addresses")
-            .click()
-            .type(`${normal.first_name} ${normal.last_name}{enter}`);
+          cy.findByPlaceholderText(
+            "Enter user names or email addresses",
+          ).click();
+          H.popover().contains(normal.first_name).click();
           clickButton("Done");
 
           cy.findByLabelText("add icon").click();
@@ -940,9 +941,9 @@ function assignRecipient({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .type(`${user.first_name} ${user.last_name}{enter}`)
-    .blur();
+  cy.findByPlaceholderText("Enter user names or email addresses").click();
+  H.popover().contains(user.first_name).click();
+  cy.realPress("Escape");
 }
 
 function assignRecipients({

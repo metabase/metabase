@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { useMount, usePrevious } from "react-use";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -20,11 +20,6 @@ import {
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
-import {
-  TokenField,
-  parseStringValue,
-} from "metabase/common/components/TokenField";
-import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
@@ -39,10 +34,12 @@ import { addRemappings } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  Autocomplete,
   type ComboboxItem,
   Loader,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
+  SelectItem,
 } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
@@ -60,7 +57,6 @@ import type {
 
 import { Value as ValueComponent } from "../Value";
 
-import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import { ListField } from "./ListField";
 import SingleSelectListField from "./SingleSelectListField";
 import type { LoadingStateType, ValuesMode } from "./types";
@@ -76,7 +72,7 @@ import {
   hasList,
   isExtensionOfPreviousSearch,
   isNumeric,
-  isSearchable,
+  parseStringValue,
   shouldList,
 } from "./utils";
 
@@ -105,8 +101,6 @@ export interface IFieldValuesWidgetProps {
   disableList?: boolean;
   disableSearch?: boolean;
   disablePKRemappingForSearch?: boolean;
-  alwaysShowOptions?: boolean;
-  showOptionsInPopover?: boolean;
 
   parameter: Parameter;
   parameters?: Parameter[]; // linked parameters with values
@@ -123,9 +117,7 @@ export interface IFieldValuesWidgetProps {
   placeholder?: string;
   checkedColor?: string;
 
-  valueRenderer?: (value: string | number) => JSX.Element;
   optionRenderer?: (option: FieldValue) => JSX.Element;
-  layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
 
 export const FieldValuesWidgetInner = forwardRef<
@@ -133,10 +125,7 @@ export const FieldValuesWidgetInner = forwardRef<
   IFieldValuesWidgetProps
 >(function FieldValuesWidgetInner(
   {
-    color,
     maxResults = MAX_SEARCH_RESULTS,
-    alwaysShowOptions = true,
-    style = {},
     formatOptions = {},
     containerWidth,
     maxWidth = 500,
@@ -145,7 +134,6 @@ export const FieldValuesWidgetInner = forwardRef<
     disableList = false,
     disableSearch = false,
     disablePKRemappingForSearch,
-    showOptionsInPopover = false,
     parameter,
     parameters,
     fields,
@@ -158,9 +146,7 @@ export const FieldValuesWidgetInner = forwardRef<
     className,
     placeholder,
     checkedColor,
-    valueRenderer,
     optionRenderer,
-    layoutRenderer,
   },
   ref,
 ) {
@@ -323,23 +309,6 @@ export const FieldValuesWidgetInner = forwardRef<
     search.current(value);
   };
 
-  if (!valueRenderer) {
-    valueRenderer = (value: string | number) => {
-      const option = options.find((option) => getValue(option) === value);
-      return renderValue({
-        fields,
-        formatOptions,
-        value,
-        parameter,
-        cardId,
-        dashboardId,
-        autoLoad: true,
-        compact: false,
-        displayValue: option?.[1],
-      });
-    };
-  }
-
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
       renderValue({
@@ -352,36 +321,6 @@ export const FieldValuesWidgetInner = forwardRef<
         autoLoad: false,
         displayValue: option[1],
       });
-  }
-
-  if (!layoutRenderer) {
-    layoutRenderer = showOptionsInPopover
-      ? undefined
-      : ({
-          optionsList,
-          isFocused,
-          isAllSelected,
-          isFiltered,
-          valuesList,
-        }: LayoutRendererArgs) => (
-          <div>
-            {valuesList}
-            {renderOptions({
-              alwaysShowOptions,
-              parameter,
-              fields,
-              disableSearch,
-              disablePKRemappingForSearch,
-              loadingState,
-              options,
-              valuesMode,
-              optionsList,
-              isFocused,
-              isAllSelected,
-              isFiltered,
-            })}
-          </div>
-        );
   }
 
   const tokenFieldPlaceholder = getTokenFieldPlaceholder({
@@ -508,37 +447,34 @@ export const FieldValuesWidgetInner = forwardRef<
             onSearchChange={onInputChange}
           />
         ) : (
-          <TokenField
-            value={value.filter((v) => v != null)}
-            onChange={onChange}
-            placeholder={tokenFieldPlaceholder}
-            updateOnInputChange
-            // forwarded props
-            multi={multi}
-            autoFocus={autoFocus}
-            color={color}
-            style={{ ...style, minWidth: "inherit" }}
-            className={className}
-            optionsStyle={
-              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+          <Autocomplete
+            value={
+              value.filter(isNotNull).map((value) => String(value))[0] ?? ""
             }
-            // end forwarded props
-            options={options}
-            valueKey="0"
-            valueRenderer={valueRenderer}
-            optionRenderer={optionRenderer}
-            layoutRenderer={layoutRenderer}
-            filterOption={(option, filterString) => {
-              const lowerCaseFilterString = filterString.toLowerCase();
-              return option?.some?.(
-                (value) =>
-                  value != null &&
-                  String(value).toLowerCase().includes(lowerCaseFilterString),
-              );
+            data={options
+              .filter((option) => isNotNull(getValue(option)))
+              .map((option) => getOption(option))
+              .filter(isNotNull)}
+            placeholder={tokenFieldPlaceholder}
+            rightSection={isLoading ? <Loader size="xs" /> : undefined}
+            autoFocus={autoFocus}
+            className={className}
+            w={COMBOBOX_WIDTH}
+            comboboxProps={{
+              withinPortal: false,
+              floatingStrategy: "fixed",
+              width: DROPDOWN_WIDTH,
+              position: "bottom-start",
             }}
-            onInputChange={onInputChange}
-            parseFreeformValue={parseFreeformValue}
-            updateOnInputBlur
+            data-testid="token-field"
+            renderOption={({ option }) => (
+              <RemappedOption option={option} fields={fields} tc={tc} />
+            )}
+            onChange={(newValue) => {
+              onInputChange(newValue);
+              const parsedValue = parseFreeformValue(newValue);
+              onChange(parsedValue !== null ? [parsedValue] : []);
+            }}
           />
         )}
       </div>
@@ -582,96 +518,6 @@ function getNothingFoundMessage({
     return t`No matching ${searchField?.display_name} found.`;
   } else {
     return t`No matching result`;
-  }
-}
-
-const NoMatchState = ({ fields }: { fields: (Field | null)[] }) => {
-  if (fields.length === 1 && !!fields[0]) {
-    const [{ display_name }] = fields;
-
-    return (
-      <OptionsMessage>
-        {jt`No matching ${(
-          <StyledEllipsified key={display_name}>
-            {display_name}
-          </StyledEllipsified>
-        )} found.`}
-      </OptionsMessage>
-    );
-  }
-
-  return <OptionsMessage>{t`No matching result`}</OptionsMessage>;
-};
-
-const EveryOptionState = () => (
-  <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
-);
-
-interface RenderOptionsProps {
-  alwaysShowOptions: boolean;
-  parameter?: Parameter;
-  fields: Field[];
-  disableSearch: boolean;
-  disablePKRemappingForSearch?: boolean;
-  loadingState: LoadingStateType;
-  options: FieldValue[];
-  valuesMode: ValuesMode;
-  optionsList: React.ReactNode;
-  isFocused: boolean;
-  isAllSelected: boolean;
-  isFiltered: boolean;
-}
-
-function renderOptions({
-  alwaysShowOptions,
-  parameter,
-  fields,
-  disableSearch,
-  disablePKRemappingForSearch,
-  loadingState,
-  options,
-  valuesMode,
-  optionsList,
-  isFocused,
-  isAllSelected,
-  isFiltered,
-}: RenderOptionsProps) {
-  if (alwaysShowOptions || isFocused) {
-    if (optionsList) {
-      return optionsList;
-    } else if (
-      hasList({
-        parameter,
-        fields,
-        disableSearch,
-        options,
-      }) &&
-      valuesMode === "list"
-    ) {
-      if (isAllSelected) {
-        return <EveryOptionState />;
-      }
-    } else if (
-      isSearchable({
-        parameter,
-        fields,
-        disableSearch,
-        disablePKRemappingForSearch,
-        valuesMode,
-      })
-    ) {
-      if (loadingState === "LOADING") {
-        return <LoadingState />;
-      } else if (loadingState === "LOADED" && isFiltered) {
-        return (
-          <NoMatchState
-            fields={fields.map((field) =>
-              field.searchField(disablePKRemappingForSearch),
-            )}
-          />
-        );
-      }
-    }
   }
 }
 
@@ -794,11 +640,17 @@ type RemappedOptionProps = {
 
 function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
-  if (!isRemapped) {
-    return tc(option.label);
-  }
 
   return (
-    <MultiAutocompleteOption value={option.value} label={tc(option.label)} />
+    <SelectItem>
+      {isRemapped ? (
+        <MultiAutocompleteOption
+          value={option.value}
+          label={tc(option.label)}
+        />
+      ) : (
+        tc(option.label)
+      )}
+    </SelectItem>
   );
 }
