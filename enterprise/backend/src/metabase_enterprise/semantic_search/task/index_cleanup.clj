@@ -9,6 +9,7 @@
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.task.core :as task]
@@ -165,11 +166,15 @@
 (defn- cleanup-stale-indexes-and-gate-tombstones!
   []
   (when (semantic.u/semantic-search-available?)
-    (let [pgvector             (semantic.env/get-pgvector-datasource!)
-          index-metadata       (semantic.env/get-index-metadata)]
-      (cleanup-stale-indexes! pgvector index-metadata)
-      (cleanup-old-gate-tombstones! pgvector index-metadata)
-      (cleanup-orphan-repair-tables! pgvector))))
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      ;; Available but never initialized is a steady state (semantic neither default nor additional);
+      ;; the bookkeeping tables only exist after init, and the cleanup queries would throw without them.
+      ;; Still runs while merely available, so an opted-out instance's leftover indexes get cleaned.
+      (when (semantic.index-metadata/control-and-metadata-tables-exist? pgvector index-metadata)
+        (cleanup-stale-indexes! pgvector index-metadata)
+        (cleanup-old-gate-tombstones! pgvector index-metadata)
+        (cleanup-orphan-repair-tables! pgvector)))))
 
 (def ^:private cleanup-job-key (jobs/key "metabase.task.semantic-index-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.semantic-index-cleanup.trigger"))
@@ -180,7 +185,7 @@
   (cleanup-stale-indexes-and-gate-tombstones!))
 
 (defmethod task/init! ::SemanticIndexCleanup [_]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticIndexCleanup)
                (jobs/with-identity cleanup-job-key))
