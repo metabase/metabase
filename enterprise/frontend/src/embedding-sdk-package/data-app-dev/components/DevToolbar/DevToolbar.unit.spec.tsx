@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { act, render, screen } from "frontend/test/__support__/ui";
+
+import { act, render, screen } from "__support__/ui";
 
 import { DevToolbar } from "./DevToolbar";
 import { clearDevDiagnostics, installDevDiagnostics } from "./diagnostics";
