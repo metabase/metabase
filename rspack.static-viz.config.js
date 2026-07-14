@@ -120,10 +120,6 @@ module.exports = (env) => {
       extensions: [".web.js", ".js", ".jsx", ".ts", ".tsx"],
       alias: {
         assets: ASSETS_PATH,
-        // the cljs analytics shim requires this module at runtime; in static rendering
-        // there is nothing to report and the real module pulls in the whole API client
-        "metabase/api/internal-analytics":
-          SRC_PATH + "/static-viz/lib/internal-analytics-noop.ts",
         metabase: SRC_PATH,
         "metabase-enterprise": ENTERPRISE_SRC_PATH,
         cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
