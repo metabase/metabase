@@ -5,9 +5,11 @@
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
+   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.urls :as channel.urls]
@@ -291,6 +293,11 @@
    _query-params
    {:keys [prompt] :as body} :- ::construct-query-request]
   (let [query (evaluate-external-query-for-execution body)]
+    ;; Record the resolved query for eval tracing (inert unless capturing). The MCP `construct_query`
+    ;; tool only returns an opaque handle, so this span attribute is how an eval harness recovers the
+    ;; agent's actual query off the trace to grade it. `query` is already serialization-ready (no
+    ;; `:lib/metadata`), so it stays small.
+    (ait/record! {:ai/query query})
     (cond-> {:query (-> query json/encode u/encode-base64)}
       prompt (assoc :prompt prompt))))
 
@@ -330,11 +337,11 @@
   ;; target database so a bogus/inaccessible database_id fails here rather than at save time.
   (api/read-check :model/Database database_id)
   ;; Emit MBQL 5 (via `lib/native-query` + `prepare-for-serialization`, same as `construct_query`)
-  (let [mp (lib-be/application-database-metadata-provider database_id)]
-    {:query (-> (lib/native-query mp sql)
-                lib/prepare-for-serialization
-                json/encode
-                u/encode-base64)}))
+  (let [mp    (lib-be/application-database-metadata-provider database_id)
+        query (-> (lib/native-query mp sql) lib/prepare-for-serialization)]
+    ;; See /v2/construct-query: record the resolved query so an eval harness can grade it off the trace.
+    (ait/record! {:ai/query query})
+    {:query (-> query json/encode u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
@@ -1799,6 +1806,47 @@
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
+(def ^:private base-routes
+  (api.macros/ns-handler *ns* +auth))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
-  (api.macros/ns-handler *ns* +auth))
+  ;; Wrapped in `handler-with-open-api-spec` so the handler still implements `OpenAPISpec` for
+  ;; full-API spec generation (openapi.json, endpoint-dox); the spec is delegated to `base-routes`,
+  ;; the underlying `ns-handler`, since the eval-tracing wrapper below carries no route metadata.
+  (open-api/handler-with-open-api-spec
+   ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE). Direct callers get a fresh session;
+   ;; the synthetic in-process call from MCP inherits the MCP session and nests under it.
+   ;; Agent-API endpoints are synchronous, so `respond` fires inside the span and the span
+   ;; closes after the handler returns.
+   (fn [request respond raise]
+     (ait/with-eval-session nil
+       (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
+                      {:http/method  (some-> (:request-method request) name)
+                       :http/uri     (:uri request)
+                       :http/request (:body request)
+                       :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
+                      (base-routes request
+                                   ;; Relies on `respond` firing synchronously on this thread (see
+                                   ;; above): if an endpoint ever responds async, `*parent*` is
+                                   ;; unbound there and this `record!` no-ops, so the span captures
+                                   ;; no status/response. Both fail soft; the trace is just incomplete
+                                   ;; for async agent-api responses.
+                                   (fn eval-traced-respond [response]
+                                     (when (ait/capture-active?)
+                                       ;; `+auth` binds `*current-user-id*` inside `base-routes`, so it
+                                       ;; is unbound when the span opened above but set by the time this
+                                       ;; respond fires — record the user id here so direct HTTP callers
+                                       ;; (not just the MCP path, which carries `:metabase-user-id`) get it.
+                                       (ait/record! {:http/status   (:status response)
+                                                     ;; Only record a plain data body. A streaming/opaque
+                                                     ;; body (not a coll) would otherwise be stringified
+                                                     ;; by the log sink into a useless `#object[…]`, so
+                                                     ;; skip it — the trace just omits the response there.
+                                                     :http/response (when (coll? (:body response))
+                                                                      (:body response))
+                                                     :http/user-id  (or (:metabase-user-id request)
+                                                                        api/*current-user-id*)}))
+                                     (respond response))
+                                   raise))))
+   (fn [prefix] (open-api/open-api-spec base-routes prefix))))

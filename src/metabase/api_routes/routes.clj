@@ -4,6 +4,7 @@
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
+   [metabase.ai-tracing.api]
    [metabase.analytics.api]
    [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
@@ -80,6 +81,7 @@
 (comment metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
+         metabase.ai-tracing.api/keep-me
          metabase.analytics.api/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
@@ -193,6 +195,7 @@
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
+   "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api

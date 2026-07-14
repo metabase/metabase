@@ -8,6 +8,8 @@
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.ai-tracing.log :as ait.log]
+   [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -92,6 +94,25 @@
                                            :agent-api-enabled?   "true"]
       (is (= "AI features are not enabled."
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+
+(deftest eval-tracing-wraps-agent-api-requests-test
+  (testing "with capture on, the routes wrapper opens a span recording status/response/user-id"
+    (let [nodes (atom [])]
+      ;; Force capture on and collect the emitted spans in-memory (redef the sink so no file is
+      ;; written). The wrapper mints a fresh session per direct HTTP request.
+      (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly true)
+                                  ait.log/emit!                       (fn [node _session-id]
+                                                                        (swap! nodes conj node)
+                                                                        nil)]
+        (is (= {:message "pong"} (mt/user-http-request :rasta :get 200 "agent/v1/ping")))
+        (let [span (first (filter #(str/starts-with? (str (:name %)) "agent-api.") @nodes))]
+          (is (some? span) "an agent-api.* span was emitted for the request")
+          (is (= "agent-api.get /api/agent/v1/ping" (:name span)))
+          (is (= 200 (get-in span [:attributes :http/status])))
+          ;; the plain-data body is recorded (a streaming body would be omitted, not stringified)
+          (is (= {:message "pong"} (get-in span [:attributes :http/response])))
+          ;; +auth binds *current-user-id* inside the handler, so the respond-time record! sees rasta
+          (is (= (mt/user->id :rasta) (get-in span [:attributes :http/user-id]))))))))
 
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
