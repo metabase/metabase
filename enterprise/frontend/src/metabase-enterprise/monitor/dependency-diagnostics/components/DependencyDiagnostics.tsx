@@ -3,12 +3,13 @@ import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Center, Flex, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import {
-  useListBreakingGraphNodesQuery,
-  useListUnreferencedGraphNodesQuery,
+  useLazyListBreakingGraphNodesQuery,
+  useLazyListUnreferencedGraphNodesQuery,
 } from "metabase-enterprise/api";
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "metabase-enterprise/dependencies/constants";
 import type {
@@ -59,10 +60,10 @@ export function DependencyDiagnostics({
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
-  const useListGraphNodesQuery =
+  const useLazyListGraphNodesQuery =
     mode === "broken"
-      ? useListBreakingGraphNodesQuery
-      : useListUnreferencedGraphNodesQuery;
+      ? useLazyListBreakingGraphNodesQuery
+      : useLazyListUnreferencedGraphNodesQuery;
 
   const {
     page = 0,
@@ -78,7 +79,8 @@ export function DependencyDiagnostics({
     isFetching: isFetchingNodes,
     isLoading: isLoadingNodes,
     error,
-  } = useListGraphNodesQuery(
+  } = useAbortableQuery(
+    useLazyListGraphNodesQuery,
     {
       types: getDependencyTypes(groupTypes),
       "card-types": getCardTypes(groupTypes),

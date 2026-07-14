@@ -4,13 +4,14 @@ import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
-  useListPersistedInfoQuery,
+  useLazyListPersistedInfoQuery,
   useRefreshModelCacheMutation,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { useDispatch } from "metabase/redux";
@@ -46,10 +47,13 @@ export function ModelCacheRefreshJobs() {
   const [refreshModelCache] = useRefreshModelCacheMutation();
   const { page, handleNextPage, handlePreviousPage } = usePagination();
 
-  const { data, error, isFetching } = useListPersistedInfoQuery({
-    limit: PAGE_SIZE,
-    offset: PAGE_SIZE * page,
-  });
+  const { data, error, isFetching } = useAbortableQuery(
+    useLazyListPersistedInfoQuery,
+    {
+      limit: PAGE_SIZE,
+      offset: PAGE_SIZE * page,
+    },
+  );
   const { data: persistedModels, total } = data ?? { data: [], total: 0 };
 
   // "deletable" records are pending cleanup and aren't shown to the user

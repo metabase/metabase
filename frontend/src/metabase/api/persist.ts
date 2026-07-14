@@ -74,6 +74,7 @@ export const persistApi = Api.injectEndpoints({
 
 export const {
   useListPersistedInfoQuery,
+  useLazyListPersistedInfoQuery,
   useGetPersistedInfoQuery,
   useGetPersistedInfoByCardQuery,
   useEnablePersistMutation,

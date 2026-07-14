@@ -6,6 +6,7 @@ import { t } from "ttag";
 import {
   useAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
+  useLazyAdminListNotificationsQuery,
 } from "metabase/api";
 import {
   BulkActionBar,
@@ -14,6 +15,7 @@ import {
 } from "metabase/common/components/BulkActionBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
@@ -63,7 +65,8 @@ export const NotificationsAdminPage = ({
 
   const { modalContent: confirmContent, show: showConfirm } = useConfirmation();
 
-  const { data, isLoading, isFetching, error } = useAdminListNotificationsQuery(
+  const { data, isLoading, isFetching, error } = useAbortableQuery(
+    useLazyAdminListNotificationsQuery,
     buildListParams(urlState, PAGE_SIZE),
   );
   const notifications = useMemo(() => data?.data ?? [], [data?.data]);

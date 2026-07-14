@@ -1,6 +1,7 @@
-import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
+import { useLazyListTasksQuery, useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import type { WithRouterProps } from "metabase/router";
 import { Center, Flex, Group } from "metabase/ui";
@@ -25,7 +26,8 @@ export const TaskListPage = ({ location }: WithRouterProps) => {
     data: tasksData,
     isLoading: isLoadingTasks,
     error: tasksError,
-  } = useListTasksQuery(
+  } = useAbortableQuery(
+    useLazyListTasksQuery,
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,

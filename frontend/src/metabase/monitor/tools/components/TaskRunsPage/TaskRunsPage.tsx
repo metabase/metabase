@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { useListTaskRunsQuery } from "metabase/api";
+import { useLazyListTaskRunsQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { type WithRouterProps, withRouter } from "metabase/router";
 import { Center, Flex, Group } from "metabase/ui";
@@ -36,7 +37,8 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
     data: taskRunsData,
     isLoading,
     error,
-  } = useListTaskRunsQuery(
+  } = useAbortableQuery(
+    useLazyListTaskRunsQuery,
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,

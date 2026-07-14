@@ -2,13 +2,17 @@ import type { RowSelectionState } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { useLazyGetCardQueryQuery } from "metabase/api";
+import {
+  useLazyGetAdhocQueryQuery,
+  useLazyGetCardQueryQuery,
+} from "metabase/api";
 import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { type WithRouterProps, withRouter } from "metabase/router";
@@ -18,7 +22,6 @@ import type { CardId } from "metabase-types/api";
 import S from "./ErrorOverview.module.css";
 import { ErroringQuestionsSearch } from "./ErroringQuestionsSearch";
 import { ErroringQuestionsTable } from "./ErroringQuestionsTable";
-import { useAbortableAdhocQuery } from "./hooks";
 import type {
   ErroringQuestionsFilters,
   ErroringQuestionsSorting,
@@ -47,8 +50,10 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     () => getErroringQuestionsQuery(filters, sorting, page),
     [filters, sorting, page],
   );
-  const { data, error, isFetching, isLoading, refetch } =
-    useAbortableAdhocQuery(query);
+  const { data, error, isFetching, isLoading, refetch } = useAbortableQuery(
+    useLazyGetAdhocQueryQuery,
+    query,
+  );
   const [runCardQuery] = useLazyGetCardQueryQuery();
 
   const cards = useMemo(

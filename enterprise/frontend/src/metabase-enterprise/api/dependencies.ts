@@ -84,6 +84,9 @@ export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
   useListBreakingGraphNodesQuery,
+  useLazyListBreakingGraphNodesQuery,
   useListBrokenGraphNodesQuery,
+  useLazyListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
+  useLazyListUnreferencedGraphNodesQuery,
 } = dependencyApi;
