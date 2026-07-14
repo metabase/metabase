@@ -107,6 +107,30 @@
      :table      (some->> last-model (keyword "model") t2/table-name)
      :error      error-type}))
 
+(defn- entity-reference
+  "Describes the entity at `path` as `{:model :id :name}` for use in user-facing error messages.
+  `:name` is nil for models whose name is absent or not a plain string (e.g. Settings, templated Card names)."
+  [path ingested]
+  (let [self (last path)]
+    {:model (:model self)
+     :id    (:id self)
+     :name  (when (string? (:name ingested))
+              (:name ingested))}))
+
+(defn- rethrow-with-referrer
+  "Always throws. Rethrows `e` with `referrer` attached when it is a `::not-found` error that does not name one yet,
+  and unchanged otherwise.
+
+  Only the nearest enclosing [[load-one!]] attaches itself, since it unwinds first and later frames see the key
+  already present. The replacement inherits `e`'s cause rather than nesting `e` beneath itself: error reporting
+  renders the whole cause chain, so nesting would print the same message twice joined by `caused by:`."
+  [e referrer]
+  (let [data (ex-data e)]
+    (if (and (= ::not-found (:error data))
+             (not (contains? data :referrer)))
+      (throw (ex-info (ex-message e) (assoc data :referrer referrer) (ex-cause e)))
+      (throw e))))
+
 (defn- valid-model-name-for-load? [model-name]
   ;; linear scan, but small n
   (->> (concat serdes.models/inlined-models
@@ -201,11 +225,14 @@
                                               {:entity_id (:entity_id ingested)
                                                :level     (count expanding)
                                                :deps      (str "[" (str/join ", " (map serdes/log-path-str deps)) "]")}))
-              ctx                (-> ctx
-                                     (update :expanding conj path)
-                                     (load-deps! deps)
-                                     (update :seen conj path)
-                                     (update :expanding disj path))
+              ctx                (try
+                                   (-> ctx
+                                       (update :expanding conj path)
+                                       (load-deps! deps)
+                                       (update :seen conj path)
+                                       (update :expanding disj path))
+                                   (catch Exception e
+                                     (rethrow-with-referrer e (entity-reference rebuilt-path ingested))))
               _                  (when (seq deps)
                                    (log/debug "Ended loading dependencies" {:entity_id (:entity_id ingested)
                                                                             :level     (count expanding)}))
@@ -218,10 +245,20 @@
                   (serdes/load-one! ingested local-or-nil))))
             ctx
             (catch Exception e
-              ;; ugly mapv here to convert #ordered/map into normal map so it's readable in the logs
-              (throw (ex-info (format "Failed to load into database for %s" (serdes/log-path-str path))
-                              (path-error-data ::load-failure expanding path)
-                              e)))))))))
+              ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with
+              ;; continue-on-error that stripped row survives the import, so leave a breadcrumb in the error
+              (let [stripped? (contains? (:circular ctx) path)]
+                ;; ugly mapv here to convert #ordered/map into normal map so it's readable in the logs
+                (throw (ex-info (format "Failed to load into database for %s%s"
+                                        (serdes/log-path-str path)
+                                        (if stripped?
+                                          (format " (it may have been left without these keys, which were stripped to break a circular dependency: %s)"
+                                                  (str/join ", " (sort (map name (keys-to-strip ingested)))))
+                                          ""))
+                                (-> (path-error-data ::load-failure expanding path)
+                                    (assoc :entity (entity-reference rebuilt-path ingested))
+                                    (cond-> stripped? (assoc :stripped-keys (keys-to-strip ingested))))
+                                e))))))))))
 
 (defn new-context
   "Given an ingestion create a new context for serialization.
