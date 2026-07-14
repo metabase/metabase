@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
@@ -16,7 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [mapv some]]))
 
 (mu/defn- expand-stage :- ::lib.schema/stage
   "Expand `:parameters` in one stage map that contains them."
@@ -88,8 +89,9 @@
   "Find the template tag in `template-tags` that matches `param`'s target."
   [template-tags param]
   (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
-    (or (get template-tags name-or-id) ; handle name
-        (some (fn [[_ tag]] ; handle id (defensive, may be unnecessary)
+    (or (m/find-first #(= (:name %) name-or-id) ; handle name
+                      template-tags)
+        (some (fn [tag]                         ; handle id (defensive, may be unnecessary)
                 (when (= (:id tag) name-or-id)
                   tag))
               template-tags))))
@@ -152,14 +154,13 @@
       (when-let [diff (second (data/diff query <>))]
         (log/tracef "\n\nSubstituted params:\n%s\n" (u/pprint-to-str 'cyan diff))))))
 
-(mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tag-map
-  [template-tags :- ::lib.schema.template-tag/template-tag-map
+(mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tags
+  [template-tags :- ::lib.schema.template-tag/template-tags
    database-id   :- ::lib.schema.id/database]
-  (update-vals
-   template-tags
-   (fn [v]
-     (cond-> v
-       (= (:type v) :snippet) (assoc :database database-id)))))
+  (mapv (fn [tag]
+          (cond-> tag
+            (= (:type tag) :snippet) (assoc :database database-id)))
+        template-tags))
 
 (mu/defn- hoist-database-for-snippet-tags :- ::lib.schema/query
   "Assocs the `:database` ID from `query` in all snippet template tags."
