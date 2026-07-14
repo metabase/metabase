@@ -16,7 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.system.core :as system]
    [metabase.typed-schemas.api.common :as common]
-   [metabase.typed-schemas.api.query-params :as qp]
+   [metabase.typed-schemas.api.scope :as scope]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -82,8 +82,8 @@
                                        [:= :type (name card-type)]
                                        [:= :archived false]
                                        (collection/visible-collection-filter-clause :collection_id)]
-                                database-ids (conj (qp/database-id-filter-clause database-ids :database_id))
-                                collection-ids (conj (qp/id-filter-clause collection-ids :collection_id)))
+                                database-ids (conj (scope/database-id-filter-clause database-ids :database_id))
+                                collection-ids (conj (scope/id-filter-clause collection-ids :collection_id)))
                     :order-by [[:name :asc] [:id :asc]]})
         (filter mi/can-read?))))
 
@@ -568,8 +568,8 @@
   ([database-ids table-ids]
    (->> (t2/select :model/Table
                    {:where    (cond-> [:and [:= :active true]]
-                                database-ids (conj (qp/database-id-filter-clause database-ids :db_id))
-                                table-ids (conj (qp/id-filter-clause table-ids :id)))
+                                database-ids (conj (scope/database-id-filter-clause database-ids :db_id))
+                                table-ids (conj (scope/id-filter-clause table-ids :id)))
                     :order-by [[:name :asc] [:id :asc]]})
         (filter mi/can-read?))))
 
@@ -579,7 +579,7 @@
                   {:where    [:and
                               [:= :active true]
                               [:= :is_published true]
-                              (qp/id-filter-clause data-collection-ids :collection_id)]
+                              (scope/id-filter-clause data-collection-ids :collection_id)]
                    :order-by [[:name :asc] [:id :asc]]})
        (filter mi/can-read?)))
 
@@ -686,17 +686,17 @@
 
 (defn- validate-query-params!
   [query-params]
-  (let [library-value              (qp/query-library-value query-params)
-        library-collection-values  (qp/query-library-collection-values query-params)
-        question-collection-values (qp/query-question-collection-values query-params)
-        include-library-root?      (or (qp/query-include-data-library? query-params)
-                                       (qp/query-include-metric-library? query-params))
+  (let [library-value              (scope/query-library-value query-params)
+        library-collection-values  (scope/query-library-collection-values query-params)
+        question-collection-values (scope/query-question-collection-values query-params)
+        include-library-root?      (or (scope/query-include-data-library? query-params)
+                                       (scope/query-include-metric-library? query-params))
         collection-scoped?         (or library-value
                                        library-collection-values
                                        question-collection-values
                                        include-library-root?)
-        database-value             (qp/query-database-value query-params)
-        questions-only             (qp/truthy-query-param? (:questions query-params))]
+        database-value             (scope/query-database-value query-params)
+        questions-only             (scope/truthy-query-param? (:questions query-params))]
     (api/check-400
      (not (and library-value (or library-collection-values include-library-root?)))
      "The library query parameter is mutually exclusive with library-collections, include-data-library, and include-metric-library.")
@@ -723,13 +723,13 @@
 (defn- typed-schema
   [query-params]
   (validate-query-params! query-params)
-  (let [library-value              (qp/query-library-value query-params)
-        library-collection-values  (qp/query-library-collection-values query-params)
-        question-collection-values (qp/query-question-collection-values query-params)
-        library-scope              (qp/library-scope query-params)
-        database-ids               (qp/database-ids-for-value (qp/query-database-value query-params))
-        question-collection-ids    (qp/collection-scope question-collection-values)
-        include-models?            (qp/query-include-models? query-params)
+  (let [library-value              (scope/query-library-value query-params)
+        library-collection-values  (scope/query-library-collection-values query-params)
+        question-collection-values (scope/query-question-collection-values query-params)
+        library-scope              (scope/library-scope query-params)
+        database-ids               (scope/database-ids-for-value (scope/query-database-value query-params))
+        question-collection-ids    (scope/collection-scope question-collection-values)
+        include-models?            (scope/query-include-models? query-params)
         models                     (cond
                                      database-ids
                                      (model-schemas database-ids)
@@ -739,7 +739,7 @@
 
                                      :else
                                      [])
-        questions-only             (qp/truthy-query-param? (:questions query-params))]
+        questions-only             (scope/truthy-query-param? (:questions query-params))]
     (cond
       (or library-value
           library-collection-values

@@ -1,5 +1,5 @@
-(ns metabase.typed-schemas.api.query-params
-  "Query parameter parsing and scope resolution for typed-schema endpoints."
+(ns metabase.typed-schemas.api.scope
+  "Scope resolution for typed-schema endpoints."
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
