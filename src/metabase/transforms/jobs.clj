@@ -336,37 +336,34 @@
   (:now (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})))
 
 (defn run-transforms!
-  "Run `transform-ids-to-run` and their dependencies, honoring the DAG.
+  "Run the transforms of `plan`, honoring the DAG.
 
   Each transform runs on its own thread; SQL transforms run concurrently up to
   `transform-run-job-sql-concurrency`, python transforms one at a time (the python-runner service has
   a single worker). A failed dependency fails its dependents transitively; a worker that overruns the
   transform timeout (plus grace) is interrupted and failed.
 
-  Transforms pulled into the plan only as dependencies (not directly requested) are skipped while
-  still fresh, unless `skip-fresh-deps?` is false.
+  `transform-ids-to-run` are the directly requested transforms; the rest of the plan was pulled in
+  as dependencies and is skipped while still fresh, unless `skip-fresh-deps?` is false.
 
   `:parent-run-type` (`:job`/`:dag`, default `:job`) selects which coordinating run each member
   `transform_run` links back to.
   `:active-runs-atom` (default `active-runs`) is the atom that tracks coordinator liveness for heartbeating.
   `:add-run-activity!` is a zero-arg fn called after each successful transform execution.
-  `:precomputed-plan` optionally supplies the plan (as returned by [[get-plan]]) instead of computing
-  one — for callers that already built the dependency graph.
 
   Returns `{::status :succeeded}`, `{::status :failed ::failures [...]}`, or `{::status :aborted}`
   when the coordinating run was terminated externally (e.g. reaped) while this coordinator was still running."
-  [run-id transform-ids-to-run {:keys [run-method user-id skip-fresh-deps?
-                                       parent-run-type active-runs-atom add-run-activity! precomputed-plan]
-                                :or   {skip-fresh-deps?  true
-                                       parent-run-type   :job
-                                       active-runs-atom  active-runs
-                                       add-run-activity! (constantly nil)}}]
+  [run-id transform-ids-to-run {plan :order deps :deps} {:keys [run-method user-id skip-fresh-deps?
+                                                                parent-run-type active-runs-atom add-run-activity!]
+                                                         :or   {skip-fresh-deps?  true
+                                                                parent-run-type   :job
+                                                                active-runs-atom  active-runs
+                                                                add-run-activity! (constantly nil)}}]
   (let [gone (promise)
         _    (swap! active-runs-atom assoc run-id gone)
         final-state
         (try
-          (let [{plan :order deps :deps} (or precomputed-plan (get-plan transform-ids-to-run))
-                requested  (set transform-ids-to-run)
+          (let [requested  (set transform-ids-to-run)
                 closure    (into #{} (map :id) plan)
                 ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
                 ;; as :succeeded lets their dependents dispatch while they themselves are never submitted.
@@ -438,13 +435,14 @@
        (str/join "\n\n")))
 
 (defn execute-coordinated-run!
-  "Run `transform-ids` as the members of the coordinated run `run-id` (a row of `model`) and move
-  the row to its terminal state, failing it if execution throws (the throwable is rethrown).
-  `label` names the run in logs; `run-opts` are passed through to [[run-transforms!]]. Returns the
-  [[run-transforms!]] result so callers can act on failures."
-  [model run-id transform-ids label run-opts]
+  "Run `transform-ids` per `plan` (as returned by [[get-plan]] or [[dependencies->plan]]) as the
+  members of the coordinated run `run-id` (a row of `model`) and move the row to its terminal
+  state, failing it if execution throws (the throwable is rethrown). `label` names the run in
+  logs; `run-opts` are passed through to [[run-transforms!]]. Returns the [[run-transforms!]]
+  result so callers can act on failures."
+  [model run-id transform-ids plan label run-opts]
   (try
-    (let [result (run-transforms! run-id transform-ids
+    (let [result (run-transforms! run-id transform-ids plan
                                   (assoc run-opts
                                          :add-run-activity! #(coordinated-run/add-run-activity! model run-id)))]
       (case (::status result)
@@ -543,7 +541,8 @@
           (do (log/info "Skipping transform job" (pr-str job-id) "because it has no transforms to run")
               (some-> start-promise (deliver nil))
               nil)
-          (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)
+          (let [plan         (get-plan transforms)
+                {run-id :id} (transforms.job-run/start-run! job-id run-method)
                 ;; failed cron runs are included in the failure digest
                 notify!      (fn [failures]
                                (when (= :cron run-method)
@@ -557,7 +556,7 @@
                                                                 :transform.job/count      (count transforms)}
               (transforms.instrumentation/with-job-timing [job-id run-method]
                 (try
-                  (let [result (execute-coordinated-run! :model/TransformJobRun run-id transforms
+                  (let [result (execute-coordinated-run! :model/TransformJobRun run-id transforms plan
                                                          (format "Transform job run for job %s" (pr-str job-id))
                                                          (-> opts
                                                              (dissoc :start-promise)

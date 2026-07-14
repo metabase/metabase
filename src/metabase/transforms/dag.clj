@@ -140,13 +140,12 @@
                 (tracing/with-span :tasks "task.transform.run-dag" {:transform/id        transform-id
                                                                     :transform/direction (name direction)
                                                                     :transform/count     (count transform-ids)}
-                  (jobs/execute-coordinated-run! :model/TransformDagRun run-id transform-ids
+                  (jobs/execute-coordinated-run! :model/TransformDagRun run-id transform-ids plan
                                                  (format "DAG run for transform %s" (pr-str transform-id))
                                                  {:run-method       :manual
                                                   :user-id          user-id
                                                   :parent-run-type  :dag
-                                                  :active-runs-atom dag-active-runs
-                                                  :precomputed-plan plan}))
+                                                  :active-runs-atom dag-active-runs}))
                 run-id)
             (do (log/info "Not executing DAG run for transform" (pr-str transform-id) "because one is already running")
                 (some-> start-promise (deliver nil))
