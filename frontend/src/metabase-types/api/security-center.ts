@@ -9,7 +9,11 @@ export type AdvisoryMatchStatus =
 export type AdvisoryVersion = {
   min: string;
   fixed: string;
-  download_jar_url?: string | null;
+};
+
+export type AdvisoryDownloadJarUrl = {
+  version: string;
+  url: string;
 };
 
 export type AdvisorySeverity = "critical" | "high" | "medium" | "low";
@@ -29,6 +33,7 @@ export type Advisory = {
   acknowledged_by: { id: number; common_name: string; email: string } | null;
   acknowledged_at: string | null;
   affected_versions: AdvisoryVersion[];
+  download_jar_urls: AdvisoryDownloadJarUrl[];
 };
 
 export type ListAdvisoriesResponse = {

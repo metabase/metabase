@@ -4,25 +4,25 @@ import {
 } from "metabase/utils/version";
 import type {
   Advisory,
-  AdvisoryAffectedVersion,
+  AdvisoryDownloadJarUrl,
   AdvisorySeverity,
 } from "metabase-types/api";
 
 import type { AdvisoryFilter } from "./types";
 
-export const getAffectedVersionForInstance = (
+export const getDownloadJarForInstance = (
   advisory: Advisory,
   currentVersion: string,
-): AdvisoryAffectedVersion | null => {
+): AdvisoryDownloadJarUrl | null => {
   const currentMajor = versionToNumericComponents(currentVersion)?.[1];
   if (currentMajor == null) {
     return null;
   }
-  const match = advisory.affected_versions.find(
-    (affectedVersion) =>
-      versionToNumericComponents(affectedVersion.fixed)?.[1] === currentMajor,
+  return (
+    advisory.download_jar_urls.find(
+      (jar) => versionToNumericComponents(jar.version)?.[1] === currentMajor,
+    ) ?? null
   );
-  return match ?? null;
 };
 
 const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {

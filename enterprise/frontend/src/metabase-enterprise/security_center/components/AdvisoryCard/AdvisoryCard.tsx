@@ -23,7 +23,7 @@ import type {
   AdvisorySeverity,
 } from "metabase-types/api";
 
-import { getAffectedVersionForInstance, isAcknowledged } from "../../utils";
+import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
 
 interface AdvisoryCardProps {
   advisory: Advisory;
@@ -38,8 +38,8 @@ export function AdvisoryCard({
 }: AdvisoryCardProps) {
   const currentVersion = useSetting("version")?.tag ?? "";
   const acknowledged = isAcknowledged(advisory);
-  const affectedVersion = isAffecting
-    ? getAffectedVersionForInstance(advisory, currentVersion)
+  const downloadJar = isAffecting
+    ? getDownloadJarForInstance(advisory, currentVersion)
     : null;
 
   return (
@@ -93,16 +93,16 @@ export function AdvisoryCard({
         </Box>
 
         <Group gap="md" mt="sm">
-          {affectedVersion?.download_jar_url && (
+          {downloadJar && (
             <Button
               variant="outline"
               component="a"
-              href={affectedVersion.download_jar_url}
+              href={downloadJar.url}
               target="_blank"
               rel="noopener noreferrer"
               leftSection={<Icon name="download" />}
             >
-              {t`Download v${affectedVersion.fixed}`}
+              {t`Download v${downloadJar.version}`}
             </Button>
           )}
           {!acknowledged && onAcknowledge && (

@@ -19,11 +19,19 @@
   "A single affected version range with inclusive min and exclusive fixed."
   [:map
    [:min   ::semver]
-   [:fixed ::semver]
-   [:download_jar_url {:optional true} [:maybe :string]]])
+   [:fixed ::semver]])
 
 (mr/def ::affected-versions
   [:sequential ::version-range])
+
+(mr/def ::download-jar-url
+  "A downloadable JAR for a given fixed version."
+  [:map
+   [:version ::semver]
+   [:url     :string]])
+
+(mr/def ::download-jar-urls
+  [:sequential ::download-jar-url])
 
 (mr/def ::matching-query
   "HoneySQL query keyed by dialect. nil means affects all instances.

@@ -166,16 +166,12 @@ describe("SecurityCenterPage", () => {
         advisory_id: "1",
         match_status: "active",
         affected_versions: [
-          {
-            min: "0.58.0",
-            fixed: "0.58.11",
-            download_jar_url: "https://downloads.example.com/58.jar",
-          },
-          {
-            min: "0.59.0",
-            fixed: "0.59.11",
-            download_jar_url: "https://downloads.example.com/59.jar",
-          },
+          { min: "0.58.0", fixed: "0.58.11" },
+          { min: "0.59.0", fixed: "0.59.11" },
+        ],
+        download_jar_urls: [
+          { version: "0.58.11", url: "https://downloads.example.com/58.jar" },
+          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
         ],
       }),
     ];
@@ -193,14 +189,13 @@ describe("SecurityCenterPage", () => {
     expect(downloadButton).toHaveAttribute("target", "_blank");
   });
 
-  it("does not render a download button when download_jar_url is null", async () => {
+  it("does not render a download button when there is no matching download url", async () => {
     const advisories = [
       createAdvisory({
         advisory_id: "1",
         match_status: "active",
-        affected_versions: [
-          { min: "0.59.0", fixed: "0.59.11", download_jar_url: null },
-        ],
+        affected_versions: [{ min: "0.59.0", fixed: "0.59.11" }],
+        download_jar_urls: [],
       }),
     ];
 
@@ -214,12 +209,9 @@ describe("SecurityCenterPage", () => {
       createAdvisory({
         advisory_id: "1",
         match_status: "not_affected",
-        affected_versions: [
-          {
-            min: "0.59.0",
-            fixed: "0.59.11",
-            download_jar_url: "https://downloads.example.com/59.jar",
-          },
+        affected_versions: [{ min: "0.59.0", fixed: "0.59.11" }],
+        download_jar_urls: [
+          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
         ],
       }),
     ];

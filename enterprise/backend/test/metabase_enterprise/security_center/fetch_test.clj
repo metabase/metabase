@@ -106,12 +106,13 @@
                      :title       "Advisory SC-2026-001"}
                     row))))))))
 
-(deftest fetch-advisory-with-download-jar-url-test
-  (testing "affected_versions download_jar_url passes validation and is stored"
+(deftest fetch-advisory-with-download-jar-urls-test
+  (testing "download_jar_urls side field passes validation and is stored"
     (let [advisory (make-json-advisory "SC-DL-001"
-                                       "affected_versions" [{"min" "0.58.0" "fixed" "0.58.11"
-                                                             "download_jar_url" "https://downloads.example.com/metabase.jar"}
-                                                            {"min" "0.59.0" "fixed" "0.59.6"}])]
+                                       "affected_versions" [{"min" "0.58.0" "fixed" "0.58.11"}
+                                                            {"min" "0.59.0" "fixed" "0.59.6"}]
+                                       "download_jar_urls" [{"version" "0.58.11"
+                                                             "url" "https://downloads.example.com/metabase.jar"}])]
       (mt/with-model-cleanup [:model/SecurityAdvisory]
         (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
                       premium-features/premium-embedding-token                    (constantly "fake-token")
@@ -119,10 +120,10 @@
           (fetch/sync-advisories!)
           (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-DL-001")]
             (is (some? row))
-            (is (= [{:min "0.58.0" :fixed "0.58.11"
-                     :download_jar_url "https://downloads.example.com/metabase.jar"}
-                    {:min "0.59.0" :fixed "0.59.6"}]
-                   (:affected_versions row)))))))))
+            (is (= [{:min "0.58.0" :fixed "0.58.11"} {:min "0.59.0" :fixed "0.59.6"}]
+                   (:affected_versions row)))
+            (is (= [{:version "0.58.11" :url "https://downloads.example.com/metabase.jar"}]
+                   (:download_jar_urls row)))))))))
 
 (deftest sync-advisories-stores-updated-at-test
   (mt/with-model-cleanup [:model/SecurityAdvisory]

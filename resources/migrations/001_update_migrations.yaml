@@ -11776,6 +11776,27 @@ databaseChangeLog:
               - column:
                   name: match_status
 
+  - changeSet:
+      id: v55.2026-03-30T00:00:05
+      author: egorgrushin
+      comment: Add security_advisory.download_jar_urls for per-version download links
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: security_advisory
+                columnName: download_jar_urls
+      changes:
+        - addColumn:
+            tableName: security_advisory
+            columns:
+              - column:
+                  name: download_jar_urls
+                  type: ${text.type}
+                  remarks: "JSON array of {version, url} downloadable JARs"
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
