@@ -76,12 +76,10 @@ export function MetabotInlineChart({
           display: question.display(),
           dataset_query: datasetQuery,
           visualization_settings: {},
-          chart_id: entityId,
-          query_id: query.id,
         },
         siteUrl,
       ),
-    [title, description, question, datasetQuery, siteUrl, entityId, query.id],
+    [title, description, question, datasetQuery, siteUrl],
   );
 
   const link = useMemo(

@@ -1,8 +1,6 @@
 import { P, isMatching } from "ts-pattern";
 
 import * as Urls from "metabase/urls";
-import { utf8_to_b64url } from "metabase/utils/encoding";
-import { stableStringify } from "metabase/utils/objects";
 import type { Card, CardDisplayType, DatasetQuery } from "metabase-types/api";
 import { isCardDisplayType } from "metabase-types/api";
 
@@ -16,27 +14,20 @@ export type ChartClipboardPayload = Pick<
 > &
   Partial<Pick<Card, "description">> & {
     display: CardDisplayType;
-    chart_id: string;
-    query_id: string;
   };
 
 export function serializeChartClipboard(
   payload: ChartClipboardPayload,
   siteUrl: string,
 ): string {
-  const hash = utf8_to_b64url(
-    stableStringify({
-      ...payload,
-      description: payload.description ?? undefined,
-      displayIsLocked: true,
-    }),
+  const path = Urls.card(
+    { ...payload, displayIsLocked: true },
+    { includeDisplayIsLocked: true },
   );
-  return `${siteUrl.replace(/\/$/, "")}${Urls.card(null, { hash })}`;
+  return `${siteUrl.replace(/\/$/, "")}${path}`;
 }
 
 const CHART_CLIPBOARD_CARD_PATTERN = {
-  chart_id: P.string.minLength(1),
-  query_id: P.string.minLength(1),
   display: P.when(isCardDisplayType),
   dataset_query: P.when(
     (value): value is DatasetQuery =>
@@ -52,8 +43,7 @@ export function parseChartClipboard(
     return null;
   }
   try {
-    const card: Card & { chart_id?: unknown; query_id?: unknown } =
-      deserializeCardFromUrl(hash);
+    const card: Card = deserializeCardFromUrl(hash);
     if (!isMatching(CHART_CLIPBOARD_CARD_PATTERN, card)) {
       return null;
     }
@@ -63,8 +53,6 @@ export function parseChartClipboard(
       display: card.display,
       dataset_query: card.dataset_query,
       visualization_settings: card.visualization_settings ?? {},
-      chart_id: card.chart_id,
-      query_id: card.query_id,
     };
   } catch {
     return null;
