@@ -596,9 +596,7 @@ const getSeriesComparisonTooltipModel = (
       return {
         isFocused,
         name: seriesModel.name,
-        markerColorClass: getMarkerColorClass(
-          getDimensionValueColor(datum, settings) ?? seriesModel.color,
-        ),
+        markerColorClass: getMarkerColorClass(seriesModel.color),
         values: [
           formatValueForTooltip({
             value: value,
@@ -630,24 +628,12 @@ const getSeriesComparisonTooltipModel = (
   };
 };
 
-const getDimensionValueColor = (
-  datum: Datum,
-  settings: ComputedVisualizationSettings,
-): string | undefined => {
-  const colors = settings["graph._dimension_value_colors"];
-  return colors?.[String(datum[X_AXIS_DATA_KEY])];
-};
-
 const getSeriesOnlyTooltipRowColor = (
   seriesModel: SeriesModel,
   datum: Datum,
   settings: ComputedVisualizationSettings,
   display: CardDisplayType,
 ) => {
-  const dimensionValueColor = getDimensionValueColor(datum, settings);
-  if (dimensionValueColor != null) {
-    return dimensionValueColor;
-  }
   const value = datum[seriesModel.dataKey];
   if (display === "waterfall" && typeof value === "number") {
     let color;

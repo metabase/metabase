@@ -354,9 +354,6 @@ export type VisualizationSettings = {
 
   "graph.series_order"?: SeriesOrderSetting[];
 
-  // Internal (explorations): per-bar colors keyed by the x-axis dimension value,
-  "graph._dimension_value_colors"?: Record<string, string>;
-
   // Scatter plot settings
   "scatter.bubble"?: string; // col name
 
