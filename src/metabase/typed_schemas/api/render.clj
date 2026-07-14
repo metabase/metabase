@@ -1,13 +1,18 @@
 (ns metabase.typed-schemas.api.render
-  "JavaScript and TypeScript rendering for typed schemas."
+  "TypeScript rendering for typed schemas."
   (:require
    [clojure.string :as str]
    [metabase.typed-schemas.api.javascript :as javascript]
    [metabase.util :as u]))
 
-(def ^:private typescript-const-suffix
+(def ^:private const-suffix
   " as const")
 
+;; The rendered schema serves two audiences:
+;; - `:runtime` keys are executable data consumed by the Lib.createTestQuery DSL.
+;; - `:comment` keys are emitted as nearby JavaScript comments for coding agents
+;;   and humans, preserving useful context without making the runtime object
+;;   larger or more ambiguous than the DSL needs.
 (def ^:private schema-render-policy
   {:question         {:runtime [:type :id :name :display :columns :parameters]
                       :comment [:entityId :description :verified]}
@@ -245,25 +250,11 @@
                                  compact-dimensions (assoc :dimensions compact-dimensions)))))))))
 
 (defn- render-top-level-const
-  [k value const-suffix]
+  [k value]
   (str "const " (u/qualified-name k) " = " (javascript/render-value value (assoc (render-options) :path [k]))
        const-suffix ";\n\n"))
 
-(defn- render-javascript-pick-fields-helper
-  []
-  (javascript/line-block
-   "function pickFields(fields, keys, options) {"
-   "  return Object.fromEntries(keys.map((key) => {"
-   "    if (options?.sourceFieldId == null) {"
-   "      return [key, fields[key]];"
-   "    }"
-   "    const { tableId, ...joinedField } = fields[key];"
-   ""
-   "    return [key, { ...joinedField, sourceFieldId: options.sourceFieldId }];"
-   "  }));"
-   "}"))
-
-(defn- render-typescript-pick-fields-helper
+(defn- render-pick-fields-helper
   []
   (javascript/line-block
    "function pickFields<TFields extends object, TKey extends keyof TFields>("
@@ -282,12 +273,6 @@
    "  })) as Pick<TFields, TKey>;"
    "}"))
 
-(defn- render-pick-fields-helper
-  [const-suffix]
-  (if (= const-suffix typescript-const-suffix)
-    (render-typescript-pick-fields-helper)
-    (render-javascript-pick-fields-helper)))
-
 (defn- uses-pick-fields-helper?
   [schema]
   (boolean
@@ -295,8 +280,9 @@
            (some javascript/reference? (vals (:dimensions metric))))
          (vals (:metrics schema)))))
 
-(defn- render-schema-module
-  [schema const-suffix]
+(defn render-typescript
+  "Render `schema` as an ES module containing `as const` TypeScript constants."
+  [schema]
   (let [schema          (compact-metric-dimensions schema)
         top-level-keys  [:questions :models :tables :metrics]
         schema-metadata (apply dissoc schema top-level-keys)
@@ -307,20 +293,10 @@
                                 schema-metadata
                                 top-level-keys)]
     (str (when (uses-pick-fields-helper? schema)
-           (render-pick-fields-helper const-suffix))
+           (render-pick-fields-helper))
          (apply str
                 (for [k top-level-keys
                       :when (contains? schema k)]
-                  (render-top-level-const k (get schema k) const-suffix)))
+                  (render-top-level-const k (get schema k))))
          "const schema = " (javascript/render-value schema-value (render-options)) const-suffix ";\n\n"
          "export default schema;\n")))
-
-(defn render-javascript
-  "Render `schema` as an ES module containing plain JavaScript constants."
-  [schema]
-  (render-schema-module schema ""))
-
-(defn render-typescript
-  "Render `schema` as an ES module containing `as const` TypeScript constants."
-  [schema]
-  (render-schema-module schema typescript-const-suffix))

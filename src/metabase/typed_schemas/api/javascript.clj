@@ -18,7 +18,11 @@
   (str (str/join "\n" lines) "\n\n"))
 
 (defn reference
-  "Returns a marker rendered by [[render-value]] as a JavaScript reference instead of an object literal."
+  "Returns a marker for a raw JavaScript expression.
+
+  [[render-value]] normally renders maps as object literals. Some renderer code
+  needs to splice an existing JavaScript expression into that object instead,
+  such as `tables.orders.fields` or `pickFields(...)`."
   [path]
   {:javascriptReference path})
 
@@ -30,7 +34,7 @@
         m))
 
 (defn reference?
-  "Returns true when `value` is a marker created by [[reference]]."
+  "Returns true when `value` is a raw JavaScript expression marker created by [[reference]]."
   [value]
   (and (map? value)
        (string? (entry-value value :javascriptReference))))

@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.api :as typed-schemas.api]
+   [metabase.typed-schemas.api.render :as typed-schemas.api.render]
    [metabase.typed-schemas.api.scope :as typed-schemas.api.scope]
    [toucan2.core :as t2]))
 
@@ -296,9 +297,9 @@
               {:id   1
                :name "Total Revenue"}))))))
 
-(deftest javascript-endpoint-test
-  (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/javascript")]
-    (is (= "text/javascript; charset=utf-8" (get-in response [:headers "Content-Type"])))
+(deftest typescript-endpoint-test
+  (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/typescript")]
+    (is (= "text/typescript; charset=utf-8" (get-in response [:headers "Content-Type"])))
     (is (str/starts-with? (:body response) "const questions = "))
     (is (str/includes? (:body response) "\nconst schema = {"))
     (is (str/includes? (:body response) "\n  schemaVersion: 2"))
@@ -311,29 +312,16 @@
     (is (not (str/includes? (:body response) "parameters: [ ]")))
     (is (not (str/includes? (:body response) "verified: false")))))
 
-(deftest typescript-endpoint-test
-  (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/typescript")]
-    (is (= "text/typescript; charset=utf-8" (get-in response [:headers "Content-Type"])))
-    (is (str/starts-with? (:body response) "const questions = "))
-    (is (str/includes? (:body response) "\nconst schema = {"))
-    (is (str/includes? (:body response) "\n  schemaVersion: 2"))
-    (is (str/ends-with? (:body response) "export default schema;\n"))))
-
-(deftest json-endpoint-test
-  (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/json")]
-    (is (= "application/json; charset=utf-8" (get-in response [:headers "Content-Type"])))
-    (is (= 2 (get-in response [:body :schemaVersion])))
-    (is (map? (get-in response [:body :questions])))
-    (is (map? (get-in response [:body :tables])))
-    (is (map? (get-in response [:body :metrics])))))
-
 (deftest query-params-are-coerced-at-endpoint-test
-  (with-redefs [typed-schemas.api/typed-schema identity]
-    (let [response (mt/user-http-request
-                    :crowberto
-                    :get
-                    200
-                    "typed-schemas/v1/json?include-models=true&questions=false&library-collections=1,2")]
+  (with-redefs [typed-schemas.api/typed-schema identity
+                typed-schemas.api.render/render-typescript pr-str]
+    (let [response (-> (mt/user-http-request-full-response
+                        :crowberto
+                        :get
+                        200
+                        "typed-schemas/v1/typescript?include-models=true&questions=false&library-collections=1,2")
+                       :body
+                       read-string)]
       (is (true? (:include-models response)))
       (is (false? (:questions response)))
       (is (= "1,2" (:library-collections response))))))
@@ -344,21 +332,21 @@
                     :crowberto
                     :get
                     200
-                    "typed-schemas/v1/json?database=__missing_database__")]
-      (is (= 2 (get-in response [:body :schemaVersion])))
-      (is (= {} (get-in response [:body :questions])))
-      (is (= {} (get-in response [:body :tables])))
-      (is (= {} (get-in response [:body :metrics])))))
+                    "typed-schemas/v1/typescript?database=__missing_database__")]
+      (is (str/includes? (:body response) "schemaVersion: 2"))
+      (is (str/includes? (:body response) "const questions = { }"))
+      (is (str/includes? (:body response) "const tables = { }"))
+      (is (str/includes? (:body response) "const metrics = { }"))))
   (testing "questions=true returns only questions for a numeric database id"
     (let [response (mt/user-http-request-full-response
                     :crowberto
                     :get
                     200
-                    (format "typed-schemas/v1/json?database=%s&questions=true" (mt/id)))]
-      (is (= 2 (get-in response [:body :schemaVersion])))
-      (is (map? (get-in response [:body :questions])))
-      (is (= {} (get-in response [:body :tables])))
-      (is (= {} (get-in response [:body :metrics]))))))
+                    (format "typed-schemas/v1/typescript?database=%s&questions=true" (mt/id)))]
+      (is (str/includes? (:body response) "schemaVersion: 2"))
+      (is (str/includes? (:body response) "const questions = {"))
+      (is (str/includes? (:body response) "const tables = { }"))
+      (is (str/includes? (:body response) "const metrics = { }")))))
 
 (deftest database-filter-scopes-models-test
   (let [model-database-ids (atom [])]
@@ -474,34 +462,34 @@
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?library=1&database=1")
+   "typed-schemas/v1/typescript?library=1&database=1")
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?library=1&questions=true")
+   "typed-schemas/v1/typescript?library=1&questions=true")
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?questions=true"))
+   "typed-schemas/v1/typescript?questions=true"))
 
 (deftest collection-query-params-are-mutually-exclusive-test
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?library-collections=1,2&database=1")
+   "typed-schemas/v1/typescript?library-collections=1,2&database=1")
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?question-collections=1,2&questions=true")
+   "typed-schemas/v1/typescript?question-collections=1,2&questions=true")
   (mt/user-http-request-full-response
    :crowberto
    :get
    400
-   "typed-schemas/v1/json?library=1&library-collections=2"))
+   "typed-schemas/v1/typescript?library=1&library-collections=2"))
 
 (deftest library-schema-includes-metric-mapped-tables-test
   (let [selected-table-ids (atom nil)]

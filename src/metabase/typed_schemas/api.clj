@@ -26,15 +26,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private javascript-response-headers
-  {"Content-Type"                 "text/javascript; charset=utf-8"
+(def ^:private typescript-response-headers
+  {"Content-Type"                 "text/typescript; charset=utf-8"
    "X-Content-Type-Options"       "nosniff"
    "Cross-Origin-Resource-Policy" "same-origin"
    "Referrer-Policy"              "no-referrer"
    "Cache-Control"                "no-store"})
-
-(def ^:private typescript-response-headers
-  (assoc javascript-response-headers "Content-Type" "text/typescript; charset=utf-8"))
 
 (defn- select-cards
   ([card-type database-ids]
@@ -741,18 +738,6 @@
    [:include-models {:optional true} [:maybe :boolean]]
    [:questions {:optional true} [:maybe :boolean]]])
 
-(api.macros/defendpoint :get "/v1/javascript" :- :any
-  "Generate a JavaScript semantic schema module."
-  [_route-params
-   query-params :- TypedSchemaQueryParams
-   _body
-   _request
-   respond
-   _raise]
-  (respond {:status  200
-            :headers javascript-response-headers
-            :body    (render/render-javascript (typed-schema query-params))}))
-
 (api.macros/defendpoint :get "/v1/typescript" :- :any
   "Generate a TypeScript semantic schema module."
   [_route-params
@@ -764,12 +749,6 @@
   (respond {:status  200
             :headers typescript-response-headers
             :body    (render/render-typescript (typed-schema query-params))}))
-
-(api.macros/defendpoint :get "/v1/json" :- :any
-  "Generate a JSON semantic schema."
-  [_route-params
-   query-params :- TypedSchemaQueryParams]
-  (typed-schema query-params))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/typed-schemas/` routes."
