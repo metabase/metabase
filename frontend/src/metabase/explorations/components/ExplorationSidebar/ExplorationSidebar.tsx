@@ -24,11 +24,9 @@ import {
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
 import {
-  ExplorationErrorMarker,
-  PotentiallyInterestingMarker,
-} from "metabase/explorations/components/PotentiallyInterestingMarker";
-import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
-import type { ExplorationSidebarTab } from "metabase/explorations/types";
+  type ExplorationSidebarTab,
+  isExplorationSidebarTab,
+} from "metabase/explorations/types";
 import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
@@ -49,6 +47,7 @@ import type {
   ExplorationId,
   ExplorationQueryStatus,
   ExplorationThreadId,
+  IconName,
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
@@ -56,6 +55,7 @@ import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import type { ExplorationSortOrder } from "../../sidebar-preferences";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
+import { ExplorationErrorMarker } from "./ExplorationErrorMarker";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
 import {
@@ -263,15 +263,18 @@ export function ExplorationSidebar({
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Group pl="0.5rem" pr="1rem" gap="xs" wrap="nowrap" align="center">
+      <Group pl="0.5rem" pr="1rem" gap="md" wrap="nowrap" align="center">
         <Box flex={1} miw={0}>
           <SegmentedControl<ExplorationSidebarTab>
             fullWidth
             radius="xl"
+            bg="background-tertiary"
             value={selectedSidebarTab}
-            onChange={(value) =>
-              dispatch(push(getSelectedSidebarTabUrl(value)))
-            }
+            onChange={(value) => {
+              if (isExplorationSidebarTab(value)) {
+                dispatch(push(getSelectedSidebarTabUrl(value)));
+              }
+            }}
             data={Object.values(explorationSidebarTabsInfo).map(
               ({ value, label }) => ({
                 value,
@@ -746,10 +749,6 @@ function ExplorationTreeItem({
   const isError = pageData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
   const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
-  const isInteresting =
-    !isError &&
-    (pageData?.interestingness_score ?? 0) >=
-      QUERY_INTERESTINGNESS_SCORE_THRESHOLD;
 
   return (
     <ForwardRefLink
@@ -784,7 +783,6 @@ function ExplorationTreeItem({
           message={t`We couldn't generate one or more of these charts.`}
         />
       )}
-      {isInteresting && <PotentiallyInterestingMarker />}
     </ForwardRefLink>
   );
 }

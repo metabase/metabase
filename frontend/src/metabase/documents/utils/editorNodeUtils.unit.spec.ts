@@ -107,10 +107,13 @@ describe("doesDocumentNeedMigration", () => {
 
   it("returns false for text-only nodes", () => {
     expect(
-      doesDocumentNeedMigration({
-        type: "text",
-        text: "Hello",
-      } as JSONContent),
+      doesDocumentNeedMigration(
+        // Unjustified type cast. FIXME
+        {
+          type: "text",
+          text: "Hello",
+        } as JSONContent,
+      ),
     ).toBe(false);
   });
 });

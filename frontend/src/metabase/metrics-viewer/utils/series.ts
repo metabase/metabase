@@ -439,6 +439,7 @@ export function splitByBreakout({
         };
       }
     }
+    // Unjustified type cast. FIXME
     groupedRows.push([
       row[DIMENSION_COLUMN_INDEX],
       row[metricColumnIndex],

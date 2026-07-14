@@ -5,8 +5,8 @@ import {
   createMockDashboardState,
   createMockSettingsState,
 } from "metabase/redux/store/mocks";
-import registerVisualizations from "metabase/visualizations/register";
-import type { Parameter, VisualizationSettings } from "metabase-types/api";
+import { registerVisualizations } from "metabase/visualizations/register";
+import type { Parameter } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockIFrameDashboardCard,
@@ -47,7 +47,7 @@ const setup = (
       isEditing={true}
       isPreviewing={false}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-      settings={dashcard.visualization_settings as VisualizationSettings}
+      settings={dashcard.visualization_settings}
       width={800}
       height={600}
       gridSize={{ width: 18, height: 6 }}

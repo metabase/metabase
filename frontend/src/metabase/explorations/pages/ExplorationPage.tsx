@@ -1,7 +1,5 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { c, t } from "ttag";
 
@@ -17,6 +15,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { type Route, push } from "metabase/router";
 import { Box, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -53,10 +52,7 @@ import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
-import {
-  getInterestingTimelineIds,
-  getMostInterestingTimelineId,
-} from "../components/ExplorationVisualization/utils";
+import { getMostInterestingTimelineId } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
 import {
   type ExplorationSortOrder,
@@ -518,11 +514,6 @@ export function ExplorationPage({
     [availableTimelines],
   );
 
-  const interestingTimelineIds: ReadonlySet<TimelineId> = useMemo(
-    () => getInterestingTimelineIds(selectedQueries),
-    [selectedQueries],
-  );
-
   const selectedTimelineId: TimelineId | null = useMemo(() => {
     if (!selectedPage) {
       return null;
@@ -645,7 +636,6 @@ export function ExplorationPage({
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}
-              interestingTimelineIds={interestingTimelineIds}
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}

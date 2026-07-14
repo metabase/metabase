@@ -1016,6 +1016,7 @@ describe("documents", () => {
 
             cy.log(`${ogHeight}, ${newHeight}`);
 
+            // Unjustified type cast. FIXME
             expect(newHeight).to.be.lessThan(ogHeight as number);
           });
         });
@@ -1940,6 +1941,7 @@ describe("documents", () => {
     it("should show the Events menu only on timeseries charts and manage per-chart timeline selection", () => {
       H.createTimelineWithEvents({
         timeline: { name: TIMELINE_NAME },
+        // Unjustified type cast. FIXME
         events: [
           {
             name: TIMELINE_EVENT_NAME,
@@ -2092,6 +2094,7 @@ function documentCardEchartsIcon(
   isSelected = false,
 ) {
   const iconSvg = setSvgColor(
+    // Unjustified type cast. FIXME
     Icons[iconName as keyof typeof Icons].source,
     getColor(isSelected ? "brand" : "text-tertiary"),
   );

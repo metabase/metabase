@@ -6,7 +6,6 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  within,
 } from "__support__/ui";
 import { createPage } from "metabase/explorations/test-utils";
 import type {
@@ -59,7 +58,6 @@ interface SetupOpts {
   page?: ExplorationPageNode;
   timelines?: Timeline[];
   selectedTimelineId?: TimelineId | null;
-  interestingTimelineIds?: ReadonlySet<TimelineId>;
   showTimelineDropdown?: boolean;
   withUndos?: boolean;
 }
@@ -68,7 +66,6 @@ function setup({
   page = createPage({ id: PAGE_ID }),
   timelines = [],
   selectedTimelineId = null,
-  interestingTimelineIds,
   showTimelineDropdown = true,
   withUndos = false,
 }: SetupOpts = {}) {
@@ -85,7 +82,6 @@ function setup({
       availableTimelines={timelines}
       selectedTimelineId={selectedTimelineId}
       onSelectTimelineId={onSelectTimelineId}
-      interestingTimelineIds={interestingTimelineIds}
     />,
     { withUndos },
   );
@@ -155,25 +151,17 @@ describe("ActionToolbar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows available timelines when opened, with marker on interesting ones", async () => {
-      setup({
-        timelines: [releases, incidents],
-        interestingTimelineIds: new Set([releases.id]),
-      });
+    it("shows available timelines when opened", async () => {
+      setup({ timelines: [releases, incidents] });
 
       await openTimelineMenu();
 
-      const releasesItem = await screen.findByRole("menuitem", {
-        name: /Releases/,
-      });
-      const incidentsItem = screen.getByRole("menuitem", { name: /Incidents/ });
-
       expect(
-        within(releasesItem).getByTestId("potentially-interesting-marker"),
+        await screen.findByRole("menuitem", { name: "Releases" }),
       ).toBeInTheDocument();
       expect(
-        within(incidentsItem).queryByTestId("potentially-interesting-marker"),
-      ).not.toBeInTheDocument();
+        screen.getByRole("menuitem", { name: "Incidents" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -356,6 +344,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           starred: true,
         });
@@ -377,6 +366,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           starred: false,
         });
@@ -451,6 +441,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [PAGE_ID],
           hidden: true,
@@ -472,6 +463,7 @@ describe("ActionToolbar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [PAGE_ID],
           hidden: false,
@@ -499,14 +491,16 @@ describe("ActionToolbar", () => {
       fetchMock.put(`path:/api/exploration/pages/hidden`, 204);
 
       setup({
-        page: createPage({ id: PAGE_ID, hidden: false }),
+        page: createPage({ id: PAGE_ID, hidden: false, name: "Orders chart" }),
         withUndos: true,
       });
 
       await openMoreActionsMenu();
       await userEvent.click(screen.getByRole("menuitem", { name: /Hide/ }));
 
-      expect(await screen.findByText("Chart hidden")).toBeInTheDocument();
+      expect(
+        await screen.findByText('"Orders chart" hidden'),
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
     });
 

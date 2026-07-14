@@ -10,6 +10,7 @@ export const useSetEmbedFont = ({ location }: { location: Location }) => {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Unjustified type cast. FIXME
     const { font } = parseHashOptions(location.hash) as EmbeddingHashOptions;
 
     dispatch(

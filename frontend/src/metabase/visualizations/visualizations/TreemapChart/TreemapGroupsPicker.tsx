@@ -46,6 +46,7 @@ export function TreemapGroupsPicker({
       value={treemapRows}
       series={rawSeries}
       onChange={(rows) =>
+        // Unjustified type cast. FIXME
         onChangeSettings({ "treemap.rows": rows as TreemapRow[] })
       }
       onChangeSeriesColor={handleChangeSeriesColor}

@@ -2,11 +2,13 @@
   (:require
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.curation :as collections.curation]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
 
 (def schema-version
@@ -14,28 +16,53 @@
   schema migration will be performed."
   2)
 
+(def ^:private app-db-sentinel-tables
+  "Tables specific to a Metabase application database, chosen to avoid generic names (e.g. Liquibase's
+  `databasechangelog`) that a genuinely dedicated pgvector database might also carry.
+  Their presence in a to-be-wiped dedicated database means MB_PGVECTOR_DB_URL was pointed at an app db."
+  #{"core_user" "metabase_database"})
+
 (defn- drop-all-but-migration-table
-  [tx]
-  (let [table-names (map (comp first vals)
-                         (jdbc/execute! tx
-                                        (sql/format
-                                         {:select [[:tablename :xi]]
-                                          :from [:pg_tables]
-                                          :where [:and
-                                                  [:<> :schemaname [:inline "information_schema"]]
-                                                  [:<> :schemaname [:inline "pg_catalog"]]
-                                                  [:<> :tablename  [:inline "migration"]]]})))]
-    (doseq [table table-names]
+  "Destructive: clears out semantic-search storage ahead of recreating it from scratch.
+  When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
+  dropped — the application's tables live in other schemas and must never be touched here.
+  Without a `:schema` the database is assumed dedicated to semantic search and its default schema is
+  wiped; refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at
+  the application database would otherwise destroy it here, on first init)."
+  [index-metadata tx]
+  (let [schema (:schema index-metadata)
+        tables (jdbc/execute! tx
+                              (sql/format
+                               {:select [:schemaname :tablename]
+                                :from   [:pg_tables]
+                                :where  (if schema
+                                          [:and
+                                           [:= :schemaname [:inline schema]]
+                                           [:<> :tablename [:inline "migration"]]]
+                                          ;; dedicated mode only ever creates tables in the default
+                                          ;; schema, so the reset has no business outside it
+                                          [:and
+                                           [:= :schemaname [:raw "current_schema()"]]
+                                           [:<> :tablename  [:inline "migration"]]])})
+                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (when (and (nil? schema)
+               (some (comp app-db-sentinel-tables :tablename) tables))
+      (throw (ex-info (str "Refusing to reset the semantic search database: it contains Metabase application"
+                           " tables. Point MB_PGVECTOR_DB_URL at a dedicated pgvector database, or unset it to"
+                           " share the application database in the isolated semantic_search schema.")
+                      {:type ::refused-app-db-wipe})))
+    (doseq [{:keys [schemaname tablename]} tables]
       (jdbc/execute! tx
                      (sql/format
-                      {:drop-table  [[[:raw table]]]})))))
+                      {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."
+                                                (semantic.util/quote-ident tablename))]]]})))))
 
 (defn migrate-schema!
   "Migrate schema (control, metadata, gate, ...). Migration author is responsible for removing leftovers if necessary
   and in general leaving schema in desired state."
   [tx {:keys [index-metadata] :as _opts}]
   ;; ideally index_table indexed are manipulated in dynamic schema part but for now it does not matter
-  (drop-all-but-migration-table tx)
+  (drop-all-but-migration-table index-metadata tx)
   (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
   (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
 
@@ -51,18 +78,21 @@
    in place to be cleaned up or re-created elsewhere."
   [tx index-metadata target-version alter-fn]
   (let [metadata-table  (keyword (:metadata-table-name index-metadata))
+        schema          (:schema index-metadata)
         execute!        (fn [q] (jdbc/execute! tx (sql/format q)))
         candidate-names (->> (execute! {:select-distinct [:table_name]
                                         :from            [metadata-table]
                                         :where           [[:< :index_version target-version]]})
                              (mapcat vals))
-        existing-names  (when (seq candidate-names)
+        ;; stored table_name values are schema-qualified in app-db mode; pg_tables lists bare names
+        existing-bare   (when (seq candidate-names)
                           (->> (execute! {:select [:tablename]
                                           :from   [:pg_tables]
-                                          :where  [:in :tablename (vec candidate-names)]})
+                                          :where  (cond-> [:and [:in :tablename (mapv semantic.util/table-name-part candidate-names)]]
+                                                    schema (conj [:= :schemaname [:inline schema]]))})
                                (mapcat vals)
                                set))
-        table-names     (filter existing-names candidate-names)]
+        table-names     (filter (comp existing-bare semantic.util/table-name-part) candidate-names)]
     (when (seq table-names)
       (doseq [table-name table-names]
         (alter-fn execute! table-name))
@@ -122,12 +152,12 @@
      (fn [execute! table-name]
        (let [kw-tbl             (keyword table-name)
              kw-gate            (keyword gate-table)
-             tbl-model          (keyword table-name "model")
-             tbl-model-id       (keyword table-name "model_id")
-             tbl-root-coll-type (keyword table-name "root_collection_type")
-             gate-id            (keyword gate-table "id")
-             gate-doc-root      [:->> (keyword gate-table "document") [:inline "root_collection_type"]]
-             composite-gate-id  [:|| tbl-model [:inline "_"] tbl-model-id]]
+             model-col          (semantic.util/column-keyword table-name "model")
+             model-id-col       (semantic.util/column-keyword table-name "model_id")
+             root-coll-type-col (semantic.util/column-keyword table-name "root_collection_type")
+             gate-id            (semantic.util/column-keyword gate-table "id")
+             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") [:inline "root_collection_type"]]
+             composite-gate-id  [:|| model-col [:inline "_"] model-id-col]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.
          (execute! {:update kw-tbl
@@ -135,7 +165,7 @@
                     :set    {:root_collection_type gate-doc-root}
                     :where  [:and
                              [:= gate-id composite-gate-id]
-                             [:= tbl-root-coll-type nil]
+                             [:= root-coll-type-col nil]
                              [:!= gate-doc-root nil]]})
          ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]

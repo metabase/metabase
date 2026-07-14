@@ -129,6 +129,7 @@ const RowChartView = <TDatum,>({
     <svg width={width ?? undefined} height={height ?? undefined} style={style}>
       <Group top={margin.top} left={margin.left}>
         <GridColumns
+          // Unjustified type cast. FIXME
           scale={xScale as AxisScale<number>}
           height={innerHeight}
           stroke={theme.grid.color}
@@ -270,6 +271,7 @@ const RowChartView = <TDatum,>({
           tickValues={hasXAxis ? xTicks : []}
           tickFormat={xTickFormatter}
           top={innerHeight}
+          // Unjustified type cast. FIXME
           scale={xScale as AxisScale<number>}
           stroke={theme.axis.color}
           tickStroke={theme.axis.color}

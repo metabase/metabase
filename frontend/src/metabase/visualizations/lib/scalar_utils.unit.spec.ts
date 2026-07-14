@@ -20,6 +20,7 @@ describe("scalar utils", () => {
       const value = 45000;
       const width = 200;
 
+      // Unjustified type cast. FIXME
       const { displayValue, fullScalarValue } = compactifyValue(
         value,
         width,
@@ -36,6 +37,7 @@ describe("scalar utils", () => {
       const value = 45000.1343;
       const width = 200;
 
+      // Unjustified type cast. FIXME
       const { displayValue, fullScalarValue } = compactifyValue(
         value,
         width,
@@ -53,6 +55,7 @@ describe("scalar utils", () => {
       const value = 100100100100;
       const width = 350;
 
+      // Unjustified type cast. FIXME
       const { displayValue, fullScalarValue } = compactifyValue(
         value,
         width,
@@ -73,6 +76,7 @@ describe("scalar utils", () => {
       const value = 10010010010;
       const width = 350;
 
+      // Unjustified type cast. FIXME
       const { displayValue, fullScalarValue } = compactifyValue(
         value,
         width,
@@ -93,6 +97,7 @@ describe("scalar utils", () => {
       const value = 10010010010;
       const width = 350;
 
+      // Unjustified type cast. FIXME
       const { displayValue, fullScalarValue } = compactifyValue(value, width, {
         ...formatOptions,
         compact: true,

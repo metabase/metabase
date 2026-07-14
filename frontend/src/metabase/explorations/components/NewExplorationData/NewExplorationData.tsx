@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
@@ -17,6 +16,7 @@ import type {
 import { isMetricBlock } from "metabase/explorations/hooks";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
+import { push } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,

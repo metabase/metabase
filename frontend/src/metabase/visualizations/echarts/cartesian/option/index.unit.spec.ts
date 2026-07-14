@@ -225,9 +225,13 @@ describe("graph._dimension_value_colors (explorations per-bar colors)", () => {
     const barSeries = seriesOptions.find((s) => s.type === "bar");
     const color = barSeries?.itemStyle?.color;
     expect(typeof color).toBe("function");
+    // Unjustified type cast. FIXME
     const colorFn = color as (params: CallbackDataParams) => string;
+    // Unjustified type cast. FIXME
     expect(colorFn({ dataIndex: 0 } as CallbackDataParams)).toBe("#111111");
+    // Unjustified type cast. FIXME
     expect(colorFn({ dataIndex: 1 } as CallbackDataParams)).toBe(NULL_COLOR);
+    // Unjustified type cast. FIXME
     expect(colorFn({ dataIndex: 2 } as CallbackDataParams)).toBe("#222222");
 
     // Hover (emphasis) inherits each bar's own per-point color. A function here

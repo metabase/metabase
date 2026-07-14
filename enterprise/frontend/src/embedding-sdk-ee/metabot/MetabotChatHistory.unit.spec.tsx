@@ -27,7 +27,7 @@ describe("MetabotChatHistory", () => {
           id: "1",
           role: "agent",
           type: "data_part",
-          part: { type: "navigate_to", version: 1, value: "/question#abc" },
+          part: { type: "data-navigate_to", data: "/question#abc" },
         },
       ]),
     });

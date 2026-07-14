@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -25,9 +24,10 @@ import {
   within,
 } from "__support__/ui";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { IndexRedirect, Link, Redirect, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -754,6 +754,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });
@@ -786,6 +787,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });

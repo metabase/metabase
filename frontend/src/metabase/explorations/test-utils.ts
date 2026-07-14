@@ -151,6 +151,7 @@ export function createQuery(
     finished_at: null,
     entity_id: "abc123def456ghij78901",
     interestingness_score: null,
+    // Unjustified type cast. FIXME
     dataset_query: { type: "query", database: 1, query: {} } as any,
     segment_id: null,
     segment_name: null,

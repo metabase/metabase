@@ -13,10 +13,10 @@ import {
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
 } from "metabase/api/exploration";
+import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
-import { PotentiallyInterestingMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
@@ -33,7 +33,6 @@ import type {
 import type { CommentDrafts } from "../../types";
 
 import S from "./ActionToolbar.module.css";
-import { ExplorationCommentEditor } from "./ExplorationCommentEditor";
 
 const TRIAGE_TOOLTIP_OPEN_DELAY = 500;
 
@@ -46,7 +45,6 @@ interface ActionToolbarProps {
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
-  interestingTimelineIds?: ReadonlySet<TimelineId>;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
 }
@@ -60,7 +58,6 @@ export function ActionToolbar({
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
-  interestingTimelineIds,
   onPreviousPage,
   onNextPage,
 }: ActionToolbarProps) {
@@ -130,7 +127,7 @@ export function ActionToolbar({
     if (succeeded && nextHidden) {
       sendToast({
         icon: "eye_crossed_out",
-        message: t`Hidden "${page.name}"`,
+        message: t`"${page.name}" hidden`,
         actionLabel: t`Undo`,
         actions: [() => setHidden(false)],
       });
@@ -234,6 +231,7 @@ export function ActionToolbar({
 
       <Group
         gap="xs"
+        bg="background-primary"
         bd="1px solid border"
         bdrs="lg"
         px="sm"
@@ -280,11 +278,6 @@ export function ActionToolbar({
                   onClick={() => {
                     handleSelectTimelineId(timeline.id, "click");
                   }}
-                  rightSection={
-                    interestingTimelineIds?.has(timeline.id) ? (
-                      <PotentiallyInterestingMarker />
-                    ) : null
-                  }
                 >
                   {timeline.name}
                 </Menu.Item>
@@ -303,6 +296,7 @@ export function ActionToolbar({
         />
         <Popover
           position="top"
+          width="20rem"
           offset={16}
           opened={isCommentEditorOpen}
           onChange={setCommentEditorOpen}
@@ -316,12 +310,20 @@ export function ActionToolbar({
             />
           </Popover.Target>
           <Popover.Dropdown className={S.commentDropdown}>
-            <ExplorationCommentEditor
-              commentDrafts={commentDrafts}
-              setCommentDrafts={setCommentDrafts}
-              pageId={pageId}
-              handleAddComment={handleAddComment}
-            />
+            <div
+              // prevent clicks in mention menu from closing the popover
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
+              <CommentEditor
+                className={S.commentEditor}
+                placeholder={t`Add a comment…`}
+                initialContent={commentDrafts[pageId]}
+                onChange={handleChangeCommentDraft}
+                onSubmit={handleAddComment}
+                autoFocus={"end"}
+              />
+            </div>
           </Popover.Dropdown>
         </Popover>
         <Menu

@@ -139,7 +139,7 @@
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
     :model/MetabotPrompt
-    :model/CuratedSearchEntry
+    :model/OsiAiContext
     ;; 62+
     :model/Exploration
     :model/ExplorationThread
@@ -147,7 +147,9 @@
     :model/ExplorationPage
     :model/ExplorationThreadTimeline
     :model/ExplorationQuery
-    :model/ExplorationBookmark]
+    :model/ExplorationBookmark
+    ;; 63+
+    :model/McpFeedback]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit
@@ -391,7 +393,8 @@
     :model/FieldUserSettings
     :model/QueryAction
     :model/MetabotConversation
-    :model/ModelIndexValue})
+    :model/ModelIndexValue
+    :model/OsiAiContext})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

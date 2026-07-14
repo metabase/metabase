@@ -11,7 +11,6 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
@@ -25,6 +24,7 @@ import {
   MAX_GROUP_SIZE,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { push } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
@@ -77,8 +77,7 @@ const STATIC_CARD_SORTS: ReadonlyArray<StoredResultSort> = [
 ];
 
 const isStaticCardSort = (value: unknown): value is StoredResultSort =>
-  typeof value === "string" &&
-  (STATIC_CARD_SORTS as ReadonlyArray<string>).includes(value);
+  typeof value === "string" && STATIC_CARD_SORTS.some((sort) => sort === value);
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -171,7 +170,7 @@ export const CardEmbed: Node<{
         },
         this.options.HTMLAttributes,
       ),
-      formatCardEmbed(node.attrs as CardEmbedAttributes),
+      formatCardEmbed(node.attrs),
     ];
   },
 
@@ -180,7 +179,7 @@ export const CardEmbed: Node<{
   },
 
   renderText({ node }) {
-    return formatCardEmbed(node.attrs as CardEmbedAttributes);
+    return formatCardEmbed(node.attrs);
   },
 
   addNodeView() {
@@ -198,7 +197,7 @@ export const CardEmbedComponent = memo(
     deleteNode,
   }: NodeViewProps) => {
     const { _id, id, name } = node.attrs;
-    const storedResultId = node.attrs.stored_result_id as number | null;
+    const storedResultId = node.attrs.stored_result_id;
     const isStatic = storedResultId != null;
     const staticSort = isStaticCardSort(node.attrs.sort)
       ? node.attrs.sort
@@ -422,7 +421,7 @@ export const CardEmbedComponent = memo(
     };
 
     const handleTitleClick = () => {
-      const chartHref = node.attrs.chart_href as string | null | undefined;
+      const chartHref = node.attrs.chart_href;
       if (chartHref) {
         dispatch(host.navigateToCard(chartHref, document));
         return;
@@ -758,6 +757,7 @@ export const CardEmbedComponent = memo(
             ) : (
               <Box className={styles.questionResults}>
                 <ChartSkeleton
+                  // Unjustified type cast. FIXME
                   display={(card?.display as CardDisplayType) || "table"}
                 />
               </Box>

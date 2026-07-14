@@ -121,6 +121,7 @@ export function SearchNew({
     "owner-email": filters.ownerEmail ?? undefined,
     "orphan-only": filters.ownerUserId === "unknown" ? true : undefined,
     "unused-only": filters.unusedOnly === true ? true : undefined,
+    "published-only": filters.publishedOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();

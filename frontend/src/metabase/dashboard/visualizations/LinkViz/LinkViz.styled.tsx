@@ -66,7 +66,7 @@ const searchResultsStyles = `
 
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 6px;
-  box-shadow: 0 7px 20px var(--mb-color-shadow);
+  box-shadow: 0 7px 20px var(--mb-color-shadow-default);
   pointer-events: all;
 `;
 

@@ -89,7 +89,11 @@ export function AddMetricsModal({
   const tabs = libraryEnabled ? (
     <Tabs
       value={tab}
-      onChange={(value) => value && setTab(value as MetricsTab)}
+      onChange={(value) => {
+        if (value === "library" || value === "all") {
+          setTab(value);
+        }
+      }}
     >
       <Tabs.List>
         <Tabs.Tab

@@ -55,7 +55,7 @@ export const EmbedModalContentStatusBar = ({
           ) : (
             <Button
               variant="subtle"
-              color="error"
+              color="feedback-negative"
               loading={isUnpublishing || isFetching}
               onClick={() => {
                 setIsUnpublishing(true);

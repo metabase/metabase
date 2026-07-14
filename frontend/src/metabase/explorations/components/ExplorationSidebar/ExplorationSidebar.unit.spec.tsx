@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
+
 
 import {
   fireEvent,
@@ -10,7 +10,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
   DEFAULT_SORT_ORDER,
   type ExplorationSortOrder,
@@ -23,6 +22,7 @@ import {
   createQuery,
 } from "metabase/explorations/test-utils";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   ExplorationBlockNode,
@@ -207,6 +207,7 @@ const errorQuery = createQuery({
 });
 
 function getRow(name: string): HTMLElement {
+  // Unjustified type cast. FIXME
   return screen
     .getAllByRole("treeitem")
     .find((el) =>
@@ -330,6 +331,7 @@ describe("ExplorationSidebar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [700],
           hidden: true,
@@ -393,6 +395,7 @@ describe("ExplorationSidebar", () => {
           { method: "PUT" },
         );
         expect(calls).toHaveLength(1);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(calls[0].options?.body as string)).toEqual({
           page_ids: [800],
           hidden: false,
@@ -430,12 +433,16 @@ describe("ExplorationSidebar", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows the all-hidden note (not the generic message) when there is nothing to show", () => {
-      setup({ queries: [] });
+    it("shows the all-hidden message without thread headings when every page is hidden", () => {
+      setup({ queries: [hiddenQuery], blocks: [hiddenBlock] });
 
+      expect(screen.getByTestId("exploration-all-hidden")).toBeInTheDocument();
       expect(
         screen.getByText("All items have been hidden."),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
       expect(
         screen.queryByText("Nothing to see here yet."),
       ).not.toBeInTheDocument();
@@ -885,105 +892,6 @@ describe("ExplorationSidebar", () => {
     );
 
     expect(getRow("AI Summary")).toHaveAttribute("aria-busy", "true");
-  });
-
-  describe("potentially-interesting marker", () => {
-    const marker = (rowName: string) =>
-      within(getRow(rowName)).queryByTestId("potentially-interesting-marker");
-
-    it("shows the marker when the heuristic score passes the threshold", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "High interest",
-            status: "done",
-            interestingness_score: 0.9,
-          }),
-        ],
-      });
-
-      expect(marker("High interest")).toBeInTheDocument();
-    });
-
-    it("hides the marker when the heuristic score is below the threshold", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Low interest",
-            status: "done",
-            interestingness_score: 0.2,
-          }),
-        ],
-      });
-
-      expect(marker("Low interest")).not.toBeInTheDocument();
-    });
-
-    it("shows the marker when the score is exactly at the threshold (>= 0.7)", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Exactly threshold",
-            status: "done",
-            interestingness_score: QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
-          }),
-        ],
-      });
-
-      expect(marker("Exactly threshold")).toBeInTheDocument();
-    });
-
-    it("prefers contextual over heuristic — marks when contextual passes even if heuristic does not", () => {
-      setup({
-        prompt: "Why are signups down?",
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Contextually relevant",
-            status: "done",
-            interestingness_score: 0.1,
-            contextual_interestingness_score: 0.95,
-          }),
-        ],
-      });
-
-      expect(marker("Contextually relevant")).toBeInTheDocument();
-    });
-
-    it("prefers contextual over heuristic — does not mark when contextual is low even if heuristic passes", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Not contextually relevant",
-            status: "done",
-            interestingness_score: 0.95,
-            contextual_interestingness_score: 0.1,
-          }),
-        ],
-      });
-
-      expect(marker("Not contextually relevant")).not.toBeInTheDocument();
-    });
-
-    it("falls back to heuristic when contextual is missing", () => {
-      setup({
-        prompt: "Why are signups down?",
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Heuristic fallback",
-            status: "done",
-            interestingness_score: 0.95,
-          }),
-        ],
-      });
-
-      expect(marker("Heuristic fallback")).toBeInTheDocument();
-    });
   });
 
   it("links each row to the selected entity URL", () => {

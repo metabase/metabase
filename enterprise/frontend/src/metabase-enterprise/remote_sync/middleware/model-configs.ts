@@ -14,11 +14,11 @@ import { timelineEventApi } from "metabase/api/timeline-event";
 import { transformApi } from "metabase/api/transform";
 import { transformTagApi } from "metabase/api/transform-tag";
 import type { State } from "metabase/redux/store";
-import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
 import { pythonLibraryApi } from "metabase-enterprise/api/python-transform-library";
 import { tableApi as enterpriseTableApi } from "metabase-enterprise/api/table";
 import type { CardId, CollectionId, DashboardId } from "metabase-types/api";
 
+import { getCollectionFromCollectionsTree } from "./collection";
 import {
   InvalidationType,
   type ModelMutationConfig,
@@ -29,30 +29,26 @@ import {
  * RTK Query stores the original arguments in action.meta.arg.originalArgs
  */
 function getOriginalArgs<T>(action: UnknownAction): T | undefined {
+  // Unjustified type cast. FIXME
   const meta = (action as { meta?: { arg?: { originalArgs?: unknown } } }).meta;
+  // Unjustified type cast. FIXME
   return meta?.arg?.originalArgs as T | undefined;
 }
 
 function getOriginalDocument(originalState: State, id: number) {
   // RTK Query selector requires RootState type, but our State type is compatible
   const selector = documentApi.endpoints.getDocument.select({ id });
-  return selector(originalState as Parameters<typeof selector>[0])?.data;
+  return selector(originalState)?.data;
 }
 
 function getOriginalDashboard(originalState: State, id: DashboardId) {
   const selector = dashboardApi.endpoints.getDashboard.select({ id });
-  return (
-    selector(originalState as Parameters<typeof selector>[0])?.data ||
-    originalState.entities.dashboards[id]
-  );
+  return selector(originalState)?.data || originalState.entities.dashboards[id];
 }
 
 function getOriginalCard(originalState: State, id: CardId) {
   const selector = cardApi.endpoints.getCard.select({ id });
-  return (
-    selector(originalState as Parameters<typeof selector>[0])?.data ||
-    originalState.entities.questions[id]
-  );
+  return selector(originalState)?.data || originalState.entities.questions[id];
 }
 
 function getOriginalCollection(originalState: State, id: CollectionId) {

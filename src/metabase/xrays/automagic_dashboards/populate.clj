@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.core :as queries]
@@ -176,11 +177,7 @@
           (merge (dashcard-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
-                                           {:text         text
-                                            :virtual_card {:name                   nil
-                                                           :display                :text
-                                                           :dataset_query          {}
-                                                           :visualization_settings {}}}
+                                           (dashboard-card/virtual-card-settings "text" text)
                                            visualization-settings)
                   :col                    y
                   :row                    x

@@ -21,6 +21,7 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 
+import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import {
@@ -61,6 +62,10 @@ function CartesianChartInner(props: VisualizationProps) {
     onHoverChange,
     canToggleSeriesVisibility,
     titleMenuItems,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    selectedTimelineEventIds,
   } = props;
 
   const settings = useMemo(
@@ -75,18 +80,23 @@ function CartesianChartInner(props: VisualizationProps) {
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
 
-  const { chartModel, timelineEventsModel, option, renderingContext } =
-    useModelsAndOption(
-      {
-        ...props,
-        width: chartSize.width,
-        height: chartSize.height,
-        hiddenSeries,
-        settings,
-        timelineEvents,
-      },
-      containerRef,
-    );
+  const {
+    chartModel,
+    chartLayout,
+    timelineEventsModel,
+    option,
+    renderingContext,
+  } = useModelsAndOption(
+    {
+      ...props,
+      width: chartSize.width,
+      height: chartSize.height,
+      hiddenSeries,
+      settings,
+      timelineEvents,
+    },
+    containerRef,
+  );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
@@ -151,7 +161,6 @@ function CartesianChartInner(props: VisualizationProps) {
     chartRef,
     containerRef,
     chartModel,
-    timelineEventsModel,
     option,
     renderingContext,
     hovered,
@@ -162,6 +171,11 @@ function CartesianChartInner(props: VisualizationProps) {
   const handleResize = useCallback((width: number, height: number) => {
     setChartSize({ width, height });
   }, []);
+
+  const timelineEventsXAxisIndex =
+    chartLayout.panelHeight != null
+      ? chartModel.seriesModels.filter((series) => series.visible).length - 1
+      : 0;
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case
@@ -225,6 +239,17 @@ function CartesianChartInner(props: VisualizationProps) {
             isVisualizer={isVisualizer}
             chartModel={chartModel}
             settings={settings}
+          />
+          <TimelineEventsBand
+            chartInstance={chartInstance}
+            chartSize={chartSize}
+            timelineEventsModel={timelineEventsModel}
+            chartLayout={chartLayout}
+            xAxisIndex={timelineEventsXAxisIndex}
+            selectedTimelineEventIds={selectedTimelineEventIds}
+            onOpenTimelines={onOpenTimelines}
+            onSelectTimelineEvents={onSelectTimelineEvents}
+            onDeselectTimelineEvents={onDeselectTimelineEvents}
           />
         </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>

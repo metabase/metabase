@@ -125,11 +125,13 @@ export function buildTreeData(
 
   function buildCollectionNode(collection: Collection): TreeNode {
     const childFolders = (collection.children ?? []).map(buildCollectionNode);
+    // Unjustified type cast. FIXME
     const childTransforms = (
       transformsByCollectionId.get(collection.id as number) ?? []
     ).map(buildTransformNode);
 
     return {
+      // Unjustified type cast. FIXME
       id: getCollectionNodeId(collection.id as number),
       name: collection.name,
       nodeType: "folder",
@@ -174,6 +176,7 @@ export function getDefaultExpandedIds(
   const ancestors = targetCollection.effective_ancestors ?? [];
 
   for (const ancestor of ancestors.slice(1)) {
+    // Unjustified type cast. FIXME
     expandedIds[getCollectionNodeId(ancestor.id as number)] = true;
   }
   expandedIds[getCollectionNodeId(targetCollectionId)] = true;
@@ -185,6 +188,7 @@ export function getDescendantCollectionIds(node: TreeNode): Set<number> {
   const ids = new Set<number>();
   const visit = (current: TreeNode) => {
     if (isCollectionNode(current)) {
+      // Unjustified type cast. FIXME
       ids.add(current.collection.id as number);
     }
     current.children?.forEach(visit);
@@ -198,11 +202,11 @@ const COLLECTION_MODEL = "collection" satisfies RemoteSyncEntityModel;
 const PYTHON_LIBRARY_MODEL = "pythonlibrary" satisfies RemoteSyncEntityModel;
 
 const SYNC_STATUS_COLOR: Record<RemoteSyncEntityStatus, ColorName> = {
-  create: "success",
-  update: "warning",
-  touch: "warning",
-  delete: "danger",
-  removed: "danger",
+  create: "feedback-positive",
+  update: "feedback-warning",
+  touch: "feedback-warning",
+  delete: "feedback-negative",
+  removed: "feedback-negative",
 };
 
 export function getSyncColorForEntities(
@@ -284,6 +288,7 @@ export function useGetNodeSyncColor(): (
               collectionIds.has(entity.collection_id)) ||
             (entity.model === COLLECTION_MODEL && collectionIds.has(entity.id)),
         );
+        // Unjustified type cast. FIXME
         return getFolderSyncColor(entities, node.collection.id as number);
       }
       return undefined;

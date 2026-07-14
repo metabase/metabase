@@ -6,6 +6,7 @@
    [clojure.test.check.properties :as prop]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -43,6 +44,16 @@
             (params.dates/date-string->filter
              "2019-04-01"
              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-3b
+  (testing "single hour-granular value"
+    (is (=? [:=
+             {}
+             [:field {:temporal-unit :minute} (meta/id :orders :created-at)]
+             "2025-04-01T09:00:00"]
+            (params.dates/date-string->filter
+             "2025-04-01T09"
+             (lib/ref (meta/field-metadata :orders :created-at)))))))
 
 (deftest ^:parallel date-string->filter-test-4
   (testing "single minute"

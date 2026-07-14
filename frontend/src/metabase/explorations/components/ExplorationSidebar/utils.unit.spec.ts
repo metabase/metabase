@@ -918,16 +918,22 @@ describe("group hideability + pageIds", () => {
 
     // first thread ("Initial investigation") cannot be hidden
     expect(tree[0]?.data?.type).toBe("heading");
+    // Unjustified type cast. FIXME
     expect((tree[0]?.data as { hideable?: boolean }).hideable).toBe(false);
+    // Unjustified type cast. FIXME
     expect((tree[0]?.data as { pageIds?: number[] }).pageIds).toEqual([101]);
 
     // subsequent threads can be hidden and expose all their page ids
+    // Unjustified type cast. FIXME
     expect((tree[1]?.data as { hideable?: boolean }).hideable).toBe(true);
+    // Unjustified type cast. FIXME
     expect((tree[1]?.data as { pageIds?: number[] }).pageIds).toEqual([202]);
 
     // metric sub-groups (blocks) are always hideable
     const blockHeading = tree[1]?.children?.[0];
+    // Unjustified type cast. FIXME
     expect((blockHeading?.data as { hideable?: boolean }).hideable).toBe(true);
+    // Unjustified type cast. FIXME
     expect((blockHeading?.data as { pageIds?: number[] }).pageIds).toEqual([
       202,
     ]);
@@ -953,6 +959,7 @@ describe("group hideability + pageIds", () => {
     });
 
     expect(
+      // Unjustified type cast. FIXME
       ((tree[0]?.data as { pageIds?: number[] }).pageIds ?? []).toSorted(
         (a, b) => a - b,
       ),
@@ -987,6 +994,7 @@ describe("group hideability + pageIds", () => {
 
     const headings = getMetricHeadings(tree);
     const allHiddenOf = (name: string) =>
+      // Unjustified type cast. FIXME
       (
         headings.find((h) => h.name === name)?.data as {
           allHidden?: boolean;
@@ -996,6 +1004,7 @@ describe("group hideability + pageIds", () => {
     expect(allHiddenOf("All hidden")).toBe(true);
     expect(allHiddenOf("Mixed")).toBe(false);
     // the thread heading mixes a hidden and a visible page → not all hidden
+    // Unjustified type cast. FIXME
     expect((tree[0]?.data as { allHidden?: boolean }).allHidden).toBe(false);
   });
 });

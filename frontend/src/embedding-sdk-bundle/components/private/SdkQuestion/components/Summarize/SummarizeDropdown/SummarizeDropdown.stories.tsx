@@ -4,6 +4,7 @@ import { Box, Stack } from "metabase/ui";
 
 import { SummarizeDropdown } from "./SummarizeDropdown";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {

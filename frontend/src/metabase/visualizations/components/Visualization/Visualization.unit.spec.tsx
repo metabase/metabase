@@ -7,7 +7,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { color } from "metabase/ui/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   RawSeries,
@@ -26,6 +26,7 @@ import {
 
 registerVisualizations();
 
+// Unjustified type cast. FIXME
 const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
 
 const MockedVisualization = Object.assign(

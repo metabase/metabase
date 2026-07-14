@@ -180,6 +180,7 @@ function mockMetabotAgentState({
   messages: MetabotChatMessage[];
   isDoingScience: boolean;
 }) {
+  // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt: "",
     setPrompt: jest.fn(),

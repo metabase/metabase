@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
+
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createPage, createQuery } from "metabase/explorations/test-utils";
+import { Route } from "metabase/router";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   Comment,
@@ -76,6 +77,7 @@ jest.mock("metabase/api/exploration", () => ({
     },
   },
   useSetPageStarredMutation: () => [mockMutationTrigger()],
+  useSetPagesHiddenMutation: () => [mockMutationTrigger()],
 }));
 
 function makeTimeseriesDataset(): Dataset {
@@ -138,7 +140,6 @@ interface SetupOpts {
   datasets?: Map<number, Dataset>;
   errors?: Map<number, unknown>;
   availableTimelines?: Timeline[];
-  interestingTimelineIds?: ReadonlySet<number>;
   selectedTimelineId?: number | null;
   onSelectTimelineId?: (timelineId: number | null) => void;
   isCommentsSidebarOpen?: boolean;
@@ -150,7 +151,6 @@ function setup({
   datasets,
   errors,
   availableTimelines = [],
-  interestingTimelineIds,
   selectedTimelineId = null,
   onSelectTimelineId = jest.fn(),
   isCommentsSidebarOpen = false,
@@ -180,7 +180,6 @@ function setup({
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
-          interestingTimelineIds={interestingTimelineIds}
           commentDrafts={{}}
           setCommentDrafts={jest.fn()}
           isCommentsSidebarOpen={isCommentsSidebarOpen}

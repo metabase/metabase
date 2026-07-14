@@ -58,7 +58,6 @@ interface ExplorationGroupVisualizationProps {
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
-  interestingTimelineIds?: ReadonlySet<TimelineId>;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
@@ -152,7 +151,6 @@ function ExplorationGroupVisualizationChart({
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
-  interestingTimelineIds,
   groupName,
   commentDrafts,
   setCommentDrafts,
@@ -369,7 +367,6 @@ function ExplorationGroupVisualizationChart({
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
-          interestingTimelineIds={interestingTimelineIds}
           onPreviousPage={onPreviousPage}
           onNextPage={onNextPage}
         />

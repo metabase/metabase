@@ -175,9 +175,9 @@
   background-image:
     linear-gradient(
       90deg,
-      #0000 calc(50% - var(--shimmer-spread)),
+      transparent calc(50% - var(--shimmer-spread)),
       var(--mb-color-background-primary),
-      #0000 calc(50% + var(--shimmer-spread))
+      transparent calc(50% + var(--shimmer-spread))
     ),
     linear-gradient(
       var(--mb-color-text-secondary),

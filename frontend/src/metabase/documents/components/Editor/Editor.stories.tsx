@@ -1,7 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
-import type { WithRouterProps } from "react-router";
+
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -13,6 +13,7 @@ import {
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { WithRouterProps } from "metabase/router";
 import { RouterContext } from "metabase/router";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
@@ -39,8 +40,10 @@ const storeInitialState = createMockState({
   settings,
   entities: createMockEntitiesState({}),
 });
+// Unjustified type cast. FIXME
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
+// Unjustified type cast. FIXME
 const mockRouterContext = {
   location: { pathname: "/document/1", query: {} },
 } as WithRouterProps;
@@ -80,6 +83,7 @@ export default {
         http.post("/api/card/114/query", () =>
           HttpResponse.json(
             createMockDataset({
+              // Unjustified type cast. FIXME
               data: Data.card114Query.data as unknown as DatasetData,
             }),
           ),
@@ -106,6 +110,7 @@ export default {
         http.post("/api/card/115/query", () =>
           HttpResponse.json(
             createMockDataset({
+              // Unjustified type cast. FIXME
               data: Data.card114Query.data as unknown as DatasetData,
             }),
           ),

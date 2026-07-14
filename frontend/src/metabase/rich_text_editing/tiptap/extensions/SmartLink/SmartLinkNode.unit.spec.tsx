@@ -1,6 +1,5 @@
 import type { NodeViewProps } from "@tiptap/react";
 import { createMemoryHistory } from "history";
-import { Route, Router, useRouterHistory } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -11,6 +10,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route, Router, useRouterHistory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,
@@ -31,6 +31,7 @@ function createProps(
   updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
+  // Unjustified type cast. FIXME
   return {
     node,
     updateAttributes: updateAttributes ?? jest.fn(),

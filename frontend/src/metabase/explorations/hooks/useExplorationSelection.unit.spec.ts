@@ -33,6 +33,7 @@ function makeMetric(
   id: number,
   dimensionIds: DimensionId[],
 ): ExplorationMetric {
+  // Unjustified type cast. FIXME
   return createMockMetric({
     id,
     name: `Metric ${id}`,
@@ -380,6 +381,7 @@ describe("useExplorationSelection", () => {
       expect(result.current.blocks).toHaveLength(1);
       expect(
         [
+          // Unjustified type cast. FIXME
           ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
         ].sort(),
       ).toEqual([1, 2]);
@@ -412,6 +414,7 @@ describe("useExplorationSelection", () => {
       });
 
       expect([
+        // Unjustified type cast. FIXME
         ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
       ]).toEqual([2]);
     });
@@ -498,6 +501,7 @@ describe("useExplorationSelection", () => {
       });
 
       expect([
+        // Unjustified type cast. FIXME
         ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
       ]).toEqual([2]);
     });

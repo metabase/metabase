@@ -48,7 +48,9 @@ export const createMockCollectionItemFromCollection = (
 ): CollectionItem =>
   createMockCollectionItem({
     ...opts,
+    // Unjustified type cast. FIXME
     id: opts?.id as number,
+    // Unjustified type cast. FIXME
     entity_id: opts?.entity_id as BaseEntityId,
     model: "collection",
     type: undefined,

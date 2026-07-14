@@ -2,12 +2,12 @@ import type { ComponentType } from "react";
 
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 
-import { NotFoundPlaceholder } from "../components/PluginPlaceholder";
+import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
 const getDefaultPluginSupport = () => ({
   isEnabled: false,
-  SupportSettings: NotFoundPlaceholder,
-  GrantAccessModal: NotFoundPlaceholder,
+  SupportSettings: PluginPlaceholder,
+  GrantAccessModal: PluginPlaceholder,
 });
 
 export const PLUGIN_SUPPORT: {

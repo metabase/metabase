@@ -114,7 +114,7 @@ export function MetricExpressionPill({
         >
           <Flex align="center" gap="xs">
             <SourceColorIndicator
-              colors={isDisabled ? ["var(--mb-color-icon-disabled)"] : colors}
+              colors={isDisabled ? ["var(--mb-color-icon-secondary)"] : colors}
             />
             {isRenaming ? (
               <EditableText
@@ -145,9 +145,10 @@ export function MetricExpressionPill({
                     if (typeof segment === "number") {
                       return (
                         <Badge
-                          key={i}
                           circle
-                          c="text-brand-hover"
+                          color="brand"
+                          key={i}
+                          variant="light"
                           style={{ marginInlineStart: "0.2em" }}
                         >
                           {segment}

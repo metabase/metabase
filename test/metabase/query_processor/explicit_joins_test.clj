@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -26,7 +27,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -1739,3 +1741,293 @@
                             :dataset-query q1b}]})]
       (is (thrown-with-msg? Exception #"Join condition refers to a column from outside this join"
                             (qp.compile/compile (lib/query mp q2)))))))
+
+(deftest ^:parallel join-against-native-source-card-test
+  (testing "Left-join a native source card, restrict its fields, filter, and aggregate (#37100, #29795)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (let [mp0        (mt/metadata-provider)
+              products-q (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :products)))
+                             (lib/with-fields [(lib.metadata/field mp0 (mt/id :products :id))
+                                               (lib.metadata/field mp0 (mt/id :products :category))]))
+              compiled   (:query (qp.compile/compile products-q))
+              ;; non-SQL drivers (mongo) compile to a pipeline vector; a saved native query stores its JSON text
+              native-q   (-> (lib/native-query mp0 (cond-> compiled (not (string? compiled)) json/encode))
+                             (lib/with-native-extras {:collection "products"}))
+              mp         (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-q])
+              card       (lib.metadata/card mp 1)
+              base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              product-id (lib.metadata/field mp (mt/id :orders :product_id))
+              id-name    (u/lower-case-en (:name (lib.metadata/field mp0 (mt/id :products :id))))
+              ;; native card columns have no field id -- match by lower-cased name for case-folding drivers
+              card-id    (m/find-first #(= id-name (u/lower-case-en (:name %)))
+                                       (lib/join-condition-rhs-columns base card (lib/ref product-id) nil))
+              joined     (lib/join base (-> (lib/join-clause card [(lib/= product-id card-id)])
+                                            (lib/with-join-alias "P")
+                                            (lib/with-join-fields :all)))
+              category   (m/find-first #(and (= :source/joins (:lib/source %))
+                                             (= "category" (u/lower-case-en (:name %))))
+                                       (lib/breakoutable-columns joined))]
+          (testing "aggregate grouped by a column coming from the native join card"
+            (is (= #{"Doohickey" "Gadget" "Gizmo" "Widget"}
+                   (set (map first
+                             (mt/rows
+                              (qp/process-query
+                               (-> joined
+                                   (lib/aggregate (lib/count))
+                                   (lib/breakout category)))))))))
+          (testing "filter on a column coming from the native join card"
+            (is (seq (mt/rows
+                      (qp/process-query
+                       (-> joined
+                           (lib/filter (lib/= category "Gadget"))
+                           (lib/aggregate (lib/count)))))))))))))
+
+(deftest ^:parallel order-by-joined-breakout-column-test
+  (testing "Sorting on a joined-table breakout column (#30743)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (let [mp       (mt/metadata-provider)
+              base     (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              products (lib.metadata/table mp (mt/id :products))
+              joined   (lib/join base (-> (lib/join-clause products (lib/suggested-join-conditions base products))
+                                          (lib/with-join-alias "Products")
+                                          (lib/with-join-fields :all)))
+              category (m/find-first #(and (= :source/joins (:lib/source %))
+                                           (= (mt/id :products :category) (:id %)))
+                                     (lib/breakoutable-columns joined))]
+          (is (= ["Doohickey" "Gadget" "Gizmo" "Widget"]
+                 (map first
+                      (mt/rows
+                       (qp/process-query
+                        (-> joined
+                            (lib/aggregate (lib/count))
+                            (lib/breakout category)
+                            (lib/order-by category :asc))))))))))))
+
+(deftest ^:parallel join-condition-on-inner-expression-field-literal-test
+  (testing "A join whose condition operand is a field-literal referencing an inner expression executes (#18630)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :nested-queries)
+      (mt/dataset test-data
+        (let [mp       (mt/metadata-provider)
+              ;; a fresh copy per call -- reusing one query as both source and join target collides :lib/uuids
+              mk-inner (fn []
+                         (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) q
+                           (lib/expression q "CC" (lib/coalesce (lib.metadata/field mp (mt/id :orders :discount)) 0))
+                           (lib/aggregate q (lib/count))
+                           (lib/breakout q (m/find-first #(= "CC" (:name %)) (lib/breakoutable-columns q)))))
+              outer    (lib/append-stage (mk-inner))
+              lhs-cc   (m/find-first #(= "cc" (u/lower-case-en (:name %))) (lib/visible-columns outer))
+              rhs-cc   (lib/with-join-alias lhs-cc "Q2")]
+          (is (seq (mt/rows
+                    (qp/process-query
+                     (-> outer
+                         (lib/join (-> (lib/join-clause (mk-inner) [(lib/= lhs-cc rhs-cc)])
+                                       (lib/with-join-alias "Q2")
+                                       (lib/with-join-fields :all)))
+                         (lib/limit 5)))))))))))
+
+(deftest ^:parallel post-join-filter-then-aggregate-test
+  (testing "Filter on a joined column, then aggregate grouped by another joined column (#11452, #12221, #15570)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (let [mp       (mt/metadata-provider)
+              joined   (lib/join (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (-> (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                                      [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                              (lib.metadata/field mp (mt/id :reviews :product_id)))])
+                                     (lib/with-join-alias "Reviews")
+                                     (lib/with-join-fields :all)))
+              rating   (m/find-first #(and (= :source/joins (:lib/source %))
+                                           (= (mt/id :reviews :rating) (:id %)))
+                                     (lib/breakoutable-columns joined))
+              reviewer (m/find-first #(and (= :source/joins (:lib/source %))
+                                           (= (mt/id :reviews :reviewer) (:id %)))
+                                     (lib/breakoutable-columns joined))
+              rows     (mt/rows
+                        (qp/process-query
+                         (-> joined
+                             (lib/filter (lib/= rating 2))
+                             (lib/aggregate (lib/avg rating))
+                             (lib/breakout reviewer))))]
+          (is (seq rows))
+          (testing "avg of a column filtered to a single value equals that value for every group"
+            (is (every? (fn [[_reviewer avg]] (== 2 avg)) rows))))))))
+
+(deftest ^:parallel join-expression-condition-over-model-source-test
+  (testing "An arithmetic expression join condition over a self-joined model source executes like the table equivalent"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
+      (mt/dataset test-data
+        (let [orders-q (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+              mp       (-> (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [orders-q])
+                           (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]}))
+              ;; derive refs by field id -- hardcoded upper/lowercase name literals break on case-folding drivers
+              col-of   (fn [cols field-id] (m/find-first #(= field-id (:id %)) cols))
+              card     (lib.metadata/card mp 1)
+              base     (lib/query mp card)
+              cols     (lib/returned-columns base)
+              id       (col-of cols (mt/id :orders :id))
+              user-id  (col-of cols (mt/id :orders :user_id))
+              product-id (col-of cols (mt/id :orders :product_id))
+              model-rows (mt/rows
+                          (qp/process-query
+                           (-> base
+                               (lib/join (-> (lib/join-clause
+                                              card
+                                              [(lib/= (lib/+ id user-id)
+                                                      (lib/+ (lib/with-join-alias id "m")
+                                                             (lib/with-join-alias product-id "m")))])
+                                             (lib/with-join-alias "m")
+                                             (lib/with-join-fields :all)))
+                               (lib/filter (lib/<= id 5)))))
+              tbase    (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              tid      (lib.metadata/field mp (mt/id :orders :id))
+              tuid     (lib.metadata/field mp (mt/id :orders :user_id))
+              tpid     (lib.metadata/field mp (mt/id :orders :product_id))
+              table-rows (mt/rows
+                          (qp/process-query
+                           (-> tbase
+                               (lib/join (-> (lib/join-clause
+                                              (lib.metadata/table mp (mt/id :orders))
+                                              [(lib/= (lib/+ tid tuid)
+                                                      (lib/+ (lib/with-join-alias tid "m")
+                                                             (lib/with-join-alias tpid "m")))])
+                                             (lib/with-join-alias "m")
+                                             (lib/with-join-fields :all)))
+                               (lib/filter (lib/<= tid 5)))))]
+          (is (seq model-rows))
+          (testing "model source yields the same number of joined rows as the equivalent table self-join"
+            (is (= (count table-rows) (count model-rows)))))))))
+
+(deftest ^:parallel join-two-models-with-same-internal-join-alias-test
+  (testing "Joining two models that each internally join PRODUCTS under the same alias resolves and executes (#47988)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset test-data
+        (let [mp0        (mt/metadata-provider)
+              add-products (fn [q]
+                             (let [products (lib.metadata/table mp0 (mt/id :products))]
+                               (lib/join q (-> (lib/join-clause products (lib/suggested-join-conditions q products))
+                                               (lib/with-join-alias "Products")
+                                               (lib/with-join-fields :all)))))
+              card1-q    (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :orders)))
+                             add-products)
+              card2-q    (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :orders)))
+                             add-products
+                             (lib/join (-> (lib/join-clause (lib.metadata/table mp0 (mt/id :reviews))
+                                                            [(lib/= (lib.metadata/field mp0 (mt/id :orders :product_id))
+                                                                    (lib.metadata/field mp0 (mt/id :reviews :product_id)))])
+                                           (lib/with-join-alias "Reviews")
+                                           (lib/with-join-fields :all))))
+              mp         (-> (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [card1-q card2-q])
+                             (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}
+                                                                            {:id 2, :type :model}]}))
+              card2      (lib.metadata/card mp 2)
+              base       (lib/query mp (lib.metadata/card mp 1))
+              lhs        (m/find-first #(= (mt/id :orders :id) (:id %)) (lib/returned-columns base))
+              rhs        (m/find-first #(= (mt/id :orders :id) (:id %))
+                                       (lib/join-condition-rhs-columns base card2 (lib/ref lhs) nil))]
+          (is (seq (mt/rows
+                    (qp/process-query
+                     (-> base
+                         (lib/join (-> (lib/join-clause card2 [(lib/= lhs rhs)])
+                                       (lib/with-join-alias "M2")
+                                       (lib/with-join-fields :all)))
+                         (lib/limit 1)))))))))))
+
+(deftest ^:parallel dedup-same-named-joins-across-nested-cards-test
+  (testing "Joining two cards that each join Products with the default alias \"Products\" does not collide (#51856)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset test-data
+        (let [mp0   (mt/metadata-provider)
+              card-q (fn [table-id]
+                       (let [q        (lib/query mp0 (lib.metadata/table mp0 table-id))
+                             products (lib.metadata/table mp0 (mt/id :products))]
+                         (lib/join q (-> (lib/join-clause products (lib/suggested-join-conditions q products))
+                                         (lib/with-join-alias "Products")
+                                         (lib/with-join-fields :all)))))
+              mp    (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                     [(card-q (mt/id :orders))
+                      (card-q (mt/id :reviews))])
+              card2 (lib.metadata/card mp 2)
+              base  (lib/query mp (lib.metadata/card mp 1))
+              cat1  (m/find-first #(= (:id %) (mt/id :products :category)) (lib/returned-columns base))
+              cat2  (m/find-first #(= (:id %) (mt/id :products :category))
+                                  (lib/join-condition-rhs-columns base card2 (lib/ref cat1) nil))
+              query (-> base
+                        (lib/join (-> (lib/join-clause card2 [(lib/= cat1 cat2)])
+                                      (lib/with-join-alias "Q2")
+                                      (lib/with-join-fields :all)))
+                        (lib/limit 5))]
+          (mt/with-native-query-testing-context query
+            (is (seq (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel join-saved-card-on-fk-sourced-breakout-test
+  (testing "Join a saved card on an FK-sourced implicit-join breakout column (#48754)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :basic-aggregations :nested-queries)
+      (mt/dataset test-data
+        (let [mp0        (mt/metadata-provider)
+              fk-category (fn [q] (m/find-first #(and (= (mt/id :products :category) (:id %))
+                                                      (= :source/implicitly-joinable (:lib/source %)))
+                                                (lib/breakoutable-columns q)))
+              card-q     (as-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :orders))) q
+                           (lib/aggregate q (lib/count))
+                           (lib/breakout q (fk-category q)))
+              mp         (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [card-q])
+              card       (lib.metadata/card mp 1)
+              base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              category   (fk-category base)
+              order-id   (lib.metadata/field mp (mt/id :orders :id))
+              ;; derive the card's category column instead of a hardcoded "CATEGORY" literal (case-folding drivers)
+              card-cat   (m/find-first #(= "category" (u/lower-case-en (:name %)))
+                                       (lib/join-condition-rhs-columns base card (lib/ref category) nil))]
+          ;; id<=100 bounds the outer rows so H2 doesn't re-evaluate the aggregated card subquery per-row and time
+          ;; out; the first 100 orders still cover all 4 categories.
+          (is (= 4
+                 (count (mt/rows
+                         (qp/process-query
+                          (-> base
+                              (lib/filter (lib/<= order-id 100))
+                              (lib/aggregate (lib/count))
+                              (lib/breakout category)
+                              (lib/join (-> (lib/join-clause card [(lib/= category card-cat)])
+                                            (lib/with-join-alias "Q1")
+                                            (lib/with-join-fields :all))))))))))))))
+
+(deftest ^:parallel filter-on-long-named-joined-card-column-uses-inner-name-test
+  (testing "Filtering on a long-named joined-card column references the inner column, not the truncated alias (#56416)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (let [mp0        (mt/metadata-provider)
+              card-base  (lib/query mp0 (lib.metadata/table mp0 (mt/id :orders)))
+              fk-category (m/find-first #(and (= (mt/id :products :category) (:id %))
+                                              (= :source/implicitly-joinable (:lib/source %)))
+                                        (lib/breakoutable-columns card-base))
+              product-id (m/find-first #(= (mt/id :orders :product_id) (:id %))
+                                       (lib/breakoutable-columns card-base))
+              card-q     (-> card-base
+                             (lib/aggregate (lib/count))
+                             (lib/breakout fk-category)
+                             (lib/breakout product-id))
+              mp         (-> (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [card-q])
+                             (lib.tu/merged-mock-metadata-provider
+                              {:cards [{:id 1, :name (apply str (repeat 65 \a))}]}))
+              card       (lib.metadata/card mp 1)
+              base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              orders-pid (lib.metadata/field mp (mt/id :orders :product_id))
+              ;; derive the joined card's columns instead of hardcoding "PRODUCT_ID"/"CATEGORY" (CI: case-folding drivers)
+              card-pid   (m/find-first #(= (mt/id :orders :product_id) (:id %))
+                                       (lib/join-condition-rhs-columns base card (lib/ref orders-pid) nil))
+              joined     (lib/join base (-> (lib/join-clause card [(lib/= orders-pid card-pid)])
+                                            (lib/with-join-alias "J")
+                                            (lib/with-join-fields :all)))
+              j-category (m/find-first #(and (= (mt/id :products :category) (:id %))
+                                             (= :source/joins (:lib/source %)))
+                                       (lib/visible-columns joined))]
+          (is (= [["Gadget"]]
+                 (map (fn [[category _count]] [category])
+                      (mt/rows
+                       (qp/process-query
+                        (-> joined
+                            (lib/filter (lib/= j-category "Gadget"))
+                            (lib/breakout j-category)
+                            (lib/aggregate (lib/count)))))))))))))

@@ -39,7 +39,7 @@
 .compactChartMenuItemSelected,
 .compactChartMenuItemSelected.compactChartMenuItem:hover {
   background-color: var(--mb-color-background_surface-selected);
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 @container metric-controls (max-width: 56rem) {
