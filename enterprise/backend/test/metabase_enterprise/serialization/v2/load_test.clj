@@ -1151,10 +1151,22 @@
                                                  :entity_id     "0123456789abcdef_0123"
                                                  :name          "Some card"
                                                  :table_id      ["bad-db" nil "CUSTOMERS"]
-                                                 :visualization_settings {}}])]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"was not found"
-                                  (serdes.load/load-metabase! ingestion)))))))))
+                                                 :visualization_settings {}}])
+                e         (try
+                            (serdes.load/load-metabase! ingestion)
+                            nil
+                            (catch clojure.lang.ExceptionInfo e e))]
+            (is (some? e))
+            (is (re-find #"was not found" (ex-message e)))
+            (testing "the not-found error names the entity holding the dangling reference (GHY-3992)"
+              (is (= {:model "Database" :id "bad-db"}
+                     (select-keys (ex-data e) [:model :id])))
+              (is (= {:model "Card" :id "0123456789abcdef_0123" :name "Some card"}
+                     (:referrer (ex-data e)))))
+            ;; attaching the referrer must not nest the original beneath itself: error reporting renders the
+            ;; whole cause chain, and a self-nested exception prints the same message twice
+            (testing "attaching the referrer does not duplicate the error through the cause chain"
+              (is (nil? (ex-cause e))))))))))
 
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)
