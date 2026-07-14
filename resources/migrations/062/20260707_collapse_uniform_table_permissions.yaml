@@ -29,10 +29,10 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-07-14T00:00:01
       author: ranquild
+      dbms: mysql,mariadb,h2
       comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
       changes:
         - sql:
-            dbms: mysql,mariadb,h2
             sql: >-
               INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
               SELECT agg.group_id, 'perms/view-data', agg.db_id, 'blocked'
@@ -66,10 +66,10 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-07-14T00:00:02
       author: ranquild
+      dbms: postgresql
       comment: Stage per group-and-database aggregates of table-level view-data permissions (#76077)
       changes:
         - sql:
-            dbms: postgresql
             sql: >-
               SET LOCAL max_parallel_workers_per_gather = 8;
               CREATE TABLE data_permissions_collapse_agg AS
@@ -88,10 +88,10 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-07-14T00:00:03
       author: ranquild
+      dbms: postgresql
       comment: Analyze the staged collapse aggregates (#76077)
       changes:
         - sql:
-            dbms: postgresql
             sql: ANALYZE data_permissions_collapse_agg;
       rollback: # not necessary
 
@@ -99,10 +99,10 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-07-14T00:00:04
       author: ranquild
+      dbms: postgresql
       comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
       changes:
         - sql:
-            dbms: postgresql
             sql: >-
               INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
               SELECT agg.group_id, 'perms/view-data', agg.db_id, 'blocked'
@@ -121,10 +121,10 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-07-14T00:00:05
       author: ranquild
+      dbms: postgresql
       comment: Drop the staged collapse aggregates (#76077)
       changes:
         - sql:
-            dbms: postgresql
             sql: DROP TABLE data_permissions_collapse_agg;
       rollback: # not necessary
 
