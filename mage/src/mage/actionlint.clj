@@ -62,14 +62,12 @@
 (defn actionlint
   "Run actionlint over the repo's GitHub Actions workflows.
 
-  With no path arguments, actionlint auto-discovers everything under `.github/workflows`. Otherwise it
-  lints only the files passed.
-
   Any passed path that no longer exists on disk is dropped, so a diff that only *deletes* workflow files
   is a clean no-op rather than an actionlint \"file not found\" error.
 
-  Note: mage's CLI parser eats single-dash tokens, so passing raw actionlint flags (e.g. `-shellcheck=`)
-  through this task is unreliable; run the cached binary in `.actionlint/` directly if you need flags."
+  `cli-args` are the raw command-line args: mage's option parser would
+  otherwise strip single-dash tokens, so passing them raw lets actionlint flags (e.g. `-shellcheck=`)
+  reach the binary."
   [cli-args]
   (let [bin      (ensure-binary!)
         flags    (filter #(str/starts-with? % "-") cli-args)

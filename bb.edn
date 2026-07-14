@@ -40,7 +40,7 @@
    :examples [["./bin/mage actionlint" "Lints every workflow under .github/workflows"]
               ["./bin/mage actionlint .github/workflows/backend.yml" "Lints a single workflow"]]
    :requires [[mage.actionlint]]
-   :task (task! (mage.actionlint/actionlint (:arguments parsed)))}
+   :task (mage.actionlint/actionlint *command-line-args*)}
 
   cljfmt-staged
   {:doc "Runs cljfmt on staged files"
