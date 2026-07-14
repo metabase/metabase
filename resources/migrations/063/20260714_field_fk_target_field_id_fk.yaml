@@ -269,3 +269,48 @@ databaseChangeLog:
                   name: target_entity_type
               - column:
                   name: target_entity_id
+
+  ## workspace.creator_id is in the same boat as pulse_channel.channel_id: an FK since v62 with no
+  ## explicit index, grandfathered into the excluded-fks set of fks-are-indexed-test. Same
+  ## drop/index/re-add dance for the same MySQL reasons.
+  - changeSet:
+      id: v63.2026-07-14T00:00:17
+      author: ranquild
+      comment: Drop FK on workspace.creator_id ahead of indexing the column
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace
+            constraintName: fk_workspace_creator_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:18
+      author: ranquild
+      comment: Index workspace.creator_id
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:19
+      author: ranquild
+      comment: Re-add FK on workspace.creator_id, backed by the new index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL
