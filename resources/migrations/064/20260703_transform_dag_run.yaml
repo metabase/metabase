@@ -132,10 +132,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: source_transform_id
-      rollback:
-        - dropIndex:
-            tableName: transform_dag_run
-            indexName: idx_transform_dag_run_source_transform_id
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
 
   - changeSet:
       id: v64.dQGhvK
@@ -158,10 +155,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: transform_dag_run
-            constraintName: fk_transform_dag_run_source_transform_id
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
 
   - changeSet:
       id: v64.yY6UC9
@@ -180,10 +174,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
-      rollback:
-        - dropIndex:
-            tableName: transform_dag_run
-            indexName: idx_transform_dag_run_user_id
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
 
   - changeSet:
       id: v64.BTINKo
@@ -203,10 +194,7 @@ databaseChangeLog:
             referencedTableName: core_user
             referencedColumnNames: id
             onDelete: SET NULL
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: transform_dag_run
-            constraintName: fk_transform_dag_run_user_id
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
 
   - changeSet:
       id: v64.ohN51V
@@ -227,10 +215,7 @@ databaseChangeLog:
                   name: is_active
               - column:
                   name: last_heartbeat
-      rollback:
-        - dropIndex:
-            tableName: transform_dag_run
-            indexName: idx_transform_dag_run_active_runs
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
 
   - changeSet:
       id: v64.wQe4Fn
@@ -242,10 +227,7 @@ databaseChangeLog:
             tableName: transform_dag_run
             constraintName: idx_unique_active_transform_dag_run
             columnNames: source_transform_id, is_active
-      rollback:
-        - dropUniqueConstraint:
-            tableName: transform_dag_run
-            constraintName: idx_unique_active_transform_dag_run
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
 
   - changeSet:
       id: v64.HUpfDD
