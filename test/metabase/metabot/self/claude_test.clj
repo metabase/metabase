@@ -328,6 +328,7 @@
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"
           (with-redefs [self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
@@ -338,6 +339,7 @@
         (testing "Uses ai proxy when explicitly requested"
           (with-redefs [llm.settings/llm-anthropic-api-key  (constantly nil)
                         self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post

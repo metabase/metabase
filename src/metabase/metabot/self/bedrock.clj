@@ -271,11 +271,15 @@
                                          :headers   headers
                                          :body      (json/encode req)
                                          :ai-proxy? ai-proxy?})]
+          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+          ;; the reducible so mid-stream IO/timeout failures get the same
+          ;; provider-friendly translation as request-time errors.
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "bedrock"
                                      :model    model
                                      :url      path
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "bedrock" bedrock-error-msg)))
         (catch Exception e
           (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
 
